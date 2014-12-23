@@ -1,5 +1,20 @@
 (ns cosheet.entity)
 
+;;; An entity is either a constant or an item. An item may have a
+;;; content, which is another entity, and may have elements, which are
+;;; other items. There is no ordering among the elements of an item.
+
+;;; In list form, an item is written as (content element element ...)
+;;; For example (5 "value" (3 "x") (4 "y")) describes an item with
+;;; content 5, and three elements, ("value"), (3 "x") and (4 "y"). As
+;;; illustrated here, elements that have just a content and no items
+;;; can have their parentheses dropped in the list form.
+
+;;; There are functions to get all elements of an entity, or just
+;;; those elements with a specific label. A label is, for example, the
+;;; "x" in the element(3 "x"). In general, the content of any element
+;;; of an element is a label for that element.
+
 (defprotocol Description
   "A description of an item or constant."
   (description->entity [this store]
@@ -7,8 +22,9 @@
      depends on."))
 
 (defprotocol Entity
-  "An item or constant. For constants, the methods behave as if it had
-   been reified into an item with the constant as content, and nothing else."
+  "An item or constant. For constants, the entity methods behave as if
+  it had been reified into an item with the constant as its content,
+  and nothing else."
 
   (atom? [this]
     "True if this entity is atomic: either a primitive or a reference to
@@ -33,8 +49,8 @@
 ;;; Utility functions that work on entities
 
 (defn label->content [entity label]
-  "Return the content of the given label.
-   There must be at most one such label." 
+  "Return the content of the element with the given label.
+   There must be at most one such element." 
   (let [elements (label->elements entity label)]
     (when elements
       (assert (= (count elements) 1))

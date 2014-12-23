@@ -3,26 +3,27 @@
 
 ;;; All the information about non-primitive items is kept in the
 ;;; store: the elements of the item, their elements, complex values
-;;; they reference, etc. Internally, such items are described by ids.
-;;; Changing the store can thus logically change the elements of an
-;;; item. This also supports circular references among items, because
-;;; the store represents the references between items, rather than the
-;;; items having to reference each other directly.
+;;; they reference, etc. Since the elements of items are themselves
+;;; items, adding or removing items from the store can change the
+;;; elements of another stored item.
 
-;;; This means that there are two ways to represent an item: with the
-;;; store explicitly recorded as part of the representation, so the
-;;; item object is self-sufficient, but doesn't track changes in the
-;;; store, or as just a description, which is what the store works in
-;;; terms of, but which can't support item operations by itself.
-;;; Constants, like numbers and strings, are both items and
-;;; descriptions.
+;;; Internally, items are referred to by ids, which are managed by the
+;;; store. Ids means that stores supports circular references among
+;;; items, because the store represents the references between items,
+;;; rather than the items having to reference each other directly.
+
+;;; This means that there are two ways to represent a stored item: as
+;;; a full fledged entity object that includes both the store and the
+;;; item id, so the entity is self-sufficient, but doesn't track
+;;; changes in the store, or as just id, which is how most
+;;; communication with the store works, but which requires asking the
+;;; store to get information about the entity. Constants, like numbers
+;;; and strings, are both entities and descriptions.
 
 ;;; Note that in some cases, we will have an item we want to add to a
-;;; store. It may reference some ids in the store, but the store
-;;; obviously can't have the information about the item's elements.
-;;; Rather, the item will rely on a second store or will have its own
-;;; information. Adding the item to the main store will transfer that
-;;; information.
+;;; store. It may reference some ids in the store, but the structure
+;;; of the item obviously can't be in the store yet. The store will
+;;; copy the items structure, allocating ids for it as necessary.
 
 (defprotocol StoredItemDescription
   "A description of an Item recorded by a store"

@@ -9,10 +9,6 @@
 
 (def test-store
   (->ElementStore
-   {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
-    (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
-    (make-id "2") {nil [(make-id "3")]}
-    (make-id "4") {nil [(make-id "5")]}}
    {(make-id "1") {:subject (make-id "0") :content (make-id "4")}
     (make-id "2") {:subject (make-id "1") :content "foo"}
     (make-id "3") {:subject (make-id "2") :content :label}
@@ -20,6 +16,10 @@
     (make-id "5") {:subject (make-id "4") :content "bar"}
     (make-id "6") {:container (make-id "4") :content 5}
     (make-id "7") {:subject (make-id "1") :content "second"}}
+   {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
+    (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
+    (make-id "2") {nil [(make-id "3")]}
+    (make-id "4") {nil [(make-id "5")]}}
    8))
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))

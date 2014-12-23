@@ -2,19 +2,19 @@
   (:require [cosheet.store :refer :all]
             [cosheet.item-store :refer :all]))
 
-;;; Information about the elements of an item is stored in other
-;;; items. The only information stored directly with an item is its 
-;;; ItemId, and the store keeps track of which way the item is stored.
+;;; Data in a store is in terms of ItemId objects. All that the system
+;;; needs to know about an ItemId is what its content is, and what
+;;; other item it is an element of. Everything else follows from what
+;;; it means to be an item and an element of an item. In practice, the
+;;; store saves indexing information as well.
 
-;;; There is a third way to describe items, which doesn't store them.
-;;; These are simple elements that correspond to elements of items
-;;; that describe other simple elements. These aren't usually stored,
-;;; but references to them are generated when a request comes in for
-;;; the elements of an item whose description is not stored. These
-;;; elements are described by ImplicitElementId, which specified
-;;; an item and the label of one of its elements. Any operations to
-;;; the database referencing an implicit item will cause the database
-;;; to reify it into a described item.
+;;; If the content of an item is a constant, the user might want to
+;;; add elements to it, as if it were an item with that content. The
+;;; store supports treating the content as if it were an item, by
+;;; creating a ImplicitContentId. It will turn this into it into an
+;;; actual item if elements are added.
+
+;;; TODO: Allow an element to have more than one subject.
 
 (defrecord
     ^{:doc
@@ -103,15 +103,19 @@
     ^{:doc
       "A store that has only enough indexing to find elements of items."}
 
-  [;;; Map from subject then label to all elements that belong
-   ;;; to the subject and have the label.
-   ;;; Subject and label can be ids or primitives. Subject must be a
-   ;;; described id, not one of the ids in id->simple-element
-   subject->label->ids
-
-   ;;; A map from ItemId to a map of their content, subject, and container.
+  [;;; A map from ItemId to a map of their
+   ;;;   :content, the content of the item.
+   ;;;   :subject, the item this item is an element of.
+   ;;;   :container, the item that this item is the content of. This
+   ;;;               is redundant information.
    id->data
    
+   ;;; Index from item then label to all elements that belong to the
+   ;;; item and have the label.
+   ;;; Subject and label can be ids or primitives. (Or maybe subject
+   ;;; must be an id.)
+   subject->label->ids
+
    ;;; The next id to assign to an item to be stored here
    next-id]
 

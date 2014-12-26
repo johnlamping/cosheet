@@ -81,21 +81,14 @@
 
 (deftest do-propagations-on-path-test
   (let [mm (new-mutable-map)
-        count (atom 0)
+        history (atom #{})
         pending-path [:a :b :c]
-        test-pending (fn [expected-path expected-current expected-arg]
-                       [expected-path
-                        (fn [path current arg]
-                          (is (= path expected-path))
-                          (is (= current expected-current))
-                          (is (= arg expected-arg))
-                          (swap! count inc))
-                        expected-arg])]
+        test-pending (fn [path current arg]
+                       (is (= arg "arg"))
+                       (swap! history #(conj % [path current])))]
     (mm-assoc-in! mm [:a :x] "x")
     (mm-assoc-in! mm [:a :y] "y")
-    (mm-assoc-in! mm pending-path
-                 [(test-pending [:a :x] "x" "argx")
-                  (test-pending [:a :y] "y" "argy")])
-    (do-propagations-on-path mm pending-path)
-    (is (= @count 2))
+    (mm-assoc-in! mm pending-path [[:a :x] [:a :y]])
+    (do-propagations-on-path mm pending-path test-pending "arg")
+    (is (= @history #{[[:a :x] "x"] [[:a :y] "y"]}))
     (is (= (mm-get-in! mm pending-path) nil))))

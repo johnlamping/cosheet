@@ -139,14 +139,15 @@
       (when (not= initial now) (recur now)))))
 
 (defn do-propagations-on-path
-  "Given a path to a collection of pending propagation operations, each of the
-  form [path f &args], remove them from the map, do
-  call-with-latest-value for each of them. Return true if there were
-  any operations to do."
-  [mm pending-path]
+  "Given a path to a collection of pending propagation operations,
+  each described by a path to data that needs to be reflected
+  elsewhere, remove the collection from the map, do
+  call-with-latest-value for each path. Return true if there were any
+  operations to do."
+  [mm pending-path f & args]
   (let [pending (mm-update-in-returning-old! mm pending-path (fn [tasks] nil))]
     (when (seq pending)
-      (doseq [[path f & args] pending]
+      (doseq [path pending]
         (apply call-with-latest-value mm path f args))
       true)))
 

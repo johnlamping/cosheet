@@ -4,11 +4,13 @@
   "The methods of something that holds a single value that can change."
   (state-value [this]
     "The current value of the state")
-  (subscription [this callback]
-    "Will eventually call the callback if the current value changes.
-     May not call it for every change. Returns a pair of the current value,
-     and a thunk to call to end the subscription. If the current value is
-     not known, a nil will be returned in that spot"))
+  (subscribe [this callback & args]
+    "Returns the current value, or nil if it is currently unknown.
+     Will eventually call the callback if the current value changes,
+     passing it the new value and the args specified in the subscribe.
+     May not call it for every change.")
+  (unsubscribe [this callback & args]
+    "Removes the specified subscription."))
 
 (defprotocol Notifier
   "Something that can return the value or State objects for expressions."
@@ -26,7 +28,7 @@
    To evaluate an expression, the scheduler calls the form of the
    expression, with the rest of the expression as arguments, as well as
    possibly other information. That function can return either a value,
-   a State, if the value may change later, or a continuation to request
+   a State, if the value may change later, or a application to request
    the scheduler to do further evaluations. Thus, all the information
    on how to evaluate is held by the functions in the expressions; the
    scheduler just coordinates everything, including state changes."
@@ -35,12 +37,12 @@
   (ready? [this expression]
     "True if the value of the computation is available."))
 
-(defmacro continuation [fn & args]
+(defmacro application [fn & args]
   "Return value that a function running under a scheduler may use to
    indicate that it wants the scheduler to evaluate some expressions
    and call the provided function with their values. The result of
    that call will be treated as the return value of the original
-   function. The new result may be another continuation, in which case
+   function. The new result may be another application, in which case
    the process repeats.
    If the scheduler is an approximating scheduler, an argument may be
    the special indication (:monotonic expression). This indicate that
@@ -52,7 +54,7 @@
    about the ordering of values in the monotonic hierarchy; it is up
    to the functions to make sure that the ordering is consistent
    between an expression and its users."
-  `(list :continuation ~fn ~@(map #(cons 'list %) args)))
+  `(list :application ~fn ~@(map #(cons 'list %) args)))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

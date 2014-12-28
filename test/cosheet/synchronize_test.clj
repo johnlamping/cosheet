@@ -28,9 +28,9 @@
   (is (= (update-in-clean-up  {:a {:b {:c 1}}} [:a :b :d]  (constantly 2))
          {:a {:b {:c 1 :d 2}}})))
 
-(deftest swap-returning-old!-test
+(deftest swap-returning-both!-test
   (let [a (atom 1)]
-    (is (= (swap-returning-old! a (fn [old] (is (= old 1)) 2))) 1)
+    (is (= (swap-returning-both! a (fn [old] (is (= old 1)) 2))) [1 2])
     (is (= @a 2))))
 
 (deftest mutable-map-test
@@ -42,7 +42,7 @@
     (is (= (mm-get! mm :foo)) nil)
     (mm-update-in! mm [:foo :bar] (fn [x] 5))
     (is (= (mm-get-in! mm [:foo :bar]) 5))
-    (is (= (mm-update-in-returning-old! mm [:foo :bar] (fn [x] 6)) 5))
+    (is (= (mm-update-in-returning-both! mm [:foo :bar] (fn [x] 6)) [5 6]))
     (is (= (mm-get-in! mm [:foo :bar]) 6))
     (mm-assoc-in! mm [:bar :baz] 8)
     (is (= (mm-get-in! mm [:bar :baz]) 8))
@@ -68,27 +68,30 @@
     (is (not (run-pending-task queue)))
     (is (= @history [[:a3 :a4] [:a1 :a2] [:a5]]))))
 
-(deftest call-with-latest-value-test
-  (let [mm (new-mutable-map)]
-    (mm-assoc-in! mm [:a :b] 1)
-    (call-with-latest-value mm [:a :b]
-                             (fn [path current arg]
-                               (is (= path [:a :b]))
-                               (is (= arg "arg"))
-                               (mm-assoc-in! mm [:a :b] (min (inc current) 5)))
-                             "arg")
-    (is (= (mm-get-in! mm [:a :b]) 5))))
-
-(deftest do-propagations-on-path-test
+(deftest mm-call-with-latest-value!-test
   (let [mm (new-mutable-map)
-        history (atom #{})
-        pending-path [:a :b :c]
-        test-pending (fn [path current arg]
-                       (is (= arg "arg"))
-                       (swap! history #(conj % [path current])))]
-    (mm-assoc-in! mm [:a :x] "x")
-    (mm-assoc-in! mm [:a :y] "y")
-    (mm-assoc-in! mm pending-path [[:a :x] [:a :y]])
-    (do-propagations-on-path mm pending-path test-pending "arg")
-    (is (= @history #{[[:a :x] "x"] [[:a :y] "y"]}))
-    (is (= (mm-get-in! mm pending-path) nil))))
+        path [:a :b]]
+    (mm-assoc-in! mm path 1)
+    (mm-call-with-latest-value-in!
+     mm path
+     (fn [current arg]
+       (is (= arg "arg"))
+       (mm-assoc-in! mm path (min (inc current) 5)))
+     "arg")
+    (is (= (mm-get-in! mm path) 5))))
+
+(deftest mm-call-and-clear-in!-test
+  (let [mm (new-mutable-map)
+        path [:a :b :c]
+        history (atom [])]
+    (mm-assoc-in! mm path 1)
+    (mm-call-and-clear-in!
+     mm path
+     (fn [current arg]
+       (is (= arg "arg"))
+       (swap! history #(conj % current))
+       (when (< current 5)
+         (mm-update-in! mm path (constantly (inc current)))))
+     "arg")
+    (is (= @history [1 2 3 4 5]))
+    (is (= (mm-get-in! mm path) nil))))

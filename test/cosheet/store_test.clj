@@ -1,11 +1,12 @@
 (ns cosheet.store-test
   (:require [clojure.test :refer [deftest is]]
-            [cosheet.entity :refer [to-list description->entity]]
             [cosheet.store :refer :all]
             [cosheet.item-store :refer :all]
+            [cosheet.entity :refer [to-list description->entity]]
+            cosheet.entity-impl
             [cosheet.store-impl :refer :all]
-            [cosheet.entity-impl]
-            :reload))
+            ; :reload
+            ))
 
 (def test-store
   (->ElementStore

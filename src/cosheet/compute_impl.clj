@@ -1,7 +1,8 @@
 (ns cosheet.compute-impl
   (:require [clojure.set :as set]
             [cosheet.compute :refer :all]
-            [cosheet.synchronize :refer :all]))
+            [cosheet.synchronize :refer :all]
+            [cosheet.mutable-map :as mm :refer [dissoc-in update-in-clean-up]]))
 
 ;;; SUGGESTION: if it become important to pass around deltas, the way
 ;;; to do that is to have value information contain a promise of the
@@ -169,8 +170,8 @@
   "If we have no information about the expression, start evaluating it."
   [scheduler expression]
   (let [e-mm (:expressions scheduler)]
-    (when (nil? (mm-get! e-mm expression))
-      (mm-update-in!
+    (when (nil? (mm/get! e-mm expression))
+      (mm/update-in!
        e-mm [expression]
        (fn [info] (or info (update-start-evaluation
                             {:value-inputs-changed true} expression)))))))
@@ -187,11 +188,11 @@
     (doseq [added-expression added-expressions]
       (when (contains? current-depends-info added-expression)
         (ensure-expression scheduler added-expression)
-        (mm-update-in! e-mm [added-expression :using-expressions]
+        (mm/update-in! e-mm [added-expression :using-expressions]
                        #((fnil conj #{}) % expression))
         (when (not (equal-propagated-info?
                     (current-depends-info added-expression)
-                    (mm-get! e-mm added-expression)))
+                    (mm/get! e-mm added-expression)))
           (add-task scheduler
                     handle-subscribed-expression-changed
                     scheduler expression added-expression))))))
@@ -205,7 +206,7 @@
   (let [e-mm (:expressions scheduler)]
     (doseq [removed-expression removed-expressions]
       (when (not (contains? current-depends-info removed-expression))
-        (mm-update-in-clean-up! e-mm [removed-expression :using-expressions]
+        (mm/update-in-clean-up! e-mm [removed-expression :using-expressions]
                                 #(disj % expression))))))
 
 (defn state-change-callback [scheduler expression]
@@ -221,7 +222,7 @@
     (when (= (current-state added-state))
       (let [value (subscribe current-state state-change-callback
                              scheduler expression)]
-        (if (not= value (mm-get-in! e-mm [expression :value]))
+        (if (not= value (mm/get-in! e-mm [expression :value]))
           (change-and-propagate
            scheduler expression update-value-from-state))))))
 
@@ -239,7 +240,7 @@
    who cares."
   [scheduler expression]
   ;; TODO: also tell anything that listens to us.
-  (doseq [using (mm-get-in! (:expressions scheduler)
+  (doseq [using (mm/get-in! (:expressions scheduler)
                             [expression :using-expressions])]
     (add-task scheduler handle-subscribed-expression-changed expression)))
 
@@ -248,9 +249,9 @@
   [registrations scheduler expression]
   (let [e-mm (:expressions scheduler)]
     (doseq [[path f & args] registrations]
-      (apply mm-call-with-latest-value-in!
+      (apply mm/call-with-latest-value-in!
              e-mm path f scheduler expression args))
-    (mm-update! e-mm expression update-run-application-while-ready)))
+    (mm/update! e-mm expression update-run-application-while-ready)))
 
 (defn change-and-propagate
   "Run the function on the information for the expression, and replace
@@ -258,12 +259,12 @@
    validity of the expression has changed, propagate that."
   [scheduler expression f & args]
   (let [e-mm (:expressions scheduler)
-        [old-info new-info] (apply mm-update-in-returning-both!
+        [old-info new-info] (apply mm/update-in-returning-both!
                                    e-mm [expression] f args)]
-    (mm-call-and-clear-in! e-mm [expression :pending-registrations]
+    (mm/call-and-clear-in! e-mm [expression :pending-registrations]
                            execute-registrations-and-application
                            scheduler expression)
-    (when (not (equal-propagated-info? (mm-get! e-mm expression new-info)
+    (when (not (equal-propagated-info? (mm/get! e-mm expression new-info)
                                        old-info))
       (propagate-expression-info-changed scheduler expression))))
 
@@ -273,7 +274,7 @@
    If that might change our information, schedule propagation."
   (change-and-propagate scheduler expression update-depends
                         depends-on
-                        (mm-get! (:expressions scheduler) depends-on)))
+                        (mm/get! (:expressions scheduler) depends-on)))
 
 (defrecord
     ^{:doc
@@ -305,7 +306,7 @@
    ;;     information to change. They are of the form [path function &
    ;;     args] where the path navigates from the information for this
    ;;     expression to the information that needs to be reflected. We
-   ;;     will mm-call-with-latest-value-in! arranging for the
+   ;;     will mm/call-with-latest-value-in! arranging for the
    ;;     function to be called with the scheduler, this expression,
    ;;     the value of the information, and the additional args.
    ;;   A set of :uncertain-inputs of expressions in :depends-info
@@ -341,17 +342,17 @@
   (current-value [this expression]
     (apply request this expression)
     ;(finish-computation this)
-    (:value (mm-get! (:expressions this) expression)))
+    (:value (mm/get! (:expressions this) expression)))
 
   Scheduler
 
   (ready? [this expression]
-    (let [info (mm-get! (:expressions this) expression)]
+    (let [info (mm/get! (:expressions this) expression)]
       (and (= (:currency info) :valid)
            (= (:approximations info) nil))))
 )
 
 (defmethod new-approximating-scheduler true []
-  (->ApproximatingScheduler (new-mutable-map)
-                            (new-mutable-map)
+  (->ApproximatingScheduler (mm/new-mutable-map)
+                            (mm/new-mutable-map)
                             (new-priority-task-queue)))

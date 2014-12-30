@@ -1,6 +1,6 @@
 (ns cosheet.entity-impl
-  (:require [cosheet.item-store :refer :all]
-            [cosheet.store :refer [atom-description?]]
+  (:require [cosheet.store :refer [atom-description?]]
+            [cosheet.item-store :refer :all]
             [cosheet.entity :refer :all]))
 
 (defrecord

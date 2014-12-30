@@ -1,6 +1,6 @@
 (ns cosheet.query-impl
-  (:require [cosheet.entity :as entity]
-            [cosheet.store :as store]
+  (:require [cosheet.store :as store]
+            [cosheet.entity :as entity]
             [cosheet.query :refer :all]))
 
 ;;; TODO:

@@ -1,11 +1,12 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
-            [cosheet.entity :refer :all]
             [cosheet.store
              :refer [add-simple-element new-element-store make-id]]
-            [cosheet.entity-impl]
+            [cosheet.entity :refer :all]
             cosheet.store-impl
-            :reload))
+            cosheet.entity-impl
+            ; :reload
+            ))
 
 (deftest storeditem-test
   (let [id0 (make-id "0")

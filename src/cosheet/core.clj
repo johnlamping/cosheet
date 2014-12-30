@@ -1,10 +1,11 @@
 (ns cosheet.core
-  (:require [cosheet.protocols :refer :all])
+  (:require (cosheet store item-store entity query
+                     mutable-map synchronize compute
+                     store-impl entity-impl query-impl
+                     compute_impl)
+            :reload)
   (:gen-class))
 
-(load "entity")
-(load "store")
-(load "query")
 
 (defn -main
   "I don't do a whole lot ... yet."

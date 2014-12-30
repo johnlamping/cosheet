@@ -1,13 +1,15 @@
 (ns cosheet.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            [cosheet.query :refer :all]
-            [cosheet.entity :as entity]
             [cosheet.store :as store]
-            [cosheet.query-impl :refer :all]
-            cosheet.entity-impl
+            cosheet.item-store
+            [cosheet.entity :as entity]
+            [cosheet.query :refer :all]
             [cosheet.store-impl :refer [->ItemId]]
-            :reload))
+            cosheet.entity-impl
+            [cosheet.query-impl :refer :all]
+            ; :reload
+            ))
 
 (deftest extended-by-test
   (let [element0 '(3 "foo")

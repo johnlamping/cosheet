@@ -14,8 +14,6 @@
 ;;; creating a ImplicitContentId. It will turn this into it into an
 ;;; actual item if elements are added.
 
-;;; TODO: Allow an element to have more than one subject.
-
 (defrecord
     ^{:doc
       "The id of an item in a store."}

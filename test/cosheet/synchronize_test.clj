@@ -11,9 +11,9 @@
                          (is (= args expected))
                          (swap! history #(conj % args))))]
     (add-task queue (task-factory :a1 :a2) :a1 :a2)
-    (add-task-with-priority queue -1 (task-factory :a3 :a4) :a3 :a4)
+    (add-task-with-priority queue -1 (task-factory :a3 :a4) :a4)
     (add-task-with-priority queue 1 (task-factory :a5) :a5)
-    (is (run-pending-task queue))
+    (is (run-pending-task queue :a3))
     (is (run-pending-task queue))
     (is (run-pending-task queue))
     (is (= @history [[:a3 :a4] [:a1 :a2] [:a5]]))

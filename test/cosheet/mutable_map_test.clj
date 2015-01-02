@@ -44,6 +44,10 @@
     (is (= (mm/get-in! mm [:foo :bar]) 5))
     (is (= (mm/update-in-returning-both! mm [:foo :bar] (fn [x] 6)) [5 6]))
     (is (= (mm/get-in! mm [:foo :bar]) 6))
+    (is (= (mm/update-in-clean-up-returning-both!
+            mm [:foo :bar] (constantly nil))
+           [6 nil]))
+    (is (= (mm/get! mm :foo) nil))
     (mm/assoc-in! mm [:bar :baz] 8)
     (is (= (mm/get-in! mm [:bar :baz]) 8))
     (mm/dissoc-in! mm [:bar :baz])
@@ -77,5 +81,10 @@
          (mm/update-in! mm path (constantly (inc current)))))
      "arg")
     (is (= @history [1 2 3 4 5]))
-    (is (= (mm/get-in! mm path) nil))))
+    (is (= (mm/get-in! mm [:a :b]) nil))))
 
+(deftest current-contents-test
+  (let [mm (mm/new-mutable-map)]
+    (mm/assoc-in! mm [:a] 1)
+    (mm/assoc-in! mm [:b] 2)
+    (is (= (mm/current-contents mm) {:a 1 :b 2}))))

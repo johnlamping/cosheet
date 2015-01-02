@@ -36,7 +36,9 @@
 ;;; This implementation is a vector containing atoms of maps. A key is
 ;;; stored in the map at the index corresponding to its hash.
 
-(defn new-mutable-map [] (vec (map (fn [i] (atom {})) (range 10))))
+(defn new-mutable-map
+  ([] (new-mutable-map 10))
+  ([parallelism] (vec (map (fn [i] (atom {})) (range parallelism)))))
 
 (defn- mm-ref [mm key]
   (mm (mod (hash key) (count mm))))
@@ -68,6 +70,8 @@
 (def assoc-in! (partial mm-swap-in! assoc-in))
 (def dissoc-in! (partial mm-swap-in! dissoc-in))
 (def update-in-clean-up! (partial mm-swap-in! update-in-clean-up))
+(def update-in-clean-up-returning-both!
+  (partial mm-swap-in-returning-both! update-in-clean-up))
 
 ;;; Methods for reflecting the state of part of a mutable map
 ;;; somewhere else, either elsewhere in the map, or elsewhere
@@ -100,16 +104,18 @@
       (when (not= value latest-value) (recur latest-value)))))
 
 (defn call-and-clear-in!
-  "Clear the value at the path, and if there had been a value, call the
-   function with that value and the other arguments, repeating until
-   there is no value on the path after the call. This is good for
+  "Clear the value at the path, and if there was one, call the
+   function with the original value and the other arguments, repeat if
+   there is a value on the path after the call. This is good for
    processing indications of pending work until all work is done."
   [mm path f & args]
-  (when (get-in! mm path) ; Optimization to avoid a swap!
-                             ; if there is no data.
-    (loop []
-      (let [[value _] (update-in-returning-both! mm path (constantly nil))]
-        (when value
+  (loop []
+    (when (not (nil? (get-in! mm path))) ; Optimization
+      (let [[value _] (update-in-clean-up-returning-both!
+                       mm path (constantly nil))]
+        (when (not (nil? value))
           (apply f value args)
           (recur))))))
 
+(defn current-contents [mm]
+  (reduce (fn [m part] (into m @part)) {} mm))

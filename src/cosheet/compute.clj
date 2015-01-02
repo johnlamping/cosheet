@@ -4,12 +4,12 @@
   "The methods of something that holds a single value that can change."
   (state-value [this]
     "The current value of the state")
-  (subscribe [this callback & args]
+  (subscribe [this callback]
     "Returns the current value, or nil if it is currently unknown.
      Will eventually call the callback if the current value changes,
      passing it the new value and the args specified in the subscribe.
      May not call it for every change.")
-  (unsubscribe [this callback & args]
+  (unsubscribe [this callback]
     "Removes the specified subscription."))
 
 (defprotocol Notifier
@@ -54,7 +54,7 @@
    about the ordering of values in the monotonic hierarchy; it is up
    to the functions to make sure that the ordering is consistent
    between an expression and its users."
-  `(list :application ~fn ~@(map #(cons 'list %) args)))
+  `(list :application ~fn ~@args))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

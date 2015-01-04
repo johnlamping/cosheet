@@ -5,10 +5,14 @@
   (state-value [this]
     "The current value of the state")
   (subscribe [this callback]
-    "Returns the current value, or nil if it is currently unknown.
-     Will eventually call the callback if the current value changes,
-     passing it the new value and the args specified in the subscribe.
-     May not call it for every change.")
+    ;; Note: the signature can't be [this callback & args] because
+    ;; defprotocols don't support varadic arguments.
+    "Returns the current value, or nil if it is currently unknown. If
+     the current value changes, the callback will eventually be called.
+     It must be a function or a sequence of a function and
+     arguments. The function will be passed the new value and the
+     additional arguments, if any. The function may not be called for every
+     change, but will eventually be called after all changes.")
   (unsubscribe [this callback]
     "Removes the specified subscription."))
 

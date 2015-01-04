@@ -230,9 +230,11 @@
     (is (= (mm/get-in! e-mm [[identity 1] :using-expressions]) #{:a :b}))
     (is (= (mm/get-in! e-mm [[not-ready-fn] :using-expressions]) #{:a}))
     (let [pending @(:pending s)]
-      (is (= (count pending) 1))
-      (is (= (first (peek pending))
-             [handle-depends-on-info-changed :a [identity 1]])))))
+      (is (= (count pending) 2))
+      (is (= #{(first (peek pending))
+               (first (peek (pop pending)))}
+             #{[handle-depends-on-info-changed :a [identity 1]]
+               [handle-depends-on-info-changed :a [not-ready-fn]]})))))
 
 (deftest register-removed-depends-test
   (let [s (new-approximating-scheduler)
@@ -273,6 +275,15 @@
     (let [info (mm/get! (:expressions s) :a)]
       (is (= (:value info) 3))
       (is (valid? info)))))
+
+;;; TODO: write handle-state-changed-test
+
+(deftest current-value-test
+  (let [s (new-approximating-scheduler)]
+    (letfn [(fib [n] (if (<= n 1)
+                       1
+                       (application + [fib (- n 1)] [fib (- n 2)])))]
+      (is (= (current-value s [fib 6]) 13)))))
 
 (comment "How to do local redefinitions in a rest"
   (def ^:dynamic counter 0)

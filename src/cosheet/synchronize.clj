@@ -22,22 +22,14 @@
 (defn run-pending-task
   "Execute the topmost task in the queue, if any, and pop the queue.
   Return true if there was a task."
-  ([task-queue]
-    (let [[task priority]
-          (peek (first (swap-returning-both!
-                        task-queue
-                        (fn [queue] (if (empty? queue) queue (pop queue))))))]
-      (when task
-        (apply (first task) (rest task))
-        true)))
-  ([task-queue & prefix-args]
-    (let [[task priority]
-          (peek (first (swap-returning-both!
-                        task-queue
-                        (fn [queue] (if (empty? queue) queue (pop queue))))))]
-      (when task
-        (apply (first task) (concat prefix-args (rest task)))
-        true))))
+  [task-queue & prefix-args]
+  (let [[task priority]
+        (peek (first (swap-returning-both!
+                      task-queue
+                      (fn [queue] (if (empty? queue) queue (pop queue))))))]
+    (when task
+      (apply (first task) (concat prefix-args (rest task)))
+      true)))
 
 
 ;;; TODO: write functions for a trivial store; probably can't

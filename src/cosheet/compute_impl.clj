@@ -247,12 +247,13 @@
   (let [e-mm (:expressions scheduler)]
     (doseq [added-expression added-expressions]
       (when (contains? current-depends-info added-expression)
-        (mm/update-in! e-mm [added-expression]
-                       (fn [info]
-                         (-> info
-                             (update-initialize-if-needed added-expression)
-                             (update-in [:using-expressions] 
-                                     #((fnil conj #{}) % expression)))))
+        (change-and-schedule-propagation
+         scheduler added-expression
+         (fn [info]
+           (-> info
+               (update-initialize-if-needed added-expression)
+               (update-in [:using-expressions] 
+                          #((fnil conj #{}) % expression)))))
         ;; If there is already information about the value,
         ;; schedule a propagation.
         (when (not (equal-propagated-info?
@@ -299,6 +300,11 @@
       (if (not= current-state removed-state)
         (unsubscribe removed-state
                      [state-change-callback scheduler expression])))))
+
+(defn run-all-pending [scheduler]
+  (loop []
+    (when (run-pending-task (:pending scheduler) scheduler)
+      (recur))))
 
 (defrecord
     ^{:doc
@@ -364,10 +370,14 @@
 
   Notifier
 
+  (request [this expression]
+    (change-and-schedule-propagation this expression
+                                     update-initialize-if-needed expression))
+
   (current-value [this expression]
-    (apply request this expression)
-    ;(finish-computation this)
-    (:value (mm/get! [:expressions this] expression)))
+    (request this expression)
+    (run-all-pending this)
+    (mm/get-in! (:expressions this) [expression :value]))
 
   Scheduler
 
@@ -376,7 +386,6 @@
   )
 
 (defmethod clojure.core/print-method ApproximatingScheduler
-
   [scheduler writer]
   (.write writer "<ApproximatingScheduler>"))
 

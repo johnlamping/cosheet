@@ -270,7 +270,9 @@
   (let [s (new-approximating-scheduler)]
     (letfn [(fib [n] (if (<= n 1)
                        1
-                       (application + [fib (- n 1)] [fib (- n 2)])))]
+                       (eval-let [f1 [fib (- n 1)]
+                                  f2 [fib (- n 2)]]
+                                 (+  f1 f2))))]
       (is (= (current-value s [fib 6]) 13)))))
 
 (deftest asynchronous-test
@@ -282,17 +284,17 @@
   
   (let [width 13
         depth 7
-        trials 100000
-        changes-per-trial 200
+        trials 100 ;000
+        changes-per-trial 1000
         states (vec (for [i (range width)]
                       (new-test-state (mod (inc i) width))))
         s (new-approximating-scheduler)]
     (letfn [(indexer [d pos]
               (if (zero? d)
                 (states pos)
-                (application (fn [index] (application identity
-                                                      [indexer (- d 1) index]))
-                             [indexer (- d 1) pos])))
+                (eval-let [index [indexer (- d 1) pos]]
+                          (eval-let [value [indexer (- d 1) index]]
+                                    value))))
             (expected [d pos]
               (if (zero? d)
                 (state-value (states pos))
@@ -300,12 +302,6 @@
             (right-results? []
               (doseq [d (range depth)
                       pos (range width)]
-                (when (and false (not= (current-value s [indexer d pos])
-                                       (expected d pos)
-                                       ))
-                  (pprint (scheduler-summary s))
-                  (println "position" d pos)
-                  (throw "Error"))
                 (is (= (current-value s [indexer d pos])
                        (expected d pos)))))]
       (doseq [pos (range width)
@@ -317,7 +313,7 @@
         (when (= (mod i 1000) 0)
           (println "starting trial" i))
         (doseq [j (range changes-per-trial)]
-          (state-set (states (mod (+ i j) width)) (mod (* j j) width))
+          (state-set (states (mod (* i j) width)) (mod (* j j) width))
           (when (zero? (mod j 17))
             (future (run-all-pending s))))
         (future (run-all-pending s))

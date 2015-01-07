@@ -4,6 +4,32 @@
             [cosheet.synchronize :refer :all]
             [cosheet.mutable-map :as mm :refer [dissoc-in update-in-clean-up]]))
 
+;;; This is the definition of an approximating scheduler (although the
+;;; implementation doesn't yet do approximation). Most of the code is
+;;; functions named update-* that compute new versions of immutable
+;;; information about expressions. The rest of the code manages a
+;;; mutable map that stores this information for each expression. It
+;;; is mostly concerned with propagating information for one
+;;; expression to another.
+
+;;; The propagation is multi-threaded, but can avoid using locks and
+;;; TSM because it just needs eventual consistency; it is just copying
+;;; information. The danger is that in between one thread reading and
+;;; then writing, an update to the read information will happen in
+;;; another thread, and the updated information copied, only to be
+;;; overwritten by old information by the first thread. There are two
+;;; ways to avoid this. One is to read the information inside the
+;;; atomic operation in a thread, so that another write will cause a
+;;; conflict and get redone. The other is to check, after doing a
+;;; copy, that the information that was copied still matches the
+;;; latest information, and redo the copy if it doesn't. This code
+;;; uses both techniques, the former for copying external state, and
+;;; the latter for copying information between expressions.
+
+;;; TODO: Make the code use just the former technique, by having the
+;;; updated that copy information take a thunk that will read the
+;;; information inside the atomic operation.
+
 ;;; SUGGESTION: if it become important to pass around deltas, the way
 ;;; to do that is to have value information contain a promise of the
 ;;; next version of that value and the delta between those versions.
@@ -24,7 +50,6 @@
 ;;; unfolding being kept around, but all unfoldings being invalidated
 ;;; when a non-monotonic input changes or a monotonic input changes in
 ;;; a non-monotonic way.
-
 
 ;;; The next functions compute revised expression info to reflect new
 ;;; information. They have no side effects.
@@ -360,14 +385,14 @@
     ApproximatingScheduler
 
   [;; This holds a mutable map that records expressions and their
-   ;; values. The expressions are specified by a form and its
-   ;; arguments, all of which are themselves expressions or constants.
+   ;; values. The expressions are specified by a form, which must be
+   ;; a function and its arguments, which can be anything.
    ;; The map is keyed by the expression. Its values are maps that
    ;; record:
    ;;   A :visible map of what other expressions see about this
    ;;     expression, consisting of
    ;;     The :value of the expression.
-   ;;     A :valid tag if the value is not valid
+   ;;     A :valid tag if the value is valid
    ;;   A set of :using-expressions that depend on the value.
    ;;   A boolean :value-depends-changed if some of the dependencies of
    ;;     the value have changed. In this case, there will be a

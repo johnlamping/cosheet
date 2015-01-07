@@ -43,7 +43,7 @@
   (ready? [this expression]
     "True if the value of the computation is available."))
 
-(defmacro application [fn & args]
+(defmacro application
   "Return value that a function running under a scheduler may use to
    indicate that it wants the scheduler to evaluate some expressions
    and call the provided function with their values. The result of
@@ -60,7 +60,20 @@
    about the ordering of values in the monotonic hierarchy; it is up
    to the functions to make sure that the ordering is consistent
    between an expression and its users."
+  [fn & args]
   `(list :application ~fn ~@args))
+
+(defmacro eval-let
+  "A let like construct that has the scheduler evaluate the bindings.
+   The expressions in an eval-let's bindings may not refer to variables
+   bound by that eval-let.
+   It expands to application forms."
+  [bindings & body]
+  (assert (even? (count bindings)) "Bindings must have an even number of forms")
+  (let [pairs (partition 2 bindings)
+        vars (map first pairs)
+        exprs (map second pairs)]
+    `(application (fn ~(vec vars) ~@body) ~@exprs)))
 
 ;;; TODO: Make a eval-let macro that creates appliations.
 

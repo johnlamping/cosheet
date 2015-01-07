@@ -22,11 +22,11 @@
         (dissoc-in map keys)
         (assoc-in map keys result))))
 
-(defn swap-returning-both! [atom f & args]
+(defn swap-returning-both! [cell f & args]
   (loop []
-    (let [old @atom
+    (let [old @cell
           new (apply f old args)]
-      (if (compare-and-set! atom old new)
+      (if (compare-and-set! cell old new)
         [old new]
         (recur)))))
 
@@ -60,7 +60,7 @@
 
 (defn- mm-swap-in-returning-both! [fun mm keys & args]
   (for [info (swap-returning-both! (mm-ref mm (first keys))
-                                  #(apply fun % keys args))]
+                                   #(apply fun % keys args))]
     (get-in info keys)))
 
 (def update! (partial mm-swap! (fn [map key f] (update-in map [key] f))))

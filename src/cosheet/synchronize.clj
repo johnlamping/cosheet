@@ -5,13 +5,15 @@
 ;;; Methods for maintaining a priority queue of tasks
 
 (defn new-priority-task-queue []
-  (atom (priority-map/priority-map)))
+  ;; Records a priority queue of undone tasks and a count of running,
+  ;; but not finished tasks.
+  (atom [(priority-map/priority-map) 0]))
 
 (defn add-task-with-priority
   "Add a task to the queue of pending tasks (lower priority goes
   first). The task is a seq of a function and arguments."
   [task-queue priority & task]
-  (swap! task-queue #(assoc % task priority)))
+  (swap! task-queue (fn [[queue count]] [(assoc queue task priority) count])))
 
 (defn add-task
   "Add a task to the queue of pending tasks with priority 0.
@@ -24,12 +26,26 @@
   Return true if there was a task."
   [task-queue & prefix-args]
   (let [[task priority]
-        (peek (first (swap-returning-both!
-                      task-queue
-                      (fn [queue] (if (empty? queue) queue (pop queue))))))]
+        (peek (first
+               (first (swap-returning-both!
+                       task-queue
+                       (fn [[queue count]] (if (empty? queue)
+                                             [queue count]
+                                             [(pop queue) (inc count)]))))))]
     (when task
       (apply (first task) (concat prefix-args (rest task)))
+      (swap! task-queue (fn [[queue count]] [queue (dec count)]))
       true)))
+
+(defn finished-all-tasks? [task-queue]
+  (let [[queue count] @task-queue]
+    (and (empty? queue) (zero? count))))
+
+(defn wait-until-finished [task-queue]
+  (loop []
+    (if (not (finished-all-tasks? task-queue))
+      (recur))))
+
 
 
 ;;; TODO: write functions for a trivial store; probably can't

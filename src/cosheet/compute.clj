@@ -4,6 +4,8 @@
   "The methods of something that holds a single value that can change."
   (state-value [this]
     "The current value of the state")
+  (state-set [this new-value]
+    "Make the new value be the value, and let the callbacks know.")
   (subscribe [this callback]
     ;; Note: the signature can't be [this callback & args] because
     ;; defprotocols don't support varadic arguments.
@@ -59,6 +61,8 @@
    to the functions to make sure that the ordering is consistent
    between an expression and its users."
   `(list :application ~fn ~@args))
+
+;;; TODO: Make a eval-let macro that creates appliations.
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

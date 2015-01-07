@@ -25,26 +25,12 @@
 ;;; when a non-monotonic input changes or a monotonic input changes in
 ;;; a non-monotonic way.
 
-(defn valid?
-  "True if all information we know about has been propagated to the value."
-  [info]
-  (and (:value-depends-unchanged info)
-       (empty? (:uncertain-depends info))))
-
-(defn equal-propagated-info?
-  "True if the information that would be propagated from info1 and info2
-   is the same."
-  [info1 info2]
-   (and (= (valid? info1) (valid? info2))
-        (= (:value info1) (:value info2))))
 
 ;;; The next functions compute revised expression info to reflect new
 ;;; information. They have no side effects.
 
-(def register-added-depends)
-(def register-removed-depends)
-(def register-added-state)
-(def register-removed-state)
+(def register-different-depends)
+(def register-different-state)
 
 (defn update-add-registration [info path f & args]
   (update-in info [:pending-registrations]
@@ -54,12 +40,18 @@
   (if-let [state (:state info)]
     (-> info
         (dissoc :state)
-        (update-add-registration [:state] register-removed-state state))
+        (update-add-registration [:state] register-different-state state))
     info))
+
+(defn update-valid [info]
+  (let [valid (and (not (:value-depends-changed info))
+                   (empty? (:uncertain-depends info)))]
+    (update-in-clean-up info [:visible :valid]
+                        (constantly (if valid true nil)))))
 
 (defn update-value [info value]
   (assert (not (nil? value)))
-  (assoc info :value value))
+  (assoc-in info [:visible :value] value))
 
 (defn update-value-from-state [info]
   (if-let [state (:state info)]
@@ -71,9 +63,10 @@
        (-> info
            (update-remove-state)
            (assoc :state state)
-           (update-add-registration [:state] register-added-state state)
+           (update-add-registration [:state] register-different-state state)
            (update-value-from-state)
-           (assoc :value-depends-unchanged true)))
+           (dissoc :value-depends-changed)
+           (update-valid)))
      
      (update-application-result [info application]
        (let [args (rest application)
@@ -89,19 +82,21 @@
                 (assoc :unused-depends needed-args)
                 (assoc :uncertain-depends needed-args)
                 (update-add-registration
-                 [:depends-info] register-added-depends needed-args)))
+                 [:depends-info] register-different-depends needed-args)))
           (assoc :application application))))
      
      (update-value-result [info value]
        (-> info
            (update-remove-state)
            (update-value value)
-           (assoc :value-depends-unchanged true)))]
+           (dissoc :value-depends-changed)
+           (update-valid)))]
   
   (defn update-result [info result]
     "Do the appropriate update given the result of a computation,
      based on the type of result."
     (assert (empty? (:uncertain-depends info)))
+    (assert (empty? (:unused-depends info)))
     (cond
       (satisfies? State result)
       (update-state-result info result)
@@ -130,24 +125,28 @@
   "Start the computation that the information calls for.
    There must be no pending application and no current state."
   [info [form & args]]
-  (update-result info (apply form args)))
+  (-> info
+      (assoc :value-depends-changed true)
+      (update-valid)
+      (update-result (apply form args))))
 
 (defn update-initialize-if-needed
   "If info is nil, return an initialized info."
   [info expression]
-  (or info (update-start-evaluation {} expression)))
+  (or info (update-start-evaluation {:visible {}} expression)))
 
 (letfn
     ;; A value that we used in our computation has changed, which
     ;; means that we need to start computation all over again. Record
-    ;; that the current value is not valid via :value-depends-unchanged,
+    ;; that the current value is not valid via :value-depends-changed,
     ;; stop tracking dependencies, cancel our state and any pending
     ;; application, and start the computation again.
     [(update-used-value-changed [info expression]
        (-> info
-           (dissoc :value-depends-unchanged)
+           (assoc :value-depends-changed true)
+           (update-valid)
            (update-remove-state)
-           (update-add-registration [:depends-info] register-removed-depends
+           (update-add-registration [:depends-info] register-different-depends
                                     (keys (:depends-info info)))
            (dissoc :depends-info :unused-depends :uncertain-depends
                    :application)
@@ -155,25 +154,24 @@
 
      ;; update :uncertain-depends to reflect the validity of the
      ;; depended on information
-     (update-uncertain [info depends-on depends-on-info]
-       (if (valid? depends-on-info)
-         (update-in-clean-up info [:uncertain-depends]
-                             #(disj % depends-on))
-         (update-in info [:uncertain-depends]
-                    #((fnil conj #{}) % depends-on))))]
+     (update-uncertain [info depends-on depends-on-visible]
+       (update-valid (if (:valid depends-on-visible)
+                       (update-in-clean-up info [:uncertain-depends]
+                                           #(disj % depends-on))
+                       (update-in info [:uncertain-depends]
+                                  #((fnil conj #{}) % depends-on)))))]
 
-  (defn update-depends-on-info-changed
-    "The propagated information for an expression that we may depend on
+  (defn update-depends-on-visible-changed
+    "The visible information for an expression that we may depend on
      may have changed, update what we know about it."
-    [info expression depends-on depends-on-info]
+    [info expression depends-on depends-on-visible]
     (if (contains? (:depends-info info) depends-on)
-      (let [revised-info (update-uncertain info depends-on depends-on-info)]
-        (if (contains? (:unused-depends revised-info) depends-on)
-          (assoc-in revised-info [:depends-info depends-on] depends-on-info)
-          (if (= (:value (-> revised-info :depends-info depends-on))
-                 (:value depends-on-info))
-            revised-info
-            (update-used-value-changed revised-info expression))))
+      (let [revised-info (update-uncertain info depends-on depends-on-visible)]
+        (if (or (contains? (:unused-depends revised-info) depends-on)
+                (= (:value ((or (:depends-info revised-info) {}) depends-on))
+                   (:value depends-on-visible)))
+          (assoc-in revised-info [:depends-info depends-on] depends-on-visible)
+          (update-used-value-changed revised-info expression)))
       info)))
 
 (def handle-depends-on-info-changed)
@@ -202,30 +200,58 @@
     validity of the expression has changed, propagate that."
     [scheduler expression f & args]
     (let [e-mm (:expressions scheduler)
-          [old-info new-info] (apply mm/update-in-returning-both!
-                                     e-mm [expression] f args)]
-      (loop []
+          [old new] (apply mm/update-in-returning-both!
+                           e-mm [expression] f args)]
+      ;; We have to track if we made any change to propagatable
+      ;; information. We can't just compare initial to final, because
+      ;; another thread might have propagated intermediate information
+      ;; before we set it back to the initial value, and we would need
+      ;; to re-propagate the initial value.
+      (loop [changed (or (not= (:visible old) (:visible new)))]
         (mm/call-and-clear-in! e-mm [expression :pending-registrations]
                                run-registrations scheduler expression)
-        (let [[old new] (mm/update-in-returning-both!
-                         e-mm [expression] update-run-application-while-ready)]
-          (if (not= old new)
-            (recur))))
-      (when (not (equal-propagated-info? (mm/get! e-mm expression) old-info))
-        (schedule-propagations scheduler expression)))))
+        (let [[before after] (mm/update-in-returning-both!
+                              e-mm [expression]
+                              update-run-application-while-ready)]
+          (if (not= before after)
+            (recur (or changed
+                       ;(not= old after)
+                       ;(not= old before)
+                       ;(not= new after)
+                       ;(not= new before)
+                       (not= (:visible before) (:visible after))
+                       ;(not (equal-propagated-info? old after))
+                       ;(not (equal-propagated-info? old before))
+                       ;(not (equal-propagated-info? new after))
+                       ;(not (equal-propagated-info? new before))
+                       ))
+            (do
+              (when false
+                (println "not changed")
+                (println expression f args)
+                (println old)
+                (println new)
+                (println before)
+                (println after)
+                (throw "error"))
+              (when changed
+                (schedule-propagations scheduler expression)))))))))
 
 (defn handle-depends-on-info-changed [scheduler expression depends-on]
   "Record in this expression the latest information for of one of the
    expressions this expression depends on. If that changes its
    information, schedule propagation."
-  (change-and-schedule-propagation
-   scheduler expression
-   update-depends-on-info-changed
-   expression depends-on (mm/get! (:expressions scheduler) depends-on)))
+  (mm/call-with-latest-value-in!
+   (:expressions scheduler) [depends-on :visible]
+   #(change-and-schedule-propagation
+     scheduler expression
+     update-depends-on-visible-changed
+     expression depends-on %)))
 
 (defn handle-state-changed [scheduler expression]
   "Record in this expression the latest information for its state. If
    that changes its information, schedule propagation."
+  ;; TODO: Check that we have propagated the latest.
   (change-and-schedule-propagation
    scheduler expression update-value-from-state))
 
@@ -236,75 +262,114 @@
 ;;; be out of date by the time they return. To address that, they
 ;;; should always be called from a call-with-latest-value-in!
 
-(defn register-added-depends
-  "Given the current value of :depends-info of an expression and a
-   collection of expressions that have been added to it, make sure the
-   :using-expressions field in each of the added expressions that are
-   still used contains the expression, and schedule a change
-   propagation if we used it and the current information doesn't agree
-   with what we used."
-  [current-depends-info scheduler expression added-expressions]
-  (let [e-mm (:expressions scheduler)]
-    (doseq [added-expression added-expressions]
-      (when (contains? current-depends-info added-expression)
-        (change-and-schedule-propagation
-         scheduler added-expression
-         (fn [info]
-           (-> info
-               (update-initialize-if-needed added-expression)
-               (update-in [:using-expressions] 
-                          #((fnil conj #{}) % expression)))))
-        ;; If there is already information about the value,
-        ;; schedule a propagation.
-        (when (not (equal-propagated-info?
-                    (current-depends-info added-expression)
-                    (mm/get! e-mm added-expression)))
-          (add-task (:pending scheduler)
-                    handle-depends-on-info-changed
-                    expression added-expression))))))
+;;; Notice that both additions and removals must be handled by the
+;;; same pending registration. Otherwise, an add might occur in the
+;;; middle of the execution of a removal, and the removal would remove
+;;; it and when finished, wouldn't notice that an add was now necessary.
 
-(defn register-removed-depends
-  "Given the current value of :depends-info of an expression and a
-   collection of expressions that have been removed from it, make sure
-   the :using-expressions field in each of those expressions doesn't
-   list the expression if they are not depended on."
-  [current-depends-info scheduler expression removed-expressions]
-  (let [e-mm (:expressions scheduler)]
-    (doseq [removed-expression removed-expressions]
-      (when (not (contains? current-depends-info removed-expression))
-        (mm/update-in-clean-up! e-mm [removed-expression :using-expressions]
-                                #(disj % expression))))))
+(letfn
+    ;; Given the current value of :depends-info of an expression and
+    ;; an expressions that is in it and may have been added to it,
+    ;; make sure the :using-expressions field in the added expression
+    ;; contains the expression, and schedule a change propagation if
+    ;; we used it and the current information doesn't agree with what
+    ;; we used.
+    [(register-added-depends
+       [current-depends-info scheduler expression added-expression]
+       (let [e-mm (:expressions scheduler)]
+         (change-and-schedule-propagation
+          scheduler added-expression
+          (fn [info]
+            (-> info
+                (update-initialize-if-needed added-expression)
+                (update-in [:using-expressions] 
+                           #((fnil conj #{}) % expression)))))
+         ;; If there is already information about the value,
+         ;; schedule a propagation.
+         (when (not (=
+                     (current-depends-info added-expression)
+                     (mm/get-in! e-mm [added-expression :visible])))
+           (add-task (:pending scheduler)
+                     handle-depends-on-info-changed
+                     expression added-expression))))
+
+     ;; Given the current value of :depends-info of an expression and
+     ;; an expression that is not in it and may have been removed from
+     ;; it, make sure the :using-expressions field in the removed
+     ;; expressions doesn't list the expression. 
+     (register-removed-depends
+       [scheduler expression removed-expression]
+       (let [e-mm (:expressions scheduler)]
+         (mm/update-in-clean-up! e-mm [removed-expression :using-expressions]
+                                 #(disj % expression))))]
+
+  (defn register-different-depends
+    "Given the current value of :depends-info of an expression and a
+     collection of expressions that have been added to it or removed from
+     it, make sure the :using-expressions field in each of those
+     expressions reflects the depends-info, and schedule change
+     propagation is appropriate."
+    [current-depends-info scheduler expression changed-expressions]
+    (doseq [changed-expression changed-expressions]
+      (if (contains? current-depends-info changed-expression)
+        (register-added-depends
+         current-depends-info scheduler expression changed-expression)
+        (register-removed-depends
+         scheduler expression changed-expression)))))
 
 (letfn
     [(state-change-callback [scheduler expression]
-       (add-task (:pending scheduler) handle-state-changed expression))]
+       (add-task (:pending scheduler) handle-state-changed expression))
 
-  (defn register-added-state
-    "Given the current state object, and an object that may have become
-    the state, if they are the same, subscribe to the state, and if the
-    state's value is not the same as the currently recorded one,
-    schedule change propagation."
-    [current-state scheduler expression added-state]
-    (let [e-mm (:expressions scheduler)]
-      (when (= current-state added-state)
-        (let [value (subscribe current-state
-                               [state-change-callback scheduler expression])]
-          (if (not= value (mm/get-in! e-mm [expression :value]))
-            (add-task (:pending scheduler) handle-state-changed expression))))))
+     (register-added-state
+       [current-state scheduler expression]
+       (let [e-mm (:expressions scheduler)]
+         (let [value (subscribe current-state
+                                [state-change-callback scheduler expression])]
+           (if (not= value (mm/get-in! e-mm [expression :visible :value]))
+             (add-task (:pending scheduler) handle-state-changed expression)))))
 
-  (defn register-removed-state
-    "Given the current state object, and an object that may have been
-    the state, if they are different, unsubscribe from the removed state."
-    [current-state scheduler expression removed-state]
-    (let [e-mm (:expressions scheduler)]
-      (if (not= current-state removed-state)
-        (unsubscribe removed-state
-                     [state-change-callback scheduler expression])))))
+     (register-removed-state
+       [scheduler expression removed-state]
+       (unsubscribe removed-state
+                    [state-change-callback scheduler expression]))]
+
+  (defn register-different-state
+   "Given the current state object, and an object that may be or may
+    have been the state, unsubscrive from the state of interest if it is
+    not the current state, and subscribe to it if it is. For a
+    subscription, if the state's value is not the same as the currently
+    recorded one, schedule change propagation."
+   [current-state scheduler expression state-of-interest]
+   (if (= current-state state-of-interest)
+     (when (not (nil? current-state))
+       (register-added-state current-state scheduler expression))
+     (when (not (nil? state-of-interest))
+       (register-removed-state scheduler expression state-of-interest)))))
 
 (defn run-all-pending [scheduler]
   (loop []
     (when (run-pending-task (:pending scheduler) scheduler)
       (recur))))
+
+(defn scheduler-summary
+  "Return a map that describes the content of a scheduler
+   but doesn't have deep nesting."
+  [scheduler]
+  (let [e-mm (:expressions scheduler)
+        expressions (keys (mm/current-contents e-mm))]
+    {:expressions
+     (zipmap expressions
+             (for [expression expressions]
+               (let [info (mm/get! e-mm expression)]
+                 (let [tags (keys info)]
+                   (zipmap tags
+                           (for [tag tags]
+                             (let [info (info tag)]
+                               (if (= tag :state)
+                                 (state-value info)
+                                 info))))))))
+     :pending @(:pending scheduler)}))
 
 (defrecord
     ^{:doc
@@ -316,10 +381,13 @@
    ;; arguments, all of which are themselves expressions or constants.
    ;; The map is keyed by the expression. Its values are maps that
    ;; record:
-   ;;   The :value of the expression.
+   ;;   A :visible map of what other expressions see about this
+   ;;     expression, consisting of
+   ;;     The :value of the expression.
+   ;;     A :valid tag if the value is not valid
    ;;   A set of :using-expressions that depend on the value.
-   ;;   A boolean :value-depends-unchanged if none of the dependencies of
-   ;;     the value have changed. Otherwise, there will be a
+   ;;   A boolean :value-depends-changed if some of the dependencies of
+   ;;     the value have changed. In this case, there will be a
    ;;     pending application, and the next three fields pertain to
    ;;     it. Unlike the later fields, which pertain to the pending
    ;;     application, if there is one, this field always pertains to
@@ -377,12 +445,12 @@
   (current-value [this expression]
     (request this expression)
     (run-all-pending this)
-    (mm/get-in! (:expressions this) [expression :value]))
+    (mm/get-in! (:expressions this) [expression :visible :value]))
 
   Scheduler
 
   (ready? [this expression]
-    (valid? (mm/get! [:expressions this] expression)))
+    (mm/get! (:expressions this) [expression :visible :valid]))
   )
 
 (defmethod clojure.core/print-method ApproximatingScheduler

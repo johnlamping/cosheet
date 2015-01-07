@@ -25,14 +25,13 @@
 (defn new-test-state [value]
   (->TestState (atom value) (atom #{})))
 
-(comment
-  ;; TODO: Make this update-valid-test
-  (deftest valid?-test
-           (is (valid? {:value-depends-unchanged true}))
-           (is (not (valid? {})))
-           (is (not (valid? nil)))
-           (is (not (valid? {:value-depends-unchanged true
-                             :uncertain-depends #{5}})))))
+(deftest update-valid-test
+  (is (= (update-valid {:value-depends-changed true})
+         {:value-depends-changed true}))
+  (is (= (update-valid {:uncertain-depends #{5}})
+         {:uncertain-depends #{5}}))
+  (is (= (update-valid {})
+         {:visible {:valid true}})))
 
 (deftest update-add-registration-test
   (is (= (update-add-registration {1 2} [3 4] :f 5 6)
@@ -46,11 +45,6 @@
 (deftest update-value-test
   (is (= (update-value {} 1) {:visible {:value 1}}))
   (is (= (update-value {:visible {:value 1}} 2) {:visible {:value 2}})))
-
-(deftest update-value-from-state-test
-  (let [state (new-test-state 1)]
-    (is (= (update-value-from-state {:state state})
-           {:visible {:value 1} :state state}))))
 
 (deftest update-result-test
   (let [state (new-test-state 1)
@@ -119,7 +113,7 @@
   (is (= (update-initialize-if-needed {} [+ 1 2])) {})
   (is (= (update-initialize-if-needed nil [+ 1 2])) {:value 3}))
 
-(deftest update-depends-on-visible-changed-test
+(deftest update-depends-on-visible-test
   (let [info {:depends-info {:a {:value 2 :valid true}
                              :b {:value 3}
                              :c {:value 5 :valid true}}
@@ -127,8 +121,8 @@
               :uncertain-depends #{:b}
               :unused-depends #{:a}
               :application [1 2]}]
-    (is (= (update-depends-on-visible-changed {} :a :b {}) {}))
-    (is (= (update-depends-on-visible-changed
+    (is (= (update-depends-on-visible {} :a :b {}) {}))
+    (is (= (update-depends-on-visible
             info [3 :d] :a {:value 4 :valid true})
            {:depends-info {:a {:value 4 :valid true}
                            :b {:value 3}
@@ -137,7 +131,7 @@
             :uncertain-depends #{:b}
             :unused-depends #{:a}
             :application [1 2]}))
-    (is (= (update-depends-on-visible-changed
+    (is (= (update-depends-on-visible
             info [3 :d] :a {:value 4})
            {:depends-info {:a {:value 4}
                            :b {:value 3}
@@ -146,7 +140,7 @@
             :uncertain-depends #{:b :a}
             :unused-depends #{:a}
             :application [1 2]}))
-    (is (= (update-depends-on-visible-changed
+    (is (= (update-depends-on-visible
             info [3 :d] :b  {:value 3 :valid true})
            {:depends-info {:a {:value 2 :valid true}
                            :b {:value 3 :valid true}
@@ -154,7 +148,7 @@
             :visible {:value 3 :valid true}
             :unused-depends #{:a}
             :application [1 2]}))
-    (is (= (update-depends-on-visible-changed
+    (is (= (update-depends-on-visible
             info [(fn [] (application 3 :d))] :c {:value 3})
            {:depends-info {:d nil}
             :visible {:value 3}
@@ -286,10 +280,10 @@
   ;; changing the states in one thread, while another thread
   ;; propagates, and makes sure that the final answer is still right
   
-  (let [width 3
-        depth 5
-        trials 10000
-        changes-per-trial 100
+  (let [width 13
+        depth 7
+        trials 100000
+        changes-per-trial 200
         states (vec (for [i (range width)]
                       (new-test-state (mod (inc i) width))))
         s (new-approximating-scheduler)]
@@ -309,8 +303,7 @@
                 (when (and false (not= (current-value s [indexer d pos])
                                        (expected d pos)
                                        ))
-                  (pprint (scheduler-summary s)
-                          )
+                  (pprint (scheduler-summary s))
                   (println "position" d pos)
                   (throw "Error"))
                 (is (= (current-value s [indexer d pos])
@@ -321,11 +314,12 @@
       (run-all-pending s)
       (right-results?)
       (doseq [i (range trials)]
+        (when (= (mod i 1000) 0)
+          (println "starting trial" i))
         (doseq [j (range changes-per-trial)]
           (state-set (states (mod (+ i j) width)) (mod (* j j) width))
           (when (zero? (mod j 17))
-            (future (run-all-pending s))
-            ))
+            (future (run-all-pending s))))
         (future (run-all-pending s))
         (synchronize/wait-until-finished (:pending s))
         (right-results?)))))

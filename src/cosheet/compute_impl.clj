@@ -161,7 +161,7 @@
                        (update-in info [:uncertain-depends]
                                   #((fnil conj #{}) % depends-on)))))]
 
-  (defn update-depends-on-visible-changed
+  (defn update-depends-on-visible
     "The visible information for an expression that we may depend on
      may have changed, update what we know about it."
     [info expression depends-on depends-on-visible]
@@ -202,56 +202,39 @@
     (let [e-mm (:expressions scheduler)
           [old new] (apply mm/update-in-returning-both!
                            e-mm [expression] f args)]
-      ;; We have to track if we made any change to propagatable
+      ;; We have to track if we made any visible change to the
       ;; information. We can't just compare initial to final, because
       ;; another thread might have propagated intermediate information
       ;; before we set it back to the initial value, and we would need
-      ;; to re-propagate the initial value.
-      (loop [changed (or (not= (:visible old) (:visible new)))]
+      ;; to re-propagate that value.
+      (loop [visible-change (or (not= (:visible old) (:visible new)))]
         (mm/call-and-clear-in! e-mm [expression :pending-registrations]
                                run-registrations scheduler expression)
-        (let [[before after] (mm/update-in-returning-both!
+        (let [[old new] (mm/update-in-returning-both!
                               e-mm [expression]
                               update-run-application-while-ready)]
-          (if (not= before after)
-            (recur (or changed
-                       ;(not= old after)
-                       ;(not= old before)
-                       ;(not= new after)
-                       ;(not= new before)
-                       (not= (:visible before) (:visible after))
-                       ;(not (equal-propagated-info? old after))
-                       ;(not (equal-propagated-info? old before))
-                       ;(not (equal-propagated-info? new after))
-                       ;(not (equal-propagated-info? new before))
-                       ))
-            (do
-              (when false
-                (println "not changed")
-                (println expression f args)
-                (println old)
-                (println new)
-                (println before)
-                (println after)
-                (throw "error"))
-              (when changed
-                (schedule-propagations scheduler expression)))))))))
+          (if (not= old new)
+            (recur (or visible-change (not= (:visible old) (:visible new))))
+            (when visible-change
+              (schedule-propagations scheduler expression))))))))
 
 (defn handle-depends-on-info-changed [scheduler expression depends-on]
   "Record in this expression the latest information for of one of the
    expressions this expression depends on. If that changes its
    information, schedule propagation."
+  ;; Since we are passing in information from another expression, we
+  ;; have to keep running until we have passed in the latest
+  ;; information, because an earlier run of ours may have stomped on
+  ;; more recent information.
   (mm/call-with-latest-value-in!
    (:expressions scheduler) [depends-on :visible]
    #(change-and-schedule-propagation
      scheduler expression
-     update-depends-on-visible-changed
-     expression depends-on %)))
+     update-depends-on-visible expression depends-on %)))
 
 (defn handle-state-changed [scheduler expression]
   "Record in this expression the latest information for its state. If
    that changes its information, schedule propagation."
-  ;; TODO: Check that we have propagated the latest.
   (change-and-schedule-propagation
    scheduler expression update-value-from-state))
 
@@ -367,7 +350,7 @@
                            (for [tag tags]
                              (let [info (info tag)]
                                (if (= tag :state)
-                                 (state-value info)
+                                 `("state" ~(state-value info))
                                  info))))))))
      :pending @(:pending scheduler)}))
 

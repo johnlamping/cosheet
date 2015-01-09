@@ -114,13 +114,13 @@
            {:content "test"
             :subject (make-id "1")}))))
 
-(deftest candidate-ids-test
-  (is (= (set (candidate-ids test-store nil))
+(deftest candidate-matching-ids-test
+  (is (= (set (candidate-matching-ids test-store nil))
          #{(make-id "0") (make-id "1") (make-id "2") (make-id "4") })))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
-    (is (= (candidate-ids store nil) nil))))
+    (is (= (candidate-matching-ids store nil) nil))))
 
 (deftest add-entity-test
   (let [[added-store element]

@@ -39,8 +39,9 @@
      which must be atomic, returning the store and id of the element.")
   (remove-id [this id]
     "Remove the item with the given id from the store")
-  (candidate-ids [this item]
-    "Return all item ids that could potentially extend the given item"))
+  (candidate-matching-ids [this item]
+    "Return the ids of all items that could potentially be extensions
+     of the given item"))
 
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store

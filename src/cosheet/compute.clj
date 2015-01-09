@@ -63,6 +63,15 @@
   [fn & args]
   `(list :application ~fn ~@args))
 
+(defn application? [expr]
+  (and (list? expr) (= (first expr) :application)))
+
+(defn application-fn [expr]
+  (second expr))
+
+(defn application-args [expr]
+  (rest (rest expr)))
+
 (defmacro eval-let
   "A let like construct that has the scheduler evaluate the bindings.
    The expressions in an eval-let's bindings may not refer to variables
@@ -73,10 +82,26 @@
   (let [pairs (partition 2 bindings)
         vars (map first pairs)
         exprs (map second pairs)]
-    `(application (fn ~(vec vars) ~@body) ~@exprs)))
+    `(application (fn ~(vec vars) ~@body)
+                  ~@(map (fn [exp] (if (sequential? exp) (vec exp) exp))
+                         exprs))))
 
 ;;; TODO: Make a eval-let macro that creates appliations.
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler
   (constantly true))
+
+(defn simple-compute
+  "Evalutate the expression, which may use the Scheduler protocol
+   for its return values"
+  [[fn & args]]
+  (let [result (apply fn args)]
+    (cond
+      (satisfies? State result)
+      (state-value result)
+      (application? result)
+      (simple-compute (cons (application-fn result)
+                            (map simple-compute (application-args result))))
+      :else
+      result)))

@@ -158,7 +158,7 @@
       (seq (map #(assoc env name
                         (let [value (entity/description->entity % store)]
                           (if reference value (entity/to-list value) )))
-                (store/candidate-ids store nil)))
+                (store/candidate-matching-ids store nil)))
       (if (or reference (query-matches value env store))
         [env]))))
 
@@ -205,7 +205,8 @@
   (seq (distinct
         (mapcat (partial template-matches item env)
                 (map #(entity/description->entity % store)
-                     (store/candidate-ids store (bind-entity item env)))))))
+                     (store/candidate-matching-ids
+                      store (bind-entity item env)))))))
 
 (defmethod query-matches :no-env [query store]
   (query-matches query {} store))

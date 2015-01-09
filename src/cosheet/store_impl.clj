@@ -146,6 +146,7 @@
     (assert (not (nil? content)))
     (let [[promoted revised-subject] (promote-implicit-item store subject)]
       (let [data (if (nil? revised-subject)
+
                    {:content content}
                    {:subject revised-subject :content content})
             item-id (->ItemId (:next-id promoted))]
@@ -156,7 +157,8 @@
          item-id])))
 
   ;;; TODO: make this actually filter based on the item.
-  (candidate-ids [this item]
+  (candidate-matching-ids [this item]
+    ;; Return all items that have elaborations.
     (keys subject->label->ids)))
 
 (defmethod new-element-store true []

@@ -275,6 +275,15 @@
                                  (+  f1 f2))))]
       (is (= (current-value s [fib 6]) 13)))))
 
+(deftest simple-compute-test
+  (let [state (new-test-state 1)]
+    (letfn [(fib [n] (if (<= n 1)
+                       state
+                       (eval-let [f1 [fib (- n 1)]
+                                  f2 [fib (- n 2)]]
+                                 (+  f1 f2))))]
+      (is (= (simple-compute [fib 6]) 13)))))
+
 (deftest asynchronous-test
   ;; Creates width states, then a series layers of lookups that use the value
   ;; at the previous layer as an index into another value at that
@@ -284,7 +293,7 @@
   
   (let [width 13
         depth 7
-        trials 100 ;000
+        trials 10 ;0000
         changes-per-trial 1000
         states (vec (for [i (range width)]
                       (new-test-state (mod (inc i) width))))

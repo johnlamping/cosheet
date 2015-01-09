@@ -93,9 +93,8 @@
            (dissoc :value-depends-changed)
            (update-valid)))
      
-     (update-application-result [info application]
-       (let [args (rest application)
-             needed-args (set/difference
+     (update-application-result [info fn args]
+       (let [needed-args (set/difference
                           (set args) (set (keys (:depends-info info))))]
          (->
           (if (empty? needed-args)
@@ -108,7 +107,7 @@
                 (assoc :uncertain-depends needed-args)
                 (update-add-registration
                  [:depends-info] register-different-depends needed-args)))
-          (assoc :application application))))
+          (assoc :application (cons fn args)))))
      
      (update-value-result [info value]
        (-> info
@@ -125,8 +124,9 @@
     (cond
       (satisfies? State result)
       (update-state-result info result)
-      (and (list? result) (= (first result) :application))
-      (update-application-result info (rest result))
+      (application? result)
+      (update-application-result
+       info (application-fn result) (application-args result))
       :else
       (update-value-result info result))))
 

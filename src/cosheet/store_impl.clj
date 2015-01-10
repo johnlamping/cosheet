@@ -1,6 +1,7 @@
 (ns cosheet.store-impl
-  (:require [cosheet.store :refer :all]
-            [cosheet.item-store :refer :all]))
+  (:require (cosheet [store :refer :all]
+                     [item-store :refer :all]
+                     [utils :refer :all])))
 
 ;;; Data in a store is in terms of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
@@ -38,19 +39,15 @@
   (atom-description? [this] true))
 
 (defn ensure-in-vector [v item]
-  (cond (= v nil) [item]
+  (cond (nil? v) [item]
         (some #{item} v) v
         :else (conj v item)))
 
-(defn remove-from-key-vector [map key item]
-  (if map
-    (let [new-vec (filterv #(not (#{item} %)) (map key))]
-      (if (= new-vec [])
-        (dissoc map key)
-        (assoc map key new-vec)))
-    {}))
-
-(defn non-nil-seq [x] (if (nil? x) nil [x]))
+(defn remove-from-vector [v item]
+  (when v
+    (let [result (filterv #(not (#{item} %)) v)]
+      (when (not (empty? result))
+        result))))
 
 ;;; Chase contents until an atomic value is found.
 (defn atomic-value [store description]
@@ -58,26 +55,83 @@
     (atomic-value store (id->content store description))
     description))
 
-(defn index-new-element [store id]
-  (assert (instance? ItemId id))
-  (let [subject (get-in store [:id->data id :subject])]
-    (if (not (nil? subject))
-      (let [subject-indexed
-            (let [subject-of-subject
-                  (get-in store [:id->data subject :subject])
-                  atomic-value (atomic-value store id)]
-              (if (and (not (nil? subject-of-subject)) (not (nil? atomic-value)))
-                (-> store
-                    (update-in
-                     [:subject->label->ids subject-of-subject]
-                     #(remove-from-key-vector % nil subject))
-                    (update-in
-                     [:subject->label->ids subject-of-subject atomic-value]
-                     #(ensure-in-vector % subject)))
-                store))]
-        (update-in subject-indexed [:subject->label->ids subject nil]
-                   #(ensure-in-vector % id)))
+(defn index-subject
+  "Do indexing to reflect the effect of the item on its subject.
+   The subject must not be implicit."
+  [store id]
+  (let [subject (get-in store [:id->data id :subject])
+        subject-of-subject
+        (get-in store [:id->data subject :subject])
+        atomic-value (atomic-value store id)]
+    (if (nil? subject)
+      store
+      (-> ;; Index the id for which this id provides a new label.
+          (if (or (nil? subject-of-subject)
+                  (nil? atomic-value))
+            store
+            (-> store
+                (update-in
+                 [:subject->label->ids]
+                 (fn [sli]
+                   (update-in-clean-up
+                    sli [subject-of-subject nil]
+                    #(remove-from-vector % subject))))
+                (update-in
+                 [:subject->label->ids subject-of-subject atomic-value]
+                 #(ensure-in-vector % subject))))
+          ;; Index the new id.
+         (update-in [:subject->label->ids subject nil]
+                    #(ensure-in-vector % id))))))
+
+(defn index-content
+  "Do indexing to reflect the item having the content.
+  The content must not be implicit."
+  [store id]
+  (let [content (get-in store [:id->data id :content])]
+    (if (instance? ItemId content)
+      (do
+        (assert (contains? (:id->data store) content) "Content item unknown.")
+        (update-in store [:id->data content :containers]
+                   #((fnil conj #{}) % id)))
       store)))
+
+(defn deindex-subject
+  "Undo indexing to reflect the effect of the item on its subject.
+   The subject must not be implicit."    
+  [store id]
+  (let [subject (:subject (get-in store [:id->data id]))
+        subject-of-subject
+        (get-in store [:id->data subject :subject])
+        label (atomic-value store id)]
+    (if (nil? subject)
+      store
+      (-> ;; Remove indexing for the label provided by this item.
+       (if (or (nil? subject-of-subject)
+               (nil? atomic-value))
+            store ; We have no effect on the index
+            (if (some #(and (not= % id)
+                            (= (atomic-value store %) label))
+                      (id->element-ids store subject))
+              store ; Another element contributes the same label.
+              (-> (update-in
+                   store [:subject->label->ids]
+                   (fn [sli] (update-in-clean-up
+                              [subject-of-subject label]))
+                             #(remove-from-vector % subject))
+                  ((fn [updated]
+                     (if (some #(and (not= % id)
+                                     (not (nil? (atomic-value updated %))))
+                               (id->element-ids store subject))
+                       updated
+                       ;; There are no other labels for our subject.
+                       (update-in updated
+                                  [:subject->label->ids subject-of-subject nil]
+                                  #(ensure-in-vector % nil subject))))))))
+       ;; Remove this item from the subject
+       (update-in [:subject->label->ids]
+                  (fn [sli] (update-in-clean-up
+                             [ subject nil]
+                             #(remove-from-vector % id))))))))
 
 (defn promote-implicit-item [store id]
   (if (instance? ImplicitContentId id)
@@ -92,7 +146,7 @@
            [(-> promoted-store
                 (update-in [:next-id] inc)
                 (assoc-in [:id->data content-id]
-                          {:content content :container promoted-container})
+                          {:content content :containers #{promoted-container}})
                 (assoc-in [:id->data promoted-container :content] content-id))
             content-id])))
      [store id]))
@@ -104,8 +158,8 @@
   [;;; A map from ItemId to a map of their
    ;;;   :content, the content of the item.
    ;;;   :subject, the item this item is an element of.
-   ;;;   :container, the item that this item is the content of. This
-   ;;;               is redundant information.
+   ;;;   :containers, a set of the items that this item is the content
+   ;;;   of. This is redundant information.
    id->data
    
    ;;; Index from item then label to all elements that belong to the
@@ -142,24 +196,36 @@
 
   BasicStore
 
-  (add-simple-element [store subject content]
+  (add-simple-element [this subject content]
     (assert (not (nil? content)))
-    (let [[promoted revised-subject] (promote-implicit-item store subject)]
+    (let [[promoted1 revised-subject] (promote-implicit-item this subject)
+          [promoted revised-content] (promote-implicit-item promoted1 content)]
       (let [data (if (nil? revised-subject)
-
                    {:content content}
                    {:subject revised-subject :content content})
             item-id (->ItemId (:next-id promoted))]
         [(-> promoted
              (update-in [:next-id] inc)
              (assoc-in [:id->data item-id] data)
-             (index-new-element item-id))
+             (index-subject item-id)
+             (index-content item-id))
          item-id])))
 
+  (remove-id [this id]
+    (let [data (get-in this [:id->data id])
+          subject (:subject data)
+          value (atomic-value this id)
+          removed (update-in this [:id->data] #(dissoc % id))]
+      (assert (not (nil? data)) "Removed id not present.")
+      (if (and subject value data)
+        (update-in removed [:subject->label->ids subject value]
+                   ))))
   ;;; TODO: make this actually filter based on the item.
   (candidate-matching-ids [this item]
     ;; Return all items that have elaborations.
-    (keys subject->label->ids)))
+    (keys subject->label->ids))
+
+  (mutable-store? [this] nil))
 
 (defmethod new-element-store true []
   (->ElementStore {} {} 0))

@@ -1,11 +1,12 @@
 (ns cosheet.store-test
   (:require [clojure.test :refer [deftest is]]
+            [clojure.data :refer [diff]]
             [cosheet.store :refer :all]
             [cosheet.item-store :refer :all]
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
-            ; :reload
+            :reload
             ))
 
 (def test-store
@@ -13,9 +14,9 @@
    {(make-id "1") {:subject (make-id "0") :content (make-id "4")}
     (make-id "2") {:subject (make-id "1") :content "foo"}
     (make-id "3") {:subject (make-id "2") :content :label}
-    (make-id "4") {:container (make-id "1") :content (make-id "6")}
+    (make-id "4") {:containers #{(make-id "1")} :content (make-id "6")}
     (make-id "5") {:subject (make-id "4") :content "bar"}
-    (make-id "6") {:container (make-id "4") :content 5}
+    (make-id "6") {:containers #{(make-id "4")} :content 5}
     (make-id "7") {:subject (make-id "1") :content "second"}}
    {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
@@ -64,24 +65,38 @@
   (is (= (ensure-in-vector [1] 2) [1 2]))
   (is (= (ensure-in-vector [1 2] 2) [1 2])))
 
-(deftest remove-from-key-vector-test
-  (is (= (remove-from-key-vector {1 [2 3] 5 [6]} 1 3) {1 [2] 5 [6]}))
-  (is (= (remove-from-key-vector {1 [2 3] 5 [6]} 1 6) {1 [2 3] 5 [6]}))
-  (is (= (remove-from-key-vector {1 [2] 5 [6]} 1 2) {5 [6]})))
+(deftest remove-from-vector-test
+  (is (= (remove-from-vector [1 2] 1) [2]))
+  (is (= (remove-from-vector [1 2] 3) [1 2]))
+  (is (= (remove-from-vector [1] 1) nil))
+  (is (= (remove-from-vector nil 1) nil)))
 
 (deftest atomic-value-test
   (is (= (atomic-value test-store (make-id "0")) nil))
   (is (= (atomic-value test-store (make-id "6")) 5))
   (is (= (atomic-value test-store (make-id "1")) 5)))
 
-(deftest index-new-element-test
+(deftest index-subject-test
   (let [missing-store
         (assoc test-store :subject->label->ids {})
         indexed-store
         (reduce (fn [store id]
-                  (index-new-element store id))
+                  (index-subject store id))
                 missing-store
                 (keys (:id->data missing-store)))]
+    (is (= indexed-store test-store))))
+
+(deftest index-content-test
+  (let [data-map (:id->data test-store)
+        keys (keys data-map)
+        missing-store
+        (assoc test-store :id->data
+               (zipmap keys
+                       (for [key keys] (dissoc (data-map key) :containers))))
+        indexed-store
+        (reduce (fn [store id]
+                  (index-content store id))
+                missing-store keys)]
     (is (= indexed-store test-store))))
 
 (deftest promote-implicit-item-test
@@ -100,7 +115,7 @@
            promoted-id))
     (is (= (get-in promoted-store [:id->data promoted-id])
            {:content (get-in test-store [:id->data (make-id "2") :content])
-            :container (make-id "2")}))
+            :containers #{(make-id "2")}}))
     (is (= (get-in promoted-store [:id->data (make-id "2") :subject])
            (get-in test-store [:id->data (make-id "2") :subject])))))
 

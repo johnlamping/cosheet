@@ -10,7 +10,9 @@
     nil
     (let [key (first keys)
           lower (dissoc-in (get map key) (rest keys))]
-      (if (empty? lower)
+      (if (and (empty? lower) (not (record? map)))
+        ;; We don't want to dissoc in a record, because that turns it
+        ;; into a map.
         (dissoc map key)
         (assoc map key lower)))))
 

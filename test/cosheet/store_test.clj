@@ -99,6 +99,36 @@
                 missing-store keys)]
     (is (= indexed-store test-store))))
 
+(deftest deindex-subject-test
+  (let [id (make-id "999")
+        s1 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2") :content :test})
+        s2 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2") :content :foo})
+        s3 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2")})
+        s4 (assoc-in test-store [:id->data id]
+                     { :content :test})]
+    (is (= (deindex-subject (index-subject s1 id) id) s1))
+    (is (= (deindex-subject (index-subject s2 id) id) s2))
+    (is (= (deindex-subject (index-subject s3 id) id) s3))
+    (is (= (deindex-subject (index-subject s4 id) id) s4))))
+
+(deftest deindex-content-test
+  (let [id (make-id "999")
+        s1 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2") :content :test})
+        s2 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2") :content (make-id "4")})
+        s3 (assoc-in test-store [:id->data id]
+                      {:subject (make-id "2")  :content (make-id "5")})
+        s4 (assoc-in test-store [:id->data id]
+                     {:subject (make-id "2")})]
+    (is (= (deindex-content (index-content s1 id) id) s1))
+    (is (= (deindex-content (index-content s2 id) id) s2))
+    (is (= (deindex-content (index-content s3 id) id) s3))
+    (is (= (deindex-content (index-content s4 id) id) s4))))
+
 (deftest promote-implicit-item-test
   (is (= (promote-implicit-item test-store (make-id "1"))
          [test-store (make-id "1")]))
@@ -122,12 +152,19 @@
 (deftest add-simple-element-test
   (let [[added-store element]
         (add-simple-element test-store (make-id "1") "test")]
-    (= (:id element) (:next-id test-store))
+    (is (= (:id element) (:next-id test-store)))
     (is (= (set (get-in added-store [:subject->label->ids (make-id "1") nil]))
            #{(make-id "7") element}))
     (is (= (get-in added-store [:id->data element])
            {:content "test"
             :subject (make-id "1")}))))
+
+(deftest remove-id-test
+  (let [[added-store element]
+        (add-simple-element test-store (make-id "1") "test")]
+    (is (= (assoc (remove-id added-store element)
+                  :next-id (:next-id test-store))
+           test-store))))
 
 (deftest candidate-matching-ids-test
   (is (= (set (candidate-matching-ids test-store nil))

@@ -1,5 +1,5 @@
 (ns cosheet.core
-  (:require (cosheet store item-store entity query
+  (:require (cosheet store entity query
                      mutable-map synchronize compute
                      store-impl entity-impl query-impl
                      compute_impl)

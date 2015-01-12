@@ -1,8 +1,9 @@
 (ns cosheet.compute-impl
   (:require [clojure.set :as set]
-            [cosheet.compute :refer :all]
-            [cosheet.synchronize :refer :all]
-            [cosheet.mutable-map :as mm :refer [dissoc-in update-in-clean-up]]))
+            (cosheet [compute :refer :all]
+                     [synchronize :refer :all]
+                     [utils :refer [dissoc-in update-in-clean-up]]
+                     [mutable-map :as mm])))
 
 ;;; This is the definition of an approximating scheduler (although the
 ;;; implementation doesn't yet do approximation). Most of the code is

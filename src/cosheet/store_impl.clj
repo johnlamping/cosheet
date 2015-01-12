@@ -222,7 +222,7 @@
              (index-content item-id))
          item-id])))
 
-  (remove-id [this id]
+  (remove-simple-id [this id]
     (assert (not (nil? (get-in this [:id->data id])))
             "Removed id not present.")
     (assert (nil? (get-in this [:subject->label->ids id]))
@@ -231,6 +231,9 @@
         (deindex-subject id)
         (deindex-content id)
         (dissoc-in [:id->data id])))
+
+  (id-is-content? [this id]
+    (not (empty? (get-in this [:id->data id :containers]))))
   
   ;;; TODO: make this actually filter based on the item.
   (candidate-matching-ids [this item]

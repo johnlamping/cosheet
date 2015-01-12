@@ -1,5 +1,6 @@
 (ns cosheet.store
-  (:require [cosheet.entity :as entity]))
+  (:require [cosheet.entity :as entity]
+            [cosheet.item-store :as item-store]))
 
 ;;; All the information about non-primitive items is kept in the
 ;;; store: the elements of the item, their elements, complex values
@@ -37,9 +38,11 @@
   (add-simple-element [this subject content]
     "Add an element to the subject with the given content,
      which must be atomic, returning the store and id of the new element.")
-  (remove-id [this id]
+  (remove-simple-id [this id]
     "Remove the item with the given id from the store.
      It must have no elements.")
+  (id-is-content? [this id]
+    "Return true if the id is the content of some other id.")
   (candidate-matching-ids [this item]
     "Return the ids of all items that could potentially be extensions
      of the given item")
@@ -54,15 +57,18 @@
 (defmulti make-id
   (constantly true))
 
-(defn add-entity [store subject-id target]
-  "Add the target entity with the given subject, whose content is the content
-   of the target and whose elements are the elements of the target."
+(defn add-entity
+  "Add an entity to the store, with content and elements equal to the target,
+   and with the given subject.
+   Return the new store and the id of the element."
+  [store subject-id target]
   (if (or (satisfies? StoredItemDescription target) (entity/atom? target))
-    (add-simple-element store subject-id target)
+    (let [[s id] (add-simple-element store subject-id target)]
+      [s id])
     (let [[preliminary-store content]
           (let [content (entity/content target)]
-            (if (or (satisfies? StoredItemDescription target)
-                    (entity/atom? target))
+            (if (or (satisfies? StoredItemDescription content)
+                    (entity/atom? content))
               [store content]
               (add-entity store nil content)))]
       (let [[added-store id]
@@ -71,5 +77,19 @@
                  added-store
                  (entity/elements target))
          id]))))
+
+(defn remove-entity-by-id
+  "Remove the entity with the given id, and all its elements and content."
+  [store id]
+  (let [content (item-store/id->content store id)
+        no-elements (reduce (fn [store element]
+                              (remove-entity-by-id store element))
+                            store
+                            (item-store/id->element-ids store id))
+        no-entity (remove-simple-id no-elements id)]
+    (if (and (satisfies? StoredItemDescription content)
+             (not (id-is-content? no-entity content)))
+      (remove-entity-by-id no-entity content)
+      no-entity)))
 
 

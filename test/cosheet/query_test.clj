@@ -2,7 +2,6 @@
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
             [cosheet.store :as store]
-            cosheet.item-store
             [cosheet.entity :as entity]
             [cosheet.query :refer :all]
             [cosheet.store-impl :refer [->ItemId]]
@@ -35,11 +34,13 @@
     (is (not (extended-by? '(4 ("foo" false)) '(3 ("foo" false)))))
     (is (extended-by? '(3 "foo") '(3 ("foo" false))))
     (is (not (extended-by? '(3 ("foo" false)) '(3 ("foo")))))
+    (is (extended-by? 3 element0))
     (is (extended-by? 3 element2))
     (is (extended-by? element2 3))
     (is (not (extended-by? element2 4)))
     (is (extended-by? 3 element1))
-    (is (not (extended-by? element1 3)))))
+    (is (not (extended-by? element1 3)))
+    (is (extended-by? 3 (entity/content-reference element0)))))
 
 (defn variable
   ([name] (variable name nil nil))
@@ -231,17 +232,12 @@
                                 (1 (2 ~(variable "v"))))
                           store)
            [{"v" 3}]))
-    (is (not (= (query-matches `(:and ((1 (~(variable "v" nil nil true) 3))
-                                       :first)
-                                      ((nil (~(variable "v") 4))
-                                       :second))
-                               store)
-                [{"v" 2}])))
     (let [matches (query-matches `(:and ((1 (~(variable "v" nil nil true) 3))
                                          :first)
                                         ((nil (~(variable "v") 4))
                                          :second))
                                  store)]
+      (is (not= matches [{"v" 2}]))
       (is (= (envs-to-list matches) [{"v" 2}]))
       (is (not= ((first matches) "v") 2))
       (is (not (nil? (:item-id ((first matches) "v") 2)))))

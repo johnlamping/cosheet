@@ -1,6 +1,5 @@
 (ns cosheet.store-impl
   (:require (cosheet [store :refer :all]
-                     [item-store :refer :all]
                      [utils :refer :all])))
 
 ;;; Data in a store is in terms of ItemId objects. All that the system
@@ -164,7 +163,8 @@
 
 (defrecord ElementStore
     ^{:doc
-      "A store that has only enough indexing to find elements of items."}
+      "An immutable store that has only enough indexing
+       to find elements of items."}
 
   [;;; A map from ItemId to a map of their
    ;;;   :content, the content of the item.
@@ -182,7 +182,7 @@
    ;;; The next id to assign to an item to be stored here
    next-id]
 
-  StoreForItem
+  Store
 
   (id-label->element-ids [this id label]
     (get-in this [:subject->label->ids id label]))
@@ -205,7 +205,17 @@
         content
         (->ImplicitContentId id))))
 
-  BasicStore
+    (id-is-content? [this id]
+    (not (empty? (get-in this [:id->data id :containers]))))
+  
+  ;;; TODO: make this actually filter based on the item.
+  (candidate-matching-ids [this item]
+    ;; Return all items that have elaborations.
+    (keys subject->label->ids))
+
+  (mutable-store? [this] nil)
+
+  ImmutableStore
 
   (add-simple-element [this subject content]
     (assert (not (nil? content)))
@@ -230,17 +240,7 @@
     (-> this
         (deindex-subject id)
         (deindex-content id)
-        (dissoc-in [:id->data id])))
-
-  (id-is-content? [this id]
-    (not (empty? (get-in this [:id->data id :containers]))))
-  
-  ;;; TODO: make this actually filter based on the item.
-  (candidate-matching-ids [this item]
-    ;; Return all items that have elaborations.
-    (keys subject->label->ids))
-
-  (mutable-store? [this] nil))
+        (dissoc-in [:id->data id]))))
 
 (defmethod new-element-store true []
   (->ElementStore {} {} 0))

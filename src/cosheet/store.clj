@@ -1,6 +1,5 @@
 (ns cosheet.store
-  (:require [cosheet.entity :as entity]
-            [cosheet.item-store :as item-store]))
+  (:require [cosheet.entity :as entity]))
 
 ;;; All the information about non-primitive items is kept in the
 ;;; store: the elements of the item, their elements, complex values
@@ -32,22 +31,48 @@
     "True if this description refers to an atom. This is true only for
    content references."))
 
-(defprotocol BasicStore
-  "The basic methods that databases support,
+(defprotocol Store
+  "The methods that all stores support for accessing their data.
+   Mutable stores can return State objects as their answer
+   for any of these methods, except for mutable-store?"
+
+  ;; The methods that Item and Entity rely on stores having.
+  ;; These take and return descriptions.
+  
+  (id-label->element-ids [this id label]
+    "Returns a seq the ids of all ids that have the given subject and label.")
+
+  (id->element-ids [this id]
+    "Returns a seq of all ids that have the id as a subject.")
+
+  (id->content [this id]
+    "Given the id of an element, return a description of its content.")
+
+  (id->content-reference [this id]
+    "Given an item, return a reference to its content.")
+
+  (id-is-content? [this id]
+    "Return true if the id is the content of some other id.")
+
+  ;; Used by queries.
+  
+  (candidate-matching-ids [this item]
+    "Return the ids of all items that could potentially be extensions
+     of the given item")
+
+  (mutable-store? [this]
+    "Return whether this store is mutable"))
+
+(defprotocol ImmutableStore
+  "The basic methods that immutable stores support to create variants,
    from which higher levels ones are built."
   (add-simple-element [this subject content]
     "Add an element to the subject with the given content,
      which must be atomic, returning the store and id of the new element.")
+  
   (remove-simple-id [this id]
     "Remove the item with the given id from the store.
-     It must have no elements.")
-  (id-is-content? [this id]
-    "Return true if the id is the content of some other id.")
-  (candidate-matching-ids [this item]
-    "Return the ids of all items that could potentially be extensions
-     of the given item")
-  (mutable-store? [this]
-    "Return whether this store is mutable"))
+     It must have no elements."))
 
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store
@@ -81,11 +106,11 @@
 (defn remove-entity-by-id
   "Remove the entity with the given id, and all its elements and content."
   [store id]
-  (let [content (item-store/id->content store id)
+  (let [content (id->content store id)
         no-elements (reduce (fn [store element]
                               (remove-entity-by-id store element))
                             store
-                            (item-store/id->element-ids store id))
+                            (id->element-ids store id))
         no-entity (remove-simple-id no-elements id)]
     (if (and (satisfies? StoredItemDescription content)
              (not (id-is-content? no-entity content)))

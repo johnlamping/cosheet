@@ -7,7 +7,7 @@
 ;;;            (true :value-may-extend)
 ;;;            (true :reference) 
 ;;; where each of the elements is optional
-;;;    A variable without a name is considered different from any
+;;;    A variable without a name is considered distinct from any
 ;;; other variable.
 ;;;    A variable with a condition can only match entities satisfying
 ;;; the condition.

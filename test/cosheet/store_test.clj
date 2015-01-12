@@ -2,7 +2,6 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [cosheet.store :refer :all]
-            [cosheet.item-store :refer :all]
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]

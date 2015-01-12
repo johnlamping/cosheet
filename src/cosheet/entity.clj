@@ -58,9 +58,9 @@
 
 (defn atomic-value [entity]
   "Return the atomic value reached by chasing contents"
-  (if (or (nil? entity) (atom? entity))
-    entity
-    (atomic-value (content entity))))
+  (cond (nil? entity) nil
+        (atom? entity) (content entity) ; Could be implicit content reference.
+        :else (atomic-value (content entity))))
 
 (defn label->atomic-values [entity label]
   "Return all atomic values for the label, reflecting multiplicity."
@@ -75,7 +75,7 @@
 (defn to-list [entity]
   "Return the list representation of the entity"
   (if (or (nil? entity) (atom? entity))
-    entity
+    (atomic-value entity)
     (let [entity-content (to-list (content entity))
           entity-elements (seq (map to-list (elements entity)))]
       (if entity-elements

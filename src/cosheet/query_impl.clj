@@ -23,7 +23,7 @@
 ;;;    and an indication of the number of the current term, which must
 ;;;    be the highest number.
 
-(def verbose false)
+(def ^:dynamic verbose false)
 
 (defn has-element-satisfying? [element target]
   "Return true if the item has an element satisfying the given element)."
@@ -112,6 +112,7 @@
 
 ;;; Find matches of elements of the target with the element.
 (defn element-matches [element env target]
+  (when verbose (println "element-matches" element (entity/to-list target)))
   (let [label (if (variable? element)
                 nil
                 (first (->> (entity/elements element)
@@ -124,6 +125,7 @@
                            candidates)))))
 
 (defn item-matches [item env target]
+  (when verbose (println "item-matches"))
   (seq
    (reduce
     (fn [envs element]
@@ -131,7 +133,8 @@
                         envs)))
     (if (entity/content item)
       (template-matches
-       (entity/content-reference item) env (entity/content target))
+       ;; TODO: Should be content-reference for second arg below.
+       (entity/content item) env (entity/content-reference target))
       [env])
     (entity/elements item))))
 
@@ -141,7 +144,8 @@
 (defmethod template-matches :env [template env target]
   (when verbose (println "template matches" template
                          (zipmap (keys env) (map entity/to-list (vals env)))
-                         (entity/to-list target)))
+                         (entity/to-list target)
+                         "xxx"))
   (cond
    (entity/atom? template)
    (if (extended-by? template target) [env])

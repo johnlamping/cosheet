@@ -328,7 +328,7 @@
          scheduler expression changed-expression)))))
 
 (letfn
-    [(state-change-callback [value scheduler expression]
+    [(state-change-callback [value state scheduler expression]
        (add-task (:pending scheduler) handle-state-changed expression))
 
      (register-added-state

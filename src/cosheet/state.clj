@@ -9,10 +9,10 @@
    a map of additional information to be incorporated into the state,
    and a callback to call when the first subscription is added,
    or the last removed. The callback will be called with,
-   whether or not there are any subscriptions,
+   whether or not there are any subscriptions, the state object,
    and any additional arguments specified with the callback."
-  [& {:keys [value info callback] :as args}]
-  (into (if (nil? info) {} info)
+  [& {:keys [value callback additional] :as args}]
+  (into (if (nil? additional) {} additional)
         (into
          {::value (atom value) ; The current value.
           :subscriptions (atom #{})} ; subscriptions, in the form  [fn arg ...]
@@ -33,19 +33,20 @@
   (let [[old new] (swap-returning-both! (::value state) (constantly value))]
     (if (not= old new)
       (doseq [[fn & args] @(:subscriptions state)]
-        (apply call-with-latest-value #(identity @(::value state)) fn args)))))
+        (apply call-with-latest-value #(identity @(::value state))
+               fn state args)))))
 
 (defn- inform-callback [state]
   (if-let [[fn & args] (:callback state)]
     (apply call-with-latest-value #(not (empty? @(:subscriptions state)))
-           fn args)))
+           fn state args)))
 
 (defn subscribe
   "Returns the current value, or nil if it is currently unknown. If
    the current value changes, the callback will eventually be called.
    It must be a function or a sequence of a function and
-   arguments. The function will be passed the new value and the
-   additional arguments, if any. The function may not be called for every
+   arguments. The function will be passed the new value, the state object, and
+   the additional arguments, if any. The function may not be called for every
    change, but will eventually be called after any change."
   [state callback & args]
   (let [[old new] (swap-returning-both! (:subscriptions state)

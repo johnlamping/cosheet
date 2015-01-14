@@ -3,11 +3,6 @@
             [cosheet.mutable-map :as mm]
             :reload))
 
-(deftest swap-returning-both!-test
-  (let [a (atom 1)]
-    (is (= (mm/swap-returning-both! a (fn [old] (is (= old 1)) 2))) [1 2])
-    (is (= @a 2))))
-
 (deftest mutable-map-test
   (let [mm (mm/new-mutable-map)]
     (mm/update! mm :foo (fn [x] 5))
@@ -30,7 +25,7 @@
     (mm/update-in-clean-up! mm [:foo :bar] (constantly nil))
     (is (nil? (mm/get! mm :foo)))))
 
-(deftest call-with-latest-value!-test
+(deftest call-with-latest-value-in!-test
   (let [mm (mm/new-mutable-map)
         path [:a :b]]
     (mm/assoc-in! mm path 1)

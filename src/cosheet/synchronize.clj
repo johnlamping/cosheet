@@ -1,6 +1,6 @@
 (ns cosheet.synchronize
   (:require [clojure.data.priority-map :as priority-map]
-            [cosheet.mutable-map :refer [swap-returning-both!]]))
+            [cosheet.utils :refer [swap-returning-both!]]))
 
 ;;; Methods for maintaining a priority queue of tasks
 

@@ -28,3 +28,19 @@
          {:a {:b {:c 1 :d 2}}}))
   (is (= (update-in-clean-up  {:a {:b {:c 1}}} [:a :b :d]  (constantly 2))
          {:a {:b {:c 1 :d 2}}})))
+
+(deftest swap-returning-both!-test
+  (let [a (atom 1)]
+    (is (= (swap-returning-both! a (fn [old] (is (= old 1)) 2))) [1 2])
+    (is (= @a 2))))
+
+(deftest call-with-latest-value-test
+  (let [cell (atom 1)]
+    (call-with-latest-value
+     (fn [] @cell)
+     (fn [current arg]
+       (is (= arg "arg"))
+       (reset! cell (min (inc current) 5)))
+     "arg")
+    (is (= @cell 5))))
+

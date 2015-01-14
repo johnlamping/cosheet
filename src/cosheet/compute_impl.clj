@@ -1,6 +1,7 @@
 (ns cosheet.compute-impl
   (:require [clojure.set :as set]
             (cosheet [compute :refer :all]
+                     [state :refer :all]
                      [synchronize :refer :all]
                      [utils :refer [dissoc-in update-in-clean-up]]
                      [mutable-map :as mm])))
@@ -123,7 +124,7 @@
     (assert (empty? (:uncertain-depends info)))
     (assert (empty? (:unused-depends info)))
     (cond
-      (satisfies? State result)
+      (state? result)
       (update-state-result info result)
       (application? result)
       (update-application-result
@@ -327,21 +328,21 @@
          scheduler expression changed-expression)))))
 
 (letfn
-    [(state-change-callback [scheduler expression]
+    [(state-change-callback [value scheduler expression]
        (add-task (:pending scheduler) handle-state-changed expression))
 
      (register-added-state
        [current-state scheduler expression]
        (let [e-mm (:expressions scheduler)]
          (let [value (subscribe current-state
-                                [state-change-callback scheduler expression])]
+                                state-change-callback scheduler expression)]
            (if (not= value (mm/get-in! e-mm [expression :visible :value]))
              (add-task (:pending scheduler) handle-state-changed expression)))))
 
      (register-removed-state
        [scheduler expression removed-state]
        (unsubscribe removed-state
-                    [state-change-callback scheduler expression]))]
+                    state-change-callback scheduler expression))]
 
   (defn register-different-state
    "Given the current state object, and an object that may be or may

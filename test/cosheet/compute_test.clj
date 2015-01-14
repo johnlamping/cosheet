@@ -4,26 +4,10 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [synchronize :as synchronize]
+                     [state :refer :all]
                      [compute :refer :all]
                      [compute-impl :refer :all])
             :reload))
-
-(defrecord TestState
-    [value subscriptions]
-  State
-  (state-value [this] @value)
-  (state-set [this new-value]
-    (reset! value new-value)
-    (doseq [callback @subscriptions]
-      (apply (first callback) (rest callback))))
-  (subscribe [this callback]
-    (swap! subscriptions #(conj % (if (fn? callback) [callback] callback)))
-    @value)
-  (unsubscribe [this callback]
-    (swap! subscriptions #(disj % (if (fn? callback) [callback] callback)))))
-
-(defn new-test-state [value]
-  (->TestState (atom value) (atom #{})))
 
 (deftest update-valid-test
   (is (= (update-valid {:value-depends-changed true})
@@ -47,8 +31,8 @@
   (is (= (update-value {:visible {:value 1}} 2) {:visible {:value 2}})))
 
 (deftest update-result-test
-  (let [state (new-test-state 1)
-        new-state (new-test-state 2)]
+  (let [state (new-state :value 1)
+        different-state (new-state :value 2)]
     (is (= (update-result {:visible {:value 1}
                            :value-depends-changed true
                            :state state} 2)
@@ -56,13 +40,13 @@
             :pending-registrations [[[:state] register-different-state state]]}))
     (is (= (update-result {:visible {:value 1 :valid true} :state state
                            :pending-registrations [1]}
-                          new-state)
+                          different-state)
            {:visible {:value 2 :valid true}
-            :state new-state
+            :state different-state
             :pending-registrations
             [1
              [[:state] register-different-state state]
-             [[:state] register-different-state new-state]]}))
+             [[:state] register-different-state different-state]]}))
     (is (= (update-result {:visible {:value 1}
                            :value-depends-changed true
                            :pending-registrations [1]}
@@ -230,8 +214,8 @@
 
 (deftest register-added-removed-state-test
   (let [s (new-approximating-scheduler)
-        st1 (new-test-state 1)
-        st2 (new-test-state 2)
+        st1 (new-state :value 1)
+        st2 (new-state :value 2)
         e-mm (:expressions s)]
     (mm/assoc-in! e-mm [:a :state] st1)
     (register-different-state (mm/get-in! e-mm [:a :state]) s :a st2)
@@ -246,7 +230,6 @@
       (register-different-state (mm/get-in! e-mm [:a :state]) s :a st1)
       (is (empty? @(:subscriptions st1))))))
 
-
 (deftest handle-depends-on-info-changed-test
   (let [s (new-approximating-scheduler)]
     (change-and-schedule-propagation
@@ -258,7 +241,7 @@
 
 (deftest handle-state-changed-test
   (let [s (new-approximating-scheduler)
-        state (new-test-state 1)
+        state (new-state :value 1)
         exp [(fn [] state)]]
     (change-and-schedule-propagation s exp update-initialize-if-needed exp)
     (is (= (mm/get-in! (:expressions s) [exp :visible :value]) 1))
@@ -276,7 +259,7 @@
       (is (= (current-value s [fib 6]) 13)))))
 
 (deftest simple-compute-test
-  (let [state (new-test-state 1)]
+  (let [state (new-state :value 1)]
     (letfn [(fib [n] (if (<= n 1)
                        state
                        (eval-let [f1 [fib (- n 1)]
@@ -296,7 +279,7 @@
         trials 10 ;0000
         changes-per-trial 1000
         states (vec (for [i (range width)]
-                      (new-test-state (mod (inc i) width))))
+                      (new-state :value (mod (inc i) width))))
         s (new-approximating-scheduler)]
     (letfn [(indexer [d pos]
               (if (zero? d)

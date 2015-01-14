@@ -1,22 +1,5 @@
-(ns cosheet.compute)
-
-(defprotocol State
-  "The methods of something that holds a single value that can change."
-  (state-value [this]
-    "The current value of the state")
-  (state-set [this new-value]
-    "Make the new value be the value, and let the callbacks know.")
-  (subscribe [this callback]
-    ;; Note: the signature can't be [this callback & args] because
-    ;; defprotocols don't support varadic arguments.
-    "Returns the current value, or nil if it is currently unknown. If
-     the current value changes, the callback will eventually be called.
-     It must be a function or a sequence of a function and
-     arguments. The function will be passed the new value and the
-     additional arguments, if any. The function may not be called for every
-     change, but will eventually be called after all changes.")
-  (unsubscribe [this callback]
-    "Removes the specified subscription."))
+(ns cosheet.compute
+  (:require [cosheet.state :refer :all]))
 
 (defprotocol Notifier
   "Something that can return the value or State objects for expressions."
@@ -98,7 +81,7 @@
   [[fn & args]]
   (let [result (apply fn args)]
     (cond
-      (satisfies? State result)
+      (state? result)
       (state-value result)
       (application? result)
       (simple-compute (cons (application-fn result)

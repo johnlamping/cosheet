@@ -1,14 +1,6 @@
 (ns cosheet.mutable-map
   (:require [cosheet.utils :refer :all]))
 
-(defn swap-returning-both! [cell f & args]
-  (loop []
-    (let [old @cell
-          new (apply f old args)]
-      (if (compare-and-set! cell old new)
-        [old new]
-        (recur)))))
-
 ;;; Functions that implement mutable maps.
 ;;; By hiding mutable maps behind this abstraction, we can switch the
 ;;; implementation if we want.
@@ -77,10 +69,7 @@
    matches the value used in the call. This is good for registering the
    current state with some other place that needs to track it."
   [mm path f & args]
-  (loop [value (get-in! mm path)]
-    (apply f value args)
-    (let [latest-value (get-in! mm path)]
-      (when (not= value latest-value) (recur latest-value)))))
+  (apply call-with-latest-value #(get-in! mm path) f args))
 
 (defn call-and-clear-in!
   "Clear the value at the path, and if there was one, call the

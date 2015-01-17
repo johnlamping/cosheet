@@ -5,7 +5,7 @@
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
-            :reload
+            ; :reload
             ))
 
 (def test-store

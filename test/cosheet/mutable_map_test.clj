@@ -1,7 +1,8 @@
 (ns cosheet.mutable-map-test
   (:require [clojure.test :refer [deftest is]]
             [cosheet.mutable-map :as mm]
-            :reload))
+            ; :reload
+            ))
 
 (deftest mutable-map-test
   (let [mm (mm/new-mutable-map)]

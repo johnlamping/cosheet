@@ -7,7 +7,7 @@
             [cosheet.store-impl :refer [->ItemId]]
             cosheet.entity-impl
             [cosheet.query-impl :refer :all]
-            :reload
+            ; :reload
             ))
 
 (deftest extended-by-test

@@ -1,6 +1,6 @@
 (ns cosheet.core
   (:require (cosheet store entity query
-                     mutable-map synchronize compute
+                     mutable-map task-queue compute
                      store-impl entity-impl query-impl
                      compute_impl)
             :reload)

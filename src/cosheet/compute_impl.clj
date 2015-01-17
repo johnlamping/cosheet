@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             (cosheet [compute :refer :all]
                      [state :refer :all]
-                     [synchronize :refer :all]
+                     [task-queue :refer :all]
                      [utils :refer [dissoc-in update-in-clean-up]]
                      [mutable-map :as mm])))
 

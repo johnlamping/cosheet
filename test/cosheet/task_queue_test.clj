@@ -1,6 +1,6 @@
-(ns cosheet.synchronize-test
+(ns cosheet.task-queue-test
   (:require [clojure.test :refer [deftest is]]
-            [cosheet.synchronize :refer :all]
+            [cosheet.task-queue :refer :all]
             :reload))
 
 (deftest tasks-test

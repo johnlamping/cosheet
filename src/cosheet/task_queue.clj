@@ -1,4 +1,4 @@
-(ns cosheet.synchronize
+(ns cosheet.task-queue
   (:require [clojure.data.priority-map :as priority-map]
             [cosheet.utils :refer [swap-returning-both!]]))
 
@@ -45,9 +45,3 @@
   (loop []
     (if (not (finished-all-tasks? task-queue))
       (recur))))
-
-
-
-;;; TODO: write functions for a trivial store; probably can't
-;;; find one online, because this is not about events but change
-;;; notifications.

@@ -3,11 +3,12 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
-                     [synchronize :as synchronize]
+                     [task-queue :as task-queue]
                      [state :refer :all]
                      [compute :refer :all]
                      [compute-impl :refer :all])
-            :reload))
+            ; :reload
+            ))
 
 (deftest update-valid-test
   (is (= (update-valid {:value-depends-changed true})
@@ -309,7 +310,7 @@
           (when (zero? (mod j 17))
             (future (run-all-pending s))))
         (future (run-all-pending s))
-        (synchronize/wait-until-finished (:pending s))
+        (task-queue/wait-until-finished (:pending s))
         (right-results?)))))
 
 (comment "How to do local redefinitions in a rest"

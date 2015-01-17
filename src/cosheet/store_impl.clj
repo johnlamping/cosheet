@@ -61,22 +61,26 @@
   (let [subject (get-in store [:id->data id :subject])
         subject-of-subject (get-in store [:id->data subject :subject])
         atomic-value (atomic-value store id)]
-    (if (nil? subject)
+    (if (or (nil? subject)
+            (nil? subject-of-subject)
+            (nil? atomic-value))
       store
-      (-> ;; Index the id for which this id provides a new label.
-          (if (or (nil? subject-of-subject)
-                  (nil? atomic-value))
-            store
-            (-> store
-                (update-in-clean-up
-                 [:subject->label->ids subject-of-subject nil]
-                 #(remove-from-vector % subject))
-                (update-in
-                 [:subject->label->ids subject-of-subject atomic-value]
-                 #(ensure-in-vector % subject))))
-          ;; Index the new id.
-         (update-in [:subject->label->ids subject nil]
-                    #(ensure-in-vector % id))))))
+      (-> store
+          (update-in-clean-up
+           [:subject->label->ids subject-of-subject nil]
+           #(remove-from-vector % subject))
+          (update-in
+           [:subject->label->ids subject-of-subject atomic-value]
+           #(ensure-in-vector % subject))))))
+
+(defn index-in-subject
+  "Record this item as an element of its subject."
+    [store id]
+    (let [subject (get-in store [:id->data id :subject])]
+      (if (nil? subject)
+        store
+        (update-in store [:subject->label->ids subject nil]
+                   #(ensure-in-vector % id)))))
 
 (defn index-content
   "Do indexing to reflect the item having the content.
@@ -97,30 +101,34 @@
   (let [subject (:subject (get-in store [:id->data id]))
         subject-of-subject (get-in store [:id->data subject :subject])
         label (atomic-value store id)]
+    (if (or (nil? subject)
+            (nil? subject-of-subject) ; We didn't add a label.
+            (nil? atomic-value) ; We didn't add a label.
+            (some #(= (atomic-value store %) label) ; Redundant label.
+                  (remove #{id} (id->element-ids store subject))))
+      store ; We have no effect on the index
+      (-> (if (some #(not (nil? (atomic-value store %)))
+                    (remove #{id} (id->element-ids store subject)))
+            store
+            ;; There are no other labels for our subject, so put
+            ;; it under nil.
+            (update-in store
+                       [:subject->label->ids subject-of-subject nil]
+                       #(ensure-in-vector % subject)))
+          (update-in-clean-up
+           [:subject->label->ids subject-of-subject label]
+           #(remove-from-vector % subject))))))
+
+(defn deindex-in-subject
+  "Remove the item, which must have no elements, as an element of its subject."
+  [store id]
+  (let [subject (:subject (get-in store [:id->data id]))]
     (if (nil? subject)
       store ; We have no effect on the index
-      (-> ;; Remove indexing for the label provided by this item.
-       (if (or (nil? subject-of-subject) ; We didn't add a label.
-               (nil? atomic-value) ; We didn't add a label.
-               (some #(= (atomic-value store %) label) ; Redundant label.
-                     (remove #{id} (id->element-ids store subject))))
-            store 
-            (-> (if (some #(not (nil? (atomic-value store %)))
-                          (remove #{id} (id->element-ids store subject)))
-                  store
-                  ;; There are no other labels for our subject, so put
-                  ;; it under nil.
-                  (update-in store
-                             [:subject->label->ids subject-of-subject nil]
-                             #(ensure-in-vector % subject)))
-                (update-in-clean-up
-                 [:subject->label->ids subject-of-subject label]
-                 #(remove-from-vector % subject))))
-       ;; Remove this item as an element of the subject. Our elements
-       ;; have already been removed, so we should have been indexed
-       ;; under nil.
-       (update-in-clean-up [:subject->label->ids subject nil]
-                           #(remove-from-vector % id))))))
+       ;; Since we have no elements, we should have been indexed
+       ;; under nil.      
+      (update-in-clean-up store [:subject->label->ids subject nil]
+                          #(remove-from-vector % id)))))
 
 (defn index-content
   "Do indexing to reflect the item having the content.
@@ -135,7 +143,7 @@
       store)))
 
 (defn deindex-content
-  "Do indexing to reflect the item having the content.
+  "Undo indexing to reflect the item having the content.
   The content must not be implicit."
   [store id]
   (let [content (get-in store [:id->data id :content])]
@@ -229,6 +237,7 @@
              (update-in [:next-id] inc)
              (assoc-in [:id->data item-id] data)
              (index-subject item-id)
+             (index-in-subject item-id)
              (index-content item-id))
          item-id])))
 
@@ -239,8 +248,18 @@
             "Removed id has elements.")
     (-> this
         (deindex-subject id)
+        (deindex-in-subject id)
         (deindex-content id)
-        (dissoc-in [:id->data id]))))
+        (dissoc-in [:id->data id])))
+
+  (update-content [this id content]
+    (assert (not (nil? content)))
+    (-> this
+        (deindex-subject id)
+        (deindex-content id)
+        (assoc-in [:id->data id :content] content)
+        (index-subject id)
+        (index-content id))))
 
 (defmethod new-element-store true []
   (->ElementStore {} {} 0))

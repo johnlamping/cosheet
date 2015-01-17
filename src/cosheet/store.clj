@@ -72,7 +72,11 @@
   
   (remove-simple-id [this id]
     "Remove the item with the given id from the store.
-     It must have no elements."))
+     It must have no elements.")
+
+  (update-content [this id content]
+    "Change the content of the item with the  given id to be the
+     specified content."))
 
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store

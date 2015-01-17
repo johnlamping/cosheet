@@ -5,7 +5,7 @@
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
-            ; :reload
+            :reload
             ))
 
 (def test-store
@@ -79,12 +79,12 @@
   (is (= (atomic-value test-store (make-id "6")) 5))
   (is (= (atomic-value test-store (make-id "1")) 5)))
 
-(deftest index-subject-test
+(deftest index-subject-in-subject-test
   (let [missing-store
         (assoc test-store :subject->label->ids {})
         indexed-store
         (reduce (fn [store id]
-                  (index-subject store id))
+                  (index-in-subject (index-subject store id) id))
                 missing-store
                 (keys (:id->data missing-store)))]
     (is (= indexed-store test-store))))
@@ -168,6 +168,15 @@
     (is (= (assoc (remove-simple-id added-store element)
                   :next-id (:next-id test-store))
            test-store))))
+
+(deftest change-content-test
+  (let [[added-store _]
+        (add-simple-element test-store (make-id "1") (make-id "2"))
+        [different-store element]
+        (add-simple-element test-store (make-id "1") (make-id "3"))
+        changed-store
+        (update-content different-store element (make-id "2"))]
+    (is (= added-store changed-store))))
 
 (deftest candidate-matching-ids-test
   (is (= (set (candidate-matching-ids test-store nil))

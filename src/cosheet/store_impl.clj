@@ -169,7 +169,7 @@
             content-id])))
      [store id]))
 
-(defrecord ElementStore
+(defrecord ElementStoreImpl
     ^{:doc
       "An immutable store that has only enough indexing
        to find elements of items."}
@@ -201,7 +201,7 @@
 
   (id->content [this id]
     (cond (instance? ImplicitContentId id)
-          (id->content this (:containing-item-id id))
+          (id->content this (id->content this (:containing-item-id id)))
           (instance? ItemId id)
           (get-in this [:id->data id :content])
           :else
@@ -213,16 +213,23 @@
         content
         (->ImplicitContentId id))))
 
-    (id-is-content? [this id]
-    (not (empty? (get-in this [:id->data id :containers]))))
-  
   ;;; TODO: make this actually filter based on the item.
   (candidate-matching-ids [this item]
     ;; Return all items that have elaborations.
     (keys subject->label->ids))
 
-  (mutable-store? [this] nil)
+  (mutable-store? [this] false)
 
+  ElementStore
+
+  (id->subject [this id]
+    (if (instance? ItemId id)
+      (get-in this [:id->data id :subject])
+      nil))
+
+  (id-is-content? [this id]
+    (not (empty? (get-in this [:id->data id :containers]))))
+  
   ImmutableStore
 
   (add-simple-element [this subject content]
@@ -262,7 +269,7 @@
         (index-content id))))
 
 (defmethod new-element-store true []
-  (->ElementStore {} {} 0))
+  (map->ElementStoreImpl {:id->data {} :subject->label->id {} :next-id 0}))
 
 (defmethod make-id true [id]
   ;;Integers are reserved for the store

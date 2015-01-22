@@ -51,9 +51,6 @@
   (id->content-reference [this id]
     "Given an item, return a reference to its content.")
 
-  (id-is-content? [this id]
-    "Return true if the id is the content of some other id.")
-
   ;; Used by queries.
   
   (candidate-matching-ids [this item]
@@ -62,6 +59,17 @@
 
   (mutable-store? [this]
     "Return whether this store is mutable"))
+
+(defprotocol ElementStore
+  "Methods that element stores implement,
+   that rely on all items being explicitly known,
+  and each having just one subject."
+  
+  (id->subject [this id]
+    "Given an item, return its subject.")
+
+  (id-is-content? [this id]
+    "Return true if the id is the content of some other id."))
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
@@ -78,13 +86,39 @@
     "Change the content of the item with the  given id to be the
      specified content."))
 
+(defprotocol MutableStore
+  "The basic methods that mutable stores support to change themselves,
+  from which higher levels ones are built."
+  (current-store [this]
+    "The current state of the mutable store")
+  
+  (add-simple-element! [this subject content]
+    "Add an element to the subject with the given content,
+     which must be atomic, returning the id of the new element.")
+  
+  (remove-simple-id! [this id]
+    "Remove the item with the given id from the store.
+     It must have no elements.")
+
+  (update-content! [this id content]
+    "Change the content of the item with the  given id to be the
+     specified content."))
+
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store
+  (constantly true))
+
+;; Factory that creates a MutbleStore initialized to a given store
+(defmulti new-mutable-store
   (constantly true))
 
 ;; Factory that makes element ids from primitives, which must not be integers.
 (defmulti make-id
   (constantly true))
+
+;;; TODO: define these via a walker that returns a sequence of items to
+;;; add or remove, together with a way to name new items, and a way to
+;;; mark content that should be removed if not used elsewhere.
 
 (defn add-entity
   "Add an entity to the store, with content and elements equal to the target,
@@ -92,8 +126,7 @@
    Return the new store and the id of the element."
   [store subject-id target]
   (if (or (satisfies? StoredItemDescription target) (entity/atom? target))
-    (let [[s id] (add-simple-element store subject-id target)]
-      [s id])
+     (add-simple-element store subject-id target)
     (let [[preliminary-store content]
           (let [content (entity/content target)]
             (if (or (satisfies? StoredItemDescription content)

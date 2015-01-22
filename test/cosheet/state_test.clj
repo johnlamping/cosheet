@@ -16,6 +16,12 @@
     (is (= (:a s) nil))
     (is (state? s))
     (is (state-value s) 1)
+    (state-update s (fn [old arg]
+                      (is (= old 1))
+                      (is (= arg "arg"))
+                      3)
+                  "arg")
+    (is (state-value s) 3)
     (state-set s 2)
     (is (state-value s) 2)
     (subscribe s generic-callback "val")

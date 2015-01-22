@@ -34,6 +34,11 @@
     (is (= (swap-returning-both! a (fn [old] (is (= old 1)) 2))) [1 2])
     (is (= @a 2))))
 
+(deftest swap-control-return!-test
+  (let [a (atom 1)]
+    (is (= (swap-control-return! a (fn [old] (is (= old 1)) [2 3]))) 3)
+    (is (= @a 2))))
+
 (deftest call-with-latest-value-test
   (let [cell (atom 1)]
     (call-with-latest-value

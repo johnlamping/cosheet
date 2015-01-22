@@ -5,11 +5,11 @@
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
-            :reload
+            ; :reload
             ))
 
 (def test-store
-  (->ElementStore
+  (->ElementStoreImpl
    {(make-id "1") {:subject (make-id "0") :content (make-id "4")}
     (make-id "2") {:subject (make-id "1") :content "foo"}
     (make-id "3") {:subject (make-id "2") :content :label}
@@ -46,10 +46,10 @@
   (is (= (id->content test-store (make-id "6")) 5))
   (is (= (id->content test-store (->ImplicitContentId (make-id "2"))) "foo"))
   (is (= (id->content test-store (->ImplicitContentId (make-id "1")))
-         (make-id "4")))
+         (make-id "6")))
   (is (= (id->content test-store (->ImplicitContentId
                                   (->ImplicitContentId (make-id "1"))))
-         (make-id "4"))))
+         5)))
 
 (deftest id->content-reference-test
   (is (= (id->content-reference test-store (make-id "1")) (make-id "4")))
@@ -58,6 +58,10 @@
   (is (= (id->content-reference test-store
                                 (->ImplicitContentId (make-id "2")))
          (->ImplicitContentId (->ImplicitContentId (make-id "2"))))))
+
+(deftest id->subject-test
+  (is (= (id->subject test-store (make-id "2")) (make-id "1")))
+  (is (= (id->subject test-store 2) nil)))
 
 (deftest ensure-in-vector-test
   (is (= (ensure-in-vector nil 1) [1]))

@@ -8,7 +8,7 @@
   "Create a new state object. The call can provide the initial value,
    a map of additional information to be incorporated into the state,
    and a callback to call when the first subscription is added,
-   or the last removed. The callback will be called with,
+   or the last removed. The callback will be called with:
    whether or not there are any subscriptions, the state object,
    and any additional arguments specified with the callback."
   [& {:keys [value callback additional] :as args}]
@@ -27,16 +27,24 @@
   [state]
   @(::value state))
 
+(defn state-update
+  "Call the function with the current value,
+  and set the value of the state to the result of the function."
+  [state f & args]
+  (let [[old new] (apply swap-returning-both! (::value state) f args)]
+    (if (not= old new)
+      (doseq [[f & args] @(:subscriptions state)]
+        (apply call-with-latest-value (fn [] @(::value state))
+               f state args)))))
+
 (defn state-set
   "Make the new value be the value, and let the callbacks know."
   [state value]
-  (let [[old new] (swap-returning-both! (::value state) (constantly value))]
-    (if (not= old new)
-      (doseq [[fn & args] @(:subscriptions state)]
-        (apply call-with-latest-value #(identity @(::value state))
-               fn state args)))))
+  (state-update state (constantly value)))
 
-(defn- inform-callback [state]
+(defn- inform-provider-callback
+  "Tell the provider of our values whether we are interested in updates."
+  [state]
   (if-let [[fn & args] (:callback state)]
     (apply call-with-latest-value #(not (empty? @(:subscriptions state)))
            fn state args)))
@@ -52,7 +60,7 @@
   (let [[old new] (swap-returning-both! (:subscriptions state)
                                         #(conj % (cons callback args)))]
     (when (empty? old)
-      (inform-callback state))
+      (inform-provider-callback state))
     @(::value state)))
 
 (defn unsubscribe
@@ -61,5 +69,5 @@
   (let [[old new] (swap-returning-both! (:subscriptions state)
                                         #(disj % (cons callback args)))]
     (when (and (empty? new) (not (empty? old)))
-      (inform-callback state))))
+      (inform-provider-callback state))))
 

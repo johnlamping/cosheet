@@ -26,12 +26,25 @@
 
 ;; Utils for working with atoms in a lock free way.
 
-(defn swap-returning-both! [cell f & args]
+(defn swap-returning-both!
+  "Swap, and return a vector of the old and new values"
+  [cell f & args]
   (loop []
     (let [old @cell
           new (apply f old args)]
       (if (compare-and-set! cell old new)
         [old new]
+        (recur)))))
+
+(defn swap-control-return!
+  "Like swap!, except f should return two values:
+   a new value for the atom and the value to return from the swap."
+  [cell f & args]
+  (loop []
+    (let [old @cell
+          [new return-value] (apply f old args)]
+      (if (compare-and-set! cell old new)
+        return-value
         (recur)))))
 
 (defn call-with-latest-value

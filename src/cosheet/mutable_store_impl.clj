@@ -121,7 +121,7 @@
 
   (update-content! [this id content]
     (swap! (:store this) #(update-content % id content))
-    (update-states-for-id id)))
+    (update-states-for-id this id)))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w (:store s)))

@@ -75,8 +75,9 @@
   (is (= (remove-from-vector nil 1) nil)))
 
 (deftest id-is-content?-test
-  (is (id-is-content? test-store (make-id "4")))
-  (is (not (id-is-content? test-store (make-id "3")))))
+  (is (id-is-content? test-store (make-id "4") nil))
+  (is (not (id-is-content? test-store (make-id "4") [(make-id "1")])))
+  (is (not (id-is-content? test-store (make-id "3") nil))))
 
 (deftest atomic-value-test
   (is (= (atomic-value test-store (make-id "0")) nil))
@@ -190,24 +191,5 @@
   (let [store (new-element-store)]
     (is (= (candidate-matching-ids store nil) nil))))
 
-(deftest add-entity-test
-  (let [[added-store element]
-        (add-entity test-store (make-id "0") '((77 88) ("test" :label)))
-        [added-store2 _]
-        (add-entity added-store element '("Fred" ("by" :label)))]
-    (is (#{'((77 88) ("test" :label) ("Fred" ("by" :label)))
-           '((77 88) ("Fred" ("by" :label)) ("test" :label))}
-         (to-list (description->entity element added-store2))
-         ))))
-
-(deftest remove-entity-by-id-test
-  (let [[added-store e1]
-        (add-entity test-store (make-id "0")
-                    (list (list (make-id "4")) '("test" :label)))
-        [added-store2 e2]
-        (add-entity added-store e1 '("Fred" ("by" :label)))
-        removed-store (remove-entity-by-id added-store2 e1)]
-    (is (= (assoc removed-store :next-id (:next-id test-store))
-           test-store))))
 
 

@@ -1,12 +1,13 @@
 (ns cosheet.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            [cosheet.store :as store]
-            [cosheet.entity :as entity]
-            [cosheet.query :refer :all]
-            [cosheet.store-impl :refer [->ItemId]]
-            cosheet.entity-impl
-            [cosheet.query-impl :refer :all]
+            (cosheet [store :as store]
+                     [store-utils :as store-utils]
+                     [entity :as entity]
+                     [query :refer :all]
+                     [store-impl :refer [->ItemId]]
+                     entity-impl
+                     [query-impl :refer :all])
             ; :reload
             ))
 
@@ -193,9 +194,10 @@
 (deftest query-matches-test
   (let [ia (->ItemId "A")
         ib (->ItemId "B")
-        s1 (first (store/add-entity (store/new-element-store) ia '(1 (2 3))))
-        s2 (first (store/add-entity s1 ia '(3 (4 5))))
-        store (first (store/add-entity s2 ib '(1 (2 4))))]
+        s1 (first (store-utils/add-entity
+                   (store/new-element-store) ia '(1 (2 3))))
+        s2 (first (store-utils/add-entity s1 ia '(3 (4 5))))
+        store (first (store-utils/add-entity s2 ib '(1 (2 4))))]
     ;; elements
     (is (= (query-matches '(1 (2)) store) [{}]))
     (is (= (query-matches '(nil (2)) store) [{}]))

@@ -29,7 +29,7 @@
   "A description of an Item recorded by a store"
   (atom-description? [this]
     "True if this description refers to an atom. This is true only for
-   content references."))
+     content references."))
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.
@@ -68,8 +68,9 @@
   (id->subject [this id]
     "Given an item, return its subject.")
 
-  (id-is-content? [this id]
-    "Return true if the id is the content of some other id."))
+  (id-is-content? [this id exceptions]
+    "Return true if the id is the content of some other id
+     that not in the list of exceptions."))
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
@@ -116,42 +117,5 @@
 (defmulti make-id
   (constantly true))
 
-;;; TODO: define these via a walker that returns a sequence of items to
-;;; add or remove, together with a way to name new items, and a way to
-;;; mark content that should be removed if not used elsewhere.
-
-(defn add-entity
-  "Add an entity to the store, with content and elements equal to the target,
-   and with the given subject.
-   Return the new store and the id of the element."
-  [store subject-id target]
-  (if (or (satisfies? StoredItemDescription target) (entity/atom? target))
-     (add-simple-element store subject-id target)
-    (let [[preliminary-store content]
-          (let [content (entity/content target)]
-            (if (or (satisfies? StoredItemDescription content)
-                    (entity/atom? content))
-              [store content]
-              (add-entity store nil content)))]
-      (let [[added-store id]
-            (add-entity preliminary-store subject-id content)]
-        [(reduce (fn [store element] (first (add-entity store id element)))
-                 added-store
-                 (entity/elements target))
-         id]))))
-
-(defn remove-entity-by-id
-  "Remove the entity with the given id, and all its elements and content."
-  [store id]
-  (let [content (id->content store id)
-        no-elements (reduce (fn [store element]
-                              (remove-entity-by-id store element))
-                            store
-                            (id->element-ids store id))
-        no-entity (remove-simple-id no-elements id)]
-    (if (and (satisfies? StoredItemDescription content)
-             (not (id-is-content? no-entity content)))
-      (remove-entity-by-id no-entity content)
-      no-entity)))
 
 

@@ -227,8 +227,8 @@
       (get-in this [:id->data id :subject])
       nil))
 
-  (id-is-content? [this id]
-    (not (empty? (get-in this [:id->data id :containers]))))
+  (id-is-content? [this id exceptions]
+    (not-every? (set exceptions) (get-in this [:id->data id :containers])))
   
   ImmutableStore
 
@@ -269,7 +269,7 @@
         (index-content id))))
 
 (defmethod new-element-store true []
-  (map->ElementStoreImpl {:id->data {} :subject->label->id {} :next-id 0}))
+  (map->ElementStoreImpl {:id->data {} :subject->label->ids {} :next-id 0}))
 
 (defmethod make-id true [id]
   ;;Integers are reserved for the store

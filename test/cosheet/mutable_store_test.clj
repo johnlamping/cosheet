@@ -4,6 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [store :refer :all]
+             [store-utils :refer :all]
              [entity :refer [to-list description->entity]]
              [state :refer :all]
              entity-impl

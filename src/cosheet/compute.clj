@@ -26,12 +26,15 @@
   (ready? [this expression]
     "True if the value of the computation is available."))
 
-(defmacro application
+(defn make-eval-and-call [fn & args]
+  (apply list :eval-and-call fn args))
+
+(defmacro eval-and-call
   "Return value that a function running under a scheduler may use to
    indicate that it wants the scheduler to evaluate some expressions
    and call the provided function with their values. The result of
    that call will be treated as the return value of the original
-   function. The new result may be another application, in which case
+   function. The new result may be another eval-and-call, in which case
    the process repeats.
    If the scheduler is an approximating scheduler, an argument may be
    the special indication (:monotonic expression). This indicate that
@@ -44,28 +47,35 @@
    to the functions to make sure that the ordering is consistent
    between an expression and its users."
   [fn & args]
-  `(list :application ~fn ~@args))
+  `(make-eval-and-call ~fn ~@args))
 
-(defn application? [expr]
-  (and (list? expr) (= (first expr) :application)))
+(defn eval-map
+  "Apply the function to each of the elements of the sequence,
+   then return a request to return a vector of the evaluation
+   of each of the returned items."
+  [f sequence]
+  (apply make-eval-and-call vector (map (fn [elem] [f elem]) sequence)))
 
-(defn application-fn [expr]
+(defn eval-and-call? [expr]
+  (and (list? expr) (= (first expr) :eval-and-call)))
+
+(defn eval-and-call-fn [expr]
   (second expr))
 
-(defn application-args [expr]
+(defn eval-and-call-args [expr]
   (rest (rest expr)))
 
 (defmacro eval-let
   "A let like construct that has the scheduler evaluate the bindings.
    The expressions in an eval-let's bindings may not refer to variables
    bound by that eval-let.
-   It expands to application forms."
+   It expands to eval-and-call forms."
   [bindings & body]
   (assert (even? (count bindings)) "Bindings must have an even number of forms")
   (let [pairs (partition 2 bindings)
         vars (map first pairs)
         exprs (map second pairs)]
-    `(application (fn ~(vec vars) ~@body)
+    `(eval-and-call (fn ~(vec vars) ~@body)
                   ~@(map (fn [exp] (if (sequential? exp) (vec exp) exp))
                          exprs))))
 
@@ -83,8 +93,8 @@
     (cond
       (state? result)
       (state-value result)
-      (application? result)
-      (simple-compute (cons (application-fn result)
-                            (map simple-compute (application-args result))))
+      (eval-and-call? result)
+      (simple-compute (cons (eval-and-call-fn result)
+                            (map simple-compute (eval-and-call-args result))))
       :else
       result)))

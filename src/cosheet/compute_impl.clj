@@ -95,7 +95,7 @@
            (dissoc :value-depends-changed)
            (update-valid)))
      
-     (update-application-result [info fn args]
+     (update-eval-and-call-result [info fn args]
        (let [needed-args (set/difference
                           (set args) (set (keys (:depends-info info))))]
          (->
@@ -109,7 +109,7 @@
                 (assoc :uncertain-depends needed-args)
                 (update-add-registration
                  [:depends-info] register-different-depends needed-args)))
-          (assoc :application (cons fn args)))))
+          (assoc :eval-and-call (cons fn args)))))
      
      (update-value-result [info value]
        (-> info
@@ -126,31 +126,31 @@
     (cond
       (state? result)
       (update-state-result info result)
-      (application? result)
-      (update-application-result
-       info (application-fn result) (application-args result))
+      (eval-and-call? result)
+      (update-eval-and-call-result
+       info (eval-and-call-fn result) (eval-and-call-args result))
       :else
       (update-value-result info result))))
 
 (letfn
-    [(update-run-application [info]
-       (let [[f & args] (:application info)
+    [(update-run-eval-and-call [info]
+       (let [[f & args] (:eval-and-call info)
              arg-info (:depends-info info)]
          (-> info
-             (dissoc :unused-depends :application)
+             (dissoc :unused-depends :eval-and-call)
              (update-result (apply f (map #(-> % arg-info :value) args))))))]
   
-  (defn update-run-application-while-ready [info]
+  (defn update-run-eval-and-call-while-ready [info]
     (loop [latest-info info]
-      (if (and (not (nil? (:application latest-info)))
+      (if (and (not (nil? (:eval-and-call latest-info)))
                (empty? (:uncertain-depends latest-info))
                (empty? (:pending-registrations latest-info)))
-        (recur (update-run-application latest-info))
+        (recur (update-run-eval-and-call latest-info))
         latest-info))))
 
 (defn update-start-evaluation
   "Start the computation that the information calls for.
-   There must be no pending application and no current state."
+   There must be no pending eval-and-call and no current state."
   [info [form & args]]
   (-> info
       (assoc :value-depends-changed true)
@@ -167,7 +167,7 @@
     ;; means that we need to start computation all over again. Record
     ;; that the current value is not valid via :value-depends-changed,
     ;; stop tracking dependencies, cancel our state and any pending
-    ;; application, and start the computation again.
+    ;; eval-and-call, and start the computation again.
     [(update-used-value-changed [info expression]
        (-> info
            (assoc :value-depends-changed true)
@@ -176,7 +176,7 @@
            (update-add-registration [:depends-info] register-different-depends
                                     (keys (:depends-info info)))
            (dissoc :depends-info :unused-depends :uncertain-depends
-                   :application)
+                   :eval-and-call)
            (update-start-evaluation expression)))
 
      ;; update :uncertain-depends to reflect the validity of the
@@ -239,7 +239,7 @@
                                run-registrations scheduler expression)
         (let [[old new] (mm/update-in-returning-both!
                               e-mm [expression]
-                              update-run-application-while-ready)]
+                              update-run-eval-and-call-while-ready)]
           (if (not= old new)
             (recur (or visible-change (not= (:visible old) (:visible new))))
             (when visible-change
@@ -398,16 +398,16 @@
    ;;   A set of :using-expressions that depend on the value.
    ;;   A boolean :value-depends-changed if some of the dependencies of
    ;;     the value have changed. In this case, there will be a
-   ;;     pending application, and the next three fields pertain to
+   ;;     pending eval-and-call, and the next three fields pertain to
    ;;     it. Unlike the later fields, which pertain to the pending
-   ;;     application, if there is one, this field always pertains to
+   ;;     eval-and-call, if there is one, this field always pertains to
    ;;     the current value.
    ;;   A :depends-info map from expressions that were used or are
-   ;;      needed by our computations so far (application if present,
+   ;;      needed by our computations so far (eval-and-call if present,
    ;;      otherwise value) to a copy of the version of information
    ;;      for that expression that is reflected in the computation.
    ;;   A :unused-depends subset of the keys of :depends-info that have not
-   ;;     been used yet but are needed by the current application.
+   ;;     been used yet but are needed by the current eval-and-call.
    ;;   A set of :uncertain-depends of expressions in :depends-info
    ;;     whose current value agrees with the recorded value, but
    ;;     which might be out of date.
@@ -430,7 +430,7 @@
    ;;     computation easier. The latter is reset to 0 whenever a
    ;;     non-monotonic input changes, because that change invalidates
    ;;     all iterations that went through this expression.
-   ;;   For internal computations the :application to call if we are
+   ;;   For internal computations the :eval-and-call to call if we are
    ;;     waiting for arguments, in the form (function argument ...),
    ;;     where the function is a Clojure function, while the
    ;;     arguments are expressions

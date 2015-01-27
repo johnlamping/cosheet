@@ -26,6 +26,11 @@
   it had been reified into an item with the constant as its content,
   and nothing else."
 
+  (mutable-entity? [this]
+    "True if this entity might change. In that case, most of the methods
+     on it assume they are runing under a Compute, and may return state
+     sensitive results, like States or applications.")
+
   (atom? [this]
     "True if this entity is atomic: either a primitive or a reference to
      a primitive.")
@@ -48,32 +53,32 @@
 
 ;;; Utility functions that work on entities
 
-(defn label->content [entity label]
+(defn- mutable?-dispatch [entity & rest]
+  (mutable-entity? entity))
+
+(defmulti label->content
   "Return the content of the element with the given label.
    There must be at most one such element." 
-  (let [elements (label->elements entity label)]
-    (when elements
-      (assert (= (count elements) 1))
-      (content (first elements)))))
+  mutable?-dispatch)
 
-(defn atomic-value [entity]
+(defmulti atomic-value
   "Return the atomic value reached by chasing contents"
-  (cond (nil? entity) nil
-        (atom? entity) (content entity) ; Could be implicit content reference.
-        :else (atomic-value (content entity))))
+  mutable?-dispatch)
 
-(defn label->atomic-values [entity label]
+(defmulti label->atomic-values
   "Return all atomic values for the label, reflecting multiplicity."
-  (map atomic-value (label->elements entity label)))
+  mutable?-dispatch)
 
-(defn label-has-atomic-value? [entity label value]
+(defmulti label-has-atomic-value?
   "Whether the entity has the given value
    among its atomic values for the given label."
-  (some (partial = value)
-        (label->atomic-values entity label)))
+  mutable?-dispatch)
 
 (defn to-list [entity]
   "Return the list representation of the entity"
+  ;; TODO: make this handle mutable by giving the current version,
+  ;; using the right version of Compute.
+  (assert (not (mutable-entity? entity)))
   (if (or (nil? entity) (atom? entity))
     (atomic-value entity)
     (let [entity-content (to-list (content entity))

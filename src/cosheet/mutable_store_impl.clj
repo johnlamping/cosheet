@@ -124,7 +124,8 @@
     (update-states-for-id this id)))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
-  (.write w (:store s)))
+  (.write w "Mutable:")
+  (print-method (:store s) w))
 
 (defmethod new-mutable-store true [store]
   (map->MutableStoreImpl {:store (atom store)

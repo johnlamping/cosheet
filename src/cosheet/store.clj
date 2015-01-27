@@ -109,7 +109,7 @@
 (defmulti new-element-store
   (constantly true))
 
-;; Factory that creates a MutbleStore initialized to a given store
+;; Factory that creates a MutableStore initialized to a given store
 (defmulti new-mutable-store
   (constantly true))
 

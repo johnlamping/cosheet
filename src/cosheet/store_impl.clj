@@ -268,6 +268,9 @@
         (index-subject id)
         (index-content id))))
 
+(defmethod print-method ElementStoreImpl [s ^java.io.Writer w]
+  (.write w "ElementStore"))
+
 (defmethod new-element-store true []
   (map->ElementStoreImpl {:id->data {} :subject->label->ids {} :next-id 0}))
 

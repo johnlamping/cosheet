@@ -1,12 +1,14 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
-            [cosheet.store
-             :refer [add-simple-element new-element-store make-id]]
-            [cosheet.entity :refer :all]
-            cosheet.store-impl
-            cosheet.entity-impl
+            (cosheet [store :refer [add-simple-element make-id
+                                    new-element-store new-mutable-store]]
+                     [entity :refer :all]
+                     store-impl
+                     mutable-store-impl
+                     entity-impl
+                     [compute :refer [simple-compute]])
             ; :reload
-            ))
+   ))
 
 (deftest storeditem-test
   (let [id0 (make-id "0")
@@ -56,6 +58,64 @@
     (is (not (label-has-atomic-value? item99 "foo" 4)))
     (is (= (label->atomic-values item99 "bar")) [4])))
 
+(deftest mutable-storeditem-test
+  (let [id0 (make-id "0")
+        id1 (make-id "1")
+        id99 (make-id "99")
+        [s a b c d e]
+        (let [[s1 a] (add-simple-element (new-element-store) id99 3)]
+          (let [[s2 b] (add-simple-element s1 a "foo")]
+            (let [[s3 c] (add-simple-element s2 id99 4)]
+              (let [[s4 d] (add-simple-element s3 c "bar")]
+                (let [[s5 e] (add-simple-element
+                              s4
+                              (:item-id
+                               (content-reference
+                                (description->entity c s4))) "baz")]
+                  [s5 a b c d e])))))
+        ms (new-mutable-store s)
+        item0 (description->entity id0 ms)
+        item1 (description->entity id1 ms)
+        item99 (description->entity id99 ms)]
+    (is (= (:item-id  item0) id0))
+    (is (= (:item-id  item1) id1))
+    (is (not (simple-compute [atom? item0])))
+    (is (= (simple-compute [label->elements item99 "foo"])
+             [(description->entity a ms)]))
+    (is (= (simple-compute [label->elements (description->entity a ms) nil]) 
+           [(description->entity b ms)]))
+    (is (= (set (simple-compute [elements item99]))
+           #{(description->entity a ms) (description->entity c ms)}))
+    (is (= (simple-compute [elements (description->entity e ms)])
+           nil))
+    (is (= (simple-compute [content item99]) nil))
+    (is (= (simple-compute [content (description->entity a ms)]) 3))
+    (is (not (simple-compute
+              [atom? (simple-compute [content (description->entity c ms)])])))
+    (is (simple-compute
+         [content (simple-compute [content (description->entity c ms)])])
+        4)
+    (is (= (simple-compute
+            [elements (simple-compute [content (description->entity c ms)])])
+           [(description->entity e ms)]))
+    (is (= (simple-compute [content-reference (description->entity c ms)])
+           (simple-compute [content (description->entity c ms)])))
+    (is (not= (simple-compute [content-reference (description->entity b ms)])
+              (simple-compute [content (description->entity b ms)])))
+    (is (= (simple-compute
+            [content (simple-compute
+                      [content-reference (description->entity b ms)])])
+           "foo"))
+    (is (simple-compute
+         [atom? (simple-compute
+                 [content-reference (description->entity b ms)])]))
+    (is (= (simple-compute [label->content item99 "foo"]) 3))
+    (is (= (simple-compute [label->content item99 "bletch"]) nil))
+    (is (= (simple-compute [atomic-value (description->entity c ms)]) 4))
+    (is (simple-compute [label-has-atomic-value? item99 "foo" 3]))
+    (is (not (simple-compute [label-has-atomic-value? item99 "foo" 4])))
+    (is (= (simple-compute [label->atomic-values item99 "bar"])) [4])))
+
 (deftest list-test
   (is (not (atom? '(1 2))))
   (is (= (elements '(1 2)) [2]))
@@ -104,7 +164,4 @@
     (is (= (description->entity :foo s) :foo))
     (is (= (description->entity "1" s) "1"))
     (is (= (description->entity id s) item))))
-
-
-
 

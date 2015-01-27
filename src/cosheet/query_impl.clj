@@ -56,13 +56,17 @@
 (defrecord
     ^{:doc "An entity that is another entity with its variables bound
             by an environment.
-            It will never be an atom or a bare bound variable."}
+            It will never be an atom or a bare bound variable.
+            The underlying entity must be immutable."}
     BoundEntity
 
   [wrapped  ; The entity we wrap
    env]     ; The environment it is wrapped in
   
   entity/Entity
+
+  (entity/mutable-entity? [this] false) ;; TODO: add a test that the
+                                        ;; underlying entity is immutable
   
   (entity/atom? [this] false)
 

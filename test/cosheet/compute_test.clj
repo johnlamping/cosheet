@@ -51,40 +51,40 @@
     (is (= (update-result {:visible {:value 1}
                            :value-depends-changed true
                            :pending-registrations [1]}
-                          (application 1 2 3))
+                          (eval-and-call 1 2 3))
            {:visible {:value 1}
             :value-depends-changed true
-            :application '(1 2 3)
+            :eval-and-call '(1 2 3)
             :depends-info {2 nil 3 nil}
             :uncertain-depends #{2 3}
             :unused-depends #{2 3}
             :pending-registrations
             [1 [[:depends-info] register-different-depends #{2 3}]]}))
-    ;; Now check an application when there is already depends info
+    ;; Now check an eval-and-call when there is already depends info
     (is (= (update-result {:visible {:value 1}
                            :depends-info {2 4 8 9}}
-                          (application 1 2 3))
+                          (eval-and-call 1 2 3))
            {:visible {:value 1}
-            :application '(1 2 3)
+            :eval-and-call '(1 2 3)
             :depends-info {2 4 3 nil 8 9}
             :uncertain-depends #{3}
             :unused-depends #{3}
             :pending-registrations
             [[[:depends-info] register-different-depends #{3}]]}))))
 
-(deftest update-application-while-ready-test
-  (is (= (update-run-application-while-ready
-          {:application 1 :uncertain-depends #{1}})
-         {:application 1 :uncertain-depends #{1}}))
-  (is (= (update-run-application-while-ready
-          {:application 1 :pending-registrations [1]})
-         {:application 1 :pending-registrations [1]}))
-  (is (= (update-run-application-while-ready
+(deftest update-eval-and-call-while-ready-test
+  (is (= (update-run-eval-and-call-while-ready
+          {:eval-and-call 1 :uncertain-depends #{1}})
+         {:eval-and-call 1 :uncertain-depends #{1}}))
+  (is (= (update-run-eval-and-call-while-ready
+          {:eval-and-call 1 :pending-registrations [1]})
+         {:eval-and-call 1 :pending-registrations [1]}))
+  (is (= (update-run-eval-and-call-while-ready
           {})
          {}))
-  (is (= (update-run-application-while-ready
+  (is (= (update-run-eval-and-call-while-ready
           {:depends-info {:a {:value 2} :b {:value 3}}
-           :application [(fn [arg] (application (fn [arg2] [arg arg2])
+           :eval-and-call [(fn [arg] (eval-and-call (fn [arg2] [arg arg2])
                                                 :a))
                          :b]})
          {:visible {:value [3 2] :valid true}
@@ -105,7 +105,7 @@
               :visible {:value 3}
               :uncertain-depends #{:b}
               :unused-depends #{:a}
-              :application [1 2]}]
+              :eval-and-call [1 2]}]
     (is (= (update-depends-on-visible {} :a :b {}) {}))
     (is (= (update-depends-on-visible
             info [3 :d] :a {:value 4 :valid true})
@@ -115,7 +115,7 @@
             :visible {:value 3}
             :uncertain-depends #{:b}
             :unused-depends #{:a}
-            :application [1 2]}))
+            :eval-and-call [1 2]}))
     (is (= (update-depends-on-visible
             info [3 :d] :a {:value 4})
            {:depends-info {:a {:value 4}
@@ -124,7 +124,7 @@
             :visible {:value 3}
             :uncertain-depends #{:b :a}
             :unused-depends #{:a}
-            :application [1 2]}))
+            :eval-and-call [1 2]}))
     (is (= (update-depends-on-visible
             info [3 :d] :b  {:value 3 :valid true})
            {:depends-info {:a {:value 2 :valid true}
@@ -132,15 +132,15 @@
                            :c {:value 5 :valid true}}
             :visible {:value 3 :valid true}
             :unused-depends #{:a}
-            :application [1 2]}))
+            :eval-and-call [1 2]}))
     (is (= (update-depends-on-visible
-            info [(fn [] (application 3 :d))] :c {:value 3})
+            info [(fn [] (eval-and-call 3 :d))] :c {:value 3})
            {:depends-info {:d nil}
             :visible {:value 3}
             :value-depends-changed true
             :uncertain-depends #{:d}
             :unused-depends #{:d}
-            :application [3 :d]
+            :eval-and-call [3 :d]
             :pending-registrations
             [[[:depends-info] register-different-depends '(:c :b :a)]
              [[:depends-info] register-different-depends #{:d}]]}))))
@@ -155,7 +155,7 @@
              (is (= expression :a))
              (is (= arg 3))
              (mm/update! (:expressions scheduler) :a
-                         #(assoc % :application [(fn [] 5)])))
+                         #(assoc % :eval-and-call [(fn [] 5)])))
         r1 (fn [current scheduler expression arg]
              (swap! history #(conj % [:r1 current]))
              (is (or (= current 0) (= current 4)))
@@ -182,7 +182,7 @@
 (deftest register-added-depends-test
   (let [s (new-approximating-scheduler)
         e-mm (:expressions s)
-        not-ready-fn (fn [] (application +))]
+        not-ready-fn (fn [] (eval-and-call +))]
     (mm/assoc-in!
      e-mm [[identity 1]]
      (update-start-evaluation {} [identity 1]))
@@ -190,7 +190,7 @@
     (mm/assoc-in!
      e-mm [:a]
      (update-start-evaluation
-      {} [(fn [] (application + [identity 1] [not-ready-fn]))]))
+      {} [(fn [] (eval-and-call + [identity 1] [not-ready-fn]))]))
     (register-different-depends (:depends-info (mm/get! e-mm :a)) s :a
                               [[identity 1] [not-ready-fn]])
     (is (= (mm/get-in! e-mm [[identity 1] :using-expressions]) #{:a :b}))
@@ -235,7 +235,7 @@
   (let [s (new-approximating-scheduler)]
     (change-and-schedule-propagation
      s :a (fnil update-start-evaluation {})
-     [(fn [] (application inc [identity 2]))])
+     [(fn [] (eval-and-call inc [identity 2]))])
     (handle-depends-on-info-changed s :a [identity 2])
     (let [info (mm/get! (:expressions s) :a)]
       (is (= (:visible info) {:value 3 :valid true})))))

@@ -3,9 +3,9 @@
 
 (defprotocol Notifier
   "Something that can return the value or State objects for expressions."
-  (current-value [this expression]
+  (notifier-value [this expression]
     "Return the current  value of the expression.")
-  (state [this expression]
+  (notifier-state [this expression]
     "Return the state (or just value if immutable) of the expression"))
 
 (defprotocol Scheduler
@@ -17,7 +17,7 @@
    To evaluate an expression, the scheduler calls the form of the
    expression, with the rest of the expression as arguments, as well as
    possibly other information. That function can return either a value,
-   a State, if the value may change later, or a application to request
+   a State, if the value may change later, or a eval-and-call to request
    the scheduler to do further evaluations. Thus, all the information
    on how to evaluate is held by the functions in the expressions; the
    scheduler just coordinates everything, including state changes."
@@ -49,22 +49,6 @@
   [fn & args]
   `(make-eval-and-call ~fn ~@args))
 
-(defn eval-map
-  "Apply the function to each of the elements of the sequence,
-   then return a request to return a vector of the evaluation
-   of each of the returned items."
-  [f sequence]
-  (apply make-eval-and-call vector (map (fn [elem] [f elem]) sequence)))
-
-(defn eval-and-call? [expr]
-  (and (list? expr) (= (first expr) :eval-and-call)))
-
-(defn eval-and-call-fn [expr]
-  (second expr))
-
-(defn eval-and-call-args [expr]
-  (rest (rest expr)))
-
 (defmacro eval-let
   "A let like construct that has the scheduler evaluate the bindings.
    The expressions in an eval-let's bindings may not refer to variables
@@ -79,22 +63,19 @@
                   ~@(map (fn [exp] (if (sequential? exp) (vec exp) exp))
                          exprs))))
 
-;;; TODO: Make a eval-let macro that creates appliations.
+(defn eval-map
+  "Return a request to compute a vector of the evaluation
+   of the function on each element of the sequence."
+  [f sequence]
+  (apply make-eval-and-call vector (map (fn [elem] [f elem]) sequence)))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler
   (constantly true))
 
-(defn simple-compute
-  "Evalutate the expression, which may use the Scheduler protocol
-   for its return values"
-  [[fn & args]]
-  (let [result (apply fn args)]
-    (cond
-      (state? result)
-      (state-value result)
-      (eval-and-call? result)
-      (simple-compute (cons (eval-and-call-fn result)
-                            (map simple-compute (eval-and-call-args result))))
-      :else
-      result)))
+(defmulti current-value
+  "Run computation on the expression, which may use the Scheduler protocol
+   for its return values, returning the current value,
+   rather than tracking dependencies."
+  (constantly true))
+

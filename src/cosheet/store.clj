@@ -29,7 +29,7 @@
   "A description of an Item recorded by a store"
   (atom-description? [this]
     "True if this description refers to an atom. This is true only for
-     content references."))
+     content references, which are only created to refer to atoms."))
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.

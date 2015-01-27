@@ -6,18 +6,10 @@
 ;;; TODO:
 ;;; Change the special form syntax so all special forms have content
 ;;;    :special-form.
-;;; Make sure the store supports multiple subjects for the same
-;;;    element.
 ;;; Change the store's lookup to take a template, and return all
 ;;;    candidates, maybe with an indication of whether they are
 ;;;    guaranteed to satisfy the template.
 ;;; Add a term syntax that lets variables bind to the subject.
-;;; Change the API so that functions don't recurse, but either return
-;;;    a value or a set of queries and a function to call when the
-;;;    values of those queries are known. (Think about how this works
-;;;    for queries that return environments, and not just lists of items.
-;;; Change the API so that things that return multiple environments
-;;;    also take multiple environments as arguments.
 ;;; Add a unification operation on terms, so rule matching can work.
 ;;;    The environment must include variable numbers, for renaming,
 ;;;    and an indication of the number of the current term, which must
@@ -90,7 +82,7 @@
              (env (entity/label->content entity :name)))
         (->BoundEntity entity env))))
 
-;;; TODO: Eventually extend template-matches to  pass along a set of used
+;;; TODO: Eventually extend template-matches to pass along a set of used
 ;;;       up stuff, so it can count repeated stuff in templates.
 
 (defn variable-matches [var env target]

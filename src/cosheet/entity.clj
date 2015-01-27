@@ -33,7 +33,16 @@
 
   (atom? [this]
     "True if this entity is atomic: either a primitive or a reference to
-     a primitive.")
+     a primitive.
+     Note: A reference to the content of an a mutable store can start
+     out atomic, and then become non-atomic if the content gets
+     promoted to a full item. It will still be reported as an atom,
+     though, because references are only valid in the context of a
+     query. If the store changes, the query will be re-run, and the
+     non-atomicness noticed at that point.")
+
+  ;; The results of the following methods can change if the entity is
+  ;; mutable. In that case, they follow the scheduler protocol.
 
   ;; TODO: Rather than taking an atomic label, allow this to take an
   ;;       arbitrary description of the elements in question.

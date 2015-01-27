@@ -46,8 +46,6 @@
 
   (mutable-entity? [this] true)
 
-  ;; TODO: This doesn't handle a store that changes once a content
-  ;; reference is created.
   (atom? [this?] (atom-description? item-id) )
 
   (label->elements [this label]

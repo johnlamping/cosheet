@@ -53,6 +53,31 @@
 ;;; when a non-monotonic input changes or a monotonic input changes in
 ;;; a non-monotonic way.
 
+(defn eval-and-call? [expr]
+  (and (list? expr) (= (first expr) :eval-and-call)))
+
+(defn eval-and-call-fn [expr]
+  (second expr))
+
+(defn eval-and-call-args [expr]
+  (rest (rest expr)))
+
+(defn current-value-impl
+  [[fn & args]]
+  (let [result (apply fn args)]
+    (cond
+      (state? result)
+      (state-value result)
+      (eval-and-call? result)
+      (current-value-impl (cons (eval-and-call-fn result)
+                                (map current-value-impl
+                                     (eval-and-call-args result))))
+      :else
+      result)))
+
+(defmethod current-value true [expression]
+  (current-value-impl expression))
+
 ;;; The next functions compute revised expression info to reflect new
 ;;; information. They have no side effects.
 
@@ -448,16 +473,16 @@
 
   Notifier
 
-  (request [this expression]
-    (change-and-schedule-propagation this expression
-                                     update-initialize-if-needed expression))
-
-  (current-value [this expression]
+  (notifier-value [this expression]
     (request this expression)
     (run-all-pending this)
     (mm/get-in! (:expressions this) [expression :visible :value]))
 
   Scheduler
+
+    (request [this expression]
+    (change-and-schedule-propagation this expression
+                                     update-initialize-if-needed expression))
 
   (ready? [this expression]
     (mm/get! (:expressions this) [expression :visible :valid]))

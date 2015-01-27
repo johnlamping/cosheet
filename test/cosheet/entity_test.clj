@@ -6,7 +6,7 @@
                      store-impl
                      mutable-store-impl
                      entity-impl
-                     [compute :refer [simple-compute]])
+                     [compute :refer [current-value]])
             ; :reload
    ))
 
@@ -79,42 +79,42 @@
         item99 (description->entity id99 ms)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
-    (is (not (simple-compute [atom? item0])))
-    (is (= (simple-compute [label->elements item99 "foo"])
+    (is (not (current-value [atom? item0])))
+    (is (= (current-value [label->elements item99 "foo"])
              [(description->entity a ms)]))
-    (is (= (simple-compute [label->elements (description->entity a ms) nil]) 
+    (is (= (current-value [label->elements (description->entity a ms) nil]) 
            [(description->entity b ms)]))
-    (is (= (set (simple-compute [elements item99]))
+    (is (= (set (current-value [elements item99]))
            #{(description->entity a ms) (description->entity c ms)}))
-    (is (= (simple-compute [elements (description->entity e ms)])
+    (is (= (current-value [elements (description->entity e ms)])
            nil))
-    (is (= (simple-compute [content item99]) nil))
-    (is (= (simple-compute [content (description->entity a ms)]) 3))
-    (is (not (simple-compute
-              [atom? (simple-compute [content (description->entity c ms)])])))
-    (is (simple-compute
-         [content (simple-compute [content (description->entity c ms)])])
+    (is (= (current-value [content item99]) nil))
+    (is (= (current-value [content (description->entity a ms)]) 3))
+    (is (not (current-value
+              [atom? (current-value [content (description->entity c ms)])])))
+    (is (current-value
+         [content (current-value [content (description->entity c ms)])])
         4)
-    (is (= (simple-compute
-            [elements (simple-compute [content (description->entity c ms)])])
+    (is (= (current-value
+            [elements (current-value [content (description->entity c ms)])])
            [(description->entity e ms)]))
-    (is (= (simple-compute [content-reference (description->entity c ms)])
-           (simple-compute [content (description->entity c ms)])))
-    (is (not= (simple-compute [content-reference (description->entity b ms)])
-              (simple-compute [content (description->entity b ms)])))
-    (is (= (simple-compute
-            [content (simple-compute
+    (is (= (current-value [content-reference (description->entity c ms)])
+           (current-value [content (description->entity c ms)])))
+    (is (not= (current-value [content-reference (description->entity b ms)])
+              (current-value [content (description->entity b ms)])))
+    (is (= (current-value
+            [content (current-value
                       [content-reference (description->entity b ms)])])
            "foo"))
-    (is (simple-compute
-         [atom? (simple-compute
+    (is (current-value
+         [atom? (current-value
                  [content-reference (description->entity b ms)])]))
-    (is (= (simple-compute [label->content item99 "foo"]) 3))
-    (is (= (simple-compute [label->content item99 "bletch"]) nil))
-    (is (= (simple-compute [atomic-value (description->entity c ms)]) 4))
-    (is (simple-compute [label-has-atomic-value? item99 "foo" 3]))
-    (is (not (simple-compute [label-has-atomic-value? item99 "foo" 4])))
-    (is (= (simple-compute [label->atomic-values item99 "bar"])) [4])))
+    (is (= (current-value [label->content item99 "foo"]) 3))
+    (is (= (current-value [label->content item99 "bletch"]) nil))
+    (is (= (current-value [atomic-value (description->entity c ms)]) 4))
+    (is (current-value [label-has-atomic-value? item99 "foo" 3]))
+    (is (not (current-value [label-has-atomic-value? item99 "foo" 4])))
+    (is (= (current-value [label->atomic-values item99 "bar"])) [4])))
 
 (deftest list-test
   (is (not (atom? '(1 2))))

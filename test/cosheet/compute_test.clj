@@ -250,23 +250,23 @@
     (run-all-pending s)
     (is (= (mm/get-in! (:expressions s) [exp :visible :value]) 2))))
 
-(deftest current-value-test
+(deftest notifier-value-test
   (let [s (new-approximating-scheduler)]
     (letfn [(fib [n] (if (<= n 1)
                        1
                        (eval-let [f1 [fib (- n 1)]
                                   f2 [fib (- n 2)]]
                                  (+  f1 f2))))]
-      (is (= (current-value s [fib 6]) 13)))))
+      (is (= (notifier-value s [fib 6]) 13)))))
 
-(deftest simple-compute-test
+(deftest current-value-test
   (let [state (new-state :value 1)]
     (letfn [(fib [n] (if (<= n 1)
                        state
                        (eval-let [f1 [fib (- n 1)]
                                   f2 [fib (- n 2)]]
                                  (+  f1 f2))))]
-      (is (= (simple-compute [fib 6]) 13)))))
+      (is (= (current-value [fib 6]) 13)))))
 
 (deftest asynchronous-test
   ;; Creates width states, then a series layers of lookups that use the value
@@ -295,7 +295,7 @@
             (right-results? []
               (doseq [d (range depth)
                       pos (range width)]
-                (is (= (current-value s [indexer d pos])
+                (is (= (notifier-value s [indexer d pos])
                        (expected d pos)))))]
       (doseq [pos (range width)
               d (range depth)]

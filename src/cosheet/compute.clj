@@ -51,20 +51,23 @@
 
 (defmacro eval-let
   "A let like construct that has the scheduler evaluate the bindings.
-   The expressions in an eval-let's bindings may not refer to variables
-   bound by that eval-let.
    It expands to eval-and-call forms."
   [bindings & body]
   (assert (even? (count bindings)) "Bindings must have an even number of forms")
-  (let [pairs (partition 2 bindings)
-        vars (map first pairs)
-        exprs (map second pairs)]
-    `(eval-and-call (fn ~(vec vars) ~@body)
-                  ~@(map (fn [exp] (if (sequential? exp) (vec exp) exp))
-                         exprs))))
+  (if (nil? bindings)
+    `(do ~@body)
+    (let [var (first bindings)
+          expr (second bindings)
+          rest (nnext bindings)]
+      `(eval-and-call (fn [~var] (eval-let ~rest ~@body))
+                      ~(if (sequential? expr) (vec expr) expr)))))
 
+;;; TODO: This is eager. Consider adding support for lazy sequences of
+;;; expressions. The challenge is that using them would require
+;;; special forms, since evaluations of expressions in the sequence
+;;; can't be done inline, but requires returning an eval-and-call. 
 (defn eval-map
-  "Return a request to compute a vector of the evaluation
+  "Return a request to compute a seq of the evaluation
    of the function on each element of the sequence."
   [f sequence]
   (apply make-eval-and-call vector (map (fn [elem] [f elem]) sequence)))

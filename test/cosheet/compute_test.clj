@@ -285,9 +285,9 @@
     (letfn [(indexer [d pos]
               (if (zero? d)
                 (states pos)
-                (eval-let [index [indexer (- d 1) pos]]
-                          (eval-let [value [indexer (- d 1) index]]
-                                    value))))
+                (eval-let [index [indexer (- d 1) pos]
+                           value [indexer (- d 1) index]]
+                          value)))
             (expected [d pos]
               (if (zero? d)
                 (state-value (states pos))

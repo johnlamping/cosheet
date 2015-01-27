@@ -480,7 +480,7 @@
 
   Scheduler
 
-    (request [this expression]
+  (request [this expression]
     (change-and-schedule-propagation this expression
                                      update-initialize-if-needed expression))
 

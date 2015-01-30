@@ -56,11 +56,14 @@
 (defn eval-and-call? [expr]
   (and (list? expr) (= (first expr) :eval-and-call)))
 
-(defn eval-and-call-fn [expr]
+(defn eval-and-call-tracer [expr]
   (second expr))
 
+(defn eval-and-call-fn [expr]
+  (nth expr 2))
+
 (defn eval-and-call-args [expr]
-  (rest (rest expr)))
+  (seq (nthnext expr 3)))
 
 (defn current-value-impl
   [[fn & args]]
@@ -69,9 +72,10 @@
       (state? result)
       (state-value result)
       (eval-and-call? result)
-      (current-value-impl (cons (eval-and-call-fn result)
-                                (map current-value-impl
-                                     (eval-and-call-args result))))
+      ((eval-and-call-tracer result)
+       #(current-value-impl (cons (eval-and-call-fn result)
+                                  (map current-value-impl
+                                       (eval-and-call-args result)))))
       :else
       result)))
 
@@ -252,23 +256,15 @@
     validity of the expression has changed, propagate that."
     [scheduler expression f & args]
     (let [e-mm (:expressions scheduler)
-          [old new] (apply mm/update-in-returning-both!
-                           e-mm [expression] f args)]
-      ;; We have to track if we made any visible change to the
-      ;; information. We can't just compare initial to final, because
-      ;; another thread might have propagated intermediate information
-      ;; before we set it back to the initial value, and we would need
-      ;; to re-propagate that value.
-      (loop [visible-change (or (not= (:visible old) (:visible new)))]
-        (mm/call-and-clear-in! e-mm [expression :pending-registrations]
-                               run-registrations scheduler expression)
-        (let [[old new] (mm/update-in-returning-both!
-                              e-mm [expression]
-                              update-run-eval-and-call-while-ready)]
-          (if (not= old new)
-            (recur (or visible-change (not= (:visible old) (:visible new))))
-            (when visible-change
-              (schedule-propagations scheduler expression))))))))
+          [old new] (mm/update-in-returning-both!
+                     e-mm [expression]
+                     (fn [info] (update-run-eval-and-call-while-ready
+                                 (apply f info args))))]
+      (mm/call-and-clear-in! e-mm [expression :pending-registrations]
+                             run-registrations scheduler expression)
+
+      (when (not= (:visible old) (:visible new))
+        (schedule-propagations scheduler expression)))))
 
 (defn handle-depends-on-info-changed [scheduler expression depends-on]
   "Record in this expression the latest information for of one of the
@@ -437,11 +433,11 @@
    ;;     whose current value agrees with the recorded value, but
    ;;     which might be out of date.
    ;;   A :pending-registrations set of registrations of information
-   ;;     from this expression that may need to be reflected
+   ;;     about dependencies of this expression that may need to be registered
    ;;     elsewhere, and whose registration might cause our
    ;;     information to change. They are of the form [path function &
    ;;     args] where the path navigates from the information for this
-   ;;     expression to the information that needs to be reflected. We
+   ;;     expression to the dependency that needs to be reflected. We
    ;;     will mm/call-with-latest-value-in! arranging for the
    ;;     function to be called with the scheduler, this expression,
    ;;     the value of the information, and the additional args.

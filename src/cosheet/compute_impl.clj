@@ -189,6 +189,30 @@
   [info expression]
   (or info (update-start-evaluation {:visible {}} expression)))
 
+(defn update-adjust-using
+  "Update the :using-expressions set for this expression to reflect
+   whether the specified possibly using expression does, in fact, use us.
+   The depends-on-getter must return the current value of the depends-on
+   field of the possibly using expression. By calling the getter inside
+   the update, inside an atomic operation, we make sure we are not
+   overwriting new information with old."
+  [info expression possibly-using depends-on-getter]
+  (let [usings-depends-info (depends-on-getter)]
+    (if (contains? usings-depends-info expression)
+      ;; It usees us.
+      (as-> info info
+          (update-initialize-if-needed info expression)
+          (update-in info [:using-expressions] 
+                     #((fnil conj #{}) % possibly-using))
+          ;; If we have different information, set up to copy it.
+          (if (= (usings-depends-info expression)
+                 (:visible info))
+            info
+            (update-add-action info propagate-visible-to-use possibly-using)))
+      ;; It doesn't use us.
+      (update-in-clean-up info [:using-expressions]
+                          #(disj % possibly-using)))))
+
 (letfn
     ;; A value that we used in our computation has changed, which
     ;; means that we need to start computation all over again. Record
@@ -232,7 +256,7 @@
           (update-used-value-changed revised-info expression)))
       info)))
 
-(def handle-depends-on-info-changed)
+(def propagate-visible-to-use)
 
 (letfn
     ;; Run a collection of actions
@@ -247,7 +271,7 @@
        (doseq [using (mm/get-in! (:expressions scheduler)
                                  [expression :using-expressions])]
          (add-task (:pending scheduler)
-                   handle-depends-on-info-changed using expression)))]
+                   propagate-visible-to-use expression using)))]
 
   (defn change-and-schedule-propagation
     "Run the function on the information for the expression, and replace
@@ -265,14 +289,10 @@
       (when (not= (:visible old) (:visible new))
         (schedule-propagations scheduler expression)))))
 
-(defn handle-depends-on-info-changed [scheduler expression depends-on]
+(defn propagate-visible-to-use [scheduler depends-on expression]
   "Record in this expression the latest information for of one of the
    expressions this expression depends on. If that changes its
    information, schedule propagation."
-  ;; Since we are passing in information from another expression, we
-  ;; have to keep running until we have passed in the latest
-  ;; information, because an earlier run of ours may have stomped on
-  ;; more recent information.
   (change-and-schedule-propagation
    scheduler expression
    update-depends-on-visible expression depends-on
@@ -293,57 +313,18 @@
 ;;; middle of the execution of a removal, and the removal would remove
 ;;; it and when finished, wouldn't notice that an add was now necessary.
 
-(letfn
-    ;; Given the current value of :depends-info of an expression and
-    ;; an expressions that is in it and may have been added to it,
-    ;; make sure the :using-expressions field in the added expression
-    ;; contains the expression, and schedule a change propagation if
-    ;; we used it and the current information doesn't agree with what
-    ;; we used.
-    [(register-added-depends
-       [current-depends-info scheduler expression added-expression]
-       (let [e-mm (:expressions scheduler)]
-         (change-and-schedule-propagation
-          scheduler added-expression
-          (fn [info]
-            (-> info
-                (update-initialize-if-needed added-expression)
-                (update-in [:using-expressions] 
-                           #((fnil conj #{}) % expression)))))
-         ;; If there is already information about the value,
-         ;; schedule a propagation.
-         (when (not (= (current-depends-info added-expression)
-                       (mm/get-in! e-mm [added-expression :visible])))
-           (add-task (:pending scheduler)
-                     handle-depends-on-info-changed
-                     expression added-expression))))
-
-     ;; Given the current value of :depends-info of an expression and
-     ;; an expression that is not in it and may have been removed from
-     ;; it, make sure the :using-expressions field in the removed
-     ;; expressions doesn't list the expression. 
-     (register-removed-depends
-       [scheduler expression removed-expression]
-       (let [e-mm (:expressions scheduler)]
-         (mm/update-in-clean-up! e-mm [removed-expression :using-expressions]
-                                 #(disj % expression))))]
-
-  (defn register-different-depends
-    "Given the current value of :depends-info of an expression and a
-     collection of expressions that have been added to it or removed from
-     it, make sure the :using-expressions field in each of those
-     expressions reflects the depends-info, and schedule change
-     propagation is appropriate."
-    [scheduler expression changed-expressions]
-     (mm/call-with-latest-value-in!
-      (:expressions scheduler) [expression :depends-info]
-      (fn [current-depends-info]
-        (doseq [changed-expression changed-expressions]
-          (if (contains? current-depends-info changed-expression)
-            (register-added-depends
-             current-depends-info scheduler expression changed-expression)
-            (register-removed-depends
-             scheduler expression changed-expression)))))))
+(defn register-different-depends
+  "Given an expression and a collection of expressions that have been
+  added to it or removed from it, make sure the :using-expressions
+  field in each of those expressions reflects the depends-info,
+  and propagate values from those expressions that are used."
+  [scheduler expression changed-expressions]
+  (let [e-mm (:expressions scheduler)
+        getter #(mm/get-in! e-mm [expression :depends-info])]
+    (doseq [changed-expression changed-expressions]
+      (change-and-schedule-propagation
+       scheduler changed-expression
+       update-adjust-using changed-expression expression getter))))
 
 (letfn
     [(state-change-callback [value state scheduler expression]

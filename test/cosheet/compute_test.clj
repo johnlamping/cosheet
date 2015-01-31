@@ -183,11 +183,9 @@
     (is (= (mm/get-in! e-mm [[identity 1] :using-expressions]) #{:a :b}))
     (is (= (mm/get-in! e-mm [[not-ready-fn] :using-expressions]) #{:a}))
     (let [pending (first @(:pending s))]
-      (is (= (count pending) 2))
-      (is (= #{(first (peek pending))
-               (first (peek (pop pending)))}
-             #{[handle-depends-on-info-changed :a [identity 1]]
-               [handle-depends-on-info-changed :a [not-ready-fn]]})))))
+      (is (= (count pending) 1))
+      (is (= (first (peek pending))
+             [propagate-visible-to-use [not-ready-fn] :a])))))
 
 (deftest register-removed-depends-test
   (let [s (new-approximating-scheduler)
@@ -217,12 +215,12 @@
       (register-different-state s :a st1)
       (is (empty? @(:subscriptions st1))))))
 
-(deftest handle-depends-on-info-changed-test
+(deftest propagate-visible-to-use-test
   (let [s (new-approximating-scheduler)]
     (change-and-schedule-propagation
      s :a (fnil update-start-evaluation {})
      [(fn [] (eval-and-call inc [identity 2]))])
-    (handle-depends-on-info-changed s :a [identity 2])
+    (propagate-visible-to-use s [identity 2] :a)
     (let [info (mm/get! (:expressions s) :a)]
       (is (= (:visible info) {:value 3 :valid true})))))
 

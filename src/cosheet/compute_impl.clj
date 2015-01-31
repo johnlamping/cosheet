@@ -9,10 +9,10 @@
 ;;; This is the definition of an approximating scheduler (although the
 ;;; implementation doesn't yet do approximation). Most of the code is
 ;;; functions named update-* that compute new versions of immutable
-;;; information about expressions. The rest of the code manages a
-;;; mutable map that stores this information for each expression. It
+;;; information about references. The rest of the code manages a
+;;; mutable map that stores this information for each reference. It
 ;;; is mostly concerned with propagating information for one
-;;; expression to another.
+;;; reference to another.
 
 ;;; The propagation is multi-threaded, but can avoid using locks and
 ;;; TSM because it just needs eventual consistency; it is just copying
@@ -25,8 +25,10 @@
 ;;; conflict and get redone. The other is to check, after doing a
 ;;; copy, that the information that was copied still matches the
 ;;; latest information, and redo the copy if it doesn't. This code
-;;; uses both techniques, the former for copying external state, and
-;;; the latter for copying information between expressions.
+;;; uses the former technique as much as possible, but currently needs
+;;; to use the latter for subscribing to state, because State objects
+;;; don't have a conditional subscription method that consults a thunk
+;;; to decide whether to subscribe.
 
 ;;; TODO: Make the code use just the former technique, by having the
 ;;; updated that copy information take a thunk that will read the
@@ -53,16 +55,16 @@
 ;;; when a non-monotonic input changes or a monotonic input changes in
 ;;; a non-monotonic way.
 
-(defn eval-and-call? [expr]
-  (and (list? expr) (= (first expr) :eval-and-call)))
+(defn expression? [expr]
+  (and (list? expr) (= (first expr) :expression)))
 
-(defn eval-and-call-tracer [expr]
+(defn expression-tracer [expr]
   (second expr))
 
-(defn eval-and-call-fn [expr]
+(defn expression-fn [expr]
   (nth expr 2))
 
-(defn eval-and-call-args [expr]
+(defn expression-args [expr]
   (seq (nthnext expr 3)))
 
 (defn current-value-impl
@@ -71,22 +73,23 @@
     (cond
       (state? result)
       (state-value result)
-      (eval-and-call? result)
-      ((eval-and-call-tracer result)
-       #(current-value-impl (cons (eval-and-call-fn result)
+      (expression? result)
+      ((expression-tracer result)
+       #(current-value-impl (cons (expression-fn result)
                                   (map current-value-impl
-                                       (eval-and-call-args result)))))
+                                       (expression-args result)))))
       :else
       result)))
 
-(defmethod current-value true [expression]
-  (current-value-impl expression))
+(defmethod current-value true [reference]
+  (current-value-impl reference))
 
-;;; The next functions compute revised expression info to reflect new
+;;; The next functions compute revised reference info to reflect new
 ;;; information. They have no side effects.
 
 (def register-different-depends)
 (def register-different-state)
+(def copy-visible-to-user)
 
 (defn update-add-action [info f & args]
   (update-in info [:pending-actions]
@@ -124,7 +127,7 @@
            (dissoc :value-depends-changed)
            (update-valid)))
      
-     (update-eval-and-call-result [info fn args]
+     (update-expression-result [info fn args]
        (let [needed-args (set/difference
                           (set args) (set (keys (:depends-info info))))]
          (->
@@ -136,8 +139,10 @@
                  #((fnil into {}) % (zipmap needed-args (repeat nil))))
                 (assoc :unused-depends needed-args)
                 (assoc :uncertain-depends needed-args)
+                ;; We don't get the values yet, as we have to copy
+                ;; them anyway, once updates are set up.
                 (update-add-action register-different-depends needed-args)))
-          (assoc :eval-and-call (cons fn args)))))
+          (assoc :expression (cons fn args)))))
      
      (update-value-result [info value]
        (-> info
@@ -154,30 +159,30 @@
     (cond
       (state? result)
       (update-state-result info result)
-      (eval-and-call? result)
-      (update-eval-and-call-result
-       info (eval-and-call-fn result) (eval-and-call-args result))
+      (expression? result)
+      (update-expression-result
+       info (expression-fn result) (expression-args result))
       :else
       (update-value-result info result))))
 
 (letfn
-    [(update-run-eval-and-call [info]
-       (let [[f & args] (:eval-and-call info)
+    [(update-run-expression [info]
+       (let [[f & args] (:expression info)
              arg-info (:depends-info info)]
          (-> info
-             (dissoc :unused-depends :eval-and-call)
+             (dissoc :unused-depends :expression)
              (update-result (apply f (map #(-> % arg-info :value) args))))))]
   
-  (defn update-run-eval-and-call-while-ready [info]
+  (defn update-run-expression-while-ready [info]
     (loop [latest-info info]
-      (if (and (not (nil? (:eval-and-call latest-info)))
+      (if (and (not (nil? (:expression latest-info)))
                (empty? (:uncertain-depends latest-info)))
-        (recur (update-run-eval-and-call latest-info))
+        (recur (update-run-expression latest-info))
         latest-info))))
 
 (defn update-start-evaluation
   "Start the computation that the information calls for.
-   There must be no pending eval-and-call and no current state."
+   There must be no pending expression and no current state."
   [info [form & args]]
   (-> info
       (assoc :value-depends-changed true)
@@ -186,31 +191,31 @@
 
 (defn update-initialize-if-needed
   "If info is nil, return an initialized info."
-  [info expression]
-  (or info (update-start-evaluation {:visible {}} expression)))
+  [info reference]
+  (or info (update-start-evaluation {:visible {}} reference)))
 
 (defn update-adjust-using
-  "Update the :using-expressions set for this expression to reflect
-   whether the specified possibly using expression does, in fact, use us.
+  "Update the :using-references set for this reference to reflect
+   whether the specified possibly using reference does, in fact, use us.
    The depends-on-getter must return the current value of the depends-on
-   field of the possibly using expression. By calling the getter inside
+   field of the possibly using reference. By calling the getter inside
    the update, inside an atomic operation, we make sure we are not
    overwriting new information with old."
-  [info expression possibly-using depends-on-getter]
+  [info reference possibly-using depends-on-getter]
   (let [usings-depends-info (depends-on-getter)]
-    (if (contains? usings-depends-info expression)
-      ;; It usees us.
+    (if (contains? usings-depends-info reference)
+      ;; It uses us.
       (as-> info info
-          (update-initialize-if-needed info expression)
-          (update-in info [:using-expressions] 
+          (update-initialize-if-needed info reference)
+          (update-in info [:using-references] 
                      #((fnil conj #{}) % possibly-using))
           ;; If we have different information, set up to copy it.
-          (if (= (usings-depends-info expression)
+          (if (= (usings-depends-info reference)
                  (:visible info))
             info
-            (update-add-action info propagate-visible-to-use possibly-using)))
+            (update-add-action info copy-visible-to-user possibly-using)))
       ;; It doesn't use us.
-      (update-in-clean-up info [:using-expressions]
+      (update-in-clean-up info [:using-references]
                           #(disj % possibly-using)))))
 
 (letfn
@@ -218,8 +223,8 @@
     ;; means that we need to start computation all over again. Record
     ;; that the current value is not valid via :value-depends-changed,
     ;; stop tracking dependencies, cancel our state and any pending
-    ;; eval-and-call, and start the computation again.
-    [(update-used-value-changed [info expression]
+    ;; expression, and start the computation again.
+    [(update-used-value-changed [info reference]
        (-> info
            (assoc :value-depends-changed true)
            (update-valid)
@@ -227,8 +232,8 @@
            (update-add-action register-different-depends
                                     (keys (:depends-info info)))
            (dissoc :depends-info :unused-depends :uncertain-depends
-                   :eval-and-call)
-           (update-start-evaluation expression)))
+                   :expression)
+           (update-start-evaluation reference)))
 
      ;; update :uncertain-depends to reflect the validity of the
      ;; depended on information
@@ -240,12 +245,12 @@
                                   #((fnil conj #{}) % depends-on)))))]
 
   (defn update-depends-on-visible
-    "The visible information for an expression that we may depend on
+    "The visible information for a reference that we may depend on
      may have changed, update what we know about it, given a function
      that fetches it. Using a function allows the fetch do be done as part
      of an atomic update of our info, so that we won't be saving
      old information."
-    [info expression depends-on depends-on-visible-getter]
+    [info reference depends-on depends-on-visible-getter]
     (if (contains? (:depends-info info) depends-on)
       (let [depends-on-visible (depends-on-visible-getter)
             revised-info (update-uncertain info depends-on depends-on-visible)]
@@ -253,56 +258,54 @@
                 (= (:value ((or (:depends-info revised-info) {}) depends-on))
                    (:value depends-on-visible)))
           (assoc-in revised-info [:depends-info depends-on] depends-on-visible)
-          (update-used-value-changed revised-info expression)))
+          (update-used-value-changed revised-info reference)))
       info)))
-
-(def propagate-visible-to-use)
 
 (letfn
     ;; Run a collection of actions
-    [(run-actions [actions scheduler expression]
+    [(run-actions [actions scheduler reference]
        (doseq [[f & args] actions]
-         (apply f scheduler expression args)))
+         (apply f scheduler reference args)))
 
-      ;; The information for the expression has changed. Tell anyone else
+      ;; The information for the reference has changed. Tell anyone else
       ;; who cares.
-     (schedule-propagations [scheduler expression]
+     (schedule-propagations [scheduler reference]
        ;; TODO: also tell anything that listens to us.
-       (doseq [using (mm/get-in! (:expressions scheduler)
-                                 [expression :using-expressions])]
+       (doseq [using (mm/get-in! (:references scheduler)
+                                 [reference :using-references])]
          (add-task (:pending scheduler)
-                   propagate-visible-to-use expression using)))]
+                   copy-visible-to-user reference using)))]
 
   (defn change-and-schedule-propagation
-    "Run the function on the information for the expression, and replace
+    "Run the function on the information for the reference, and replace
     the information with the result of the function. If the value or
-    validity of the expression has changed, propagate that."
-    [scheduler expression f & args]
-    (let [e-mm (:expressions scheduler)
+    validity of the reference has changed, propagate that."
+    [scheduler reference f & args]
+    (let [r-mm (:references scheduler)
           [old new] (mm/update-in-returning-both!
-                     e-mm [expression]
-                     (fn [info] (update-run-eval-and-call-while-ready
+                     r-mm [reference]
+                     (fn [info] (update-run-expression-while-ready
                                  (apply f info args))))]
-      (mm/call-and-clear-in! e-mm [expression :pending-actions]
-                             run-actions scheduler expression)
+      (mm/call-and-clear-in! r-mm [reference :pending-actions]
+                             run-actions scheduler reference)
 
       (when (not= (:visible old) (:visible new))
-        (schedule-propagations scheduler expression)))))
+        (schedule-propagations scheduler reference)))))
 
-(defn propagate-visible-to-use [scheduler depends-on expression]
-  "Record in this expression the latest information for of one of the
-   expressions this expression depends on. If that changes its
+(defn copy-visible-to-user [scheduler depends-on reference]
+  "Record in this reference the latest information for of one of the
+   references this reference depends on. If that changes its
    information, schedule propagation."
   (change-and-schedule-propagation
-   scheduler expression
-   update-depends-on-visible expression depends-on
-   #(mm/get-in! (:expressions scheduler) [depends-on :visible])))
+   scheduler reference
+   update-depends-on-visible reference depends-on
+   #(mm/get-in! (:references scheduler) [depends-on :visible])))
 
-(defn handle-state-changed [scheduler expression]
-  "Record in this expression the latest information for its state. If
+(defn copy-state-value [scheduler reference]
+  "Record in this reference the latest information for its state. If
    that changes its information, schedule propagation."
   (change-and-schedule-propagation
-   scheduler expression update-value-from-state))
+   scheduler reference update-value-from-state))
 
 ;;; The next functions handle :pending-actions. They are
 ;;; designed to be idempotent, so they can be called as long as there
@@ -314,34 +317,34 @@
 ;;; it and when finished, wouldn't notice that an add was now necessary.
 
 (defn register-different-depends
-  "Given an expression and a collection of expressions that have been
-  added to it or removed from it, make sure the :using-expressions
-  field in each of those expressions reflects the depends-info,
-  and propagate values from those expressions that are used."
-  [scheduler expression changed-expressions]
-  (let [e-mm (:expressions scheduler)
-        getter #(mm/get-in! e-mm [expression :depends-info])]
-    (doseq [changed-expression changed-expressions]
+  "Given a reference and a collection of references that have been
+  added to it or removed from it, make sure the :using-references
+  field in each of those references reflects the depends-info,
+  and propagate values from those references that are used."
+  [scheduler reference changed-references]
+  (let [r-mm (:references scheduler)
+        getter #(mm/get-in! r-mm [reference :depends-info])]
+    (doseq [changed-reference changed-references]
       (change-and-schedule-propagation
-       scheduler changed-expression
-       update-adjust-using changed-expression expression getter))))
+       scheduler changed-reference
+       update-adjust-using changed-reference reference getter))))
 
 (letfn
-    [(state-change-callback [value state scheduler expression]
-       (add-task (:pending scheduler) handle-state-changed expression))
+    [(state-change-callback [value state scheduler reference]
+       (add-task (:pending scheduler) copy-state-value reference))
 
      (register-added-state
-       [current-state scheduler expression]
-       (let [e-mm (:expressions scheduler)]
+       [current-state scheduler reference]
+       (let [r-mm (:references scheduler)]
          (let [value (subscribe current-state
-                                state-change-callback scheduler expression)]
-           (if (not= value (mm/get-in! e-mm [expression :visible :value]))
-             (add-task (:pending scheduler) handle-state-changed expression)))))
+                                state-change-callback scheduler reference)]
+           (if (not= value (mm/get-in! r-mm [reference :visible :value]))
+             (add-task (:pending scheduler) copy-state-value reference)))))
 
      (register-removed-state
-       [scheduler expression removed-state]
+       [scheduler reference removed-state]
        (unsubscribe removed-state
-                    state-change-callback scheduler expression))]
+                    state-change-callback scheduler reference))]
 
   (defn register-different-state
    "Given the current state object, and an object that may be or may
@@ -349,15 +352,18 @@
     not the current state, and subscribe to it if it is. For a
     subscription, if the state's value is not the same as the currently
     recorded one, schedule change propagation."
-   [scheduler expression state-of-interest]
+   ;; TODO: make State objects have a conditional subscription method
+   ;; that consults a thunk to decide whether to subscribe. Then we
+   ;; could get rid of the last call-with-latest-value! in this code.
+   [scheduler reference state-of-interest]
     (mm/call-with-latest-value-in!
-     (:expressions scheduler) [expression :state]
+     (:references scheduler) [reference :state]
      (fn [current-state]
        (if (= current-state state-of-interest)
          (when (not (nil? current-state))
-           (register-added-state current-state scheduler expression))
+           (register-added-state current-state scheduler reference))
          (when (not (nil? state-of-interest))
-           (register-removed-state scheduler expression state-of-interest)))))))
+           (register-removed-state scheduler reference state-of-interest)))))))
 
 (defn run-all-pending [scheduler]
   (loop []
@@ -368,12 +374,12 @@
   "Return a map that describes the content of a scheduler
    but doesn't have deep nesting."
   [scheduler]
-  (let [e-mm (:expressions scheduler)
-        expressions (keys (mm/current-contents e-mm))]
-    {:expressions
-     (zipmap expressions
-             (for [expression expressions]
-               (let [info (mm/get! e-mm expression)]
+  (let [r-mm (:references scheduler)
+        references (keys (mm/current-contents r-mm))]
+    {:references
+     (zipmap references
+             (for [reference references]
+               (let [info (mm/get! r-mm reference)]
                  (let [tags (keys info)]
                    (zipmap tags
                            (for [tag tags]
@@ -388,55 +394,56 @@
       "A Scheduler that can also handle approximations."}
     ApproximatingScheduler
 
-  [;; This holds a mutable map that records expressions and their
-   ;; values. The expressions are specified by a form, which must be
+  [;; This holds a mutable map that records references and their
+   ;; values. The references are specified by a form, which must be
    ;; a function and its arguments, which can be anything.
-   ;; The map is keyed by the expression. Its values are maps that
+   ;; The map is keyed by the reference. Its values are maps that
    ;; record:
-   ;;   A :visible map of what other expressions see about this
-   ;;     expression, consisting of
-   ;;     The :value of the expression.
+   ;;   A :visible map of what other references see about this
+   ;;     reference, consisting of
+   ;;     The :value of the reference.
    ;;     A :valid tag if the value is valid
-   ;;   A set of :using-expressions that depend on the value.
+   ;;   A set of :using-references that depend on the visible information.
    ;;   A boolean :value-depends-changed if some of the dependencies of
-   ;;     the value have changed. In this case, there will be a
-   ;;     pending eval-and-call, and the next three fields pertain to
-   ;;     it. Unlike the later fields, which pertain to the pending
-   ;;     eval-and-call, if there is one, this field always pertains to
-   ;;     the current value.
-   ;;   A :depends-info map from expressions that were used or are
-   ;;      needed by our computations so far (eval-and-call if present,
-   ;;      otherwise value) to a copy of the version of information
-   ;;      for that expression that is reflected in the computation.
-   ;;   A :unused-depends subset of the keys of :depends-info that have not
-   ;;     been used yet but are needed by the current eval-and-call.
-   ;;   A set of :uncertain-depends of expressions in :depends-info
-   ;;     whose current value agrees with the recorded value, but
-   ;;     which might be out of date.
+   ;;     the value have changed.
+   ;;   A :depends-info map from references that were used or are
+   ;;     needed by our computations so far to a copy of the version
+   ;;     of the information for that reference that is reflected
+   ;;     in the computation.
+   ;;   A :depends-used map from references that are needed in our
+   ;;     computations so far to the expressions that need them.
    ;;   A :pending-actions set of actions to take based on new information
-   ;;     about this expression. This is a way for a purely functional
-   ;;     update to the information for one expression to request
+   ;;     about this reference. This is a way for a purely functional
+   ;;     update to the information for one reference to request
    ;;     changes to other information. The actions are of the form
    ;;     [function & args]. The functionn will be called with the scheduler,
-   ;;     this expression, and the additional args.
-   ;;   A map of :approximations whose keys are expressions that our
+   ;;     this reference, and the additional args.
+   ;;   For internal computations, a :expressionss map from expressions in
+   ;;     the form (function arg arg ...) to maps about them. Those
+   ;;     maps contain a subset of:
+   ;;     A :visible map that is a copy of the latest information we
+   ;;       know about the value of the expression
+   ;;     A :reference that the expression evaluates to, if evaluation has
+   ;;       been done.
+   ;;     A set :uncertain-depends of expressions directly inside this one
+   ;;       whose value is not yet valid.
+   ;;     A set of :using-expressions of expressions that use the value of
+   ;;       this one. The set can also contain :top-level if this expression
+   ;;       is the top level expression of the reference.
+   ;;   For external computations, the :state object that holds our value.
+   ;;   For external computations, the :unsubscriber thunk to call to
+   ;;     unsubscribe to changes in the value
+   ;;   A map of :approximations whose keys are references that our
    ;;     value depends on where where only a lower bound on their value
    ;;     was used in computing our value. The values in the map are a
    ;;     pair of which iteration of that value was used, and which
-   ;;     iteration of the expression's value we need as input if our
+   ;;     iteration of the reference's value we need as input if our
    ;;     value is to be used in the next iteration. The former can be
    ;;     computed from :used-info, but is aggregated here to make
    ;;     computation easier. The latter is reset to 0 whenever a
    ;;     non-monotonic input changes, because that change invalidates
-   ;;     all iterations that went through this expression.
-   ;;   For internal computations the :eval-and-call to call if we are
-   ;;     waiting for arguments, in the form (function argument ...),
-   ;;     where the function is a Clojure function, while the
-   ;;     arguments are expressions
-   ;;   For external computations, the :state object that holds our value.
-   ;;   For external computations, the :unsubscriber thunk to call to
-   ;;     unsubscribe to changes in the value
-   expressions
+   ;;     all iterations that went through this reference.
+   references
 
    ;; This is holds a list of pending work, mostly updates that need
    ;; to be propagated. Each entry is a sequence of a function and its
@@ -447,19 +454,19 @@
 
   Notifier
 
-  (notifier-value [this expression]
-    (request this expression)
+  (notifier-value [this reference]
+    (request this reference)
     (run-all-pending this)
-    (mm/get-in! (:expressions this) [expression :visible :value]))
+    (mm/get-in! (:references this) [reference :visible :value]))
 
   Scheduler
 
-  (request [this expression]
-    (change-and-schedule-propagation this expression
-                                     update-initialize-if-needed expression))
+  (request [this reference]
+    (change-and-schedule-propagation this reference
+                                     update-initialize-if-needed reference))
 
-  (ready? [this expression]
-    (mm/get! (:expressions this) [expression :visible :valid]))
+  (ready? [this reference]
+    (mm/get! (:references this) [reference :visible :valid]))
   )
 
 (defmethod clojure.core/print-method ApproximatingScheduler

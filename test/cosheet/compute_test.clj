@@ -51,37 +51,37 @@
     (is (= (update-result {:visible {:value 1}
                            :value-depends-changed true
                            :pending-actions [1]}
-                          (eval-and-call 1 2 3))
+                          (expr 1 2 3))
            {:visible {:value 1}
             :value-depends-changed true
-            :eval-and-call '(1 2 3)
+            :expression '(1 2 3)
             :depends-info {2 nil 3 nil}
             :uncertain-depends #{2 3}
             :unused-depends #{2 3}
             :pending-actions
             [1 [register-different-depends #{2 3}]]}))
-    ;; Now check an eval-and-call when there is already depends info
+    ;; Now check an expression when there is already depends info
     (is (= (update-result {:visible {:value 1}
                            :depends-info {2 4 8 9}}
-                          (eval-and-call 1 2 3))
+                          (expr 1 2 3))
            {:visible {:value 1}
-            :eval-and-call '(1 2 3)
+            :expression '(1 2 3)
             :depends-info {2 4 3 nil 8 9}
             :uncertain-depends #{3}
             :unused-depends #{3}
             :pending-actions
             [[register-different-depends #{3}]]}))))
 
-(deftest update-eval-and-call-while-ready-test
-  (is (= (update-run-eval-and-call-while-ready
-          {:eval-and-call 1 :uncertain-depends #{1}})
-         {:eval-and-call 1 :uncertain-depends #{1}}))
-  (is (= (update-run-eval-and-call-while-ready
+(deftest update-expression-while-ready-test
+  (is (= (update-run-expression-while-ready
+          {:expression 1 :uncertain-depends #{1}})
+         {:expression 1 :uncertain-depends #{1}}))
+  (is (= (update-run-expression-while-ready
           {})
          {}))
-  (is (= (update-run-eval-and-call-while-ready
+  (is (= (update-run-expression-while-ready
           {:depends-info {:a {:value 2} :b {:value 3}}
-           :eval-and-call [(fn [arg] (eval-and-call (fn [arg2] [arg arg2])
+           :expression [(fn [arg] (expr (fn [arg2] [arg arg2])
                                                 :a))
                          :b]})
          {:visible {:value [3 2] :valid true}
@@ -102,7 +102,7 @@
               :visible {:value 3}
               :uncertain-depends #{:b}
               :unused-depends #{:a}
-              :eval-and-call [1 2]}]
+              :expression [1 2]}]
     (is (= (update-depends-on-visible {} :a :b (constantly {})) {}))
     (is (= (update-depends-on-visible
             info [3 :d] :a (constantly {:value 4 :valid true}))
@@ -112,7 +112,7 @@
             :visible {:value 3}
             :uncertain-depends #{:b}
             :unused-depends #{:a}
-            :eval-and-call [1 2]}))
+            :expression [1 2]}))
     (is (= (update-depends-on-visible
             info [3 :d] :a (constantly {:value 4}))
            {:depends-info {:a {:value 4}
@@ -121,7 +121,7 @@
             :visible {:value 3}
             :uncertain-depends #{:b :a}
             :unused-depends #{:a}
-            :eval-and-call [1 2]}))
+            :expression [1 2]}))
     (is (= (update-depends-on-visible
             info [3 :d] :b  (constantly {:value 3 :valid true}))
            {:depends-info {:a {:value 2 :valid true}
@@ -129,15 +129,15 @@
                            :c {:value 5 :valid true}}
             :visible {:value 3 :valid true}
             :unused-depends #{:a}
-            :eval-and-call [1 2]}))
+            :expression [1 2]}))
     (is (= (update-depends-on-visible
-            info [(fn [] (eval-and-call 3 :d))] :c (constantly {:value 3}))
+            info [(fn [] (expr 3 :d))] :c (constantly {:value 3}))
            {:depends-info {:d nil}
             :visible {:value 3}
             :value-depends-changed true
             :uncertain-depends #{:d}
             :unused-depends #{:d}
-            :eval-and-call [3 :d]
+            :expression [3 :d]
             :pending-actions
             [[register-different-depends '(:c :b :a)]
              [register-different-depends #{:d}]]}))))
@@ -146,21 +146,21 @@
   (let [s (new-approximating-scheduler)
         history (atom [])
         f5 (fn [] 5)
-        r1 (fn [scheduler expression arg]
+        r1 (fn [scheduler reference arg]
              (swap! history #(conj % :r1))
              (is (= scheduler s))
-             (is (= expression :a))
+             (is (= reference :a))
              (is (= arg 3))
-             (mm/update! (:expressions scheduler) :a
-                         #(assoc % :eval-and-call [f5])))]
-    (mm/assoc-in! (:expressions s) [:a] {:visible {:value 0 :valid true}
-                                         :using-expressions #{:x}})
+             (mm/update! (:references scheduler) :a
+                         #(assoc % :expression [f5])))]
+    (mm/assoc-in! (:references s) [:a] {:visible {:value 0 :valid true}
+                                         :using-references #{:x}})
     (change-and-schedule-propagation
      s :a update-add-action r1 3)
-    (is (= (mm/current-contents (:expressions s))
+    (is (= (mm/current-contents (:references s))
            {:a {:visible {:value 0 :valid true}
-                :eval-and-call [f5]
-                :using-expressions #{:x}}}))
+                :expression [f5]
+                :using-references #{:x}}}))
     (is (= @history [:r1]))
     (let [pending (first @(:pending s))]
       (is (= (count pending) 0)))
@@ -169,39 +169,39 @@
 
 (deftest register-added-depends-test
   (let [s (new-approximating-scheduler)
-        e-mm (:expressions s)
-        not-ready-fn (fn [] (eval-and-call +))]
+        e-mm (:references s)
+        not-ready-fn (fn [] (expr +))]
     (mm/assoc-in!
      e-mm [[identity 1]]
      (update-start-evaluation {} [identity 1]))
-    (mm/assoc-in! e-mm [[identity 1] :using-expressions] #{:b})
+    (mm/assoc-in! e-mm [[identity 1] :using-references] #{:b})
     (mm/assoc-in!
      e-mm [:a]
      (update-start-evaluation
-      {} [(fn [] (eval-and-call + [identity 1] [not-ready-fn]))]))
+      {} [(fn [] (expr + [identity 1] [not-ready-fn]))]))
     (register-different-depends s :a [[identity 1] [not-ready-fn]])
-    (is (= (mm/get-in! e-mm [[identity 1] :using-expressions]) #{:a :b}))
-    (is (= (mm/get-in! e-mm [[not-ready-fn] :using-expressions]) #{:a}))
+    (is (= (mm/get-in! e-mm [[identity 1] :using-references]) #{:a :b}))
+    (is (= (mm/get-in! e-mm [[not-ready-fn] :using-references]) #{:a}))
     (let [pending (first @(:pending s))]
       (is (= (count pending) 1))
       (is (= (first (peek pending))
-             [propagate-visible-to-use [not-ready-fn] :a])))))
+             [copy-visible-to-user [not-ready-fn] :a])))))
 
 (deftest register-removed-depends-test
   (let [s (new-approximating-scheduler)
-        e-mm (:expressions s)]
+        e-mm (:references s)]
     (mm/assoc-in! e-mm [:a :depends-info] {:b 1 :c 1})
-    (mm/assoc-in! e-mm [:b :using-expressions] #{:a :e})
-    (mm/assoc-in! e-mm [:d :using-expressions] #{:a :f})
+    (mm/assoc-in! e-mm [:b :using-references] #{:a :e})
+    (mm/assoc-in! e-mm [:d :using-references] #{:a :f})
     (register-different-depends s :a [:b :d])
-    (is (= (mm/get-in! e-mm [:b :using-expressions]) #{:a :e}))
-    (is (= (mm/get-in! e-mm [:d :using-expressions]) #{:f}))))
+    (is (= (mm/get-in! e-mm [:b :using-references]) #{:a :e}))
+    (is (= (mm/get-in! e-mm [:d :using-references]) #{:f}))))
 
 (deftest register-added-removed-state-test
   (let [s (new-approximating-scheduler)
         st1 (new-state :value 1)
         st2 (new-state :value 2)
-        e-mm (:expressions s)]
+        e-mm (:references s)]
     (mm/assoc-in! e-mm [:a :state] st1)
     (register-different-state s :a st2)
     (is (empty? @(:subscriptions st1)))
@@ -215,24 +215,24 @@
       (register-different-state s :a st1)
       (is (empty? @(:subscriptions st1))))))
 
-(deftest propagate-visible-to-use-test
+(deftest copy-visible-to-user-test
   (let [s (new-approximating-scheduler)]
     (change-and-schedule-propagation
      s :a (fnil update-start-evaluation {})
-     [(fn [] (eval-and-call inc [identity 2]))])
-    (propagate-visible-to-use s [identity 2] :a)
-    (let [info (mm/get! (:expressions s) :a)]
+     [(fn [] (expr inc [identity 2]))])
+    (copy-visible-to-user s [identity 2] :a)
+    (let [info (mm/get! (:references s) :a)]
       (is (= (:visible info) {:value 3 :valid true})))))
 
-(deftest handle-state-changed-test
+(deftest copy-state-value-test
   (let [s (new-approximating-scheduler)
         state (new-state :value 1)
         exp [(fn [] state)]]
     (change-and-schedule-propagation s exp update-initialize-if-needed exp)
-    (is (= (mm/get-in! (:expressions s) [exp :visible :value]) 1))
+    (is (= (mm/get-in! (:references s) [exp :visible :value]) 1))
     (state-set state 2)
     (run-all-pending s)
-    (is (= (mm/get-in! (:expressions s) [exp :visible :value]) 2))))
+    (is (= (mm/get-in! (:references s) [exp :visible :value]) 2))))
 
 (deftest notifier-value-test
   (let [s (new-approximating-scheduler)]
@@ -261,7 +261,7 @@
   
   (let [width 13
         depth 7
-        trials 10; 0000
+        trials 100000
         changes-per-trial 1000
         states (vec (for [i (range width)]
                       (new-state :value (mod (inc i) width))))

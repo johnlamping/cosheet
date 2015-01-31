@@ -2,68 +2,61 @@
   (:require [cosheet.state :refer :all]))
 
 (defprotocol Notifier
-  "Something that can return the value or State objects for expressions."
-  (notifier-value [this expression]
-    "Return the current  value of the expression.")
-  (notifier-state [this expression]
-    "Return the state (or just value if immutable) of the expression"))
+  "Something that can return the value or State objects for references."
+  (notifier-value [this reference]
+    "Return the current  value of the reference.")
+  (notifier-state [this reference]
+    "Return the state (or just value if immutable) of the reference"))
 
 (defprotocol Scheduler
-  "A notifier that schedules evaluations, as well as tracking
-   dependencies. It requires its expressions to be a list of a form
-   followed by arguments, and requires the form to be a Clojure
-   function that knows how to compute the value of the expression in
-   the context of the notifier, given the unevaluated arguments.
-   To evaluate an expression, the scheduler calls the form of the
-   expression, with the rest of the expression as arguments, as well as
-   possibly other information. That function can return either a value,
-   a State, if the value may change later, or a eval-and-call to request
-   the scheduler to do further evaluations.
+  "A notifier that schedules evaluations of references, as well as
+   tracking dependencies. References must be a list of a function
+   followed by arguments, where the function knows how to compute the
+   value of the reference in the context of the notifier, given the
+   arguments. To evaluate a reference, the scheduler calls the form of
+   the reference, with the rest of the reference as arguments, as well
+   as possibly other information. That function can return either a
+   value, a State, if the value may change later, or a expression to
+   request the scheduler to do further evaluations.
    Thus, all the information on how to evaluate is held by the functions
-   in the expressions; the scheduler just coordinates everything,
+   in the references; the scheduler just coordinates everything,
    including state changes."
-  (request [this expression]
+  (request [this reference]
     "Request the given computation.")
-  (ready? [this expression]
+  (ready? [this reference]
     "True if the value of the computation is available."))
 
-(defn make-eval-and-call
+(defn make-expression
   "Make an eval-and call form, with the given function and arguments.
-   trace must be (fn [thunk] (thunk)), and is called by the scheduler
+   trace must be (fn [thunk] (thunk)), and may be called by the scheduler
    as part of evaluating its arguments to leave a strack trace with a line
    number corresponding to the original code."
   [trace f & args]
-  (apply list :eval-and-call trace f args))
+  (apply list :expression trace f args))
 
-(defmacro eval-and-call
-  "Takes a function and a series of arguments, and produces a result
+(defmacro expr
+  "Takes a function and a series of arguments, and produces a expression
    that when run under a scheduler requests evaluation of the
-   arguments. Any argument that evaluates to a vector is interpreted as
-   an expression, indicating a call of a function with arguments, that
+   arguments. Any argument can be another expression, that
    also needs to be run under the scheduler. Once any necessary
-   subsidiary evaluations are done, the function is called with the
-   values, and its result returned. The new result may be another
-   eval-and-call, in which case the process repeats.
+   subsidiary evaluations are done, the reslting function and arguments
+   is a function is a reference, whose value is the value of the expression.
    If the scheduler is an approximating scheduler, an argument may be
-   the special indication (:monotonic expression). This indicate that
-   the result is a monotonic function of the value of the expression,
+   the special indication (:monotonic reference). This indicate that
+   the result is a monotonic function of the value of the reference,
    so that if only lower bounds for the arguments are available, a
-   lower bound for the result can still be computed. If the expression
+   lower bound for the result can still be computed. If the reference
    has a :lower-bound meta value, the scheduler can use that as the
    starting point for approximations. The scheduler knows nothing
    about the ordering of values in the monotonic hierarchy; it is up
    to the functions to make sure that the ordering is consistent
-   between an expression and its users."
+   between a reference and its users."
   [f & args]
-  ;; TODO: make this a macro that creates a function that gets called
-  ;; by the scheduler to then call the wrapped function, so that the
-  ;; stack track shows where control is. It gets called with a thunk,
-  ;; which it calls, and causes evaluation of the arguments.
-  `(make-eval-and-call (fn [thunk#] (thunk#)) ~f ~@args))
+  `(make-expression (fn [thunk#] (thunk#)) ~f ~@args))
 
 (defmacro eval-let
   "A let like construct that has the scheduler evaluate the bindings.
-   It expands to eval-and-call forms."
+   It expands to expression forms."
   [bindings & body]
   (assert (even? (count bindings))
           "Bindings must have an even number of forms")
@@ -72,21 +65,21 @@
     (let [var (first bindings)
           expr (second bindings)
           rest (nnext bindings)]
-      `(eval-and-call (fn [~var] (eval-let ~rest ~@body))
+      `(expr (fn [~var] (eval-let ~rest ~@body))
                       ;; TODO: This if shouldn't be necessary, but
                       ;; there is a bug in query_impl without it.
                       ~(if (sequential? expr) (vec expr) expr)))))
 
 ;;; TODO: This is eager. Consider adding support for lazy sequences of
-;;; expressions. The challenge is that using them would require
-;;; special forms, since evaluations of expressions in the sequence
-;;; can't be done inline, but requires returning an eval-and-call.
+;;; references. The challenge is that using them would require
+;;; special forms, since evaluations of references in the sequence
+;;; can't be done inline, but requires returning an expression.
 ;;; TODO: Make this into a macro that leaves a proper track
 (defn eval-map
   "Return a request to compute a seq of the evaluation
    of the function on each element of the sequence."
   [f sequence]
-  (apply make-eval-and-call (fn [thunk] (thunk)) vector
+  (apply make-expression (fn [thunk] (thunk)) vector
          (map (fn [elem] [f elem]) sequence)))
 
 ;;; Factory method for ApproximatingScheduler
@@ -94,7 +87,7 @@
   (constantly true))
 
 (defmulti current-value
-  "Run computation on the expression, which may use the Scheduler protocol
+  "Run computation on the reference, which may use the Scheduler protocol
    for its return values, returning the current value,
    rather than tracking dependencies."
   (constantly true))

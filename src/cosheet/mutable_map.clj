@@ -34,7 +34,8 @@
                                    #(apply fun % keys args))]
     (get-in info keys)))
 
-(def update! (partial mm-swap! (fn [map key f] (update-in map [key] f))))
+(def update! (partial mm-swap! (fn [map key f & args]
+                                 (apply update-in map [key] f args))))
 (def update-in! (partial mm-swap-in! update-in))
 (def update-in-returning-both!
   (partial mm-swap-in-returning-both! update-in))

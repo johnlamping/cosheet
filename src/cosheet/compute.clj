@@ -35,12 +35,13 @@
   (apply list :expression trace f args))
 
 (defmacro expr
-  "Takes a function and a series of arguments, and produces a expression
-   that when run under a scheduler requests evaluation of the
-   arguments. Any argument can be another expression, that
-   also needs to be run under the scheduler. Once any necessary
-   subsidiary evaluations are done, the reslting function and arguments
-   is a function is a reference, whose value is the value of the expression.
+  "Takes a function and a series of arguments, and produces an expression
+   that when run under a scheduler requests further evaluation of the
+   arguments. The function and arguments are all evaluated in Clojure,
+   but any of them can return an expression, that then also gets run
+   under the scheduler. Once any necessary subsidiary evaluations are
+   done, the resulting function and arguments is a reference, whose
+   value will become the value of the expression.
    If the scheduler is an approximating scheduler, an argument may be
    the special indication (:monotonic reference). This indicate that
    the result is a monotonic function of the value of the reference,
@@ -63,12 +64,15 @@
   (if (nil? bindings)
     `(do ~@body)
     (let [var (first bindings)
-          expr (second bindings)
+          exp (second bindings)
           rest (nnext bindings)]
       `(expr (fn [~var] (eval-let ~rest ~@body))
-                      ;; TODO: This if shouldn't be necessary, but
-                      ;; there is a bug in query_impl without it.
-                      ~(if (sequential? expr) (vec expr) expr)))))
+             ;; TODO: This if shouldn't be necessary, but
+             ;; there is a bug in query_impl without it.
+             ;; It can't be right now, anyway.
+             ;; ~(if (sequential? exp) (vec exp) exp)
+             ~exp
+             ))))
 
 ;;; TODO: This is eager. Consider adding support for lazy sequences of
 ;;; references. The challenge is that using them would require

@@ -39,7 +39,8 @@
    that when run under a scheduler requests further evaluation of the
    arguments. The function and arguments are all evaluated in Clojure,
    but any of them can return an expression, that then also gets run
-   under the scheduler. Once any necessary subsidiary evaluations are
+   under the scheduler, or a state, whose value will be used and tracked.
+   Once any necessary subsidiary evaluations are
    done, the resulting function and arguments is a reference, whose
    value will become the value of the expression.
    If the scheduler is an approximating scheduler, an argument may be

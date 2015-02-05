@@ -298,11 +298,19 @@
     (is (= (clean-tracers (expr-map :f [1 2]))
            (clean-tracers (expr vector (expr :f 1) (expr :f 2)))))))
 
-(deftest notifier-value-test
+(deftest state-in-expr-test
+  (let [s (new-approximating-scheduler)
+        state (new-state :value 0)]
+    (letfn [(double-state [] (expr + state state))]
+      (is (= (notifier-value s [double-state]) 0))
+      (state-set state 1)
+      (is (= (notifier-value s [double-state]) 2)))))
+
+(deftest notifier-fib-test
   (let [s (new-approximating-scheduler)
         state (new-state :value 0)]
     (letfn [(fib [n] (if (<= n 1)
-                       (expr identity state)
+                       state
                        (expr-let [f1 (expr fib (- n 1))
                                   f2 (expr fib (- n 2))]
                                  (+  f1 f2))))]
@@ -313,7 +321,7 @@
       ;; Now it should be the right value.
       (is (= (notifier-value s [fib 37]) 39088169)))))
 
-(deftest current-value-test
+(deftest current-value-fib-test
   (let [state (new-state :value 1)]
     (letfn [(fib [n] (if (<= n 1)
                        state

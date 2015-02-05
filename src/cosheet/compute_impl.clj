@@ -45,6 +45,12 @@
 
 ;;; TODO: garbage collection needs to be implemented.
 
+;;; TODO: The way we handle states is hacky. Only references can
+;;; evaluate to states, so we turn states in the arguments of
+;;; expressions into expressions that become [identity <state>].
+;;; Instead, expressions should handle states, and references should
+;;; treat everything as an expression.
+
 ;;; Methods for ApproximatingScheduler
 
 ;;; TODO: write a description of how approximate iterations work, how
@@ -187,17 +193,22 @@
                    info
                    subsidiary-exprs))))
 
-     (remove-traces [expr]
-       (if (expression? expr)
-         (apply make-expression nil (remove-traces (expression-fn expr))
-                (map remove-traces (expression-args expr)))
-         expr))
+     ;; Remove the tracers from expressions, and turn states into
+     ;; expressions.
+     (preprocess [exp]
+       (cond (expression? exp)
+             (apply make-expression nil (preprocess (expression-fn exp))
+                    (map preprocess (expression-args exp)))
+             (state? exp)
+             (make-expression nil identity exp)
+             :else
+             exp))
 
-     (update-expression-result [info expr]
-       (let [expr (remove-traces expr)]
+     (update-expression-result [info exp]
+       (let [exp (preprocess exp)]
          (-> info
-             (assoc :expression expr)
-             (update-add-expression expr nil))))]
+             (assoc :expression exp)
+             (update-add-expression exp nil))))]
 
   (defn update-initialize
     "Run the reference and set up the information in accordance

@@ -7,7 +7,10 @@
 
 (def history (atom []))
 
-(defn generic-callback [& args]
+(defn generic-callback [state & args]
+  (swap! history #(conj % (cons (state-value state) (cons state args)))))
+
+(defn provider-callback [& args]
   (swap! history #(conj % args)))
 
 (deftest state-test
@@ -35,7 +38,7 @@
     (is (= @history [[3 s "val"]])))
   ;; Now, try all the optional arguments.
   (let [s (new-state :value 1
-                     :callback [generic-callback "sub"]
+                     :callback [provider-callback "sub"]
                      :additional {:a 9})]
     (reset! history [])
     (is (= (:a s) 9))

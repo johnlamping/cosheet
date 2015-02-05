@@ -6,7 +6,7 @@
                                     id->content-reference
                                     mutable-store?]]
                      [entity :refer :all]
-                     [compute :refer [eval-map eval-let]])))
+                     [compute :refer [expr-map expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
@@ -36,7 +36,7 @@
     (description->entity (id->content-reference store item-id) store)))
 
 (defrecord
-    ^{:doc "An item whose elements are described by a store."}
+    ^{:doc "An item whose elements are described by a mutable store."}
     MutableStoredItem
 
   [store     ; The mutable store that holds the information for this item.
@@ -49,21 +49,21 @@
   (atom? [this?] (atom-description? item-id) )
 
   (label->elements [this label]
-    (eval-let [element-ids (id-label->element-ids store item-id label)]
+    (expr-let [element-ids (expr id-label->element-ids store item-id label)]
               (seq (for [element-id element-ids]
                      (description->entity element-id store)))))
 
   (elements [this]
-    (eval-let [element-ids (id->element-ids store item-id)]
+    (expr-let [element-ids (expr id->element-ids store item-id)]
               (seq (for [element-id element-ids]
                      (description->entity element-id store)))))
 
   (content [this]
-    (eval-let [content (id->content store item-id)]
+    (expr-let [content (expr id->content store item-id)]
               (description->entity content store)))
 
   (content-reference [this]
-    (eval-let [reference (id->content-reference store item-id)]
+    (expr-let [reference (expr id->content-reference store item-id)]
               (description->entity reference store))))
 
 ;;; Make a list work as an item. The format is (content element
@@ -145,7 +145,7 @@
       (content (first elements)))))
 
 (defmethod label->content true [entity label]
-  (eval-let [elements [label->elements entity label]]
+  (expr-let [elements (expr label->elements entity label)]
     (when elements
       (assert (= (count elements) 1))
       (content (first elements)))))
@@ -158,7 +158,7 @@
 (defmethod atomic-value true [entity]
   (if (nil? entity)
     nil
-    (eval-let [content [content entity]]
+    (expr-let [content (expr content entity)]
       (if (atom? content)
         content
         (atomic-value content)))))
@@ -167,14 +167,14 @@
   (map atomic-value (label->elements entity label)))
 
 (defmethod label->atomic-values true [entity label]
-  (eval-let [elements [label->elements entity label]]
-    (eval-map atomic-value elements)))
+  (expr-let [elements (expr label->elements entity label)]
+    (expr-map atomic-value elements)))
 
 (defmethod label-has-atomic-value? false [entity label value]
   (some (partial = value)
         (label->atomic-values entity label)))
 
 (defmethod label-has-atomic-value? true [entity label value]
-  (eval-let [atomics [label->atomic-values entity label]]
+  (expr-let [atomics (expr label->atomic-values entity label)]
     (some (partial = value) atomics)))
 

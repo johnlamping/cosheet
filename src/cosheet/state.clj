@@ -34,8 +34,7 @@
   (let [[old new] (apply swap-returning-both! (::value state) f args)]
     (if (not= old new)
       (doseq [[f & args] @(:subscriptions state)]
-        (apply call-with-latest-value (fn [] @(::value state))
-               f state args)))))
+        (apply f state args)))))
 
 (defn state-set
   "Make the new value be the value, and let the callbacks know."

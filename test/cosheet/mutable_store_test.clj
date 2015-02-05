@@ -36,7 +36,7 @@
           candidate-ids (candidate-matching-ids mutable-store nil)
           [store1 e] (add-simple-element store element "foo")
           [revised-store e1] (add-simple-element store1 e :label)
-          callback (fn [value state arg]
+          callback (fn [state arg]
                      (is (= arg "arg")))]
       (subscribe element-ids callback "arg")
       (subscribe label-ids callback "arg")

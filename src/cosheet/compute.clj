@@ -27,7 +27,7 @@
     "True if the value of the computation is available."))
 
 (defn make-expression
-  "Make an eval-and call form, with the given function and arguments.
+  "Make an expr form, with the given function and arguments.
    trace must be (fn [thunk] (thunk)), and may be called by the scheduler
    as part of evaluating its arguments to leave a strack trace with a line
    number corresponding to the original code."
@@ -55,9 +55,9 @@
   [f & args]
   `(make-expression (fn [thunk#] (thunk#)) ~f ~@args))
 
-(defmacro eval-let
-  "A let like construct that has the scheduler evaluate the bindings.
-   It expands to expression forms."
+(defmacro expr-let
+  "A let like construct that evaluate the bindings and puts the result under
+   control of the scheduler. It expands to expr forms."
   [bindings & body]
   (assert (even? (count bindings))
           "Bindings must have an even number of forms")
@@ -67,24 +67,22 @@
           exp (second bindings)
           rest (nnext bindings)]
       `(expr (fn [~var] (eval-let ~rest ~@body))
-             ;; TODO: This if shouldn't be necessary, but
+             ;; TODO: This shouldn't be necessary, but
              ;; there is a bug in query_impl without it.
              ;; It can't be right now, anyway.
              ;; ~(if (sequential? exp) (vec exp) exp)
-             ~exp
-             ))))
+             ~exp))))
 
 ;;; TODO: This is eager. Consider adding support for lazy sequences of
 ;;; references. The challenge is that using them would require
 ;;; special forms, since evaluations of references in the sequence
 ;;; can't be done inline, but requires returning an expression.
-;;; TODO: Make this into a macro that leaves a proper track
-(defn eval-map
-  "Return a request to compute a seq of the evaluation
-   of the function on each element of the sequence."
+(defmacro expr-map
+  "Return an expr which returns a vector, where each element is itself an expr
+   of the function applied to an element of the sequence."
   [f sequence]
-  (apply make-expression (fn [thunk] (thunk)) vector
-         (map (fn [elem] [f elem]) sequence)))
+  `(apply make-expression (fn [thunk#] (thunk#))
+          vector (map (fn [elem#] (expr ~f elem#)) ~sequence)))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

@@ -13,13 +13,24 @@
 
 (deftest update-add-action-test
   (is (= (update-add-action {1 2} :f 5 6)
-         {1 2 :pending-actions [[:f 5 6]]})))
+         {1 2 :requested-actions [[:f 5 6]]})))
 
 (deftest update-value-test
   (is (= (update-value {} 1)
-         {:visible {:value 1 :valid true}}))
+         {:visible {:value 1 :valid true}
+          :requested-actions [[schedule-copy-visible-to-all-users]]}))
   (is (= (update-value {:visible {:value 1 :valid true}} 2)
+         {:visible {:value 2 :valid true}
+          :requested-actions [[schedule-copy-visible-to-all-users]]}))
+  (is (= (update-value {:visible {:value 2 :valid true}} 2)
          {:visible {:value 2 :valid true}})))
+
+(deftest update-invalid-test
+  (is (= (update-invalid {:visible {:value 1 :valid true}})
+         {:visible {:value 1}
+          :requested-actions [[schedule-copy-visible-to-all-users]]}))
+    (is (= (update-invalid {:visible {:value 1}})
+         {:visible {:value 1}})))
 
 (deftest update-reference-test
   (let [expression (expr :a (expr :b))
@@ -30,10 +41,10 @@
             :expressions {expression {:reference reference}}
             :depends-info {reference nil}
             :using-expressions {reference #{expression}}
-            :pending-actions [[register-different-depends [reference]]]}))
+            :requested-actions [[register-different-depends [reference]]]}))
     (is (= (update-reference added expression nil)
            {1 2
-            :pending-actions [[register-different-depends [reference]]
+            :requested-actions [[register-different-depends [reference]]
                               [register-different-depends [reference]]]}))))
 
 (deftest update-initialize-test
@@ -46,11 +57,15 @@
         value "value"
         value-fn (constantly value)]
     (is (= (update-initialize {1 2} [value-fn])
-           {1 2 :visible {:value value :valid true}}))
+           {1 2
+            :visible {:value value :valid true}
+            :requested-actions [[schedule-copy-visible-to-all-users]]}))
     (is (= (update-initialize {1 2} [state-fn])
-           {1 2 :visible {:value 1 :valid true}
+           {1 2
+            :visible {:value 1 :valid true}
             :state state
-            :pending-actions [[register-different-state state]]}))
+            :requested-actions [[schedule-copy-visible-to-all-users]
+                              [register-different-state state]]}))
     (is (= (update-initialize {1 2} [expression-fn])
            {1 2 :expression expression
             :expressions {expression {:uncertain-depends #{subexpression}}
@@ -58,7 +73,7 @@
                                          :using-expressions #{expression}}}
             :depends-info {[:b] nil}
             :using-expressions {[:b] #{subexpression}}
-            :pending-actions [[register-different-depends [[:b]]]]}))))
+            :requested-actions [[register-different-depends [[:b]]]]}))))
 
 (deftest update-using-reference-test
   (is (= (update-using-reference
@@ -92,26 +107,35 @@
                          #{expression})
                (assoc-in [:expressions expression :reference] [:a :b])
                (dissoc-in [:expressions expression :uncertain-depends])
-               (update-in [:pending-actions]
+               (update-in [:requested-actions]
                           #(conj % [register-different-depends [[:a :b]]])))))
     (is (= update2
            (-> update1
                (assoc-in [:visible] {:value 5 :valid true})
-               (assoc-in [:depends-info [:a :b]] {:value 5 :valid true}))))
+               (assoc-in [:depends-info [:a :b]] {:value 5 :valid true})
+               (update-in [:requested-actions]
+                          #(conj %
+                                 [schedule-copy-visible-to-all-users])))))
     (is (= (update-depends-on-visible
             update2 [:a :b] {:value 5})
            (-> update1
                (assoc-in[:depends-info [:a :b]] {:value 5})
-               (assoc-in [:visible]  {:value 5}))))
+               (assoc-in [:visible]  {:value 5})
+               (update-in [:requested-actions]
+                          #(conj %
+                                 [schedule-copy-visible-to-all-users]
+                                 [schedule-copy-visible-to-all-users])))))
     (is (= (update-depends-on-visible
             update2 [:b]  {:value :b})
            (-> info
                (assoc-in [:depends-info [:b]] {:value :b})
                (assoc-in [:visible]  {:value 5})
-               (update-in [:pending-actions]
+               (update-in [:requested-actions]
                           #(conj %
                                  [register-different-depends [[:a :b]]]
-                                 [register-different-depends [[:a :b]]])))))
+                                 [schedule-copy-visible-to-all-users]
+                                 [register-different-depends [[:a :b]]]
+                                 [schedule-copy-visible-to-all-users])))))
     (is (= (update-depends-on-visible
             update2 [:b] {:value :c :valid true})
            (-> update1
@@ -123,10 +147,12 @@
                          #{expression})
                (dissoc-in [:using-expressions [:a :b]])
                (assoc-in [:expressions expression :reference] [:a :c])
-               (update-in [:pending-actions]
+               (update-in [:requested-actions]
                           #(conj %
+                                 [schedule-copy-visible-to-all-users]
                                  [register-different-depends [[:a :b]]]
-                                 [register-different-depends [[:a :c]]]))))))
+                                 [register-different-depends [[:a :c]]]
+                                 [schedule-copy-visible-to-all-users]))))))
   ;; Now try a repeated subexpression, and with deeper nesting.
   (let [repeated (make-expression nil :b)
         intermediate (make-expression nil :a repeated)
@@ -146,7 +172,7 @@
                (dissoc-in [:expressions intermediate :uncertain-depends])
                (assoc-in [:expressions expression :uncertain-depends]
                          #{intermediate})
-               (update-in [:pending-actions]
+               (update-in [:requested-actions]
                           #(conj % [register-different-depends [[:a :b]]])))))
     (is (= update2
            (-> update1
@@ -155,21 +181,25 @@
                (assoc-in [:expressions expression :reference] [:a :b])
                (assoc-in [:visible] {:value :a :valid true})
                (assoc-in [:depends-info [:a :b]] {:value :a :valid true})
-               (dissoc-in [:expressions expression :uncertain-depends]))))
+               (dissoc-in [:expressions expression :uncertain-depends])
+               (update-in [:requested-actions]
+                          #(conj % [schedule-copy-visible-to-all-users])))))
     (is (= (update-depends-on-visible update2 [:b] {:value :b})
            (-> info
                (assoc-in [:depends-info [:b]] {:value :b})
                (assoc-in [:visible]  {:value :a})
-               (update-in [:pending-actions]
+               (update-in [:requested-actions]
                           #(conj %
                                  [register-different-depends [[:a :b]]]
-                                 [register-different-depends [[:a :b]]])))))))
+                                 [schedule-copy-visible-to-all-users]
+                                 [register-different-depends [[:a :b]]]
+                                 [schedule-copy-visible-to-all-users])))))))
 
 (deftest update-initialize-if-needed-test
   (is (= (update-initialize-if-needed {} [+ 1 2])) {})
   (is (= (update-initialize-if-needed nil [+ 1 2])) {:value 3}))
 
-(deftest change-and-schedule-propagation-test
+(deftest change-and-run-requested-actions-test
   (let [s (new-approximating-scheduler)
         history (atom [])
         r1 (fn [scheduler reference arg]
@@ -179,7 +209,7 @@
              (is (= arg 3))
              (mm/update! (:references scheduler) :a
                          update-value 0))]
-    (change-and-schedule-propagation
+    (change-and-run-requested-actions
      s :a update-add-action r1 3)
     (is (= (mm/current-contents (:references s))
            {:a {:visible {:value 0 :valid true}}}))
@@ -191,7 +221,8 @@
   (let [s (new-approximating-scheduler)
         r-mm (:references s)]
     (mm/assoc-in! r-mm [[identity 1]]
-                  (update-initialize {} [identity 1]))
+                  (-> (update-initialize {} [identity 1])
+                      (dissoc :requested-actions)))
     (mm/assoc-in! r-mm [[:foo]] {:visible {:value 1}})
     (mm/assoc-in! r-mm [[identity 1] :using-references] #{:b})
     (mm/assoc-in! r-mm [:a :depends-info] {[identity 1] nil
@@ -235,7 +266,7 @@
 
 (deftest copy-visible-to-user-test
   (let [s (new-approximating-scheduler)]
-    (change-and-schedule-propagation
+    (change-and-run-requested-actions
      s :a update-initialize [(fn [] (expr identity 2))])
     (copy-visible-to-user s [identity 2] :a)
     (let [info (mm/get! (:references s) :a)]
@@ -245,20 +276,42 @@
   (let [s (new-approximating-scheduler)
         state (new-state :value 1)
         ref [(fn [] state)]]
-    (change-and-schedule-propagation s ref update-initialize-if-needed ref)
+    (change-and-run-requested-actions s ref update-initialize-if-needed ref)
     (is (= (mm/get-in! (:references s) [ref :visible :value]) 1))
     (state-set state 2)
     (run-all-pending s)
     (is (= (mm/get-in! (:references s) [ref :visible :value]) 2))))
 
+(deftest macros-test
+  (letfn [(clean-tracers [exp]
+            (if (expression? exp)
+              (do (assert (= ((expression-tracer exp) (constantly "test"))
+                             "test"))
+                  (apply make-expression nil (clean-tracers (expression-fn exp))
+                         (map clean-tracers (expression-args exp))))
+              exp))]
+    (is (= (clean-tracers (expr 1 2 3)) (make-expression nil 1 2 3)))
+    (let [test-exp (expr-let [a (expr 2)] (a 3))]
+      (is (= (map clean-tracers (expression-args test-exp))
+             [(clean-tracers (expr 2))]))
+      (is (= (clean-tracers ((expression-fn test-exp) inc)) 4)))
+    (is (= (clean-tracers (expr-map :f [1 2]))
+           (clean-tracers (expr vector (expr :f 1) (expr :f 2)))))))
+
 (deftest notifier-value-test
-  (let [s (new-approximating-scheduler)]
+  (let [s (new-approximating-scheduler)
+        state (new-state :value 0)]
     (letfn [(fib [n] (if (<= n 1)
-                       1
-                       (eval-let [f1 (expr fib (- n 1))
+                       (expr identity state)
+                       (expr-let [f1 (expr fib (- n 1))
                                   f2 (expr fib (- n 2))]
                                  (+  f1 f2))))]
-      (is (= (notifier-value s [fib 6]) 13)))))
+      ;; Since the state is 0, fib should be 0 everywhere, and since
+      ;; the computations should be cached, this should be fast.
+      (is (= (notifier-value s [fib 37]) 0))
+      (state-set state 1)
+      ;; Now it should be the right value.
+      (is (= (notifier-value s [fib 37]) 39088169)))))
 
 (deftest current-value-test
   (let [state (new-state :value 1)]
@@ -276,7 +329,7 @@
   
   (let [width 13
         depth 7
-        trials 100000
+        trials 10; 0000
         changes-per-trial 1000
         states (vec (for [i (range width)]
                       (new-state :value (mod (inc i) width))))
@@ -284,7 +337,7 @@
     (letfn [(indexer [d pos]
               (if (zero? d)
                 (states pos)
-                (eval-let [index (expr indexer (- d 1) pos)
+                (expr-let [index (expr indexer (- d 1) pos)
                            value (expr indexer (- d 1) index)]
                           value)))
             (expected [d pos]

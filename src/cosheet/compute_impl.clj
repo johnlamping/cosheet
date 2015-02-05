@@ -3,7 +3,8 @@
             (cosheet [compute :refer :all]
                      [state :refer :all]
                      [task-queue :refer :all]
-                     [utils :refer [dissoc-in update-in-clean-up]]
+                     [utils :refer [dissoc-in update-in-clean-up
+                                    call-with-latest-value]]
                      [mutable-map :as mm])))
 
 ;;; This is the definition of an approximating scheduler (although the
@@ -101,19 +102,26 @@
 (def register-different-depends)
 (def register-different-state)
 (def schedule-copy-visible-to-user)
+(def schedule-copy-visible-to-all-users)
 
 (defn update-add-action [info f & args]
-  (update-in info [:pending-actions]
+  (update-in info [:requested-actions]
              #((fnil conj []) % `[~f ~@args])))
 
-(defn update-value [info value]
-  (assert (not (nil? value)))
-  ;; TODO: make this responsible for requesting a delayed propagation
-  ;; action. There is no point having the caller be in charge of that.
-  (assoc info :visible {:value value :valid true}))
+(defn update-value
+  "Update the value, which must be valid."
+  [info value]
+  (let [old-visible (:visible info)
+        new-visible (if (nil? value) nil  {:value value :valid true})]
+    (cond-> (update-in-clean-up info [:visible] (constantly new-visible))
+      (not= old-visible new-visible)
+      (update-add-action schedule-copy-visible-to-all-users))))
 
 (defn update-invalid [info]
-  (dissoc-in info [:visible :valid]))
+  (let [was-valid (get-in info [:visible :valid])]
+    (cond-> (dissoc-in info [:visible :valid])
+      was-valid
+      (update-add-action schedule-copy-visible-to-all-users))))
 
 (letfn
     [(update-remove-reference [info expr]
@@ -204,11 +212,6 @@
   "If info is nil, return an initialized info."
   [info reference]
   (or info (update-initialize {} reference)))
-
-(defn update-value-from-state [info]
-  (if-let [state (:state info)]
-    (update-value info (state-value state))
-    info))
 
 (defn update-using-reference
   "Update the :using-references set for this reference to reflect
@@ -313,34 +316,18 @@
                 (get-in info [:using-expressions depends-on])))
       info)))
 
-(letfn
-    ;; Run a collection of actions
-    [(run-actions [actions scheduler reference]
-       (doseq [[f & args] actions]
-         (apply f scheduler reference args)))
-
-      ;; The information for the reference has changed. Tell anyone else
-      ;; who cares.
-     (schedule-propagations [scheduler reference]
-       ;; TODO: also tell anything that listens to us.
-       (doseq [using (mm/get-in! (:references scheduler)
-                                 [reference :using-references])]
-         (add-task (:pending scheduler)
-                   copy-visible-to-user reference using)))]
-
-  (defn change-and-schedule-propagation
-    "Run the function on the information for the reference, and replace
-    the information with the result of the function. If the value or
-    validity of the reference has changed, propagate that."
-    [scheduler reference f & args]
-    (let [r-mm (:references scheduler)
-          [old new] (mm/update-in-returning-both!
-                     r-mm [reference]
-                     (fn [info] (apply f info args)))]
-      (mm/call-and-clear-in! r-mm [reference :pending-actions]
-                             run-actions scheduler reference)
-      (when (not= (:visible old) (:visible new))
-        (schedule-propagations scheduler reference)))))
+(defn change-and-run-requested-actions
+  "Run the function on the information for the reference, and replace
+   the information with the result of the function. If the value or
+   validity of the reference has changed, propagate that."
+  [scheduler reference f & args]
+  (let [r-mm (:references scheduler)]
+    (mm/update-in! r-mm [reference]
+                   (fn [info] (apply f info args)))
+    (mm/call-and-clear-in! r-mm [reference :requested-actions]
+                           (fn [actions]
+                             (doseq [[f & args] actions]
+                               (apply f scheduler reference args))))))
 
 ;;; The next functions copy information. They are
 ;;; idempotent, so they can be called even if there is only a possibility
@@ -352,20 +339,32 @@
    information, schedule propagation."
   (mm/call-with-latest-value-in!
    (:references scheduler) [depends-on :visible]
-   (fn [depends-on-visible] (change-and-schedule-propagation
-                             scheduler reference
-                             update-depends-on-visible depends-on depends-on-visible))))
+   (fn [depends-on-visible]
+     (change-and-run-requested-actions
+      scheduler reference
+      update-depends-on-visible depends-on depends-on-visible))))
 
 (defn schedule-copy-visible-to-user [scheduler depends-on reference]
   (add-task (:pending scheduler)
             copy-visible-to-user depends-on reference))
 
+(defn schedule-copy-visible-to-all-users
+  "The visible information for the reference has changed. Tell anyone else
+  who cares."
+  [scheduler reference]
+  ;; TODO: also tell anything that listens to us.
+  (doseq [using (mm/get-in! (:references scheduler)
+                            [reference :using-references])]
+    (schedule-copy-visible-to-user scheduler reference using)))
+
 (defn copy-state-value [scheduler reference]
   "Record in this reference the latest information for its state. If
    that changes its information, schedule propagation."
-  (change-and-schedule-propagation
-   scheduler reference update-value-from-state))
-
+  (call-with-latest-value
+   #(when-let [state (mm/get-in! (:references scheduler) [reference :state])]
+      (state-value state))
+   (fn [value] (change-and-run-requested-actions
+                scheduler reference update-value value))))
 
 ;;; Notice that both additions and removals must be handled by the
 ;;; same pending registration. Otherwise, an add might occur in the
@@ -383,13 +382,13 @@
       (mm/call-with-latest-value-in!
        r-mm [reference :depends-info]
        (fn [reference-depends-on-info]
-         (change-and-schedule-propagation
+         (change-and-run-requested-actions
           scheduler changed-reference
           update-using-reference
           changed-reference reference reference-depends-on-info))))))
 
 (letfn
-    [(state-change-callback [value state scheduler reference]
+    [(state-change-callback [state scheduler reference]
        (add-task (:pending scheduler) copy-state-value reference))
 
      (register-added-state
@@ -432,25 +431,6 @@
     (when (run-pending-task (:pending scheduler) scheduler)
       (recur))))
 
-(defn scheduler-summary
-  "Return a map that describes the content of a scheduler
-   but doesn't have deep nesting."
-  [scheduler]
-  (let [r-mm (:references scheduler)
-        references (keys (mm/current-contents r-mm))]
-    {:references
-     (zipmap references
-             (for [reference references]
-               (let [info (mm/get! r-mm reference)]
-                 (let [tags (keys info)]
-                   (zipmap tags
-                           (for [tag tags]
-                             (let [info (info tag)]
-                               (if (= tag :state)
-                                 `("state" ~(state-value info))
-                                 info))))))))
-     :pending @(:pending scheduler)}))
-
 (defn simplify-for-print [item]
   (cond (state? item)
         `("state"  ~(state-value item))
@@ -484,7 +464,7 @@
    ;;     A :valid tag if the value is valid
    ;;   A set of :using-references that depend on our visible
    ;;     information.
-   ;;   A :pending-actions set of actions to take based on new information
+   ;;   A :requested-actions set of actions to take based on new information
    ;;     about this reference. This is a way for a purely functional
    ;;     update to the information for one reference to request
    ;;     changes to other information. The actions are of the form
@@ -541,8 +521,8 @@
   Scheduler
 
   (request [this reference]
-    (change-and-schedule-propagation this reference
-                                     update-initialize-if-needed reference))
+    (change-and-run-requested-actions this reference
+                                      update-initialize-if-needed reference))
 
   (ready? [this reference]
     (mm/get! (:references this) [reference :visible :valid]))

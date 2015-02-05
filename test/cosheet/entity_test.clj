@@ -8,7 +8,7 @@
                      entity-impl
                      [compute :refer [current-value]])
             ; :reload
-   ))
+            ))
 
 (deftest storeditem-test
   (let [id0 (make-id "0")

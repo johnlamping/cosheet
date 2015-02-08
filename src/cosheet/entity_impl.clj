@@ -176,5 +176,23 @@
 
 (defmethod label-has-atomic-value? true [entity label value]
   (expr-let [atomics (expr label->atomic-values entity label)]
-    (some (partial = value) atomics)))
+            (some (partial = value) atomics)))
+
+(defmethod to-list false [entity]
+  (if (or (nil? entity) (atom? entity))
+    (atomic-value entity)
+    (let [entity-content (to-list (content entity))
+          entity-elements (seq (map to-list (elements entity)))]
+      (if entity-elements
+        (cons entity-content entity-elements)
+        entity-content))))
+
+(defmethod to-list true [entity]
+  (if (or (nil? entity) (atom? entity))
+    (atomic-value entity)
+    (expr-let [entity-content (expr to-list (content entity))
+               entity-elements (expr-map to-list (elements entity))]
+      (if (seq entity-elements)
+        (cons entity-content entity-elements)
+        entity-content))))
 

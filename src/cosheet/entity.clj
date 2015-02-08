@@ -83,15 +83,8 @@
    among its atomic values for the given label."
   mutable?-dispatch)
 
-(defn to-list [entity]
-  "Return the list representation of the entity"
-  ;; TODO: make this handle mutable by giving the current version,
-  ;; using the right version of Compute.
-  (assert (not (mutable-entity? entity)))
-  (if (or (nil? entity) (atom? entity))
-    (atomic-value entity)
-    (let [entity-content (to-list (content entity))
-          entity-elements (seq (map to-list (elements entity)))]
-      (if entity-elements
-        (cons entity-content entity-elements)
-        entity-content))))
+(defmulti to-list
+  "Return the list representation of the entity,
+   returning an expr if the entity is mutable."
+  mutable?-dispatch)
+

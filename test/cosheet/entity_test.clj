@@ -114,7 +114,9 @@
     (is (= (current-value [atomic-value (description->entity c ms)]) 4))
     (is (current-value [label-has-atomic-value? item99 "foo" 3]))
     (is (not (current-value [label-has-atomic-value? item99 "foo" 4])))
-    (is (= (current-value [label->atomic-values item99 "bar"])) [4])))
+    (is (= (current-value [label->atomic-values item99 "bar"])) [4])
+    (is (= (current-value [to-list item99])
+           (to-list (description->entity id99 s))))))
 
 (deftest list-test
   (is (not (atom? '(1 2))))

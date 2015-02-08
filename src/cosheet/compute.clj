@@ -67,7 +67,7 @@
     (let [var (first bindings)
           exp (second bindings)
           rest (nnext bindings)]
-      `(expr (fn [~var] (eval-let ~rest ~@body))
+      `(expr (fn [~var] (expr-let ~rest ~@body))
              ;; TODO: This shouldn't be necessary, but
              ;; there is a bug in query_impl without it.
              ;; It can't be right now, anyway.

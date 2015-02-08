@@ -82,8 +82,10 @@
   "Return an expr which returns a vector, where each element is itself an expr
    of the function applied to an element of the sequence."
   [f sequence]
-  `(apply make-expression (fn [thunk#] (thunk#))
-          vector (map (fn [elem#] (expr ~f elem#)) ~sequence)))
+  `(expr-let [f# ~f
+              sequence# ~sequence]
+     (apply make-expression (fn [thunk#] (thunk#))
+            vector (map (fn [elem#] (expr f# elem#)) sequence#))))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

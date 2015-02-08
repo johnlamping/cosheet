@@ -295,8 +295,11 @@
       (is (= (map clean-tracers (expression-args test-exp))
              [(clean-tracers (expr 2))]))
       (is (= (clean-tracers ((expression-fn test-exp) inc)) 4)))
-    (is (= (clean-tracers (expr-map :f [1 2]))
-           (clean-tracers (expr vector (expr :f 1) (expr :f 2)))))))
+    (let [a (expr-map :f [1 2])
+          b (apply (expression-fn a) (expression-args a))
+          c (apply (expression-fn b) (expression-args b))]
+      (is (= (clean-tracers c)
+             (clean-tracers (expr vector (expr :f 1) (expr :f 2))))))))
 
 (deftest state-in-expr-test
   (let [s (new-approximating-scheduler)

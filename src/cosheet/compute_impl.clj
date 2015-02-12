@@ -257,6 +257,9 @@
                       #((fnil conj #{}) % subexpression))
            (if was-valid
              (-> info
+                 ;; TODO: when garbage collection is added, remove the
+                 ;; next line, as we will want to keep interested in
+                 ;; the reference until we know we don't need it.
                  (update-reference expr nil)
                  (update-expression-not-valid expr))
              info))))
@@ -299,6 +302,8 @@
 
      ;; Given an expression and the visible info for its reference,
      ;; update users of the expression.
+     ;; TODO: when we keep obsolete references, check to see if we
+     ;; have unknown depends, in which case, ignore the update.
      (update-expression-reference-visible [info expr visible-info]
        (if (:valid visible-info)
          (reduce

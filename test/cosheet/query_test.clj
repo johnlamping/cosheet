@@ -1,15 +1,40 @@
 (ns cosheet.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            (cosheet [store :as store]
+            (cosheet [compute :as compute]
                      [store-utils :as store-utils]
                      [entity :as entity]
+                     [store :as store]
                      [query :refer :all]
+                     [query-impl :refer :all]
+                     compute-impl
                      [store-impl :refer [->ItemId]]
+                     mutable-store-impl
                      entity-impl
-                     [query-impl :refer :all])
+                     )
             ; :reload
             ))
+
+(defmacro let-propagated-impl [[var entity & more-bindings] exp]
+  (let [body (if (empty? more-bindings)
+               exp
+               `(let-propagated-impl ~more-bindings ~exp))]
+    `(let [s# (store/new-element-store)
+           ms# (store/new-mutable-store s#)
+           ;; Get the id the entity will have after we add it.
+           [_ id#] (store-utils/add-entity s# nil ~entity)
+           ~var (entity/description->entity id# ms#)
+           exp-val# ~body]
+       (store-utils/add-entity! ms# nil ~entity)
+       exp-val#)))
+
+;;; A macro to test propagation of changes through an expression.
+;;; Set up var to be an entity that is currently empty, but that will
+;;; equal the specified entity. Evaluate exp with a current value of
+;;; that entitity being empty, then set the entity in the mutable
+;;; store, and return the new current value of the expression.
+(defmacro let-propagated [bindings exp]
+  `(compute/current-value (let-propagated-impl ~bindings ~exp)))
 
 (deftest extended-by-test
   (let [element0 '(3 "foo")
@@ -30,12 +55,17 @@
     (is (extended-by? itemx itemx))
     (is (extended-by? itemy itemx))
     (is (not (extended-by? itemx itemy)))
-    (is (extended-by? '(3 ("foo" false)) '(3 ("foo" false))))
-    (is (extended-by? '(nil ("foo" false)) '(3 ("foo" false))))
-    (is (not (extended-by? '(4 ("foo" false)) '(3 ("foo" false)))))
-    (is (extended-by? '(3 "foo") '(3 ("foo" false))))
-    (is (not (extended-by? '(3 ("foo" false)) '(3 ("foo")))))
-    (is (extended-by? 3 element0))
+    (is (let-propagated [a '(3 ("foo" false)) b '(3 ("foo" false))]
+                        (extended-by?9 a b)))
+    (is (let-propagated [b '(3 ("foo" false))]
+                        (extended-by?9 '(nil ("foo" false)) b)))
+    (is (not (let-propagated [a '(4 ("foo" false)) b '(3 ("foo" false))]
+                             (extended-by?9 a b))))
+    (is (let-propagated [a '(3 "foo") b '(3 ("foo" false))]
+                        (extended-by?9 a b)))
+    (is (not (let-propagated [a '(3 ("foo" false)) b '(3 ("foo"))]
+                             (extended-by?9 a b))))
+    (is (let-propagated [a element0] (extended-by?9 3 a)))
     (is (extended-by? 3 element2))
     (is (extended-by? element2 3))
     (is (not (extended-by? element2 4)))
@@ -56,8 +86,8 @@
        ~@(if reference `((true :reference))))))
 
 (deftest bound-entity-test
-  (let [entity  `(~(variable "foo")
-                  (4 ~(variable "bar")))
+  (let [entity `(~(variable "foo")
+                 (4 ~(variable "bar")))
         partially-bound (bind-entity entity {"foo" 7})
         bound (bind-entity entity {"foo" 7, "bar" 9})]
     (is (= (entity/to-list partially-bound)

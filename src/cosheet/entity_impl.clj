@@ -117,8 +117,9 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  nil
-  (mutable-entity? [this] false)) ;; For convenience in null punning
+  nil ;; For convenience in null punning
+  (mutable-entity? [this] false)
+  (atom? [this] true))
 
 (extend-protocol Description
   cosheet.store.StoredItemDescription

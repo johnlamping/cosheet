@@ -34,6 +34,18 @@
   [trace f & args]
   (apply list :expression trace f args))
 
+(defn expression? [expr]
+  (and (list? expr) (= (first expr) :expression)))
+
+(defn expression-tracer [expr]
+  (second expr))
+
+(defn expression-fn [expr]
+  (nth expr 2))
+
+(defn expression-args [expr]
+  (seq (nthnext expr 3)))
+
 (defmacro expr
   "Takes a function and a series of arguments, and produces an expression
    that when run under a scheduler requests further evaluation of the
@@ -67,11 +79,7 @@
     (let [var (first bindings)
           exp (second bindings)
           rest (nnext bindings)]
-      `(expr (fn [~var] (expr-let ~rest ~@body))
-             ;; TODO: This shouldn't be necessary, but
-             ;; there is a bug in query_impl without it.
-             ;; It can't be right now, anyway.
-             ;; ~(if (sequential? exp) (vec exp) exp)
+      `(expr (fn ~var [~var] (expr-let ~rest ~@body))
              ~exp))))
 
 ;;; TODO: This is eager. Consider adding support for lazy sequences of
@@ -91,9 +99,4 @@
 (defmulti new-approximating-scheduler
   (constantly true))
 
-(defmulti current-value
-  "Run computation on the reference, which may use the Scheduler protocol
-   for its return values, returning the current value,
-   rather than tracking dependencies."
-  (constantly true))
 

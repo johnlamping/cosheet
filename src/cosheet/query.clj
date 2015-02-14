@@ -18,16 +18,22 @@
 ;;; one instance of each reference variable should occur in a query,
 ;;; since it can never match two different structures.
 
-(defmulti extended-by?
+(defmulti extended-by-m?
   "Return true if the template, which must not have variables, is
    extended by the target"
   (fn [template target] true))
 
-(defmulti template-matches
+(defn extended-by? [template target]
+  (extended-by-m? template target))
+
+(defmulti template-matches-m
   "Return a lazy seq of environments that are extensions of the given
    environment and where the target matches the template."
   (fn ([template target] :no-env)
-      ([template env target] :env)))
+    ([template env target] :env)))
+
+(defn template-matches [template env target]
+  (template-matches-m template env target))
   
 (defmulti query-matches
   "Return a lazy seq of environments that are extensions of the given

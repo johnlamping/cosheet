@@ -11,9 +11,13 @@
                      [store-impl :refer [->ItemId]]
                      mutable-store-impl
                      entity-impl
+                     [debug :refer [current-value]]
                      )
             ; :reload
             ))
+
+;;; TODO: get rid of this test expression once things get better.
+(comment (cosheet.query-test/let-propagated-impl [x (quote (1))] (template-matches 1 {:a :b} x)))
 
 (defmacro let-propagated-impl [[var entity & more-bindings] exp]
   (let [body (if (empty? more-bindings)
@@ -34,7 +38,7 @@
 ;;; that entitity being empty, then set the entity in the mutable
 ;;; store, and return the new current value of the expression.
 (defmacro let-propagated [bindings exp]
-  `(compute/current-value (let-propagated-impl ~bindings ~exp)))
+  `(current-value (let-propagated-impl ~bindings ~exp)))
 
 (deftest extended-by-test
   (let [element0 '(3 "foo")
@@ -102,12 +106,12 @@
            ()))))
 
 (deftest template-matches-test
-  (is (= (template-matches 1 1) [{}]))
+  (is (= (template-matches 1 {}  1) [{}]))
   (is (= (template-matches 1 {} 1) [{}]))
   (is (= (template-matches 1 {} 2) nil))
   (is (= (template-matches 1 {:a :b} 1) [{:a :b}]))
   (is (= (template-matches '(1) {:a :b} 1) [{:a :b}]))
-  (is (= (template-matches 1 {:a :b} '(1)) [{:a :b}]))
+  (is (= (let-propagated [x '(1)] (template-matches 1 {:a :b} x)) [{:a :b}]))
   (is (= (template-matches '(1) {:a :b} '(1)) [{:a :b}]))
   (is (= (template-matches 1 {:a :b} '(1 2)) [{:a :b}]))
   (is (= (template-matches 1 {:a :b} '(1 2)) [{:a :b}]))

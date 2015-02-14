@@ -22,7 +22,9 @@
 
   StoredItemDescription
 
-  (atom-description? [this] false))
+  (atom-description? [this] false)
+
+  (stored-item-description-name [this] (clojure.string/join ["Id-" id])))
 
 (defrecord
     ^{:doc
@@ -35,7 +37,11 @@
 
   StoredItemDescription
 
-  (atom-description? [this] true))
+  (atom-description? [this] true)
+
+  (stored-item-description-name [this]
+    (clojure.string/join ["content-"
+                          (stored-item-description-name containing-item-id)])))
 
 (defn ensure-in-vector [v item]
   (cond (nil? v) [item]

@@ -29,7 +29,10 @@
   "A description of an Item recorded by a store"
   (atom-description? [this]
     "True if this description refers to an atom. This is true only for
-     content references, which are only created to refer to atoms."))
+     content references, which are only created to refer to atoms.")
+
+  (stored-item-description-name [this]
+    "A printable name for the item description"))
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.
@@ -116,6 +119,3 @@
 ;; Factory that makes element ids from primitives, which must not be integers.
 (defmulti make-id
   (constantly true))
-
-
-

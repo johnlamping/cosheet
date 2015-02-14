@@ -59,45 +59,6 @@
 ;;; when a non-monotonic input changes or a monotonic input changes in
 ;;; a non-monotonic way.
 
-
-;;; Trivial scheduler that just runs everything and returns the
-;;; current value.
-
-(defn expression? [expr]
-  (and (list? expr) (= (first expr) :expression)))
-
-(defn expression-tracer [expr]
-  (second expr))
-
-(defn expression-fn [expr]
-  (nth expr 2))
-
-(defn expression-args [expr]
-  (seq (nthnext expr 3)))
-
-(def reference-current-value)
-
-(defn expression-current-value [expr]
-  (if (expression? expr)
-    ((expression-tracer expr)
-     #(reference-current-value
-       (cons (expression-current-value (expression-fn expr))
-             (map expression-current-value (expression-args expr)))))
-    expr))
-
-(defn reference-current-value
-  [[fn & args]]
-  (let [result (apply fn args)]
-    (cond (state? result) (state-value result)
-          (expression? result) (expression-current-value result)
-          :else result)))
-
-(defmethod current-value true [item]
-  (cond (state? item) (state-value item)
-        (expression? item) (expression-current-value item)
-        (sequential? item) (reference-current-value item)
-        :else item))
-
 ;;; The next functions compute revised reference info to reflect new
 ;;; information. They have no side effects, but they can set pending
 ;;; actions in the info to request side effects that propagate
@@ -446,23 +407,6 @@
   (loop []
     (when (run-pending-task (:pending scheduler) scheduler)
       (recur))))
-
-(defn simplify-for-print [item]
-  (cond (state? item)
-        `("state"  ~(state-value item))
-        (expression? item)
-        `(:expr ~(simplify-for-print
-                  (cons (expression-fn item)(expression-args item))))
-        (set? item)
-        (set (map simplify-for-print item))
-        (map? item)
-        (let [keys (keys item)]
-          (zipmap (map simplify-for-print keys)
-                  (for [key keys] (simplify-for-print (item key)))))
-        (sequential? item)
-        (map simplify-for-print item)
-        :else
-        item))
 
 (defrecord
     ^{:doc

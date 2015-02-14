@@ -2,7 +2,7 @@
   (:require (cosheet utils state store entity query
                      mutable-map task-queue compute
                      store-impl store-utils entity-impl query-impl
-                     compute_impl mutable_store_impl)
+                     compute_impl mutable_store_impl debug)
             :reload)
   (:gen-class))
 

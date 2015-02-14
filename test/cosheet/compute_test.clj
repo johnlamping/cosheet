@@ -324,13 +324,6 @@
       ;; Now it should be the right value.
       (is (= (notifier-value s [fib 37]) 39088169)))))
 
-(deftest current-value-fib-test
-  (let [state (new-state :value 1)]
-    (letfn [(fib [n] (if (<= n 1)
-                       state
-                       (expr + (expr fib (- n 1)) (expr fib (- n 2)))))]
-      (is (= (current-value [fib 6]) 13)))))
-
 (deftest asynchronous-test
   ;; Creates width states, then a series layers of lookups that use the value
   ;; at the previous layer as an index into another value at that

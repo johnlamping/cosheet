@@ -11,34 +11,10 @@
                      [store-impl :refer [->ItemId]]
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value]]
+                     [debug :refer [current-value let-propagated]]
                      )
             ; :reload
             ))
-
-;;; TODO: get rid of this test expression once things get better.
-(comment (cosheet.query-test/let-propagated-impl [x (quote (1))] (template-matches 1 {:a :b} x)))
-
-(defmacro let-propagated-impl [[var entity & more-bindings] exp]
-  (let [body (if (empty? more-bindings)
-               exp
-               `(let-propagated-impl ~more-bindings ~exp))]
-    `(let [s# (store/new-element-store)
-           ms# (store/new-mutable-store s#)
-           ;; Get the id the entity will have after we add it.
-           [_ id#] (store-utils/add-entity s# nil ~entity)
-           ~var (entity/description->entity id# ms#)
-           exp-val# ~body]
-       (store-utils/add-entity! ms# nil ~entity)
-       exp-val#)))
-
-;;; A macro to test propagation of changes through an expression.
-;;; Set up var to be an entity that is currently empty, but that will
-;;; equal the specified entity. Evaluate exp with a current value of
-;;; that entitity being empty, then set the entity in the mutable
-;;; store, and return the new current value of the expression.
-(defmacro let-propagated [bindings exp]
-  `(current-value (let-propagated-impl ~bindings ~exp)))
 
 (deftest extended-by-test
   (let [element0 '(3 "foo")
@@ -111,115 +87,132 @@
   (is (= (template-matches 1 {} 2) nil))
   (is (= (template-matches 1 {:a :b} 1) [{:a :b}]))
   (is (= (template-matches '(1) {:a :b} 1) [{:a :b}]))
-  (is (= (let-propagated [x '(1)] (template-matches 1 {:a :b} x)) [{:a :b}]))
-  (is (= (template-matches '(1) {:a :b} '(1)) [{:a :b}]))
-  (is (= (template-matches 1 {:a :b} '(1 2)) [{:a :b}]))
-  (is (= (template-matches 1 {:a :b} '(1 2)) [{:a :b}]))
-  (is (= (template-matches 1 {:a :b} '(1 2)) [{:a :b}]))
-  (is (= (template-matches '(1 2 3) {:a :b} '(1 (2 3))) nil))
-  (is (= (template-matches '(1 (2 3)) {:a :b} '(1 2 3)) nil))
-  (is (= (template-matches '((1 2) 3 (4 (5 6))) {:a :b} '((1 2) 3 (4 (5 6))))
+  (is (= (let-propagated [x '(1)] (template-matches9 1 {:a :b} x)) [{:a :b}]))
+  (is (= (let-propagated [x '(1)] (template-matches9 x {:a :b} x)) [{:a :b}]))
+  (is (= (let-propagated [x '(1 2)] (template-matches9 1 {:a :b} x)) [{:a :b}]))
+  (is (= (let-propagated [x '(1) y '(1 2)] (template-matches9 x {:a :b} y))
          [{:a :b}]))
-  (is (= (template-matches (variable "foo") {:a :b} 2)
+  (is (= (let-propagated [x '(1 2)] (template-matches9 x {:a :b} x)) [{:a :b}]))
+  (is (= (let-propagated [x '(1 2 3) y '(1 (2 3))]
+                         (template-matches9 x {:a :b} y))
+         nil))
+  (is (= (let-propagated [x '(1 (2 3)) y '(1 2 3)]
+                         (template-matches9 x {:a :b} y))
+         nil))
+  (is (= (let-propagated [x '(1 (4 6))]
+                         (template-matches9 x {:a :b} x))
+         [{:a :b}]))
+  (is (= (let-propagated [x '((1 2) 3 (4 (5 6)))]
+                         (template-matches9 x {:a :b} x))
+         [{:a :b}]))
+  (is (= (let-propagated [x 2]
+                         (template-matches9 (variable "foo") {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches (variable "foo") {:a :b} '((1 2) 3))
+  (is (= (let-propagated [x '((1 2) 3)]
+                         (template-matches9 (variable "foo") {:a :b} x))
          [{:a :b, "foo" '((1 2) 3)}]))
-  (is (= (template-matches `(1 ~(variable "foo")) {:a :b} '(1 2))
+  (is (= (let-propagated [v `(1 ~(variable "foo"))
+                          x '(1 2)]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable "foo") :foo))
-                           {:a :b}
-                           '(1 (2 :foo)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo))
+                          x '(1 (2 :foo))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable "foo") :foo))
-                           {:a :b}
-                           '(1 (2 :bar :foo)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo))
+                          x '(1 (2 :bar :foo))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable "foo") :foo))
-                           {:a :b}
-                           '(1 (2 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo))
+                          x '(1 (2 :bar))]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(1 (~(variable "foo") :foo)) {:a :b} '(1 2))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo))
+                          x '(1 2)]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(1 (~(variable "foo") false))
-                           {:a :b}
-                           '(1 (2 false)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") false))
+                          x '(1 (2 false))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable "foo") false))
-                           {:a :b}
-                           '(1 (2 true)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") false))
+                          x '(1 (2 true))]
+                         (template-matches9 v  {:a :b} x))
            nil))
-  (is (= (set (template-matches `(1 (~(variable "foo") :foo))
-                                {:a :b}
-                                '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))))
+  (is (= (set (let-propagated [v `(1 (~(variable "foo") :foo))
+                               x '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))]
+                              (template-matches9 v {:a :b} x)))
          #{{:a :b, "foo" 2} {:a :b, "foo" 3}}))
-  (is (= (template-matches `(1 (~(variable "foo") :foo)
-                               (~(variable "foo") :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (2 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo)
+                                (~(variable "foo") :bar))
+                          x '(1 (2 :foo) (2 :bar))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(nil (~(variable "foo") :foo)
-                                 (~(variable "foo") :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (2 :bar)))
+  (is (= (let-propagated [x '(1 (2 :foo) (2 :bar))]
+                         (template-matches9 `(nil (~(variable "foo") :foo)
+                                                  (~(variable "foo") :bar))
+                                            {:a :b}
+                                            x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(2 (~(variable "foo") :foo)
-                               (~(variable "foo") :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (2 :bar)))
+  (is (= (let-propagated [v `(2 (~(variable "foo") :foo)
+                                (~(variable "foo") :bar))
+                          x '(1 (2 :foo) (2 :bar))]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(~(variable "foo") ~(variable "foo"))
-                           {:a :b}
-                           '(1 1))
+  (is (= (let-propagated [v `(~(variable "foo") ~(variable "foo"))
+                          x '(1 1)]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 1}]))
-  (is (= (template-matches `(~(variable "foo") ~(variable "foo"))
-                           {:a :b}
-                           '(1 2))
+  (is (= (let-propagated [v `(~(variable "foo") ~(variable "foo"))
+                          x '(1 2)]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(~(variable "foo") ~(variable "foo"))
-                           {:a :b}
-                           '(1 2 3 1))
+  (is (= (let-propagated [v `(~(variable "foo") ~(variable "foo"))
+                          x '(1 2 3 1)]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 1}]))
-  (is (= (template-matches `(1 (~(variable "foo") :foo)
-                               (~(variable "foo") :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (3 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo)
+                                (~(variable "foo") :bar))
+                          x '(1 (2 :foo) (3 :bar))]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (set (template-matches `(1 (~(variable "foo") :foo)
-                                    (~(variable "foo") :bar))
-                                {:a :b}
-                                '(1 (1 :foo) (2 :foo)
-                                    (1 :bar) (2 :bar) (3 :bar))))
+  (is (= (set (let-propagated [v `(1 (~(variable "foo") :foo)
+                                     (~(variable "foo") :bar))
+                               x '(1 (1 :foo) (2 :foo)
+                                     (1 :bar) (2 :bar) (3 :bar))]
+                              (template-matches9 v {:a :b} x)))
          #{{:a :b, "foo" 1} {:a :b, "foo" 2}}))
-  (is (= (template-matches `(1 (~(variable "foo") :foo)
-                               (~(variable "bar") :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (3 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo)
+                                (~(variable "bar") :bar))
+                          x '(1 (2 :foo) (3 :bar))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2, "bar" 3}]))
-  (is (= (template-matches `(1 (~(variable "foo") :foo)
-                               (~(variable nil) :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (3 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable "foo") :foo)
+                                (~(variable nil) :bar))
+                          x '(1 (2 :foo) (3 :bar))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable nil) :foo)
-                               (~(variable nil) :bar))
-                           {:a :b}
-                           '(1 (2 :foo) (3 :bar)))
+  (is (= (let-propagated [v `(1 (~(variable nil) :foo)
+                                (~(variable nil) :bar))
+                          x '(1 (2 :foo) (3 :bar))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b}]))
-  (is (= (template-matches `(1 (~(variable "foo" 2) :foo))
-                           {:a :b}
-                           '(1 (2 :foo)))
+  (is (= (let-propagated [v `(1 (~(variable "foo" 2) :foo))
+                          x '(1 (2 :foo))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (template-matches `(1 (~(variable "foo" 2) :foo))
-                           {:a :b} '(1 (3 :foo)))
+  (is (= (let-propagated [v `(1 (~(variable "foo" 2) :foo))
+                          x '(1 (3 :foo))]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(~(variable "foo" 1) ~(variable "foo"))
-                           {:a :b}
-                           '(1 (1 :foo)))
+  (is (= (let-propagated [v `(~(variable "foo" 1) ~(variable "foo"))
+                          x '(1 (1 :foo))]
+                         (template-matches9 v {:a :b} x))
          nil))
-  (is (= (template-matches `(~(variable "foo" 1)
-                             ~(variable "foo" nil true))
-                           {:a :b}
-                           '(1 (1 :foo)))
+  (is (= (let-propagated [v `(~(variable "foo" 1)
+                              ~(variable "foo" nil true))
+                          x '(1 (1 :foo))]
+                         (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 1}])))
 
 (comment (defn envs-to-list [envs]

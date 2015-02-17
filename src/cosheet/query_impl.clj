@@ -37,7 +37,7 @@
      (some #(not (nil? %)) extended-by))))
 
 (defn has-element-satisfying? [element target]
-  (current-value [has-element-satisfying?9 element target]))
+  (current-value (has-element-satisfying?9 element target)))
 
 (defn extended-by?9 [template target]
   (or (nil? template)
@@ -57,20 +57,21 @@
             (every? identity satisfied-elements)))))))
 
 (defmethod extended-by-m? true [template target]
-  (current-value [extended-by?9 template target]))
+  (current-value (extended-by?9 template target)))
 
 ;;; Code to bind an entity in an environment
 
 (defn variable? [template]
-  (= (entity/content template) :variable))
+  (if (entity/mutable-entity? template)
+    (expr = (entity/content template) :variable)
+    (= (entity/content template) :variable)))
 
 (def bind-entity)
 
 (defrecord
     ^{:doc "An entity that is another entity with its variables bound
             by an environment.
-            It will never be an atom or a bare bound variable.
-            The underlying entity must be immutable."}
+            It will never be an atom or a bare bound variable."}
     BoundEntity
 
   [wrapped  ; The entity we wrap
@@ -78,29 +79,49 @@
   
   entity/Entity
 
-  (entity/mutable-entity? [this] false)
+  (entity/mutable-entity? [this] (entity/mutable-entity? wrapped))
   
-  (entity/atom? [this] false)
+  ;; Note: this assumes that an implicit content reference doesn't
+  ;; outlive a promotion of its the content.  
+  (entity/atom? [this] (entity/atom? wrapped))
 
   (entity/label->elements [this label]
-    (seq (filter #(some (partial = label)
-                        (map entity/atomic-value (entity/elements %)))
-                 (map #(bind-entity % env)
-                      (entity/elements wrapped)))))
+    (if (entity/mutable-entity? wrapped)
+      (expr-let [elements (entity/elements this)
+                 matches (expr-map #(expr some (partial = label)
+                                          (expr-map entity/atomic-value
+                                                    (entity/elements %)))
+                                   elements)]
+        (seq (map second (filter first (map vector matches elements)))))
+      (seq (filter #(some (partial = label)
+                          (map entity/atomic-value (entity/elements %)))
+                   (map #(bind-entity % env)
+                        (entity/elements wrapped))))))
 
   (entity/elements [this]
-    (seq (map #(bind-entity % env)
-              (entity/elements wrapped))))
+    (if (entity/mutable-entity? wrapped)
+      (expr-let [unbound-elements (entity/elements wrapped)]
+                (seq (map #(bind-entity % env) unbound-elements)))
+      (seq (map #(bind-entity % env)
+                (entity/elements wrapped)))))
 
   (entity/content [this]
-    (bind-entity (entity/content wrapped) env)))
+    (if (entity/mutable-entity? wrapped)
+      (expr bind-entity (entity/content wrapped) env)
+      (bind-entity (entity/content wrapped) env))))
 
 (defn bind-entity [entity env]
   (if (entity/atom? entity)
     (entity/atomic-value entity)
-    (or (and (variable? entity)
-             (env (entity/label->content entity :name)))
-        (->BoundEntity entity env))))
+    (if (entity/mutable-entity? entity)
+      (expr-let [is-variable (variable? entity)]
+        (if is-variable
+          (expr-let [name (entity/label->content entity :name)]
+                    (or (env name) (->BoundEntity entity env)))
+          (->BoundEntity entity env)))
+      (or (and (variable? entity)
+               (env (entity/label->content entity :name)))
+          (->BoundEntity entity env)))))
 
 ;;; TODO: Eventually extend template-matches to pass along a set of used
 ;;;       up stuff, so it can count repeated stuff in templates.
@@ -108,10 +129,10 @@
 (def template-matches9)
 
 (defn variable-matches9 [var env target]
-  (let [name (entity/label->content var :name)
-        condition (entity/label->content var :condition)
-        value-may-extend (entity/label->content var :value-may-extend)
-        reference (entity/label->content var :reference)]
+  (expr-let [name (entity/label->content var :name)
+             condition (entity/label->content var :condition)
+             value-may-extend (entity/label->content var :value-may-extend)
+             reference (entity/label->content var :reference)]
     (let [value (env name)]
       (if (not (nil? value))
         (if reference
@@ -128,26 +149,27 @@
           (expr-let
            [envs (if (nil? condition)
                    [env]
-                   (expr template-matches condition env target))]
+                   (expr template-matches9 condition env target))]
            (if (not (nil? name))
              (expr-let [value (if reference target (entity/to-list target))]
                (seq (map #(assoc % name value) envs)))
              envs)))))))
 
 (defn variable-matches [var env target]
-  (current-value [variable-matches9 var env target]))
+  (current-value (variable-matches9 var env target)))
 
 ;;; Find matches of elements of the target with the element.
 (defn element-matches9 [element env target]
   (when verbose (println "element-matches" element (entity/to-list target)))
-  (expr-let [label (if (variable? element)
-                     nil
-                     (expr-let [candidate-elements
-                                (expr-map #(entity/atomic-value
-                                            (bind-entity % env))
-                                          (entity/elements element))]
-                       (first (filter #(and (not= % nil) (not= % :variable))
-                                      candidate-elements))))
+  (expr-let [label (expr-let [is-variable (variable? element)]
+                     (if is-variable
+                       nil
+                       (expr-let [candidate-elements
+                                  (expr-map #(expr entity/atomic-value
+                                                   (bind-entity % env))
+                                            (entity/elements element))]
+                         (first (filter #(and (not= % nil) (not= % :variable))
+                                        candidate-elements)))))
              candidates (if (not (nil? label))
                           (entity/label->elements target label)
                           (entity/elements target))
@@ -156,7 +178,7 @@
     (seq (distinct (apply concat match-envs)))))
 
 (defn element-matches [element env target]
-  (current-value [element-matches9 element env target]))
+  (current-value (element-matches9 element env target)))
 
 (defn item-matches9 [item env target]
   (when verbose (println "item-matches"))
@@ -174,36 +196,28 @@
         (entity/elements item)))
 
 (defn item-matches [item env target]
-  (current-value [item-matches9 item env target]))
+  (current-value (item-matches9 item env target)))
 
 (defn template-matches9 [template env target]
   (when verbose
     (println "template-matches(" template
              (zipmap (keys env) (map entity/to-list (vals env)))
              (simplify-for-print target)
-             ")")
-    (println (entity/atom? template))
-    (println (extended-by?9 template target))
-    (println (expr-let [extended (extended-by?9 template target)]
-                       (when extended [env])))
-    (pprint (simplify-for-print
-             (trace-current
-              (expr-let [extended (extended-by?9 template target)]
-                        (when extended [env]))))))
-  (cond
+             ")"))
+  (if
     (entity/atom? template)
     (expr-let [extended (extended-by?9 template target)]
               (when extended [env]))
-    (variable? template)
-    (variable-matches9 template env target)
-    :else
-    (item-matches9 template env target)))
+    (expr-let [is-variable (variable? template)]
+      (if is-variable
+        (variable-matches9 template env target)
+        (item-matches9 template env target)))))
 
 (defmethod template-matches-m :no-env [template target]
-  (current-value [template-matches9 template {} target]))
+  (current-value (template-matches9 template {} target)))
 
 (defmethod template-matches-m :env [template env target]
-  (current-value [template-matches9 template env target]))
+  (current-value (template-matches9 template env target)))
 
 (defn variable-matches-in-store [var env store]
   (let [name (entity/label->content var :name)

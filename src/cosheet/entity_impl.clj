@@ -46,7 +46,7 @@
 
   (mutable-entity? [this] true)
 
-  (atom? [this?] (atom-description? item-id) )
+  (atom? [this?] (atom-description? item-id))
 
   (label->elements [this label]
     (expr-let [element-ids (expr id-label->element-ids store item-id label)]

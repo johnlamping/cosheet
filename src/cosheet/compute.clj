@@ -92,8 +92,9 @@
   [f sequence]
   `(expr-let [f# ~f
               sequence# ~sequence]
-     (apply make-expression (fn [thunk#] (thunk#))
-            vector (map (fn [elem#] (expr f# elem#)) sequence#))))
+     (when (not (empty? sequence#))
+       (apply make-expression (fn [thunk#] (thunk#))
+              vector (map (fn [elem#] (expr f# elem#)) sequence#)))))
 
 ;;; Factory method for ApproximatingScheduler
 (defmulti new-approximating-scheduler

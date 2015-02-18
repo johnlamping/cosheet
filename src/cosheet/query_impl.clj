@@ -213,85 +213,112 @@
         (variable-matches9 template env target)
         (item-matches9 template env target)))))
 
-(defmethod template-matches-m :no-env [template target]
-  (current-value (template-matches9 template {} target)))
-
-(defmethod template-matches-m :env [template env target]
+(defmethod template-matches-m true [template env target]
   (current-value (template-matches9 template env target)))
 
+(def query-matches9)
+
+(defn variable-matches-in-store9 [var env store]
+  (expr-let [name (entity/label->content var :name)
+             reference (entity/label->content var :reference)]
+    (let [value (env name)]
+      (if (nil? value)
+        ;; TODO: Shouldn't this check the condition to make sure the
+        ;; variable really matches?
+        (expr-let [candidate-ids (store/candidate-matching-ids store nil)]
+                  (map #(assoc env name (entity/description->entity % store))
+                       candidate-ids))
+        (if reference
+          [env]
+          (expr-let [matches (query-matches9 value env store)]
+                    (when matches [env])))))))
+
 (defn variable-matches-in-store [var env store]
-  (let [name (entity/label->content var :name)
-        reference (entity/label->content var :reference)
-        value (env name)]
-    (if (nil? value)
-      (seq (map #(assoc env name
-                        (let [value (entity/description->entity % store)]
-                          (if reference value (entity/to-list value) )))
-                (store/candidate-matching-ids store nil)))
-      (if (or reference (query-matches value env store))
-        [env]))))
+  (current-value (variable-matches-in-store9 var env store)))
+
+(defn exists-matches-in-store9 [exists env store]
+  (expr-let [names (expr-map entity/content
+                             (entity/label->elements exists :variable-name))
+             qualifier (entity/label->content exists :qualifier)
+             body (entity/label->content exists :body)
+             matches (if qualifier
+                       (expr apply concat
+                             (expr-map #(query-matches9 body % store)
+                                       (query-matches9 qualifier env store)))
+                       (query-matches9 body env store))]
+    (seq (distinct (map #(apply dissoc % names) matches)))))
 
 (defn exists-matches-in-store [exists env store]
-  (let [names (map entity/content
-                   (entity/label->elements exists :variable-name))
-        qualifier (entity/label->content exists :qualifier)
-        body (entity/label->content exists :body)]
-    (seq (distinct
-          (map #(apply dissoc % names)
-               (if qualifier
-                 (mapcat #(query-matches body % store)
-                         (query-matches qualifier env store))
-                 (query-matches body env store)))))))
+  (current-value (exists-matches-in-store9 exists env store)))
+
+(defn forall-matches-in-store9 [forall env store]
+  (expr-let [names (expr-map entity/content
+                             (entity/label->elements forall :variable-name))
+             qualifier (entity/label->content forall :qualifier)
+             body (entity/label->content forall :body)
+             matches (query-matches9 qualifier env store)]
+   (let [groups (group-by #(apply dissoc % names) matches)]
+     ;; Get [for each group of bindings matching the qualifier
+     ;;       [for each binding in the group (which will bind the vars)
+     ;;         [each extension of the binding satisfying the body]]]
+      (expr-let [binding-groups
+                 (expr-map (fn [group]
+                             (expr-map (fn [binding]
+                                         (query-matches9 body binding store))
+                                       (groups group)))
+                           (keys groups))]
+        (seq (mapcat
+              (fn [binding-group]
+                (apply clojure.set/intersection
+                       (map (fn [extensions]
+                              (set (map #(apply dissoc % names) extensions)))
+                            binding-group)))
+              binding-groups))))))
 
 (defn forall-matches-in-store [forall env store]
-  (let [names (map entity/content
-                   (entity/label->elements forall :variable-name))
-        qualifier (entity/label->content forall :qualifier)
-        body (entity/label->content forall :body)]
+  (current-value (forall-matches-in-store9 forall env store)))
 
-    (let [groups (group-by #(apply dissoc % names)
-                           (query-matches qualifier env store))]
-      (seq (mapcat
-            (fn [group]
-              (apply clojure.set/intersection
-                     (map (fn [binding]
-                            (set (map #(apply dissoc % names)
-                                      (query-matches body binding store))))
-                          (groups group))))
-            (keys groups))))))
-
-(defn envs-to-list [envs]
-  (seq (map #(zipmap (keys %) (map entity/to-list (vals %))) envs)))
+(defn and-matches-in-store9 [and env store]
+  (expr-let [first (entity/label->content and :first)
+             second (entity/label->content and :second)
+             matches (expr apply concat
+                           (expr-map #(query-matches-m second % store)
+                                     (query-matches-m first env store)))]
+    (seq (distinct matches))))
 
 (defn and-matches-in-store [and env store]
-  (let [first (entity/label->content and :first)
-        second (entity/label->content and :second)]
-    (let [matches (mapcat #(query-matches second % store)
-                          (query-matches first env store))]
-      (seq (distinct matches)))))
+  (current-value (and-matches-in-store9 and env store)))
+
+;;; TODO: We are passing store/candidate-matching-ids a possibly
+;;; mutable entity, which it can't handle
+(defn item-matches-in-store9 [item env store]
+  (expr-let [matches
+             (expr apply concat
+                   (expr-map
+                    (partial template-matches item env)
+                    (expr map
+                          #(entity/description->entity % store)
+                          (expr store/candidate-matching-ids
+                                store (bind-entity item env)))))]
+    (seq (distinct matches))))
 
 (defn item-matches-in-store [item env store]
-  (seq (distinct
-        (mapcat (partial template-matches item env)
-                (map #(entity/description->entity % store)
-                     (store/candidate-matching-ids
-                      store (bind-entity item env)))))))
+  (current-value (item-matches-in-store9 item env store)))
 
-(defmethod query-matches :no-env [query store]
-  (query-matches query {} store))
-
-(defmethod query-matches :env [query env store]
+(defn query-matches9 [query env store]
   (when verbose
     (println "query" query "env"
              (zipmap (keys env) (map entity/to-list (vals env)))))
-  (cond
-    (entity/atom? query)
+  (if (entity/atom? query)
     (assert false "queries may not be atoms.")
-    (keyword? (entity/content query))
-    (case (entity/content query)
-      :variable (variable-matches-in-store query env store)
-      :exists (exists-matches-in-store query env store)
-      :forall (forall-matches-in-store query env store)
-      :and (and-matches-in-store query env store))
-    :default
-    (item-matches-in-store query env store)))
+    (expr-let [content (entity/content query)]
+      (if (keyword? content)
+        (case content
+          :variable (variable-matches-in-store9 query env store)
+          :exists (exists-matches-in-store9 query env store)
+          :forall (forall-matches-in-store9 query env store)
+          :and (and-matches-in-store9 query env store))
+        (item-matches-in-store query env store)))))
+
+(defmethod query-matches-m true [query env store]
+  (current-value (query-matches9 query env store)))

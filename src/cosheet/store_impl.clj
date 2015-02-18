@@ -220,6 +220,8 @@
         (->ImplicitContentId id))))
 
   ;;; TODO: make this actually filter based on the item.
+  ;;; Notice that as currently passed by
+  ;;; query-impl/item-matches-in-store, it could be a mutable entity.
   (candidate-matching-ids [this item]
     ;; Return all items that have elaborations.
     (keys subject->label->ids))

@@ -11,7 +11,7 @@
                      [store-impl :refer [->ItemId]]
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value let-propagated]]
+                     [debug :refer [current-value let-propagated envs-to-list]]
                      )
             ; :reload
             ))
@@ -215,9 +215,6 @@
                          (template-matches9 v {:a :b} x))
          [{:a :b, "foo" 1}])))
 
-(comment (defn envs-to-list [envs]
-           (seq (map #(zipmap (keys %) (map entity/to-list (vals %))) envs))))
-
 (deftest query-matches-test
   (let [ia (->ItemId "A")
         ib (->ItemId "B")
@@ -230,7 +227,8 @@
     (is (= (query-matches '(nil (2)) store) [{}]))
     (is (= (query-matches '(nil (1)) store) [{}]))
     ;; variables as top level entities
-    (is (= (set (query-matches (variable "v") store))
+    (is (= (set (map (fn [entry] {"v" (entity/to-list (entry "v"))})
+                     (query-matches (variable "v") store)))
            #{{"v" '(nil (3 (4 5)) (1 (2 3)))}
              {"v" '(nil (1 (2 4)))}
              {"v" '(3 (4 5))}

@@ -4,6 +4,7 @@
             (cosheet [compute :refer :all]
                      [state :refer :all]
                      [store :as store]
+                     [entity :as entity]
                      [entity-impl :as entity-impl]
                      store-impl
                      mutable-store-impl
@@ -60,6 +61,9 @@
         :else
         item))
 
+(defn envs-to-list [envs]
+  (seq (map #(zipmap (keys %) (map entity/to-list (vals %))) envs)))
+
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
 
@@ -83,7 +87,7 @@
         :else
         expr))
 
-(def reference-trace-current)
+(def trace-current)
 
 (defn reference-trace-current [[fn & args]]
   (trace-current (apply fn args)))
@@ -103,8 +107,8 @@
     (state? expr)
     [(state-value expr) expr]
     (expression? expr)
-    (let [parts (cons (expression-trace-current (expression-fn expr))
-                      (map expression-trace-current (expression-args expr)))
+    (let [parts (cons (trace-current (expression-fn expr))
+                      (map trace-current (expression-args expr)))
           simplified-parts (map unpack-if-trivial-nested parts)
           trace (reference-trace-current (map first parts))]
       (conj (if (= (first trace) (second trace)) (vec (rest trace)) trace)

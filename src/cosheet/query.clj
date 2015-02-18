@@ -29,15 +29,20 @@
 (defmulti template-matches-m
   "Return a lazy seq of environments that are extensions of the given
    environment and where the target matches the template."
-  (fn ([template target] :no-env)
-    ([template env target] :env)))
+  (fn [template env target] true))
 
-(defn template-matches [template env target]
-  (template-matches-m template env target))
+(defn template-matches
+  ([template target] (template-matches-m template {} target))
+  ([template env target] (template-matches-m template env target))  )
   
-(defmulti query-matches
+(defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given
    environment and where the store satisfies the instantiated query."
-  (fn ([query store] :no-env)
-      ([query env store] :env)))
+  (fn [query env store] true))
+
+(defn query-matches
+  "Return a lazy seq of environments that are extensions of the given
+   environment and where the store satisfies the instantiated query."
+  ([query store] (query-matches-m query {} store))
+  ([query env store] (query-matches-m query env store)))
   

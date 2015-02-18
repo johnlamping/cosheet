@@ -305,20 +305,22 @@
 (defn item-matches-in-store [item env store]
   (current-value (item-matches-in-store9 item env store)))
 
-(defn query-matches9 [query env store]
-  (when verbose
-    (println "query" query "env"
-             (zipmap (keys env) (map entity/to-list (vals env)))))
-  (if (entity/atom? query)
-    (assert false "queries may not be atoms.")
-    (expr-let [content (entity/content query)]
-      (if (keyword? content)
-        (case content
-          :variable (variable-matches-in-store9 query env store)
-          :exists (exists-matches-in-store9 query env store)
-          :forall (forall-matches-in-store9 query env store)
-          :and (and-matches-in-store9 query env store))
-        (item-matches-in-store query env store)))))
+(defn query-matches9
+  ([query store] (query-matches9 query {} store))
+  ([query env store]
+   (when verbose
+     (println "query" query "env"
+              (zipmap (keys env) (map entity/to-list (vals env)))))
+   (if (entity/atom? query)
+     (assert false "queries may not be atoms.")
+     (expr-let [content (entity/content query)]
+               (if (keyword? content)
+                 (case content
+                   :variable (variable-matches-in-store9 query env store)
+                   :exists (exists-matches-in-store9 query env store)
+                   :forall (forall-matches-in-store9 query env store)
+                   :and (and-matches-in-store9 query env store))
+                 (item-matches-in-store query env store))))))
 
 (defmethod query-matches-m true [query env store]
   (current-value (query-matches9 query env store)))

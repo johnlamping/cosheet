@@ -62,7 +62,9 @@
         item))
 
 (defn envs-to-list [envs]
-  (seq (map #(zipmap (keys %) (map entity/to-list (vals %))) envs)))
+  (seq (for [env envs]
+         (zipmap (keys env)
+                 (map #(current-value (entity/to-list %)) (vals env))))))
 
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
@@ -142,4 +144,15 @@
 
 (defmacro print-propagated [bindings exp]
   `(pst (let-propagated-impl ~bindings ~exp)))
+
+;;; A macro to test propagation of changes through a store. Set up var
+;;; to a mutable store, initialized from the initial immutable store.
+;;; Evaluate exp with the store in that state. Then call the mutator
+;;; with the mutable store as an argument, and return the new current
+;;; value of the expression.
+(defmacro let-propagated-store [[var initial mutator] exp]
+  `(let [~var (store/new-mutable-store ~initial)
+         exp-val# ~exp]
+     (~mutator ~var)
+     (current-value exp-val#)))
 

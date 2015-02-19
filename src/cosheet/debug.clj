@@ -61,11 +61,6 @@
         :else
         item))
 
-(defn envs-to-list [envs]
-  (seq (for [env envs]
-         (zipmap (keys env)
-                 (map #(current-value (entity/to-list %)) (vals env))))))
-
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
 
@@ -155,4 +150,9 @@
          exp-val# ~exp]
      (~mutator ~var)
      (current-value exp-val#)))
+
+(defn envs-to-list [envs]
+  (seq (for [env envs]
+         (zipmap (keys env)
+                 (map #(current-value (entity/to-list %)) (vals env))))))
 

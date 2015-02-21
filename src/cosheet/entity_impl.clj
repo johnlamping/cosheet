@@ -6,6 +6,7 @@
                                     id->content-reference
                                     mutable-store?]]
                      [entity :refer :all]
+
                      [compute :refer [expr-map expr-let expr]])))
 
 (defrecord
@@ -50,21 +51,21 @@
 
   (label->elements [this label]
     (expr-let [element-ids (expr id-label->element-ids store item-id label)]
-              (seq (for [element-id element-ids]
-                     (description->entity element-id store)))))
+      (seq (for [element-id element-ids]
+             (description->entity element-id store)))))
 
   (elements [this]
     (expr-let [element-ids (expr id->element-ids store item-id)]
-              (seq (for [element-id element-ids]
-                     (description->entity element-id store)))))
+      (seq (for [element-id element-ids]
+             (description->entity element-id store)))))
 
   (content [this]
     (expr-let [content (expr id->content store item-id)]
-              (description->entity content store)))
+      (description->entity content store)))
 
   (content-reference [this]
     (expr-let [reference (expr id->content-reference store item-id)]
-              (description->entity reference store))))
+      (description->entity reference store))))
 
 ;;; Make a list work as an item. The format is (content element
 ;;; element...) We use ISeq, because, for example, while '(1 2) is a

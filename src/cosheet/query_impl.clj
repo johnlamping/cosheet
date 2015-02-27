@@ -1,6 +1,6 @@
 (ns cosheet.query-impl
   (:require [clojure.pprint :refer [pprint]]
-(cosheet [store :as store]
+            (cosheet [store :as store]
                      [entity :as entity]
                      [query :refer [extended-by-m?
                                     template-matches-m

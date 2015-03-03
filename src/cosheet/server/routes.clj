@@ -2,12 +2,14 @@
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             [compojure.response :as response]
-            [compojure.core :refer [GET defroutes]]
+            [compojure.core :refer [GET POST defroutes]]
             [hiccup.middleware :refer [wrap-base-url]]
-            [cosheet.server.views :refer [index-page]]))
+            [ring.middleware.transit :refer [wrap-transit-response]]
+            [cosheet.server.views :refer [index-page ajax-response]]))
 
 (defroutes main-routes
   (GET "/" [] (index-page))
+  (POST "/ajax-request" [] (ajax-response))
   (route/resources "/")
   (route/not-found "Page not found"))
 
@@ -16,7 +18,8 @@
 ;;; Running the server from lein makes it automatically update
 ;;; whenever a source file is changed.
 (def app
-  (-> (handler/site main-routes)
+  (-> main-routes ; (handler/site main-routes)
+      (wrap-transit-response {:encoding :json, :opts {}})
       (wrap-base-url)))
 
 

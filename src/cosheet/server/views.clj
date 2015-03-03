@@ -1,6 +1,7 @@
 (ns cosheet.server.views
   (:require
-    [hiccup.page :refer [html5 include-js]]))
+   [hiccup.page :refer [html5 include-js]]
+   [ring.util.response :refer [response]]))
 
 (defn index-page []
   (html5
@@ -8,4 +9,11 @@
       [:title "Hello World"]
       (include-js "/js/main.js")]
     [:body
-      [:h1 "Hello World"]]))
+     [:div#app "Hello World"]
+     [:script "cosheet.client.run();"]]))
+
+(defn ajax-response []
+  (response {:message [:div "Hello " [:cosheet/component :new]
+                       " world, the time is now"]
+             :new [:span "new"]}))
+

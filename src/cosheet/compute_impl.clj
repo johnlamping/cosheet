@@ -421,7 +421,7 @@
    ;;   A :visible map of what other references see about this
    ;;     reference, consisting of
    ;;     The :value of the reference.
-   ;;     A :valid tag if the value is valid
+   ;;     A :valid tag if the value is valid.
    ;;   A set of :using-references that depend on our visible
    ;;     information.
    ;;   A :requested-actions set of actions to take based on new information
@@ -431,7 +431,7 @@
    ;;     [function & args]. The functionn will be called with the scheduler,
    ;;     this reference, and the additional args.
    ;;   For internal computations:
-   ;;     An :expression whose value is our value
+   ;;     An :expression whose value is our value.
    ;;     An :expressions map from expressions in
    ;;       the form (function arg arg ...) to maps about them. Those
    ;;       maps contain a subset of:

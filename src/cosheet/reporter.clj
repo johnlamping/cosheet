@@ -4,17 +4,11 @@
                                    call-with-latest-value]]))
 
 (defn- check-callback [callback]
-  (assert (fn? (first callback)) "Callback is not a function")
+  (assert (fn? (first callback)) "Callback is not a function.")
   callback)
 
 (defn- call-callback [callback & args]
   (apply (first callback) (concat args (rest callback))))
-
-(defn- inform-attendees [reporter]
-  ;;; Since the only guarantee is eventual callback, we can fetch the
-  ;;; attendees map outside of the lock
-  (doseq [[key callback] (:attendees @(:data reporter))]
-    (call-callback callback key reporter)))
 
 (def invalid ::invalid)
 
@@ -36,7 +30,7 @@
        necessarily once per change.
        In addition to these generic functions, specific kinds of reporters will
        have additional information to support additional functionality.
-       A manager function can be registered with the reporter, to implement
+       A manager callback can be registered with the reporter, to implement
        that functionality. It will be called the first time there are any
        attendees to the reporter, and whenever there is a transition in
        whether there are attendees. It can do things
@@ -51,20 +45,37 @@
   (instance? ReporterImpl r))
 
 (defn value
-  "Return the current value of the reporter"
+  "Return the current value of the reporter."
   [reporter]
   (:value @(:data reporter)))
 
-(defn swap-data-returning-both!
-  "Modify the extra data,
-   which must not change the value, manager, or attendees.
-   Return the old data and the revised data."
-  [reporter f & args]
-  (let [[old current]
-        (apply swap-returning-both! (:data reporter) f args)]
-    [old current]))
+(defn data-atom
+  "Return the atom holding the reporter's data. If any of the standard fields
+   are changed changed, the appropriate notifications must be done."
+  [reporter]
+  (:data reporter))
 
-(defn set-value
+(defn data
+  "Return all the current data for the reporter."
+  [reporter]
+  @(:data reporter))
+
+(defn data-attended? [data]
+  (not (nil? (:attendees data))))
+
+(defn attended? [reporter]
+  (data-attended? @(:data reporter)))
+
+(defn inform-attendees
+  "Notify the attendees that the value may have changed."
+  [reporter]
+  ;;; Since the only guarantee is eventual callback, we can fetch the
+  ;;; attendees map outside of any lock, since anything that changed
+  ;;; the attendees will also do callbacks if appropriate.
+  (doseq [[key callback] (:attendees @(:data reporter))]
+    (call-callback callback key reporter)))
+
+(defn set-value!
   "Set the value of the reporter, informing any attendees."
   [reporter value]
   (let [[old current]
@@ -72,18 +83,22 @@
     (if (not= (:value old) (:value current))
       (inform-attendees reporter))))
 
-(defn set-manager
+(defn set-manager!
   "Set the manager for the reporter.
    Once set, the manager can never be changed."
   [reporter & manager]
   (check-callback manager)
   (let [[old current]
         (swap-returning-both! (:data reporter) assoc :manager manager)]
-    (assert (nil? (:manager old)) "Cannot change manager.")
-    (when (not= (nil? (:attendees current)))
+    (let [old-manager (:manager old)]
+      (when old-manager
+        (assert (= old-manager manager)
+                (format "Cannot change manager: expression %s."
+                        (:expression old)))))
+    (when (data-attended? current)
       (call-callback manager reporter))))
 
-(defn set-attendee
+(defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be unique
    to each callback. If no callback is provided, remove any callback that is
    present. If a callback is provided, call it."
@@ -98,7 +113,7 @@
     (when callback
       (call-callback callback key reporter))
     (when (and (:manager current)
-               (not= (nil? (:attendees old)) (nil? (:attendees current))))
+               (not= (data-attended? old) (data-attended? current)))
       (call-callback (:manager current) reporter))))
 
 (defn new-reporter
@@ -106,10 +121,10 @@
       :or {:value ::invalid} :as args}]
   (let [reporter (->ReporterImpl (atom (dissoc args :attendee :manager)))]
     (when manager
-      (apply set-manager reporter
+      (apply set-manager! reporter
              (check-callback (if (sequential? manager) manager [manager]))))
     (when key
-      (apply set-attendee reporter key callback))
+      (apply set-attendee! reporter key callback))
     reporter))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]

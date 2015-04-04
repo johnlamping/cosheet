@@ -26,11 +26,7 @@
 ;;; state at the beginining of the atomic operation, and the atomic
 ;;; operation would overwrite it. Instead, we check, after doing a
 ;;; copy, that the information that was copied still matches the
-;;; latest information, and redo the copy if it doesn't. This code
-;;; uses the former technique as much as possible, but currently needs
-;;; to use the latter for subscribing to state, because State objects
-;;; don't have a conditional subscription method that consults a thunk
-;;; to decide whether to subscribe.
+;;; latest information, and redo the copy if it doesn't.
 
 ;;; SUGGESTION: if it become important to pass around deltas, the way
 ;;; to do that is to have value information contain a promise of the

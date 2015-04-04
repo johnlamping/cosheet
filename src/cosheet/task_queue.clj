@@ -41,7 +41,18 @@
   (let [[queue count] @task-queue]
     (and (empty? queue) (zero? count))))
 
+(defn run-all-pending-tasks
+  "Execute tasks in the queue, in priority order,
+   until there are no more tasks and all tasks have terminated."
+  [task-queue & prefix-args]
+  (loop []
+    (apply run-pending-task task-queue prefix-args)
+    (when (not(finished-all-tasks? task-queue))
+      (recur))))
+
 (defn wait-until-finished [task-queue]
   (loop []
     (if (not (finished-all-tasks? task-queue))
       (recur))))
+
+

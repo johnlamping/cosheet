@@ -7,14 +7,21 @@
                                     call-with-latest-value]]
                      [mutable-map :as mm])))
 
-;;; The management data structure is a map that contains all the
-;;; information that the various managers and propagators need. It
-;;; includes:
-;;;       :queue A task-queue of pending tasks.
-;;; :manager-map A map from :manager-type of a reporter to a
-;;;              manager function.
-;;;       :cache A mutable map from expression to reporter.
-;;;              (present if cache reporters are supported.)
+;;; The management record contains all the information that the
+;;; various managers and propagators need.
+;;; By making it a record, we can define our own print-method, to
+;;; avoid infinite loops when it is printed out. (The queue will
+;;; contain references back to the management record.)
+(defrecord ManagementImpl
+    [queue  ; A task-queue of pending tasks.
+     manager-map ; A map from :manager-type of a reporter to a
+                 ; manager function.
+     cache ; A mutable map from expression to reporter.
+           ; (present if cache reporters are supported.)
+     ])
+
+(defmethod print-method ManagementImpl [s ^java.io.Writer w]
+  (.write w "<ManagementImpl>"))
 
 ;;; The following fields are used in reporters, in addition to the
 ;;; standard reporter fields:
@@ -30,15 +37,21 @@
 ;;;                     to evaluate its expression to their values.
 
 (defn modify-and-act
-  "Atomiclly call the function on the reporter's data.
-   The function should return the new data for the reporter
-   and a list of actions that should be performed."
+  "Atomicly call the function on the reporter's data.
+   The function should return the new data for the reporter,
+   which may also contain a temporary field, :pending-actions with
+   a list of actions that should be performed."
   [reporter f]
-  (let [actions (swap-control-return! (reporter/data-atom reporter) f)]
+  (let [actions (swap-control-return!
+                 (reporter/data-atom reporter)
+                 (fn [data] (let [new-data (f data)]
+                              [(dissoc new-data :pending-actions)
+                               (:pending-actions new-data)])))]
     (doseq [action actions]
       (apply (first action) (rest action)))))
 
 (def eval-expression-if-ready)
+(def manage)
 
 (defn copy-value-callback
   [[_ to] from]
@@ -51,11 +64,35 @@
    the first reporter to become the value of the second."
   [from to]
   (call-with-latest-value
-   #(when (= (:value-source to) from) [copy-value-callback])
+   #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
    (fn [callback] (apply reporter/set-attendee!
-                         from '(:copy-value to) callback))))
+                         from (list :copy-value to) callback))))
 
-;;; TODO: implement the next two
+(defn update-value
+  "Given the data from a reporter, and the reporter, set the value,
+  and request the appropriate registrations."
+  [data reporter value]
+  (cond-> (assoc data :value value)
+    (not= value (:value data))
+    (update-in [:pending-actions] conj [reporter/inform-attendees reporter])))
+
+(defn update-value-source
+  "Given the data from a reporter, and the reporter, set the value-source
+  to the given source, and request the appropriate registrations."
+  [data reporter source]
+  (let [old-source (:value-source data)]
+    (if (= source old-source)
+      data
+      (cond-> (if source
+                (assoc data :value-source source)
+                (dissoc data :value-source))
+        old-source
+        (update-in [:pending-actions]
+                   conj [register-copy-value old-source reporter])
+        source
+        (update-in [:pending-actions]
+                   conj [register-copy-value source reporter])))))
+
 (defn copy-subordinate-callback
   [to from management]
   (call-with-latest-value
@@ -72,22 +109,17 @@
             (let [new-data (-> data
                                (update-in [:needed-values] disj from)
                                (assoc-in [:subordinate-values from] value))]
-              [new-data
-               (when (empty? (:needed-values new-data))
-                 [[add-task (:queue management)
-                   eval-expression-if-ready to management]])])
-            (let [new-data (-> data
-                               (update-in [:needed-values] conj from)
-                               (update-in [:subordinate-values] dissoc from)
-                               (assoc :value reporter/invalid)
-                               (dissoc :value-source))]
-              [new-data
-               (concat
-                (when (not= (:value new-data) (:value data))
-                  [reporter/inform-attendees to])
-                (when (not= (:value-source new-data) (:value-source data))
-                  [register-copy-value (:value-source data) to]))]))
-          [data nil]))))))
+              (cond-> new-data
+                (empty? (:needed-values new-data))
+                (assoc :pending-actions
+                       [[add-task (:queue management)
+                         eval-expression-if-ready to management]])))
+            (-> data
+                (update-in [:needed-values] conj from)
+                (update-in [:subordinate-values] dissoc from)
+                (update-value to reporter/invalid)
+                (update-value-source to nil)))
+          data))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
@@ -111,23 +143,16 @@
                                            ((:subordinate-values data) term)
                                            term))
                               (:expression data))
-             value (apply (first application) (rest application))
-             actions (let [old-value-source (:value-source data)]
-                       (when (and old-value-source
-                                  (not= value old-value-source))
-                         [[register-copy-value old-value-source reporter]]))]
+             value (apply (first application) (rest application))]
          (if (reporter/reporter? value)
-           [(assoc data :value-source value)
-            (concat actions
-                    [[register-copy-value value reporter]
-                     [manage value management]])]
-           [(-> data
-                (assoc :value value)
-                (dissoc :value-source))
-            (concat actions
-                    (when (not= value (:value data))
-                      [[reporter/inform-attendees reporter]]))]))
-       [data nil]))))
+           (-> data
+               (update-value-source reporter value)
+               (update-in [:pending-actions]
+                          conj [manage value management]))
+           (-> data
+               (update-value reporter value)
+               (update-value-source reporter nil))))
+       data))))
 
 (defn eval-manager
   "Manager for an eval reporter."
@@ -135,27 +160,27 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [expr (:expression data)
-           subordinate-reporters (set (filter reporter/reporter? expr))
-           copy-requests (map (fn [subordinate]
-                                [register-copy-subordinate
-                                 subordinate reporter management])
-                              subordinate-reporters)]
-       (if (reporter/data-attended? data)
-         [(-> data
-              (assoc :needed-values subordinate-reporters)
-              (assoc :subsidary-values {}))
-          (conj copy-requests
-                [add-task (:queue management)
-                 eval-expression-if-ready reporter management])]
-         [(-> data
-              (dissoc :needed-values)
-              (dissoc :subsidary-values)
-              (dissoc :value-source)
+     (let [subordinates (set (filter reporter/reporter?
+                                              (:expression data)))
+           new-data (assoc data :pending-actions
+                           (map (fn [subordinate]
+                                  [register-copy-subordinate
+                                   subordinate reporter management])
+                                subordinates))]
+       (if (reporter/data-attended? new-data)
+         (-> new-data
+             (assoc :needed-values subordinates)
+             (assoc :subordinate-values {})
+             (update-in [:pending-actions]
+                        conj [add-task (:queue management)
+                              eval-expression-if-ready reporter management]))
+         (-> new-data
+             (dissoc :needed-values)
+             (dissoc :subordinate-values)
+             (update-value-source reporter nil)
               ;;; Note, we are not attended, so it is OK to change the
               ;;; value without notifying the callbacks.              
-              (assoc :value reporter/invalid))
-          copy-requests])))))
+             (assoc :value reporter/invalid)))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
@@ -165,16 +190,15 @@
   (eval-manager reporter management))
 
 (defn ensure-in-cache
-  "Get or make an cached-eval reporter for the given expression in the cache."
+  "Get or make an cached-eval reporter for the given expression in the cache.
+   It may not be managed."
   [expression management]
-  (let [cache (:cache management)]
-    (mm/update-in!
-     cache [expression]
-     #(or % (reporter/new-reporter :expression expression
-                                   :manager-type :cached-eval)))
-    (manage (mm/get! cache expression) management)))
+  (mm/update-in!
+   (:cache management) [expression]
+   #(or % (reporter/new-reporter :expression expression
+                                 :manager-type :cached-eval))))
 
-(defn cached-manager
+(defn cache-manager
   "Manager that looks up the value of a reporter's expression in a cache of
   reporters."
   [reporter management]
@@ -185,29 +209,22 @@
     (call-with-latest-value
      #(reporter/attended? reporter)
      (fn [attended]
-       (if attended
-         (let [value-source (ensure-in-cache expression management)]
-           (swap-returning-both!
-            (reporter/data-atom reporter) assoc :value-source value-source)
-            ;;; The register-copy-value has to be done before the
-            ;;; value-source is managed, or the manager will take it
-            ;;; out of the cache.
-           (register-copy-value value-source reporter)
-           (manage value-source management))
-         (let [value-source
-               (:value-source
-                (first (swap-returning-both!
-                        (reporter/data-atom reporter) dissoc :value-source)))]
-           (register-copy-value value-source reporter)))))))
+       (let [value-source (when attended
+                            (ensure-in-cache expression management))]
+         (modify-and-act reporter
+                         #(update-value-source % reporter value-source))
+         ;; We can't do management until the registration is done,
+         ;; or the source's manager will take it out of the cache.
+         (when value-source (manage value-source management)))))))
 
 (defn new-management
   "Create the manager data for a caching evaluator."
   []
-  {:cache (mm/new-mutable-map)
-   :queue (new-priority-task-queue)
-   :manager-map {:cached cached-manager
-                 :eval eval-manager
-                 :cached-eval cached-eval-manager}})
+  (map->ManagementImpl {:cache (mm/new-mutable-map)
+                        :queue (new-priority-task-queue)
+                        :manager-map {:cache cache-manager
+                                      :eval eval-manager
+                                      :cached-eval cached-eval-manager}}))
 
 (defn manage
   "Assign the manager to the reporter
@@ -223,8 +240,3 @@
         (when (reporter/reporter? term)
           (manage term management))))))
 
-(defn new-manager
-  "Return an object that will set up management of a reporter"
-  []
-  (let [management (new-management)]
-    (fn [reporter] (manage reporter management))))

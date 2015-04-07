@@ -55,4 +55,7 @@
     (if (not (finished-all-tasks? task-queue))
       (recur))))
 
-
+(defn current-tasks
+  "For debugging: return a seq of all the current tasks."
+  [task-queue]
+  (map first (seq (first @task-queue))))

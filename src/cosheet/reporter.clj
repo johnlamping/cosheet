@@ -117,15 +117,16 @@
       (call-callback (:manager current) reporter))))
 
 (defn new-reporter
-  [& {value :value [key & callback] :attendee manager :manager
-      :or {:value ::invalid} :as args}]
-  (let [reporter (->ReporterImpl (atom (dissoc args :attendee :manager)))]
-    (when manager
-      (apply set-manager! reporter
-             (check-callback (if (sequential? manager) manager [manager]))))
-    (when key
-      (apply set-attendee! reporter key callback))
-    reporter))
+  [& {[key & callback] :attendee manager :manager :as args}]
+  (let [args (if (contains? args :value) args (assoc args :value invalid))]
+    (let [reporter (->ReporterImpl
+                    (atom (dissoc args :attendee :manager)))]
+      (when manager
+        (apply set-manager! reporter
+               (check-callback (if (sequential? manager) manager [manager]))))
+      (when key
+        (apply set-attendee! reporter key callback))
+      reporter)))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (.write w "<Reporter")

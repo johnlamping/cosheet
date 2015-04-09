@@ -10,7 +10,7 @@
 (defn- call-callback [callback & args]
   (apply (first callback) (concat args (rest callback))))
 
-(def invalid ::invalid)
+(def invalid :invalid) ;; TODO: after debugging, make this ::invalid
 
 (defn valid? [value]
   (not= value invalid))
@@ -61,7 +61,7 @@
   @(:data reporter))
 
 (defn data-attended? [data]
-  (not (nil? (:attendees data))))
+  (not (empty? (:attendees data))))
 
 (defn attended? [reporter]
   (data-attended? @(:data reporter)))
@@ -79,7 +79,7 @@
   "Set the value of the reporter, informing any attendees."
   [reporter value]
   (let [[old current]
-        (swap-returning-both! (:data reporter) assoc :value value)]
+        (swap-returning-both! (:data reporter) #(assoc % :value value))]
     (if (not= (:value old) (:value current))
       (inform-attendees reporter))))
 

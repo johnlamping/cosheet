@@ -24,10 +24,11 @@
 (def get-in! (partial mm-in! get-in))
 
 (defn- mm-swap! [fun mm key & args]
-  (swap! (mm-ref mm key) #(apply fun % key args)))
+  ((swap! (mm-ref mm key) #(apply fun % key args)) key))
 
 (defn- mm-swap-in! [fun mm keys & args]
-  (swap! (mm-ref mm (first keys)) #(apply fun % keys args)))
+  (get-in (swap! (mm-ref mm (first keys)) #(apply fun % keys args))
+          keys))
 
 (defn- mm-swap-in-returning-both! [fun mm keys & args]
   (for [info (swap-returning-both! (mm-ref mm (first keys))

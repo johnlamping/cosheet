@@ -47,7 +47,7 @@
   [task-queue & prefix-args]
   (loop []
     (apply run-pending-task task-queue prefix-args)
-    (when (not(finished-all-tasks? task-queue))
+    (when (not (finished-all-tasks? task-queue))
       (recur))))
 
 (defn wait-until-finished [task-queue]

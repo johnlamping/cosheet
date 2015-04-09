@@ -53,11 +53,25 @@
 (def eval-expression-if-ready)
 (def manage)
 
+(defn update-value
+  "Given the data from a reporter, and the reporter, set the value,
+  and request the appropriate registrations."
+  [data reporter value]
+  (cond-> (assoc data :value value)
+    (not= value (:value data))
+    (update-in [:pending-actions] conj [reporter/inform-attendees reporter])))
+
 (defn copy-value-callback
   [[_ to] from]
   (call-with-latest-value
    #(reporter/value from)
-   (fn [value] (reporter/set-value! to value))))
+   (fn [value]
+     (modify-and-act
+      to
+      (fn [data]
+        (if (= (:value-source data) from)
+          (update-value data to value)
+          data))))))
 
 (defn register-copy-value
   "Register the need to copy (or not copy) the value from
@@ -67,14 +81,6 @@
    #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
    (fn [callback] (apply reporter/set-attendee!
                          from (list :copy-value to) callback))))
-
-(defn update-value
-  "Given the data from a reporter, and the reporter, set the value,
-  and request the appropriate registrations."
-  [data reporter value]
-  (cond-> (assoc data :value value)
-    (not= value (:value data))
-    (update-in [:pending-actions] conj [reporter/inform-attendees reporter])))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -179,14 +185,16 @@
              (dissoc :subordinate-values)
              (update-value-source reporter nil)
               ;;; Note, we are not attended, so it is OK to change the
-              ;;; value without notifying the callbacks.              
+              ;;; value without notifying the callbacks.
+             (assoc :by :manager)
              (assoc :value reporter/invalid)))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
   [reporter management]
   (when (not (reporter/attended? reporter))
-       (dissoc (:cache management) (:expression (reporter/data reporter))))
+    (mm/dissoc-in! (:cache management)
+                   [(:expression (reporter/data reporter))]))
   (eval-manager reporter management))
 
 (defn ensure-in-cache
@@ -239,4 +247,26 @@
       (doseq [term (:expression data)]
         (when (reporter/reporter? term)
           (manage term management))))))
+
+(defn request
+  "Request computation of a reference."
+  [x management]
+  (reporter/set-attendee! x :computation-request (fn [key value] nil))
+  (manage x management)
+  x)
+
+(defn compute
+  "Do all pending computations."
+  [management]
+  (run-all-pending-tasks (:queue management)))
+
+(defn computation-value
+  "Given a possible reporter, compute its value and return it."
+  [x management]
+  (if (reporter/reporter? x)
+    (do
+      (request x management)
+      (compute management)
+      (reporter/value x))
+    x))
 

@@ -7,6 +7,10 @@
                                     call-with-latest-value]]
                      [mutable-map :as mm])))
 
+;;; TODO: Don't delete value-source or old value when a value goes
+;;; invalid, only when it changes. That will keep the request for the
+;;; source around in the cache until we know we won't need it.
+
 ;;; The management record contains all the information that the
 ;;; various managers and propagators need.
 ;;; By making it a record, we can define our own print-method, to

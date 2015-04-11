@@ -255,7 +255,7 @@
       expr)))
 
 ;;; NOTE: The following three functions are not used, but may be
-;;; helpful in debugging problems.
+;;; helpful in debugging problems that show up.
 
 (defn print-reporter
   [r]
@@ -277,7 +277,67 @@
       (print "It's source:")
       (print-sources source))))
 
-;; TODO: Add a data structure checker to the following test
+(def check-propagation)
+
+(defn check-source-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)
+        source (:value-source data)]
+    (if source
+      (do (is (= (:value data) (reporter/value source)))
+          (contains? (:attendees (reporter/data source))
+                     `(:copy-value reporter))
+          (check-propagation already-checked source))
+      already-checked)))
+
+(defn check-subordinate-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)]
+    (reduce
+     (fn [checked [subordinate value]]
+       (do (is (= value (reporter/value subordinate)))
+           (contains? (:attendees (reporter/data subordinate))
+                      reporter)
+           (check-propagation checked subordinate)))
+     already-checked
+     (:subordinate-values data))))
+
+(defn check-attendees
+  [already-checked reporter]
+  (reduce
+   (fn [checked [key _]]
+     (cond
+       (reporter/reporter? key)
+       (do (is (contains? (:subordinate-values (reporter/data key)) reporter))
+           (check-propagation checked key))
+       (list? key)
+       (let [user (second key)]
+         (is (= (first key) :copy-value))
+         (is (reporter/reporter? user))
+         (is (= reporter (:value-source (reporter/data user))))
+         (check-propagation checked user))
+       :else
+       already-checked))
+   already-checked
+   (:attendees (reporter/data reporter))))
+
+(defn check-propagation
+  "Check that all the right information has been propagated to any reporter
+  reachable from this one.
+  Returns a set of reporters that have already been checked."
+  [already-checked reporter]
+  (if (contains? already-checked reporter)
+    already-checked
+    (let [data (reporter/data reporter)]
+      (is (empty? (:needed-values data)))
+      (is (= (set (filter reporter/reporter? (:expression data)))
+             (set (keys (:subordinate-values data)))))
+      (not (empty? (:attendees data)))
+      (-> already-checked
+          (conj reporter)
+          (check-source-propagation reporter)
+          (check-subordinate-propagation reporter)
+          (check-attendees reporter)))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups that
@@ -315,14 +375,17 @@
             (right-results? [requests answers-map]
               (doseq [[[d pos] reporter] requests]
                 (is (= (reporter/value reporter)
-                       (answers-map [d pos])))))]
+                       (answers-map [d pos])))))
+            (check [requests answers-map]
+              (right-results? requests answers-map)
+              (reduce check-propagation #{} (vals requests)))]
       (let [arguments (for [d (range depth)
                             pos (range width)]
                         [d pos])
             requests (into {} (for [[d pos] arguments]
                                 [[d pos] (request (expr indexer d pos) m)]))]
         (compute m)
-        (right-results? requests (answers arguments))
+        (check requests (answers arguments))
         (doseq [i (range trials)]
           (when (= (mod i 1000) 0)
             (println "starting trial" i))
@@ -332,6 +395,6 @@
             (when (zero? (mod j 17))
               (future (compute m))))
           (compute m)
-          (right-results? requests (answers arguments)))))))
+          (check requests  (answers arguments)))))))
 
 

@@ -285,8 +285,8 @@
         source (:value-source data)]
     (if source
       (do (is (= (:value data) (reporter/value source)))
-          (contains? (:attendees (reporter/data source))
-                     `(:copy-value reporter))
+          (is (contains? (:attendees (reporter/data source))
+                         `(:copy-value ~reporter)))
           (check-propagation already-checked source))
       already-checked)))
 
@@ -296,8 +296,8 @@
     (reduce
      (fn [checked [subordinate value]]
        (do (is (= value (reporter/value subordinate)))
-           (contains? (:attendees (reporter/data subordinate))
-                      reporter)
+           (is (contains? (:attendees (reporter/data subordinate))
+                          reporter))
            (check-propagation checked subordinate)))
      already-checked
      (:subordinate-values data))))
@@ -348,7 +348,7 @@
   ;; propagates, and makes sure that the final answer is still right
   (let [width 13
         depth 7
-        trials 10000; 0
+        trials 10; 0000
         changes-per-trial 1000
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]

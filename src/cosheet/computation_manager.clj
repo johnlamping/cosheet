@@ -7,6 +7,75 @@
                                     call-with-latest-value]]
                      [mutable-map :as mm])))
 
+;;; Manage the (re)computation of reporters using a priority queue.
+
+;;; The following fields are used in reporters, in addition to the
+;;; standard reporter fields
+;;; Provided by the original creator of the reporter:
+;;;         :expression The expression describing the computation that
+;;;                     gives the value of this reporter 
+;;;       :manager-type A keyword describing what kind of manager the
+;;;                     reporter should have.
+;;; Added by this manager:
+;;;       :value-source A reporter whose value should be the value of this
+;;;                     reporter if we have no needed-values.
+;;;      :needed-values A set of reporters whose values this reporter needs
+;;;                     to evaluate its expression and that it doesn't have a
+;;;                     valid value for.
+;;; :subordinate-values A map from reporters whose values this reporter needs
+;;;                     to evaluate its expression to the last value
+;;;                     value it saw for them, even if they have gone
+;;;                     invalid subsequently.
+;;;    :pending-actions A list of [function arg arg ...] calls that
+;;;                     need to be performed. (These will never actualy
+;;;                     be stored in a reporter, but are added to the
+;;;                     data before it is stored.)
+
+;;; The computation is multi-threaded, but can avoid using locks and
+;;; TSM because it just needs eventual consistency; it is just copying
+;;; information. The danger is that in between a read and a copy in
+;;; one thread, the data that was read will be changed, and another
+;;; thread will complete a read and copy of the new information, only to
+;;; have the first thread overwrite it with the stale information.
+;;;
+;;; Doing the read inside an atomic update operation for the copy
+;;; doesn't work. Consider the copy starting out at A, and source
+;;; value changing from A to B, and then back to A. An atomic update
+;;; reads The current copy value as A, reads the new source value B,
+;;; then during that update, the copy is set back to A, and when the
+;;; update goes to finish, it will see that the copy is still A, so it
+;;; succeeds, and sets it to the stale B.
+;;;
+;;; Instead, we check, after doing a copy, that the information that
+;;; was copied still matches the latest information, and redo the copy
+;;; if it doesn't.
+
+;;; SUGGESTION: if it become important to pass around deltas, the way
+;;; to do that is to have value information contain a promise of the
+;;; next version of that value and the delta between those versions.
+;;; Then, anything with a handle to an old value can chase the change
+;;; path, while GC will get rid of change information for which there
+;;; are no longer handles.
+
+;;; TODO: Priorities need to be implemented
+
+;;; TODO: Approximations need to be implemented.
+;;; They logically unfold the dependency graph, with only the last
+;;; unfolding being kept around, but all unfoldings being invalidated
+;;; when a non-monotonic input changes or a monotonic input changes in
+;;; a non-monotonic way.
+;;; It uses a map, :approximations
+;;;     whose keys are reporters that our
+;;;     value depends on, where only a lower bound on their value
+;;;     was used in computing our value. The values in the map are a
+;;;     pair of [which iteration of that value was used, and which
+;;;     iteration of the reporter's value we need as input if our
+;;;     value is to be used in the next iteration]. The latter is reset
+;;;     to 0 whenever there is a non-monotonic change to an input,
+;;;     because that invalidates all iterations that went through
+;;;     this reporter.
+
+
 ;;; The management record contains all the information that the
 ;;; various managers and propagators need.
 ;;; By making it a record, we can define our own print-method, to
@@ -24,25 +93,10 @@
   ;; Avoid huge print-outs.
   (.write w "<ManagementImpl>"))
 
-;;; The following fields are used in reporters, in addition to the
-;;; standard reporter fields:
-;;;         :expression The expression describing the computation that
-;;;                     gives the value of this reporter 
-;;;       :manager-type A keyword describing what kind of manager the
-;;;                     reporter should have.
-;;;       :value-source A reporter whose value should be the value of this
-;;;                     reporter if we have no needed-values.
-;;;      :needed-values A set of reporters whose values this reporter needs
-;;;                     to evaluate its expression and that it doesn't have a
-;;;                     valid value for.
-;;; :subordinate-values A map from reporters whose values this reporter needs
-;;;                     to evaluate its expression to the last value
-;;;                     value it saw for them, even if they have gone
-;;;                     invalid subsequently.
-;;;    :pending-actions A list of [function arg arg ...] calls that
-;;;                     need to be performed. (These will never actualy
-;;;                     be stored in a reporter, but are added to the
-;;;                     data before it is stored.)
+(defn update-new-pending-action
+  "Given data from a reporter, add an an action to the pending actions."
+  [data & action]
+  (update-in data [:pending-actions] conj (vec action)))
 
 (defn modify-and-act
   "Atomicly call the function on the reporter's data.
@@ -69,8 +123,7 @@
     data
     (-> data
         (assoc :value value)
-        (update-in [:pending-actions]
-                   conj [reporter/inform-attendees reporter]))))
+        (update-new-pending-action reporter/inform-attendees reporter))))
 
 (defn copy-value-callback
   [[_ to] from]
@@ -103,8 +156,8 @@
     (if (= source old-source)
       data
       (reduce
-       (fn [data src] (update-in data [:pending-actions]
-                                 conj [register-copy-value src reporter]))
+       (fn [data src]
+         (update-new-pending-action data register-copy-value src reporter))
        (if source
          (assoc data :value-source source)
          (dissoc data :value-source))
@@ -130,16 +183,14 @@
                           (assoc-in [:subordinate-values from] value)
                           (update-value-source to nil))))]
               (if (empty? (:needed-values new-data))
-                (if (nil? (:value-source new-data))
-                  (update-in new-data [:pending-actions]
-                             conj [add-task (:queue management)
-                                   eval-expression-if-ready to management])
-                  ;; We have re-confirmed all old values for the source.
-                  ;; Get the value back.
-                  (update-in new-data [:pending-actions]
-                             conj[add-task (:queue management)
-                                  copy-value-callback
-                                  `(:copy-value ~to) (:value-source new-data)]))
+                (apply update-new-pending-action new-data
+                       add-task (:queue management)
+                       (if (nil? (:value-source new-data))
+                         [eval-expression-if-ready to management]
+                         ;; We have re-confirmed all old values for the source.
+                         ;; Get the value back.
+                         [copy-value-callback
+                          `(:copy-value ~to) (:value-source new-data)]))
                 new-data))
             (-> data
                 (update-in [:needed-values] conj from)
@@ -171,8 +222,7 @@
          (if (reporter/reporter? value)
            (-> data
                (update-value-source reporter value)
-               (update-in [:pending-actions]
-                          conj [manage value management]))
+               (update-new-pending-action manage value management))
            (-> data
                (update-value reporter value)
                (update-value-source reporter nil))))
@@ -184,27 +234,28 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [subordinates (set (filter reporter/reporter?
-                                              (:expression data)))
-           new-data (assoc data :pending-actions
-                           (map (fn [subordinate]
-                                  [register-copy-subordinate
-                                   subordinate reporter management])
-                                subordinates))]
+     (let [subordinates (set (filter reporter/reporter? (:expression data)))
+           new-data (reduce
+                     (fn [data subordinate]
+                       (update-new-pending-action
+                        data
+                        register-copy-subordinate
+                        subordinate reporter management))
+                     data subordinates)]
        (if (reporter/data-attended? new-data)
          (-> new-data
              (assoc :needed-values subordinates)
              (assoc :subordinate-values {})
-             (update-in [:pending-actions]
-                        conj [add-task (:queue management)
-                              eval-expression-if-ready reporter management]))
+             (update-new-pending-action
+              add-task (:queue management)
+              eval-expression-if-ready reporter management))
          (-> new-data
              (dissoc :needed-values)
              (dissoc :subordinate-values)
              (update-value-source reporter nil)
+             (assoc :by :manager)
               ;;; Note, we are not attended, so it is OK to change the
               ;;; value without notifying the callbacks.
-             (assoc :by :manager)
              (assoc :value reporter/invalid)))))))
 
 (defn cached-eval-manager

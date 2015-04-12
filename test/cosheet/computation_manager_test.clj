@@ -73,9 +73,17 @@
     (reporter/set-value! r1 reporter/invalid)
     (is (= (reporter/value r2) reporter/invalid))
     (is (= (reporter/value r3) reporter/invalid))
-    (is (not (contains? (reporter/data r2) :value-source)))
-    (is (= (:attendees (reporter/data r0)) nil))
-    (is (= (task-queue/current-tasks (:queue m)) ()))))
+    (is (= (:value-source (reporter/data r2)) r0)) ;; Last know source.
+    (is (= (task-queue/current-tasks (:queue m)) ()))
+    ;; Now set the value back to the original value, and check the consequences.
+    (reporter/set-value! r1 :v1)
+    (is (= (:value-source (reporter/data r2)) r0)) ;; Same source.
+    (is (= (task-queue/current-tasks (:queue m))
+           [[copy-value-callback `(:copy-value ~r2) r0]]))
+    (compute m)
+    (is (= (reporter/value r2) :r0))
+    (is (= (reporter/value r3) :r0))
+    ))
 
 (deftest eval-expression-if-ready-test
   (let [r0 (reporter/new-reporter  :name :r0 :value 1)
@@ -263,6 +271,9 @@
     (let [v (key (reporter/data r))]
       (when v
         (println " " key v))))
+  (let [source (:value-source (reporter/data r))]
+    (when source
+      (println " " :value-source (:name (reporter/data source)))))
   (doseq [[rep value] (:subordinate-values (reporter/data r))]
     (println "    Stored" value
              "for" (pretty-expression rep false) (reporter/value rep)))

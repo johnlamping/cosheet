@@ -7,10 +7,6 @@
                                     call-with-latest-value]]
                      [mutable-map :as mm])))
 
-;;; TODO: Don't delete value-source or old value when a value goes
-;;; invalid, only when it changes. That will keep the request for the
-;;; source around in the cache until we know we won't need it.
-
 ;;; The management record contains all the information that the
 ;;; various managers and propagators need.
 ;;; By making it a record, we can define our own print-method, to
@@ -25,6 +21,7 @@
      ])
 
 (defmethod print-method ManagementImpl [s ^java.io.Writer w]
+  ;; Avoid huge print-outs.
   (.write w "<ManagementImpl>"))
 
 ;;; The following fields are used in reporters, in addition to the
@@ -34,11 +31,18 @@
 ;;;       :manager-type A keyword describing what kind of manager the
 ;;;                     reporter should have.
 ;;;       :value-source A reporter whose value should be the value of this
-;;;                     reporter.
+;;;                     reporter if we have no needed-values.
 ;;;      :needed-values A set of reporters whose values this reporter needs
-;;;                     to evaluate its expression and doesn't know.
+;;;                     to evaluate its expression and that it doesn't have a
+;;;                     valid value for.
 ;;; :subordinate-values A map from reporters whose values this reporter needs
-;;;                     to evaluate its expression to their values.
+;;;                     to evaluate its expression to the last value
+;;;                     value it saw for them, even if they have gone
+;;;                     invalid subsequently.
+;;;    :pending-actions A list of [function arg arg ...] calls that
+;;;                     need to be performed. (These will never actualy
+;;;                     be stored in a reporter, but are added to the
+;;;                     data before it is stored.)
 
 (defn modify-and-act
   "Atomicly call the function on the reporter's data.
@@ -58,24 +62,28 @@
 (def manage)
 
 (defn update-value
-  "Given the data from a reporter, and the reporter, set the value,
+  "Given the data from a reporter, and the reporter, set the value in the data,
   and request the appropriate registrations."
   [data reporter value]
-  (cond-> (assoc data :value value)
-    (not= value (:value data))
-    (update-in [:pending-actions] conj [reporter/inform-attendees reporter])))
+  (if (= value (:value data))
+    data
+    (-> data
+        (assoc :value value)
+        (update-in [:pending-actions]
+                   conj [reporter/inform-attendees reporter]))))
 
 (defn copy-value-callback
   [[_ to] from]
   (call-with-latest-value
    #(reporter/value from)
-   (fn [value]
-     (modify-and-act
-      to
-      (fn [data]
-        (if (= (:value-source data) from)
-          (update-value data to value)
-          data))))))
+   (fn [value] (modify-and-act
+                to
+                (fn [data] (if (= (:value-source data) from)
+                             (update-value data to
+                                           (if (empty? (:needed-values data))
+                                             value
+                                             reporter/invalid))
+                             data))))))
 
 (defn register-copy-value
   "Register the need to copy (or not copy) the value from
@@ -83,8 +91,9 @@
   [from to]
   (call-with-latest-value
    #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
-   (fn [callback] (apply reporter/set-attendee!
-                         from (list :copy-value to) callback))))
+   (fn [callback]
+     (apply reporter/set-attendee!
+            from (list :copy-value to) callback))))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -93,15 +102,13 @@
   (let [old-source (:value-source data)]
     (if (= source old-source)
       data
-      (cond-> (if source
-                (assoc data :value-source source)
-                (dissoc data :value-source))
-        old-source
-        (update-in [:pending-actions]
-                   conj [register-copy-value old-source reporter])
-        source
-        (update-in [:pending-actions]
-                   conj [register-copy-value source reporter])))))
+      (reduce
+       (fn [data src] (update-in data [:pending-actions]
+                                 conj [register-copy-value src reporter]))
+       (if source
+         (assoc data :value-source source)
+         (dissoc data :value-source))
+       (filter identity [old-source source])))))
 
 (defn copy-subordinate-callback
   [to from management]
@@ -111,25 +118,32 @@
      (modify-and-act
       to
       (fn [data]
-        (if (and (or (contains? (:needed-values data) from)
-                     (contains? (:subordinate-values data) from))
-                 (not= value
-                       (get (:subordinate-values data) from reporter/invalid)))
+        (if (= value (if (contains? (:needed-values data) from)
+                       reporter/invalid
+                       (get-in data [:subordinate-values from]) ))
+          data
           (if (reporter/valid? value)
-            (let [new-data (-> data
-                               (update-in [:needed-values] disj from)
-                               (assoc-in [:subordinate-values from] value))]
-              (cond-> new-data
-                (empty? (:needed-values new-data))
-                (assoc :pending-actions
-                       [[add-task (:queue management)
-                         eval-expression-if-ready to management]])))
+            (let [new-data
+                  (cond-> (update-in data [:needed-values] disj from)
+                    (not= value (get-in data [:subordinate-values from]))
+                    (#(-> %
+                          (assoc-in [:subordinate-values from] value)
+                          (update-value-source to nil))))]
+              (if (empty? (:needed-values new-data))
+                (if (nil? (:value-source new-data))
+                  (update-in new-data [:pending-actions]
+                             conj [add-task (:queue management)
+                                   eval-expression-if-ready to management])
+                  ;; We have re-confirmed all old values for the source.
+                  ;; Get the value back.
+                  (update-in new-data [:pending-actions]
+                             conj[add-task (:queue management)
+                                  copy-value-callback
+                                  `(:copy-value ~to) (:value-source new-data)]))
+                new-data))
             (-> data
                 (update-in [:needed-values] conj from)
-                (update-in [:subordinate-values] dissoc from)
-                (update-value to reporter/invalid)
-                (update-value-source to nil)))
-          data))))))
+                (update-value to reporter/invalid)))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter

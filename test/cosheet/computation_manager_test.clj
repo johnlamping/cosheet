@@ -10,6 +10,131 @@
             ; :reload
             ))
 
+;;; NOTE: The next three functions are not used, but have been
+;;; useful in avoiding huge print-outs in debugging.
+
+(defn pretty-expression
+  [expr show-prev]
+  (if (reporter/reporter? expr)
+    (let [desc
+          (for [key [:name :value]]
+            [key (key (reporter/data expr))])]
+      (if (nil? (second (first desc)))
+        (let [[key callback] (first (:attendees (reporter/data expr)))]
+          (let [to (if (sequential? key) (second key) key)]
+            (if (reporter/reporter? to)
+              (concat [[:name [(:name (reporter/data to))]]]
+                      (rest desc))
+              desc)))
+        desc))
+    (if (sequential? expr)
+      (for [e expr]
+        (pretty-expression e show-prev))
+      expr)))
+
+(defn print-reporter
+  [r]
+  (doseq [key [:name :manager-type :value]]
+    (let [v (key (reporter/data r))]
+      (when v
+        (println " " key v))))
+  (let [source (:value-source (reporter/data r))]
+    (when source
+      (println " " :value-source (:name (reporter/data source)))))
+  (doseq [[rep value] (:subordinate-values (reporter/data r))]
+    (println "    Stored" value
+             "for" (pretty-expression rep false) (reporter/value rep)))
+  (doseq [key (keys (:attendees (reporter/data r)))]
+    (println "    callback" (pretty-expression key true))))
+
+(defn print-sources
+  [r]
+  (print-reporter r)
+  (let [source (:value-source (reporter/data r))]
+    (when source
+      (print "It's source:")
+      (print-sources source))))
+
+;;; This function checks that exactly the right callbacks are in
+;;; place, and that all copied information is up to date.
+(def check-propagation)
+
+(defn check-source-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)
+        source (:value-source data)]
+    (if source
+      (do (is (= (:value data) (reporter/value source)))
+          (is (contains? (:attendees (reporter/data source))
+                         `(:copy-value ~reporter)))
+          (check-propagation already-checked source))
+      already-checked)))
+
+(defn check-subordinate-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)]
+    (reduce
+     (fn [checked [subordinate value]]
+       (if (contains? (:needed-values data) subordinate)
+         checked
+         (do
+           (is (= value (reporter/value subordinate)))
+           (is (contains? (:attendees (reporter/data subordinate)) reporter))
+           (check-propagation checked subordinate))))
+     already-checked
+     (:subordinate-values data))))
+
+(defn check-needed-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)]
+    (reduce
+     (fn [checked needed]
+       (is (not (reporter/valid? (reporter/value needed))))
+       (is (contains? (:attendees (reporter/data needed)) reporter))
+       (check-propagation checked needed))
+     already-checked
+     (:needed-values data))))
+
+(defn check-attendees
+  [already-checked reporter]
+  (reduce
+   (fn [checked [key _]]
+     (cond
+       (reporter/reporter? key)
+       (do (is (or
+                (contains? (:subordinate-values (reporter/data key)) reporter)
+                (contains? (:needed-values (reporter/data key)) reporter)))
+           (check-propagation checked key))
+       (list? key)
+       (let [user (second key)]
+         (is (= (first key) :copy-value))
+         (is (reporter/reporter? user))
+         (is (= reporter (:value-source (reporter/data user))))
+         (check-propagation checked user))
+       :else
+       already-checked))
+   already-checked
+   (:attendees (reporter/data reporter))))
+
+(defn check-propagation
+  "Check that all the right information has been propagated to any reporter
+  reachable from this one.
+  Returns a set of reporters that have already been checked."
+  [already-checked reporter]
+  (if (contains? already-checked reporter)
+    already-checked
+    (let [data (reporter/data reporter)]
+      (is (= (set (filter reporter/reporter? (:expression data)))
+             (clojure.set/union (set (keys (:subordinate-values data)))
+                                (:needed-values data))))
+      (not (empty? (:attendees data)))
+      (-> already-checked
+          (conj reporter)
+          (check-source-propagation reporter)
+          (check-subordinate-propagation reporter)
+          (check-needed-propagation reporter)
+          (check-attendees reporter)))))
+
 (deftest modify-and-act-test
   (let [r (reporter/new-reporter :test 10)
         a (atom 1)]
@@ -82,8 +207,7 @@
            [[copy-value-callback `(:copy-value ~r2) r0]]))
     (compute m)
     (is (= (reporter/value r2) :r0))
-    (is (= (reporter/value r3) :r0))
-    ))
+    (is (= (reporter/value r3) :r0))))
 
 (deftest eval-expression-if-ready-test
   (let [r0 (reporter/new-reporter  :name :r0 :value 1)
@@ -239,116 +363,16 @@
       ;; the computations should be cached, this should be fast.
       (let [f45 (fib 45)]
         (is (= (computation-value f45 m) 0))
+        (check-propagation #{} f45)
         (reporter/set-value! base 1)
         ;; Now it should be the right value.
-        (is (= (computation-value f45 m) 1836311903))))))
+        (is (= (computation-value f45 m) 1836311903))
+        (check-propagation #{} f45)
+        (reporter/set-value! base reporter/invalid)
+        ;;; Now it should be invalid.
+        (is (= (not (reporter/valid? (computation-value f45 m)))))
+        (check-propagation #{} f45)))))
 
-(defn pretty-expression
-  [expr show-prev]
-  (if (reporter/reporter? expr)
-    (let [desc
-          (for [key [:name :value]]
-            [key (key (reporter/data expr))])]
-      (if (nil? (second (first desc)))
-        (let [[key callback] (first (:attendees (reporter/data expr)))]
-          (let [to (if (sequential? key) (second key) key)]
-            (if (reporter/reporter? to)
-              (concat [[:name [(:name (reporter/data to))]]]
-                      (rest desc))
-              desc)))
-        desc))
-    (if (sequential? expr)
-      (for [e expr]
-        (pretty-expression e show-prev))
-      expr)))
-
-;;; NOTE: The following three functions are not used, but may be
-;;; helpful in debugging problems that show up.
-
-(defn print-reporter
-  [r]
-  (doseq [key [:name :manager-type :value]]
-    (let [v (key (reporter/data r))]
-      (when v
-        (println " " key v))))
-  (let [source (:value-source (reporter/data r))]
-    (when source
-      (println " " :value-source (:name (reporter/data source)))))
-  (doseq [[rep value] (:subordinate-values (reporter/data r))]
-    (println "    Stored" value
-             "for" (pretty-expression rep false) (reporter/value rep)))
-  (doseq [key (keys (:attendees (reporter/data r)))]
-    (println "    callback" (pretty-expression key true))))
-
-(defn print-sources
-  [r]
-  (print-reporter r)
-  (let [source (:value-source (reporter/data r))]
-    (when source
-      (print "It's source:")
-      (print-sources source))))
-
-(def check-propagation)
-
-(defn check-source-propagation
-  [already-checked reporter]
-  (let [data (reporter/data reporter)
-        source (:value-source data)]
-    (if source
-      (do (is (= (:value data) (reporter/value source)))
-          (is (contains? (:attendees (reporter/data source))
-                         `(:copy-value ~reporter)))
-          (check-propagation already-checked source))
-      already-checked)))
-
-(defn check-subordinate-propagation
-  [already-checked reporter]
-  (let [data (reporter/data reporter)]
-    (reduce
-     (fn [checked [subordinate value]]
-       (do (is (= value (reporter/value subordinate)))
-           (is (contains? (:attendees (reporter/data subordinate))
-                          reporter))
-           (check-propagation checked subordinate)))
-     already-checked
-     (:subordinate-values data))))
-
-(defn check-attendees
-  [already-checked reporter]
-  (reduce
-   (fn [checked [key _]]
-     (cond
-       (reporter/reporter? key)
-       (do (is (contains? (:subordinate-values (reporter/data key)) reporter))
-           (check-propagation checked key))
-       (list? key)
-       (let [user (second key)]
-         (is (= (first key) :copy-value))
-         (is (reporter/reporter? user))
-         (is (= reporter (:value-source (reporter/data user))))
-         (check-propagation checked user))
-       :else
-       already-checked))
-   already-checked
-   (:attendees (reporter/data reporter))))
-
-(defn check-propagation
-  "Check that all the right information has been propagated to any reporter
-  reachable from this one.
-  Returns a set of reporters that have already been checked."
-  [already-checked reporter]
-  (if (contains? already-checked reporter)
-    already-checked
-    (let [data (reporter/data reporter)]
-      (is (empty? (:needed-values data)))
-      (is (= (set (filter reporter/reporter? (:expression data)))
-             (set (keys (:subordinate-values data)))))
-      (not (empty? (:attendees data)))
-      (-> already-checked
-          (conj reporter)
-          (check-source-propagation reporter)
-          (check-subordinate-propagation reporter)
-          (check-attendees reporter)))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups that

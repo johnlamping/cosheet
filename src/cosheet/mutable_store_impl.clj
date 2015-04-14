@@ -1,105 +1,105 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
-                     [state :refer :all]
+                     [reporter :as reporter
+                      :refer [set-value! set-manager!
+                              attended? new-reporter invalid]]
                      [mutable-map :as mm]
                      [utils :refer [call-with-latest-value
                                     swap-control-return!]])))
 
-(defn update-state
-  "Make sure the state has the latest value from the store."
-  [store state]
-  (let [[f & args] (:expression state)]
-    (state-update state (fn [old] (apply f @(:store store) args)))))
+(defn update-reporter
+  "Make sure the reporter has the latest value from the store."
+  [store reporter]
+  (let [[f & args] (:fetch (reporter/data reporter))]
+    (set-value! reporter (apply f @(:store store) args))))
 
-(defn subscription-callback
-  "Callback when a state starts or stops needing updates from the store.
+(defn manager-callback
+  "Callback when a reporter starts or stops needing updates from the store.
    If id is non-nil, then only changes to that item can affect the state."
-  [subscribed state store id]
-  (let [subscriptions (:subscriptions store)]
-    (if subscribed
-      (do
-        (mm/update! subscriptions id #((fnil conj #{}) % state))
-        (mm/update!
-         (:expression->subscribed-state store) (:expression state)
-         ;; Due to races, we might already have another
-         ;; state for this expression, in which case, leave it.
-         (fn [existing-state] (or existing-state state)))
-        (update-state store state))
-      (do
-        (mm/update-in-clean-up! subscriptions [id] #(disj % state))
-        (mm/update-in-clean-up!
-         (:expression->subscribed-state store) [(:expression state)]
-         ;; Due to races, we might already have another
-         ;; state for this expression, in which case, leave it.
-         (fn [existing-state]
-           (if (= existing-state state) nil existing-state)))))))
+  [reporter store id]
+  (call-with-latest-value
+   #(attended? reporter)
+   (fn [attended]
+     (let [subscriptions (:subscriptions store)
+           fetch (:fetch (reporter/data reporter))]
+       (if attended
+         (do
+           (mm/update! subscriptions id #((fnil conj #{}) % reporter))
+           (mm/update!
+            (:fetch->attended-reporter store) fetch
+            ;; Due to races, we might already have another
+            ;; reporter for this expression, in which case, leave it.
+            (fn [existing-reporter] (or existing-reporter reporter)))
+           (update-reporter store reporter))
+         (do
+           (set-value! reporter invalid)
+           (mm/update-in-clean-up! subscriptions [id] #(disj % reporter))
+           (mm/update-in-clean-up!
+            (:fetch->attended-reporter store) [fetch]
+            ;; Due to races, we might already have another
+            ;; reporter for this expression, in which case, leave it.
+            (fn [existing-reporter]
+              (if (= existing-reporter reporter) nil existing-reporter)))))))))
 
-(defn get-or-make-state
-  "Retrieve or create a state that gives the value of the function
+(defn get-or-make-reporter
+  "Retrieve or create a reporter that gives the value of the function
    applied to the current state of the store and the arguments. If id
    is non-nil, the result must depend only on id and its elements."
   [id fn store & args]
-  (let [expression (cons fn args)]
-    (or (mm/get! (:expression->subscribed-state store) expression)
-        ;; TODO: We update the state twice, once here, and once
-        ;; when a subscription is made. Instead, don't evaluate here,
-        ;; but have a small cache of temporary subscriptions that we
-        ;; make, which will cause evaluation, and will keep the value
-        ;; up to date until an external subscription is made.
-        (let [state (new-state :value nil
-                               :callback [subscription-callback store id]
-                               :additional {:expression expression})]
-          (update-state store state)
-          state))))
+  (let [fetch (cons fn args)]
+    (or (mm/get! (:fetch->attended-reporter store) fetch)
+        (new-reporter :manager [manager-callback store id]
+                      :fetch fetch))))
 
-(defn update-states-for-key
-  "Update all states that depend on the given key."
+(defn update-reporters-for-key
+  "Update all reporters that depend on the given key."
   [store key]
-  (doseq [state (mm/get! (:subscriptions store) key)]
-    (update-state store state)))
+  (doseq [reporter (mm/get! (:subscriptions store) key)]
+    (update-reporter store reporter)))
 
-(defn update-states-for-id
-  "Update all states that could be affected by the item changing."
+(defn update-reporters-for-id
+  "Update all reporters that could be affected by the item changing."
   [store id]
-  (update-states-for-key store nil) ; The ones we have to check always.
+  (update-reporters-for-key store nil) ; The ones we have to check always.
   (loop [item id]
     (when (not (nil? item))
-      (update-states-for-key store item)
+      (update-reporters-for-key store item)
       (recur (id->subject @(:store store) item)))))
 
 (defrecord MutableStoreImpl
     ^{:doc
       "A store that contains an immutable store,
-       supports mutation to that store, and returns state objects for queries"}
+       supports mutation to that store,
+       and returns reporter objects for queries."}
   [
    ;; An atom holding the current immutable state
    store
 
-   ;; A mutable map from item id to a set of states that need
+   ;; A mutable map from item id to a set of reporters that need
    ;; to be checked on any change to that item or its elements.
-   ;; States under a nil id must be checked for all changes.
+   ;; Reporters indexed under a nil id must be checked for all changes.
    subscriptions
 
-   ;; A mutable map from expression to a subscribed state with that
-   ;; expression, if there is one.
-   expression->subscribed-state]
+   ;; A mutable map from fetch expression to a attended reporter with that
+   ;; fetch, if there is one.
+   fetch->attended-reporter]
 
   Store
 
   (id-label->element-ids [this id label]
-    (get-or-make-state id id-label->element-ids this id label))
+    (get-or-make-reporter id id-label->element-ids this id label))
 
   (id->element-ids [this id]
-    (get-or-make-state id id->element-ids this id))
+    (get-or-make-reporter id id->element-ids this id))
 
   (id->content [this id]
-    (get-or-make-state id id->content this id))
+    (get-or-make-reporter id id->content this id))
 
   (id->content-reference [this id]
-    (get-or-make-state id id->content-reference this id))
+    (get-or-make-reporter id id->content-reference this id))
 
   (candidate-matching-ids [this item]
-    (get-or-make-state nil candidate-matching-ids this item))
+    (get-or-make-reporter nil candidate-matching-ids this item))
 
   (mutable-store? [this] true)
   
@@ -111,17 +111,17 @@
     (let [element
           (swap-control-return! (:store this)
                                 #(add-simple-element % subject content))]
-      (update-states-for-id this subject)
+      (update-reporters-for-id this subject)
       element))
 
   (remove-simple-id! [this id]
     (let [subject (id->subject @(:store this) id)]
       (swap! (:store this) #(remove-simple-id % id))
-      (update-states-for-id this subject)))
+      (update-reporters-for-id this subject)))
 
   (update-content! [this id content]
     (swap! (:store this) #(update-content % id content))
-    (update-states-for-id this id)))
+    (update-reporters-for-id this id)))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
@@ -130,4 +130,4 @@
 (defmethod new-mutable-store true [store]
   (map->MutableStoreImpl {:store (atom store)
                           :subscriptions (mm/new-mutable-map)
-                          :expression->subscribed-state (mm/new-mutable-map)}))
+                          :fetch->attended-reporter (mm/new-mutable-map)}))

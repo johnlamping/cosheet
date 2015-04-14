@@ -41,3 +41,46 @@
     (set-manager! r callback :m)
     (is (thrown? java.lang.AssertionError (set-manager! r callback 2)))))
 
+(deftest macros-and-current-value-test
+  (letfn [(clean-tracers [reporter]
+            (when (reporter? reporter)
+              (assert (= ((:trace (data reporter)) (constantly "test")) "test"))
+              (swap! (data-atom reporter) dissoc :trace))
+            reporter)]
+    (is (= (dissoc (data (expr 1 2 3)) :trace)
+           (data (new-reporter :expression [1 2 3] :manager-type :eval))))
+    (is (= (current-value (expr + (expr inc 1) 3)) 5))
+    (is (= (current-value (expr-let [x 1 y 2] (+ (* 3 x) y))) 5))
+    (is (= (current-value (expr-let [x 1 y x] (* 3 y))) 3))
+    (is (= (current-value (expr-let [[x y] [1 2] z (+ x y)] z)) 3))
+    (is (= (current-value (expr-map (fn [x] (expr inc x)) [1 (expr inc 1) 3]))
+           [2 3 4]))
+    (is (= (current-value (expr-seq map
+                                    (fn [x] (expr inc x))
+                                    [1 (expr inc 1) 3]))
+           [2 3 4]))))
+
+(defn fib [n s]
+  (if (<= n 1)
+    s
+    (expr + (expr fib (- n 1) s) (cache fib (- n 2) s))))
+
+(deftest current-value-fib-test
+  (let [state (new-reporter :value 0)
+        fib6 (fib 6 state)]
+    (is (= (current-value fib6) 0))
+    (set-value! state 1)
+    (is (= (current-value fib6) 13))))
+
+(deftest trace-current-fib-test
+  (let [state (new-reporter :value 0)
+        fib6 (fib 6 state)]
+    (is (= (first (trace-current fib6)) 0))
+    (set-value! state 1)
+    (is (= (first (trace-current fib6)) 13))
+    ))
+
+
+
+(deftest trace-current-test)
+

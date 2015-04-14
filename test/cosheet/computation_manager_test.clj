@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [task-queue :as task-queue]
-                     [reporter :as reporter]
+                     [reporter :as reporter :refer [expr cache]]
                      [utils :refer :all]
                      [computation-manager :refer :all])
             ; :reload
@@ -329,27 +329,6 @@
       (cache-manager r1 m)
       (is (not= (:value-source (reporter/data r1))
                 orig-source)))))
-
-;;; TODO: Move these to a library.
-(defmacro expr
-  "Takes a function and a series of arguments, and produces an eval
-   reporter with a tracing thunk. Extra information can be added as meta
-   on the function."
-  [& args]
-  `(reporter/new-reporter :trace (fn [thunk#] (thunk#))
-                          :expression [~@args]
-                          :manager-type :eval
-                          ~@(apply concat (seq (meta (first args))))))
-
-(defmacro cache
-  "Takes a function and a series of arguments, and produces a cache
-   reporter with a tracing thunk. Extra information can be added as meta
-   on the function."
-  [& args]
-  `(reporter/new-reporter :trace (fn [thunk#] (thunk#))
-                          :expression  [~@args]
-                          :manager-type :cache
-                          ~@(apply concat (seq (meta (first args))))))
 
 ;;; Test that caching is working by doing a recursive computation that would
 ;;; take a very long time if it weren't cached.

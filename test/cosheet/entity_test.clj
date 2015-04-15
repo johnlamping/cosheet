@@ -6,7 +6,7 @@
                      store-impl
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value]])
+                     [reporter :refer [current-value]])
             ; :reload
             ))
 
@@ -81,7 +81,7 @@
     (is (= (:item-id  item1) id1))
     (is (not (current-value (atom? item0))))
     (is (= (current-value (label->elements item99 "foo"))
-             [(description->entity a ms)]))
+           [(description->entity a ms)]))
     (is (= (current-value (label->elements (description->entity a ms) nil)) 
            [(description->entity b ms)]))
     (is (= (set (current-value (elements item99)))

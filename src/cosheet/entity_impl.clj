@@ -6,8 +6,7 @@
                                     id->content-reference
                                     mutable-store?]]
                      [entity :refer :all]
-
-                     [compute :refer [expr-map expr-let expr]])))
+                     [reporter :refer [expr-seq expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
@@ -170,7 +169,7 @@
 
 (defmethod label->atomic-values true [entity label]
   (expr-let [elements (expr label->elements entity label)]
-    (expr-map atomic-value elements)))
+    (expr-seq map atomic-value elements)))
 
 (defmethod label-has-atomic-value? false [entity label value]
   (some (partial = value)
@@ -180,20 +179,27 @@
   (expr-let [atomics (expr label->atomic-values entity label)]
             (some (partial = value) atomics)))
 
+;;; TODO: move to-list to the store as a way of getting the content of
+;;; an entity. That way, a mutable store can return a simple struct
+;;; with just one dependency.
 (defmethod to-list false [entity]
   (if (or (nil? entity) (atom? entity))
     (atomic-value entity)
-    (let [entity-content (to-list (content entity))
-          entity-elements (seq (map to-list (elements entity)))]
-      (if entity-elements
-        (cons entity-content entity-elements)
-        entity-content))))
+    (do
+      (assert (satisfies? cosheet.entity/Entity entity))
+      (let [entity-content (to-list (content entity))
+            entity-elements (seq (map to-list (elements entity)))]
+        (if entity-elements
+          (cons entity-content entity-elements)
+          entity-content)))))
 
 (defmethod to-list true [entity]
   (if (or (nil? entity) (atom? entity))
     (atomic-value entity)
     (expr-let [entity-content (expr to-list (content entity))
-               entity-elements (expr-map to-list (elements entity))]
+               
+               entity-elements (expr-let [elements (elements entity)]
+                                 (expr-seq map to-list elements))]
       (if (seq entity-elements)
         (cons entity-content entity-elements)
         entity-content))))

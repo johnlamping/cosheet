@@ -147,7 +147,9 @@
         ((or (:trace data) identity)
          #(current-value (apply (fn [f & args] (apply f args))
                                 (map current-value expression))))
-        (:value data)))
+        (do (when (and (:manager data) (not (attended? expr)))
+              (set-attendee! expr :request (fn [key reporter] nil)))
+            (value expr))))
     expr))
 
 (defn- unpack-if-trivial-nested [item]
@@ -245,17 +247,17 @@
        (new-expression (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))
 
-
-(defmacro expr-map
+;;; TODO: remove
+(comment (defmacro expr-map
   "Return an expr which returns a vector, where each element is itself an expr
-   of the function applied to an element of the sequence."
+  of the function applied to an element of the sequence."
   [f sequence]
   `(expr-let [f# ~f
               sequence# ~sequence]
      (when (not (empty? sequence#))
        (new-expression
         (vec (cons vector (map (fn [elem#] (expr f# elem#)) sequence#)))
-        :trace (fn [thunk#] (thunk#))))))
+        :trace (fn [thunk#] (thunk#)))))))
 
 (defmacro cache
   "Takes a function and a series of arguments, and produces a cache

@@ -15,7 +15,7 @@
 
 (defn manager-callback
   "Callback when a reporter starts or stops needing updates from the store.
-   If id is non-nil, then only changes to that item can affect the state."
+   If id is non-nil, then only changes to that item can affect the value."
   [reporter store id]
   (call-with-latest-value
    #(attended? reporter)

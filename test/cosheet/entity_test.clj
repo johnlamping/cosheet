@@ -6,7 +6,7 @@
                      store-impl
                      mutable-store-impl
                      entity-impl
-                     [reporter :refer [current-value]])
+                     [debug :refer [current-value]])
             ; :reload
             ))
 

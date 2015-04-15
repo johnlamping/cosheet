@@ -58,7 +58,7 @@
         (is (= (set (value candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
         ;; Test that unsubscribe removes tracking by unsubscribing one
-        ;; of the states, and then changing back to the original store.
+        ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
         (remove-simple-id! mutable-store e1)
@@ -71,7 +71,7 @@
         ;; Not tracked, so should be invalid
         (is (= (value label-ids) invalid))
         ;; Subscribing should return the current value, and update the
-        ;; state.
+        ;; reporter.
         (set-attendee! label-ids :a callback "arg")
         (is (= (set (value label-ids))
                (set (id-label->element-ids store element :label)))))

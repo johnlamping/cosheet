@@ -4,8 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
-                     [compute :refer :all]
-                     [state :refer :all]
+                     [reporter :refer [new-reporter set-value! expr expr-let]]
                      [store :refer :all]
                      [entity :refer :all]
                      store-impl)
@@ -18,20 +17,18 @@
     (expr + (expr fib (- n 1) s) (expr fib (- n 2) s))))
 
 (deftest current-value-fib-test
-  (let [state (new-state :value 0)
+  (let [state (new-reporter :value 0)
         fib6 (fib 6 state)]
     (is (= (current-value fib6) 0))
-    (state-set state 1)
+    (set-value! state 1)
     (is (= (current-value fib6) 13))))
 
 (deftest trace-current-fib-test
-  (let [state (new-state :value 0)
+  (let [state (new-reporter :value 0)
         fib6 (fib 6 state)]
     (is (= (first (trace-current fib6)) 0))
-    (state-set state 1)
-    (is (= (first (trace-current fib6)) 13))
-    ;(pprint (simplify-for-print (trace-current fib6)))
-    ))
+    (set-value! state 1)
+    (is (= (first (trace-current fib6)) 13))))
 
 (deftest simplify-for-print-test
   (let [s (new-element-store)
@@ -40,8 +37,6 @@
         ci (cosheet.store-impl/->ImplicitContentId i)
         m (mm/new-mutable-map)]
     (is (= (simplify-for-print 1) 1))
-    (is (= (simplify-for-print (new-state :value 1)) '(State 1)))
-    (is (= (simplify-for-print (expr 1 2)) '(:expr 1 2)))
     (is (= (simplify-for-print s) 'Store))
     (is (= (simplify-for-print ms)
            'MutableStore))

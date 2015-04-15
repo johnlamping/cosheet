@@ -36,7 +36,7 @@
 
 (defprotocol Store
   "The methods that all stores support for accessing their data.
-   Mutable stores can return State objects as their answer
+   Mutable stores can return reporter objects as their answer
    for any of these methods, except for mutable-store?"
 
   ;; The methods that Item and Entity rely on stores having.

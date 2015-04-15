@@ -1,10 +1,10 @@
 (ns cosheet.debug
   (:require [clojure.set :as set]
             [clojure.pprint :refer [pprint]]
-            (cosheet [compute :refer :all]
-                     [state :refer :all]
-                     [store :as store]
+            (cosheet [store :as store]
                      [entity :as entity]
+                     [reporter :refer [reporter? attended? data value
+                                       set-attendee!]]
                      [entity-impl :as entity-impl]
                      store-impl
                      mutable-store-impl
@@ -29,12 +29,7 @@
               name))))
 
 (defn simplify-for-print [item]
-  (cond (state? item)
-        `(~(symbol "State")  ~(simplify-for-print (state-value item)))
-        (expression? item)
-        (cons :expr (simplify-for-print
-                     (cons (expression-fn item) (expression-args item))))
-        (satisfies? store/Store item)
+  (cond (satisfies? store/Store item)
         (if (store/mutable-store? item)
           (symbol "MutableStore")
           (symbol "Store"))
@@ -64,30 +59,21 @@
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
 
-(def current-value)
-
-(defn reference-current-value
-  [[fn & args]]
-  (current-value (apply fn args)))
-
 (defn current-value
-  "Run computation on the computational item, returning the current value,
+  "Run computation on the reporter returning the current value,
    rather than tracking dependencies."
   [expr]
-  (cond (state? expr)
-        (state-value expr)
-        (expression? expr)
-        ((expression-tracer expr)
-         #(reference-current-value
-           (cons (current-value (expression-fn expr))
-                 (map current-value (expression-args expr)))))
-        :else
-        expr))
-
-(def trace-current)
-
-(defn reference-trace-current [[fn & args]]
-  (trace-current (apply fn args)))
+  (if (reporter? expr)
+    (let [data (data expr)
+          expression (:expression data)]
+      (if expression
+        ((or (:trace data) identity)
+         #(current-value (apply (fn [f & args] (apply f args))
+                                (map current-value expression))))
+        (do (when (and (:manager data) (not (attended? expr)))
+              (set-attendee! expr :request (fn [key reporter] nil)))
+            (value expr))))
+    expr))
 
 (defn- unpack-if-trivial-nested [item]
   (if (and (sequential? item)
@@ -97,21 +83,22 @@
     item))
 
 (defn trace-current
-  "Run computation on the computational item, returning a trace of the item
+  "Run computation on the reporter, returning a trace of the item
    with all intermediate values filled in."
   [expr]
-  (cond
-    (state? expr)
-    [(state-value expr) expr]
-    (expression? expr)
-    (let [parts (cons (trace-current (expression-fn expr))
-                      (map trace-current (expression-args expr)))
-          simplified-parts (map unpack-if-trivial-nested parts)
-          trace (reference-trace-current (map first parts))]
-      (conj (if (= (first trace) (second trace)) (vec (rest trace)) trace)
-            (cons :expr simplified-parts)))
-    :else
-    [expr expr]))
+    (if (reporter? expr)
+      (let [data (data expr)
+            expression (:expression data)]
+        (if expression
+          (let [parts (map trace-current expression)
+                simplified-parts (map unpack-if-trivial-nested parts)
+                values (map first parts)
+                result ((fn [[f & args]] (apply f args)) values)
+                trace (trace-current result)]
+            (conj (if (= (first trace) (second trace)) (vec (rest trace)) trace)
+                  (cons :expr simplified-parts)))
+          [(:value data)]))      
+      [expr]))
 
 (defn pst [item]
   (pprint (simplify-for-print (trace-current item))))

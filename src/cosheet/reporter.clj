@@ -136,47 +136,6 @@
 ;;; TODO: The following stuff should be moved to compute.clj, replacing
 ;;; the current compute.clj
 
-(defn current-value
-  "Run computation on the reporter returning the current value,
-   rather than tracking dependencies."
-  [expr]
-  (if (reporter? expr)
-    (let [data (data expr)
-          expression (:expression data)]
-      (if expression
-        ((or (:trace data) identity)
-         #(current-value (apply (fn [f & args] (apply f args))
-                                (map current-value expression))))
-        (do (when (and (:manager data) (not (attended? expr)))
-              (set-attendee! expr :request (fn [key reporter] nil)))
-            (value expr))))
-    expr))
-
-(defn- unpack-if-trivial-nested [item]
-  (if (and (sequential? item)
-           (= (count item) 2)
-           (= (first item) (second item)))
-    (first item)
-    item))
-
-(defn trace-current
-  "Run computation on the reporter, returning a trace of the item
-   with all intermediate values filled in."
-  [expr]
-    (if (reporter? expr)
-      (let [data (data expr)
-            expression (:expression data)]
-        (if expression
-          (let [parts (map trace-current expression)
-                simplified-parts (map unpack-if-trivial-nested parts)
-                values (map first parts)
-                result ((fn [[f & args]] (apply f args)) values)
-                trace (trace-current result)]
-            (conj (if (= (first trace) (second trace)) (vec (rest trace)) trace)
-                  (cons :expr simplified-parts)))
-          [(:value data)]))      
-    [expr]))
-
 (defn new-expression
   "Takes a expression, and optionally a trace thunk, a manager type,
    and additional arguments, and returns a new expression reporter."
@@ -242,7 +201,7 @@
   "Given an expression that may evaluate to a sequence of reporters, make
    a reporter whose value is the sequence of corresponding values."
   [& args]
-  `(expr-let [sequence# ~(list* args)]
+  `(expr-let [sequence# ~(list* 'expr args)]
      (when (not (empty? sequence#))
        (new-expression (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))

@@ -28,8 +28,8 @@
 
   (mutable-entity? [this]
     "True if this entity might change. In that case, most of the methods
-     on it assume they are runing under a Compute, and may return state
-     sensitive results, like States or applications.")
+     on it assume they are runing under a compute-manager, and may return
+     reporters.")
 
   (atom? [this]
     "True if this entity is atomic: either a primitive or a reference to

@@ -358,7 +358,7 @@
   ;; use the value
   ;; at the previous layer as an index into another value at that
   ;; layer. Makes sure the right results are returned, then starts
-  ;; changing the states in one thread, while another thread
+  ;; changing the base values in one thread, while another thread
   ;; propagates, and makes sure that the final answer is still right
   (let [width 13
         depth 7

@@ -198,8 +198,7 @@
     (atomic-value entity)
     (expr-let [entity-content (expr to-list (content entity))
                
-               entity-elements (expr-let [elements (elements entity)]
-                                 (expr-seq map to-list elements))]
+               entity-elements (expr-seq map to-list (elements entity))]
       (if (seq entity-elements)
         (cons entity-content entity-elements)
         entity-content))))

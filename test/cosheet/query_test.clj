@@ -1,13 +1,11 @@
 (ns cosheet.query-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
-            (cosheet [compute :as compute]
-                     [store-utils :as store-utils]
+            (cosheet [store-utils :as store-utils]
                      [entity :as entity]
                      [store :as store]
                      [query :refer :all]
                      [query-impl :refer [bind-entity]]
-                     compute-impl
                      [store-impl :refer [->ItemId]]
                      mutable-store-impl
                      entity-impl

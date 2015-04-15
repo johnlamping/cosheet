@@ -1,8 +1,8 @@
 (ns cosheet.core
-  (:require (cosheet utils state store entity query
-                     mutable-map task-queue compute
+  (:require (cosheet utils reporter store entity query
+                     mutable-map task-queue computation-manager
                      store-impl store-utils entity-impl query-impl
-                     compute_impl mutable_store_impl debug)
+                     mutable_store_impl debug)
             :reload)
   (:gen-class))
 

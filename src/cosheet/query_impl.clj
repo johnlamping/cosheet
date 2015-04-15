@@ -30,12 +30,12 @@
   (when (not (entity/atom? target))
     (expr-let
         [annotations (expr entity/elements element)
-         labels (expr-map entity/atomic-value annotations)
+         labels (expr-seq map entity/atomic-value annotations)
          label (first (filter (partial not= nil) labels))
          candidates (if (not (nil? label))
                       (expr entity/label->elements target label)
                       (expr entity/elements target))
-         extended-by (expr-map (partial extended-by? element) candidates)]
+         extended-by (expr-seq map (partial extended-by? element) candidates)]
       (some #(not (nil? %)) extended-by))))
 
 (defn extended-by? [template target]
@@ -51,9 +51,9 @@
           (when content-extended
             (expr-let
                 [template-elements (expr entity/elements template)
-                 satisfied-elements (expr-map
-                                        #(has-element-satisfying? % target)
-                                      template-elements)]
+                 satisfied-elements (expr-seq
+                                     map #(has-element-satisfying? % target)
+                                     template-elements)]
               (every? identity satisfied-elements)))))))
 
 (defmethod extended-by-m? true [template target]
@@ -88,9 +88,9 @@
   (entity/label->elements [this label]
     (if (entity/mutable-entity? wrapped)
       (expr-let [elements (entity/elements this)
-                 matches (expr-map #(expr some (partial = label)
-                                          (expr-map entity/atomic-value
-                                            (entity/elements %)))
+                 matches (expr-seq map #(expr some (partial = label)
+                                              (expr-seq map entity/atomic-value
+                                                        (entity/elements %)))
                                    elements)]
         (seq (map second (filter first (map vector matches elements)))))
       (seq (filter #(some (partial = label)
@@ -162,15 +162,15 @@
                      (if is-variable
                        nil
                        (expr-let [candidate-elements
-                                  (expr-map #(expr entity/atomic-value
-                                               (bind-entity % env))
-                                    (entity/elements element))]
+                                  (expr-seq map #(expr entity/atomic-value
+                                                   (bind-entity % env))
+                                            (entity/elements element))]
                          (first (filter #(and (not= % nil) (not= % :variable))
                                         candidate-elements)))))
              candidates (if (not (nil? label))
                           (entity/label->elements target label)
                           (entity/elements target))
-             match-envs (expr-map (partial template-matches element env)
+             match-envs (expr-seq map (partial template-matches element env)
                                   candidates)]
     (seq (distinct (apply concat match-envs)))))
 
@@ -178,8 +178,8 @@
   (when verbose (println "item-matches"))
   (expr reduce
     (fn [envs element]
-      (expr-let [env-matches (expr-map #(element-matches element % target)
-                               envs)]
+      (expr-let [env-matches (expr-seq map #(element-matches element % target)
+                                       envs)]
         (seq (distinct (apply concat env-matches)))))
     (expr-let [content (entity/content item)]
       (if content
@@ -223,19 +223,19 @@
             (when matches [env])))))))
 
 (defn exists-matches-in-store [exists env store]
-  (expr-let [names (expr-map entity/content
+  (expr-let [names (expr-seq map entity/content
                              (entity/label->elements exists :variable-name))
              qualifier (entity/label->content exists :qualifier)
              body (entity/label->content exists :body)
              matches (if qualifier
                        (expr apply concat
-                             (expr-map #(query-matches body % store)
-                               (query-matches qualifier env store)))
+                             (expr-seq map #(query-matches body % store)
+                                       (query-matches qualifier env store)))
                        (query-matches body env store))]
     (seq (distinct (map #(apply dissoc % names) matches)))))
 
 (defn forall-matches-in-store [forall env store]
-  (expr-let [names (expr-map entity/content
+  (expr-let [names (expr-seq map entity/content
                              (entity/label->elements forall :variable-name))
              qualifier (entity/label->content forall :qualifier)
              body (entity/label->content forall :body)
@@ -245,11 +245,12 @@
       ;;       [for each binding in the group (which will bind the vars)
       ;;         [each extension of the binding satisfying the body]]]
       (expr-let [binding-groups
-                 (expr-map (fn [group]
-                             (expr-map (fn [binding]
-                                         (query-matches body binding store))
-                               (groups group)))
-                   (keys groups))]
+                 (expr-seq map (fn [group]
+                                 (expr-seq
+                                  map (fn [binding]
+                                        (query-matches body binding store))
+                                  (groups group)))
+                           (keys groups))]
         (seq (mapcat
               (fn [binding-group]
                 (apply clojure.set/intersection
@@ -262,7 +263,7 @@
   (expr-let [first (entity/label->content and :first)
              second (entity/label->content and :second)
              matches (expr apply concat
-                           (expr-map #(query-matches-m second % store)
+                           (expr-seq map #(query-matches-m second % store)
                                      (query-matches-m first env store)))]
     (seq (distinct matches))))
 
@@ -271,7 +272,8 @@
 (defn item-matches-in-store [item env store]
   (expr-let [matches
              (expr apply concat
-                   (expr-map
+                   (expr-seq
+                    map
                     (partial template-matches item env)
                     (expr map
                       #(entity/description->entity % store)

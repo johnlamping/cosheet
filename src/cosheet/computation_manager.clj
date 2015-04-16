@@ -96,7 +96,7 @@
 (defn update-new-pending-action
   "Given data from a reporter, add an an action to the pending actions."
   [data & action]
-  (update-in data [:pending-actions] conj (vec action)))
+  (update-in data [:pending-actions] (fnil conj []) (vec action)))
 
 (defn modify-and-act
   "Atomicly call the function on the reporter's data.
@@ -161,7 +161,7 @@
        (if source
          (assoc data :value-source source)
          (dissoc data :value-source))
-       (filter identity [old-source source])))))
+       (filter identity [source old-source])))))
 
 (defn copy-subordinate-callback
   [to from management]
@@ -221,8 +221,12 @@
              value (apply (first application) (rest application))]
          (if (reporter/reporter? value)
            (-> data
-               (update-value-source reporter value)
-               (update-new-pending-action manage value management))
+               ;; Manage the new value-source, before swapping it for
+               ;; the old one, so reporters that are used by both will
+               ;; always have some demand, and not be taken out of the
+               ;; cache.
+               (update-new-pending-action manage value management)
+               (update-value-source reporter value))
            (-> data
                (update-value reporter value)
                (update-value-source reporter nil))))
@@ -269,17 +273,20 @@
 (defn ensure-in-cache
   "Get or make an cached-eval reporter for the given expression in the cache.
    It may not be managed."
-  [expression management]
+  [expression original-name management]
   (mm/update-in!
    (:cache management) [expression]
-   #(or % (reporter/new-reporter :expression expression
-                                 :manager-type :cached-eval))))
+   #(or % (apply reporter/new-reporter
+                     :expression expression
+                     :manager-type :cached-eval
+                     (when original-name [:name ["cached" original-name]])))))
 
 (defn cache-manager
   "Manager that looks up the value of a reporter's expression in a cache of
   reporters."
   [reporter management]
-  (let [expression (:expression (reporter/data reporter))
+  (let [data (reporter/data reporter)
+        expression (:expression data)
         cache (:cache management)]
     ;;; We do side-effects, which can't run inside a swap!, so we have
     ;;; to use call-with-latest-value.
@@ -287,7 +294,8 @@
      #(reporter/attended? reporter)
      (fn [attended]
        (let [value-source (when attended
-                            (ensure-in-cache expression management))]
+                            (ensure-in-cache
+                             expression (:name data) management))]
          (modify-and-act reporter
                          #(update-value-source % reporter value-source))
          ;; We can't do management until the registration is done,

@@ -133,27 +133,28 @@
   (.write w (str (dissoc @(:data s) :attendees :manager)))
   (.write w ">"))
 
-;;; TODO: The following stuff should be moved to compute.clj, replacing
-;;; the current compute.clj
-
 (defn new-expression
   "Takes a expression, and optionally a trace thunk, a manager type,
-   and additional arguments, and returns a new expression reporter."
+   and additional arguments, and returns a new expression reporter.
+   But if the manager type is :eval and none of the parts are reporters,
+   then it just evaluates the expression."
   [expression & {:keys [trace manager-type] :as args :or {manager-type :eval}}]
-  (apply new-reporter
-         :expression expression
-         :trace trace
-         :manager-type manager-type
-         (apply concat (dissoc args :trace :manager-type))))
+  (if (or (not= manager-type :eval) (some reporter? expression))
+    (apply new-reporter
+           :expression expression
+           :trace trace
+           :manager-type manager-type
+           (apply concat (dissoc args :trace :manager-type)))
+    (apply (first expression) (rest expression))))
 
 (defmacro expr
   "Takes a function and a series of arguments, and produces an eval
    reporter with a tracing thunk. Extra information can be added as meta
    on the function."
   [& args]
-  `(apply new-expression ~(vec args)
-          :trace (fn [thunk#] (thunk#))
-          ~(apply concat (seq (meta (first args))))))
+  `(new-expression ~(vec args)
+                  :trace (fn [thunk#] (thunk#))
+                  ~@(apply concat (seq (meta (first args))))))
 
 (defn- symbols
   "Return all the variables in a form."
@@ -206,25 +207,13 @@
        (new-expression (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))
 
-;;; TODO: remove
-(comment (defmacro expr-map
-  "Return an expr which returns a vector, where each element is itself an expr
-  of the function applied to an element of the sequence."
-  [f sequence]
-  `(expr-let [f# ~f
-              sequence# ~sequence]
-     (when (not (empty? sequence#))
-       (new-expression
-        (vec (cons vector (map (fn [elem#] (expr f# elem#)) sequence#)))
-        :trace (fn [thunk#] (thunk#)))))))
-
 (defmacro cache
   "Takes a function and a series of arguments, and produces a cache
    reporter with a tracing thunk. Extra information can be added as meta
    on the function."
   [& args]
-  `(apply new-expression ~(vec args)
-          :trace (fn [thunk#] (thunk#))
-          :manager-type :cache
-          ~(apply concat (seq (meta (first args))))))
+  `(new-expression ~(vec args)
+                   :trace (fn [thunk#] (thunk#))
+                   :manager-type :cache
+                   ~@(apply concat (seq (meta (first args))))))
 

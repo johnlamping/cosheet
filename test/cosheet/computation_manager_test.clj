@@ -112,7 +112,7 @@
          (is (= reporter (:value-source (reporter/data user))))
          (check-propagation checked user))
        :else
-       already-checked))
+       checked))
    already-checked
    (:attendees (reporter/data reporter))))
 
@@ -271,9 +271,9 @@
 
 (deftest ensure-in-cache-test
   (let [m (new-management)
-        r0 (ensure-in-cache [:a :b] m)
-        r1 (ensure-in-cache [:a :c] m)
-        r2 (ensure-in-cache [:a :b] m)]
+        r0 (ensure-in-cache [:a :b] "ab" m)
+        r1 (ensure-in-cache [:a :c] "bc" m)
+        r2 (ensure-in-cache [:a :b] "changed" m)]
     (is (= r0 r2))
     (is (= (:expression (reporter/data r0)) [:a :b]))
     (is (= (:manager-type (reporter/data r0)) :cached-eval))
@@ -397,7 +397,7 @@
                             pos (range width)]
                         [d pos])
             requests (into {} (for [[d pos] arguments]
-                                [[d pos] (request (expr indexer d pos) m)]))]
+                                [[d pos] (request (indexer d pos)m)]))]
         (compute m)
         (check requests (answers arguments))
         (doseq [i (range trials)]

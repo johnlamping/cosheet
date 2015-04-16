@@ -43,21 +43,18 @@
     (is (thrown? java.lang.AssertionError (set-manager! r callback 2)))))
 
 (deftest macros-and-current-value-test
-  (letfn [(clean-tracers [reporter]
-            (when (reporter? reporter)
-              (assert (= ((:trace (data reporter)) (constantly "test")) "test"))
-              (swap! (data-atom reporter) dissoc :trace))
-            reporter)]
-    (is (= (dissoc (data (expr 1 2 3)) :trace)
-           (data (new-reporter :expression [1 2 3] :manager-type :eval))))
-    (is (= (current-value (expr + (expr inc 1) 3)) 5))
-    (is (= (current-value (expr-let [x 1 y 2] (+ (* 3 x) y))) 5))
-    (is (= (current-value (expr-let [x 1 y x] (* 3 y))) 3))
-    (is (= (current-value (expr-let [[x y] [1 2] z (+ x y)] z)) 3))
-    (is (= (current-value (expr-seq map
-                                    (fn [x] (expr inc x))
-                                    [1 (expr inc 1) 3]))
-           [2 3 4]))))
+  (let [r (new-reporter)]
+    (is (= (dissoc (data (expr r 2 3)) :trace)
+           { :expression [r 2 3] :manager-type :eval :value invalid})))
+  (is (= (current-value (expr + (expr inc 1) 3)) 5))
+  (is (= (current-value (cache + (cache inc 1) 3)) 5))
+  (is (= (current-value (expr-let [x 1 y 2] (+ (* 3 x) y))) 5))
+  (is (= (current-value (expr-let [x 1 y x] (* 3 y))) 3))
+  (is (= (current-value (expr-let [[x y] [1 2] z (+ x y)] z)) 3))
+  (is (= (current-value (expr-seq map
+                                  (fn [x] (expr inc x))
+                                  [1 (expr inc 1) 3]))
+         [2 3 4])))
 
 
 

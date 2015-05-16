@@ -16,9 +16,9 @@
                     :else struct)))]
     (r struct)))
 
-(defn update-atom-map
-  "Update the atom containing a map of atoms to have the new data,
-  creating or deleting atoms as indicated"
+(defn into-atom-map
+  "Incorporate the update into an atom containing a map of atoms,
+  creating or deleting atoms as needed."
   [amap update]
   (swap! amap
          (fn [amap]

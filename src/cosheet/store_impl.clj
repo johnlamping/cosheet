@@ -24,6 +24,8 @@
 
   (atom-description? [this] false)
 
+  (stored-item-id-string [this] (str id))
+
   (stored-item-description-name [this] (clojure.string/join ["Id-" id])))
 
 (defrecord
@@ -38,6 +40,10 @@
   StoredItemDescription
 
   (atom-description? [this] true)
+
+  (stored-item-id-string [this]
+    (clojure.string/join ["content-"
+                          (stored-item-id-string containing-item-id)]))
 
   (stored-item-description-name [this]
     (clojure.string/join ["content-"

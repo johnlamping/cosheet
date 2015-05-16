@@ -31,6 +31,9 @@
     "True if this description refers to an atom. This is true only for
      content references, which are only created to refer to atoms.")
 
+  (stored-item-id-string [this]
+    "A unique string id of the item")
+
   (stored-item-description-name [this]
     "A printable name for the item description"))
 

@@ -21,6 +21,9 @@
     "Return an item or other entity, given the store the description
      depends on."))
 
+(defprotocol StoredEntity
+  "A tag for stored entities. They must have unique item-ids.")
+
 (defprotocol Entity
   "An item or constant. For constants, the entity methods behave as if
   it had been reified into an item with the constant as its content,
@@ -42,7 +45,7 @@
      non-atomicness noticed at that point.")
 
   ;; The results of the following methods can change if the entity is
-  ;; mutable. In that case, they follow the scheduler protocol.
+  ;; mutable. In that case, they return reporters.
 
   ;; TODO: Rather than taking an atomic label, allow this to take an
   ;;       arbitrary description of the elements in question.
@@ -87,4 +90,8 @@
   "Return the list representation of the entity,
    returning an expr if the entity is mutable."
   mutable?-dispatch)
+
+(defmulti stored-entity-id-string
+  "Return a unique id string for a stored entity"
+  (constantly true))
 

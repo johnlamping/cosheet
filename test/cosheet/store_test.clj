@@ -25,6 +25,12 @@
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))
 
+(deftest id-string-test
+  (is (= (stored-item-id-string (make-id "a")) "a"))
+  (is (= (stored-item-description-name (make-id "a")) "Id-a"))
+  (is (= (stored-item-id-string test-implicit-content) "content-2"))
+  (is (= (stored-item-description-name test-implicit-content) "content-Id-2")))
+
 (deftest id-label->element-ids-test
   (is (= (id-label->element-ids test-store (make-id "0") "foo")
          [(make-id "1")]))

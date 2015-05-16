@@ -4,9 +4,10 @@
                                     id->element-ids
                                     id->content
                                     id->content-reference
-                                    mutable-store?]]
+                                    mutable-store?
+                                    stored-item-id-string]]
                      [entity :refer :all]
-                     [reporter :refer [expr-seq expr-let expr]])))
+                     [reporters :refer [expr-seq expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
@@ -15,6 +16,7 @@
   [store     ; The immutable store that holds the information for this item.
    item-id]  ; The ItemDescription of the item in the store.
 
+  StoredEntity
   Entity
 
   (mutable-entity? [this] false)
@@ -42,6 +44,7 @@
   [store     ; The mutable store that holds the information for this item.
    item-id]  ; The ItemDescription of the item in the store.
 
+  StoredEntity
   Entity
 
   (mutable-entity? [this] true)
@@ -203,3 +206,6 @@
         (cons entity-content entity-elements)
         entity-content))))
 
+(defmethod stored-entity-id-string  true [entity]
+  (assert (satisfies? StoredEntity entity))
+  (stored-item-id-string (:item-id entity)))

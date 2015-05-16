@@ -1,5 +1,5 @@
 (ns cosheet.computation-manager
-  (:require (cosheet [reporter :as reporter]
+  (:require (cosheet [reporters :as reporters]
                      [task-queue :refer :all]
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
@@ -27,7 +27,7 @@
 ;;;                     value it saw for them, even if they have gone
 ;;;                     invalid subsequently.
 ;;;    :pending-actions A list of [function arg arg ...] calls that
-;;;                     need to be performed. (These will never actualy
+;;;                     need to be performed. (These will never actually
 ;;;                     be stored in a reporter, but are added to the
 ;;;                     data before it is stored.)
 
@@ -40,11 +40,13 @@
 ;;;
 ;;; Doing the read inside an atomic update operation for the copy
 ;;; doesn't work. Consider the copy starting out at A, and source
-;;; value changing from A to B, and then back to A. An atomic update
-;;; reads The current copy value as A, reads the new source value B,
-;;; then during that update, the copy is set back to A, and when the
-;;; update goes to finish, it will see that the copy is still A, so it
-;;; succeeds, and sets it to the stale B.
+;;; value changing from A to B, and then back to A. An atomic swap! to
+;;; the copy reads the current copy value as A, then the function
+;;; provided to the swap! reads the intermediate source value B and
+;;; returns it. But before the swap! finishes, another thread sets the
+;;; copy back to the final A. Now, when the original swap! goes to
+;;; finish, it will see that the copy is still A, like it initially
+;;; read, so the swap! succeeds, and sets the copy to the stale B.
 ;;;
 ;;; Instead, we check, after doing a copy, that the information that
 ;;; was copied still matches the latest information, and redo the copy
@@ -94,7 +96,7 @@
   (.write w "<ManagementImpl>"))
 
 (defn update-new-pending-action
-  "Given data from a reporter, add an an action to the pending actions."
+  "Given a map, add an an action to the pending actions."
   [data & action]
   (update-in data [:pending-actions] (fnil conj []) (vec action)))
 
@@ -105,7 +107,7 @@
    a list of actions that should be performed."
   [reporter f]
   (let [actions (swap-control-return!
-                 (reporter/data-atom reporter)
+                 (reporters/data-atom reporter)
                  (fn [data] (let [new-data (f data)]
                               [(dissoc new-data :pending-actions)
                                (:pending-actions new-data)])))]
@@ -123,19 +125,19 @@
     data
     (-> data
         (assoc :value value)
-        (update-new-pending-action reporter/inform-attendees reporter))))
+        (update-new-pending-action reporters/inform-attendees reporter))))
 
 (defn copy-value-callback
   [[_ to] from]
   (call-with-latest-value
-   #(reporter/value from)
+   #(reporters/value from)
    (fn [value] (modify-and-act
                 to
                 (fn [data] (if (= (:value-source data) from)
                              (update-value data to
                                            (if (empty? (:needed-values data))
                                              value
-                                             reporter/invalid))
+                                             reporters/invalid))
                              data))))))
 
 (defn register-copy-value
@@ -143,9 +145,9 @@
    the first reporter to become the value of the second."
   [from to]
   (call-with-latest-value
-   #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
+   #(when (= (:value-source (reporters/data to)) from) [copy-value-callback])
    (fn [callback]
-     (apply reporter/set-attendee!
+     (apply reporters/set-attendee!
             from (list :copy-value to) callback))))
 
 (defn update-value-source
@@ -166,16 +168,17 @@
 (defn copy-subordinate-callback
   [to from management]
   (call-with-latest-value
-   #(reporter/value from)
+   #(reporters/value from)
    (fn [value]
      (modify-and-act
       to
       (fn [data]
-        (if (= value (if (contains? (:needed-values data) from)
-                       reporter/invalid
-                       (get-in data [:subordinate-values from]) ))
+        (if (if (contains? (:needed-values data) from)
+              (= value reporters/invalid)
+              (or (not (contains? (:subordinate-values data) from))
+                  (= value (get-in data [:subordinate-values from]))))
           data
-          (if (reporter/valid? value)
+          (if (reporters/valid? value)
             (let [new-data
                   (cond-> (update-in data [:needed-values] disj from)
                     (not= value (get-in data [:subordinate-values from]))
@@ -194,18 +197,18 @@
                 new-data))
             (-> data
                 (update-in [:needed-values] conj from)
-                (update-value to reporter/invalid)))))))))
+                (update-value to reporters/invalid)))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
   for use as an argument of the second."
   [from to management]
   (call-with-latest-value
-   #(let [data (reporter/data to)]
+   #(let [data (reporters/data to)]
       (when (or (contains? (:needed-values data) from)
                 (contains? (:subordinate-values data) from))
         [copy-subordinate-callback management]))
-   (fn [callback] (apply reporter/set-attendee! from to callback))))
+   (fn [callback] (apply reporters/set-attendee! from to callback))))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, evaluate it."
@@ -214,7 +217,7 @@
    reporter
    (fn [data]
      (if (= (:needed-values data) #{})
-       (let [application (map (fn [term] (if (reporter/reporter? term)
+       (let [application (map (fn [term] (if (reporters/reporter? term)
                                            ((:subordinate-values data) term)
                                            term))
                               (:expression data))
@@ -238,7 +241,7 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [subordinates (set (filter reporter/reporter? (:expression data)))
+     (let [subordinates (set (filter reporters/reporter? (:expression data)))
            new-data (reduce
                      (fn [data subordinate]
                        (update-new-pending-action
@@ -246,7 +249,7 @@
                         register-copy-subordinate
                         subordinate reporter management))
                      data subordinates)]
-       (if (reporter/data-attended? new-data)
+       (if (reporters/data-attended? new-data)
          (-> new-data
              (assoc :needed-values subordinates)
              (assoc :subordinate-values {})
@@ -260,14 +263,14 @@
              (assoc :by :manager)
               ;;; Note, we are not attended, so it is OK to change the
               ;;; value without notifying the callbacks.
-             (assoc :value reporter/invalid)))))))
+             (assoc :value reporters/invalid)))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
   [reporter management]
-  (when (not (reporter/attended? reporter))
+  (when (not (reporters/attended? reporter))
     (mm/dissoc-in! (:cache management)
-                   [(:expression (reporter/data reporter))]))
+                   [(:expression (reporters/data reporter))]))
   (eval-manager reporter management))
 
 (defn ensure-in-cache
@@ -276,7 +279,7 @@
   [expression original-name management]
   (mm/update-in!
    (:cache management) [expression]
-   #(or % (apply reporter/new-reporter
+   #(or % (apply reporters/new-reporter
                      :expression expression
                      :manager-type :cached-eval
                      (when original-name [:name ["cached" original-name]])))))
@@ -285,13 +288,13 @@
   "Manager that looks up the value of a reporter's expression in a cache of
   reporters."
   [reporter management]
-  (let [data (reporter/data reporter)
+  (let [data (reporters/data reporter)
         expression (:expression data)
         cache (:cache management)]
     ;;; We do side-effects, which can't run inside a swap!, so we have
     ;;; to use call-with-latest-value.
     (call-with-latest-value
-     #(reporter/attended? reporter)
+     #(reporters/attended? reporter)
      (fn [attended]
        (let [value-source (when attended
                             (ensure-in-cache
@@ -315,20 +318,20 @@
   "Assign the manager to the reporter
   and to any reporters referenced by its expression."
   [reporter management]
-  (let [data (reporter/data reporter)
+  (let [data (reporters/data reporter)
         manager-type (:manager-type data)]
     (when (and manager-type (not (:manager data)))
       (let [manager-fn (manager-type (:manager-map management))]
         (assert manager-fn (format "Unknown manager type: %s" manager-type))
-        (reporter/set-manager! reporter manager-fn management))
+        (reporters/set-manager! reporter manager-fn management))
       (doseq [term (:expression data)]
-        (when (reporter/reporter? term)
+        (when (reporters/reporter? term)
           (manage term management))))))
 
 (defn request
   "Request computation of a reference."
   [x management]
-  (reporter/set-attendee! x :computation-request (fn [key value] nil))
+  (reporters/set-attendee! x :computation-request (fn [key value] nil))
   (manage x management)
   x)
 
@@ -340,10 +343,10 @@
 (defn computation-value
   "Given a possible reporter, compute its value and return it."
   [x management]
-  (if (reporter/reporter? x)
+  (if (reporters/reporter? x)
     (do
       (request x management)
       (compute management)
-      (reporter/value x))
+      (reporters/value x))
     x))
 

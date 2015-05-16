@@ -1,7 +1,7 @@
 (ns cosheet.client
   (:require [reagent.core :as reagent :refer [atom]]
             [ajax.core :refer [GET POST transit-response-format]]
-            [cosheet.client-utils :refer [replace-in-struct update-atom-map]]))
+            [cosheet.client-utils :refer [replace-in-struct into-atom-map]]))
 
 (def components (clojure.core/atom {}))
 
@@ -23,7 +23,7 @@
 
 (defn ajax-handler [response]
   (.log js/console (str response))
-  (update-atom-map
+  (into-atom-map
    components
    (replace-in-struct {:cosheet/component component} response)))
 

@@ -11,6 +11,13 @@
   (is (valid? 1))
   (is (not (valid? invalid))))
 
+(deftest constant-test
+  (is (= (value 2) 2))
+  (let [history (atom [])
+        callback (fn [& args] (swap! history #(conj % args)))]
+    (set-attendee! 2 :key callback)
+    (is (= @history [[:key 2]]))))
+
 (deftest reporter-test
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))

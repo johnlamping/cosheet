@@ -46,9 +46,12 @@
   (instance? ReporterImpl r))
 
 (defn value
-  "Return the current value of the reporter."
-  [reporter]
-  (:value @(:data reporter)))
+  "Return the current value of the reporter. If it is not a reporter, treat
+   it as a constant reporter, and return the object."
+  [r]
+  (if (reporter? r)
+    (:value @(:data r))
+    r))
 
 (defn data-atom
   "Return the atom holding the reporter's data. If any of the standard fields
@@ -103,19 +106,22 @@
   "Add an attending callback to a reporter, under a key that must be unique
    to each callback. If no callback is provided, remove any callback that is
    present. If a callback is provided, call it."
-  [reporter key & callback]
-  (let [[old current]
-        (swap-returning-both!
-         (:data reporter)
-         (fn [data]
-           (if (nil? callback)
-             (dissoc-in data [:attendees key])
-             (assoc-in data [:attendees key] (check-callback callback)))))]
+  [r key & callback]
+  (if (reporter? r)
+    (let [[old current]
+          (swap-returning-both!
+           (:data r)
+           (fn [data]
+             (if (nil? callback)
+               (dissoc-in data [:attendees key])
+               (assoc-in data [:attendees key] (check-callback callback)))))]
+      (when callback
+        (call-callback callback key r))
+      (when (and (:manager current)
+                 (not= (data-attended? old) (data-attended? current)))
+        (call-callback (:manager current) r)))
     (when callback
-      (call-callback callback key reporter))
-    (when (and (:manager current)
-               (not= (data-attended? old) (data-attended? current)))
-      (call-callback (:manager current) reporter))))
+      (call-callback callback key r))))
 
 (defn new-reporter
   [& {[key & callback] :attendee manager :manager :as args}]

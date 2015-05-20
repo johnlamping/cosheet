@@ -137,6 +137,7 @@
   (is (atom? true))
   (is (atom? "foo"))
   (is (atom? :foo))
+  (is (atom? 'foo))
   (is (= (elements 1) nil))
   (is (= (elements true) nil))
   (is (= (elements "foo") nil))
@@ -166,6 +167,7 @@
         item (description->entity id s)]
     (is (= (description->entity 2 s) 2))
     (is (= (description->entity :foo s) :foo))
+    (is (= (description->entity 'foo s) 'foo))
     (is (= (description->entity "1" s) "1"))
     (is (= (description->entity id s) item))))
 

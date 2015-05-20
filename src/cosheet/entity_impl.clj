@@ -7,7 +7,7 @@
                                     mutable-store?
                                     stored-item-id-string]]
                      [entity :refer :all]
-                     [reporters :refer [expr-seq expr-let expr]])))
+                     [reporter :refer [expr-seq expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
@@ -99,6 +99,13 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  clojure.lang.Symbol
+  (mutable-entity? [this] false)
+  (atom? [this] true)
+  (label->elements [this label] nil)
+  (elements [this] nil)
+  (content [this] this)
+  (content-reference [this] this)
   java.lang.String
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -131,6 +138,8 @@
       (->MutableStoredItem store this)
       (->StoredItem store this)))
   clojure.lang.Keyword
+  (description->entity [this store] this)
+  clojure.lang.Symbol
   (description->entity [this store] this)
   java.lang.String
   (description->entity [this store] this)

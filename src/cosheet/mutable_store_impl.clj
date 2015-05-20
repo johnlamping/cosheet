@@ -1,6 +1,6 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
-                     [reporters :as reporters
+                     [reporter :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
                      [mutable-map :as mm]
@@ -10,7 +10,7 @@
 (defn update-reporter
   "Make sure the reporter has the latest value from the store."
   [store reporter]
-  (let [[f & args] (:fetch (reporters/data reporter))]
+  (let [[f & args] (:fetch (reporter/data reporter))]
     (set-value! reporter (apply f @(:store store) args))))
 
 (defn manager-callback
@@ -21,7 +21,7 @@
    #(attended? reporter)
    (fn [attended]
      (let [subscriptions (:subscriptions store)
-           fetch (:fetch (reporters/data reporter))]
+           fetch (:fetch (reporter/data reporter))]
        (if attended
          (do
            (mm/update! subscriptions id #((fnil conj #{}) % reporter))

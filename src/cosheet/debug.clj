@@ -3,8 +3,8 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [store :as store]
                      [entity :as entity]
-                     [reporters :refer [reporter? attended? data value
-                                        set-attendee!]]
+                     [reporter :refer [reporter? attended? data value
+                                       set-attendee!]]
                      [entity-impl :as entity-impl]
                      store-impl
                      mutable-store-impl
@@ -107,19 +107,20 @@
   (let [body (if (empty? more-bindings)
                exp
                `(let-propagated-impl ~more-bindings ~exp))]
-    `(let [s# (store/new-element-store)
-           ms# (store/new-mutable-store s#)
+    `(let [s# (cosheet.store/new-element-store)
+           ms# (cosheet.store/new-mutable-store s#)
            ;; Get the id the entity will have after we add it.
-           [_ id#] (store-utils/add-entity s# nil ~entity)
-           ~var (entity/description->entity id# ms#)
+           [_ id#] (cosheet.store-utils/add-entity s# nil ~entity)
+           ~var (cosheet.entity/description->entity id# ms#)
            exp-val# ~body]
-       (store-utils/add-entity! ms# nil ~entity)
+       (cosheet.store-utils/add-entity! ms# nil ~entity)
        exp-val#)))
 
-;;; A macro to test propagation of changes through an expression.
-;;; Set up var to be an entity that is currently empty, but that will
+;;; A macro to test propagation of changes of an entity through an expression.
+;;; Set up the values of the bindings to be entities that are
+;;; currently empty, but that will
 ;;; equal the specified entity. Evaluate exp with a current value of
-;;; that entitity being empty, then set the entity in the mutable
+;;; that entity being empty, then set the entity in the mutable
 ;;; store, and return the new current value of the expression.
 (defmacro let-propagated [bindings exp]
   `(current-value (let-propagated-impl ~bindings ~exp)))
@@ -139,6 +140,8 @@
      (current-value exp-val#)))
 
 (defn envs-to-list [envs]
+  "Given a vector of environments, as returned by a query, turn it into maps
+   of the current value of the environments."
   (seq (for [env envs]
          (zipmap (keys env)
                  (map #(current-value (entity/to-list %)) (vals env))))))

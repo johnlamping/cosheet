@@ -1,8 +1,7 @@
-(ns cosheet.reporters
-  (:require [cosheet.utils :refer [dissoc-in
-                                   swap-returning-both!
-                                   call-with-latest-value]]))
-;;; Note: We originally called this "reporter", but it wouldn't import.
+(ns cosheet.reporter
+  (:require (cosheet [utils :refer [dissoc-in
+                                    swap-returning-both!
+                                    call-with-latest-value]])))
 
 (defn- check-callback [callback]
   (assert (fn? (first callback)) "Callback is not a function.")

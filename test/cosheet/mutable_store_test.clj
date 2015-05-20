@@ -6,7 +6,7 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-list description->entity]]
-             [reporters :refer [set-attendee! value invalid]]
+             [reporter :refer [set-attendee! value invalid]]
              entity-impl
              store-impl
              [mutable-store-impl :refer :all])
@@ -75,6 +75,6 @@
         (set-attendee! label-ids :a callback "arg")
         (is (= (set (value label-ids))
                (set (id-label->element-ids store element :label)))))
-      ;; TODO: Write add-entity!, and then put a version of the test
-      ;; here that builds the store from scratch.
+      ;; TODO:Put a version of the test
+      ;; here that builds the store from scratch using add-entity!.
 )))

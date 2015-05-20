@@ -1,10 +1,10 @@
 (ns cosheet.computation-manager
-  (:require (cosheet [reporters :as reporters]
-                     [task-queue :refer :all]
+  (:require (cosheet [task-queue :refer :all]
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
                                     swap-control-return!
                                     call-with-latest-value]]
+                     [reporter :as reporter]
                      [mutable-map :as mm])))
 
 ;;; Manage the (re)computation of reporters using a priority queue.
@@ -107,7 +107,7 @@
    a list of actions that should be performed."
   [reporter f]
   (let [actions (swap-control-return!
-                 (reporters/data-atom reporter)
+                 (reporter/data-atom reporter)
                  (fn [data] (let [new-data (f data)]
                               [(dissoc new-data :pending-actions)
                                (:pending-actions new-data)])))]
@@ -125,19 +125,19 @@
     data
     (-> data
         (assoc :value value)
-        (update-new-pending-action reporters/inform-attendees reporter))))
+        (update-new-pending-action reporter/inform-attendees reporter))))
 
 (defn copy-value-callback
   [[_ to] from]
   (call-with-latest-value
-   #(reporters/value from)
+   #(reporter/value from)
    (fn [value] (modify-and-act
                 to
                 (fn [data] (if (= (:value-source data) from)
                              (update-value data to
                                            (if (empty? (:needed-values data))
                                              value
-                                             reporters/invalid))
+                                             reporter/invalid))
                              data))))))
 
 (defn register-copy-value
@@ -145,9 +145,9 @@
    the first reporter to become the value of the second."
   [from to]
   (call-with-latest-value
-   #(when (= (:value-source (reporters/data to)) from) [copy-value-callback])
+   #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
    (fn [callback]
-     (apply reporters/set-attendee!
+     (apply reporter/set-attendee!
             from (list :copy-value to) callback))))
 
 (defn update-value-source
@@ -168,17 +168,17 @@
 (defn copy-subordinate-callback
   [to from management]
   (call-with-latest-value
-   #(reporters/value from)
+   #(reporter/value from)
    (fn [value]
      (modify-and-act
       to
       (fn [data]
         (if (if (contains? (:needed-values data) from)
-              (= value reporters/invalid)
+              (= value reporter/invalid)
               (or (not (contains? (:subordinate-values data) from))
                   (= value (get-in data [:subordinate-values from]))))
           data
-          (if (reporters/valid? value)
+          (if (reporter/valid? value)
             (let [new-data
                   (cond-> (update-in data [:needed-values] disj from)
                     (not= value (get-in data [:subordinate-values from]))
@@ -197,18 +197,18 @@
                 new-data))
             (-> data
                 (update-in [:needed-values] conj from)
-                (update-value to reporters/invalid)))))))))
+                (update-value to reporter/invalid)))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
   for use as an argument of the second."
   [from to management]
   (call-with-latest-value
-   #(let [data (reporters/data to)]
+   #(let [data (reporter/data to)]
       (when (or (contains? (:needed-values data) from)
                 (contains? (:subordinate-values data) from))
         [copy-subordinate-callback management]))
-   (fn [callback] (apply reporters/set-attendee! from to callback))))
+   (fn [callback] (apply reporter/set-attendee! from to callback))))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, evaluate it."
@@ -217,7 +217,7 @@
    reporter
    (fn [data]
      (if (= (:needed-values data) #{})
-       (let [application (map (fn [term] (if (reporters/reporter? term)
+       (let [application (map (fn [term] (if (reporter/reporter? term)
                                            ((:subordinate-values data) term)
                                            term))
                               (:expression data))
@@ -241,7 +241,7 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [subordinates (set (filter reporters/reporter? (:expression data)))
+     (let [subordinates (set (filter reporter/reporter? (:expression data)))
            new-data (reduce
                      (fn [data subordinate]
                        (update-new-pending-action
@@ -249,7 +249,7 @@
                         register-copy-subordinate
                         subordinate reporter management))
                      data subordinates)]
-       (if (reporters/data-attended? new-data)
+       (if (reporter/data-attended? new-data)
          (-> new-data
              (assoc :needed-values subordinates)
              (assoc :subordinate-values {})
@@ -263,14 +263,14 @@
              (assoc :by :manager)
               ;;; Note, we are not attended, so it is OK to change the
               ;;; value without notifying the callbacks.
-             (assoc :value reporters/invalid)))))))
+             (assoc :value reporter/invalid)))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
   [reporter management]
-  (when (not (reporters/attended? reporter))
+  (when (not (reporter/attended? reporter))
     (mm/dissoc-in! (:cache management)
-                   [(:expression (reporters/data reporter))]))
+                   [(:expression (reporter/data reporter))]))
   (eval-manager reporter management))
 
 (defn ensure-in-cache
@@ -279,7 +279,7 @@
   [expression original-name management]
   (mm/update-in!
    (:cache management) [expression]
-   #(or % (apply reporters/new-reporter
+   #(or % (apply reporter/new-reporter
                      :expression expression
                      :manager-type :cached-eval
                      (when original-name [:name ["cached" original-name]])))))
@@ -288,13 +288,13 @@
   "Manager that looks up the value of a reporter's expression in a cache of
   reporters."
   [reporter management]
-  (let [data (reporters/data reporter)
+  (let [data (reporter/data reporter)
         expression (:expression data)
         cache (:cache management)]
     ;;; We do side-effects, which can't run inside a swap!, so we have
     ;;; to use call-with-latest-value.
     (call-with-latest-value
-     #(reporters/attended? reporter)
+     #(reporter/attended? reporter)
      (fn [attended]
        (let [value-source (when attended
                             (ensure-in-cache
@@ -318,20 +318,20 @@
   "Assign the manager to the reporter
   and to any reporters referenced by its expression."
   [reporter management]
-  (let [data (reporters/data reporter)
-        manager-type (:manager-type data)]
-    (when (and manager-type (not (:manager data)))
-      (let [manager-fn (manager-type (:manager-map management))]
-        (assert manager-fn (format "Unknown manager type: %s" manager-type))
-        (reporters/set-manager! reporter manager-fn management))
-      (doseq [term (:expression data)]
-        (when (reporters/reporter? term)
+  (when (reporter/reporter? reporter)
+    (let [data (reporter/data reporter)
+          manager-type (:manager-type data)]
+      (when (and manager-type (not (:manager data)))
+        (let [manager-fn (manager-type (:manager-map management))]
+          (assert manager-fn (format "Unknown manager type: %s" manager-type))
+          (reporter/set-manager! reporter manager-fn management))
+        (doseq [term (:expression data)]
           (manage term management))))))
 
 (defn request
   "Request computation of a reference."
   [x management]
-  (reporters/set-attendee! x :computation-request (fn [key value] nil))
+  (reporter/set-attendee! x :computation-request (fn [key value] nil))
   (manage x management)
   x)
 
@@ -343,10 +343,10 @@
 (defn computation-value
   "Given a possible reporter, compute its value and return it."
   [x management]
-  (if (reporters/reporter? x)
+  (if (reporter/reporter? x)
     (do
       (request x management)
       (compute management)
-      (reporters/value x))
+      (reporter/value x))
     x))
 

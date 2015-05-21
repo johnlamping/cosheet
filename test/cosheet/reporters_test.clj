@@ -1,8 +1,8 @@
-(ns cosheet.reporter-test
+(ns cosheet.reporters-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet [reporter :refer :all]
+            (cosheet [reporters :refer :all]
                      [debug :refer [current-value trace-current]])
             ; :reload
             ))

@@ -1,4 +1,4 @@
-(ns cosheet.reporter
+(ns cosheet.reporters
   (:require (cosheet [utils :refer [dissoc-in
                                     swap-returning-both!
                                     call-with-latest-value]])))

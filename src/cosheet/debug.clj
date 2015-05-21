@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [store :as store]
                      [entity :as entity]
-                     [reporter :refer [reporter? attended? data value
+                     [reporters :refer [reporter? attended? data value
                                        set-attendee!]]
                      [entity-impl :as entity-impl]
                      store-impl

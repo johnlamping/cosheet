@@ -1,6 +1,6 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
-                     [reporter :as reporter
+                     [reporters :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
                      [mutable-map :as mm]

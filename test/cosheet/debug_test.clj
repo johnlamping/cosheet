@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
-                     [reporter :refer [new-reporter set-value! expr expr-let]]
+                     [reporters :refer [new-reporter set-value! expr expr-let]]
                      [store :refer :all]
                      [entity :refer :all]
                      store-impl)

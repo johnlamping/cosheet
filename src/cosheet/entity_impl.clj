@@ -7,7 +7,7 @@
                                     mutable-store?
                                     stored-item-id-string]]
                      [entity :refer :all]
-                     [reporter :refer [expr-seq expr-let expr]])))
+                     [reporters :refer [expr-seq expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}

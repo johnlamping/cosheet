@@ -6,7 +6,7 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-list description->entity]]
-             [reporter :refer [set-attendee! value invalid]]
+             [reporters :refer [set-attendee! value invalid]]
              entity-impl
              store-impl
              [mutable-store-impl :refer :all])

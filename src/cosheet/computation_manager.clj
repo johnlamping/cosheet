@@ -4,7 +4,7 @@
                                     swap-returning-both!
                                     swap-control-return!
                                     call-with-latest-value]]
-                     [reporter :as reporter]
+                     [reporters :as reporter]
                      [mutable-map :as mm])))
 
 ;;; Manage the (re)computation of reporters using a priority queue.

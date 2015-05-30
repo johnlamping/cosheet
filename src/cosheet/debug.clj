@@ -6,6 +6,7 @@
                      [reporters :refer [reporter? attended? data value
                                        set-attendee!]]
                      [entity-impl :as entity-impl]
+                     store-utils
                      store-impl
                      mutable-store-impl
                      [mutable-map :as mm])))

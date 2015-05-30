@@ -124,7 +124,7 @@
 
 (defn new-reporter
   [& {[key & callback] :attendee manager :manager :as args}]
-  (let [args (if (contains? args :value) args (assoc args :value invalid))]
+  (let [args (merge {:value invalid} args)]
     (let [reporter (->ReporterImpl
                     (atom (dissoc args :attendee :manager)))]
       (when manager

@@ -3,8 +3,6 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
-             [store :refer :all]
-             [store-utils :refer :all]
              [entity :as entity  :refer [to-list description->entity]]
              [reporters :refer [expr expr-let expr-seq]]
              [debug :refer [current-value envs-to-list
@@ -145,11 +143,13 @@
              [:div
               [:div {:style {:width "100%" :display "block"}} "Joe"]
               [:div {:style {:width "100%" :display "table"}}
+               [:colgroup
+                [:col {:style {:width "30%"}}]
+                [:col {:style {:width "70%"}}]]
                [:div {:style {:display "table-row"}}
                 [:div {:style {:color "#66FFFF"
-                               :width "30%"
                                :display "table-cell"}}]
-                [:div {:style {:width "70%" :display "table-cell"}}
+                [:div {:style {:display "table-cell"}}
                  [:component {:attributes {:style {:width "100%"
                                                    :display "block"}}
                               :sibling-key male
@@ -160,12 +160,10 @@
                               :definition [item-DOM married #{} {}]}]]]
                [:div {:style {:display "table-row"}}
                 [:component {:attributes {:style {:color "#66FFFF"
-                                                  :width "30%"
                                                   :display "table-cell"}}
                              :sibling-key age-tag
                              :definition [item-DOM age-tag #{age-tag-spec} {}]}]
-                [:component {:attributes {:style {:width "70%"
-                                                  :display "table-cell"}}
+                [:component {:attributes {:style {:display "table-cell"}}
                              :sibling-key age
                              :definition [item-DOM age #{age-tag} {}]}]]]]))
       )))

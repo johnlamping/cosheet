@@ -147,10 +147,9 @@
       (let [[attr remainder] (if (map? second)
                                [second remainder]
                                [{} (rest dom)])]
-        (apply vector
-               dom-tag
-               (into-attributes attr attributes)
-               remainder)))))
+        (into [dom-tag
+               (into-attributes attr attributes)]
+              remainder)))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
@@ -203,7 +202,7 @@
   (case (count doms)
     0 [:div]
     1 (first doms)
-    (apply vector :div
+    (into [:div]
            (map stack-vertical doms))))
 
 ;;; TODO: Make the tag styling fancier, with things like rounded
@@ -245,16 +244,20 @@
                         inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
-                     {:style {:display "table-cell" :width "30%"}})
+                     {:style {:display "table-cell"}})
      (add-attributes (vertical-stack item-doms)
-                     {:style {:display "table-cell" :width "70%"}})]))
+                     {:style {:display "table-cell"}})]))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
   [items inherited]
   (expr-let [rows (expr group-by-tag (order-items items))
              row-doms (expr-seq map #(tag-items-pair-DOM % inherited) rows)]
-    (apply vector :div {:style {:display "table"}} row-doms)))
+    (into [:div {:style {:display "table"}}
+           [:colgroup
+            [:col {:style {:width "30%"}}]
+            [:col {:style {:width "70%"}}]]]
+          row-doms)))
 
 (defn item-DOM
   "Return a hiccup representation of DOM describing

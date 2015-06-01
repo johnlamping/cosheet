@@ -6,13 +6,16 @@
              [utils :refer [dissoc-in]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
-             [computation-manager :refer [new-management]]
+             [computation-manager :as computation-manager
+              :refer [new-management]]
              [debug :refer [current-value envs-to-list
                             let-propagated let-propagated-store]]
              entity-impl
              store-impl
              mutable-store-impl)
-            [cosheet.server.dom-tracker :refer :all]
+            (cosheet.server
+             [dom-tracker :refer :all]
+             [render :refer [item-DOM]])
             ; :reload
             ))
 
@@ -93,16 +96,76 @@
 (deftest update-set-component-test
   (let [management (new-management)
         tracker (new-dom-tracker management)
+        reporter (new-reporter :value "hi")
         c-map {:key [:k]
-               :definition [new-reporter :value "hi"]
-               :attributes {:style {:color "blue"}}}]
+               :definition [item-DOM reporter  #{} {}]
+               :attributes {:style {:color "blue"}}}
+        alt-c-map (assoc-in c-map [:attributes :style :color] "black")
+        deep-c-map {:key [:d]
+                    :definition
+                    [(fn [value]
+                       (into [:div
+                              [:component
+                               {:sibling-key "s"
+                                :definition [item-DOM reporter  #{} {}]
+                                :attributes {:width 1}}]]
+                             (map (fn [c]
+                                    [:component
+                                     {:sibling-key (str c)
+                                      :definition [item-DOM (str c) #{} {}]}])
+                                  value)))
+                     reporter]}]
     (swap-and-act tracker #(update-set-component % c-map))
-    (let [component (get-in @tracker [:components [:k]])]
-      (is (= (:dom component) "hi"))
+    (computation-manager/compute management)
+    (let [data @tracker
+          component (get-in data [:components [:k]])]
+      (is (= (:dom component) [:div "hi"]))
       (is (= (:id component) 0))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
-      (is (= (:components @tracker {[:k] component}))))
-    (is (= (:id->key @tracker {0 [:k]})))
-    (is (= (:next-id @tracker) 1))
-    (is (= (set (:out-of-date-ids @tracker)) #{[0 0]}))))
+      (is (= (:components @tracker {[:k] component})))
+      (is (= (:id->key data {0 [:k]})))
+      (is (= (:next-id data) 1))
+      (is (= (set (:out-of-date-ids data)) #{[0 0]}))
+      ;; Try some updates that don't change the definition.
+      (swap! tracker #(update-in % [:out-of-date-ids]
+                                 (fn [items] (dissoc items 0))))
+      (computation-manager/compute management)
+      (let [data @tracker]
+        (swap-and-act tracker #(update-set-component % c-map))
+        (computation-manager/compute management)
+        (is (= @tracker data))
+        (swap-and-act tracker #(update-set-component % alt-c-map))
+        (computation-manager/compute management)
+        (is (= (get-in @tracker [:components [:k]])
+               (assoc component :attributes (:attributes alt-c-map))))
+        (is (= (set (:out-of-date-ids @tracker)) #{[0 0]})))
+      ;; Change the value of the reporter, and make sure the dom updates.
+      (swap! tracker #(update-in % [:out-of-date-ids]
+                                 (fn [items] (dissoc items 0))))
+      (reporter/set-value! reporter "ho")
+      (computation-manager/compute management)
+      (is (= (get-in @tracker [:components [:k] :dom]) [:div "ho"]))
+      (is (= (set (:out-of-date-ids @tracker)) #{[0 0]})))
+    (swap-and-act tracker #(update-set-component % deep-c-map))
+    (is (nil? (get-in @tracker [:components [:d] :dom])))
+    (computation-manager/compute management)
+    (reporter/set-value! reporter "hi")
+    (computation-manager/compute management)
+    (is (= (into {} (map (fn [[key component]] [key (:dom component)])
+                               (get-in @tracker [:components])))
+           {[:k] [:div "hi"]
+            [:d] [:div
+                  [:component {:sibling-key "s"
+                               :definition [item-DOM reporter  #{} {}]
+                               :attributes {:width 1}}]
+                  [:component {:sibling-key (str "h")
+                               :definition [item-DOM "h" #{} {}]}]
+                  [:component {:sibling-key (str "i")
+                               :definition [item-DOM "i" #{} {}]}]]
+            [:d "s"] [:div "hi"]
+            [:d "h"] [:div "h"]
+            [:d "i"] [:div "i"]}))
+    (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
+    ))
+

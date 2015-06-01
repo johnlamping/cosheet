@@ -307,12 +307,13 @@
 
 (defn new-management
   "Create the manager data for a caching evaluator."
-  []
-  (map->ManagementImpl {:cache (mm/new-mutable-map)
-                        :queue (new-priority-task-queue)
-                        :manager-map {:cache cache-manager
-                                      :eval eval-manager
-                                      :cached-eval cached-eval-manager}}))
+  ([] (new-management 0))
+  ([worker-threads]
+   (map->ManagementImpl {:cache (mm/new-mutable-map)
+                         :queue (new-priority-task-queue worker-threads)
+                         :manager-map {:cache cache-manager
+                                       :eval eval-manager
+                                       :cached-eval cached-eval-manager}})))
 
 (defn manage
   "Assign the manager to the reporter

@@ -17,8 +17,13 @@
 ;;;          :depth  The depth of this component in the component
 ;;;                  hierarchy, used to make sure that parents are
 ;;;                  sent to the client before their children.
-;;;     :definition  An application that will compute the dom.
-;;;       :reporter  A reporter that computes the dom, using the definition.
+;;;     :definition  An application that will compute the dom or
+;;;                  return a reporter to compute it. We record the
+;;;                  definition so we know that if the component is
+;;;                  updated with the same definition, we don't have
+;;;                  to recompute.
+;;;       :reporter  The result of running the definition, either the
+;;;                  dom, or a reporter that computes it.
 ;;;     :attributes  Additional attributes to add to the dom produced
 ;;;                  by the definition. These are typically things
 ;;;                  like display, that say how the component should

@@ -9,7 +9,19 @@
             (cosheet.server [render :as render])))
 
 ;;; Records the current state of the dom, and which items need to be
-;;; sent to the client. Has the manager compute subcomponents as needed.
+;;; sent to the client. Has the manager compute subcomponents as
+;;; needed.
+
+;;; The key challenge is that the identity of a dom component is
+;;; determined by its containing dom, not by the definition that
+;;; yields the component. There are thus two ways that a dom for a
+;;; particular identity can change: the containing dom can change the
+;;; definition for the dom it wants in that spot, or the database can
+;;; change to content that that definition displays. We use a map to
+;;; track the former, which points to a reporter that tracks the
+;;; latter. Whenever a piece of dom changes, we check all the
+;;; sub-components it specifies, and update out map, possibly creating
+;;; new reporters, or ignoring obsolete ones.
 
 ;;; The basic data structure is a component map, which contains dom
 ;;; for a component and information about it. It fields can include:
@@ -28,17 +40,21 @@
 ;;;                  by the definition. These are typically things
 ;;;                  like display, that say how the component should
 ;;;                  fit into its parent.
-;;;            :dom  The dom in hiccup format, not including the id or
-;;;                  added attributes.
+;;;            :dom  The dom in hiccup format, as returned by the
+;;;                  definition (not including the added attributes).
 ;;;                  Inside this dom, subcomponents are annotated as
-;;;                  [:component {:sibling-key sibling-key
-;;;                               :definition definition
-;;;                               :attributes <attributes to add>}].
+;;;                  [:component {:sibling-key
+;;;                               <A distinct object for each subcomponent>
+;;;                               :definition
+;;;                               <An application that will generate
+;;;                                the dom or a reporter for it>
+;;;                               :attributes
+;;;                               <Additional attributes to add>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
 ;;;             :id  The id of this component in the client.
-;;;        :version  An increasing version number for client
-;;;                  coordination.
+;;;        :version  An version number for client coordination. It
+;;;                  increases each time the dom or attributes change.
 
 ;;; This information is stored in an atom, containing a map with these
 ;;; elements:
@@ -82,12 +98,22 @@
 (defn make-key
   "Make a key from a parent key and the sibling key within that parent."
   [parent-key sibling-key]
+  (assert (not (nil? sibling-key)))
   (if (or (nil? parent-key) (empty? parent-key))
     [sibling-key]
     (conj parent-key sibling-key)))
 
 (def update-set-component)
 (def update-clear-component)
+
+(defn contextualize-subcomponent
+  "Given a subcomponent straight from some dom,
+   flesh out the rest of its information."
+  [{:keys [sibling-key] :as subcomponent-map} parent-key parent-depth]
+  (-> subcomponent-map
+      (dissoc :sibling-key)
+      (assoc :key (make-key parent-key sibling-key))
+      (assoc :depth (inc parent-depth))))
 
 (defn dom->subcomponents
   "Given a dom containing subcomponents,
@@ -101,17 +127,35 @@
               [] dom))
     []))
 
-(defn contextualize-subcomponent
-  "Given a subcomponent straight from a dom,
-   flesh out the rest of its information."
-  [{:keys [sibling-key] :as subcomponent-map} parent-key parent-depth]
-  (-> subcomponent-map
-      (dissoc :sibling-key)
-      (assoc :key (make-key parent-key sibling-key))
-      (assoc :depth (inc parent-depth))))
+(defn adjust-subcomponents-for-client
+  "Given the data, the key of the containing dom, and a piece of dom,
+   adjust the subcomponents of the dom to the form the client needs."
+  [data parent-key dom]
+  (if (vector? dom)
+    (if (= (first dom) :component)
+      (let [component-map (second dom)
+            key (make-key parent-key (:sibling-key component-map))
+            id (get-in data [:components key :id])]
+        [:component id])
+      (reduce (fn [subcomponents dom]
+                (conj subcomponents (adjust-subcomponents-for-client
+                                     data parent-key dom)))
+              [] dom))
+    dom))
+
+(defn dom-for-client
+  "Given the data and a key, prepare the dom with that key for the client."
+  [data key]
+  (let [component-map (get-in data [:components key])]
+    (assert (not (nil? component-map)))
+    (render/add-attributes
+     (adjust-subcomponents-for-client
+      data (:key component-map) (:dom component-map))
+     (into {:id (:id component-map)}
+           (:attributes component-map)))))
 
 (defn update-unneeded-subcomponents
-  "Remove all components that were in the old version of the component map
+  "Remove all subcomponents that were in the old version of the component map
    but are not in the new one."
   [data old-component-map new-component-map]
   (reduce (fn [data key] (update-clear-component data key))
@@ -163,7 +207,7 @@
             (when should-attend
               [dom-callback data-atom])))))
 
-(defn update-request-attending
+(defn update-request-set-attending
   "Add a pending action to start or stop attending to the reporter
    of the given component-map, depending on whether the map is still active."
   [data component-map]
@@ -194,7 +238,7 @@
             (update-in [:out-of-date-ids] #(dissoc % id))
             (update-in [:id->key] #(dissoc % id))
             (update-in [:components] #(dissoc % key))
-            (update-request-attending component-map)
+            (update-request-set-attending component-map)
             (update-unneeded-subcomponents component-map {})))
       data)))
 
@@ -217,9 +261,9 @@
       (let [reporter (new-expression definition)
             final-map (assoc new-component-map :reporter reporter)]
         (-> data
-            (update-request-attending original-component-map)
+            (update-request-set-attending original-component-map)
             (assoc-in [:components key] final-map)
-            (update-request-attending final-map)
+            (update-request-set-attending final-map)
             (update-new-pending-action
              (fn [atom] (manage reporter (:management data)))))))))
 

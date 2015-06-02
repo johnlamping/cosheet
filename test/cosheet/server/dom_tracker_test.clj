@@ -35,6 +35,10 @@
   (is (= (make-key nil 1) [1]))
   (is (= (make-key [1] 2) [1 2])))
 
+(deftest contextualize-subcomponent-test
+  (is (= (contextualize-subcomponent {:sibling-key 1 :foo 2} [0] 3)
+         {:key [0 1] :depth 4 :foo 2})))
+
 (deftest dom->subcomponents-test
   (is (= (set  (dom->subcomponents
                 [:div
@@ -43,9 +47,33 @@
                  [:div "hi" [:component {1 2}]]]))
          #{{:foo :bar} {:bletch 1} {1 2}})))
 
-(deftest contextualize-subcomponent-test
-  (is (= (contextualize-subcomponent {:sibling-key 1 :foo 2} [0] 3)
-         {:key [0 1] :depth 4 :foo 2})))
+(deftest adjust-subcomponents-for-client-test
+  (is (= (adjust-subcomponents-for-client
+          {:components {[:p :a] {:id 2}
+                        [:p :b] {:id 3}}}
+          [:p]
+          [:div
+           [:component {:sibling-key :a}]
+           [:div  [:component {:sibling-key :b}]]])
+         [:div
+          [:component 2]
+          [:div  [:component 3]]])))
+
+(deftest dom-for-client-test
+  (is (= (dom-for-client
+          {:components {[:p] {:id 1
+                              :key [:p]
+                              :dom [:div
+                                    [:component {:sibling-key :a}]
+                                    [:div  [:component {:sibling-key :b}]]]
+                              :attributes {:width 4}}
+                        [:p :a] {:id 2}
+                        [:p :b] {:id 3}}}
+          [:p])
+         [:div
+          {:id 1 :width 4}
+          [:component 2]
+          [:div  [:component 3]]])))
 
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents

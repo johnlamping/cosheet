@@ -2,6 +2,17 @@
   #+cljs (:require [reagent.core :as reagent :refer [atom]])
   )
 
+(def components (clojure.core/atom {}))
+
+(defn component [name]
+  @(@components name))
+
+(defn set-difference
+  "Implement set difference ourselves, because I can't figure out how to
+   get clojure.set available in Chrome."
+  [s1 s2]
+  (set (remove s2 s1)))
+
 (defn replace-in-struct
   "Replace items in the structure that match keys in the map
    with the result in the map"
@@ -16,16 +27,54 @@
                     :else struct)))]
     (r struct)))
 
+(defn subcomponent-ids
+  "Return a seq of the ids of the subcomponents of the dom."
+  [dom]
+  (if (vector? dom)
+    (if (= (first dom) component)
+      [(second dom)]
+      (reduce (fn [subcomponents dom]
+                (into subcomponents (subcomponent-ids dom)))
+              [] dom))
+    []))
+
+(defn remove-ids
+  "Remove the given ids from the map."
+  [map ids]
+  (reduce (fn [map id] (dissoc map id))
+          map ids))
+
+(defn add-ids
+  "Add atoms for the given ids to the map."
+  [map ids]
+  (reduce (fn [map id] (assoc map id (atom [:div {:id id :data-version -1}])))
+          map ids))
+
 (defn into-atom-map
-  "Incorporate the update into an atom containing a map of atoms,
-  creating or deleting atoms as needed."
+  "Incorporate an update of new doms into an atom containing a map of atoms,
+  creating or deleting atoms as called for by the new doms."
   [amap update]
-  (swap! amap
-         (fn [amap]
-           (reduce (fn [amap [key value]]
-                     (cond (nil? value) (dissoc amap key)
-                           (contains? amap key) (do (reset! (amap key) value)
-                                                    amap)
-                           :else (assoc amap key (atom value))))
-                   amap update))))
+  (swap!
+   amap
+   (fn [amap]
+     (reduce
+      (fn [amap dom]
+        (let [{:keys [id data-version]} (second dom)]
+          (if (contains? amap id)
+            (let [old-dom @(amap id)
+                  old-version (:data-version (second old-dom))]
+              (if (> data-version old-version)
+                (let [old-subcomponents (set (subcomponent-ids old-dom))
+                      subcomponents (set (subcomponent-ids dom))]
+                  (do (reset! (amap id) dom)
+                      (-> amap
+                          (remove-ids
+                           (set-difference old-subcomponents
+                                           subcomponents))
+                          (add-ids
+                           (set-difference subcomponents
+                                           old-subcomponents)))))
+                amap))
+            amap)))
+      amap update))))
 

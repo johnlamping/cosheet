@@ -60,7 +60,7 @@
 ;;; elements:
 ;;;      :components  A map from key to component map.
 ;;;         :id->key  A map from client id to key.
-;;;         :next-id  The next free client id.
+;;;         :next-id  The next free client id number.
 ;;; :out-of-date-ids  A priority queue of ids that the client
 ;;;                   needs to know about
 ;;;      :management  The management that runs our tasks on the server.
@@ -144,15 +144,30 @@
     dom))
 
 (defn dom-for-client
-  "Given the data and a key, prepare the dom with that key for the client."
+  "Given the data and a component map,
+   prepare the dom for that key to send to the client."
   [data key]
   (let [component-map (get-in data [:components key])]
     (assert (not (nil? component-map)))
     (render/add-attributes
      (adjust-subcomponents-for-client
       data (:key component-map) (:dom component-map))
-     (into {:id (:id component-map)}
-           (:attributes component-map)))))
+     (-> (:attributes component-map)
+         (assoc :id (:id component-map))
+         (assoc :data-version (:version component-map))))))
+
+(defn response-doms
+  "Return a seq of doms for the client for up to num components."
+  [data num]
+  (for [[key priority] (take num (:out-of-date-ids data))]
+    (dom-for-client data key)))
+
+(defn update-acknowledgement
+  "Remove the acknowledged components from the ones that need
+  updating in the client, provided the acknowledged version is up to date."
+  [data acknowledgements]
+  ;;; TODO: code this, then code the swap that updates the atom.
+  )
 
 (defn update-unneeded-subcomponents
   "Remove all subcomponents that were in the old version of the component map
@@ -222,7 +237,7 @@
   [data key]
   (if (get-in data [:components key])
     data
-    (let [id (:next-id data)]
+    (let [id (str "id" (:next-id data))]
       (-> data
           (assoc-in [:components key] {:id id :key key :version 0 :depth 0})
           (assoc-in [:id->key id] key)

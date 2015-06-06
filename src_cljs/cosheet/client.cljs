@@ -1,18 +1,23 @@
 (ns cosheet.client
   (:require [reagent.core :as reagent :refer [atom]]
             [ajax.core :refer [GET POST transit-response-format]]
-            [cosheet.client-utils :refer [replace-in-struct into-atom-map]]))
-
-(def components (clojure.core/atom {}))
-
-(defn component [name]
-  @(@components name))
+            [cosheet.client-utils :refer
+             [component components
+              replace-in-struct into-atom-map]]
+            ))
 
 (reset! components {:main (atom [:div
+                                 {:id :main :data-version 0}
                                  [component :message]
                                  [component :clock]])
-                    :message (atom [:div "Hello world, it is now"])
-                    :clock (atom [:div "now"])})
+                    :message (atom [:div {:id :message :data-version 0}
+                                    "Hellllo "
+                                    [component :old]
+                                    " world, it is now"])
+                    :old (atom [:div {:id :old :data-version 0}
+                                  "old"])
+                    :clock (atom [:div {:id :clock :data-version 0}
+                                  "now"])})
 
 (defonce time-updater
   (js/setInterval
@@ -23,9 +28,13 @@
 
 (defn ajax-handler [response]
   (.log js/console (str response))
+  (.log js/console (str "Before: " (keys @components)))
   (into-atom-map
    components
-   (replace-in-struct {:cosheet/component component} response)))
+   ;; Turn [:component <id>] into [cosheet.client/component id]
+   (replace-in-struct {:cosheet/component component} response))
+  (.log js/console (str "After: " (keys @components)))
+  (.log js/console (str "After M: " @(:message @components))))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (.log js/console (str "ajax-error: " status " " status-text)))
@@ -40,7 +49,7 @@
 (defn ^:export run []
   (reagent/render [component :main]
                   (js/document.getElementById "app"))
-  (js/setTimeout #(ajax-request {}) 3000))
+  (js/setTimeout #(ajax-request {:test {}}) 3000))
 
 ; (js/alert "Hello from ClojureScript!")
 

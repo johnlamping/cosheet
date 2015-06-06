@@ -9,18 +9,19 @@
 
 (defroutes main-routes
   (GET "/" [] (index-page))
-  (POST "/ajax-request" [] (ajax-response))
+  (POST "/ajax-request" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))
 
 ;;; Note: you may have to first run
+;;;   lein cljx once
 ;;;   lein cljsbuild once
 ;;; This allows the server to be run from lein with
 ;;;    lein ring server-headless 3000
 ;;; Running the server from lein makes it automatically update
 ;;; whenever a source file is changed.
 (def app
-  (-> main-routes ; (handler/site main-routes)
+  (-> main-routes
       (wrap-transit-response {:encoding :json, :opts {}})
       (wrap-base-url)))
 

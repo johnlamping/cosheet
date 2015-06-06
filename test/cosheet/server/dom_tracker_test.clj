@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
+            [clojure.data.priority-map :as priority-map]
             (cosheet
              [utils :refer [dissoc-in]]
              [entity :as entity :refer [to-list description->entity]]
@@ -66,14 +67,38 @@
                               :dom [:div
                                     [:component {:sibling-key :a}]
                                     [:div  [:component {:sibling-key :b}]]]
-                              :attributes {:width 4}}
+                              :attributes {:width 4}
+                              :version 5}
                         [:p :a] {:id 2}
                         [:p :b] {:id 3}}}
           [:p])
          [:div
-          {:id 1 :width 4}
+          {:id 1 :data-version 5 :width 4}
           [:component 2]
           [:div  [:component 3]]])))
+
+(deftest response-doms-test
+  (is (= (response-doms {} 3) []))
+  (is (= (set (response-doms
+               {:components {[:p] {:id "id1"
+                                   :key [:p]
+                                   :dom [:div
+                                         [:component {:sibling-key :a}]
+                                         [:div  [:component {:sibling-key :b}]]]
+                                   :attributes {:width 4}
+                                   :version 3}
+                             [:p :a] {:id "id2" :dom [:div "hi"] :version 5}
+                             [:p :b] {:id "id3" :dom [:div "there"] :version 7}}
+                :out-of-date-ids (-> (priority-map/priority-map)
+                                     (assoc [:p] 0)
+                                     (assoc [:p :a] 2)
+                                     (assoc [:p :b] 1))}
+               2))
+         #{[:div
+            {:id "id1" :data-version 3 :width 4}
+            [:component "id2"]
+            [:div  [:component "id3"]]]
+           [:div {:id "id3" :data-version 7} "there"]} )))
 
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents
@@ -93,24 +118,28 @@
         a (atom {})]
     (swap-and-act a #(-> %
                          (assoc-in [:components :a] component-map)
-                         (update-request-attending component-map))) 
+                         (update-request-set-attending component-map))) 
     (is (= (:attendees (reporter/data r))
            {[:dom-request :a] [dom-callback a]}))
     (swap-and-act a #(-> %
                          (dissoc-in [:components :a])
-                         (update-request-attending component-map)))
+                         (update-request-set-attending component-map)))
     (is (= (:attendees (reporter/data r)) nil))))
 
 (deftest update-ensure-component-test
   (is (= (update-ensure-component {:components {:a 1}} :a))
       {:components {:a 1}})
   (let [tracker @(new-dom-tracker nil)
-        id (:next-id tracker)]
+        id-num (:next-id tracker)
+        id (str "id" id-num)]
     (is (= (update-ensure-component tracker :b)
            (-> tracker
-               (assoc :components {:b {:key :b :version 0 :depth 0 :id id}})
+               (assoc :components {:b {:key :b
+                                       :version 0
+                                       :depth 0
+                                       :id id}})
                (assoc :id->key {id :b})
-               (assoc :next-id (inc id)))))))
+               (assoc :next-id (inc id-num)))))))
 
 (deftest update-clear-component-test
   (let [tracker @(new-dom-tracker nil)
@@ -148,13 +177,13 @@
     (let [data @tracker
           component (get-in data [:components [:k]])]
       (is (= (:dom component) [:div "hi"]))
-      (is (= (:id component) 0))
+      (is (= (:id component) "id0"))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
       (is (= (:components @tracker {[:k] component})))
       (is (= (:id->key data {0 [:k]})))
       (is (= (:next-id data) 1))
-      (is (= (set (:out-of-date-ids data)) #{[0 0]}))
+      (is (= (set (:out-of-date-ids data)) #{["id0" 0]}))
       ;; Try some updates that don't change the definition.
       (swap! tracker #(update-in % [:out-of-date-ids]
                                  (fn [items] (dissoc items 0))))
@@ -167,14 +196,14 @@
         (computation-manager/compute management)
         (is (= (get-in @tracker [:components [:k]])
                (assoc component :attributes (:attributes alt-c-map))))
-        (is (= (set (:out-of-date-ids @tracker)) #{[0 0]})))
+        (is (= (set (:out-of-date-ids @tracker)) #{["id0" 0]})))
       ;; Change the value of the reporter, and make sure the dom updates.
       (swap! tracker #(update-in % [:out-of-date-ids]
                                  (fn [items] (dissoc items 0))))
       (reporter/set-value! reporter "ho")
       (computation-manager/compute management)
       (is (= (get-in @tracker [:components [:k] :dom]) [:div "ho"]))
-      (is (= (set (:out-of-date-ids @tracker)) #{[0 0]})))
+      (is (= (set (:out-of-date-ids @tracker)) #{["id0" 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:components [:d] :dom])))
     (computation-manager/compute management)

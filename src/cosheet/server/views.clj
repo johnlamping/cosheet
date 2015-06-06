@@ -12,8 +12,9 @@
      [:div#app "Hello World"]
      [:script "cosheet.client.run();"]]))
 
-(defn ajax-response []
-  (response {:message [:div "Hello " [:cosheet/component :new]
-                       " world, the time is now"]
-             :new [:span "new"]}))
+(defn ajax-response [request]
+  (response [[:div {:id :message :data-version 1}
+              "Helllo " [:cosheet/component :new]
+              " world, the time is now"]
+             [:span {:id :new :data-version 1} "new"]]))
 

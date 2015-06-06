@@ -36,9 +36,9 @@
   (is (= (make-key nil 1) [1]))
   (is (= (make-key [1] 2) [1 2])))
 
-(deftest contextualize-subcomponent-test
-  (is (= (contextualize-subcomponent {:sibling-key 1 :foo 2} [0] 3)
-         {:key [0 1] :depth 4 :foo 2})))
+(deftest subcomponent->component-map-test
+  (is (= (subcomponent->component-map {:sibling-key 1 :definition 2} [0] 3)
+         {:key [0 1] :definition 2 :depth 4})))
 
 (deftest dom->subcomponents-test
   (is (= (set  (dom->subcomponents
@@ -54,28 +54,28 @@
                         [:p :b] {:id 3}}}
           [:p]
           [:div
-           [:component {:sibling-key :a}]
+           [:component {:sibling-key :a :attributes {:width 5}}]
            [:div  [:component {:sibling-key :b}]]])
          [:div
-          [:component 2]
-          [:div  [:component 3]]])))
+          [:component {:width 5} 2]
+          [:div  [:component nil 3]]])))
 
 (deftest dom-for-client-test
   (is (= (dom-for-client
           {:components {[:p] {:id 1
                               :key [:p]
                               :dom [:div
-                                    [:component {:sibling-key :a}]
+                                    [:component {:sibling-key :a
+                                                 :attributes {:width 4}}]
                                     [:div  [:component {:sibling-key :b}]]]
-                              :attributes {:width 4}
                               :version 5}
                         [:p :a] {:id 2}
                         [:p :b] {:id 3}}}
           [:p])
          [:div
-          {:id 1 :data-version 5 :width 4}
-          [:component 2]
-          [:div  [:component 3]]])))
+          {:id 1 :version 5}
+          [:component {:width 4} 2]
+          [:div  [:component nil 3]]])))
 
 (deftest response-doms-test
   (is (= (response-doms {} 3) []))
@@ -84,21 +84,28 @@
                                    :key [:p]
                                    :dom [:div
                                          [:component {:sibling-key :a}]
-                                         [:div  [:component {:sibling-key :b}]]]
+                                         [:div  [:component
+                                                 {:attributes {:width 9}
+                                                  :sibling-key :b}]]]
                                    :attributes {:width 4}
                                    :version 3}
-                             [:p :a] {:id "id2" :dom [:div "hi"] :version 5}
-                             [:p :b] {:id "id3" :dom [:div "there"] :version 7}}
+                             [:p :a] {:id "id2"
+                                      :dom [:div "hi"]
+                                      :version 5}
+                             [:p :b] {:id "id3"
+                                      :dom [:div "there"]
+                                      :version 7
+                                      :attributes {:width 9}}}
                 :out-of-date-ids (-> (priority-map/priority-map)
                                      (assoc [:p] 0)
                                      (assoc [:p :a] 2)
                                      (assoc [:p :b] 1))}
                2))
          #{[:div
-            {:id "id1" :data-version 3 :width 4}
-            [:component "id2"]
-            [:div  [:component "id3"]]]
-           [:div {:id "id3" :data-version 7} "there"]} )))
+            {:id "id1" :version 3}
+            [:component nil "id2"]
+            [:div  [:component {:width 9} "id3"]]]
+           [:div {:id "id3" :version 7} "there"]} )))
 
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents

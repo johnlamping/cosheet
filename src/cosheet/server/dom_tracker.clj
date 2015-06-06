@@ -12,7 +12,7 @@
 ;;; sent to the client. Has the manager compute subcomponents as
 ;;; needed.
 
-;;; The key challenge is that the identity of a dom component is
+;;; The key here is that the identity of a dom component is
 ;;; determined by its containing dom, not by the definition that
 ;;; yields the component. There are thus two ways that a dom for a
 ;;; particular identity can change: the containing dom can change the
@@ -20,7 +20,7 @@
 ;;; change to content that that definition displays. We use a map to
 ;;; track the former, which points to a reporter that tracks the
 ;;; latter. Whenever a piece of dom changes, we check all the
-;;; sub-components it specifies, and update out map, possibly creating
+;;; sub-components it specifies, and update our map, possibly creating
 ;;; new reporters, or ignoring obsolete ones.
 
 ;;; The basic data structure is a component map, which contains dom
@@ -29,35 +29,38 @@
 ;;;          :depth  The depth of this component in the component
 ;;;                  hierarchy, used to make sure that parents are
 ;;;                  sent to the client before their children.
-;;;     :definition  An application that will compute the dom or
+;;;     :definition  An application that will compute dom or
 ;;;                  return a reporter to compute it. We record the
 ;;;                  definition so we know that if the component is
 ;;;                  updated with the same definition, we don't have
-;;;                  to recompute.
+;;;                  to recompute. The dom this yields can then get
+;;;                  additional attributes added at the site of the
+;;;                  subcomponent that calls for it.
 ;;;       :reporter  The result of running the definition, either the
 ;;;                  dom, or a reporter that computes it.
-;;;     :attributes  Additional attributes to add to the dom produced
-;;;                  by the definition. These are typically things
-;;;                  like display, that say how the component should
-;;;                  fit into its parent.
 ;;;            :dom  The dom in hiccup format, as returned by the
-;;;                  definition (not including the added attributes).
+;;;                  definition.
 ;;;                  Inside this dom, subcomponents are annotated as
 ;;;                  [:component {:sibling-key
 ;;;                               <A distinct object for each subcomponent>
-;;;                               :definition
-;;;                               <An application that will generate
-;;;                                the dom or a reporter for it>
+;;;                               :definition <as above>
 ;;;                               :attributes
-;;;                               <Additional attributes to add>}]
+;;;                               <Additional attributes to add to the
+;;;                                dom produced by the definition.
+;;;                                These are typically things like
+;;;                                display, that say how the component
+;;;                                should fit into its parent. These
+;;;                                are sent to the client as part of
+;;;                                the component definition, before
+;;;                                the client gets the rest of the dom.>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
 ;;;             :id  The id of this component in the client.
 ;;;        :version  An version number for client coordination. It
 ;;;                  increases each time the dom or attributes change.
 
-;;; This information is stored in an atom, containing a map with these
-;;; elements:
+;;; The information for all components is stored in an atom,
+;;; containing a map with these elements:
 ;;;      :components  A map from key to component map.
 ;;;         :id->key  A map from client id to key.
 ;;;         :next-id  The next free client id number.
@@ -70,8 +73,6 @@
 ;;;                   arguments. (These actions are actually
 ;;;                   be stored in the atom, but are added to the
 ;;;                   data before it is stored to request actions.)
-
-;;; TODO: write a converter from our format to the format to send the client.
 
 (defn update-new-pending-action
   "Given a component map, add an an action to the pending actions.
@@ -106,17 +107,18 @@
 (def update-set-component)
 (def update-clear-component)
 
-(defn contextualize-subcomponent
-  "Given a subcomponent straight from some dom,
-   flesh out the rest of its information."
-  [{:keys [sibling-key] :as subcomponent-map} parent-key parent-depth]
-  (-> subcomponent-map
-      (dissoc :sibling-key)
-      (assoc :key (make-key parent-key sibling-key))
-      (assoc :depth (inc parent-depth))))
+(defn subcomponent->component-map
+  "Given a subcomponent specified inside a dom,
+   create a component map."
+  [{:keys [sibling-key definition]} parent-key parent-depth]
+  (assert (not (nil? sibling-key)))
+  (assert (not (nil? definition)))
+  {:key (make-key parent-key sibling-key)
+   :definition definition
+   :depth (inc parent-depth)})
 
 (defn dom->subcomponents
-  "Given a dom containing subcomponents,
+  "Given a dom that may contain subcomponents,
    return a list of their component maps."
   [dom]
   (if (vector? dom)
@@ -129,14 +131,15 @@
 
 (defn adjust-subcomponents-for-client
   "Given the data, the key of the containing dom, and a piece of dom,
-   adjust the subcomponents of the dom to the form the client needs."
+   adjust the subcomponents of the dom to the form the client needs,
+   which is [:component <attributes> <id>]."
   [data parent-key dom]
   (if (vector? dom)
     (if (= (first dom) :component)
       (let [component-map (second dom)
             key (make-key parent-key (:sibling-key component-map))
             id (get-in data [:components key :id])]
-        [:component id])
+        [:component (:attributes component-map) id])
       (reduce (fn [subcomponents dom]
                 (conj subcomponents (adjust-subcomponents-for-client
                                      data parent-key dom)))
@@ -152,9 +155,8 @@
     (add-attributes
      (adjust-subcomponents-for-client
       data (:key component-map) (:dom component-map))
-     (-> (:attributes component-map)
-         (assoc :id (:id component-map))
-         (assoc :data-version (:version component-map))))))
+     {:id (:id component-map)
+     :version (:version component-map)})))
 
 (defn response-doms
   "Return a seq of doms for the client for up to num components."
@@ -184,7 +186,7 @@
   (let [component-map (get-in data [:components key])
         depth (:depth component-map)]
     (if (and component-map (not= dom (:dom component-map)))
-      (let [subcomponent-maps (map #(contextualize-subcomponent % key depth)
+      (let [subcomponent-maps (map #(subcomponent->component-map % key depth)
                                    (dom->subcomponents dom))
             new-map (-> component-map
                         (assoc :dom dom)
@@ -260,19 +262,12 @@
 (defn update-set-component
   "Set the information according to the given component map,
    creating the component if necessary."
-  [data {:keys [key definition attributes] :as component-map}]
+  [data {:keys [key definition] :as component-map}]
   (let [data (update-ensure-component data key)
         original-component-map (get-in data [:components key])
         new-component-map (merge original-component-map component-map)]
     (if (= definition (:definition original-component-map))
-      ;; Even though the definition is unchanged, the client still needs to
-      ;; be updated if the attributes have changed.
-      (-> (cond-> data
-            (not= attributes (:attributes original-component-map)) 
-            (update-in [:out-of-date-ids]
-                       #(let [{:keys [id depth]} new-component-map]
-                          (assoc % id depth))))
-          (assoc-in [:components key] new-component-map))
+      (assoc-in data [:components key] new-component-map)
       (let [reporter (new-expression definition)
             final-map (assoc new-component-map :reporter reporter)]
         (-> data

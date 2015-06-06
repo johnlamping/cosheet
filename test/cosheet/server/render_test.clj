@@ -54,43 +54,6 @@
                 (let-propagated [him joe, her jane]
                   (expr-seq map to-list (order-items [him her]))))
            (map canonicalize [jane joe])))
-    (is (= (-> {}
-               (into-attributes {:class "foo"
-                                 :style {:font "bold"}
-                                 :other "abc"})
-               (into-attributes {:class "bar"
-                                 :style {:text "large"}
-                                 :misc "junk"})
-               (into-attributes {:class "baz"
-                                 :style {:color "red"}}))
-           {:class "foo bar baz"
-            :style {:font "bold" :text "large" :color "red"}
-            :other "abc"
-            :misc "junk"}))
-    (is (= (-> [:component {:definition [:foo :bar]}]
-               (add-attributes {:class "foo"
-                                :style {:font "bold"}
-                                :other "abc"})
-               (add-attributes {:class "bar"
-                                :style {:text "large"}
-                                :misc "junk"}))
-           [:component {:definition [:foo :bar]
-                        :attributes {:class "foo bar"
-                                     :style {:font "bold" :text "large"}
-                                     :other "abc"
-                                     :misc "junk"}}]))
-    (is (= (-> [:div "hi there"]
-               (add-attributes {:class "foo"
-                                :style {:font "bold"}
-                                :other "abc"})
-               (add-attributes {:class "bar"
-                                :style {:text "large"}
-                                :misc "junk"}))
-           [:div {:class "foo bar"
-                  :style {:font "bold" :text "large"}
-                  :other "abc"
-                  :misc "junk"}
-            "hi there"]))
     (let-propagated [him joe]
       (expr-let [elements (visible-elements him)
                  groups (group-by-tag elements)]

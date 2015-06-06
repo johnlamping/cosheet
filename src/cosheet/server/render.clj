@@ -1,14 +1,16 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
+                     [dom-utils
+                      :refer [into-attributes dom-attributes add-attributes]]
                      [reporters
                       :refer [value expr expr-let expr-seq]])))
 
 ;;; Code to create hiccup style dom for a database entity.
-;;; Sub-components of the dom are represented as specified as
+;;; Sub-components of the dom are specified as
 ;;;   [:component {:sibling-key sibling-key
 ;;;                :definition definition
-;;;                :attributes <attributes to add>}]
-;;; as expected by dom_tracker.
+;;;                :attributes <attributes to add the definition's result>}]
+;;; This is what is expected by dom_tracker.
 
 ;;; For convenience here, style attributes are represented with their
 ;;; own map, rather than as a string, so they are easier to adjust.
@@ -111,45 +113,6 @@
   (expr-let [order-info
              (expr-seq map #(entity/label->content % :order) items)]
     (map second (sort (map vector order-info items)))))
-
-(defn into-attributes
-  "Add attributes to an attribute map,
-   correctly handling multiple classes or styles."
-  [accumulator attributes]
-  (reduce (fn [accumulator [key value]]
-            (update-in accumulator [key]
-                       (fn [current]
-                         (if current
-                           (case key
-                             :class (str current " " value)
-                             :style (into current value))
-                           value))))
-          accumulator attributes))
-
-(defn dom-attributes
-  "Return the current specified attributes of a dom."
-  [dom]
-   (let [[dom-tag second & remainder] dom]
-     (if  (= dom-tag :component)
-       second
-       (if (map? second)
-         second
-         {}))))
-
-(defn add-attributes
-  "Add attributes to a hiccup dom descriptor"
-  [dom attributes]
-  (let [[dom-tag second & remainder] dom]
-    (if (= dom-tag :component)
-      (do (assert (empty? remainder))
-          [:component
-           (update-in second [:attributes] #(into-attributes % attributes))])
-      (let [[attr remainder] (if (map? second)
-                               [second remainder]
-                               [{} (rest dom)])]
-        (into [dom-tag
-               (into-attributes attr attributes)]
-              remainder)))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."

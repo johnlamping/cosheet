@@ -5,8 +5,8 @@
                       :refer [value new-expression]]
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
-                     [computation-manager :refer [manage]])
-            (cosheet.server [render :as render])))
+                     [dom-utils :refer [add-attributes]]
+                     [computation-manager :refer [manage]])))
 
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
@@ -149,7 +149,7 @@
   [data key]
   (let [component-map (get-in data [:components key])]
     (assert (not (nil? component-map)))
-    (render/add-attributes
+    (add-attributes
      (adjust-subcomponents-for-client
       data (:key component-map) (:dom component-map))
      (-> (:attributes component-map)

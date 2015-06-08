@@ -4,26 +4,34 @@
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map]]
+            ;; Note: We seem to have to declare everything used
+            ;; by our libraries in order for them to be visible to
+            ;; Chrome.
+            ;; TODO: Test if this is true, bu requiring clojure.set,
+            ;; and seeing if that works.
+            cosheet.dom-utils
             ))
 
 (reset! components {:main (atom [:div
-                                 {:id :main :data-version 0}
-                                 [component :message]
-                                 [component :clock]])
-                    :message (atom [:div {:id :message :data-version 0}
+                                 {:id :main :version 0}
+                                 [component {} :message]
+                                 [component {} :clock]])
+                    :message (atom [:div {:id :message :version 0}
                                     "Hellllo "
-                                    [component :old]
+                                    [component {} :old]
                                     " world, it is now"])
-                    :old (atom [:div {:id :old :data-version 0}
+                    :old (atom [:div {:id :old :version 0}
                                   "old"])
-                    :clock (atom [:div {:id :clock :data-version 0}
+                    :clock (atom [:div {:id :clock :version 0}
                                   "now"])})
 
 (defonce time-updater
   (js/setInterval
-   #(reset! (@components :clock)
-            [:div
-             (-> (js/Date.) .toTimeString (clojure.string/split " ") first)])
+   #(let [clock (@components :clock)]
+      (when clock
+        (let [now
+              (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
+          (swap! clock (fn [old] (assoc old 2 now))))))
    1000))
 
 (defn ajax-handler [response]
@@ -47,7 +55,7 @@
          :error-handler ajax-error-handler}))
 
 (defn ^:export run []
-  (reagent/render [component :main]
+  (reagent/render [component {} :main]
                   (js/document.getElementById "app"))
   (js/setTimeout #(ajax-request {:test {}}) 3000))
 

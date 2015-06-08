@@ -13,8 +13,8 @@
      [:script "cosheet.client.run();"]]))
 
 (defn ajax-response [request]
-  (response [[:div {:id :message :data-version 1}
-              "Helllo " [:cosheet/component :new]
+  (response [[:div {:id :message :version 1}
+              "Helllo " [:cosheet/component {}  :new]
               " world, the time is now"]
-             [:span {:id :new :data-version 1} "new"]]))
+             [:span {:id :new :version 1} "new"]]))
 

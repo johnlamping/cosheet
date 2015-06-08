@@ -1,6 +1,4 @@
-(ns cosheet.dom-utils
-  #+cljs (:require [reagent.core :as reagent :refer [atom]])
-  )
+(ns cosheet.dom-utils)
 
 (defn into-attributes
   "Add attributes to an attribute map,

@@ -12,27 +12,45 @@
             cosheet.dom-utils
             ))
 
-(reset! components {:main (atom [:div
-                                 {:id :main :version 0}
-                                 [component {} :message]
-                                 [component {} :clock]])
-                    :message (atom [:div {:id :message :version 0}
-                                    "Hellllo "
-                                    [component {} :old]
-                                    " world, it is now"])
-                    :old (atom [:div {:id :old :version 0}
-                                  "old"])
-                    :clock (atom [:div {:id :clock :version 0}
-                                  "now"])})
+(reset! components {:root (atom [:div {:id :root :version 0}])})
 
-(defonce time-updater
-  (js/setInterval
-   #(let [clock (@components :clock)]
-      (when clock
-        (let [now
-              (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
-          (swap! clock (fn [old] (assoc old 2 now))))))
-   1000))
+(def ajax-handler)
+(def ajax-error-handler)
+
+(defn ajax-request [params]
+  (POST "/ajax-request"
+        {:params params
+         :response-format (transit-response-format)
+         :handler ajax-handler
+         :error-handler ajax-error-handler}))
+
+;;; A handle to the current running ajax refresh task.
+(def watch-task (clojure.core/atom nil))
+
+(defn clear-watch-task
+  "Stop any ajax watch task from running."
+  []
+  (swap! watch-task (fn [handle]
+                      (when handle (js/clearInterval handle))
+                      nil)))
+
+(defn start-watch-task
+  "Make sure the ajax watch task is running"
+  []
+  (swap! watch-task (fn [handle]
+                     (or handle
+                         (js/setInterval #(ajax-request {}) 10000)))))
+
+(defn ajax-acknowledge
+  "Send an ajax request acknowledging recipt of the given response (which
+   should a a vector of doms.
+   The acknowledgement is a map from id to version."
+  [response]
+  (when (> (count response) 0)
+    (let [params (into {} (map (fn [[tag {:keys [id version]} &rest]]
+                                 [id version])
+                               response))]
+      (ajax-request {:acknowledge params}))))
 
 (defn ajax-handler [response]
   (.log js/console (str response))
@@ -42,52 +60,27 @@
    ;; Turn [:component <id>] into [cosheet.client/component id]
    (replace-in-struct {:cosheet/component component} response))
   (.log js/console (str "After: " (keys @components)))
-  (.log js/console (str "After M: " @(:message @components)))
-  (clear-ajax-task)
-  (start-ajax-task))
+  (clear-watch-task)
+  (ajax-acknowledge response)
+  (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (.log js/console (str "ajax-error: " status " " status-text)))
 
-(defn ajax-request [params]
-  (POST "/ajax-request"
-        {:params params
-         :response-format (transit-response-format)
-         :handler ajax-handler
-         :error-handler ajax-error-handler}))
-
-(defn ajax-acknowledge
-  "Send an ajax request acknowledging recipt of the given response (which
-   should a a vector of doms.
-   The acknowledgement is a map from id to version."
-  [response]
-  (when (> 0 (count response))
-    (let [params (into {} (map (fn [tag {:keys [id version]} &rest]
-                                 [id version])
-                               response))]
-      (ajax-request params))))
-
-;;; A handle to the current running ajax refresh task.
-(def ajax-task (clojure.core/atom nil))
-
-(defn clear-ajax-task
-  "Stop any ajax refresh task from running."
-  []
-  (swap! ajax-task (fn [handle]
-                     (when handle (js/clearInterval handle))
-                     nil)))
-
-(defn start-ajax-task
-  "Make sure the ajax refresh task is running"
-  []
-  (swap! ajax-task (fn [handle]
-                     (or handle
-                         (js/setInterval #(ajax-request {}) 10000)))))
-
 (defn ^:export run []
-  (reagent/render [component {} :main]
+  (reagent/render [component {} :root]
                   (js/document.getElementById "app"))
-  (js/setTimeout #(ajax-request {:test {}}) 3000))
+  (ajax-request {:initialize true}))
+
+;;; TODO: Get rid of this eventually; It's just something cute.
+(defonce time-updater
+  (js/setInterval
+   #(let [clock (@components :clock)]
+      (when clock
+        (let [now
+              (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
+          (swap! clock (fn [old] (assoc old 2 now))))))
+   1000))
 
 ; (js/alert "Hello from ClojureScript!")
 

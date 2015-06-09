@@ -4,7 +4,9 @@
             [compojure.response :as response]
             [compojure.core :refer [GET POST defroutes]]
             [hiccup.middleware :refer [wrap-base-url]]
-            [ring.middleware.transit :refer [wrap-transit-response]]
+            [ring.middleware.transit :refer [wrap-transit-response
+                                             wrap-transit-params]]
+            [ring.middleware.params :refer [wrap-params]]
             [cosheet.server.views :refer [index-page ajax-response]]))
 
 (defroutes main-routes
@@ -22,6 +24,8 @@
 ;;; whenever a source file is changed.
 (def app
   (-> main-routes
+      (wrap-params)
+      (wrap-transit-params)
       (wrap-transit-response {:encoding :json, :opts {}})
       (wrap-base-url)))
 

@@ -42,7 +42,9 @@
    ;; Turn [:component <id>] into [cosheet.client/component id]
    (replace-in-struct {:cosheet/component component} response))
   (.log js/console (str "After: " (keys @components)))
-  (.log js/console (str "After M: " @(:message @components))))
+  (.log js/console (str "After M: " @(:message @components)))
+  (clear-ajax-task)
+  (start-ajax-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (.log js/console (str "ajax-error: " status " " status-text)))
@@ -53,6 +55,34 @@
          :response-format (transit-response-format)
          :handler ajax-handler
          :error-handler ajax-error-handler}))
+
+(defn ajax-acknowledge
+  "Send an ajax request acknowledging recipt of the given response (which
+   should a a vector of doms.
+   The acknowledgement is a map from id to version."
+  [response]
+  (when (> 0 (count response))
+    (let [params (into {} (map (fn [tag {:keys [id version]} &rest]
+                                 [id version])
+                               response))]
+      (ajax-request params))))
+
+;;; A handle to the current running ajax refresh task.
+(def ajax-task (clojure.core/atom nil))
+
+(defn clear-ajax-task
+  "Stop any ajax refresh task from running."
+  []
+  (swap! ajax-task (fn [handle]
+                     (when handle (js/clearInterval handle))
+                     nil)))
+
+(defn start-ajax-task
+  "Make sure the ajax refresh task is running"
+  []
+  (swap! ajax-task (fn [handle]
+                     (or handle
+                         (js/setInterval #(ajax-request {}) 10000)))))
 
 (defn ^:export run []
   (reagent/render [component {} :main]

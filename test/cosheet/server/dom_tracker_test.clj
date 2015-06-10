@@ -105,7 +105,29 @@
             {:id "id1" :version 3}
             [:component nil "id2"]
             [:div  [:component {:width 9} "id3"]]]
-           [:div {:id "id3" :version 7} "there"]} )))
+           [:div {:id "id3" :version 7} "there"]})))
+
+(deftest update-acknowledgements-test
+  (let [data {:components {[:p] {:id "id1"
+                                 :key [:p]
+                                 :version 3}
+                           [:p :a] {:id "id2"
+                                    :key [:p :a]
+                                    :version 5}
+                           [:p :b] {:id "id3"
+                                    :key [:p :b]
+                                    :version 7}}
+              :out-of-date-ids (priority-map/priority-map
+                                [:p] 1 [:p :a] 2 [:p :b] 2)
+              :id->key {"id1" [:p] "id2" [:p :a] "id3" [:p :b]}}]
+    (is (= (update-acknowledgements data {"id1" 3 "id2" 4})
+           (assoc data :out-of-date-ids (priority-map/priority-map
+                                         [:p :a] 2 [:p :b] 2))))
+    (let [tracker (atom data)]
+      (process-acknowledgements tracker {"id1" 3 "id2" 4})
+      (is (= @tracker
+             (assoc data :out-of-date-ids (priority-map/priority-map
+                                           [:p :a] 2 [:p :b] 2)))))))
 
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents

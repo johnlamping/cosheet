@@ -164,12 +164,28 @@
   (for [[key priority] (take num (:out-of-date-ids data))]
     (dom-for-client data key)))
 
-(defn update-acknowledgement
-  "Remove the acknowledged components from the ones that need
-  updating in the client, provided the acknowledged version is up to date."
+;;; TODO: test the next two
+(defn update-acknowledgements
+  "Given a map of acknowledgements from id to version,
+   Remove the acknowledged components from the ones that need
+   updating in the client, provided the acknowledged version is up to date."
   [data acknowledgements]
-  ;;; TODO: code this, then code the swap that updates the atom.
-  )
+  (reduce
+   (fn [data [id version]]
+     (let [key (get-in data [:id->key id])]
+       (if key
+         (cond-> data
+           (and (number? version)
+                (>= version (get-in data [:components key :version])))
+           (update-in [:out-of-date-ids] #(dissoc % key)))
+         (do (println "Warning: unknown id in acknowledgement" [id version])
+             data))))
+   data acknowledgements))
+
+(defn process-acknowledgements
+  "Update the atom to reflect the acknowledgements."
+  [tracker acknowledgements]
+  (swap-and-act tracker #(update-acknowledgements % acknowledgements)))
 
 (defn update-unneeded-subcomponents
   "Remove all subcomponents that were in the old version of the component map

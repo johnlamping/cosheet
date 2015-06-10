@@ -46,22 +46,21 @@
    should a a vector of doms.
    The acknowledgement is a map from id to version."
   [response]
-  (when (> (count response) 0)
-    (let [params (into {} (map (fn [[tag {:keys [id version]} &rest]]
-                                 [id version])
-                               response))]
-      (ajax-request {:acknowledge params}))))
+  (let [params (into {} (map (fn [[tag {:keys [id version]} &rest]]
+                               [id version])
+                             response))]
+    (ajax-request {:acknowledge params})))
 
 (defn ajax-handler [response]
-  (.log js/console (str response))
-  (.log js/console (str "Before: " (keys @components)))
-  (into-atom-map
-   components
-   ;; Turn [:component <id>] into [cosheet.client/component id]
-   (replace-in-struct {:cosheet/component component} response))
-  (.log js/console (str "After: " (keys @components)))
+  (when (not= response [])
+    (.log js/console (str response))
+    (into-atom-map
+     components
+     ;; Turn [:component <id>] into [cosheet.client/component id]
+     (replace-in-struct {:cosheet/component component} response))
+    (.log js/console (str "Components: " (keys @components)))
+    (ajax-acknowledge response))
   (clear-watch-task)
-  (ajax-acknowledge response)
   (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]

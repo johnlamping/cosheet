@@ -12,7 +12,7 @@
             cosheet.dom-utils
             ))
 
-(reset! components {:root (atom [:div {:id :root :version 0}])})
+(reset! components {"root" (atom [:div {:id "root" :version 0}])})
 
 (def ajax-handler)
 (def ajax-error-handler)
@@ -67,7 +67,7 @@
   (.log js/console (str "ajax-error: " status " " status-text)))
 
 (defn ^:export run []
-  (reagent/render [component {} :root]
+  (reagent/render [component {} "root"]
                   (js/document.getElementById "app"))
   (ajax-request {:initialize true}))
 

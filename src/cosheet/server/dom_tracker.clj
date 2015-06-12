@@ -55,24 +55,26 @@
 ;;;                                the client gets the rest of the dom.>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
-;;;             :id  The id of this component in the client.
+;;;             :id  The id of this component in the client. Unlike
+;;;                  the key, it must be a string that is allowed as a
+;;;                  DOM id.
 ;;;        :version  An version number for client coordination. It
 ;;;                  increases each time the dom or attributes change.
 
 ;;; The information for all components is stored in an atom,
 ;;; containing a map with these elements:
-;;;      :components  A map from key to component map.
-;;;         :id->key  A map from client id to key.
-;;;         :next-id  The next free client id number.
-;;; :out-of-date-ids  A priority queue of ids that the client
-;;;                   needs to know about
-;;;      :management  The management that runs our tasks on the server.
-;;; :pending-actions  A list of [function arg arg ...] calls that
-;;;                   need to be performed. The function will be
-;;;                   called with the atom, and the additional
-;;;                   arguments. (These actions are actually
-;;;                   be stored in the atom, but are added to the
-;;;                   data before it is stored to request actions.)
+;;;       :components  A map from key to component map.
+;;;          :id->key  A map from client id to key.
+;;;          :next-id  The next free client id number.
+;;; :out-of-date-keys  A priority queue of ids that the client
+;;;                    needs to know about
+;;;       :management  The management that runs our tasks on the server.
+;;;  :pending-actions  A list of [function arg arg ...] calls that
+;;;                    need to be performed. The function will be
+;;;                    called with the atom, and the additional
+;;;                    arguments. (These actions are actually
+;;;                    be stored in the atom, but are added to the
+;;;                    data before it is stored to request actions.)
 
 (defn update-new-pending-action
   "Given a component map, add an an action to the pending actions.
@@ -161,10 +163,9 @@
 (defn response-doms
   "Return a seq of doms for the client for up to num components."
   [data num]
-  (for [[key priority] (take num (:out-of-date-ids data))]
+  (for [[key priority] (take num (:out-of-date-keys data))]
     (dom-for-client data key)))
 
-;;; TODO: test the next two
 (defn update-acknowledgements
   "Given a map of acknowledgements from id to version,
    Remove the acknowledged components from the ones that need
@@ -177,7 +178,7 @@
          (cond-> data
            (and (number? version)
                 (>= version (get-in data [:components key :version])))
-           (update-in [:out-of-date-ids] #(dissoc % key)))
+           (update-in [:out-of-date-keys] #(dissoc % key)))
          (do (println "Warning: unknown id in acknowledgement" [id version])
              data))))
    data acknowledgements))
@@ -211,7 +212,7 @@
                         (update-in [:version] inc))]
         (-> (reduce update-set-component data subcomponent-maps)
             (update-unneeded-subcomponents component-map new-map)
-            (update-in [:out-of-date-ids] #(assoc % (:id component-map) depth))
+            (update-in [:out-of-date-keys] #(assoc % key depth))
             (assoc-in [:components key] new-map)))
       data)))
 
@@ -251,35 +252,40 @@
       data)))
 
 (defn update-ensure-component
-  "Make sure there is a component with the given key."
-  [data key]
-  (if (get-in data [:components key])
-    data
-    (let [id (str "id" (:next-id data))]
-      (-> data
-          (assoc-in [:components key] {:id id :key key :version 0 :depth 0})
-          (assoc-in [:id->key id] key)
-          (update-in [:next-id] inc)))))
+  "Make sure there is a component with the given key.
+   If an id is provided, use it as the id; otherwise make an id."
+  ([data key]
+   (if (get-in data [:components key])
+     data
+     (let [id (str "id" (:next-id data))]
+       (update-ensure-component (update-in data [:next-id] inc) key id))))
+  ([data key id]
+   (if (get-in data [:components key])
+     data
+     (-> data
+         (assoc-in [:components key] {:id id :key key :version 0 :depth 0})
+         (assoc-in [:id->key id] key)))))
 
 (defn update-clear-component
   "Remove the component with the given key."
   [data key]
   (let [component-map (get-in data [:components key])]
     (if component-map
-      (let [id (:id component-map)]
-        (-> data
-            (update-in [:out-of-date-ids] #(dissoc % id))
-            (update-in [:id->key] #(dissoc % id))
-            (update-in [:components] #(dissoc % key))
-            (update-request-set-attending component-map)
-            (update-unneeded-subcomponents component-map {})))
+      (-> data
+          (update-in [:out-of-date-keys] #(dissoc % key))
+          (update-in [:id->key] #(dissoc % (:id component-map)))
+          (update-in [:components] #(dissoc % key))
+          (update-request-set-attending component-map)
+          (update-unneeded-subcomponents component-map {}))
       data)))
 
 (defn update-set-component
   "Set the information according to the given component map,
    creating the component if necessary."
-  [data {:keys [key definition] :as component-map}]
-  (let [data (update-ensure-component data key)
+  [data {:keys [key definition id] :as component-map}]
+  (let [data (if id
+               (update-ensure-component data key id)
+               (update-ensure-component data key))
         original-component-map (get-in data [:components key])
         new-component-map (merge original-component-map component-map)]
     (if (= definition (:definition original-component-map))
@@ -293,6 +299,13 @@
             (update-new-pending-action
              (fn [atom] (manage reporter (:management data)))))))))
 
+(defn add-dom
+  "Add dom with the given client id and definition to the tracker."
+  [tracker id definition]
+  (swap-and-act tracker #(update-set-component % {:definition definition
+                                                  :key [id]
+                                                  :id id})))
+
 (defn new-dom-tracker
   "Return a new dom tracker object"
   [management]
@@ -300,7 +313,7 @@
    {:components {}
     :id->key {}
     :next-id 0
-    :out-of-date-ids (priority-map/priority-map)
+    :out-of-date-keys (priority-map/priority-map)
     :management management}))
 
 

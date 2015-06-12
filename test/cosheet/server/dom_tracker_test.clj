@@ -7,8 +7,7 @@
              [utils :refer [dissoc-in]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
-             [computation-manager :as computation-manager
-              :refer [new-management]]
+             [computation-manager :refer [new-management compute]]
              [debug :refer [current-value envs-to-list
                             let-propagated let-propagated-store]]
              entity-impl
@@ -96,10 +95,10 @@
                                       :dom [:div "there"]
                                       :version 7
                                       :attributes {:width 9}}}
-                :out-of-date-ids (-> (priority-map/priority-map)
-                                     (assoc [:p] 0)
-                                     (assoc [:p :a] 2)
-                                     (assoc [:p :b] 1))}
+                :out-of-date-keys (-> (priority-map/priority-map)
+                                      (assoc [:p] 0)
+                                      (assoc [:p :a] 2)
+                                      (assoc [:p :b] 1))}
                2))
          #{[:div
             {:id "id1" :version 3}
@@ -117,17 +116,17 @@
                            [:p :b] {:id "id3"
                                     :key [:p :b]
                                     :version 7}}
-              :out-of-date-ids (priority-map/priority-map
-                                [:p] 1 [:p :a] 2 [:p :b] 2)
+              :out-of-date-keys (priority-map/priority-map
+                                  [:p] 1 [:p :a] 2 [:p :b] 2)
               :id->key {"id1" [:p] "id2" [:p :a] "id3" [:p :b]}}]
     (is (= (update-acknowledgements data {"id1" 3 "id2" 4})
-           (assoc data :out-of-date-ids (priority-map/priority-map
-                                         [:p :a] 2 [:p :b] 2))))
+           (assoc data :out-of-date-keys (priority-map/priority-map
+                                          [:p :a] 2 [:p :b] 2))))
     (let [tracker (atom data)]
       (process-acknowledgements tracker {"id1" 3 "id2" 4})
       (is (= @tracker
-             (assoc data :out-of-date-ids (priority-map/priority-map
-                                           [:p :a] 2 [:p :b] 2)))))))
+             (assoc data :out-of-date-keys (priority-map/priority-map
+                                            [:p :a] 2 [:p :b] 2)))))))
 
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents
@@ -158,17 +157,26 @@
 (deftest update-ensure-component-test
   (is (= (update-ensure-component {:components {:a 1}} :a))
       {:components {:a 1}})
-  (let [tracker @(new-dom-tracker nil)
-        id-num (:next-id tracker)
-        id (str "id" id-num)]
-    (is (= (update-ensure-component tracker :b)
-           (-> tracker
-               (assoc :components {:b {:key :b
-                                       :version 0
-                                       :depth 0
-                                       :id id}})
-               (assoc :id->key {id :b})
-               (assoc :next-id (inc id-num)))))))
+  (let [tracker @(new-dom-tracker nil)]
+    (let [id "root"]
+      (is (= (update-ensure-component tracker :b id)
+             (-> tracker
+                 (assoc :components {:b {:key :b
+                                         :version 0
+                                         :depth 0
+                                         :id id}})
+                 (assoc :id->key {id :b})))))
+    (let [tracker @(new-dom-tracker nil)
+          id-num (:next-id tracker)
+          id (str "id" id-num)]
+      (is (= (update-ensure-component tracker :b)
+             (-> tracker
+                 (assoc :components {:b {:key :b
+                                         :version 0
+                                         :depth 0
+                                         :id id}})
+                 (assoc :id->key {id :b})
+                 (assoc :next-id (inc id-num))))))))
 
 (deftest update-clear-component-test
   (let [tracker @(new-dom-tracker nil)
@@ -184,7 +192,8 @@
         tracker (new-dom-tracker management)
         reporter (new-reporter :value "hi")
         c-map {:key [:k]
-               :definition [item-DOM reporter  #{} {}]
+               :id "root"
+               :definition [item-DOM reporter #{} {}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
@@ -193,7 +202,7 @@
                        (into [:div
                               [:component
                                {:sibling-key "s"
-                                :definition [item-DOM reporter  #{} {}]
+                                :definition [item-DOM reporter #{} {}]
                                 :attributes {:width 1}}]]
                              (map (fn [c]
                                     [:component
@@ -202,42 +211,40 @@
                                   value)))
                      reporter]}]
     (swap-and-act tracker #(update-set-component % c-map))
-    (computation-manager/compute management)
+    (compute management)
     (let [data @tracker
           component (get-in data [:components [:k]])]
       (is (= (:dom component) [:div "hi"]))
-      (is (= (:id component) "id0"))
+      (is (= (:id component) "root"))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
       (is (= (:components @tracker {[:k] component})))
-      (is (= (:id->key data {0 [:k]})))
-      (is (= (:next-id data) 1))
-      (is (= (set (:out-of-date-ids data)) #{["id0" 0]}))
+      (is (= (:id->key data {"root" [:k]})))
+      (is (= (:next-id data) 0))
+      (is (= (set (:out-of-date-keys data)) #{[[:k] 0]}))
       ;; Try some updates that don't change the definition.
-      (swap! tracker #(update-in % [:out-of-date-ids]
-                                 (fn [items] (dissoc items 0))))
-      (computation-manager/compute management)
+      (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
+      (compute management)
       (let [data @tracker]
         (swap-and-act tracker #(update-set-component % c-map))
-        (computation-manager/compute management)
+        (compute management)
         (is (= @tracker data))
         (swap-and-act tracker #(update-set-component % alt-c-map))
-        (computation-manager/compute management)
+        (compute management)
         (is (= (get-in @tracker [:components [:k]])
                (assoc component :attributes (:attributes alt-c-map))))
-        (is (= (set (:out-of-date-ids @tracker)) #{["id0" 0]})))
+        (is (= (set (:out-of-date-keys @tracker)) #{})))
       ;; Change the value of the reporter, and make sure the dom updates.
-      (swap! tracker #(update-in % [:out-of-date-ids]
-                                 (fn [items] (dissoc items 0))))
+      (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (reporter/set-value! reporter "ho")
-      (computation-manager/compute management)
+      (compute management)
       (is (= (get-in @tracker [:components [:k] :dom]) [:div "ho"]))
-      (is (= (set (:out-of-date-ids @tracker)) #{["id0" 0]})))
+      (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:components [:d] :dom])))
-    (computation-manager/compute management)
+    (compute management)
     (reporter/set-value! reporter "hi")
-    (computation-manager/compute management)
+    (compute management)
     (is (= (into {} (map (fn [[key component]] [key (:dom component)])
                                (get-in @tracker [:components])))
            {[:k] [:div "hi"]
@@ -254,4 +261,21 @@
             [:d "i"] [:div "i"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
+
+(deftest add-dom-test
+  (let [management (new-management)
+        tracker (new-dom-tracker management)
+        reporter (new-reporter :value "hi")]
+    (add-dom tracker "root" [item-DOM reporter #{} {}])
+    (compute management)
+    (let [data @tracker
+          component (get-in data [:components ["root"]])]
+      (is (= (:dom component) [:div "hi"]))
+      (is (= (:id component) "root"))
+      (is (= (:version component) 1))
+      (is (= (:depth component) 0))
+      (is (= (:components @tracker {[:k] component})))
+      (is (= (:id->key data {"root" [:k]})))
+      (is (= (:next-id data) 0))
+      (is (= (set (:out-of-date-keys data)) #{[["root"] 0]})))))
 

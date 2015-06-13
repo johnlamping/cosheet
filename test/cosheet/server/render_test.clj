@@ -60,7 +60,7 @@
         (is (= (count groups) 2))
         (is (= (set (map count groups)) #{1 2}))
         (is (= (apply + (map #(count (second (first %))) groups)) 1))))
-    (is (= (tags-DOM [] {}) [:div {:style {:color "#66FFFF"}}]))
+    (is (= (tags-DOM [] {}) [:div {:style {:background-color "#66FFFF"}}]))
     (let [[dom fred fred-tag]
           (let-propagated [fred '("Fred" tag)]
             (expr-let [dom (tags-DOM [fred] {})
@@ -69,7 +69,7 @@
       (is (= dom 
              [:component {:sibling-key fred
                           :definition [item-DOM fred #{fred-tag} {}]
-                          :attributes {:style {:color "#66FFFF"}}}])))
+                          :attributes {:style {:background-color "#66FFFF"}}}])))
     (let [[dom fred fran]
           (let-propagated [fred '("Fred" tag)
                            fran "Fran"]
@@ -78,7 +78,7 @@
           fred-tag (first (current-value (entity/elements fred)))]
       (is (= dom 
              [:div
-              {:style {:color "#66FFFF"}}
+              {:style {:background-color "#66FFFF"}}
               [:component {:sibling-key fred
                            :definition [item-DOM fred #{fred-tag} {}]
                            :attributes
@@ -92,7 +92,7 @@
              )))
     (is (= (let-propagated [fred "Fred"]
              (item-DOM fred #{} {}))
-           [:div "Fred"]))
+           [:div item-styling "Fred"]))
     (let [[dom joe]
           (let-propagated [him joe]
             (expr-let [dom (item-DOM him #{} {})]
@@ -103,14 +103,14 @@
           age-tag (first (current-value (entity/label->elements age 'tag)))
           age-tag-spec (first (current-value (entity/elements age-tag)))]
       (is (= dom
-             [:div
+             [:div item-styling
               [:div {:style {:width "100%" :display "block"}} "Joe"]
               [:div {:style {:width "100%" :display "table"}}
                [:colgroup
                 [:col {:style {:width "30%"}}]
                 [:col {:style {:width "70%"}}]]
                [:div {:style {:display "table-row"}}
-                [:div {:style {:color "#66FFFF"
+                [:div {:style {:background-color "#66FFFF"
                                :display "table-cell"}}]
                 [:div {:style {:display "table-cell"}}
                  [:component {:attributes {:style {:width "100%"
@@ -122,7 +122,7 @@
                               :sibling-key married
                               :definition [item-DOM married #{} {}]}]]]
                [:div {:style {:display "table-row"}}
-                [:component {:attributes {:style {:color "#66FFFF"
+                [:component {:attributes {:style {:background-color "#66FFFF"
                                                   :display "table-cell"}}
                              :sibling-key age-tag
                              :definition [item-DOM age-tag #{age-tag-spec} {}]}]

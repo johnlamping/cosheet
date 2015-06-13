@@ -166,11 +166,17 @@
     0 [:div]
     1 (first doms)
     (into [:div]
-           (map stack-vertical doms))))
+          (map stack-vertical doms))))
 
 ;;; TODO: Make the tag styling fancier, with things like rounded
 ;;; corners and graduated colors.
-(def tag-styling {:style {:color "#66FFFF"}})
+;;; TODO: Mmove styles to CSS.
+(def tag-styling {:style {:background-color "#66FFFF"}})
+
+(def item-styling {:style {:border-style "solid"
+                           :border-width "2px"
+                           :box-sizing "border-box"
+                           :margin "-2px"}})
 
 (defn tag-component
   "Return the component for a tag element."
@@ -238,6 +244,7 @@
             [:div (if (= content :none) "" (str content))]
             (make-component "content" [item-DOM content #{} inherited]))]
       (if (empty? elements)
-          content-dom
-          (expr-let [elements-dom (tagged-items-DOM elements inherited)]
-            (vertical-stack [content-dom elements-dom]))))))
+        (add-attributes content-dom item-styling)
+        (expr-let [elements-dom (tagged-items-DOM elements inherited)]
+          (add-attributes (vertical-stack [content-dom elements-dom])
+                          item-styling))))))

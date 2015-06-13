@@ -56,8 +56,9 @@
     (.log js/console (str response))
     (into-atom-map
      components
-     ;; Turn [:component <id>] into [cosheet.client/component id]
-     (replace-in-struct {:cosheet/component component} response))
+     ;; Turn [:component {attributes} <id>]
+     ;; into [cosheet.client/component {attributes} id]
+     (replace-in-struct {:component component} (vec response)))
     (.log js/console (str "Components: " (keys @components)))
     (ajax-acknowledge response))
   (clear-watch-task)

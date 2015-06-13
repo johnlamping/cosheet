@@ -55,9 +55,9 @@
     (comment (case (:params request)
                {:initialize true}
                (response [[:div {:id "root" :version 1}
-                           "Hello " [:cosheet/component {} :new]
+                           "Hello " [:component {} :new]
                            " world, the time is now"
-                           [:cosheet/component {} :clock]]
+                           [:component {} :clock]]
                           [:span {:id :new :version 1} "new"]])
                {:acknowledge {"root" 1 :new 1}}
                (response [[:div {:id :clock :version 1} "now"]])

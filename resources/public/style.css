@@ -1,0 +1,21 @@
+* {
+    border-style: solid;
+    border-width: 0px;
+    border-color: #CCCCCC;
+    background-color: #transparent;
+}
+ 
+.item {
+    border-style: solid;
+    border-width: 2px;
+    box-sizing: border-box;
+    margin: -2px;
+}
+
+/* TODO: Make the tag styling fancier, with things like rounded
+   corners and graduated colors.
+*/
+.item.tag{
+    background-color:#66FFFF;
+}
+  

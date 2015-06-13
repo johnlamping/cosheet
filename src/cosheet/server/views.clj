@@ -1,6 +1,6 @@
 (ns cosheet.server.views
   (:require
-   [hiccup.page :refer [html5 include-js]]
+   [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
    (cosheet
     [store :refer [new-element-store new-mutable-store]]
@@ -18,8 +18,9 @@
 (defn index-page []
   (html5
     [:head
-      [:title "Hello World"]
-      (include-js "/js/main.js")]
+     [:title "Hello World"]
+     (include-js "/js/main.js")
+     (include-css "style.css")]
     [:body
      [:div#app "Root"]
      [:script "cosheet.client.run();"]]))

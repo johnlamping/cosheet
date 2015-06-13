@@ -170,7 +170,6 @@
 
 ;;; TODO: Make the tag styling fancier, with things like rounded
 ;;; corners and graduated colors.
-;;; TODO: Mmove styles to CSS.
 (def tag-styling {:style {:background-color "#66FFFF"}})
 
 (def item-styling {:style {:border-style "solid"
@@ -192,7 +191,7 @@
    a div if there is more than one."
   [tags inherited]
   (expr-let [tag-components (expr-seq map #(tag-component % inherited) tags)]
-    (add-attributes (vertical-stack tag-components) tag-styling)))
+    (add-attributes (vertical-stack tag-components) {:class "tag"})))
 
 (defn tag-items-pair-DOM
   "Given a list of items and the tags for each, where the tags for each item
@@ -244,7 +243,7 @@
             [:div (if (= content :none) "" (str content))]
             (make-component "content" [item-DOM content #{} inherited]))]
       (if (empty? elements)
-        (add-attributes content-dom item-styling)
+        (add-attributes content-dom {:class "item"})
         (expr-let [elements-dom (tagged-items-DOM elements inherited)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           item-styling))))))

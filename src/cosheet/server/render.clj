@@ -212,8 +212,11 @@
                         inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
+                     
                      {:style {:display "table-cell"}
-                      :class "tag-column"})
+                      :class (if (> (count item-doms) 1)
+                               "tag-column for-multiple-items"
+                               "tag-column")})
      (add-attributes (vertical-stack item-doms true)
                      {:style {:display "table-cell"}
                       :class "item-column"})]))
@@ -226,7 +229,8 @@
              row-doms (expr-seq map #(tag-items-pair-DOM % inherited) rows)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
-          row-doms)))
+          (concat (butlast row-doms)
+                  [(add-attributes (last row-doms) {:class "last-row"})]))))
 
 (defn item-DOM
   "Return a hiccup representation of DOM describing

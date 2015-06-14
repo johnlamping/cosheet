@@ -6,7 +6,7 @@
     border-width: 0px;
     border-color: #CCCCCC;
     box-sizing: border-box;
-    background-color: #transparent;
+    background-color: transparent;
 }
  
 .item {
@@ -14,26 +14,55 @@
 }
 
 .element-table {
-    border-style: solid;
-    border-collapse: collapse;
+    border-spacing: 0;
     margin: 4px;
 }
 
-/* TODO: Make the tag styling fancier, with things like rounded
-   corners and graduated colors. */
 .tag-column {
-    background-color: #66FFFF;
-    border-width: 2px;
+    /*background-color: #66FFFF; */
+    background:
+    linear-gradient(to right,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0)),
+    linear-gradient(to bottom,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0)),
+    linear-gradient(to top,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0)),
+    linear-gradient(to right, #C0F0FF, #C0F0FF);
+    border-width: 2px 0px 0px 2px;
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
     text-align: right;
+    margin: -1px 0px -1px 0px;
     width: 30%;
 }
 
+.tag-column.for-multiple-items {
+    vertical-align: middle;
+}
+
+.last-row > .tag-column {
+    border-bottom-width: 2px;
+}
+
 .item-column {
-    border-width: 2px;
+    border-width: 2px 2px 0px 2px;
     width: 70%;
 }
 
-.vertical-separated {
-    border-width: 2px 0px;
+.last-row > .item-column {
+    border-bottom-width: 2px;
 }
 
+.vertical-separated {
+    border-width: 2px 0px 0px 0px;
+}
+
+.vertical-separated:first-child {
+    border-width: 0px;
+}

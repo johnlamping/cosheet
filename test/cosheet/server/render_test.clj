@@ -113,7 +113,7 @@
                      :class "element-table"                     }
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tag tag-column"}]
+                       :class "tag tag-column for-multiple-items"}]
                 [:div {:style {:display "table-cell"}
                        :class "item-column"}
                  [:component {:attributes {:style {:width "100%"
@@ -126,7 +126,8 @@
                                            :class "vertical-separated"}
                               :sibling-key married
                               :definition [item-DOM married #{} {}]}]]]
-               [:div {:style {:display "table-row"}}
+               [:div {:style {:display "table-row"}
+                      :class "last-row"}
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "tag tag-column"}
                              :sibling-key age-tag

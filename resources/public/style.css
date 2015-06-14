@@ -1,21 +1,39 @@
+/* The general principle for borders is that the container sets a class
+   on a contained div saying what kind of borders it needs. */
+
 * {
     border-style: solid;
     border-width: 0px;
     border-color: #CCCCCC;
+    box-sizing: border-box;
     background-color: #transparent;
 }
  
 .item {
+    padding: 2px;
+}
+
+.element-table {
     border-style: solid;
-    border-width: 2px;
-    box-sizing: border-box;
-    margin: -2px;
+    border-collapse: collapse;
+    margin: 4px;
 }
 
 /* TODO: Make the tag styling fancier, with things like rounded
-   corners and graduated colors.
-*/
-.item.tag{
-    background-color:#66FFFF;
+   corners and graduated colors. */
+.tag-column {
+    background-color: #66FFFF;
+    border-width: 2px;
+    text-align: right;
+    width: 30%;
 }
-  
+
+.item-column {
+    border-width: 2px;
+    width: 70%;
+}
+
+.vertical-separated {
+    border-width: 2px 0px;
+}
+

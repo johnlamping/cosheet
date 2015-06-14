@@ -124,7 +124,12 @@
                     {:style {:display
                              (case display
                                (nil "block" "inline-block") "block"
-                               ("table" "inline-table") "table") }})))
+                               ("table" "inline-table") "table")}})))
+
+(defn vertical-separated
+  "Make a dom have separators between its siblings."
+  [dom]
+  (add-attributes dom {:class "vertical-separated"}))
 
 (def item-DOM)
 
@@ -160,22 +165,17 @@
 
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
-  a vertical stack of the items."
-  [doms]
-  (case (count doms)
-    0 [:div]
-    1 (first doms)
-    (into [:div]
-          (map stack-vertical doms))))
-
-;;; TODO: Make the tag styling fancier, with things like rounded
-;;; corners and graduated colors.
-(def tag-styling {:style {:background-color "#66FFFF"}})
-
-(def item-styling {:style {:border-style "solid"
-                           :border-width "2px"
-                           :box-sizing "border-box"
-                           :margin "-2px"}})
+  a vertical stack of the items. Add a separator between items if specified."
+  ([doms] (vertical-stack doms false))
+  ([doms add-separator]
+   (case (count doms)
+     0 [:div]
+     1 (first doms)
+     (into [:div]
+           (map (if add-separator
+                  (comp vertical-separated stack-vertical)
+                  stack-vertical)
+                doms)))))
 
 (defn tag-component
   "Return the component for a tag element."
@@ -191,7 +191,7 @@
    a div if there is more than one."
   [tags inherited]
   (expr-let [tag-components (expr-seq map #(tag-component % inherited) tags)]
-    (add-attributes (vertical-stack tag-components) {:class "tag"})))
+    (add-attributes (vertical-stack tag-components true) {:class "tag"})))
 
 (defn tag-items-pair-DOM
   "Given a list of items and the tags for each, where the tags for each item
@@ -212,19 +212,20 @@
                         inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
-                     {:style {:display "table-cell"}})
-     (add-attributes (vertical-stack item-doms)
-                     {:style {:display "table-cell"}})]))
+                     {:style {:display "table-cell"}
+                      :class "tag-column"})
+     (add-attributes (vertical-stack item-doms true)
+                     {:style {:display "table-cell"}
+                      :class "item-column"})]))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
+  ;; We use a table as a way of making all the cells of a row the same height.
   [items inherited]
   (expr-let [rows (expr group-by-tag (order-items items))
              row-doms (expr-seq map #(tag-items-pair-DOM % inherited) rows)]
-    (into [:div {:style {:display "table"}}
-           [:colgroup
-            [:col {:style {:width "30%"}}]
-            [:col {:style {:width "70%"}}]]]
+    (into [:div {:class "element-table"
+                 :style {:display "table" :table-layout "fixed"}}]
           row-doms)))
 
 (defn item-DOM
@@ -246,4 +247,4 @@
         (add-attributes content-dom {:class "item"})
         (expr-let [elements-dom (tagged-items-DOM elements inherited)]
           (add-attributes (vertical-stack [content-dom elements-dom])
-                          item-styling))))))
+                          {:class "item"}))))))

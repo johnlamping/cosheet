@@ -214,7 +214,7 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:k]])]
-      (is (= (:dom component) [:div "hi"]))
+      (is (= (:dom component) [:div  {:class "item"} "hi"]))
       (is (= (:id component) "root"))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
@@ -238,7 +238,8 @@
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (reporter/set-value! reporter "ho")
       (compute management)
-      (is (= (get-in @tracker [:components [:k] :dom]) [:div "ho"]))
+      (is (= (get-in @tracker [:components [:k] :dom])
+             [:div  {:class "item"} "ho"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:components [:d] :dom])))
@@ -247,7 +248,7 @@
     (compute management)
     (is (= (into {} (map (fn [[key component]] [key (:dom component)])
                                (get-in @tracker [:components])))
-           {[:k] [:div "hi"]
+           {[:k] [:div  {:class "item"} "hi"]
             [:d] [:div
                   [:component {:sibling-key "s"
                                :definition [item-DOM reporter  #{} {}]
@@ -256,9 +257,9 @@
                                :definition [item-DOM "h" #{} {}]}]
                   [:component {:sibling-key (str "i")
                                :definition [item-DOM "i" #{} {}]}]]
-            [:d "s"] [:div "hi"]
-            [:d "h"] [:div "h"]
-            [:d "i"] [:div "i"]}))
+            [:d "s"] [:div  {:class "item"} "hi"]
+            [:d "h"] [:div  {:class "item"} "h"]
+            [:d "i"] [:div  {:class "item"} "i"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
 
@@ -270,7 +271,7 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components ["root"]])]
-      (is (= (:dom component) [:div "hi"]))
+      (is (= (:dom component) [:div {:class "item"} "hi"]))
       (is (= (:id component) "root"))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))

@@ -135,7 +135,36 @@
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "item-column"}
                              :sibling-key age
-                             :definition [item-DOM age #{age-tag} {}]}]]]]))
-      )))
+                             :definition [item-DOM age #{age-tag} {}]}]]]])))
+    (let [[dom age]
+          (let-propagated [age '(39 ("doubtful" (1 :order))
+                                    ("funny" (2 :order)))]
+            (expr-let [dom (item-DOM age #{} {})]
+              [dom age]))
+          doubtful (first (current-value (entity/label->elements age 1)))
+          funny (first (current-value (entity/label->elements age 2)))]
+      (is (= dom
+             [:div {:class "item"}
+              [:div {:style {:width "100%" :display "block"}} "39"]
+              [:div {:style {:display "table"
+                             :table-layout "fixed"
+                             :width "100%"}
+                     :class "element-table"}
+               [:div {:style {:display "table-row"}
+                      :class "no-tags last-row"}
+                [:div {:style {:display "table-cell"}
+                       :class "tag tag-column for-multiple-items"}]
+                [:div {:class "item-column"
+                       :style {:display "table-cell"}}
+                 [:component {:attributes {:class "vertical-separated"
+                                           :style {:width "100%"
+                                                   :display "block"}}
+                              :sibling-key doubtful
+                              :definition [item-DOM doubtful #{} {}]}]
+                 [:component {:attributes {:class "vertical-separated"
+                                           :style {:width "100%"
+                                                   :display "block"}}
+                              :sibling-key funny
+                              :definition [item-DOM funny #{} {}]}]]]]])))))
 
 

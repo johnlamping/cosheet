@@ -50,9 +50,13 @@
     border-bottom-width: 2px;
 }
 
+.no-tags > .tag-column {
+    width: 20px;
+}
+
 .item-column {
     border-width: 2px 2px 0px 2px;
-    width: 70%;
+    width: auto;
 }
 
 .last-row > .item-column {

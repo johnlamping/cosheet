@@ -70,3 +70,26 @@
 .vertical-separated:first-child {
     border-width: 0px;
 }
+
+.content-text {
+    position: relative; /* To make edit_holder position relative to it */
+}
+
+#edit_holder {
+    width: 100%;
+    background: cornsilk;
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+}
+
+.content-text > #edit_holder {
+    display: block;
+}
+
+#edit_input {
+    width: 100%;
+    z-index: 2;
+}

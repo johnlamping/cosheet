@@ -94,7 +94,7 @@
              )))
     (is (= (let-propagated [fred "Fred"]
              (item-DOM fred #{} {}))
-           [:div {:class "item"} "Fred"]))
+           [:div {:class "content-text item"} "Fred"]))
     (let [[dom joe]
           (let-propagated [him joe]
             (expr-let [dom (item-DOM him #{} {})]
@@ -106,7 +106,9 @@
           age-tag-spec (first (current-value (entity/elements age-tag)))]
       (is (= dom
              [:div {:class "item"}
-              [:div {:style {:width "100%" :display "block"}} "Joe"]
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text"}
+               "Joe"]
               [:div {:style {:width "100%"
                              :display "table"
                              :table-layout "fixed"}
@@ -145,7 +147,9 @@
           funny (first (current-value (entity/label->elements age 2)))]
       (is (= dom
              [:div {:class "item"}
-              [:div {:style {:width "100%" :display "block"}} "39"]
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text"}
+               "39"]
               [:div {:style {:display "table"
                              :table-layout "fixed"
                              :width "100%"}

@@ -15,7 +15,7 @@
     [dom-tracker :refer [new-dom-tracker add-dom
                          process-acknowledgements response-doms]])))
 
-(defn index-page []
+(defn initial-page []
   (html5
     [:head
      [:title "Hello World"]
@@ -23,6 +23,7 @@
      (include-css "style.css")]
     [:body
      [:div#app "Root"]
+     [:div#edit_holder [:input#edit_input]]
      [:script "cosheet.client.run();"]]))
 
 (defn create-tracker

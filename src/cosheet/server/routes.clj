@@ -7,10 +7,10 @@
             [ring.middleware.transit :refer [wrap-transit-response
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
-            [cosheet.server.views :refer [index-page ajax-response]]))
+            [cosheet.server.views :refer [initial-page ajax-response]]))
 
 (defroutes main-routes
-  (GET "/" [] (index-page))
+  (GET "/" [] (initial-page))
   (POST "/ajax-request" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))

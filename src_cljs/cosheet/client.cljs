@@ -1,13 +1,15 @@
 (ns cosheet.client
   (:require [reagent.core :as reagent :refer [atom]]
             [ajax.core :refer [GET POST transit-response-format]]
+            [goog.dom :as gdom]
+            [goog.events :as gevents]
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map]]
             ;; Note: We seem to have to declare everything used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
-            ;; TODO: Test if this is true, bu requiring clojure.set,
+            ;; TODO: Test if this is true, by requiring clojure.set,
             ;; and seeing if that works.
             cosheet.dom-utils
             ))
@@ -67,9 +69,30 @@
 (defn ajax-error-handler [{:keys [status status-text]}]
   (.log js/console (str "ajax-error: " status " " status-text)))
 
+(def edit-field-open-on (clojure.core/atom nil))
+
+(defn open-edit-field [target]
+  (when (and target (not= target @edit-field-open-on))
+    (let [edit_holder (js/document.getElementById "edit_holder")
+          edit_input (js/document.getElementById "edit_input")
+          original_value (gdom/getTextContent target)]
+      (set! (.-value edit_input) original_value)
+      (gdom/appendChild target edit_holder)
+      (.focus edit_input)
+      (.select edit_input)
+      (reset! edit-field-open-on target))))
+
+(defn double-click-handler
+  [event]
+  (let [target (.-target event)]
+    (.log js/console (str "Double click on " (.-id target) "."))
+    ;; TODO: Check to see if it is editable before bringing up editor.
+    (open-edit-field target)))
+
 (defn ^:export run []
-  (reagent/render [component {} "root"]
-                  (js/document.getElementById "app"))
+  (let [app (js/document.getElementById "app")]
+    (reagent/render [component {} "root"] app)
+    (gevents/listen app goog.events.EventType.DBLCLICK double-click-handler))
   (ajax-request {:initialize true}))
 
 ;;; TODO: Get rid of this eventually; It's just something cute.

@@ -247,7 +247,8 @@
     (let [elements (remove excluded elements)
           content-dom
           (if (entity/atom? content)
-            [:div (if (= content :none) "" (str content))]
+            [:div {:class "content-text"}
+             (if (= content :none) "" (str content))]
             (make-component "content" [item-DOM content #{} inherited]))]
       (if (empty? elements)
         (add-attributes content-dom {:class "item"})

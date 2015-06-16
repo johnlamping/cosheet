@@ -3,6 +3,8 @@
             [ajax.core :refer [GET POST transit-response-format]]
             [goog.dom :as gdom]
             [goog.events :as gevents]
+            [goog.events.KeyCodes :as key-codes]
+            [goog.events.KeyHandler :as key-handler]
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map]]
@@ -73,26 +75,71 @@
 
 (defn open-edit-field [target]
   (when (and target (not= target @edit-field-open-on))
-    (let [edit_holder (js/document.getElementById "edit_holder")
-          edit_input (js/document.getElementById "edit_input")
+    (let [edit-holder (js/document.getElementById "edit_holder")
+          edit-input (js/document.getElementById "edit_input")
           original_value (gdom/getTextContent target)]
-      (set! (.-value edit_input) original_value)
-      (gdom/appendChild target edit_holder)
-      (.focus edit_input)
-      (.select edit_input)
+      (set! (.-value edit-input) original_value)
+      (gdom/appendChild target edit-holder)
+      (.focus edit-input)
+      (.select edit-input)
       (reset! edit-field-open-on target))))
+
+(defn close-edit-field
+  "Close the edit field, without storing the value."
+  []
+  (when @edit-field-open-on
+    (let [edit-holder (js/document.getElementById "edit_holder")
+          app (js/document.getElementById "app")]
+      (reset! edit-field-open-on nil)
+      ;; Put it at the end, where it will be invisible, but still findable.
+      (gdom/appendChild app edit-holder))))
+
+(defn store-edit-field
+  []
+  (let [target @edit-field-open-on]
+    (when target
+      (let [edit-input (js/document.getElementById "edit_input")
+            value (.-value edit-input)]
+        (when (not= value (gdom/getTextContent target))
+          ;; TODO: tell the server to do something here.
+          (.log js/console (str "supposed to store " value
+                                " into " (.-id target))))))))
 
 (defn double-click-handler
   [event]
   (let [target (.-target event)]
     (.log js/console (str "Double click on " (.-id target) "."))
     ;; TODO: Check to see if it is editable before bringing up editor.
+    (store-edit-field)
     (open-edit-field target)))
 
+(defn keypress-handler
+  [event]
+  (let [ctrl (.-ctrlKey event)
+        alt (.-altKey event)
+        key-code (.-keyCode event)
+        ]
+    (when ctrl
+      (when (= key-code key-codes/Z)
+        ;; TODO: Put undo functionality here too.
+        (when @edit-field-open-on (close-edit-field))))
+    (when (not (or ctrl alt))
+      (cond
+        (= key-code key-codes/ESC) (close-edit-field)
+        (= key-code key-codes/ENTER) (do (store-edit-field)
+                                         (close-edit-field))))))
+
+;; TODO: Put a click handler that stores the edit field too.
+
 (defn ^:export run []
-  (let [app (js/document.getElementById "app")]
+  (let [app (js/document.getElementById "app")
+        edit-input (js/document.getElementById "edit_input")
+        ;; The key handler makes events consistent across browsers.
+        key-handler (gevents/KeyHandler. edit-input)]
     (reagent/render [component {} "root"] app)
-    (gevents/listen app goog.events.EventType.DBLCLICK double-click-handler))
+    (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
+    (gevents/listen key-handler key-handler/EventType.KEY
+                    keypress-handler))
   (ajax-request {:initialize true}))
 
 ;;; TODO: Get rid of this eventually; It's just something cute.

@@ -52,24 +52,10 @@
     (println "request params" params)
     (when (or (:initialize params) (nil? @dom-tracker))
       (println "initializing")
-      (reset! dom-tracker (create-tracker))
-      (println "component keys" (keys (:components @@dom-tracker))))
-    (comment (case (:params request)
-               {:initialize true}
-               (response [[:div {:id "root" :version 1}
-                           "Hello " [:component {} :new]
-                           " world, the time is now"
-                           [:component {} :clock]]
-                          [:span {:id :new :version 1} "new"]])
-               {:acknowledge {"root" 1 :new 1}}
-               (response [[:div {:id :clock :version 1} "now"]])
-               ({} {:acknowledge {:clock 1}})
-               (response [])
-               (do (println "unknown request" request)
-                   (response []))))
+      (reset! dom-tracker (create-tracker)))
     (println "process acknowledgements" (:acknowledge params))
     (process-acknowledgements @dom-tracker (:acknowledge params))
     (let [doms (response-doms @@dom-tracker 2)]
       (println "doms" doms)
-      (response doms))))
+      (response (if (> (count doms) 0) {:doms doms} {})))))
 

@@ -29,6 +29,7 @@
                    :rules :cljs}]}
   :prep-tasks [["cljx" "once"] "javac" "compile"]
   :source-paths ["src" "target/classes"]
+  :hooks [leiningen.cljsbuild]
   :cljsbuild {
     :builds [{:source-paths ["src_cljs" "target/classes"]
               :compiler {:output-to "resources/public/js/main.js"

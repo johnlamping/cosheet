@@ -1,5 +1,5 @@
 (ns cosheet.client
-  (:require [reagent.core :as reagent :refer [atom]]
+  (:require [reagent.core :as reagent]
             [ajax.core :refer [GET POST transit-response-format]]
             [goog.dom :as gdom]
             [goog.events :as gevents]
@@ -7,7 +7,8 @@
             [goog.events.KeyHandler :as key-handler]
             [cosheet.client-utils :refer
              [component components
-              replace-in-struct into-atom-map]]
+              replace-in-struct into-atom-map
+              add-pending-action]]
             ;; Note: We seem to have to declare everything used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
@@ -16,12 +17,13 @@
             cosheet.dom-utils
             ))
 
-(reset! components {"root" (atom [:div {:id "root" :version 0}])})
+(reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
 (def ajax-handler)
 (def ajax-error-handler)
 
 (defn ajax-request [params]
+  ;; TODO: Check for pending actions.
   (POST "/ajax-request"
         {:params params
          :response-format (transit-response-format)
@@ -29,7 +31,7 @@
          :error-handler ajax-error-handler}))
 
 ;;; A handle to the current running ajax refresh task.
-(def watch-task (clojure.core/atom nil))
+(def watch-task (atom nil))
 
 (defn clear-watch-task
   "Stop any ajax watch task from running."
@@ -46,32 +48,40 @@
                          (js/setInterval #(ajax-request {}) 10000)))))
 
 (defn ajax-acknowledge
-  "Send an ajax request acknowledging recipt of the given response (which
-   should a a vector of doms.
+  "Send an ajax request acknowledging recipt of the given doms.
    The acknowledgement is a map from id to version."
-  [response]
+  [doms]
   (let [params (into {} (map (fn [[tag {:keys [id version]} &rest]]
                                [id version])
-                             response))]
+                             doms))]
     (ajax-request {:acknowledge params})))
 
 (defn ajax-handler [response]
-  (when (not= response [])
+  (when (not= response {})
+    ;; TODO: handle acknowledgements.
     (.log js/console (str response))
-    (into-atom-map
-     components
-     ;; Turn [:component {attributes} <id>]
-     ;; into [cosheet.client/component {attributes} id]
-     (replace-in-struct {:component component} (vec response)))
-    (.log js/console (str "Components: " (keys @components)))
-    (ajax-acknowledge response))
-  (clear-watch-task)
+    (let [doms (:doms response)]
+      (when doms
+        ;; Turn [:component {attributes} <id>]
+        ;; into [cosheet.client/component {attributes} id]
+        (let [doms (replace-in-struct {:component component} (vec doms))]
+          (into-atom-map components doms))
+        (ajax-acknowledge doms)))
+    (clear-watch-task))
   (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (.log js/console (str "ajax-error: " status " " status-text)))
 
-(def edit-field-open-on (clojure.core/atom nil))
+(defn ancestor-id
+  "Return the id of the first ancestor, including the node, with an id."
+  [node]
+  (and node (or (let [id (.-id node)]
+                  (when (and id (not= id ""))
+                    id))
+                (ancestor-id (.-parentNode node)))))
+
+(def edit-field-open-on (atom nil))
 
 (defn open-edit-field [target]
   (when (and target (not= target @edit-field-open-on))
@@ -101,9 +111,9 @@
       (let [edit-input (js/document.getElementById "edit_input")
             value (.-value edit-input)]
         (when (not= value (gdom/getTextContent target))
-          ;; TODO: tell the server to do something here.
+          (add-pending-action [:set-content (ancestor-id target) value])
           (.log js/console (str "supposed to store " value
-                                " into " (.-id target))))))))
+                                " into " (ancestor-id target))))))))
 
 (defn double-click-handler
   [event]
@@ -143,14 +153,14 @@
   (ajax-request {:initialize true}))
 
 ;;; TODO: Get rid of this eventually; It's just something cute.
-(defonce time-updater
-  (js/setInterval
-   #(let [clock (@components :clock)]
-      (when clock
-        (let [now
-              (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
-          (swap! clock (fn [old] (assoc old 2 now))))))
-   1000))
+(comment
+  (defonce time-updater
+    (js/setInterval
+     #(let [clock (@components :clock)]
+        (when clock
+          (let [now
+                (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
+            (swap! clock (fn [old] (assoc old 2 now))))))
+     1000)))
 
-; (js/alert "Hello from ClojureScript!")
 

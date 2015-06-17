@@ -6,6 +6,30 @@
             ; :reload
             ))
 
+(deftest set-difference-test
+  (is (= (set-difference #{1 2} #{2 3}) #{1})))
+
+(deftest replace-in-struct-test
+  (is (= (replace-in-struct {:a 1 :b 2}
+                            {'(3 :a) [{:a '(:d :b)} :c]
+                             4 '([] {} () :a)})
+          {'(3 1) [{1 '(:d 2)} :c]
+           4 '([] {} () 1)})))
+
+(deftest remove-keys-test
+  (is (= (remove-keys {1 2 3 4 5 6} [1 2 3])
+         {5 6})))
+
+(deftest add-keys-test
+  (is (= (add-keys {1 2} [3 5] inc)
+         {1 2 3 4 5 6})))
+
+(deftest subcomponent-ids-test
+  (is (= (set (subcomponent-ids [:div
+                                 [component {} :message]
+                                 [component {} :clock]]))
+         #{:message :clock})))
+
 (deftest component-test
   (reset! components {:a1 (atom [:div
                                  {:id :a1
@@ -22,22 +46,6 @@
            :width 5
            :class "c b"}
           1])))
-
-(deftest set-difference-test
-  (is (= (set-difference #{1 2} #{2 3}) #{1})))
-
-(deftest replace-in-struct-test
-  (is (= (replace-in-struct {:a 1 :b 2}
-                            {'(3 :a) [{:a '(:d :b)} :c]
-                             4 '([] {} () :a)})
-          {'(3 1) [{1 '(:d 2)} :c]
-           4 '([] {} () 1)})))
-
-(deftest subcomponent-ids-test
-  (is (= (set (subcomponent-ids [:div
-                                 [component {} :message]
-                                 [component {} :clock]]))
-         #{:message :clock})))
 
 (deftest into-atom-map-test
   (let [a1 (atom [:div {:id :a1 :version 1} 1])
@@ -76,3 +84,31 @@
     (= @(@am :tick) [:div {:id :message :version 2} "tock"]))
   )
 
+(deftest update-add-action-test
+  (is (= (update-add-action {:next-number 2 :waiting-actions {0 1 1 2}} :doit)
+         {:next-number 3 :waiting-actions {0 1 1 2 2 :doit}})))
+
+(deftest add-pending-action-test
+  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 1 2}})
+  (add-pending-action :doit)
+  (is (= @pending-actions {:next-number 3 :waiting-actions {0 1 1 2 2 :doit}})))
+
+(deftest update-actions-acknowledged-test
+  (is (= (update-actions-acknowledged
+          {:next-number 2 :waiting-actions {0 1 2 3 4 5}} [0 2 9])
+         {:next-number 2 :waiting-actions {4 5}})))
+
+(deftest process-acknowledged-actions-test
+  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 2 3 4 5}})
+  (process-acknowledged-actions {})
+  (is (= @pending-actions {:next-number 2 :waiting-actions {0 1 2 3 4 5}}))
+  (process-acknowledged-actions {:acknowledge [0 2 9]})
+    (is (= @pending-actions {:next-number 2 :waiting-actions {4 5}})))
+
+(deftest include-pending-actions-test
+  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 1 2}})
+  (is (= (include-pending-actions {1 2})
+         {1 2 :actions {0 1 1 2}}))
+  (reset! pending-actions {:next-number 2 :waiting-actions {}})
+  (is (= (include-pending-actions {1 2} )
+         {1 2})))

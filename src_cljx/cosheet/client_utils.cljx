@@ -1,15 +1,8 @@
 (ns cosheet.client-utils
-  (:require #+cljs [reagent.core :as reagent :refer [atom]]
+  (:require #+cljs [reagent.core :as special-atom]
+            #+clj [clojure.core :as special-atom]
             [cosheet.dom-utils :refer [into-attributes]])
   )
-
-(def components (clojure.core/atom {}))
-
-(defn component [attributes name]
-  (let [[tag dom-attributes & rest] @(@components name)]
-    (into
-     [tag (into-attributes (dissoc dom-attributes :version) attributes)]
-     rest)))
 
 (defn set-difference
   "Implement set difference ourselves, because I can't figure out how to
@@ -31,6 +24,27 @@
                     :else struct)))]
     (r struct)))
 
+(defn remove-keys
+  "Remove the given ids from the map."
+  [map keys]
+  (apply dissoc map keys))
+
+(defn add-keys
+  "Add entries for each of the keys to the map,
+   creating the values by calling the creator with each key."
+  [map ids creator]
+  (reduce (fn [map id] (assoc map id (creator id)))
+          map ids))
+
+;;; A map from component id to atoms holding the current dom of that component.
+(def components (atom {}))
+
+(defn component [extra-attributes name]
+  (let [[tag dom-attributes & rest] @(@components name)]
+    (into
+     [tag (into-attributes (dissoc dom-attributes :version) extra-attributes)]
+     rest)))
+
 (defn subcomponent-ids
   "Return a seq of the ids of the subcomponents of the dom."
   [dom]
@@ -41,18 +55,6 @@
                 (into subcomponents (subcomponent-ids dom)))
               [] dom))
     []))
-
-(defn remove-ids
-  "Remove the given ids from the map."
-  [map ids]
-  (reduce (fn [map id] (dissoc map id))
-          map ids))
-
-(defn add-ids
-  "Add atoms for the given ids to the map."
-  [map ids]
-  (reduce (fn [map id] (assoc map id (atom [:div {:id id :version -1}])))
-          map ids))
 
 (defn into-atom-map
   "Incorporate an update of new doms into an atom containing a map of atoms,
@@ -72,13 +74,50 @@
                       subcomponents (set (subcomponent-ids dom))]
                   (do (reset! (amap id) dom)
                       (-> amap
-                          (remove-ids
+                          (remove-keys
                            (set-difference old-subcomponents
                                            subcomponents))
-                          (add-ids
+                          (add-keys
                            (set-difference subcomponents
-                                           old-subcomponents)))))
+                                           old-subcomponents)
+                           #(special-atom/atom [:div {:id % :version -1}])))))
                 amap))
             amap)))
       amap update))))
 
+(def pending-actions
+  (atom {;;; The number of the next action we will tell the server about.
+         :next-number 0
+         ;;; A map from number to action.
+         :waiting-actions {}}))
+
+(defn update-add-action
+  "Add an action to inform the server about."
+  [pending action]
+  (-> pending
+      (assoc-in [:waiting-actions (:next-number pending)] action)
+      (update-in [:next-number] inc)))
+
+(defn add-pending-action
+  "Add the action to the pending actions."
+  [action]
+  (swap! pending-actions update-add-action action))
+
+(defn update-actions-acknowledged
+  "Remove actions that are in the list of acknowledged ids."
+  [pending acknowledged]
+  (update-in pending [:waiting-actions] #(remove-keys % acknowledged)))
+
+(defn process-acknowledged-actions
+  "Remove actions that are in the list of acknowledged ids."
+  [response]
+  (let [acknowledged (:acknowledge response)]
+    (when acknowledged
+      (swap! pending-actions update-actions-acknowledged acknowledged))))
+
+(defn include-pending-actions
+  "Given a set of parameters to send to the server,
+   include any pending actions."
+  [params]
+  (let [waiting (:waiting-actions @pending-actions)]
+    (if (= waiting {}) params (into params {:actions waiting}))))

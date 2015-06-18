@@ -8,7 +8,8 @@
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map
-              add-pending-action]]
+              add-pending-action process-response-for-pending
+              take-pending-params]]
             ;; Note: We seem to have to declare everything used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
@@ -22,55 +23,52 @@
 (def ajax-handler)
 (def ajax-error-handler)
 
+(def ajax-request-pending (atom false))
+
 (defn ajax-request [params]
-  ;; TODO: Check for pending actions.
   (POST "/ajax-request"
         {:params params
          :response-format (transit-response-format)
          :handler ajax-handler
-         :error-handler ajax-error-handler}))
+         :error-handler ajax-error-handler})
+  (reset! ajax-request-pending true))
 
 ;;; A handle to the current running ajax refresh task.
 (def watch-task (atom nil))
 
-(defn clear-watch-task
-  "Stop any ajax watch task from running."
-  []
-  (swap! watch-task (fn [handle]
-                      (when handle (js/clearInterval handle))
-                      nil)))
-
 (defn start-watch-task
-  "Make sure the ajax watch task is running"
+  "Set the ajax watch task to run in 10 seconds."
   []
-  (swap! watch-task (fn [handle]
-                     (or handle
-                         (js/setInterval #(ajax-request {}) 10000)))))
+  (swap! watch-task
+         (fn [handle]
+           (when handle (js/clearInterval handle))
+           (js/setInterval #(ajax-request (take-pending-params)) 10000))))
 
-(defn ajax-acknowledge
-  "Send an ajax request acknowledging recipt of the given doms.
-   The acknowledgement is a map from id to version."
-  [doms]
-  (let [params (into {} (map (fn [[tag {:keys [id version]} &rest]]
-                               [id version])
-                             doms))]
-    (ajax-request {:acknowledge params})))
+(defn ajax-if-pending
+  "Send an ajax request if we have pending information to send the server
+   and there isn't a request already in flight."
+  []
+  (when (not @ajax-request-pending)
+    (let [params (take-pending-params)]
+      (when (not= params {})
+        (ajax-request params)))))
 
 (defn ajax-handler [response]
+  (reset! ajax-request-pending false)
   (when (not= response {})
-    ;; TODO: handle acknowledgements.
     (.log js/console (str response))
     (let [doms (:doms response)]
       (when doms
-        ;; Turn [:component {attributes} <id>]
-        ;; into [cosheet.client/component {attributes} id]
-        (let [doms (replace-in-struct {:component component} (vec doms))]
-          (into-atom-map components doms))
-        (ajax-acknowledge doms)))
-    (clear-watch-task))
+        (into-atom-map components
+                       ;; Turn [:component {attributes} <id>]
+                       ;; into [cosheet.client/component {attributes} id]
+                       (replace-in-struct {:component component} (vec doms)))))
+    (process-response-for-pending response))
+  (ajax-if-pending)
   (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
+  (reset! ajax-request-pending false)
   (.log js/console (str "ajax-error: " status " " status-text)))
 
 (defn ancestor-id
@@ -109,11 +107,14 @@
   (let [target @edit-field-open-on]
     (when target
       (let [edit-input (js/document.getElementById "edit_input")
-            value (.-value edit-input)]
-        (when (not= value (gdom/getTextContent target))
-          (add-pending-action [:set-content (ancestor-id target) value])
-          (.log js/console (str "supposed to store " value
-                                " into " (ancestor-id target))))))))
+            value (.-value edit-input)
+            old-value (gdom/getTextContent target)]
+        (when (not= value old-value)
+          (.log js/console (str "storing " value
+                                " into " (ancestor-id target)))
+          (add-pending-action
+           [:set-content (ancestor-id target) old-value value])
+          (ajax-if-pending))))))
 
 (defn double-click-handler
   [event]

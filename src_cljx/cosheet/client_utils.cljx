@@ -10,6 +10,18 @@
   [s1 s2]
   (set (remove s2 s1)))
 
+;;; Copied from utils.clj, so we don't have to import the whole thing yet.
+;;; TODO: Try moving utils.clj to src_cljx.
+(defn swap-returning-both!
+  "Swap, and return a vector of the old and new values"
+  [cell f & args]
+  (loop []
+    (let [old @cell
+          new (apply f old args)]
+      (if (compare-and-set! cell old new)
+        [old new]
+        (recur)))))
+
 (defn replace-in-struct
   "Replace items in the structure that match keys in the map
    with the result in the map"
@@ -35,6 +47,9 @@
   [map ids creator]
   (reduce (fn [map id] (assoc map id (creator id)))
           map ids))
+
+;;; The next code deals with our copy of the hiccup style dom that is
+;;; fed to reagent.
 
 ;;; A map from component id to atoms holding the current dom of that component.
 (def components (atom {}))
@@ -85,39 +100,69 @@
             amap)))
       amap update))))
 
-(def pending-actions
-  (atom {;;; The number of the next action we will tell the server about.
-         :next-number 0
-         ;;; A map from number to action.
-         :waiting-actions {}}))
+;;; The next code deals with the information we need to send to the server.
+
+(defn new-pending-for-server
+  "Make the information that holds the information that needs to be sent
+   the server, or that has not been acknowledged yet by the server."
+  []
+  (atom {;; The number of the next action we will tell the server about.
+         :next-action-number 0
+         ;; A map from number to action.
+         :actions {}
+         ;; The ids and versions of doms that we have received from
+         ;; the server and not acknowledged to it.
+         :acknowledgments {}}))
+
+(def pending-for-server (new-pending-for-server))
 
 (defn update-add-action
   "Add an action to inform the server about."
   [pending action]
   (-> pending
-      (assoc-in [:waiting-actions (:next-number pending)] action)
-      (update-in [:next-number] inc)))
+      (assoc-in [:actions (:next-action-number pending)] action)
+      (update-in [:next-action-number] inc)))
+
+(defn update-remove-actions-acknowledged
+  "Remove actions that are in the list of acknowledged ids."
+  [pending acknowledged]
+  (update-in pending [:actions] #(remove-keys % acknowledged)))
+
+(defn update-add-dom-acknowledgments
+  "Add dom id -> version pairs that we need to acknowledge to the server"
+  [pending doms]
+  (update-in pending [:acknowledgments]
+             #(into % (map (fn [[tag {:keys [id version]} &rest]]
+                             [id version])
+                           doms))))
+
+(defn update-for-response
+  "Add the need to acknowledge doms we received, and
+   remove outgoing actions that were acknowledged."
+  [pending response]
+  (let [{:keys [acknowledge doms]} response]
+    (-> pending
+        (update-add-dom-acknowledgments doms)
+        (update-remove-actions-acknowledged acknowledge))))
 
 (defn add-pending-action
   "Add the action to the pending actions."
   [action]
-  (swap! pending-actions update-add-action action))
+  (swap! pending-for-server update-add-action action))
 
-(defn update-actions-acknowledged
-  "Remove actions that are in the list of acknowledged ids."
-  [pending acknowledged]
-  (update-in pending [:waiting-actions] #(remove-keys % acknowledged)))
-
-(defn process-acknowledged-actions
-  "Remove actions that are in the list of acknowledged ids."
+(defn process-response-for-pending
+  "Do the processing for a response."
   [response]
-  (let [acknowledged (:acknowledge response)]
-    (when acknowledged
-      (swap! pending-actions update-actions-acknowledged acknowledged))))
+  (swap! pending-for-server update-for-response response))
 
-(defn include-pending-actions
-  "Given a set of parameters to send to the server,
-   include any pending actions."
-  [params]
-  (let [waiting (:waiting-actions @pending-actions)]
-    (if (= waiting {}) params (into params {:actions waiting}))))
+(defn take-pending-params
+  "Return any pending information for the server, and for information
+   that will not be acknowledged by the server, remove it from the pending
+   information."
+  []
+  (let [[pending _] (swap-returning-both! pending-for-server
+                                          #(assoc % :acknowledgments {}))
+        {:keys [actions acknowledgments]} pending]
+    (cond-> {}
+      (not= actions {}) (into {:actions actions})
+      (not= acknowledgments {}) (into {:acknowledge acknowledgments}))))

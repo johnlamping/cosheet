@@ -85,30 +85,62 @@
   )
 
 (deftest update-add-action-test
-  (is (= (update-add-action {:next-number 2 :waiting-actions {0 1 1 2}} :doit)
-         {:next-number 3 :waiting-actions {0 1 1 2 2 :doit}})))
+  (is (= (update-add-action {:next-action-number 2 :actions {0 1 1 2}} :doit)
+         {:next-action-number 3 :actions {0 1 1 2 2 :doit}})))
+
+(deftest update-remove-actions-acknowledged-test
+  (is (= (update-remove-actions-acknowledged
+          {:next-action-number 2 :actions {0 1 2 3 4 5}} [0 2 9])
+         {:next-action-number 2 :actions {4 5}})))
+
+(deftest update-add-dom-acknowledgments-test
+  (is (= (update-add-dom-acknowledgments {:acknowledgments {1 2}}
+                                         [[:div {:id 3 :version 4} "hi"]
+                                          [:div {:id 5 :version 6}]])
+         {:acknowledgments {1 2 3 4 5 6}})))
+
+(deftest update-for-response-test
+  (is (= (update-for-response {:next-action-number 2
+                               :actions {0 1 2 3 4 5}
+                               :acknowledgments {1 2}}
+                              {:doms [[:div {:id 3 :version 4} "hi"]
+                                      [:div {:id 5 :version 6}]]
+                               :acknowledge [0 2 9]})
+         {:next-action-number 2
+          :actions {4 5}
+          :acknowledgments {1 2 3 4 5 6}})))
 
 (deftest add-pending-action-test
-  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 1 2}})
+  (reset! pending-for-server {:next-action-number 2 :actions {0 1 1 2}})
   (add-pending-action :doit)
-  (is (= @pending-actions {:next-number 3 :waiting-actions {0 1 1 2 2 :doit}})))
+  (is (= @pending-for-server
+         {:next-action-number 3 :actions {0 1 1 2 2 :doit}})))
 
-(deftest update-actions-acknowledged-test
-  (is (= (update-actions-acknowledged
-          {:next-number 2 :waiting-actions {0 1 2 3 4 5}} [0 2 9])
-         {:next-number 2 :waiting-actions {4 5}})))
+(deftest process-response-for-pending-test
+  (reset! pending-for-server {:next-action-number 2
+                              :actions {0 1 2 3 4 5}
+                              :acknowledgments {1 2}})
+  (process-response-for-pending {:doms [[:div {:id 3 :version 4} "hi"]
+                                        [:div {:id 5 :version 6}]]
+                                 :acknowledge [0 2 9]})
+  (is (= @pending-for-server
+         {:next-action-number 2
+          :actions {4 5}
+          :acknowledgments {1 2 3 4 5 6}})))
 
-(deftest process-acknowledged-actions-test
-  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 2 3 4 5}})
-  (process-acknowledged-actions {})
-  (is (= @pending-actions {:next-number 2 :waiting-actions {0 1 2 3 4 5}}))
-  (process-acknowledged-actions {:acknowledge [0 2 9]})
-    (is (= @pending-actions {:next-number 2 :waiting-actions {4 5}})))
 
-(deftest include-pending-actions-test
-  (reset! pending-actions {:next-number 2 :waiting-actions {0 1 1 2}})
-  (is (= (include-pending-actions {1 2})
-         {1 2 :actions {0 1 1 2}}))
-  (reset! pending-actions {:next-number 2 :waiting-actions {}})
-  (is (= (include-pending-actions {1 2} )
-         {1 2})))
+(deftest take-pending-params-test
+  (reset! pending-for-server
+          {:next-action-number 2 :actions {} :acknowledgments {}})
+  (is (= (take-pending-params)
+         {}))
+  (reset! pending-for-server {:next-action-number 2
+                              :actions {0 1 2 3 4 5}
+                              :acknowledgments {1 2}})
+  (is (= (take-pending-params)
+         {:actions {0 1 2 3 4 5}
+          :acknowledge {1 2}}))
+  (is (= @pending-for-server
+         {:next-action-number 2
+          :actions {0 1 2 3 4 5}
+          :acknowledgments {}})))

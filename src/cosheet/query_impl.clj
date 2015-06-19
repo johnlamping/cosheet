@@ -212,11 +212,12 @@
              reference (entity/label->content var :reference)]
     (let [value (env name)]
       (if (nil? value)
-        ;; TODO: Shouldn't this check the condition to make sure the
-        ;; variable really matches?
-        (expr-let [candidate-ids (store/candidate-matching-ids store nil)]
-          (map #(assoc env name (entity/description->entity % store))
-               candidate-ids))
+        (expr-let [candidate-ids (store/candidate-matching-ids store nil)
+                   matches (expr-seq
+                            map #(variable-matches
+                                  var env (entity/description->entity % store))
+                            candidate-ids)]
+          (seq (distinct (apply concat matches))))
         (if reference
           [env]
           (expr-let [matches (query-matches value env store)]
@@ -290,13 +291,13 @@
    (if (entity/atom? query)
      (assert false "queries may not be atoms.")
      (expr-let [content (entity/content query)]
-               (if (keyword? content)
-                 (case content
-                   :variable (variable-matches-in-store query env store)
-                   :exists (exists-matches-in-store query env store)
-                   :forall (forall-matches-in-store query env store)
-                   :and (and-matches-in-store query env store))
-                 (item-matches-in-store query env store))))))
+       (if (keyword? content)
+         (case content
+           :variable (variable-matches-in-store query env store)
+           :exists (exists-matches-in-store query env store)
+           :forall (forall-matches-in-store query env store)
+           :and (and-matches-in-store query env store))
+         (item-matches-in-store query env store))))))
 
 (defmethod query-matches-m true [query env store]
   (query-matches query env store))

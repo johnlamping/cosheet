@@ -306,6 +306,11 @@
                                                   :key [id]
                                                   :id id})))
 
+(defn id->key
+  "Return the hiccup key for the client id"
+  [tracker id]
+  (get-in @tracker [:id->key id]))
+
 (defn new-dom-tracker
   "Return a new dom tracker object"
   [management]

@@ -263,6 +263,16 @@
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
 
+(deftest id->key-test
+  (let [management (new-management)
+        tracker (new-dom-tracker management)
+        c-map {:key [:k]
+               :id "root"
+               :definition [item-DOM 1 #{} {}]}]
+    (swap-and-act tracker #(update-set-component % c-map))
+    (is (= (id->key tracker "root")
+           [:k]))))
+
 (deftest add-dom-test
   (let [management (new-management)
         tracker (new-dom-tracker management)

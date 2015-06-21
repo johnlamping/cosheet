@@ -301,10 +301,10 @@
 
 (defn add-dom
   "Add dom with the given client id and definition to the tracker."
-  [tracker id definition]
+  [tracker client-id key definition]
   (swap-and-act tracker #(update-set-component % {:definition definition
-                                                  :key [id]
-                                                  :id id})))
+                                                  :key key
+                                                  :id client-id})))
 
 (defn id->key
   "Return the hiccup key for the client id"

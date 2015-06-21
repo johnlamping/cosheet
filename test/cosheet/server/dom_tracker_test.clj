@@ -277,16 +277,16 @@
   (let [management (new-management)
         tracker (new-dom-tracker management)
         reporter (new-reporter :value "hi")]
-    (add-dom tracker "root" [item-DOM reporter #{} {}])
+    (add-dom tracker "root" [:root] [item-DOM reporter #{} {}])
     (compute management)
     (let [data @tracker
-          component (get-in data [:components ["root"]])]
+          component (get-in data [:components [:root]])]
       (is (= (:dom component) [:div {:class "content-text item"} "hi"]))
       (is (= (:id component) "root"))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
-      (is (= (:components @tracker {[:k] component})))
-      (is (= (:id->key data {"root" [:k]})))
+      (is (= (:components @tracker) {[:root] component}))
+      (is (= (:id->key data) {"root" [:root]}))
       (is (= (:next-id data) 0))
-      (is (= (set (:out-of-date-keys data)) #{[["root"] 0]})))))
+      (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
 

@@ -28,11 +28,7 @@
     (println "from " from "  to " to )
     (when (and (vector? key) (satisfies? StoredEntity item))
       ;; TODO: check that the current value is what the user expected.
-      (println "updating" )
-      (println "right store " (= store (:store item)))
-      (println "store " store)
-      (update-content! store (:item-id item) to)
-      (println "new content " (content item)))))
+      (update-content! store (:item-id item) to))))
 
 (defn do-action
   [store dom-tracker action]

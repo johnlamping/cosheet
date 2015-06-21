@@ -398,7 +398,7 @@
                         [d pos])
             requests (into {} (for [[d pos] arguments]
                                 [[d pos] (request (indexer d pos)m)]))]
-        (compute m)
+        (compute m 1000000)
         (check requests (answers arguments))
         (doseq [i (range trials)]
           (when (= (mod i 1000) 0)
@@ -407,7 +407,7 @@
             (reporter/set-value! (base (mod (* i j) width))
                                  (mod (* j j) width))
             (when (zero? (mod j 17))
-              (future (compute m))))
+              (future (compute m (mod i 34)))))
           (compute m)
           (check requests  (answers arguments)))))))
 

@@ -83,6 +83,17 @@
     (when (not (finished-all-tasks? task-queue))
       (recur))))
 
+(defn run-some-pending-tasks
+  "Execute tasks in the queue, in priority order, until there are no
+  more tasks, or at least max-tasks have been done."
+  [task-queue max-tasks]
+  (loop [num-done 0]
+    (when (< num-done max-tasks)
+      (if (run-pending-task task-queue)
+        (recur (+ num-done 1))
+        (when (not (finished-all-tasks? task-queue))
+          (recur num-done))))))
+
 (defn wait-until-finished [task-queue]
   (loop []
     (if (not (finished-all-tasks? task-queue))

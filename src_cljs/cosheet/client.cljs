@@ -42,7 +42,7 @@
   (swap! watch-task
          (fn [handle]
            (when handle (js/clearInterval handle))
-           (js/setInterval #(ajax-request (take-pending-params)) 10000))))
+           (js/setInterval #(ajax-request (take-pending-params)) 60000))))
 
 (defn ajax-if-pending
   "Send an ajax request if we have pending information to send the server
@@ -64,7 +64,9 @@
                        ;; into [cosheet.client/component {attributes} id]
                        (replace-in-struct {:component component} (vec doms)))))
     (process-response-for-pending response))
-  (ajax-if-pending)
+  (if (:more response)
+    (ajax-request (take-pending-params))
+    (ajax-if-pending))
   (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]

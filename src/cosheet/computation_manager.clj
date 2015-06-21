@@ -337,9 +337,12 @@
   x)
 
 (defn compute
-  "Do all pending computations."
-  [management]
-  (run-all-pending-tasks (:queue management)))
+  "Do all pending computations, or if the second argument is provided,
+   all or that many, which ever comes first."
+  ([management]
+   (run-all-pending-tasks (:queue management)))
+  ([management max-tasks]
+   (run-some-pending-tasks (:queue management) max-tasks)))
 
 (defn computation-value
   "Given a possible reporter, compute its value and return it."

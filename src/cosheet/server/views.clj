@@ -54,36 +54,34 @@
                                                     (true :reference))
                                         (current-store store))))
         root-item (description->entity (:item-id immutable-root-item)
-                                       mutable-store)
+                                        mutable-store)
         definition [item-DOM root-item #{} {}]
         tracker (new-dom-tracker management)]
     (add-dom tracker "root" definition)
     tracker))
 
-;;; TODO: this needs to be separate for each session.
+;;; TODO: this needs to be separate for each web page.
 (def dom-tracker (atom nil))
 
 (defn ajax-response [request]
-  (let [params (:params request)]
+  (let [params (:params request)
+        {:keys [actions acknowledge initialize]} params
+        must-initialize (or initialize (nil? @dom-tracker))]
     (println "request params" params)
-    (when (or (:initialize params) (nil? @dom-tracker))
+    (when must-initialize
       (println "initializing")
-      (reset! dom-tracker (create-tracker store)))
-    (println "process acknowledgements" (:acknowledge params))
-    (process-acknowledgements @dom-tracker (:acknowledge params))
-    (let [actions (:actions params)]
-      (when actions
-        (do-actions store @dom-tracker actions)
-        ;; TODO: rather than compute everything, wait a little while,
-        ;; then take whatever we have.
-        (compute management))
-      ;; Note: We must get the doms after doing the actions, we can
-      ;; immediately show the response to the actions.
-      (let [doms (response-doms @@dom-tracker 2)
-            answer (cond-> {}
-                     (> (count doms) 0) (assoc :doms doms)
-                     (> (count actions) 0) (assoc :acknowledge
-                                                  (vec (keys actions))))]
-        (println "response" answer)
-        (response answer)))))
-
+      (reset! dom-tracker (create-tracker store))
+      (compute management 100))
+    (println "process acknowledgements" acknowledge)
+    (process-acknowledgements @dom-tracker acknowledge)    
+    (when actions
+      (do-actions store @dom-tracker actions)
+      (compute management 100))
+    ;; Note: We must get the doms after doing the actions, so we can
+    ;; immediately show the response to the actions.
+    (let [doms (response-doms @@dom-tracker 10)
+          answer (cond-> {}
+                   (> (count doms) 0) (assoc :doms doms)
+                   actions (assoc :acknowledge (vec (keys actions))))]
+      (println "response" answer)
+      (response answer))))

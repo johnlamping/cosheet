@@ -60,44 +60,49 @@
         (is (= (count groups) 2))
         (is (= (set (map count groups)) #{1 2}))
         (is (= (apply + (map #(count (second (first %))) groups)) 1))))
-    (is (= (tags-DOM [] {}) [:div {:class "tag"}]))
+    (is (= (tags-DOM [] [:k] {}) [:div {:class "tag"}]))
     (let [[dom fred fred-tag]
           (let-propagated [fred '("Fred" tag)]
-            (expr-let [dom (tags-DOM [fred] {})
+            (expr-let [dom (tags-DOM [fred] [:k] {:depth 0})
                        fred-elements (entity/elements fred)]
               [dom fred (first fred-elements)]))]
       (is (= dom 
-             [:component {:sibling-key fred
-                          :definition [item-DOM fred #{fred-tag} {}]
+             [:component {:key [fred :k]
+                          :definition [item-DOM
+                                       fred [fred :k] #{fred-tag} {:depth 0}]
                           :attributes {:class "tag"}}])))
     (let [[dom fred fran]
           (let-propagated [fred '("Fred" tag)
                            fran "Fran"]
-            (expr-let [dom (tags-DOM [fred fran] {})]
+            (expr-let [dom (tags-DOM [fred fran] [:k] {:depth 1})]
               [dom fred fran]))
           fred-tag (first (current-value (entity/elements fred)))]
       (is (= dom 
              [:div
               {:class "tag"}
-              [:component {:sibling-key fred
-                           :definition [item-DOM fred #{fred-tag} {}]
+              [:component {:key [fred :k]
+                           :definition [item-DOM
+                                        fred [fred :k] #{fred-tag} {:depth 1}]
                            :attributes
                            {:style {:display "block"
                                     :width "100%"}
                             :class "vertical-separated"}}]
-              [:component {:sibling-key fran
-                           :definition [item-DOM fran #{} {}]
+              [:component {:key [fran :k]
+                           :definition [item-DOM fran [fran :k] #{} {:depth 1}]
                            :attributes
                            {:style  {:display "block"
                                      :width "100%"}
                             :class "vertical-separated"}}]]
              )))
-    (is (= (let-propagated [fred "Fred"]
-             (item-DOM fred #{} {}))
-           [:div {:class "content-text item"} "Fred"]))
+    (let [[dom fred]
+          (let-propagated [fred "Fred"]
+            (expr-let [dom (item-DOM fred [fred] #{} {:depth 0})]
+              [dom fred]))]
+      (is (= dom
+             [:div {:class "content-text item" :key [fred]} "Fred"])))
     (let [[dom joe]
           (let-propagated [him joe]
-            (expr-let [dom (item-DOM him #{} {})]
+            (expr-let [dom (item-DOM him [him] #{} {:depth 0})]
               [dom him]))
           male (first (current-value (entity/label->elements joe 1)))
           married (first (current-value (entity/label->elements joe 2)))
@@ -105,7 +110,7 @@
           age-tag (first (current-value (entity/label->elements age 'tag)))
           age-tag-spec (first (current-value (entity/elements age-tag)))]
       (is (= dom
-             [:div {:class "item"}
+             [:div {:class "item" :key [joe]}
               [:div {:style {:width "100%" :display "block"}
                      :class "content-text"}
                "Joe"]
@@ -121,32 +126,39 @@
                  [:component {:attributes {:style {:width "100%"
                                                    :display "block"}
                                            :class "vertical-separated"}
-                              :sibling-key male
-                              :definition [item-DOM male #{} {}]}]
+                              :key [male joe]
+                              :definition [item-DOM
+                                           male [male joe] #{} {:depth 1}]}]
                  [:component {:attributes {:style {:width "100%"
                                                    :display "block"}
                                            :class "vertical-separated"}
-                              :sibling-key married
-                              :definition [item-DOM married #{} {}]}]]]
+                              :key [married joe]
+                              :definition [item-DOM
+                                           married [married joe]
+                                           #{} {:depth 1}]}]]]
                [:div {:style {:display "table-row"}
                       :class "last-row"}
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "tag tag-column"}
-                             :sibling-key age-tag
-                             :definition [item-DOM age-tag #{age-tag-spec} {}]}]
+                             :key [age-tag joe]
+                             :definition [item-DOM
+                                          age-tag [age-tag joe]
+                                          #{age-tag-spec} {:depth 1}]}]
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "item-column"}
-                             :sibling-key age
-                             :definition [item-DOM age #{age-tag} {}]}]]]])))
+                             :key [age joe]
+                             :definition [item-DOM
+                                          age [age joe]
+                                          #{age-tag} {:depth 1}]}]]]])))    
     (let [[dom age]
           (let-propagated [age '(39 ("doubtful" (1 :order))
                                     ("funny" (2 :order)))]
-            (expr-let [dom (item-DOM age #{} {})]
+            (expr-let [dom (item-DOM age [age] #{} {:depth 0})]
               [dom age]))
           doubtful (first (current-value (entity/label->elements age 1)))
           funny (first (current-value (entity/label->elements age 2)))]
       (is (= dom
-             [:div {:class "item"}
+             [:div {:class "item" :key [age]}
               [:div {:style {:width "100%" :display "block"}
                      :class "content-text"}
                "39"]
@@ -163,12 +175,16 @@
                  [:component {:attributes {:class "vertical-separated"
                                            :style {:width "100%"
                                                    :display "block"}}
-                              :sibling-key doubtful
-                              :definition [item-DOM doubtful #{} {}]}]
+                              :key [doubtful age]
+                              :definition [item-DOM
+                                           doubtful [doubtful age]
+                                           #{} {:depth 1}]}]
                  [:component {:attributes {:class "vertical-separated"
                                            :style {:width "100%"
                                                    :display "block"}}
-                              :sibling-key funny
-                              :definition [item-DOM funny #{} {}]}]]]]])))))
+                              :key [funny age]
+                              :definition [item-DOM
+                                           funny [funny age]
+                                           #{} {:depth 1}]}]]]]])))))
 
 

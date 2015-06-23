@@ -10,7 +10,7 @@
 
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
-;;; needed.
+;;; needed
 
 ;;; The key here is that the identity of a dom component is
 ;;; determined by its containing dom, not by the definition that
@@ -55,9 +55,6 @@
 ;;;                                the client gets the rest of the dom.>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
-;;;             :id  The id of this component in the client. Unlike
-;;;                  the key, it must be a string that is allowed as a
-;;;                  DOM id.
 ;;;        :version  An version number for client coordination. It
 ;;;                  increases each time the dom or attributes change.
 
@@ -65,6 +62,9 @@
 ;;; containing a map with these elements:
 ;;;       :components  A map from key to component map.
 ;;;          :id->key  A map from client id to key.
+;;;          :key->id  A map from key to client id. Unlike the key,
+;;;                    the client id must be a string that is allowed as a
+;;;                    DOM id.
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about
@@ -98,24 +98,16 @@
     (doseq [action actions]
       (apply (first action) atom (rest action)))))
 
-(defn make-key
-  "Make a key from a parent key and the sibling key within that parent."
-  [parent-key sibling-key]
-  (assert (not (nil? sibling-key)))
-  (if (or (nil? parent-key) (empty? parent-key))
-    [sibling-key]
-    (conj parent-key sibling-key)))
-
 (def update-set-component)
 (def update-clear-component)
 
 (defn subcomponent->component-map
   "Given a subcomponent specified inside a dom,
    create a component map."
-  [{:keys [sibling-key definition]} parent-key parent-depth]
-  (assert (not (nil? sibling-key)))
+  [{:keys [key definition]} parent-key parent-depth]
+  (assert (not (nil? key)))
   (assert (not (nil? definition)))
-  {:key (make-key parent-key sibling-key)
+  {:key key
    :definition definition
    :depth (inc parent-depth)})
 
@@ -131,21 +123,42 @@
               [] dom))
     []))
 
-(defn adjust-subcomponents-for-client
+(defn dom->keys
+  "Given a dom, return all keys in the dom."
+  [dom]
+  (if (vector? dom)
+    (let [key (let [attributes (second dom)]
+                (when (map? attributes) (:key attributes)))]
+      (reduce (fn [keys dom] (into keys (dom->keys dom)))
+              (if (nil? key) #{} #{key}) (rest dom)))
+    []))
+
+(defn replace-key-with-id
+  "Given a dom, which must be a vector, if it has a :key in its attributes,
+   replace it with the corresponding id."
+  [data dom]
+  (let [key (:key (second dom))]
+    (if (nil? key)
+      dom
+      (let [id (get-in data [:key->id key])]
+        (assert (not (nil? id)))
+        (update-in dom [1] #(-> % (assoc :id id) (dissoc :key)))))))
+
+(defn adjust-dom-for-client
   "Given the data, the key of the containing dom, and a piece of dom,
-   adjust the subcomponents of the dom to the form the client needs,
-   which is [:component <attributes> <id>]."
-  [data parent-key dom]
+   adjust the dom to the form the client needs, replacing keys by ids,
+   and putting subcomponents into the form [:component <attributes> <id>]."
+  [data dom]
   (if (vector? dom)
     (if (= (first dom) :component)
-      (let [component-map (second dom)
-            key (make-key parent-key (:sibling-key component-map))
-            id (get-in data [:components key :id])]
+      (let [component-map (second dom) 
+            id (get-in data [:key->id (:key component-map)])]
+
+        (assert (not (nil? id)))
         [:component (:attributes component-map) id])
       (reduce (fn [subcomponents dom]
-                (conj subcomponents (adjust-subcomponents-for-client
-                                     data parent-key dom)))
-              [] dom))
+                (conj subcomponents (adjust-dom-for-client data dom)))
+              [] (replace-key-with-id data dom)))
     dom))
 
 (defn dom-for-client
@@ -155,10 +168,8 @@
   (let [component-map (get-in data [:components key])]
     (assert (not (nil? component-map)))
     (add-attributes
-     (adjust-subcomponents-for-client
-      data (:key component-map) (:dom component-map))
-     {:id (:id component-map)
-     :version (:version component-map)})))
+     (adjust-dom-for-client data (:dom component-map))
+     {:version (:version component-map)})))
 
 (defn response-doms
   "Return a seq of doms for the client for up to num components."
@@ -188,6 +199,28 @@
   [tracker acknowledgements]
   (swap-and-act tracker #(update-acknowledgements % acknowledgements)))
 
+(defn update-associate-key-to-id
+  "Record that the key has the given client id."
+  [data key id]
+  (-> data
+      (assoc-in [:key->id key] id)
+      (assoc-in [:id->key id] key)))
+
+(defn update-ensure-id-for-key
+  "Make sure the data has an id for the given key."
+  [data key]
+  (if (get-in data [:key->id key])
+    data
+    (let [id (str "id" (:next-id data))]
+      (-> data
+          (update-associate-key-to-id key id)
+          (update-in [:next-id] inc)))))
+
+(defn update-ensure-ids-for-keys
+  "Make sure the data has an id for the given key."
+  [data keys]
+  (reduce update-ensure-id-for-key data keys))
+
 (defn update-unneeded-subcomponents
   "Remove all subcomponents that were in the old version of the component map
    but are not in the new one."
@@ -198,7 +231,8 @@
                                    (:subcomponents new-component-map))))
 
 (defn update-dom
-  "Given the data, a key, and the latest dom for key, do all necessary updates."
+  "Given the data, a key, and the latest dom for the key,
+   do all necessary updates."
   [data key dom]
   (let [component-map (get-in data [:components key])
         depth (:depth component-map)]
@@ -212,6 +246,7 @@
                         (update-in [:version] inc))]
         (-> (reduce update-set-component data subcomponent-maps)
             (update-unneeded-subcomponents component-map new-map)
+            (update-ensure-ids-for-keys (dom->keys dom))
             (update-in [:out-of-date-keys] #(assoc % key depth))
             (assoc-in [:components key] new-map)))
       data)))
@@ -253,27 +288,24 @@
 
 (defn update-ensure-component
   "Make sure there is a component with the given key.
-   If an id is provided, use it as the id; otherwise make an id."
-  ([data key]
-   (if (get-in data [:components key])
-     data
-     (let [id (str "id" (:next-id data))]
-       (update-ensure-component (update-in data [:next-id] inc) key id))))
-  ([data key id]
-   (if (get-in data [:components key])
-     data
-     (-> data
-         (assoc-in [:components key] {:id id :key key :version 0 :depth 0})
-         (assoc-in [:id->key id] key)))))
+   Make an id for the key if there isn't already one."
+  [data key]
+  (if (get-in data [:components key])
+    data
+    (-> data
+        (update-ensure-id-for-key key)
+        (assoc-in [:components key] {:key key :version 0 :depth 0}))))
 
 (defn update-clear-component
   "Remove the component with the given key."
   [data key]
-  (let [component-map (get-in data [:components key])]
+  (let [component-map (get-in data [:components key])
+        id (get-in data [:key->id key])]
     (if component-map
       (-> data
           (update-in [:out-of-date-keys] #(dissoc % key))
-          (update-in [:id->key] #(dissoc % (:id component-map)))
+          (update-in [:id->key] #(dissoc % id))
+          (update-in [:key->id] #(dissoc % key))
           (update-in [:components] #(dissoc % key))
           (update-request-set-attending component-map)
           (update-unneeded-subcomponents component-map {}))
@@ -282,10 +314,8 @@
 (defn update-set-component
   "Set the information according to the given component map,
    creating the component if necessary."
-  [data {:keys [key definition id] :as component-map}]
-  (let [data (if id
-               (update-ensure-component data key id)
-               (update-ensure-component data key))
+  [data {:keys [key definition] :as component-map}]
+  (let [data (update-ensure-component data key)
         original-component-map (get-in data [:components key])
         new-component-map (merge original-component-map component-map)]
     (if (= definition (:definition original-component-map))
@@ -302,9 +332,10 @@
 (defn add-dom
   "Add dom with the given client id and definition to the tracker."
   [tracker client-id key definition]
-  (swap-and-act tracker #(update-set-component % {:definition definition
-                                                  :key key
-                                                  :id client-id})))
+  (swap-and-act tracker
+                #(-> %
+                     (update-associate-key-to-id key client-id)
+                     (update-set-component {:definition definition :key key}))))
 
 (defn id->key
   "Return the hiccup key for the client id"
@@ -317,6 +348,7 @@
   (atom
    {:components {}
     :id->key {}
+    :key->id {}
     :next-id 0
     :out-of-date-keys (priority-map/priority-map)
     :management management}))

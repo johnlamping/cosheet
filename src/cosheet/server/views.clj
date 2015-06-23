@@ -55,7 +55,7 @@
                                         (current-store store))))
         root-item (description->entity (:item-id immutable-root-item)
                                         mutable-store)
-        definition [item-DOM root-item #{} {}]
+        definition [item-DOM root-item [root-item] #{} {:depth 0}]
         tracker (new-dom-tracker management)]
     (add-dom tracker "root" [root-item] definition)
     tracker))
@@ -71,7 +71,9 @@
     (when must-initialize
       (println "initializing")
       (reset! dom-tracker (create-tracker store))
-      (compute management 100))
+      (println "created tracker")
+      (compute management 100)
+      (println "computed some"))
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements @dom-tracker acknowledge)    
     (when actions

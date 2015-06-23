@@ -5,16 +5,15 @@
                      [reporters
                       :refer [value expr expr-let expr-seq]])))
 
+;;; TODO: Don't have item-dom add the key to the item; have
+;;; dom-tracker do it instead.
+
 ;;; Code to create hiccup style dom for a database entity.
 ;;; Sub-components of the dom are specified as
-;;;   [:component {:sibling-key sibling-key
+;;;   [:component {:key sibling-key
 ;;;                :definition definition
 ;;;                :attributes <attributes to add the definition's result>}]
 ;;; This is what is expected by dom_tracker.
-
-;;; For convenience here, style attributes are represented with their
-;;; own map, rather than as a string, so they are easier to adjust.
-;;; They must be turned into a string when the dom is sent to reagent.
 
 ;;; For a basic entity, we show its contents and its user visible
 ;;; elements, but not its non-user visible elements. The latter are
@@ -34,6 +33,35 @@
 ;;;     married
 ;;;     age: 39
 ;;;            doubtful
+
+;;; The style attributes are represented with their own map, rather
+;;; than as a string, so they are easier to adjust. Conviently,
+;;; reagent accepts that format too.
+
+;;; The key is both by dom-tracker to keep track of components as they
+;;; change, so every component must have a unique key, even if two
+;;; components reeflect the same item. The key is also used by actions
+;;; to identify what part of the data the user is operating on, so
+;;; there can also be keys for other dom elements that the user can
+;;; interact with, such as targets for the user to add new data.
+;;; Tere keys for different kinds of dom look like this:
+;;;             an item: (cons <item> <parent id>)
+;;;    a potential item: (cons [:virtual <template>] <parent id>)
+;;;      a generic item: (cons (cons :generic <query> <generic id>)
+;;;                            <parent id>)
+;;; Here, a potential item is one that is not yet created, but that
+;;; when created will have the given parent and satisfy the template.
+
+;;; A generic item stands for several items, typically because it is a
+;;; tag dom that covers several items with the same tag. The parent id
+;;; gives a representative item that contains the common structure,
+;;; while the query extracts that structure from the parent item. The
+;;; generic pertains to that common structure of all items adjacent to
+;;; the representative item in the ordering with the same visible
+;;; results for the query. Within each instance of common structure,
+;;; the specific item matched is the one that has the same visible
+;;; structure and visible nesting as the generic id has in the
+;;; representative item.
 
 (defn multiset-conj
   "Add an item to a multiset,
@@ -133,15 +161,23 @@
 
 (def item-DOM)
 
+(defn child-item-key
+  "Return the key for a child item, given a key of its parent."
+  [child-item parent-key]
+  (assert (not (nil? child-item)))
+  (if (or (nil? parent-key) (empty? parent-key))
+    [child-item]
+    (cons child-item parent-key)))
+
 (defn make-component
-  "Make a component dom descriptor, with the given sibling key and definition,
+  "Make a component dom descriptor, with the given key and definition,
    and, optionally, additional attributes."
-  ([sibling-key definition]
-   [:component {:sibling-key sibling-key
+  ([key definition]
+   [:component {:key key
                 :definition definition}])
-  ([sibling-key definition attributes]
+  ([key definition attributes]
    (assert (map? attributes))
-   [:component {:sibling-key sibling-key
+   [:component {:key key
                 :definition definition
                 :attributes attributes}]))
 
@@ -179,18 +215,19 @@
 
 (defn tag-component
   "Return the component for a tag element."
-  [element inherited]
+  ;; TODO: Make this use a generic key, if it is generic.
+  [element parent-key inherited]
   (expr-let [tag-specs (tag-specifiers element)]
-    (make-component
-     element
-     [item-DOM element (set tag-specs) inherited]
-     {})))
+    (let [key (child-item-key element parent-key)]
+      (make-component
+       key [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
   "Given a sequence of tags, return components for the given items, wrapped in
    a div if there is more than one."
-  [tags inherited]
-  (expr-let [tag-components (expr-seq map #(tag-component % inherited) tags)]
+  [tags parent-key inherited]
+  (expr-let [tag-components
+             (expr-seq map #(tag-component % parent-key inherited) tags)]
     (add-attributes (vertical-stack tag-components true) {:class "tag"})))
 
 (defn tag-items-pair-DOM
@@ -201,15 +238,18 @@
   ;;; TODO: pass down, via inherited, how deeply nested the item is,
   ;;; and for deep items, use a layout with tag above content to conserve
   ;;; horizontal space.
-  [items-and-tags inherited]
+  [items-and-tags parent-key inherited]
   (expr-let [item-doms (expr-seq
                         map (fn [[item tag-list]]
-                              (make-component
-                               item [item-DOM item (set tag-list) inherited]))
+                              (let [key (child-item-key
+                                         item parent-key)]
+                                (make-component key
+                                                [item-DOM item key
+                                                 (set tag-list) inherited])))
                         items-and-tags)
              tags-dom (expr tags-DOM
                         (order-items (get-in items-and-tags [0 1]))
-                        inherited)]
+                        parent-key inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
                      {:style {:display "table-cell"}
@@ -223,9 +263,10 @@
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row the same height.
-  [items inherited]
+  [items parent-key inherited]
   (expr-let [rows (expr group-by-tag (order-items items))
-             row-doms (expr-seq map #(tag-items-pair-DOM % inherited) rows)]
+             row-doms (expr-seq
+                       map #(tag-items-pair-DOM % parent-key inherited) rows)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
           (if (and (= (count rows) 1)
@@ -235,23 +276,27 @@
                     [(add-attributes (last row-doms) {:class "last-row"})])))))
 
 (defn item-DOM
-  "Return a hiccup representation of DOM describing
-  an item and all its elements. Where appropriate, inherit
-  properties from the map of inherited properties."
-  [item excluded inherited]
+  "Return a hiccup representation of DOM, with the given internal key,
+   describing an item and all its elements, except the ones in
+   excluded. Where appropriate, inherit properties from the map of
+   inherited properties."
+  [item key excluded inherited]
   ;;; TODO: pass down, via inherited, how deeply nested the item is,
   ;;; and for deep items, use a layout with tag above content to conserve
   ;;; horizontal space.
   (expr-let [content (entity/content item)
              elements (visible-elements item)]
     (let [elements (remove excluded elements)
+          inherited-down (update-in inherited [:depth] inc)
           content-dom
           (if (entity/atom? content)
             [:div {:class "content-text"}
              (if (= content :none) "" (str content))]
-            (make-component "content" [item-DOM content #{} inherited]))]
+            (let [child-key (child-item-key content key)]
+              (make-component
+               child-key [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)
-        (add-attributes content-dom {:class "item"})
-        (expr-let [elements-dom (tagged-items-DOM elements inherited)]
+        (add-attributes content-dom {:class "item" :key key})
+        (expr-let [elements-dom (tagged-items-DOM elements key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
-                          {:class "item"}))))))
+                          {:class "item" :key key}))))))

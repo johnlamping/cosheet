@@ -31,12 +31,8 @@
                          (update-new-pending-action action 3)))
     (is (= @a 4))))
 
-(deftest make-key-test
-  (is (= (make-key nil 1) [1]))
-  (is (= (make-key [1] 2) [1 2])))
-
 (deftest subcomponent->component-map-test
-  (is (= (subcomponent->component-map {:sibling-key 1 :definition 2} [0] 3)
+  (is (= (subcomponent->component-map {:key [0 1] :definition 2} [0] 3)
          {:key [0 1] :definition 2 :depth 4})))
 
 (deftest dom->subcomponents-test
@@ -47,78 +43,84 @@
                  [:div "hi" [:component {1 2}]]]))
          #{{:foo :bar} {:bletch 1} {1 2}})))
 
-(deftest adjust-subcomponents-for-client-test
-  (is (= (adjust-subcomponents-for-client
-          {:components {[:p :a] {:id 2}
-                        [:p :b] {:id 3}}}
-          [:p]
+(deftest replace-key-with-id-test
+  (is (= (replace-key-with-id
+          {:key->id {:a 1 :b 2}}
+          [:div {:key :a} [:div {:key :b}] [:div "foo"]])
+         [:div {:id 1} [:div {:key :b}] [:div "foo"]])))
+
+(deftest adjust-dom-for-client-test
+  (is (= (adjust-dom-for-client
+          {:key->id {[:p] 1
+                     [:p :a] 2
+                     [:p :b] 3}}
           [:div
-           [:component {:sibling-key :a :attributes {:width 5}}]
-           [:div  [:component {:sibling-key :b}]]])
+           [:component {:key [:p :a] :attributes {:width 5}}]
+           [:div {:key [:p]} [:component {:key [:p :b]}]]])
          [:div
           [:component {:width 5} 2]
-          [:div  [:component nil 3]]])))
+          [:div {:id 1} [:component nil 3]]])))
 
 (deftest dom-for-client-test
   (is (= (dom-for-client
-          {:components {[:p] {:id 1
-                              :key [:p]
+          {:components {[:p] {:key [:p]
                               :dom [:div
-                                    [:component {:sibling-key :a
+                                    {:key [:p]}
+                                    [:component {:key [:p :a]
                                                  :attributes {:width 4}}]
-                                    [:div  [:component {:sibling-key :b}]]]
-                              :version 5}
-                        [:p :a] {:id 2}
-                        [:p :b] {:id 3}}}
+                                    [:div [:component {:key [:p :b]}]]]
+                              :version 5}}
+           :key->id {[:p] 1
+                     [:p :a] 2
+                     [:p :b] 3}}
           [:p])
          [:div
           {:id 1 :version 5}
           [:component {:width 4} 2]
-          [:div  [:component nil 3]]])))
+          [:div [:component nil 3]]])))
 
 (deftest response-doms-test
   (is (= (response-doms {} 3) []))
   (is (= (set (response-doms
-               {:components {[:p] {:id "id1"
-                                   :key [:p]
+               {:components {[:p] {:key [:p]
                                    :dom [:div
-                                         [:component {:sibling-key :a}]
+                                         {:key [:p]}
+                                         [:component {:key [:p :a]}]
                                          [:div  [:component
                                                  {:attributes {:width 9}
-                                                  :sibling-key :b}]]]
+                                                  :key [:p :b]}]]]
                                    :attributes {:width 4}
                                    :version 3}
-                             [:p :a] {:id "id2"
-                                      :dom [:div "hi"]
+                             [:p :a] {:dom [:div {:key [:p :a]}"hi"]
                                       :version 5}
-                             [:p :b] {:id "id3"
-                                      :dom [:div "there"]
+                             [:p :b] {:dom [:div {:key [:p :b]} "there"]
                                       :version 7
                                       :attributes {:width 9}}}
                 :out-of-date-keys (-> (priority-map/priority-map)
                                       (assoc [:p] 0)
                                       (assoc [:p :a] 2)
-                                      (assoc [:p :b] 1))}
+                                      (assoc [:p :b] 1))
+                :key->id {[:p] "id1"
+                          [:p :a] "id2"
+                          [:p :b] "id3"}}
                2))
          #{[:div
             {:id "id1" :version 3}
             [:component nil "id2"]
-            [:div  [:component {:width 9} "id3"]]]
+            [:div [:component {:width 9} "id3"]]]
            [:div {:id "id3" :version 7} "there"]})))
 
 (deftest update-acknowledgements-test
-  (let [data {:components {[:p] {:id "id1"
-                                 :key [:p]
+  (let [data {:components {[:p] {:key [:p]
                                  :version 3}
-                           [:p :a] {:id "id2"
-                                    :key [:p :a]
+                           [:p :a] {:key [:p :a]
                                     :version 5}
-                           [:p :b] {:id "id3"
-                                    :key [:p :b]
+                           [:p :b] {:key [:p :b]
                                     :version 7}}
               :out-of-date-keys (priority-map/priority-map
                                   [:p] 1 [:p :a] 2 [:p :b] 2)
-              :id->key {"id1" [:p] "id2" [:p :a] "id3" [:p :b]}}]
+              :id->key {"id1" [:p] "id2" [:p :a] "id3" [:p :b]}
+              :key->id {[:p] "id1" [:p :a] "id2" [:p :b] "id3"}}]
     (is (= (update-acknowledgements data {"id1" 3 "id2" 4})
            (assoc data :out-of-date-keys (priority-map/priority-map
                                           [:p :a] 2 [:p :b] 2))))
@@ -128,6 +130,42 @@
              (assoc data :out-of-date-keys (priority-map/priority-map
                                             [:p :a] 2 [:p :b] 2)))))))
 
+(deftest update-associate-key-to-id-test
+  (is (= (update-associate-key-to-id
+          {:key->id {:a 1}
+           :id->key {1 :1}}
+          :b 2)
+         {:key->id {:a 1 :b 2}
+          :id->key {1 :1 2 :b}})))
+
+(deftest update-ensure-id-for-key-test
+  (is (= (update-ensure-id-for-key
+          {:key->id {:a 1}
+           :id->key {1 :1}
+           :next-id 2}
+          :a)
+         {:key->id {:a 1}
+          :id->key {1 :1}
+          :next-id 2}))
+  (is (= (update-ensure-id-for-key
+          {:key->id {:a 1}
+           :id->key {1 :1}
+           :next-id 2}
+          :b)
+         {:key->id {:a 1 :b "id2"}
+          :id->key {1 :1 "id2" :b}
+          :next-id 3})))
+
+(deftest update-ensure-ids-for-keys-test
+  (is (= (update-ensure-ids-for-keys
+          {:key->id {:a 1}
+           :id->key {1 :1}
+           :next-id 2}
+          [:a :b])
+         {:key->id {:a 1 :b "id2"}
+          :id->key {1 :1 "id2" :b}
+          :next-id 3})))
+
 (deftest update-unnedded-subcomponents-test
   (is (= (update-unneeded-subcomponents
           {:components {1 2, 3 4, 5 6}}
@@ -135,6 +173,7 @@
           {:subcomponents #{1 7}}))
       {:components {1 2, 5 6}}))
 
+;;; TODO: code update-dom-test
 (comment (deftest update-dom-test
            (is (= (update-dom {:components {:a {:key :a}}}
                               :a
@@ -157,26 +196,24 @@
 (deftest update-ensure-component-test
   (is (= (update-ensure-component {:components {:a 1}} :a))
       {:components {:a 1}})
-  (let [tracker @(new-dom-tracker nil)]
-    (let [id "root"]
-      (is (= (update-ensure-component tracker :b id)
-             (-> tracker
-                 (assoc :components {:b {:key :b
-                                         :version 0
-                                         :depth 0
-                                         :id id}})
-                 (assoc :id->key {id :b})))))
-    (let [tracker @(new-dom-tracker nil)
-          id-num (:next-id tracker)
-          id (str "id" id-num)]
+  (let [tracker @(new-dom-tracker nil)
+        id-num (:next-id tracker)
+        id (str "id" id-num)]
+    (is (= (update-ensure-component tracker :b)
+           (-> tracker
+               (assoc :components {:b {:key :b
+                                       :version 0
+                                       :depth 0}})
+               (assoc :id->key {id :b})
+               (assoc :key->id {:b id})
+               (assoc :next-id (inc id-num)))))
+    (let [tracker (-> @(new-dom-tracker nil)
+                      (update-associate-key-to-id :b :id))]
       (is (= (update-ensure-component tracker :b)
              (-> tracker
                  (assoc :components {:b {:key :b
                                          :version 0
-                                         :depth 0
-                                         :id id}})
-                 (assoc :id->key {id :b})
-                 (assoc :next-id (inc id-num))))))))
+                                         :depth 0}})))))))
 
 (deftest update-clear-component-test
   (let [tracker @(new-dom-tracker nil)
@@ -192,30 +229,36 @@
         tracker (new-dom-tracker management)
         reporter (new-reporter :value "hi")
         c-map {:key [:k]
-               :id "root"
-               :definition [item-DOM reporter #{} {}]
+               :definition [item-DOM reporter [:k] #{} {:depth 0}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
                     :definition
                     [(fn [value]
-                       (into [:div
+                       (into [:div {:key [:d]}
                               [:component
-                               {:sibling-key "s"
-                                :definition [item-DOM reporter #{} {}]
+                               {:key ["s" :d]
+                                :definition [item-DOM
+                                             reporter ["s" :d]
+                                             #{} {:depth 1}]
                                 :attributes {:width 1}}]]
-                             (map (fn [c]
-                                    [:component
-                                     {:sibling-key (str c)
-                                      :definition [item-DOM (str c) #{} {}]}])
-                                  value)))
+                             (map
+                              (fn [c]
+                                [:component
+                                 {:key [(str c) :d]
+                                  :definition [item-DOM
+                                               (str c) [(str c) :d]
+                                               #{} {:depth 1}]}])
+                              value)))
                      reporter]}]
-    (swap-and-act tracker #(update-set-component % c-map))
+    (swap-and-act tracker #(-> %
+                               (update-associate-key-to-id [:k] "root")
+                               (update-set-component c-map)))
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:k]])]
-      (is (= (:dom component) [:div  {:class "content-text item"} "hi"]))
-      (is (= (:id component) "root"))
+      (is (= (:dom component) [:div {:key [:k] :class "content-text item"}
+                               "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
       (is (= (:components @tracker {[:k] component})))
@@ -239,7 +282,7 @@
       (reporter/set-value! reporter "ho")
       (compute management)
       (is (= (get-in @tracker [:components [:k] :dom])
-             [:div  {:class "content-text item"} "ho"]))
+             [:div  {:key [:k] :class "content-text item"} "ho"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:components [:d] :dom])))
@@ -248,28 +291,28 @@
     (compute management)
     (is (= (into {} (map (fn [[key component]] [key (:dom component)])
                                (get-in @tracker [:components])))
-           {[:k] [:div  {:class "content-text item"} "hi"]
-            [:d] [:div
-                  [:component {:sibling-key "s"
-                               :definition [item-DOM reporter  #{} {}]
+           {[:k] [:div  {:key [:k] :class "content-text item"} "hi"]
+            [:d] [:div {:key [:d]}
+                  [:component {:key ["s" :d]
+                               :definition [item-DOM
+                                            reporter ["s" :d] #{} {:depth 1}]
                                :attributes {:width 1}}]
-                  [:component {:sibling-key (str "h")
-                               :definition [item-DOM "h" #{} {}]}]
-                  [:component {:sibling-key (str "i")
-                               :definition [item-DOM "i" #{} {}]}]]
-            [:d "s"] [:div  {:class "content-text item"} "hi"]
-            [:d "h"] [:div  {:class "content-text item"} "h"]
-            [:d "i"] [:div  {:class "content-text item"} "i"]}))
+                  [:component {:key [(str "h") :d]
+                               :definition [item-DOM
+                                            "h" ["h" :d] #{} {:depth 1}]}]
+                  [:component {:key [(str "i") :d]
+                               :definition [item-DOM
+                                            "i" ["i" :d] #{} {:depth 1}]}]]
+            ["s" :d] [:div  {:key ["s" :d] :class "content-text item"} "hi"]
+            ["h" :d] [:div  {:key ["h" :d] :class "content-text item"} "h"]
+            ["i" :d] [:div  {:key ["i" :d] :class "content-text item"} "i"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
 
 (deftest id->key-test
   (let [management (new-management)
-        tracker (new-dom-tracker management)
-        c-map {:key [:k]
-               :id "root"
-               :definition [item-DOM 1 #{} {}]}]
-    (swap-and-act tracker #(update-set-component % c-map))
+        tracker (new-dom-tracker management)]
+    (swap-and-act tracker #(update-associate-key-to-id % [:k] "root"))
     (is (= (id->key tracker "root")
            [:k]))))
 
@@ -277,16 +320,17 @@
   (let [management (new-management)
         tracker (new-dom-tracker management)
         reporter (new-reporter :value "hi")]
-    (add-dom tracker "root" [:root] [item-DOM reporter #{} {}])
+    (add-dom tracker "root" [:root] [item-DOM reporter [:root] #{} {:depth 0}])
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:root]])]
-      (is (= (:dom component) [:div {:class "content-text item"} "hi"]))
-      (is (= (:id component) "root"))
+      (is (= (:dom component) [:div {:key [:root] :class "content-text item"}
+                               "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
       (is (= (:components @tracker) {[:root] component}))
       (is (= (:id->key data) {"root" [:root]}))
+      (is (= (:key->id data  {[:root] "root"})))
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
 

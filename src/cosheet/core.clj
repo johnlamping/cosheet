@@ -3,6 +3,8 @@
                      mutable-map task-queue computation-manager
                      store-impl store-utils entity-impl query-impl
                      mutable_store_impl debug)
+            ;; Note: the reload below is key to making reporters.clj
+            ;; load successfully. Not clear why
             :reload)
   (:gen-class))
 

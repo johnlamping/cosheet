@@ -11,8 +11,6 @@
    (cosheet.server
     [dom-tracker :refer [id->key]])))
 
-;;; TODO: Write actions_test.
-
 ;;; TODO: validate the data coming in, so nothing can cause us to
 ;;; crash.
 
@@ -23,10 +21,10 @@
   [store dom-tracker id from to]
   ;;; TODO: Make this work for tags that apply to multiple items.
   (let [key (id->key dom-tracker id)
-        item (last key)]
+        item (first key)]
     (println "key " key "item " item "id " (:item-id item))
     (println "from " from "  to " to )
-    (when (and (vector? key) (satisfies? StoredEntity item))
+    (when (satisfies? StoredEntity item)
       ;; TODO: check that the current value is what the user expected.
       (update-content! store (:item-id item) to))))
 

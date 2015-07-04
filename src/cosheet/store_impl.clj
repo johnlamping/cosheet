@@ -2,7 +2,7 @@
   (:require (cosheet [store :refer :all]
                      [utils :refer :all])))
 
-;;; Data in a store is in terms of ItemId objects. All that the system
+;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
 ;;; other item it is an element of. Everything else follows from what
 ;;; it means to be an item and an element of an item. In practice, the
@@ -177,9 +177,18 @@
                 (update-in [:next-id] inc)
                 (assoc-in [:id->data content-id]
                           {:content content :containers #{promoted-container}})
-                (assoc-in [:id->data promoted-container :content] content-id))
+                (assoc-in [:id->data promoted-container :content] content-id)
+                (add-modified-id content-id))
             content-id])))
      [store id]))
+
+(defn add-modified-id
+  "Add the id to the modified id set of the store,
+  if we are tracking modified ids."
+  [store id]
+  (if (:modified-ids store)
+    (update-in store [:modified-ids] #(conj % id))
+    store))
 
 (defrecord ElementStoreImpl
     ^{:doc
@@ -200,7 +209,12 @@
    subject->label->ids
 
    ;;; The next id to assign to an item to be stored here
-   next-id]
+   next-id
+
+   ;;; A set of ids that have been updated since the last call to
+   ;;; clear-modified-ids. This is only present if update-track-modified-ids
+   ;;; has been called.
+   modified-ids]
 
   Store
 
@@ -259,7 +273,8 @@
              (assoc-in [:id->data item-id] data)
              (index-subject item-id)
              (index-in-subject item-id)
-             (index-content item-id))
+             (index-content item-id)
+             (add-modified-id item-id))
          item-id])))
 
   (remove-simple-id [this id]
@@ -271,7 +286,8 @@
         (deindex-subject id)
         (deindex-in-subject id)
         (deindex-content id)
-        (dissoc-in [:id->data id])))
+        (dissoc-in [:id->data id])
+        (add-modified-id id)))
 
   (update-content [this id content]
     (assert (not (nil? content)))
@@ -280,13 +296,24 @@
         (deindex-content id)
         (assoc-in [:id->data id :content] content)
         (index-subject id)
-        (index-content id))))
+        (index-content id)
+        (add-modified-id id)))
+
+  (track-modified-ids [this]
+    (assoc this :modified-ids #{}))
+
+  (fetch-and-clear-modified-ids [this]
+    [(assoc this :modified-ids #{})
+     (:modified-ids this)]))
 
 (defmethod print-method ElementStoreImpl [s ^java.io.Writer w]
   (.write w "ElementStore"))
 
 (defmethod new-element-store true []
-  (map->ElementStoreImpl {:id->data {} :subject->label->ids {} :next-id 0}))
+  (map->ElementStoreImpl {:id->data {}
+                          :subject->label->ids {}
+                          :next-id 0
+                          :modified-ids nil}))
 
 (defmethod make-id true [id]
   ;;Integers are reserved for the store

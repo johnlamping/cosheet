@@ -21,7 +21,8 @@
     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
     (make-id "2") {nil [(make-id "3")]}
     (make-id "4") {nil [(make-id "5")]}}
-   8))
+   8
+   nil))
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))
 
@@ -150,8 +151,8 @@
           test-store (->ImplicitContentId (make-id "1")))
          [test-store (make-id "4")]))
   (let [[promoted-store promoted-id]
-        (promote-implicit-item test-store
-                               (->ImplicitContentId (make-id "2")))]
+        (promote-implicit-item
+         test-store (->ImplicitContentId (make-id "2")))]
     (is (= (:next-id promoted-store) (+ 1 (:next-id test-store))))
     (is (= (:subject->label->ids promoted-store)
            (:subject->label->ids test-store)))
@@ -161,7 +162,13 @@
            {:content (get-in test-store [:id->data (make-id "2") :content])
             :containers #{(make-id "2")}}))
     (is (= (get-in promoted-store [:id->data (make-id "2") :subject])
-           (get-in test-store [:id->data (make-id "2") :subject])))))
+           (get-in test-store [:id->data (make-id "2") :subject]))))
+  (let [[promoted-store promoted-id]
+        (promote-implicit-item
+         (track-modified-ids test-store) (->ImplicitContentId (make-id "2")))]
+    (is (= (:modified-ids promoted-store) #{promoted-id}))
+    (is (= (fetch-and-clear-modified-ids promoted-store)
+           [(assoc promoted-store :modified-ids #{}), #{promoted-id}]))))
 
 (deftest add-simple-element-test
   (let [[added-store element]
@@ -171,14 +178,25 @@
            #{(make-id "7") element}))
     (is (= (get-in added-store [:id->data element])
            {:content "test"
-            :subject (make-id "1")}))))
+            :subject (make-id "1")})))
+  (let [[added-store element]
+        (add-simple-element
+         (track-modified-ids test-store) (make-id "1") "test")]
+    (is (= (:modified-ids added-store) #{element}))))
 
 (deftest remove-simple-id-test
   (let [[added-store element]
         (add-simple-element test-store (make-id "1") (make-id "2"))]
     (is (= (assoc (remove-simple-id added-store element)
                   :next-id (:next-id test-store))
-           test-store))))
+           test-store))
+    (let [removed-store
+          (remove-simple-id (track-modified-ids added-store) element)]
+      (is (= (:modified-ids removed-store) #{element}))
+      (is (= (-> removed-store
+                 (assoc :next-id (:next-id test-store))
+                 (assoc :modified-ids nil))
+           test-store)))))
 
 (deftest change-content-test
   (let [[added-store _]
@@ -186,8 +204,9 @@
         [different-store element]
         (add-simple-element test-store (make-id "1") (make-id "3"))
         changed-store
-        (update-content different-store element (make-id "2"))]
-    (is (= added-store changed-store))))
+        (update-content (track-modified-ids different-store)
+                        element (make-id "2"))]
+    (is (= changed-store (assoc added-store :modified-ids #{element})))))
 
 (deftest candidate-matching-ids-test
   (is (= (set (candidate-matching-ids test-store nil))

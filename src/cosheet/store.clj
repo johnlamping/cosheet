@@ -8,7 +8,7 @@
 ;;; elements of another stored item.
 
 ;;; Internally, items are referred to by ids, which are managed by the
-;;; store. Ids means that stores supports circular references among
+;;; store. Ids means that stores support circular references among
 ;;; items, because the store represents the references between items,
 ;;; rather than the items having to reference each other directly.
 
@@ -23,7 +23,7 @@
 ;;; Note that in some cases, we will have an item we want to add to a
 ;;; store. It may reference some ids in the store, but the structure
 ;;; of the item obviously can't be in the store yet. The store will
-;;; copy the items structure, allocating ids for it as necessary.
+;;; copy the item's structure, allocating ids for it as necessary.
 
 (defprotocol StoredItemDescription
   "A description of an Item recorded by a store"
@@ -91,7 +91,14 @@
 
   (update-content [this id content]
     "Change the content of the item with the  given id to be the
-     specified content."))
+     specified content.")
+
+  (track-modified-ids [this]
+    "Record the ids that have been modified.")
+
+  (fetch-and-clear-modified-ids [this]
+    "Clear the record modified ids.
+     Returns the new store, and the set of modified ids."))
 
 (defprotocol MutableStore
   "The basic methods that mutable stores support to change themselves,

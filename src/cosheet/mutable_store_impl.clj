@@ -80,7 +80,7 @@
    ;; Reporters indexed under a nil id must be checked for all changes.
    subscriptions
 
-   ;; A mutable map from fetch expression to a attended reporter with that
+   ;; A mutable map from fetch expression to an attended reporter with that
    ;; fetch, if there is one.
    fetch->attended-reporter]
 

@@ -3,15 +3,15 @@
                      [reporters :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
-                     [mutable-map :as mm]
                      [utils :refer [call-with-latest-value
+                                    update-in-clean-up
                                     swap-control-return!]])))
 
 (defn update-reporter
   "Make sure the reporter has the latest value from the store."
   [store reporter]
   (let [[f & args] (:fetch (reporter/data reporter))]
-    (set-value! reporter (apply f @(:store store) args))))
+    (set-value! reporter (apply f (:state @(:data store)) args))))
 
 (defn manager-callback
   "Callback when a reporter starts or stops needing updates from the store.
@@ -20,26 +20,34 @@
   (call-with-latest-value
    #(attended? reporter)
    (fn [attended]
-     (let [subscriptions (:subscriptions store)
-           fetch (:fetch (reporter/data reporter))]
+     (let [fetch (:fetch (reporter/data reporter))]
        (if attended
          (do
-           (mm/update! subscriptions id #((fnil conj #{}) % reporter))
-           (mm/update!
-            (:fetch->attended-reporter store) fetch
-            ;; Due to races, we might already have another
-            ;; reporter for this expression, in which case, leave it.
-            (fn [existing-reporter] (or existing-reporter reporter)))
+           (swap! (:data store)
+                  (fn [data]
+                    (-> data
+                        (update-in [:subscriptions id]
+                                   #((fnil conj #{}) % reporter))
+                        (update-in [:fetch->attended-reporter fetch]
+                                   ;; Due to races, we might already
+                                   ;; have another reporter for this
+                                   ;; expression, in which case, leave it.
+                                   (fn [existing] (or existing reporter))))))
            (update-reporter store reporter))
          (do
            (set-value! reporter invalid)
-           (mm/update-in-clean-up! subscriptions [id] #(disj % reporter))
-           (mm/update-in-clean-up!
-            (:fetch->attended-reporter store) [fetch]
-            ;; Due to races, we might already have another
-            ;; reporter for this expression, in which case, leave it.
-            (fn [existing-reporter]
-              (if (= existing-reporter reporter) nil existing-reporter)))))))))
+           (swap! (:data store)
+                  (fn [data]
+                    (-> data
+                        (update-in-clean-up
+                         [:subscriptions id] #(disj % reporter))
+                        (update-in-clean-up
+                         [:fetch->attended-reporter fetch]
+                         ;; Due to races, we might already have
+                         ;; another reporter for this expression, in
+                         ;; which case, leave it.
+                         (fn [existing]
+                           (if (= existing reporter) nil existing))))))))))))
 
 (defn get-or-make-reporter
   "Retrieve or create a reporter that gives the value of the function
@@ -47,14 +55,14 @@
    is non-nil, the result must depend only on id and its elements."
   [id fn store & args]
   (let [fetch (cons fn args)]
-    (or (mm/get! (:fetch->attended-reporter store) fetch)
+    (or (get-in @(:data store) [:fetch->attended-reporter fetch])
         (new-reporter :manager [manager-callback store id]
                       :fetch fetch))))
 
 (defn update-reporters-for-key
   "Update all reporters that depend on the given key."
   [store key]
-  (doseq [reporter (mm/get! (:subscriptions store) key)]
+  (doseq [reporter (get (:subscriptions @(:data store)) key)]
     (update-reporter store reporter)))
 
 (defn update-reporters-for-id
@@ -64,25 +72,28 @@
   (loop [item id]
     (when (not (nil? item))
       (update-reporters-for-key store item)
-      (recur (id->subject @(:store store) item)))))
+      (recur (id->subject (:state @(:data store)) item)))))
 
 (defrecord MutableStoreImpl
     ^{:doc
       "A store that contains an immutable store,
        supports mutation to that store,
        and returns reporter objects for queries."}
-  [
+  [;; A map holding the reporter's data, consisting of
+   data
+   
    ;; An atom holding the current immutable state
-   store
+   ;; :state
 
    ;; A mutable map from item id to a set of reporters that need
    ;; to be checked on any change to that item or its elements.
    ;; Reporters indexed under a nil id must be checked for all changes.
-   subscriptions
+   ;; :subscriptions
 
    ;; A mutable map from fetch expression to an attended reporter with that
    ;; fetch, if there is one.
-   fetch->attended-reporter]
+   ;; :fetch->attended-reporter
+   ]
 
   Store
 
@@ -105,29 +116,36 @@
   
   MutableStore
 
-  (current-store [this] @(:store this))
+  (current-store [this] (:state @(:data this)))
 
   (add-simple-element! [this subject content]
     (let [element
-          (swap-control-return! (:store this)
-                                #(add-simple-element % subject content))]
+          (swap-control-return!
+           (:data this)
+           (fn [data]
+             (let [[new-state element]
+                   (add-simple-element (:state data) subject content)]
+               [(assoc data :state new-state)
+                element])))]
       (update-reporters-for-id this subject)
       element))
 
   (remove-simple-id! [this id]
-    (let [subject (id->subject @(:store this) id)]
-      (swap! (:store this) #(remove-simple-id % id))
+    (let [subject (id->subject (:state @(:data this)) id)]
+      (swap! (:data this)
+             (fn [data] (update-in data [:state] #(remove-simple-id % id))))
       (update-reporters-for-id this subject)))
 
   (update-content! [this id content]
-    (swap! (:store this) #(update-content % id content))
+    (swap! (:data this)
+           (fn [data] (update-in data [:state] #(update-content % id content))))
     (update-reporters-for-id this id)))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
-  (print-method (:store s) w))
+  (print-method (:data s) w))
 
-(defmethod new-mutable-store true [store]
-  (map->MutableStoreImpl {:store (atom store)
-                          :subscriptions (mm/new-mutable-map)
-                          :fetch->attended-reporter (mm/new-mutable-map)}))
+(defmethod new-mutable-store true [immutable-store]
+  (map->MutableStoreImpl {:data (atom {:state immutable-store
+                                       :subscriptions {}
+                                       :fetch->attended-reporter {}})}))

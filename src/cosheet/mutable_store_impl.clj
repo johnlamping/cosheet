@@ -7,11 +7,11 @@
                                     update-in-clean-up
                                     swap-control-return!]])))
 
-(defn update-reporter
+(defn inform-reporter
   "Make sure the reporter has the latest value from the store."
-  [store reporter]
+  [immutable-store reporter]
   (let [[f & args] (:fetch (reporter/data reporter))]
-    (set-value! reporter (apply f (:state @(:data store)) args))))
+    (set-value! reporter (apply f immutable-store args))))
 
 (defn manager-callback
   "Callback when a reporter starts or stops needing updates from the store.
@@ -33,7 +33,7 @@
                                    ;; have another reporter for this
                                    ;; expression, in which case, leave it.
                                    (fn [existing] (or existing reporter))))))
-           (update-reporter store reporter))
+           (inform-reporter (:state @(:data store)) reporter))
          (do
            (set-value! reporter invalid)
            (swap! (:data store)
@@ -59,20 +59,36 @@
         (new-reporter :manager [manager-callback store id]
                       :fetch fetch))))
 
-(defn update-reporters-for-key
+(defn inform-reporters-for-key
   "Update all reporters that depend on the given key."
-  [store key]
-  (doseq [reporter (get (:subscriptions @(:data store)) key)]
-    (update-reporter store reporter)))
+  [immutable-store subscriptions key]
+  (doseq [reporter (get subscriptions key)]
+    (inform-reporter immutable-store reporter)))
 
-(defn update-reporters-for-id
-  "Update all reporters that could be affected by the item changing."
-  [store id]
-  (update-reporters-for-key store nil) ; The ones we have to check always.
-  (loop [item id]
-    (when (not (nil? item))
-      (update-reporters-for-key store item)
-      (recur (id->subject (:state @(:data store)) item)))))
+(defn inform-reporters
+  "Update all reporters that care about the changes."
+  [new-store subscriptions keys]
+  (doseq [key keys]
+    (inform-reporters-for-key new-store subscriptions key)))
+
+(defn items-affected-by-id
+  "Return a seq of items that might be affected by a change to the given id."
+  [id old-store new-store]
+  (loop [item id
+         affected nil]
+    (if (not (nil? item))
+      (recur (or (id->subject new-store item) (id->subject old-store item))
+             (conj affected item))
+      affected)))
+
+(defn keys-affected-by-ids
+  "Return a seq of keys that might be affected by the set of modified ids.
+   The set must be non-empty."
+  [modified-ids old-store new-store]
+  (reduce (fn [accum id]
+            (into accum (items-affected-by-id id old-store new-store)))
+          #{nil} ; We have to always inform reporters keyed by nil.
+          modified-ids))
 
 (defrecord MutableStoreImpl
     ^{:doc
@@ -118,34 +134,42 @@
 
   (current-store [this] (:state @(:data this)))
 
-  (add-simple-element! [this subject content]
-    (let [element
+  (do-update! [this update-fn]
+    (do-update-control-return! this (fn [store] [(update-fn store) nil])))
+
+  (do-update-control-return! [this update-fn]
+    (let [[modified-ids subscriptions old-store new-store result]
           (swap-control-return!
            (:data this)
            (fn [data]
-             (let [[new-state element]
-                   (add-simple-element (:state data) subject content)]
-               [(assoc data :state new-state)
-                element])))]
-      (update-reporters-for-id this subject)
-      element))
+             (let [old-store (:state data)
+                   subscriptions (:subscriptions data)
+                   [updated-store result] (update-fn old-store)
+                   [new-store modified-ids] (fetch-and-clear-modified-ids
+                                             updated-store)]
+               [(assoc data :state new-store)
+                [modified-ids subscriptions old-store new-store result]])))]
+      (when (not= (count modified-ids) 0)
+        (inform-reporters
+         new-store subscriptions
+         (keys-affected-by-ids modified-ids old-store new-store)))
+      result))
+
+  (add-simple-element! [this subject content]
+    (do-update-control-return! this #(add-simple-element % subject content)))
 
   (remove-simple-id! [this id]
-    (let [subject (id->subject (:state @(:data this)) id)]
-      (swap! (:data this)
-             (fn [data] (update-in data [:state] #(remove-simple-id % id))))
-      (update-reporters-for-id this subject)))
+    (do-update! this #(remove-simple-id % id)))
 
   (update-content! [this id content]
-    (swap! (:data this)
-           (fn [data] (update-in data [:state] #(update-content % id content))))
-    (update-reporters-for-id this id)))
+    (do-update! this #(update-content % id content))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
   (print-method (:data s) w))
 
 (defmethod new-mutable-store true [immutable-store]
-  (map->MutableStoreImpl {:data (atom {:state immutable-store
-                                       :subscriptions {}
-                                       :fetch->attended-reporter {}})}))
+  (map->MutableStoreImpl
+   {:data (atom {:state (track-modified-ids immutable-store)
+                 :subscriptions {}
+                 :fetch->attended-reporter {}})}))

@@ -105,6 +105,19 @@
   from which higher levels ones are built."
   (current-store [this]
     "The current state of the mutable store")
+
+  (do-update! [this update-fn]
+    "Run the update function on the current state of the store.
+     Update the store with the result, and notify all reporters of
+     changes noted by the update. This is a way to package a number
+     of updates to the current store into a single transaction.")
+
+  (do-update-control-return! [this update-fn]
+    "Run the update function on the current state of the store.
+     It must return a pair of the new store and a return value.
+     Update the store with the result, and notify all reporters of
+     changes noted by the update. This is a way to package a number
+     of updates to the current store into a single transaction.")
   
   (add-simple-element! [this subject content]
     "Add an element to the subject with the given content,

@@ -40,7 +40,7 @@
         m-element (add-entity! mutable
                                (make-id "0") '((77 88) ("test" :label)))
         _ (add-entity! mutable m-element '("Fred" ("by" :label)))]
-    (is (= added-store2 (current-store mutable)))))
+    (is (= (track-modified-ids added-store2) (current-store mutable)))))
 
 (deftest remove-entity-by-id!-test
   (let [[added-store e1]
@@ -52,4 +52,4 @@
     (remove-entity-by-id! mutable e1)
     (is (= (assoc (current-store mutable) :next-id
                   (:next-id (new-element-store)))
-           (new-element-store)))))
+           (track-modified-ids (new-element-store))))))

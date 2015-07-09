@@ -163,6 +163,14 @@
       (update-in-clean-up store [:id->data content :containers] #(disj % id))
       store))  )
 
+(defn add-modified-id
+  "Add the id to the modified id set of the store,
+  if we are tracking modified ids."
+  [store id]
+  (if (:modified-ids store)
+    (update-in store [:modified-ids] #(conj % id))
+    store))
+
 (defn promote-implicit-item [store id]
   (if (instance? ImplicitContentId id)
      (let [container (:containing-item-id id)
@@ -181,14 +189,6 @@
                 (add-modified-id content-id))
             content-id])))
      [store id]))
-
-(defn add-modified-id
-  "Add the id to the modified id set of the store,
-  if we are tracking modified ids."
-  [store id]
-  (if (:modified-ids store)
-    (update-in store [:modified-ids] #(conj % id))
-    store))
 
 (defrecord ElementStoreImpl
     ^{:doc

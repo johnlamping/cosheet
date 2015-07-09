@@ -29,28 +29,28 @@
   "Return true if the item has an element satisfying the given element)."
   (when (not (entity/atom? target))
     (expr-let
-        [annotations (expr entity/elements element)
+        [annotations (entity/elements element)
          labels (expr-seq map entity/atomic-value annotations)
          label (first (filter (partial not= nil) labels))
          candidates (if (not (nil? label))
-                      (expr entity/label->elements target label)
-                      (expr entity/elements target))
+                      (entity/label->elements target label)
+                      (entity/elements target))
          extended-by (expr-seq map (partial extended-by? element) candidates)]
       (some #(not (nil? %)) extended-by))))
 
 (defn extended-by? [template target]
   (or (nil? template)
       (if (entity/atom? template)
-        (expr-let [template-value (expr entity/atomic-value template)
-                   target-value (expr entity/atomic-value target)]
+        (expr-let [template-value (entity/atomic-value template)
+                   target-value (entity/atomic-value target)]
           (= template-value target-value))
         (expr-let
             [content-extended (expr extended-by?
-                                (expr entity/content template)
-                                (expr entity/content target))]
+                                (entity/content template)
+                                (entity/content target))]
           (when content-extended
             (expr-let
-                [template-elements (expr entity/elements template)
+                [template-elements (entity/elements template)
                  satisfied-elements (expr-seq
                                      map #(has-element-satisfying? % target)
                                      template-elements)]
@@ -62,9 +62,7 @@
 ;;; Code to bind an entity in an environment
 
 (defn variable? [template]
-  (if (entity/mutable-entity? template)
-    (expr = (entity/content template) :variable)
-    (= (entity/content template) :variable)))
+  (expr = (entity/content template) :variable))
 
 (def bind-entity)
 
@@ -99,16 +97,11 @@
                         (entity/elements wrapped))))))
 
   (entity/elements [this]
-    (if (entity/mutable-entity? wrapped)
-      (expr-let [unbound-elements (entity/elements wrapped)]
-        (seq (map #(bind-entity % env) unbound-elements)))
-      (seq (map #(bind-entity % env)
-                (entity/elements wrapped)))))
+    (expr-let [unbound-elements (entity/elements wrapped)]
+      (seq (map #(bind-entity % env) unbound-elements))))
 
   (entity/content [this]
-    (if (entity/mutable-entity? wrapped)
-      (expr bind-entity (entity/content wrapped) env)
-      (bind-entity (entity/content wrapped) env))))
+    (expr bind-entity (entity/content wrapped) env)))
 
 (defn bind-entity [entity env]
   (if (entity/atom? entity)
@@ -139,17 +132,17 @@
           (when (= value target)
             [env])
           (expr-let
-              [target-extends (expr extended-by? value target)]
+              [target-extends (extended-by? value target)]
             (when target-extends
               (if value-may-extend
                 [env]
-                (expr-let [value-extends (expr extended-by? target value)]
+                (expr-let [value-extends (extended-by? target value)]
                   (when value-extends [env]))))))
         (when (not (nil? target))
           (expr-let
               [envs (if (nil? condition)
                       [env]
-                      (expr template-matches condition env target))]
+                      (template-matches condition env target))]
             (if (not (nil? name))
               (expr-let [value (if reference target (entity/to-list target))]
                 (seq (map #(assoc % name value) envs)))

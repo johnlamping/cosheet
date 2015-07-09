@@ -166,7 +166,7 @@
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
-  (print-method (:data s) w))
+  (print-method (:state @(:data s)) w))
 
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl

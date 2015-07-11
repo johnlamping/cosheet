@@ -20,8 +20,9 @@
 (defn set-content
   [store dom-tracker id from to]
   ;;; TODO: Make this work for tags that apply to multiple items.
+  ;;; TODO: Check the key
   (let [key (id->key dom-tracker id)
-        item (first key)]
+        item (:item (first key))]
     (println "key " key "item " item "id " (:item-id item))
     (println "from " from "  to " to )
     (when (satisfies? StoredEntity item)

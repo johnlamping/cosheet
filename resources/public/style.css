@@ -85,11 +85,12 @@
     z-index: 1;
 }
 
-.content-text > #edit_holder {
+.editable > #edit_holder {
     display: block;
 }
 
 #edit_input {
     width: 100%;
+    min-height: 10px;
     z-index: 2;
 }

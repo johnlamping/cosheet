@@ -151,6 +151,8 @@
   (description->entity [this store] nil) ;; For convenience in null punning
   )
 
+;;; TODO: We don't need two versions of each of these any more,
+;;; because expr is smart about returning a reporter or not.
 (defmethod label->content false [entity label]
   (let [elements (label->elements entity label)]
     (when elements

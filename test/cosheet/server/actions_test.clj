@@ -25,7 +25,10 @@
         management (new-management)
         tracker (new-dom-tracker management)
         joe (description->entity joe-id mutable-store)]
-    (add-dom tracker "root" [joe :bob] [item-DOM joe [joe :bob] #{} {:depth 1}])
+    (add-dom tracker
+             "root"
+             [{:item joe} :bob]
+             [item-DOM joe [{:item joe} :bob] #{} {:depth 1}])
     (compute management)
     (set-content mutable-store tracker "root" "Joe" "Jim")
     (is (= (current-value (content joe)) "Jim"))

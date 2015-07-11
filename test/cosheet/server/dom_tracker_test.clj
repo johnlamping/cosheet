@@ -257,7 +257,8 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:k]])]
-      (is (= (:dom component) [:div {:key [:k] :class "content-text item"}
+      (is (= (:dom component) [:div {:key [:k]
+                                     :class "content-text editable item"}
                                "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
@@ -282,7 +283,7 @@
       (reporter/set-value! reporter "ho")
       (compute management)
       (is (= (get-in @tracker [:components [:k] :dom])
-             [:div  {:key [:k] :class "content-text item"} "ho"]))
+             [:div  {:key [:k] :class "content-text editable item"} "ho"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:components [:d] :dom])))
@@ -291,7 +292,7 @@
     (compute management)
     (is (= (into {} (map (fn [[key component]] [key (:dom component)])
                                (get-in @tracker [:components])))
-           {[:k] [:div  {:key [:k] :class "content-text item"} "hi"]
+           {[:k] [:div  {:key [:k] :class "content-text editable item"} "hi"]
             [:d] [:div {:key [:d]}
                   [:component {:key ["s" :d]
                                :definition [item-DOM
@@ -303,9 +304,12 @@
                   [:component {:key [(str "i") :d]
                                :definition [item-DOM
                                             "i" ["i" :d] #{} {:depth 1}]}]]
-            ["s" :d] [:div  {:key ["s" :d] :class "content-text item"} "hi"]
-            ["h" :d] [:div  {:key ["h" :d] :class "content-text item"} "h"]
-            ["i" :d] [:div  {:key ["i" :d] :class "content-text item"} "i"]}))
+            ["s" :d] [:div  {:key ["s" :d]
+                             :class "content-text editable item"} "hi"]
+            ["h" :d] [:div  {:key ["h" :d]
+                             :class "content-text editable item"} "h"]
+            ["i" :d] [:div  {:key ["i" :d]
+                             :class "content-text editable item"} "i"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
 
@@ -324,7 +328,8 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:root]])]
-      (is (= (:dom component) [:div {:key [:root] :class "content-text item"}
+      (is (= (:dom component) [:div {:key [:root]
+                                     :class "content-text editable item"}
                                "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))

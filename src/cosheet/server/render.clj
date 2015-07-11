@@ -5,13 +5,10 @@
                      [reporters
                       :refer [value expr expr-let expr-seq]])))
 
-;;; TODO: Don't have item-dom add the key to the item; have
-;;; dom-tracker do it instead.
-
 ;;; Code to create hiccup style dom for a database entity.
 ;;; Sub-components of the dom are specified as
-;;;   [:component {:key sibling-key
-;;;                :definition definition
+;;;   [:component {:key <key>
+;;;                :definition <definition>
 ;;;                :attributes <attributes to add the definition's result>}]
 ;;; This is what is expected by dom_tracker.
 
@@ -21,7 +18,8 @@
 ;;; in addition, an entity may be marked as a tag, by having
 ;;; an element whose content is 'tag. The 'tag mark is considered
 ;;; visible, because it changes the visible appearance of its element,
-;;; even though it is not shown in the usual way.
+;;; and, more importantly, matters for whether two items are
+;;; considered equal, even though it is not shown in the usual way.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
 ;;;        "married"
@@ -38,30 +36,65 @@
 ;;; than as a string, so they are easier to adjust. Conviently,
 ;;; reagent accepts that format too.
 
-;;; The key is both by dom-tracker to keep track of components as they
-;;; change, so every component must have a unique key, even if two
-;;; components reeflect the same item. The key is also used by actions
-;;; to identify what part of the data the user is operating on, so
-;;; there can also be keys for other dom elements that the user can
-;;; interact with, such as targets for the user to add new data.
-;;; Tere keys for different kinds of dom look like this:
-;;;             an item: (cons <item> <parent id>)
-;;;    a potential item: (cons [:virtual <template>] <parent id>)
-;;;      a generic item: (cons (cons :generic <query> <generic id>)
-;;;                            <parent id>)
-;;; Here, a potential item is one that is not yet created, but that
-;;; when created will have the given parent and satisfy the template.
+;;; The key is used by dom-tracker to track components, even as they
+;;; change. There are several reasons why a key can't just be an item.
+;;; First, every component must have a unique key, even if two
+;;; components reflect the same item. This is handled by having keys
+;;; reflect the path of containment in the dom.
 
-;;; A generic item stands for several items, typically because it is a
-;;; tag dom that covers several items with the same tag. The parent id
-;;; gives a representative item that contains the common structure,
-;;; while the query extracts that structure from the parent item. The
-;;; generic pertains to that common structure of all items adjacent to
-;;; the representative item in the ordering with the same visible
-;;; results for the query. Within each instance of common structure,
-;;; the specific item matched is the one that has the same visible
-;;; structure and visible nesting as the generic id has in the
-;;; representative item.
+;;; Further, the key is also used by actions to provide the
+;;; information to interpret the action, in particular, identify what
+;;; part of the data the user is referring to, which isn't always just
+;;; an item, and the context of data, so that it knows what added data
+;;; must look like.
+
+;;; All keys are sequences. Their first element is a context description
+;;; that gives the information needed by action interpretation, while
+;;; their subsequent elements are descriptions for parent pieces of dom, not
+;;; necessarily for every parent, but for enough to make the key
+;;; unique.
+
+;;; There are several kinds of context descriptions, each a map whose
+;;; keys depend on what the dom cell refers to.
+;;;       item: {:item <item> :condition <condition>}
+;;;   template: {:template <condition>
+;;;              :before-item <item>
+;;;              :first-item <item>
+;;;              :last-item <item>
+;;;              :after-item <item>}
+;;;   exemplar: {:exemplar <exemplar key>}
+
+;;; In these descriptions, a condition is a query that an item must satisfy.
+;;; It is a map, which can contain
+;;;   {:subject <id of subject of item>
+;;;    :elements <list of elements that item must have>}
+
+;;; An item key refers to a particular item, but may also give a
+;;; condition required for a new item to appear adjacent to the item
+;;; in question. That way, insert actions can be interpreted.
+
+;;; A template key refers to all elements of the parent key that
+;;; satisfy a template condition. These keys are used for dom cells
+;;; where the user can add items. If items are already in the cell,
+;;; then first-item and last-item will be listed, so that ordering
+;;; information can be inferred for items added at the beginning and
+;;; end of the cell. If the cell is empty, the before-item and
+;;; after-item may be listed, giving items that an item added to the
+;;; cell should come after or before.
+
+;;; An exemplar key stands for each of several different items or
+;;; templates. It's canonical use is for tag doms that pertain to
+;;; several items, each having equal tags. A change in that dom should
+;;; change the tags of each of the items. An exemplar key has two
+;;; parts, the exemplar and the ancestor. The ancestor is a template,
+;;; and the top item of the exemplar satisfies it. Concatenated
+;;; together, the exemplar and ancestor would be a single ordinary
+;;; key. As an exemplar key, the visible information of the exemplar
+;;; is matched against each element satisfying the template, to yield
+;;; a different key for each match. The exemplar stands for that set
+;;; of keys.
+
+;;; TODO: Move this multiset stuff to utils?
 
 (defn multiset-conj
   "Add an item to a multiset,
@@ -74,6 +107,25 @@
   [items]
   (reduce multiset-conj {} items))
 
+(defn item-description
+  "Turn keyword arguments into an item context description."
+  [& {:as args}]
+  (assert (every? #{:item :condition}(keys args)))
+  args)
+
+(defn template-description
+  "Turn keyword arguments into a template context description."
+  [& {:as args}]
+  (assert (every? #{:condition :first-item :last-item :before-item :after-item}
+                  (keys args)))
+  args)
+
+(defn condition-description
+  "Turn keyword arguments into a template context description."
+  [& {:as args}]
+  (assert (every? #{:subject :elements}(keys args)))
+  args)
+
 (defn visible-entity?
   "Return true if an entity is visible to the user
   (Doesn't have a keyword element.)"
@@ -83,9 +135,10 @@
     (not-any? keyword? element-contents)))
 
 (defn tag-specifier?
-  "Return true if an element is a specifier that the item pertains to is a tag.
-   (Note that a tag specifier is considered visible, but its presence affects
-   the user visible structure, even though it is not shown as its own cell."
+  "Return true if an element specifies that the item it pertains to is
+   a tag. (Note that a tag specifier is considered visible, because its
+   presence affects the user visible structure, even though it is not
+   shown as its own cell."
   [element]
   (expr-let [content (entity/content element)]
     (= content 'tag)))
@@ -109,24 +162,36 @@
   [entity]
   (filtered-elements entity tag-specifier?))
 
-(defn canonical-info
-  "Given an item, return a canonical representation of its
-   information, ignoring all information not directly visible
-  to the user."
-  ;; We record the elements as a map from element to multiplicities,
-  ;; so that we are not sensitive to the order of the elements.
-  ;; That is easier than sorting, because Clojure doesn't define
-  ;; a sort order between heterogenous types, like strings and ints.
+(defn visible-to-list
+  "Given an entity, make a list representation of the visible information
+  of the item."
   [entity]
   (if (entity/atom? entity)
     (entity/content entity)
     (expr-let [content (entity/content entity)
                elements (visible-elements entity)]
-      (expr-let [content-info (canonical-info content)
-                 element-infos (expr-seq map canonical-info elements)]
-        (if (empty? element-infos)
-          content-info
-          [content-info (multiset element-infos)])))))
+      (expr-let [content-visible (visible-to-list content)
+                 element-visibles (expr-seq map visible-to-list elements)]
+        (if (empty? element-visibles)
+          content-visible
+          (into [content-visible] element-visibles))))))
+
+(defn canonicalize-list
+  "Given the list form of an entity, return a canonical representation of it."
+  ;; We record the elements as a map from element to multiplicities,
+  ;; so that we are not sensitive to the order of the elements.
+  ;; That is easier than sorting, because Clojure doesn't define
+  ;; a sort order between heterogenous types, like strings and ints.
+  [entity]
+  (if (sequential? entity)
+    [(canonicalize-list (first entity))
+     (multiset (map canonicalize-list (rest entity)))]
+    entity))
+
+(defn canonical-info
+  [entity]
+  (expr-let [visible (visible-to-list entity)]
+    (canonicalize-list visible)))
 
 (defn canonical-info-set
   "Given a seq of items, return a canonical representation of the items,
@@ -135,12 +200,36 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
+(defn elements-condition
+  "Given a subject and a set of elements, return the condition
+   of having that subject and having elements with matching visible
+   information."
+  [subject elements]
+  (expr-let [visible-elements (expr-seq map visible-to-list elements)]
+    (condition-description :subject subject :elements visible-elements)))
+
+(defn order-comparator
+  "Compare two ordering values, where the input is sequences,
+   with the ordering information first."
+  [a b]
+  ;; TODO: For now the order information is just a number. But it
+  ;; should soon change to be an interval, so that a new element can
+  ;; be added before or after an old one by splitting the interval of
+  ;; the old one, handing half back to the old one and half to the new
+  ;; one. To allow for arbitrary precision, we use a sequence of
+  ;; numbers, first number most significant. That gives the starting
+  ;; point of the interval. Then the interval is given by a pair of
+  ;; the starting point, and a single number for the end point,
+  ;; implicitly preceeded by all but the last number of the starting
+  ;; point.
+  (< (first a) (first b)))
+
 (defn order-items
   "Return the items in the proper sort order."
   [items]
   (expr-let [order-info
              (expr-seq map #(entity/label->content % :order) items)]
-    (map second (sort (map vector order-info items)))))
+    (map second (sort order-comparator (map vector order-info items)))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
@@ -148,7 +237,10 @@
   (let [style (:style (dom-attributes dom))
         display (:display style)
         width (:width style)]
-    (add-attributes (if width dom (add-attributes dom {:style {:width "100%"}}))
+    (add-attributes (if width dom (add-attributes dom
+                                                  ;; TODO: Make this a
+                                                  ;; CSS class.
+                                                  {:style {:width "100%"}}))
                     {:style {:display
                              (case display
                                (nil "block" "inline-block") "block"
@@ -161,13 +253,10 @@
 
 (def item-DOM)
 
-(defn child-item-key
-  "Return the key for a child item, given a key of its parent."
-  [child-item parent-key]
-  (assert (not (nil? child-item)))
-  (if (or (nil? parent-key) (empty? parent-key))
-    [child-item]
-    (cons child-item parent-key)))
+(defn template-key
+  "Return a template key, given the template and parent key."
+  [template parent-key]
+  (cons [:template template] parent-key))
 
 (defn make-component
   "Make a component dom descriptor, with the given key and definition,
@@ -215,58 +304,72 @@
 
 (defn tag-component
   "Return the component for a tag element."
-  ;; TODO: Make this use a generic key, if it is generic.
-  [element parent-key inherited]
+  [element condition parent-key inherited]
+  ;; TODO: if there are multiple parents, then we we need to use an
+  ;; exemplar description. (Or maybe conditions need to be able to
+  ;; handle exemplars)
   (expr-let [tag-specs (tag-specifiers element)]
-    (let [key (child-item-key element parent-key)]
+    (let [description (item-description :item element :condition condition)
+          key (cons description parent-key)]      
       (make-component
        key [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
   "Given a sequence of tags, return components for the given items, wrapped in
-   a div if there is more than one."
-  [tags parent-key inherited]
-  (expr-let [tag-components
-             (expr-seq map #(tag-component % parent-key inherited) tags)]
-    (add-attributes (vertical-stack tag-components true) {:class "tag"})))
+  a div if there is more than one."
+  ;; TODO: do different stuff, depending on number of tags. In
+  ;; particular, for no tags, we need to make a cell with a key.
+  [tags parent parent-key inherited]
+  (let [condition (condition-description :subject parent :elements ['tag])]
+    (expr-let [tag-visibles (expr-seq map visible-to-list tags)]
+      (expr-let [tag-components
+                 (expr-seq
+                  map #(tag-component % condition parent-key inherited) tags)]
+        (add-attributes (vertical-stack tag-components true) {:class "tag"})))))
 
 (defn tag-items-pair-DOM
-  "Given a list of items and the tags for each, where the tags for each item
-  are equivalent, generate DOM for the items, labeled with the tags."
-  ;;; TODO: Add some data-* attributes to the tag items that indicate
-  ;;; what items they pertain to.
-  ;;; TODO: pass down, via inherited, how deeply nested the item is,
-  ;;; and for deep items, use a layout with tag above content to conserve
-  ;;; horizontal space.
-  [items-and-tags parent-key inherited]
-  (expr-let [item-doms (expr-seq
-                        map (fn [[item tag-list]]
-                              (let [key (child-item-key
-                                         item parent-key)]
-                                (make-component key
-                                                [item-DOM item key
-                                                 (set tag-list) inherited])))
-                        items-and-tags)
-             tags-dom (expr tags-DOM
-                        (order-items (get-in items-and-tags [0 1]))
-                        parent-key inherited)]
-    [:div {:style {:display "table-row"}}
-     (add-attributes tags-dom
-                     {:style {:display "table-cell"}
-                      :class (if (> (count item-doms) 1)
-                               "tag-column for-multiple-items"
-                               "tag-column")})
-     (add-attributes (vertical-stack item-doms true)
-                     {:style {:display "table-cell"}
-                      :class "item-column"})]))
+  "Given a list, each element of the form [item, [tag ... tag], where
+   the tags for each item are equivalent, generate DOM for the items,
+   labeled with the tags."
+  ;; TODO: Add some data-* attributes to the tag items that indicate
+  ;; what items they pertain to.
+  ;; TODO: for deep items, use a layout with tag above content to conserve
+  ;; horizontal space.
+  [items-and-tags parent parent-key inherited]
+  (let [sample-tags (get-in items-and-tags [0 1])]
+    (expr-let [condition (elements-condition parent sample-tags)
+               item-doms (expr-seq
+                          map (fn [[item tag-list]]
+                                (let [description (item-description
+                                                   :item item
+                                                   :condition condition)
+                                      key (cons description parent-key)]
+                                  (make-component key
+                                                  [item-DOM item key
+                                                   (set tag-list) inherited])))
+                          items-and-tags)
+               tags-dom (expr tags-DOM
+                          (order-items sample-tags)
+                          parent parent-key inherited)]
+      [:div {:style {:display "table-row"}}
+       ;; TODO: Give these keys, so they can support insertion?
+       (add-attributes tags-dom
+                       {:style {:display "table-cell"}
+                        :class (if (> (count item-doms) 1)
+                                 "tag-column for-multiple-items"
+                                 "tag-column")})
+       (add-attributes (vertical-stack item-doms true)
+                       {:style {:display "table-cell"}
+                        :class "item-column"})])))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row the same height.
-  [items parent-key inherited]
+  [items parent parent-key inherited]
   (expr-let [rows (expr group-by-tag (order-items items))
              row-doms (expr-seq
-                       map #(tag-items-pair-DOM % parent-key inherited) rows)]
+                       map #(tag-items-pair-DOM % parent parent-key inherited)
+                       rows)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
           (if (and (= (count rows) 1)
@@ -290,13 +393,15 @@
           inherited-down (update-in inherited [:depth] inc)
           content-dom
           (if (entity/atom? content)
-            [:div {:class "content-text"}
+            [:div {:class "content-text editable"}
              (if (= content :none) "" (str content))]
-            (let [child-key (child-item-key content key)]
+            (let [description (item-description :item content)
+                  child-key (cond description key)]
               (make-component
                child-key [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)
         (add-attributes content-dom {:class "item" :key key})
-        (expr-let [elements-dom (tagged-items-DOM elements key inherited-down)]
+        (expr-let [elements-dom (tagged-items-DOM
+                                 elements item key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item" :key key}))))))

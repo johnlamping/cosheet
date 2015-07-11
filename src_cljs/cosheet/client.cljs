@@ -121,7 +121,9 @@
 (defn double-click-handler
   [event]
   (let [target (.-target event)]
-    (.log js/console (str "Double click on " (.-id target) "."))
+    (.log js/console (str "Double click on id " (.-id target) "."))
+    (.log js/console (str "with class " (.-className target) "."))
+    (.log js/console (str "Double click on " target "."))
     ;; TODO: Check to see if it is editable before bringing up editor.
     (store-edit-field)
     (open-edit-field target)))

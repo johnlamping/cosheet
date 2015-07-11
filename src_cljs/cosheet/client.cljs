@@ -71,7 +71,8 @@
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (reset! ajax-request-pending false)
-  (.log js/console (str "ajax-error: " status " " status-text)))
+  (.log js/console (str "ajax-error: " status " " status-text))
+  (start-watch-task))
 
 (defn ancestor-id
   "Return the id of the first ancestor, including the node, with an id."
@@ -118,6 +119,19 @@
            [:set-content (ancestor-id target) old-value value])
           (ajax-if-pending))))))
 
+(defn click-handler
+  [event]
+  (let [target (.-target event)]
+    (.log js/console (str "Click on id " (.-id target) "."))
+    (.log js/console (str "with class " (.-className target) "."))
+    (.log js/console (str "Click on " target "."))
+    (when (not (#{@edit-field-open-on
+                  (js/document.getElementById "edit_holder")
+                  (js/document.getElementById "edit_input")}
+                target))
+      (store-edit-field)
+      (close-edit-field))))
+
 (defn double-click-handler
   [event]
   (let [target (.-target event)]
@@ -144,8 +158,6 @@
         (= key-code key-codes/ENTER) (do (store-edit-field)
                                          (close-edit-field))))))
 
-;; TODO: Put a click handler that stores the edit field too.
-
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
         edit-input (js/document.getElementById "edit_input")
@@ -153,6 +165,7 @@
         key-handler (gevents/KeyHandler. edit-input)]
     (reagent/render [component {} "root"] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
+    (gevents/listen app gevents/EventType.CLICK click-handler)
     (gevents/listen key-handler key-handler/EventType.KEY
                     keypress-handler))
   (ajax-request {:initialize true}))

@@ -72,7 +72,7 @@
       (println "initializing")
       (reset! dom-tracker (create-tracker store))
       (println "created tracker")
-      (compute management 100)
+      (compute management 1000)
       (println "computed some"))
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements @dom-tracker acknowledge)    

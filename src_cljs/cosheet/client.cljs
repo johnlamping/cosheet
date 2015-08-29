@@ -20,8 +20,8 @@
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
-(def ajax-handler)
-(def ajax-error-handler)
+(declare ajax-handler)
+(declare ajax-error-handler)
 
 (def ajax-request-pending (atom false))
 
@@ -139,8 +139,12 @@
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Double click on " target "."))
     ;; TODO: Check to see if it is editable before bringing up editor.
-    (store-edit-field)
-    (open-edit-field target)))
+    (when (not (#{@edit-field-open-on
+                  (js/document.getElementById "edit_holder")
+                  (js/document.getElementById "edit_input")}
+                target))
+      (store-edit-field)
+      (open-edit-field target))))
 
 (defn keypress-handler
   [event]

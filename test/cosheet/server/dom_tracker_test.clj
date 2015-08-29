@@ -28,7 +28,7 @@
                  (swap! a (constantly 4)))]
     (swap-and-act a #(-> %
                          (assoc 1 2)
-                         (update-new-pending-action action 3)))
+                         (update-new-further-action action 3)))
     (is (= @a 4))))
 
 (deftest subcomponent->component-map-test

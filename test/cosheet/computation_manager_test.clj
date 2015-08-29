@@ -141,7 +141,7 @@
     (modify-and-act r (fn [data]
                         (-> data
                             (update-in [:test] inc)
-                            (assoc :pending-actions [[swap! a inc]]))))
+                            (assoc :further-actions [[swap! a inc]]))))
     (is (= (:test (reporter/data r)) 11))
     (is (= @a 2))))
 

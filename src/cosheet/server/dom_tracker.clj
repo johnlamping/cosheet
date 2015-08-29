@@ -10,7 +10,9 @@
 
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
-;;; needed
+;;; needed. (Where a computation manager's job is to update a bunch of
+;;; reporters, the dom tracker's job is to set up a reporter for
+;;; each visible dom item, and to inform the client of changes.)
 
 ;;; The key here is that the identity of a dom component is
 ;;; determined by its containing dom, not by the definition that
@@ -39,7 +41,7 @@
 ;;;       :reporter  The result of running the definition, either the
 ;;;                  dom, or a reporter that computes it.
 ;;;            :dom  The dom in hiccup format, as returned by the
-;;;                  definition.
+;;;                  definition or the reporter it returns.
 ;;;                  Inside this dom, subcomponents are annotated as
 ;;;                  [:component {:sibling-key
 ;;;                               <A distinct object for each subcomponent>
@@ -67,34 +69,34 @@
 ;;;                    DOM id.
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
-;;;                    needs to know about
-;;;       :management  The management that runs our tasks on the server.
-;;;  :pending-actions  A list of [function arg arg ...] calls that
+;;;                    needs to know about.
+;;;       :management  The management for our reporters on the server.
+;;;  :further-actions  A list of [function arg arg ...] calls that
 ;;;                    need to be performed. The function will be
 ;;;                    called with the atom, and the additional
 ;;;                    arguments. (These actions are actually
-;;;                    be stored in the atom, but are added to the
+;;;                    stored in the atom, but are added to the
 ;;;                    data before it is stored to request actions.)
 
-(defn update-new-pending-action
-  "Given a component map, add an an action to the pending actions.
-   The action will be called with atom, followed by any additional arguments
-   specified."
+(defn update-new-further-action
+  "Given a component map, add an an action to the further actions.
+   The action will be called with the atom, followed by any additional
+   arguments specified."
   [data & action]
-  (update-in data [:pending-actions] (fnil conj []) (vec action)))
+  (update-in data [:further-actions] (fnil conj []) (vec action)))
 
 (defn swap-and-act
   "Atomicly call the function on the atom's data.
    The function should return the new data for the atom,
-   which may also contain a temporary field, :pending-actions, with
+   which may also contain a temporary field, :further-actions, with
    a list of actions that should be performed. Perform those actions,
    also passing in the atom to each action."
   [atom f]
   (let [actions (swap-control-return!
                  atom
                  (fn [data] (let [new-data (f data)]
-                              [(dissoc new-data :pending-actions)
-                               (:pending-actions new-data)])))]
+                              [(dissoc new-data :further-actions)
+                               (:further-actions new-data)])))]
     (doseq [action actions]
       (apply (first action) atom (rest action)))))
 
@@ -277,13 +279,13 @@
               [dom-callback data-atom])))))
 
 (defn update-request-set-attending
-  "Add a pending action to start or stop attending to the reporter
+  "Add a further action to start or stop attending to the reporter
    of the given component-map, depending on whether the map is still active."
   [data component-map]
   (let [reporter (:reporter component-map)
         key (:key component-map)]
     (if reporter
-      (update-new-pending-action data set-attending reporter key)
+      (update-new-further-action data set-attending reporter key)
       data)))
 
 (defn update-ensure-component
@@ -326,7 +328,7 @@
             (update-request-set-attending original-component-map)
             (assoc-in [:components key] final-map)
             (update-request-set-attending final-map)
-            (update-new-pending-action
+            (update-new-further-action
              (fn [atom] (manage reporter (:management data)))))))))
 
 (defn add-dom

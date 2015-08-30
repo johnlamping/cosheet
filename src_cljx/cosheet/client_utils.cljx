@@ -51,7 +51,7 @@
 ;;; The next code deals with our copy of the hiccup style dom that is
 ;;; fed to reagent.
 
-;;; A map from component id to atoms holding the current dom of that component.
+;;; A map from component id to atom holding the current dom of that component.
 (def components (atom {}))
 
 (defn component [extra-attributes name]

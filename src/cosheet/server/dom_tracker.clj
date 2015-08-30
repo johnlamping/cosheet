@@ -155,7 +155,6 @@
     (if (= (first dom) :component)
       (let [component-map (second dom) 
             id (get-in data [:key->id (:key component-map)])]
-
         (assert (not (nil? id)))
         [:component (:attributes component-map) id])
       (reduce (fn [subcomponents dom]
@@ -164,7 +163,7 @@
     dom))
 
 (defn dom-for-client
-  "Given the data and a component map,
+  "Given the data and a key,
    prepare the dom for that key to send to the client."
   [data key]
   (let [component-map (get-in data [:components key])]

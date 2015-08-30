@@ -8,7 +8,9 @@
     box-sizing: border-box;
     background-color: transparent;
 }
- 
+
+.selected {border-color: red;}
+
 .item {
     padding: 2px;
 }

@@ -63,6 +63,29 @@
 ;;; TODO: this needs to be separate for each web page.
 (def dom-tracker (atom nil))
 
+;;; The parameters for the ajax request and response are:
+;;; request:
+;;;    :initialize If true, the server should assume the client is
+;;;                starting from scratch. No other parameters
+;;;                should be present.
+;;;       :actions A map id -> action to be performed, where each
+;;;                action looks like [action_type arg ...], and the
+;;;                action types are those implemented in actions.clj.
+;;;                The action ids should sort in the order in which
+;;;                the actions should be done.
+;;;   :acknowledge A map component-id -> version of pairs for which
+;;;                the dom of that version was received by the client.
+;;; response:
+;;;          :doms A list of hiccup encoded doms of components. Their
+;;;                attributes will include a unique :id and a :version
+;;;                number that will increase for each change of the dom
+;;;                for that id. Inside the doms may be internal components
+;;;                encoded as [:component {attributes} id].
+;;;   :acknowledge A vector of action ids of actions that have been
+;;;                performed.
+;;; TODO: Action ids should be required to be integers, and the server
+;;;       should not perform out of order actions
+
 (defn ajax-response [request]
   (let [params (:params request)
         {:keys [actions acknowledge initialize]} params

@@ -24,7 +24,7 @@
        :else {})))
 
 (defn add-attributes
-  "Add attributes to a hiccup dom descriptor"
+  "Add attributes to a hiccup dom descriptor."
   [dom attributes]
   (let [[dom-tag second & remainder] dom]
     (if (= dom-tag :component)

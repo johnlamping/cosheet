@@ -74,6 +74,9 @@
 (defn into-atom-map
   "Incorporate an update of new doms into an atom containing a map of atoms,
   creating or deleting atoms as called for by the new doms."
+  ;; TODO: If performance is a problem, try adding a :key property
+  ;;       that matches the id. The React documentation claims
+  ;;       that speeds up re-rendering of sequences of many items.  
   [amap update]
   (swap!
    amap

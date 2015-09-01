@@ -84,7 +84,8 @@
 ;;;   :acknowledge A vector of action ids of actions that have been
 ;;;                performed.
 ;;; TODO: Action ids should be required to be integers, and the server
-;;;       should not perform out of order actions
+;;;       should not perform out of order actions. It should
+;;;       acknowledge just the highest action it has seen.
 
 (defn ajax-response [request]
   (let [params (:params request)

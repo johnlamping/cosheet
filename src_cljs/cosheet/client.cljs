@@ -1,78 +1,19 @@
 (ns cosheet.client
   (:require [reagent.core :as reagent]
-            [ajax.core :refer [GET POST transit-response-format]]
             [goog.dom :as gdom]
             [goog.events :as gevents]
             [goog.events.KeyCodes :as key-codes]
             [goog.events.KeyHandler :as key-handler]
-            [cosheet.client-utils :refer
-             [component components
-              replace-in-struct into-atom-map
-              add-pending-action process-response-for-pending
-              take-pending-params]]
-            ;; Note: We seem to have to declare everything used
+            ;; Note: We seem to have to declare any closure packages used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
-            ;; TODO: Test if this is true, by requiring clojure.set,
-            ;; and seeing if that works.
+            [cosheet.client-utils :refer
+             [component components add-pending-action]]
             cosheet.dom-utils
+            [cosheet.ajax :refer [ajax-if-pending ajax-request]]
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
-
-(declare ajax-handler)
-(declare ajax-error-handler)
-
-(def ajax-request-pending (atom false))
-
-(defn ajax-request [params]
-  (POST "/ajax-request"
-        {:params params
-         :response-format (transit-response-format)
-         :handler ajax-handler
-         :error-handler ajax-error-handler})
-  (reset! ajax-request-pending true))
-
-;;; A handle to the current running ajax refresh task.
-(def watch-task (atom nil))
-
-(defn start-watch-task
-  "Set the ajax watch task to run in 10 seconds."
-  []
-  (swap! watch-task
-         (fn [handle]
-           (when handle (js/clearInterval handle))
-           (js/setInterval #(ajax-request (take-pending-params)) 60000))))
-
-(defn ajax-if-pending
-  "Send an ajax request if we have pending information to send the server
-   and there isn't a request already in flight."
-  []
-  (when (not @ajax-request-pending)
-    (let [params (take-pending-params)]
-      (when (not= params {})
-        (ajax-request params)))))
-
-(defn ajax-handler [response]
-  (reset! ajax-request-pending false)
-  (when (not= response {})
-    (.log js/console (str response))
-    (let [doms (:doms response)]
-      (when doms
-        (into-atom-map components
-                       ;; Turn [:component {attributes} <id>]
-                       ;; into [cosheet.client/component {attributes} id]
-                       (replace-in-struct {:component component} (vec doms)))))
-    (process-response-for-pending response))
-  (if (:more response)
-    (ajax-request (take-pending-params))
-    (ajax-if-pending))
-  (start-watch-task))
-
-(defn ajax-error-handler [{:keys [status status-text]}]
-  (reset! ajax-request-pending false)
-  (.log js/console (str "ajax-error: " status " " status-text))
-  (start-watch-task))
 
 (defn ancestor-id
   "Return the id of the first ancestor, including the node, with an id."
@@ -82,7 +23,31 @@
                     id))
                 (ancestor-id (.-parentNode node)))))
 
-(def edit-field-open-on (atom nil))
+;;; TODO: add selectable and editable classes to say which elements
+;;; support those operations.
+
+(def selected (atom nil)) ;; The currently selected dom.
+(def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.
+
+(defn deselect []
+  (let [target @selected]
+    (when target
+    (.remove (.-classList target) 'selected)
+    (reset! selected nil))))
+
+(defn select [target]
+  (.log js/console (str "Selecting id " (.-id target) "."))
+  (.log js/console (str "current selection " @selected))
+  (.log js/console (str "test "  (and target (not= target @selected))))
+  (when (and target (not= target @selected))
+    (.log js/console (str "inside while "))
+    (deselect)
+    (.log js/console (str "after deslect "))
+    (.add (.-classList target) 'selected)
+    (.log js/console (str "after setting class "))
+    (.log js/console (str "Selected id " (.-id target) "."))
+    (.log js/console (str "Now with class " (.-className target) "."))
+    (reset! selected target)))
 
 (defn open-edit-field [target]
   (when (and target (not= target @edit-field-open-on))
@@ -119,18 +84,22 @@
            [:set-content (ancestor-id target) old-value value])
           (ajax-if-pending))))))
 
+(defn target-being-edited? [target]
+  (#{@edit-field-open-on
+     (js/document.getElementById "edit_holder")
+     (js/document.getElementById "edit_input")}
+   target))
+
 (defn click-handler
   [event]
   (let [target (.-target event)]
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Click on " target "."))
-    (when (not (#{@edit-field-open-on
-                  (js/document.getElementById "edit_holder")
-                  (js/document.getElementById "edit_input")}
-                target))
+    (when (not (target-being-edited? target))
       (store-edit-field)
-      (close-edit-field))))
+      (close-edit-field)
+      (select target))))
 
 (defn double-click-handler
   [event]
@@ -139,11 +108,9 @@
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Double click on " target "."))
     ;; TODO: Check to see if it is editable before bringing up editor.
-    (when (not (#{@edit-field-open-on
-                  (js/document.getElementById "edit_holder")
-                  (js/document.getElementById "edit_input")}
-                target))
+    (when (not (target-being-edited? target))
       (store-edit-field)
+      (select target)
       (open-edit-field target))))
 
 (defn keypress-handler

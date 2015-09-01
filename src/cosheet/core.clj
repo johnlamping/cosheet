@@ -1,5 +1,6 @@
 (ns cosheet.core
-  (:require (cosheet utils dom-utils reporters store entity query
+  (:require (cosheet utils expandable-order dom-utils
+                     reporters store entity query
                      mutable-map task-queue computation-manager
                      store-impl store-utils entity-impl query-impl
                      mutable_store_impl debug)

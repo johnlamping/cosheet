@@ -1,5 +1,19 @@
 (ns cosheet.utils)
 
+;;; Simple multiset operations.
+
+(defn multiset-conj
+  "Add an item to a multiset,
+   represented as a map from items to multiplicities."
+  [ms item]
+  (update-in ms [item] #((fnil + 0) % 1)))
+
+(defn multiset
+  "Turn a seq into a multiset."
+  [items]
+  (reduce multiset-conj {} items))
+
+
 ;;; Utilities for making clean maps.
 
 (defn dissoc-in

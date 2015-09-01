@@ -32,7 +32,7 @@
 (defn deselect []
   (let [target @selected]
     (when target
-    (.remove (.-classList target) 'selected)
+    (.remove (.-classList target) "selected")
     (reset! selected nil))))
 
 (defn select [target]
@@ -43,7 +43,7 @@
     (.log js/console (str "inside while "))
     (deselect)
     (.log js/console (str "after deslect "))
-    (.add (.-classList target) 'selected)
+    (.add (.-classList target) "selected")
     (.log js/console (str "after setting class "))
     (.log js/console (str "Selected id " (.-id target) "."))
     (.log js/console (str "Now with class " (.-className target) "."))
@@ -121,7 +121,8 @@
         ]
     (when ctrl
       (when (= key-code key-codes/Z)
-        ;; TODO: Put undo functionality here too.
+        ;; TODO: If the edit field is not open, make this
+        ;; undo the last action.
         (when @edit-field-open-on (close-edit-field))))
     (when (not (or ctrl alt))
       (cond

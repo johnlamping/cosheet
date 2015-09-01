@@ -4,6 +4,10 @@
             ; :reload
             ))
 
+(deftest multiset-test
+  (is (= (multiset [:a :b :c :b])
+         {:a 1 :b 2 :c 1})))
+
 (deftest dissoc-in-test
   (is (empty? (dissoc-in {:a {:b {:c 1}}} [:a :b :c])))
   (is (= (dissoc-in {:a {:b {:c 1}} :x 0} [:a :b :c])

@@ -1,5 +1,6 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
+                     [utils :refer [multiset]]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
                      [reporters
@@ -42,26 +43,28 @@
 ;;; components reflect the same item. This is handled by having keys
 ;;; reflect the path of containment in the dom.
 
-;;; Further, the key is also used by actions to provide the
-;;; information to interpret the action, in particular, identify what
-;;; part of the data the user is referring to, which isn't always just
-;;; an item, and the context of data, so that it knows what added data
-;;; must look like.
+;;; Further, the key is also used to provide actions with the
+;;; information to interpret them, in particular, to identify what
+;;; part of the data the user is referring to. This isn't always just
+;;; an item. Further, an addition action requires a condition, to know
+;;; what elements the added item must have.
 
-;;; All keys are sequences. Their first element is a context description
-;;; that gives the information needed by action interpretation, while
-;;; their subsequent elements are descriptions for parent pieces of dom, not
-;;; necessarily for every parent, but for enough to make the key
-;;; unique.
+;;; All keys are sequences. Their first element is a referent
+;;; description that gives the information needed by action
+;;; interpretation, while their subsequent elements are referent
+;;; descriptions for parent pieces of dom, not necessarily for every
+;;; parent, but for enough to make the key unique among all doms, and
+;;; to give any additional information necessary to interpret the
+;;; referent key.
 
-;;; There are several kinds of context descriptions, each a map whose
+;;; There are several kinds of referent descriptions, each a map whose
 ;;; keys depend on what the dom cell refers to.
 ;;;       item: {:item <item> :condition <condition>}
-;;;   template: {:template <condition>
-;;;              :before-item <item>
+;;;   elements: {:condition <condition>
+;;;              :after-item <item>
 ;;;              :first-item <item>
 ;;;              :last-item <item>
-;;;              :after-item <item>}
+;;;              :before-item <item>}
 ;;;   exemplar: {:exemplar <exemplar key>}
 
 ;;; In these descriptions, a condition is a query that an item must satisfy.
@@ -73,8 +76,8 @@
 ;;; condition required for a new item to appear adjacent to the item
 ;;; in question. That way, insert actions can be interpreted.
 
-;;; A template key refers to all elements of the parent key that
-;;; satisfy a template condition. These keys are used for dom cells
+;;; An elements key refers to all elements of the parent key that
+;;; satisfy a condition. These keys are used for dom cells
 ;;; where the user can add items. If items are already in the cell,
 ;;; then first-item and last-item will be listed, so that ordering
 ;;; information can be inferred for items added at the beginning and
@@ -88,40 +91,27 @@
 ;;; change the tags of each of the items. An exemplar key has two
 ;;; parts, the exemplar and the ancestor. The ancestor is a template,
 ;;; and the top item of the exemplar satisfies it. Concatenated
-;;; together, the exemplar and ancestor would be a single ordinary
+;;; together, the exemplar and ancestor would be an ordinary item
 ;;; key. As an exemplar key, the visible information of the exemplar
 ;;; is matched against each element satisfying the template, to yield
 ;;; a different key for each match. The exemplar stands for that set
 ;;; of keys.
 
-;;; TODO: Move this multiset stuff to utils?
-
-(defn multiset-conj
-  "Add an item to a multiset,
-   represented as a map from items to multiplicities."
-  [ms item]
-  (update-in ms [item] #((fnil + 0) % 1)))
-
-(defn multiset
-  "Turn a seq into a multiset."
-  [items]
-  (reduce multiset-conj {} items))
-
 (defn item-description
-  "Turn keyword arguments into an item context description."
+  "Turn keyword arguments into an item referent description."
   [& {:as args}]
   (assert (every? #{:item :condition}(keys args)))
   args)
 
 (defn template-description
-  "Turn keyword arguments into a template context description."
+  "Turn keyword arguments into a template referent description."
   [& {:as args}]
   (assert (every? #{:condition :first-item :last-item :before-item :after-item}
                   (keys args)))
   args)
 
 (defn condition-description
-  "Turn keyword arguments into a template context description."
+  "Turn keyword arguments into a template referent description."
   [& {:as args}]
   (assert (every? #{:subject :elements}(keys args)))
   args)

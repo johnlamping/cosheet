@@ -3,7 +3,8 @@
             core
             debug-test
             client-utils-test dom-utils-test
-            utils-test reporters-test entity-test store-test query-test
+            utils-test expandable-order-test
+            reporters-test entity-test store-test query-test
             mutable-map-test task-queue-test computation-manager-test
             mutable-store-test store-utils-test)
            (cosheet.server

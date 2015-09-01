@@ -101,7 +101,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    z-index: 2;
+    z-index: 1;
 }
 
 .editable > #edit_holder {
@@ -113,5 +113,5 @@
     height: 100%;
     min-height: 10px;
     background: cornsilk;
-    z-index: 3;
+    z-index: 1;
 }

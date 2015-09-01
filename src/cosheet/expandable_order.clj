@@ -45,20 +45,41 @@
         (< fa (first fb))
         (< fa fb)))))
 
+(declare split-in-order)
+
+(defn- get-midpoint
+  "Internal function that picks the (left) midpoint between two points."
+  [left right preferred-side]
+  (case preferred-side
+    nil (quot (+ right left) 2)
+    :before (if (> (- right left) 1024)
+                (- right 127)
+                (quot (+ left (* 7 right)) 8))
+    :after (if (> (- right left) 1024)
+               (+ left 128)
+               (quot (+ (* 7 left) right) 8))))
+
+(defn- split-sequence
+  "Internal function that splits, given the sequence for the left."
+  [fa preferred-side]
+  (let [[f s] initial-expandable]
+    (split-in-order (list (conj fa f) s) preferred-side)))
+
 (defn split-in-order
-  "Split the item into two."
-  [a]
-  (let [[fa sa] a]
+  "Split the item into two. If preferred-side is non-nil, it must be
+   :before or :after, in which case the majority of the space
+   is put on that side."
+  [a & preferred-side]
+  (let [[fa sa] a
+        [preferred-side] preferred-side]
     (if (sequential? fa)
       (let [lfa (peek fa)]
         (if (== lfa sa)
-          (let [[f s] initial-expandable]
-            (split-in-order (list (conj fa f) s)))
-          (let [m (quot (+ lfa sa) 2)]
+          (split-sequence fa preferred-side)
+          (let [m (get-midpoint lfa sa preferred-side)]
             [(list fa m) (list (conj (pop fa) (+ m 1)) sa)])))
       (if (== fa sa)
-        (let [[f s] initial-expandable]
-          (split-in-order (list [fa f] s)))
-        (let [m (quot (+ fa sa) 2)]
+        (split-sequence [fa] preferred-side)
+        (let [m (get-midpoint fa sa preferred-side)]
             [(list fa m) (list (+ m 1) sa)])))))
 

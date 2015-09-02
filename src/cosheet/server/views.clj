@@ -3,6 +3,7 @@
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
    (cosheet
+    [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store]]
     store-impl
     mutable-store-impl
@@ -31,15 +32,22 @@
 
 (defn create-store
   []
-  (let [starting-item '("Joe"
+  (let [unused-orderable orderable/initial
+        [o1 unused-orderable] (orderable/split unused-orderable :after)
+        [o2 unused-orderable] (orderable/split unused-orderable :after)
+        [o3 unused-orderable] (orderable/split unused-orderable :after)
+        [o4 unused-orderable] (orderable/split unused-orderable :after)
+        starting-item `("Joe"
                         (:root :invisible)
-                        (2 :order)
-                        ("male" (1 :order))
-                        ("married" (2 :order))
-                        (39 (3 :order)
-                            ("age" tag)
+                        (~o1 :order)
+                        ("male" (~o2 :order))
+                        ("married" (~o3 :order))
+                        (39 (~o4 :order)
+                            ("age" ~'tag)
                             ("doubtful" "confidence")))
-        [store id] (add-entity (new-element-store) nil starting-item)]
+        [store id] (add-entity (new-element-store) nil starting-item)
+        [store _] (add-entity store nil (list unused-orderable
+                                              :unused-orderable))]
     (new-mutable-store store)))
 
 (defonce store (create-store))

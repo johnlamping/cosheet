@@ -6,6 +6,7 @@
                                     id->content-reference
                                     mutable-store?
                                     stored-item-id-string]]
+                     [orderable :as orderable]
                      [entity :refer :all]
                      [reporters :refer [expr-seq expr-let expr]])))
 
@@ -127,6 +128,14 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  cosheet.orderable.Orderable
+  (mutable-entity? [this] false)
+  (atom? [this] true)
+  (label->elements [this label] nil)
+  (elements [this] nil)
+  (content [this] this)
+  (content-reference [this] this)
+
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
   (atom? [this] true))
@@ -146,6 +155,8 @@
   java.lang.Number
   (description->entity [this store] this)
   java.lang.Boolean
+  (description->entity [this store] this)
+  cosheet.orderable.Orderable
   (description->entity [this store] this)
   nil
   (description->entity [this store] nil) ;; For convenience in null punning

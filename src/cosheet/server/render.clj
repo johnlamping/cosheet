@@ -1,6 +1,7 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset]]
+                     [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
                      [reporters
@@ -198,28 +199,17 @@
   (expr-let [visible-elements (expr-seq map visible-to-list elements)]
     (condition-description :subject subject :elements visible-elements)))
 
-(defn order-comparator
-  "Compare two ordering values, where the input is sequences,
-   with the ordering information first."
+(defn orderable-comparator
+  "Compare two sequences each of whose first element is an orderable."
   [a b]
-  ;; TODO: For now the order information is just a number. But it
-  ;; should soon change to be an interval, so that a new element can
-  ;; be added before or after an old one by splitting the interval of
-  ;; the old one, handing half back to the old one and half to the new
-  ;; one. To allow for arbitrary precision, we use a sequence of
-  ;; numbers, first number most significant. That gives the starting
-  ;; point of the interval. Then the interval is given by a pair of
-  ;; the starting point, and a single number for the end point,
-  ;; implicitly preceeded by all but the last number of the starting
-  ;; point.
-  (< (first a) (first b)))
+  (orderable/earlier? (first a) (first b)))
 
 (defn order-items
   "Return the items in the proper sort order."
   [items]
   (expr-let [order-info
              (expr-seq map #(entity/label->content % :order) items)]
-    (map second (sort order-comparator (map vector order-info items)))))
+    (map second (sort orderable-comparator (map vector order-info items)))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."

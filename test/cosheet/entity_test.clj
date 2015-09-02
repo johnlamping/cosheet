@@ -1,6 +1,7 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
-            (cosheet [store :refer [add-simple-element make-id
+            (cosheet [orderable :as orderable]
+                     [store :refer [add-simple-element make-id
                                     new-element-store new-mutable-store]]
                      [entity :refer :all]
                      store-impl
@@ -138,22 +139,30 @@
   (is (atom? "foo"))
   (is (atom? :foo))
   (is (atom? 'foo))
+  (is (atom? orderable/initial))
   (is (= (elements 1) nil))
   (is (= (elements true) nil))
   (is (= (elements "foo") nil))
   (is (= (elements :foo) nil))
+  (is (= (elements 'foo) nil))
+  (is (= (elements orderable/initial) nil))
   (is (= (label->elements 1 1) nil))
   (is (= (label->elements true 1) nil))
   (is (= (label->elements "foo:foo" 1) nil))
   (is (= (label->elements :foo 1) nil))
+  (is (= (label->elements 'foo 1) nil))
+  (is (= (label->elements orderable/initial 1) nil))
   (is (= (content 1) 1))
   (is (= (content true) true))
   (is (= (content "foo") "foo"))
   (is (= (content :foo) :foo))
+  (is (= (content 'foo) 'foo))
+  (is (= (content orderable/initial) orderable/initial))
   (is (= (content-reference 1) 1))
   (is (= (content-reference true) true))
   (is (= (content-reference "foo") "foo"))
-  (is (= (content-reference :foo) :foo)))
+  (is (= (content-reference :foo) :foo))
+  (is (= (content-reference orderable/initial) orderable/initial)))
 
 (deftest atomic-value-test
   (is (= (atomic-value 2) 2))
@@ -168,6 +177,7 @@
     (is (= (description->entity 2 s) 2))
     (is (= (description->entity :foo s) :foo))
     (is (= (description->entity 'foo s) 'foo))
+    (is (= (description->entity orderable/initial s) orderable/initial))
     (is (= (description->entity "1" s) "1"))
     (is (= (description->entity id s) item))))
 

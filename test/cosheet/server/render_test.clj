@@ -3,6 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
+             [orderable :as orderable]
              [entity :as entity  :refer [to-list description->entity]]
              [reporters :refer [expr expr-let expr-seq]]
              [debug :refer [current-value envs-to-list
@@ -27,13 +28,18 @@
     entity))
 
 (deftest render-test
-  (let [jane '("Jane" (1 :order) "plain" "plain")
-        joe '("Joe"
-              (2 :order)
-              ("male" (1 :order))
-              ("married" (2 :order))
-              (39 (3 :order)
-                  ("age" tag)
+  (let [unused-orderable orderable/initial
+        [o1 unused-orderable] (orderable/split unused-orderable :after)
+        [o2 unused-orderable] (orderable/split unused-orderable :after)
+        [o3 unused-orderable] (orderable/split unused-orderable :after)
+        [o4 unused-orderable] (orderable/split unused-orderable :after)
+        jane `("Jane" (~o1 :order) "plain" "plain")
+        joe `("Joe"
+              (~o2 :order)
+              ("male" (~o1 :order))
+              ("married" (~o2 :order))
+              (39 (~o3 :order)
+                  ("age" ~'tag)
                   ("doubtful" "confidence")))]
     (let [visible (let-propagated [him joe]
                     (visible-to-list him))]
@@ -134,8 +140,8 @@
             (let-propagated [him joe]
               (expr-let [dom (item-DOM him [him] #{} {:depth 0})]
                 [dom him]))
-            male (first (current-value (entity/label->elements joe 1)))
-            married (first (current-value (entity/label->elements joe 2)))
+            male (first (current-value (entity/label->elements joe o1)))
+            married (first (current-value (entity/label->elements joe o2)))
             age (first (current-value (entity/label->elements joe "age")))
             age-tag (first (current-value (entity/label->elements age 'tag)))
             age-tag-spec (first (current-value (entity/elements age-tag)))]
@@ -212,12 +218,12 @@
                                      joe]
                                             #{age-tag} {:depth 1}]}]]]]))))    
     (let [[dom age]
-          (let-propagated [age '(39 ("doubtful" (1 :order))
-                                    ("funny" (2 :order)))]
+          (let-propagated [age `(39 ("doubtful" (~o1 :order))
+                                    ("funny" (~o2 :order)))]
             (expr-let [dom (item-DOM age [age] #{} {:depth 0})]
               [dom age]))
-          doubtful (first (current-value (entity/label->elements age 1)))
-          funny (first (current-value (entity/label->elements age 2)))]
+          doubtful (first (current-value (entity/label->elements age o1)))
+          funny (first (current-value (entity/label->elements age o2)))]
       (is (= dom
                      [:div {:class "item" :key [age]}
               [:div {:style {:width "100%" :display "block"}

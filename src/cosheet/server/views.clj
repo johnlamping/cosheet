@@ -40,11 +40,13 @@
         starting-item `("Joe"
                         (:root :invisible)
                         (~o1 :order)
-                        ("male" (~o2 :order))
-                        ("married" (~o3 :order))
-                        (39 (~o4 :order)
+                        ("male" (~o1 :order))
+                        ("married" (~o2 :order))
+                        (39 (~o3 :order)
                             ("age" ~'tag)
-                            ("doubtful" "confidence")))
+                            ("doubtful" "confidence"))
+                        (45 (~o3 :order)
+                            ("age" ~'tag)))
         [store id] (add-entity (new-element-store) nil starting-item)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]

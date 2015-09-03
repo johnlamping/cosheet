@@ -59,44 +59,66 @@
 ;;; referent key.
 
 ;;; There are several kinds of referent descriptions, each a map whose
-;;; keys depend on what the dom cell refers to.
-;;;       item: {:item <item> :condition <condition>}
+;;; keys depend on what the dom cell refers to. The first of the keys
+;;; of each of the following maps are required, while the others are
+;;; optional.
+;;;       item: {:item <item>
+;;;              :condition <condition>}
 ;;;   elements: {:condition <condition>
 ;;;              :after-item <item>
 ;;;              :first-item <item>
 ;;;              :last-item <item>
 ;;;              :before-item <item>}
-;;;   exemplar: {:exemplar <exemplar key>}
+;;;   exemplar: {:exemplar <exemplar key>
+;;;              :subjects <list of items>}
 
 ;;; In these descriptions, a condition is a query that an item must satisfy.
 ;;; It is a map, which can contain
 ;;;   {:subject <id of subject of item>
-;;;    :elements <list of elements that item must have>}
+;;;    :elements <list of elements that an item must have>}
 
-;;; An item key refers to a particular item, but may also give a
-;;; condition required for a new item to appear adjacent to the item
-;;; in question. That way, insert actions can be interpreted.
+;;; An item key refers to a particular item, but typically also gives
+;;; a condition required for a new item to appear adjacent in the dom
+;;; to the item in question. That way, insert actions can be
+;;; interpreted.
 
-;;; An elements key refers to all elements of the parent key that
-;;; satisfy a condition. These keys are used for dom cells
-;;; where the user can add items. If items are already in the cell,
-;;; then first-item and last-item will be listed, so that ordering
-;;; information can be inferred for items added at the beginning and
-;;; end of the cell. If the cell is empty, the before-item and
-;;; after-item may be listed, giving items that an item added to the
-;;; cell should come after or before.
+;;; An elements key refers to all elements that satisfy a condition.
+;;; These keys are used for dom cells that don't necessarily refer to
+;;; single items, but where the user can add items. If items are
+;;; already in the cell, then first-item and last-item will be listed,
+;;; so that ordering information can be inferred for items added at
+;;; the beginning and end of the cell. If the cell is empty, then
+;;; before-item and after-item may be listed, giving items that an
+;;; item added to the cell should come after or before.
 
-;;; An exemplar key stands for each of several different items or
-;;; templates. It's canonical use is for tag doms that pertain to
-;;; several items, each having equal tags. A change in that dom should
-;;; change the tags of each of the items. An exemplar key has two
-;;; parts, the exemplar and the ancestor. The ancestor is a template,
-;;; and the top item of the exemplar satisfies it. Concatenated
-;;; together, the exemplar and ancestor would be an ordinary item
-;;; key. As an exemplar key, the visible information of the exemplar
-;;; is matched against each element satisfying the template, to yield
-;;; a different key for each match. The exemplar stands for that set
-;;; of keys.
+;;; An exemplar key stands for a set of keys. Its canonical use is
+;;; when several items have equal tag entities, and the display shows
+;;; just a single dom that stands for all those tags. A change to the
+;;; tag dom should change tags for each of the items, and the exemplar
+;;; key's job is to indicate a set of keys corresponding to those
+;;; tags.
+
+;;; An exemplar reference can only be the first reference of a key. It
+;;; consists of its own key, and a list of subjects. The last referent
+;;; in the key will always be an item, while the first will be an item
+;;; or another exemplar.
+
+;;; In the simplest case, the exemplar's key is just a single item.
+;;; There should be an element of each of the subjects that has the
+;;; same visible content as the item, and the exemplar stands for a
+;;; set of keys where the exemplar is replaced by each of the matching
+;;; items in turn.
+
+;;; If the exemplar's key has more than one referent, then the process
+;;; starts as above, by finding elements for each of the subjects that
+;;; match the last item in the exemplar's key. But the exemplar refers
+;;; not to those entire items, but to parts of them, as indicated by
+;;; the rest of the exemplar's key. For each of the matching elements,
+;;; you move backwards through the exemplar's key, matching each item
+;;; of the key to the an element of the previously matching element
+;;; that has the same visible content. If the first referent of the
+;;; exemplar's key is another exemplar, each subject of the nested
+;;; exemplar is matched, and the whole process recurses.
 
 (defn item-description
   "Turn keyword arguments into an item referent description."
@@ -260,7 +282,8 @@
              canonical-tags (expr-seq map canonical-info-set tag-lists)]
     (first (reduce (fn [[groups prev-item-canonical-tags]
                         [item item-tags item-canonical-tags]]
-                     [(if (= item-canonical-tags prev-item-canonical-tags)
+                     [(if (and (not (empty? item-canonical-tags))
+                               (= item-canonical-tags prev-item-canonical-tags))
                         (update-in groups [(dec (count groups))]
                                    #(conj % [item item-tags]))
                         (conj groups [[item item-tags]]))

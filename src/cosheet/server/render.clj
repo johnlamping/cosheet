@@ -67,8 +67,8 @@
 ;;;              :first-item <item>
 ;;;              :last-item <item>
 ;;;              :before-item <item>}
-;;;        set: {:exemplar <exemplar key>
-;;;              :subjects <list of items>}
+;;;        set: {:items <list of items>
+;;;              :exemplar <exemplar key>}
 
 ;;; In these maps, a condition is a query that an item must satisfy.
 ;;; It is a map, which can contain
@@ -96,26 +96,19 @@
 ;;; referent's job is to indicate the set of items corresponding to
 ;;; those parallel tags.
 
-;;; A set referent consists of an exemplar key and a list of subject
-;;; items. The last referent of the exemplar key will be an item,
-;;; while the first element will be an item or another set referent.
-;;; In the simplest case, the exemplar's key is just a single item. In
-;;; this case, each of the subject items should have an element that
-;;; has the same visible content as the item in the exemplar, and the
-;;; set referent refers to those elements.
-
-;;; If the set's exemplar has more than one referent, then the process
-;;; starts as above, by finding an element for each of the subjects
-;;; that matches the last item in the exemplar's. But the set refers
-;;; not to those entire items, but to parts of them, as indicated by
-;;; the rest of the exemplar. For each of the matching elements of the
-;;; subjects, you move backwards through the exemplar, matching each
-;;; item of the exemplar to an element of the previously matching
-;;; element that has the same visible content. If the first referent
-;;; of the exemplar is an item, then the set refers to what that item
-;;; ended up matching for each subject. If the first referent is
-;;; another exemplar, each subject of the nested exemplar is matched,
-;;; and the whole process recurses.
+;;; A set referent consists of a list of items and possibly an
+;;; exemplar. In the simplest case, the exemplar key is empty, in
+;;; which case, the set reference refers to each of its items. If the
+;;; set's exemplar is non-empty, then the exemplar describes a
+;;; navigation path through each of the items. Starting with each
+;;; item, the navigation finds an element whose visible information
+;;; matches the visible information of the last item in the exemplar.
+;;; That becomes the new item in the navigation, which continues
+;;; moving foward in the exemplar. If the first referent of the
+;;; exemplar is an item, then the set refers to what that item ended
+;;; up matching at the end of each of the navigations. If the first
+;;; referent is another exemplar, each item of the nested exemplar is
+;;; matched, and the navigation recurses.
 
 (defn item-referent
   "Validate keyword arguments for an item referent"
@@ -135,9 +128,8 @@
 (defn set-referent
   "Validate keyword arguments for a set referent"
   [& {:as args}]
-  (assert (:exemplar args))
-  (assert (:subjects args))
-  (assert (every? #{:exemplar :subjects} (keys args)))
+  (assert (:items args))
+  (assert (every? #{:items :exemplar} (keys args)))
   args)
 
 (defn condition-map
@@ -151,10 +143,10 @@
   that a set referent can only occur in first position."
   [referent key]
   (let [initial (first key)]
-    (if (:exemplar initial)
+    (if (:items initial)
       (cons (set-referent
-             :exemplar (prepend-to-key referent (:exemplar initial))
-             :subjects (:subjects initial))
+             :items (:items initial)
+             :exemplar (prepend-to-key referent (:exemplar initial)))
             (rest key))
       (cons referent key))))
 
@@ -338,16 +330,15 @@
   ;; particular, for no tags, we need to make a cell with a key.
   [tags parent parent-key inherited]
   (let [condition (condition-map :subject parent :elements ['tag])]
-    (expr-let [tag-visibles (expr-seq map visible-to-list tags)]
-      (expr-let [tag-components
-                 (expr-seq
-                  map #(tag-component % condition parent-key inherited) tags)]
-        (add-attributes (vertical-stack tag-components true) {:class "tag"})))))
+    (expr-let [tag-components
+               (expr-seq
+                map #(tag-component % condition parent-key inherited) tags)]
+      (add-attributes (vertical-stack tag-components true) {:class "tag"}))))
 
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where
    the tags for each item are equivalent, generate DOM for the items,
-   labeled with the tags."
+   sharing a label with the tags."
   ;; TODO: Add some data-* attributes to the tag items that indicate
   ;; what items they pertain to.
   ;; TODO: for deep items, use a layout with tag above content to conserve
@@ -355,19 +346,27 @@
   [items-and-tags parent parent-key inherited]
   (let [sample-tags (get-in items-and-tags [0 1])]
     (expr-let [condition (elements-condition parent sample-tags)
+               item-referents (map (fn [[item tag-list]]
+                                     (item-referent :item item
+                                                    :condition condition))
+                                   items-and-tags)
                item-doms (expr-seq
-                          map (fn [[item tag-list]]
-                                (let [referent (item-referent
-                                                :item item
-                                                :condition condition)
-                                      key (prepend-to-key referent parent-key)]
+                          map (fn [[item tag-list] referent]
+                                (let [key (prepend-to-key referent parent-key)]
                                   (make-component key
                                                   [item-DOM item key
                                                    (set tag-list) inherited])))
-                          items-and-tags)
-               tags-dom (expr tags-DOM
-                          (order-items sample-tags)
-                          parent parent-key inherited)]
+                          items-and-tags
+                          item-referents)
+               tags-dom (let [parent-key
+                              (prepend-to-key
+                               (if (= (count item-referents) 1)
+                                 (first item-referents)
+                                 (set-referent :items item-referents))
+                               parent-key)]
+                          (expr tags-DOM
+                            (order-items sample-tags)
+                            parent parent-key inherited))]
       [:div {:style {:display "table-row"}}
        ;; TODO: Give these keys, so they can support insertion?
        (add-attributes tags-dom

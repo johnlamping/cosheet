@@ -52,15 +52,15 @@
   (let [a (item-referent :item :a)
         b (item-referent :item :b)
         c (item-referent :item :c)
-        s (set-referent :exemplar [a] :subjects [b])
-        ss (set-referent :exemplar [s a] :subjects [b])]
+        s (set-referent  :items [b])
+        ss (set-referent :exemplar [s a] :items [b])]
     (is (= (prepend-to-key a [b]) [a b]))
     (is (= (prepend-to-key c [s a])
-           [(set-referent :exemplar [c a] :subjects [b]) a]))
+           [(set-referent :exemplar [c] :items [b]) a]))
     (is (= (prepend-to-key c [ss a])
-           [(set-referent :exemplar [(set-referent :exemplar [c a]
-                                                   :subjects [b]) a]
-                          :subjects [b])
+           [(set-referent :items [b]
+                          :exemplar [(set-referent :items [b] :exemplar [c])
+                                     a])
             a]))))
 
 (deftest visible-test
@@ -231,22 +231,31 @@
                                           #{} {:depth 1}]}]]
                [:div {:style {:display "table-row"}
                       :class "last-row"}
-                [:component {:attributes
-                             {:style {:display "table-cell"}
-                              :class "tag tag-column for-multiple-items"}
-                             :key [{:condition {:elements ['tag]
-                                                ;; TODO: subject joe?
-                                                :subject joe}
-                                    :item bogus-age-tag}
-                                   ;; TODO: parent joe?
-                                   joe]
-                             :definition [item-DOM
-                                          bogus-age-tag
-                                          [{:condition {:elements ['tag],
-                                                        :subject joe}
-                                            :item bogus-age-tag}
-                                           joe]
-                                          #{bogus-age-tag-spec} {:depth 1}]}]
+                [:component
+                 (let [set-ref {:exemplar [{:item bogus-age-tag
+                                                :condition
+                                                {:elements ['tag]
+                                                 ;; TODO: subject joe?
+                                                 :subject joe}}]
+                                    :items [{:item bogus-age
+                                             :condition
+                                             {:elements [["age" 'tag]]
+                                              :subject joe}}
+                                            {:item age
+                                             :condition
+                                             {:elements [["age" 'tag]]
+                                              :subject joe}}]}]
+                   {:attributes
+                    {:style {:display "table-cell"}
+                     :class "tag tag-column for-multiple-items"}
+                    :key [set-ref
+                          ;; TODO: Joe shouldn't be here!!!
+                          joe]
+                    :definition [item-DOM
+                                 bogus-age-tag
+                                 [set-ref
+                                  joe]
+                                 #{bogus-age-tag-spec} {:depth 1}]})]
                 [:div {:style {:display "table-cell"}
                        :class "item-column"}
                  [:component {:attributes {:style {:width "100%"

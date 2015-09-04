@@ -136,8 +136,8 @@
   "Validate keyword arguments for a set referent"
   [& {:as args}]
   (assert (:exemplar args))
-  (assert (:subject args))
-  (assert (every? #{:exemplar :subject} (keys args)))
+  (assert (:subjects args))
+  (assert (every? #{:exemplar :subjects} (keys args)))
   args)
 
 (defn condition-map
@@ -145,6 +145,18 @@
   [& {:as args}]
   (assert (every? #{:subject :elements}(keys args)))
   args)
+
+(defn prepend-to-key
+  "Prepend a new referent to the front of a key, maintaining the invariant
+  that a set referent can only occur in first position."
+  [referent key]
+  (let [initial (first key)]
+    (if (:exemplar initial)
+      (cons (set-referent
+             :exemplar (prepend-to-key referent (:exemplar initial))
+             :subjects (:subjects initial))
+            (rest key))
+      (cons referent key))))
 
 (defn visible-entity?
   "Return true if an entity is visible to the user
@@ -262,11 +274,6 @@
 
 (def item-DOM)
 
-(defn template-key
-  "Return a template key, given the template and parent key."
-  [template parent-key]
-  (cons [:template template] parent-key))
-
 (defn make-component
   "Make a component dom descriptor, with the given key and definition,
    and, optionally, additional attributes."
@@ -320,7 +327,7 @@
   ;; handle exemplars)
   (expr-let [tag-specs (tag-specifiers element)]
     (let [referent (item-referent :item element :condition condition)
-          key (cons referent parent-key)]      
+          key (prepend-to-key referent parent-key)]      
       (make-component
        key [item-DOM element key (set tag-specs) inherited]))))
 
@@ -353,7 +360,7 @@
                                 (let [referent (item-referent
                                                 :item item
                                                 :condition condition)
-                                      key (cons referent parent-key)]
+                                      key (prepend-to-key referent parent-key)]
                                   (make-component key
                                                   [item-DOM item key
                                                    (set tag-list) inherited])))

@@ -50,18 +50,16 @@
 ;;; an item. Further, an addition action requires a condition, to know
 ;;; what elements the added item must have.
 
-;;; All keys are sequences. Their first element is a referent
-;;; description that gives the information needed by action
-;;; interpretation, while their subsequent elements are referent
-;;; descriptions for parent pieces of dom, not necessarily for every
-;;; parent, but for enough to make the key unique among all doms, and
-;;; to give any additional information necessary to interpret the
-;;; referent key.
+;;; All keys are sequences. Their first element is a referent that
+;;; gives the information needed by action interpretation, while their
+;;; subsequent elements are referents for parent pieces of dom, not
+;;; necessarily for every parent, but for enough to make the key
+;;; unique among all doms, and to give any additional information
+;;; necessary to interpret the referent key.
 
-;;; There are several kinds of referent descriptions, each a map whose
-;;; keys depend on what the dom cell refers to. The first of the keys
-;;; of each of the following maps are required, while the others are
-;;; optional.
+;;; There are several kinds of referents, each a map whose keys depend
+;;; on what the dom cell refers to. The first of the keys of each of
+;;; the following maps are required, while the others are optional.
 ;;;       item: {:item <item>
 ;;;              :condition <condition>}
 ;;;   elements: {:condition <condition>
@@ -69,72 +67,81 @@
 ;;;              :first-item <item>
 ;;;              :last-item <item>
 ;;;              :before-item <item>}
-;;;   exemplar: {:exemplar <exemplar key>
+;;;        set: {:exemplar <exemplar key>
 ;;;              :subjects <list of items>}
 
-;;; In these descriptions, a condition is a query that an item must satisfy.
+;;; In these maps, a condition is a query that an item must satisfy.
 ;;; It is a map, which can contain
 ;;;   {:subject <id of subject of item>
 ;;;    :elements <list of elements that an item must have>}
 
-;;; An item key refers to a particular item, but typically also gives
-;;; a condition required for a new item to appear adjacent in the dom
-;;; to the item in question. That way, insert actions can be
-;;; interpreted.
+;;; An item referent indicates a dom node that holds a particular
+;;; item. It typically also gives a condition required for a new item
+;;; to appear adjacent in the dom to the item in question. That way,
+;;; insert actions can be interpreted.
 
-;;; An elements key refers to all elements that satisfy a condition.
-;;; These keys are used for dom cells that don't necessarily refer to
-;;; single items, but where the user can add items. If items are
-;;; already in the cell, then first-item and last-item will be listed,
-;;; so that ordering information can be inferred for items added at
-;;; the beginning and end of the cell. If the cell is empty, then
+;;; An elements referent indicates a dom node that displays all the
+;;; elements of some item that satisfy a condition. There could be
+;;; none, one, or several such elements. If there are any elements in
+;;; the node, then first-item and last-item will be listed, so that
+;;; ordering information can be inferred for items added at the
+;;; beginning and end of the node. If the node is empty, then
 ;;; before-item and after-item may be listed, giving items that an
-;;; item added to the cell should come after or before.
+;;; item added to the node should come after or before.
 
-;;; An exemplar key stands for a set of keys. Its canonical use is
-;;; when several items have equal tag entities, and the display shows
-;;; just a single dom that stands for all those tags. A change to the
-;;; tag dom should change tags for each of the items, and the exemplar
-;;; key's job is to indicate a set of keys corresponding to those
-;;; tags.
+;;; A set referent stands for a set of items. Its canonical use is
+;;; when the tags of several items look the same, and the display
+;;; collapses the display of the tags into a single dom node. A change
+;;; to that node should change tags for each of the items; The set
+;;; referent's job is to indicate the set of items corresponding to
+;;; those parallel tags.
 
-;;; An exemplar reference can only be the first reference of a key. It
-;;; consists of its own key, and a list of subjects. The last referent
-;;; in the key will always be an item, while the first will be an item
-;;; or another exemplar.
+;;; A set referent consists of an exemplar key and a list of subject
+;;; items. The last referent of the exemplar key will be an item,
+;;; while the first element will be an item or another set referent.
+;;; In the simplest case, the exemplar's key is just a single item. In
+;;; this case, each of the subject items should have an element that
+;;; has the same visible content as the item in the exemplar, and the
+;;; set referent refers to those elements.
 
-;;; In the simplest case, the exemplar's key is just a single item.
-;;; There should be an element of each of the subjects that has the
-;;; same visible content as the item, and the exemplar stands for a
-;;; set of keys where the exemplar is replaced by each of the matching
-;;; items in turn.
-
-;;; If the exemplar's key has more than one referent, then the process
-;;; starts as above, by finding elements for each of the subjects that
-;;; match the last item in the exemplar's key. But the exemplar refers
+;;; If the set's exemplar has more than one referent, then the process
+;;; starts as above, by finding an element for each of the subjects
+;;; that matches the last item in the exemplar's. But the set refers
 ;;; not to those entire items, but to parts of them, as indicated by
-;;; the rest of the exemplar's key. For each of the matching elements,
-;;; you move backwards through the exemplar's key, matching each item
-;;; of the key to the an element of the previously matching element
-;;; that has the same visible content. If the first referent of the
-;;; exemplar's key is another exemplar, each subject of the nested
-;;; exemplar is matched, and the whole process recurses.
+;;; the rest of the exemplar. For each of the matching elements of the
+;;; subjects, you move backwards through the exemplar, matching each
+;;; item of the exemplar to an element of the previously matching
+;;; element that has the same visible content. If the first referent
+;;; of the exemplar is an item, then the set refers to what that item
+;;; ended up matching for each subject. If the first referent is
+;;; another exemplar, each subject of the nested exemplar is matched,
+;;; and the whole process recurses.
 
-(defn item-description
-  "Turn keyword arguments into an item referent description."
+(defn item-referent
+  "Validate keyword arguments for an item referent"
   [& {:as args}]
-  (assert (every? #{:item :condition}(keys args)))
+  (assert (:item args))
+  (assert (every? #{:item :condition} (keys args)))
   args)
 
-(defn template-description
-  "Turn keyword arguments into a template referent description."
+(defn elements-referent
+  "Validate keyword arguments for a elements referent"
   [& {:as args}]
+  (assert (:condition args))
   (assert (every? #{:condition :first-item :last-item :before-item :after-item}
                   (keys args)))
   args)
 
-(defn condition-description
-  "Turn keyword arguments into a template referent description."
+(defn set-referent
+  "Validate keyword arguments for a set referent"
+  [& {:as args}]
+  (assert (:exemplar args))
+  (assert (:subject args))
+  (assert (every? #{:exemplar :subject} (keys args)))
+  args)
+
+(defn condition-map
+  "Validate keyword arguments for a condition."
   [& {:as args}]
   (assert (every? #{:subject :elements}(keys args)))
   args)
@@ -162,7 +169,7 @@
   (expr-let [elements (entity/elements entity)
              passed (expr-seq map #(expr-let [passes (condition %)]
                                         (when passes %))
-                                 elements)]
+                              elements)]
     (filter identity passed)))
 
 (defn visible-elements
@@ -219,7 +226,7 @@
    information."
   [subject elements]
   (expr-let [visible-elements (expr-seq map visible-to-list elements)]
-    (condition-description :subject subject :elements visible-elements)))
+    (condition-map :subject subject :elements visible-elements)))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -309,11 +316,11 @@
   "Return the component for a tag element."
   [element condition parent-key inherited]
   ;; TODO: if there are multiple parents, then we we need to use an
-  ;; exemplar description. (Or maybe conditions need to be able to
+  ;; set reference. (Or maybe conditions need to be able to
   ;; handle exemplars)
   (expr-let [tag-specs (tag-specifiers element)]
-    (let [description (item-description :item element :condition condition)
-          key (cons description parent-key)]      
+    (let [referent (item-referent :item element :condition condition)
+          key (cons referent parent-key)]      
       (make-component
        key [item-DOM element key (set tag-specs) inherited]))))
 
@@ -323,7 +330,7 @@
   ;; TODO: do different stuff, depending on number of tags. In
   ;; particular, for no tags, we need to make a cell with a key.
   [tags parent parent-key inherited]
-  (let [condition (condition-description :subject parent :elements ['tag])]
+  (let [condition (condition-map :subject parent :elements ['tag])]
     (expr-let [tag-visibles (expr-seq map visible-to-list tags)]
       (expr-let [tag-components
                  (expr-seq
@@ -343,10 +350,10 @@
     (expr-let [condition (elements-condition parent sample-tags)
                item-doms (expr-seq
                           map (fn [[item tag-list]]
-                                (let [description (item-description
-                                                   :item item
-                                                   :condition condition)
-                                      key (cons description parent-key)]
+                                (let [referent (item-referent
+                                                :item item
+                                                :condition condition)
+                                      key (cons referent parent-key)]
                                   (make-component key
                                                   [item-DOM item key
                                                    (set tag-list) inherited])))
@@ -398,8 +405,8 @@
           (if (entity/atom? content)
             [:div {:class "content-text editable"}
              (if (= content :none) "" (str content))]
-            (let [description (item-description :item content)
-                  child-key (cond description key)]
+            (let [referent (item-referent :item content)
+                  child-key (cond referent key)]
               (make-component
                child-key [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)

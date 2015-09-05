@@ -163,7 +163,7 @@
            [:div {:class "content-text editable item" :key [fred]} "Fred"]))
     (let [[dom joe]
           (let-propagated [him joe]
-            (expr-let [dom (item-DOM him [him] #{} {:depth 0})]
+            (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
               [dom him]))
           male (first (current-value (entity/label->elements joe o1)))
           married (first (current-value (entity/label->elements joe o2)))
@@ -190,14 +190,13 @@
                                               :subject joe}}
                    bogus-age-tag-ref {:item bogus-age-tag
                                       :condition {:elements ['tag]
-                                                  ;; TODO: subject joe?
-                                                  :subject joe}}
+                                                  :subject [bogus-age age]}}
                    age-ref {:item age
                             :condition {:elements [["age" 'tag]]
                                         :subject joe}}
                    both-ages-ref {:exemplar [bogus-age-tag-ref]
                                   :items [bogus-age-ref age-ref]}]
-               [:div {:class "item" :key [joe]}
+               [:div {:class "item" :key [:joe]}
                 [:div {:style {:width "100%" :display "block"}
                        :class "content-text editable"}
                  "Joe"]
@@ -210,18 +209,18 @@
                          :class "tag tag-column"}]
                   [:component {:attributes {:style {:display "table-cell"}
                                             :class "item-column"}
-                               :key [male-ref joe]
+                               :key [male-ref :joe]
                                :definition [item-DOM
-                                            male [male-ref joe]
+                                            male [male-ref :joe]
                                             #{} {:depth 1}]}]]
                  [:div {:style {:display "table-row"}}
                   [:div {:style {:display "table-cell"}
                          :class "tag tag-column"}]
                   [:component {:attributes {:style {:display "table-cell"}
                                             :class "item-column"}
-                               :key [married-ref joe]
+                               :key [married-ref :joe]
                                :definition [item-DOM
-                                            married [married-ref joe]
+                                            married [married-ref :joe]
                                             #{} {:depth 1}]}]]
                  [:div {:style {:display "table-row"}
                         :class "last-row"}
@@ -229,32 +228,30 @@
                    {:attributes
                     {:style {:display "table-cell"}
                      :class "tag tag-column for-multiple-items"}
-                    :key [both-ages-ref
-                          ;; TODO: Joe shouldn't be here!!!
-                          joe]
+                    :key [both-ages-ref :joe]
                     :definition [item-DOM
                                  bogus-age-tag
-                                 [both-ages-ref joe]
+                                 [both-ages-ref :joe]
                                  #{bogus-age-tag-spec} {:depth 1}]}]
                   [:div {:style {:display "table-cell"}
                          :class "item-column"}
                    [:component {:attributes {:style {:width "100%"
                                                      :display "block"}
                                              :class "vertical-separated"}
-                                :key [bogus-age-ref joe]
+                                :key [bogus-age-ref :joe]
                                 :definition [item-DOM
-                                             bogus-age [bogus-age-ref joe]
+                                             bogus-age [bogus-age-ref :joe]
                                              #{bogus-age-tag} {:depth 1}]}]
                    [:component {:attributes {:style {:width "100%"
                                                      :display "block"}
                                              :class "vertical-separated"}
-                                :key [age-ref joe]
+                                :key [age-ref :joe]
                                 :definition [item-DOM
-                                             age [age-ref joe]
+                                             age [age-ref :joe]
                                              #{age-tag} {:depth 1}]}]]]]])))))
   (let [[dom age]
         (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
-          (expr-let [dom (item-DOM age [age] #{} {:depth 0})]
+          (expr-let [dom (item-DOM age [:age] #{} {:depth 0})]
             [dom age]))
         doubtful (first (current-value (entity/label->elements age o1)))
         funny (first (current-value (entity/label->elements age o2)))]
@@ -263,7 +260,7 @@
            (let [doubtful-ref {:item doubtful
                                :condition {:subject age
                                            :elements nil}}]
-             [:div {:class "item" :key [age]}
+             [:div {:class "item" :key [:age]}
               [:div {:style {:width "100%" :display "block"}
                      :class "content-text editable"}
                "39"]
@@ -277,9 +274,9 @@
                        :class "tag tag-column"}]
                 [:component {:attributes {:class "item-column"
                                           :style {:display "table-cell"}}
-                             :key [doubtful-ref age]
+                             :key [doubtful-ref :age]
                              :definition [item-DOM
-                                          doubtful [doubtful-ref age]
+                                          doubtful [doubtful-ref :age]
                                           #{} {:depth 1}]}]]]])))))
 
 

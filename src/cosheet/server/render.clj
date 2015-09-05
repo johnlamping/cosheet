@@ -72,7 +72,7 @@
 
 ;;; In these maps, a condition is a query that an item must satisfy.
 ;;; It is a map, which can contain
-;;;   {:subject <id of subject of item>
+;;;   {:subject <subject of item> (or a vector of subjects)
 ;;;    :elements <list of elements that an item must have>}
 
 ;;; An item referent indicates a dom node that holds a particular
@@ -324,10 +324,11 @@
        key [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
-  "Given a sequence of tags, return components for the given items, wrapped in
-  a div if there is more than one."
+  "Given a sequence of items that are tags, return components for them,
+  wrapped in a div if there is more than one."
   ;; TODO: do different stuff, depending on number of tags. In
   ;; particular, for no tags, we need to make a cell with a key.
+  ;; TODO: Actually do the wrapping in a div.
   [tags parent parent-key inherited]
   (let [condition (condition-map :subject parent :elements ['tag])]
     (expr-let [tag-components
@@ -346,10 +347,10 @@
   [items-and-tags parent parent-key inherited]
   (let [sample-tags (get-in items-and-tags [0 1])]
     (expr-let [condition (elements-condition parent sample-tags)
-               item-referents (map (fn [[item tag-list]]
-                                     (item-referent :item item
-                                                    :condition condition))
-                                   items-and-tags)
+               items (map first items-and-tags)
+               item-referents (map #(item-referent :item %
+                                                   :condition condition)
+                                   items)
                item-doms (expr-seq
                           map (fn [[item tag-list] referent]
                                 (let [key (prepend-to-key referent parent-key)]
@@ -358,15 +359,16 @@
                                                    (set tag-list) inherited])))
                           items-and-tags
                           item-referents)
-               tags-dom (let [parent-key
-                              (prepend-to-key
-                               (if (= (count item-referents) 1)
-                                 (first item-referents)
-                                 (set-referent :items item-referents))
-                               parent-key)]
+               tags-dom (let [parent-ref (if (= (count items) 1)
+                                           (first item-referents)
+                                           (set-referent :items item-referents))
+                              parent-key (prepend-to-key parent-ref parent-key)]
                           (expr tags-DOM
                             (order-items sample-tags)
-                            parent parent-key inherited))]
+                            ;; TODO: Is the next line really right for
+                            ;; nested parallel tags?
+                            (if (= (count items) 1) (first items) (vec items))
+                            parent-key inherited))]
       [:div {:style {:display "table-row"}}
        ;; TODO: Give these keys, so they can support insertion?
        (add-attributes tags-dom

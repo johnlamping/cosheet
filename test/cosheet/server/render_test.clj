@@ -115,55 +115,44 @@
           (expr-let [dom (tags-DOM [fred] :k [:k] {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
-    (is (= dom 
-           [:component {:key [{:condition {:elements ['tag] :subject :k}
-                               :item fred}
-                              :k]
-                        :definition [item-DOM
-                                     fred
-                                     [{:condition {:elements ['tag]
-                                                   :subject :k}
-                                       :item fred}
-                                      :k]
-                                     #{fred-tag} {:depth 0}]
-                        :attributes {:class "tag"}}])))
+    (is (= dom
+           (let [fred-ref {:item fred
+                           :condition {:elements ['tag]
+                                       :subject :k}}]
+             [:component {:key [fred-ref :k]
+                          :definition [item-DOM
+                                       fred [fred-ref :k]
+                                       #{fred-tag} {:depth 0}]
+                          :attributes {:class "tag"}}]))))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
           (expr-let [dom (tags-DOM [fred fran] :k [:k] {:depth 1})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
-    (is (= dom 
-           [:div
-            {:class "tag"}
-            [:component {:key [{:condition {:elements ['tag] :subject :k}
-                                :item fred}
-                               :k]
-                         :definition [item-DOM
-                                      fred
-                                      [{:condition {:elements ['tag]
-                                                    :subject :k}
-                                        :item fred}
-                                       :k]
-                                      #{fred-tag} {:depth 1}]
-                         :attributes
-                         {:style {:display "block"
-                                  :width "100%"}
-                          :class "vertical-separated"}}]
-            [:component {:key [{:condition {:elements ['tag] :subject :k}
-                                :item fran}
-                               :k]
-                         :definition [item-DOM
-                                      fran
-                                      [{:condition {:elements ['tag]
-                                                    :subject :k}
-                                        :item fran}
-                                       :k]
-                                      #{} {:depth 1}]
-                         :attributes
-                         {:style  {:display "block"
-                                   :width "100%"}
-                          :class "vertical-separated"}}]]))))
+    (is (= dom
+           (let [fred-ref {:item fred
+                           :condition {:elements ['tag]
+                                       :subject :k}}
+                 fran-ref {:item fran
+                           :condition {:elements ['tag]
+                                       :subject :k}}]
+             [:div
+              {:class "tag"}
+              [:component {:key [fred-ref :k]
+                           :definition [item-DOM
+                                        fred [fred-ref :k]
+                                        #{fred-tag} {:depth 1}]
+                           :attributes {:style {:display "block"
+                                                :width "100%"}
+                                        :class "vertical-separated"}}]
+              [:component {:key [fran-ref :k]
+                           :definition [item-DOM
+                                        fran [fran-ref :k]
+                                        #{} {:depth 1}]
+                           :attributes {:style  {:display "block"
+                                                 :width "100%"}
+                                        :class "vertical-separated"}}]])))))
 
 (deftest item-DOM-test
   (let [[dom fred]
@@ -190,104 +179,79 @@
           age-tag (first (current-value (entity/label->elements age 'tag)))
           age-tag-spec (first (current-value (entity/elements age-tag)))]
       (is (= dom
-             [:div {:class "item" :key [joe]}
-              [:div {:style {:width "100%" :display "block"}
-                     :class "content-text editable"}
-               "Joe"]
-              [:div {:style {:width "100%"
-                             :display "table"
-                             :table-layout "fixed"}
-                     :class "element-table"}
-               [:div {:style {:display "table-row"}}
-                [:div {:style {:display "table-cell"}
-                       :class "tag tag-column"}]
-                [:component {:attributes {:style {:display "table-cell"}
-                                          :class "item-column"}
-                             :key [{:condition {:elements nil, :subject joe}
-                                    :item male}
-                                   joe]
-                             :definition [item-DOM
-                                          male
-                                          [{:condition {:elements nil,
-                                                        :subject joe}
-                                            :item male}
-                                           joe]
-                                          #{} {:depth 1}]}]]
-               [:div {:style {:display "table-row"}}
-                [:div {:style {:display "table-cell"}
-                       :class "tag tag-column"}]
-                [:component {:attributes {:style {:display "table-cell"}
-                                          :class "item-column"}
-                             :key [{:condition {:elements nil,
-                                                :subject joe}
-                                    :item married}
-                                   joe]
-                             :definition [item-DOM
-                                          married
-                                          [{:condition {:elements nil,
-                                                        :subject joe}
-                                            :item married}
-                                           joe]
-                                          #{} {:depth 1}]}]]
-               [:div {:style {:display "table-row"}
-                      :class "last-row"}
-                [:component
-                 (let [set-ref {:exemplar [{:item bogus-age-tag
-                                                :condition
-                                                {:elements ['tag]
-                                                 ;; TODO: subject joe?
-                                                 :subject joe}}]
-                                    :items [{:item bogus-age
-                                             :condition
-                                             {:elements [["age" 'tag]]
+             (let [male-ref {:item male
+                             :condition {:elements nil,
+                                         :subject joe}}
+                   married-ref {:item married
+                                :condition {:elements nil,
+                                            :subject joe}}
+                   bogus-age-ref {:item bogus-age
+                                  :condition {:elements [["age" 'tag]]
                                               :subject joe}}
-                                            {:item age
-                                             :condition
-                                             {:elements [["age" 'tag]]
-                                              :subject joe}}]}]
+                   bogus-age-tag-ref {:item bogus-age-tag
+                                      :condition {:elements ['tag]
+                                                  ;; TODO: subject joe?
+                                                  :subject joe}}
+                   age-ref {:item age
+                            :condition {:elements [["age" 'tag]]
+                                        :subject joe}}
+                   both-ages-ref {:exemplar [bogus-age-tag-ref]
+                                  :items [bogus-age-ref age-ref]}]
+               [:div {:class "item" :key [joe]}
+                [:div {:style {:width "100%" :display "block"}
+                       :class "content-text editable"}
+                 "Joe"]
+                [:div {:style {:width "100%"
+                               :display "table"
+                               :table-layout "fixed"}
+                       :class "element-table"}
+                 [:div {:style {:display "table-row"}}
+                  [:div {:style {:display "table-cell"}
+                         :class "tag tag-column"}]
+                  [:component {:attributes {:style {:display "table-cell"}
+                                            :class "item-column"}
+                               :key [male-ref joe]
+                               :definition [item-DOM
+                                            male [male-ref joe]
+                                            #{} {:depth 1}]}]]
+                 [:div {:style {:display "table-row"}}
+                  [:div {:style {:display "table-cell"}
+                         :class "tag tag-column"}]
+                  [:component {:attributes {:style {:display "table-cell"}
+                                            :class "item-column"}
+                               :key [married-ref joe]
+                               :definition [item-DOM
+                                            married [married-ref joe]
+                                            #{} {:depth 1}]}]]
+                 [:div {:style {:display "table-row"}
+                        :class "last-row"}
+                  [:component
                    {:attributes
                     {:style {:display "table-cell"}
                      :class "tag tag-column for-multiple-items"}
-                    :key [set-ref
+                    :key [both-ages-ref
                           ;; TODO: Joe shouldn't be here!!!
                           joe]
                     :definition [item-DOM
                                  bogus-age-tag
-                                 [set-ref
-                                  joe]
-                                 #{bogus-age-tag-spec} {:depth 1}]})]
-                [:div {:style {:display "table-cell"}
-                       :class "item-column"}
-                 [:component {:attributes {:style {:width "100%"
-                                                   :display "block"}
-                                           :class "vertical-separated"}
-                              :key [{:condition {:elements ['("age" tag)]
-                                                 :subject joe}
-                                     :item bogus-age}
-                                    joe]
-                              :definition [item-DOM
-                                           bogus-age
-                                           [{:condition
-                                             {:elements ['("age" tag)]
-                                              :subject joe}
-                                             :item bogus-age}
-                                            joe]
-                                           #{bogus-age-tag} {:depth 1}]}]
-                 [:component {:attributes {:style {:width "100%"
-                                                   :display "block"}
-                                           :class "vertical-separated"}
-                              :key [{:condition {:elements ['("age" tag)]
-                                                 :subject joe}
-                                     :item age}
-                                    joe]
-                              :definition [item-DOM
-                                           age
-                                           [{:condition
-                                             {:elements ['("age" tag)]
-                                              :subject joe}
-                                             :item age}
-                                            joe]
-                                           #{age-tag} {:depth 1}]}]]]]]))))
+                                 [both-ages-ref joe]
+                                 #{bogus-age-tag-spec} {:depth 1}]}]
+                  [:div {:style {:display "table-cell"}
+                         :class "item-column"}
+                   [:component {:attributes {:style {:width "100%"
+                                                     :display "block"}
+                                             :class "vertical-separated"}
+                                :key [bogus-age-ref joe]
+                                :definition [item-DOM
+                                             bogus-age [bogus-age-ref joe]
+                                             #{bogus-age-tag} {:depth 1}]}]
+                   [:component {:attributes {:style {:width "100%"
+                                                     :display "block"}
+                                             :class "vertical-separated"}
+                                :key [age-ref joe]
+                                :definition [item-DOM
+                                             age [age-ref joe]
+                                             #{age-tag} {:depth 1}]}]]]]])))))
   (let [[dom age]
         (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
           (expr-let [dom (item-DOM age [age] #{} {:depth 0})]
@@ -296,31 +260,27 @@
         funny (first (current-value (entity/label->elements age o2)))]
     ;; Check that we generate no-tags.
     (is (= dom
-           [:div {:class "item" :key [age]}
-            [:div {:style {:width "100%" :display "block"}
-                   :class "content-text editable"}
-             "39"]
-            [:div {:style {:display "table"
-                           :table-layout "fixed"
-                           :width "100%"}
-                   :class "element-table"}
-             [:div {:style {:display "table-row"}
-                    :class "no-tags last-row"}
-              [:div {:style {:display "table-cell"}
-                     :class "tag tag-column"}]
-              [:component {:attributes {:class "item-column"
-                                        :style {:display "table-cell"}}
-                           :key [{:item doubtful
-                                  :condition {:subject age
-                                              :elements nil}}
-                                 age]
-                           :definition [item-DOM
-                                        doubtful
-                                        [{:item doubtful
-                                          :condition {:subject age
-                                                      :elements nil}}
-                                         age]
-                                        #{} {:depth 1}]}]]]]))))
+           (let [doubtful-ref {:item doubtful
+                               :condition {:subject age
+                                           :elements nil}}]
+             [:div {:class "item" :key [age]}
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text editable"}
+               "39"]
+              [:div {:style {:display "table"
+                             :table-layout "fixed"
+                             :width "100%"}
+                     :class "element-table"}
+               [:div {:style {:display "table-row"}
+                      :class "no-tags last-row"}
+                [:div {:style {:display "table-cell"}
+                       :class "tag tag-column"}]
+                [:component {:attributes {:class "item-column"
+                                          :style {:display "table-cell"}}
+                             :key [doubtful-ref age]
+                             :definition [item-DOM
+                                          doubtful [doubtful-ref age]
+                                          #{} {:depth 1}]}]]]])))))
 
 
 

@@ -43,11 +43,15 @@
                  [:div "hi" [:component {1 2}]]]))
          #{{:foo :bar} {:bletch 1} {1 2}})))
 
-(deftest replace-key-with-id-test
-  (is (= (replace-key-with-id
+(deftest adjust-attributes-for-client-test
+  (is (= (adjust-attributes-for-client
           {:key->id {:a 1 :b 2}}
-          [:div {:key :a} [:div {:key :b}] [:div "foo"]])
-         [:div {:id 1} [:div {:key :b}] [:div "foo"]])))
+          [:div {:key :a :condition :c :foo :f}
+           [:div {:key :b :condition :d}]
+           [:div "foo"]])
+         [:div {:id 1 :foo :f}
+          [:div {:key :b :condition :d}]
+          [:div "foo"]])))
 
 (deftest adjust-dom-for-client-test
   (is (= (adjust-dom-for-client

@@ -135,19 +135,26 @@
               (if (nil? key) #{} #{key}) (rest dom)))
     []))
 
-(defn replace-key-with-id
-  "Given a dom, which must be a vector, if it has a :key in its attributes,
+(defn adjust-attributes-for-client
+  "Given the data and a dom, which must be a vector, remove dom attributes
+   not intended for the client, and if it has a :key in its attributes,
    replace it with the corresponding id."
   [data dom]
-  (let [key (:key (second dom))]
-    (if (nil? key)
+  (let [attributes (second dom)]
+    (if (not (map? attributes))
       dom
-      (let [id (get-in data [:key->id key])]
-        (assert (not (nil? id)))
-        (update-in dom [1] #(-> % (assoc :id id) (dissoc :key)))))))
+      (let [key (:key attributes)
+            pruned-attributes (apply dissoc attributes
+                                     [:key :ordering :condition])
+            client-attributes (if (nil? key)
+                                pruned-attributes
+                                (let [id (get-in data [:key->id key])]
+                                  (assert (not (nil? id)))
+                                  (assoc pruned-attributes :id id)))]
+        (assoc dom 1 client-attributes)))))
 
 (defn adjust-dom-for-client
-  "Given the data, the key of the containing dom, and a piece of dom,
+  "Given the data, and a piece of dom,
    adjust the dom to the form the client needs, replacing keys by ids,
    and putting subcomponents into the form [:component <attributes> <id>]."
   [data dom]
@@ -156,10 +163,11 @@
       (let [component-map (second dom) 
             id (get-in data [:key->id (:key component-map)])]
         (assert (not (nil? id)))
-        [:component (:attributes component-map) id])
+        (adjust-attributes-for-client
+         data [:component (:attributes component-map) id]))
       (reduce (fn [subcomponents dom]
                 (conj subcomponents (adjust-dom-for-client data dom)))
-              [] (replace-key-with-id data dom)))
+              [] (adjust-attributes-for-client data dom)))
     dom))
 
 (defn dom-for-client

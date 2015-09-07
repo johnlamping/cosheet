@@ -145,7 +145,7 @@
       dom
       (let [key (:key attributes)
             pruned-attributes (apply dissoc attributes
-                                     [:key :ordering :condition])
+                                     [:key :ordering :sibling-elements])
             client-attributes (if (nil? key)
                                 pruned-attributes
                                 (let [id (get-in data [:key->id key])]

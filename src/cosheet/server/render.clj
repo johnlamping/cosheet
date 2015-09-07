@@ -31,9 +31,9 @@
 
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.
-;;; Those server specific attributes, which include :key, :condition,
-;;; and :ordering, are removed by the dom manager before dom is sent
-;;; to the client.
+;;; Those server specific attributes, which include :key,
+;;; :sibling-elements and :ordering, are removed by the dom manager
+;;; before dom is sent to the client.
 
 ;;; The value of the style attribute is represented with its own map,
 ;;; rather than as a string, so they are easier to adjust. Conviently,
@@ -79,12 +79,13 @@
 ;;;    parallel: [:parallel [<list of keys>] [<list of items>]]
 
 ;;; An item referent indicates a dom node that describes a particular
-;;; item. Typically, a dom that refers to an item will additionally have a
-;;; :condition attribute giving a list of elements that a sibling item
-;;; must have. This condition attribute is not the same as a condition
-;;; referent. Incorporating the condition into the item referent would
-;;; be a mistake, as the referent could then change even though the
-;;; identity of the item hadn't.
+;;; item. Typically, a dom that refers to an item will additionally
+;;; have a :sibling-elements attribute giving a list of elements that
+;;; a sibling item must have, each in list form. This condition
+;;; attribute is not the same as a condition referent. Incorporating
+;;; the condition into the item referent would be a mistake, as the
+;;; referent could then change even though the identity of the item
+;;; hadn't.
 
 ;;; A content referent indicates a subnode of an item node that holds
 ;;; its atomic content. Since atomic content nodes don't have
@@ -99,13 +100,14 @@
 ;;; A condition referent also indicates a dom node that holds several
 ;;; items, but one where the items are defined to be all the ones
 ;;; whose subject is the previous item in the key, and that satisfy a
-;;; particular condition. Condition referents are used for tag nodes,
-;;; since they show all tags of the subject, and for cells of a table,
-;;; if the table columns are conditions. In contrast to a group node,
-;;; a condition node might be empty, or two sibling condition nodes
-;;; might both show the same item.
+;;; particular condition. Currently, the condition is just a sequence
+;;; of elements, in list form. Condition referents are used for tag
+;;; nodes, since they show all tags of the subject, and for cells of a
+;;; table, if the table columns are conditions. In contrast to a group
+;;; node, a condition node might be empty, or two sibling condition
+;;; nodes might both show the same item.
 
-;;; Typically a dom for a group of condition referent will
+;;; Typically a dom for a group referent or a condition referent will
 ;;; additionally have a :ordering attribute that gives information
 ;;; about the first and last item in the group, or about the items
 ;;; just before or after it. If there are any elements in the node,
@@ -116,21 +118,21 @@
 ;;; node should come after or before.
 
 ;;; A parallel referent stands for a set of keys. Its prototypical use
-;;; is when the tags of several items look identical, and the display
-;;; of the tags is collapsed into a single dom node. A change to that
-;;; node should change tags for each of the items. The parallel
-;;; referent's job is to indicate the set of items corresponding to
-;;; those parallel tags. A key can have at most one parallel referent,
-;;; while will be the first referent of the key. But as described
-;;; below, a parallel referent can itself have another key, which can
-;;; contain another parallel referent.
+;;; is when the tags of several items would be displayed identically,
+;;; and the display of the tags is collapsed into a single dom node. A
+;;; change to that node should change tags for each of the items. The
+;;; parallel referent's job is to indicate the set of items
+;;; corresponding to those parallel tags. A key can have at most one
+;;; parallel referent, while will be the first referent of the key.
+;;; But as described below, a parallel referent can itself have
+;;; another key, which can contain another parallel referent.
 
 ;;; A parallel referent consists of an exemplar key, and a list of
 ;;; items. In the simplest case, the exemplar key is empty, in which
-;;; case, the parallel reference refers to each of its items. If the
-;;; exemplar is non-empty, then it describes a navigation path through
-;;; each of the items. Starting with each item, the navigation finds
-;;; an element whose visible information matches the visible
+;;; case the parallel reference refers to each of its items. A
+;;; non-empty exemplar describes a navigation path to be traced
+;;; through each of the items. Starting with each item, the navigation
+;;; finds an element whose visible information matches the visible
 ;;; information of the last item in the exemplar. That becomes the new
 ;;; item in the navigation, which continues moving foward in the
 ;;; exemplar. If the first referent of the exemplar is an item, then
@@ -161,12 +163,6 @@
   [exemplar items]
   (doseq [item items] (assert entity/mutable-entity? item))
   [:parallel exemplar items])
-
-(defn condition-map
-  "Validate keyword arguments for a condition."
-  [& {:as args}]
-  (assert (every? #{:subject :elements}(keys args)))
-  args)
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant
@@ -254,14 +250,6 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-(defn elements-condition
-  "Given a subject and a set of elements, return the condition
-   of having that subject and having elements with matching visible
-   information."
-  [subject elements]
-  (expr-let [visible-elements (expr-seq map visible-to-list elements)]
-    (condition-map :subject subject :elements visible-elements)))
-
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
   [a b]
@@ -343,14 +331,14 @@
 
 (defn tag-component
   "Return the component for a tag element."
-  [element condition parent-key inherited]
+  [element parent-key inherited]
   ;; TODO: if there are multiple parents, then we we need to use a
   ;; parallel reference.
   (expr-let [tag-specs (tag-specifiers element)]
     (let [key (prepend-to-key (item-referent element) parent-key)]      
       (make-component key
                       [item-DOM element key (set tag-specs) inherited]
-                      {:condition condition}))))
+                      {:sibling-elements ['tag]}))))
 
 (defn tags-DOM
   "Given a sequence of items that are tags, return components for them,
@@ -359,23 +347,20 @@
   ;; particular, for no tags, we need to make a cell with a key.
   ;; TODO: Actually do the wrapping in a div.
   [tags parent parent-key inherited]
-  (let [condition (condition-map :subject parent :elements ['tag])]
-    (expr-let [tag-components
-               (expr-seq
-                map #(tag-component % condition parent-key inherited) tags)]
-      (add-attributes (vertical-stack tag-components true) {:class "tag"}))))
+  (expr-let [tag-components
+             (expr-seq
+              map #(tag-component % parent-key inherited) tags)]
+    (add-attributes (vertical-stack tag-components true) {:class "tag"})))
 
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where
    the tags for each item are equivalent, generate DOM for the items,
    sharing a label with the tags."
-  ;; TODO: Add some data-* attributes to the tag items that indicate
-  ;; what items they pertain to.
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
   [items-and-tags parent parent-key inherited]
   (let [sample-tags (get-in items-and-tags [0 1])]
-    (expr-let [condition (elements-condition parent sample-tags)
+    (expr-let [sibling-elements (expr-seq map visible-to-list sample-tags)
                items (map first items-and-tags)
                item-doms (expr-seq
                           map (fn [[item tag-list]]
@@ -384,7 +369,8 @@
                                   (make-component key
                                                   [item-DOM item key
                                                    (set tag-list) inherited]
-                                                  {:condition condition})))
+                                                  {:sibling-elements
+                                                   sibling-elements})))
                           items-and-tags)
                tags-dom (let [parent-ref (if (= (count items) 1)
                                            (first items)

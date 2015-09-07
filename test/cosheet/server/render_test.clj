@@ -120,8 +120,7 @@
                                      fred [fred :k]
                                      #{fred-tag} {:depth 0}]
                         :attributes {:class "tag"
-                                     :condition {:elements ['tag]
-                                                 :subject :k}}}])))
+                                     :sibling-elements ['tag]}}])))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
@@ -138,8 +137,7 @@
                          :attributes {:style {:display "block"
                                               :width "100%"}
                                       :class "vertical-separated"
-                                      :condition {:elements ['tag]
-                                                  :subject :k}}}]
+                                      :sibling-elements ['tag]}}]
             [:component {:key [fran :k]
                          :definition [item-DOM
                                       fran [fran :k]
@@ -147,8 +145,7 @@
                          :attributes {:style  {:display "block"
                                                :width "100%"}
                                       :class "vertical-separated"
-                                      :condition {:elements ['tag]
-                                                  :subject :k}}}]]))))
+                                      :sibling-elements ['tag]}}]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]
@@ -190,8 +187,7 @@
                          :class "tag tag-column"}]
                   [:component {:attributes {:style {:display "table-cell"}
                                             :class "item-column"
-                                            :condition {:elements nil,
-                                                        :subject joe}}
+                                            :sibling-elements nil}
                                :key [male :joe]
                                :definition [item-DOM
                                             male [male :joe]
@@ -201,8 +197,7 @@
                          :class "tag tag-column"}]
                   [:component {:attributes {:style {:display "table-cell"}
                                             :class "item-column"
-                                            :condition {:elements nil,
-                                                        :subject joe}}
+                                            :sibling-elements nil}
                                :key [married :joe]
                                :definition [item-DOM
                                             married [married :joe]
@@ -213,8 +208,7 @@
                    {:attributes
                     {:style {:display "table-cell"}
                      :class "tag tag-column for-multiple-items"
-                     :condition {:elements ['tag]
-                                 :subject [bogus-age age]}}
+                     :sibling-elements ['tag]}
                     :key [both-ages-ref :joe]
                     :definition [item-DOM
                                  bogus-age-tag
@@ -225,9 +219,7 @@
                    [:component {:attributes {:style {:width "100%"
                                                      :display "block"}
                                              :class "vertical-separated"
-                                             :condition {:elements
-                                                         [["age" 'tag]]
-                                                         :subject joe}}
+                                             :sibling-elements [["age" 'tag]]}
                                 :key [bogus-age :joe]
                                 :definition [item-DOM
                                              bogus-age [bogus-age :joe]
@@ -235,9 +227,7 @@
                    [:component {:attributes {:style {:width "100%"
                                                      :display "block"}
                                              :class "vertical-separated"
-                                             :condition {:elements
-                                                         [["age" 'tag]]
-                                                         :subject joe}}
+                                             :sibling-elements [["age" 'tag]]}
                                 :key [age :joe]
                                 :definition [item-DOM
                                              age [age :joe]
@@ -264,8 +254,7 @@
                      :class "tag tag-column"}]
               [:component {:attributes {:class "item-column"
                                         :style {:display "table-cell"}
-                                        :condition {:subject age
-                                                    :elements nil}}
+                                        :sibling-elements nil}
                            :key [doubtful :age]
                            :definition [item-DOM
                                         doubtful [doubtful :age]

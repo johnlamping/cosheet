@@ -46,11 +46,11 @@
 (deftest adjust-attributes-for-client-test
   (is (= (adjust-attributes-for-client
           {:key->id {:a 1 :b 2}}
-          [:div {:key :a :condition :c :foo :f}
-           [:div {:key :b :condition :d}]
+          [:div {:key :a :sibling-elements :c :foo :f}
+           [:div {:key :b :sibling-elements :d}]
            [:div "foo"]])
          [:div {:id 1 :foo :f}
-          [:div {:key :b :condition :d}]
+          [:div {:key :b :sibling-elements :d}]
           [:div "foo"]])))
 
 (deftest adjust-dom-for-client-test

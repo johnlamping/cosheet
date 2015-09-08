@@ -65,9 +65,9 @@
                                         (current-store store))))
         root-item (description->entity (:item-id immutable-root-item)
                                         mutable-store)
-        definition [item-DOM root-item [{:item root-item}] #{} {:depth 0}]
+        definition [item-DOM root-item ["root"] #{} {:depth 0}]
         tracker (new-dom-tracker management)]
-    (add-dom tracker "root" [root-item] definition)
+    (add-dom tracker "root" ["root"] definition)
     tracker))
 
 ;;; TODO: this needs to be separate for each web page.

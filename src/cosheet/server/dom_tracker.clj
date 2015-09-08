@@ -339,7 +339,7 @@
              (fn [atom] (manage reporter (:management data)))))))))
 
 (defn add-dom
-  "Add dom with the given client id and definition to the tracker."
+  "Add dom with the given client id, key, and definition to the tracker."
   [tracker client-id key definition]
   (swap-and-act tracker
                 #(-> %
@@ -350,6 +350,9 @@
   "Return the hiccup key for the client id"
   [tracker id]
   (get-in @tracker [:id->key id]))
+
+;;; TODO: We need to change the id->key map to give not just the key,
+;;; but all the non-client information.
 
 (defn new-dom-tracker
   "Return a new dom tracker object"

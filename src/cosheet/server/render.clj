@@ -72,11 +72,11 @@
 ;;; information necessary to interpret the referent key.
 
 ;;; There are several kinds of referents
-;;;        item: <an item>
+;;;        item: <an item id>
 ;;;     content: [:content]
-;;;       group: [:group @<An item of the group, typically the first>]
+;;;       group: [:group @<An item id of the group, typically the first>]
 ;;;   condition: [:condition @<list of elements that an item must have>]
-;;;    parallel: [:parallel [<list of keys>] [<list of items>]]
+;;;    parallel: [:parallel [<list of keys>] [<list of item ids>]]
 
 ;;; An item referent indicates a dom node that describes a particular
 ;;; item. Typically, a dom that refers to an item will additionally
@@ -145,7 +145,7 @@
   "Create an item referent"
   [item]
   (assert entity/mutable-entity? item)
-  item)
+  (:item-id item))
 
 (defn group-referent
   "Create an group referent"
@@ -162,19 +162,20 @@
   "Create a parallel referent"
   [exemplar items]
   (doseq [item items] (assert entity/mutable-entity? item))
-  [:parallel exemplar items])
+  [:parallel exemplar (map :item-id items)])
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant
-  that a set referent can only occur in first position."
+  that a parallel referent can only occur in first position."
   [referent key]
   (let [initial (first key)]
-    (if (and (sequential? initial)
-             (= :parallel (first initial)))
-      (let [[_ exemplar items] initial]
-        (cons (parallel-referent (prepend-to-key referent exemplar) items)
-              (rest key)))
-      (cons referent key))))
+    (vec
+     (if (and (sequential? initial)
+              (= :parallel (first initial)))
+       (let [[_ exemplar item-ids] initial]
+         (cons [:parallel (prepend-to-key referent exemplar) item-ids]
+               (rest key)))
+       (cons referent key)))))
 
 (defn visible-entity?
   "Return true if an entity is visible to the user
@@ -318,22 +319,19 @@
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
   a vertical stack of the items. Add a separator between items if specified."
-  ([doms] (vertical-stack doms false))
-  ([doms add-separator]
-   (case (count doms)
-     0 [:div]
-     1 (first doms)
-     (into [:div]
-           (map (if add-separator
-                  (comp vertical-separated stack-vertical)
-                  stack-vertical)
-                doms)))))
+  [doms & {:keys [separators]}]
+  (case (count doms)
+    (if (= (count doms) 1)
+      (first doms)
+      (into [:div]
+            (map (if separators
+                   (comp vertical-separated stack-vertical)
+                   stack-vertical)
+                 doms)))))
 
 (defn tag-component
   "Return the component for a tag element."
   [element parent-key inherited]
-  ;; TODO: if there are multiple parents, then we we need to use a
-  ;; parallel reference.
   (expr-let [tag-specs (tag-specifiers element)]
     (let [key (prepend-to-key (item-referent element) parent-key)]      
       (make-component key
@@ -343,14 +341,15 @@
 (defn tags-DOM
   "Given a sequence of items that are tags, return components for them,
   wrapped in a div if there is more than one."
-  ;; TODO: do different stuff, depending on number of tags. In
-  ;; particular, for no tags, we need to make a cell with a key.
-  ;; TODO: Actually do the wrapping in a div.
-  [tags parent parent-key inherited]
+  [tags parent-key inherited]
   (expr-let [tag-components
              (expr-seq
               map #(tag-component % parent-key inherited) tags)]
-    (add-attributes (vertical-stack tag-components true) {:class "tag"})))
+    (add-attributes (vertical-stack tag-components :separators true)
+                    (cond-> {:class "tag"}
+                      (not= (count tags) 1)
+                      (assoc :key (prepend-to-key (condition-referent ['tag])
+                                                  parent-key))))))
 
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where
@@ -373,23 +372,19 @@
                                                    sibling-elements})))
                           items-and-tags)
                tags-dom (let [parent-ref (if (= (count items) 1)
-                                           (first items)
+                                           (item-referent (first items))
                                            (parallel-referent [] items))
-                              parent-key (prepend-to-key parent-ref parent-key)]
+                              parent-key (prepend-to-key
+                                          parent-ref parent-key)]
                           (expr tags-DOM
-                            (order-items sample-tags)
-                            ;; TODO: Is the next line really right for
-                            ;; nested parallel tags?
-                            (if (= (count items) 1) (first items) (vec items))
-                            parent-key inherited))]
+                            (order-items sample-tags) parent-key inherited))]
       [:div {:style {:display "table-row"}}
-       ;; TODO: Give these keys, so they can support insertion?
        (add-attributes tags-dom
                        {:style {:display "table-cell"}
                         :class (if (> (count item-doms) 1)
                                  "tag-column for-multiple-items"
                                  "tag-column")})
-       (add-attributes (vertical-stack item-doms true)
+       (add-attributes (vertical-stack item-doms :separators true)
                        {:style {:display "table-cell"}
                         :class "item-column"})])))
 

@@ -92,19 +92,32 @@
       true
       [(description->entity referent store)])))
 
+(defn parse-string
+  "Parse user entered characters into a number if possible.
+  Otherwise return the characters as a string."
+  ;; NOTE: This is not compabible with ClojureScript.
+  [str]
+  (try (let [x (Float/parseFloat (clojure.string/trim str))
+             int-x (int x)]
+         (if (== x int-x) int-x x))
+       (catch Exception e str)))
+
 (defn set-content-handler
   [store dom-tracker id from to]
   ;; TODO: Handle adding and deleting. (In the former case, the key
   ;; will be a :condition.)
   (let [key (id->key dom-tracker id)
-        items (key->items store key)]
+        items (key->items store key)
+        to (parse-string to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
+    (println "with content" (map content items))
     (println "from:" from " to:" to)
     (reduce (fn [store item]
-              (if (= (content item) from)
+              (if (= (content item) (parse-string from))
                 (update-content store (:item-id item) to)
-                store))
+                (do (println "content doesn't match" (content item) from)
+                    store)))
             store items)))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be

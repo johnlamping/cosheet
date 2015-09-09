@@ -126,6 +126,15 @@
                          [joe-id jane-id]]])
            [joe-male joe-age jane-age]))))
 
+(deftest parse-input-test
+  (is (= (parse-string "x") "x"))
+  (is (= (parse-string "1") 1))
+  (is (= (parse-string " 1 ") 1))
+  (is (= (parse-string "1 1") "1 1"))
+  (is (= (parse-string " 1.0 ") 1))
+  (is (= (parse-string "-1.0") -1))
+  (is (= (parse-string " 1.5 ") 1.5)))
+
 (deftest set-content-test
   (let [[store0 joe-id] (add-entity (new-element-store) nil joe)
         [store jane-id] (add-entity store0 nil jane)

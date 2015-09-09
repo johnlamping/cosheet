@@ -155,90 +155,91 @@
           (expr-let [dom (item-DOM fred [(:item-id fred)] #{} {:depth 0})]
             [dom fred]))]
     (is (= dom
-           [:div {:class "content-text editable item"
-                  :key [(:item-id fred)]} "Fred"]))
-    (let [[dom joe]
-          (let-propagated [him joe]
-            (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
-              [dom him]))
-          male (first (current-value (entity/label->elements joe o1)))
-          married (first (current-value (entity/label->elements joe o2)))
-          bogus-age (first (current-value
-                            (entity/label->elements joe "doubtful")))
-          bogus-age-tag (first (current-value
-                                (entity/label->elements bogus-age 'tag)))
-          bogus-age-tag-spec (first (current-value
-                                     (entity/elements bogus-age-tag)))
-          age (first (remove #{bogus-age}
-                             (current-value
-                              (entity/label->elements joe "age"))))
-          age-tag (first (current-value (entity/label->elements age 'tag)))
-          age-tag-spec (first (current-value (entity/elements age-tag)))]
-      (is (= dom
-             (let [both-ages-ref [:parallel
-                                  [(:item-id bogus-age-tag)]
-                                  [(:item-id bogus-age) (:item-id age)]]]
-               [:div {:class "item" :key [:joe]}
-                [:div {:style {:width "100%" :display "block"}
-                       :class "content-text editable"}
-                 "Joe"]
-                [:div {:style {:width "100%"
-                               :display "table"
-                               :table-layout "fixed"}
-                       :class "element-table"}
-                 [:div {:style {:display "table-row"}}
-                  [:div {:style {:display "table-cell"}
-                         :class "tag tag-column"
-                         :key [[:condition 'tag] (:item-id male) :joe]}]
-                  [:component {:attributes {:style {:display "table-cell"}
-                                            :class "item-column"
-                                            :sibling-elements nil}
-                               :key [(:item-id male) :joe]
-                               :definition [item-DOM
-                                            male [(:item-id male) :joe]
-                                            #{} {:depth 1}]}]]
-                 [:div {:style {:display "table-row"}}
-                  [:div {:style {:display "table-cell"}
-                         :class "tag tag-column"
-                         :key [[:condition 'tag] (:item-id married) :joe]}]
-                  [:component {:attributes {:style {:display "table-cell"}
-                                            :class "item-column"
-                                            :sibling-elements nil}
-                               :key [(:item-id married) :joe]
-                               :definition [item-DOM
-                                            married [(:item-id married) :joe]
-                                            #{} {:depth 1}]}]]
-                 [:div {:style {:display "table-row"}
-                        :class "last-row"}
-                  [:component
-                   {:attributes
-                    {:style {:display "table-cell"}
-                     :class "tag tag-column for-multiple-items"
-                     :sibling-elements ['tag]}
-                    :key [both-ages-ref :joe]
-                    :definition [item-DOM
-                                 bogus-age-tag
-                                 [both-ages-ref :joe]
-                                 #{bogus-age-tag-spec} {:depth 1}]}]
-                  [:div {:style {:display "table-cell"}
-                         :class "item-column"}
-                   [:component {:attributes {:style {:width "100%"
-                                                     :display "block"}
-                                             :class "vertical-separated"
-                                             :sibling-elements [["age" 'tag]]}
-                                :key [(:item-id bogus-age) :joe]
-                                :definition [item-DOM
-                                             bogus-age
-                                             [(:item-id bogus-age) :joe]
-                                             #{bogus-age-tag} {:depth 1}]}]
-                   [:component {:attributes {:style {:width "100%"
-                                                     :display "block"}
-                                             :class "vertical-separated"
-                                             :sibling-elements [["age" 'tag]]}
-                                :key [(:item-id age) :joe]
-                                :definition [item-DOM
-                                             age [(:item-id age) :joe]
-                                             #{age-tag} {:depth 1}]}]]]]])))))
+           [:div {:class "item content-text editable"
+                  :key [(:item-id fred)]} "Fred"])))
+  (let [[dom joe]
+        (let-propagated [him joe]
+          (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
+            [dom him]))
+        male (first (current-value (entity/label->elements joe o1)))
+        married (first (current-value (entity/label->elements joe o2)))
+        bogus-age (first (current-value
+                          (entity/label->elements joe "doubtful")))
+        bogus-age-tag (first (current-value
+                              (entity/label->elements bogus-age 'tag)))
+        bogus-age-tag-spec (first (current-value
+                                   (entity/elements bogus-age-tag)))
+        age (first (remove #{bogus-age}
+                           (current-value
+                            (entity/label->elements joe "age"))))
+        age-tag (first (current-value (entity/label->elements age 'tag)))
+        age-tag-spec (first (current-value (entity/elements age-tag)))]
+    (is (= dom
+           (let [both-ages-ref [:parallel
+                                [(:item-id bogus-age-tag)]
+                                [(:item-id bogus-age) (:item-id age)]]]
+             [:div {:class "item" :key [:joe]}
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text editable"
+                     :key [[:content] :joe]}
+               "Joe"]
+              [:div {:style {:width "100%"
+                             :display "table"
+                             :table-layout "fixed"}
+                     :class "element-table"}
+               [:div {:style {:display "table-row"}}
+                [:div {:style {:display "table-cell"}
+                       :class "tag tag-column"
+                       :key [[:condition 'tag] (:item-id male) :joe]}]
+                [:component {:attributes {:style {:display "table-cell"}
+                                          :class "item-column"
+                                          :sibling-elements nil}
+                             :key [(:item-id male) :joe]
+                             :definition [item-DOM
+                                          male [(:item-id male) :joe]
+                                          #{} {:depth 1}]}]]
+               [:div {:style {:display "table-row"}}
+                [:div {:style {:display "table-cell"}
+                       :class "tag tag-column"
+                       :key [[:condition 'tag] (:item-id married) :joe]}]
+                [:component {:attributes {:style {:display "table-cell"}
+                                          :class "item-column"
+                                          :sibling-elements nil}
+                             :key [(:item-id married) :joe]
+                             :definition [item-DOM
+                                          married [(:item-id married) :joe]
+                                          #{} {:depth 1}]}]]
+               [:div {:style {:display "table-row"}
+                      :class "last-row"}
+                [:component
+                 {:attributes
+                  {:style {:display "table-cell"}
+                   :class "tag tag-column for-multiple-items"
+                   :sibling-elements ['tag]}
+                  :key [both-ages-ref :joe]
+                  :definition [item-DOM
+                               bogus-age-tag
+                               [both-ages-ref :joe]
+                               #{bogus-age-tag-spec} {:depth 1}]}]
+                [:div {:style {:display "table-cell"}
+                       :class "item-column"}
+                 [:component {:attributes {:style {:width "100%"
+                                                   :display "block"}
+                                           :class "vertical-separated"
+                                           :sibling-elements [["age" 'tag]]}
+                              :key [(:item-id bogus-age) :joe]
+                              :definition [item-DOM
+                                           bogus-age
+                                           [(:item-id bogus-age) :joe]
+                                           #{bogus-age-tag} {:depth 1}]}]
+                 [:component {:attributes {:style {:width "100%"
+                                                   :display "block"}
+                                           :class "vertical-separated"
+                                           :sibling-elements [["age" 'tag]]}
+                              :key [(:item-id age) :joe]
+                              :definition [item-DOM
+                                           age [(:item-id age) :joe]
+                                           #{age-tag} {:depth 1}]}]]]]]))))
   (let [[dom age]
         (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
           (expr-let [dom (item-DOM age [:age] #{} {:depth 0})]
@@ -249,7 +250,8 @@
     (is (= dom
            [:div {:class "item" :key [:age]}
             [:div {:style {:width "100%" :display "block"}
-                   :class "content-text editable"}
+                   :class "content-text editable"
+                   :key [[:content] :age]}
              "39"]
             [:div {:style {:display "table"
                            :table-layout "fixed"

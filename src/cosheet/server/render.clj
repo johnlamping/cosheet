@@ -410,24 +410,25 @@
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
   [item key excluded inherited]
-  ;;; TODO: pass down, via inherited, how deeply nested the item is,
-  ;;; and for deep items, use a layout with tag above content to conserve
+  ;;; TODO: for deep items, use a layout with tag above content to conserve
   ;;; horizontal space.
   (expr-let [content (entity/content item)
              elements (visible-elements item)]
-    ;; TODO: turn key for content into content reference if it is
-    ;; split out and not an item.
     (let [elements (remove excluded elements)
           inherited-down (update-in inherited [:depth] inc)
           content-dom
           (if (entity/atom? content)
-            [:div {:class "content-text editable"}
+            [:div (if (empty? elements)
+                    {:class "item content-text editable"
+                     :key key}
+                    {:class "content-text editable"
+                     :key  (prepend-to-key [:content] key)})
              (if (= content :none) "" (str content))]
             (let [child-key (prepend-to-key (item-referent content) key)]
               (make-component
                child-key [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)
-        (add-attributes content-dom {:class "item" :key key})
+        content-dom
         (expr-let [elements-dom (tagged-items-DOM
                                  elements item key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])

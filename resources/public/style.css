@@ -27,7 +27,14 @@
                     rgba(64,128,255,1),
                     rgba(255,255,255,0) 5px,
                     rgba(255,255,255,0));
+}
+
+.selected {
     background-color: white;
+}
+
+.tag-column.selected {
+    background-color: #C0F0FF;
 }
 
 .item {
@@ -39,7 +46,6 @@
 }
 
 .tag-column {
-    /*background-color: #66FFFF; */
     background:
     linear-gradient(to right,
                     rgba(255,255,255,.7),
@@ -52,8 +58,8 @@
     linear-gradient(to top,
                     rgba(255,255,255,.7),
                     rgba(255,255,255,0) 7px,
-                    rgba(255,255,255,0)),
-    linear-gradient(to right, #C0F0FF, #C0F0FF);
+                    rgba(255,255,255,0));
+    background-color: #C0F0FF;
     border-width: 2px 0px 0px 2px;
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;

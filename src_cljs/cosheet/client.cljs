@@ -15,14 +15,6 @@
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
-(defn ancestor-id
-  "Return the id of the first ancestor, including the node, with an id."
-  [node]
-  (and node (or (let [id (.-id node)]
-                  (when (and id (not= id ""))
-                    id))
-                (ancestor-id (.-parentNode node)))))
-
 ;;; TODO: add selectable and editable classes to say which elements
 ;;; support those operations.
 
@@ -79,9 +71,9 @@
             old-value (gdom/getTextContent target)]
         (when (not= value old-value)
           (.log js/console (str "storing " value
-                                " into " (ancestor-id target)))
+                                " into " (.-id target)))
           (add-pending-action
-           [:set-content (ancestor-id target) old-value value])
+           [:set-content (.-id target) old-value value])
           (ajax-if-pending))))))
 
 (defn target-being-edited? [target]

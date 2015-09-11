@@ -96,7 +96,7 @@
     border-width: 0px;
 }
 
-.content-text {
+.editable {
     position: relative; /* To make edit_holder position relative to it */
 }
 

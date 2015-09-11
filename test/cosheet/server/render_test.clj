@@ -15,18 +15,6 @@
             ; :reload
             ))
 
-(defn canonicalize
-  "Turn a list form of an entity into a canonical representation,
-   that is insensitive to the order of elements. (We record the elements in
-   a map from entity to multiplicity.)"
-  [entity]
-  (if (sequential? entity)
-    [(first entity)
-     (reduce (fn [ms entity]
-               (update-in ms [(canonicalize entity)] #((fnil + 0) % 1)))
-             {} (rest entity))]
-    entity))
-
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
@@ -72,13 +60,13 @@
              '(39 {["age" {tag 1}] 1
                    ("doubtful" {"confidence" 1}) 1})
              '(45 {["age" {tag 1}] 1})})))
-  (is (= (set (map canonicalize
+  (is (= (set (map canonicalize-list
                    (let-propagated [him joe]
                      (expr-seq map to-list (visible-elements him)))))
-         (set (map canonicalize (rest (rest joe)))))))
+         (set (map canonicalize-list (rest (rest joe)))))))
 
 (deftest tag-specifiers-test
-  (is (= (map canonicalize
+  (is (= (map canonicalize-list
               (let-propagated [test '("age" tag "not-tag")]
                 (expr-seq map to-list (tag-specifiers test))))
          ['tag])))
@@ -93,12 +81,6 @@
             [45 {["age" {'tag 1}] 1}] 1}]1
             ["Jane" {"plain" 2}] 1})))
 
-(deftest canonicalize-test
-  (is (= (map canonicalize
-              (let-propagated [him joe, her jane]
-                (expr-seq map to-list [her him])))
-         (map canonicalize [jane joe]))))
-
 (deftest group-by-tag-test
   (let-propagated [him joe]
     (expr-let [elements (visible-elements him)
@@ -108,7 +90,7 @@
       (is (= (apply + (map #(count (second (first %))) groups)) 1)))))
 
 (deftest tags-DOM-test
-  (is (= (tags-DOM nil [:k] {}) [:div {:class "tag"
+  (is (= (tags-DOM nil [:k] {}) [:div {:class "tag-column editable"
                                        :key [[:condition 'tag] :k]}]))
   (let [[dom fred fred-tag]
         (let-propagated [fred '("Fred" tag)]
@@ -120,7 +102,7 @@
                         :definition [item-DOM
                                      fred [(:item-id fred) :k]
                                      #{fred-tag} {:depth 0}]
-                        :attributes {:class "tag"
+                        :attributes {:class "tag-column"
                                      :sibling-elements ['tag]}}])))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
@@ -130,7 +112,7 @@
         fred-tag (first (current-value (entity/elements fred)))]
     (is (= dom
            [:div
-            {:class "tag"
+            {:class "tag-column"
              :key [[:condition 'tag] :k]}
             [:component {:key [(:item-id fred) :k]
                          :definition [item-DOM
@@ -189,7 +171,7 @@
                      :class "element-table"}
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tag tag-column"
+                       :class "tag-column editable"
                        :key [[:condition 'tag] (:item-id male) :joe]}]
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "item-column"
@@ -200,7 +182,7 @@
                                           #{} {:depth 1}]}]]
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tag tag-column"
+                       :class "tag-column editable"
                        :key [[:condition 'tag] (:item-id married) :joe]}]
                 [:component {:attributes {:style {:display "table-cell"}
                                           :class "item-column"
@@ -214,7 +196,7 @@
                 [:component
                  {:attributes
                   {:style {:display "table-cell"}
-                   :class "tag tag-column for-multiple-items"
+                   :class "tag-column for-multiple-items"
                    :sibling-elements ['tag]}
                   :key [both-ages-ref :joe]
                   :definition [item-DOM
@@ -260,7 +242,7 @@
              [:div {:style {:display "table-row"}
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
-                     :class "tag tag-column"
+                     :class "tag-column editable"
                      :key [[:condition 'tag] (:item-id doubtful) :age]}]
               [:component {:attributes {:class "item-column"
                                         :style {:display "table-cell"}

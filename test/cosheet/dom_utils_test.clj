@@ -15,7 +15,9 @@
                                :style {:text "large"}
                                :misc "junk"})
              (into-attributes {:class "baz"
-                               :style {:color "red"}}))
+                               :style {:color "red"}})
+             (into-attributes {:class ""})
+             (into-attributes {:class nil}))
          {:class "foo bar baz"
           :style {:font "bold" :text "large" :color "red"}
           :other "abc"

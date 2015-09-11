@@ -74,9 +74,10 @@
 ;;; There are several kinds of referents
 ;;;        item: <an item id>
 ;;;     content: [:content]
-;;;       group: [:group @<An item id of the group, typically the first>]
-;;;   condition: [:condition @<list of elements that an item must have>]
-;;;    parallel: [:parallel [<list of keys>] [<list of item ids>]]
+;;;       group: [:group <An item id of the group, typically the first>]
+;;;   condition: [:condition @<list of elements, each in list form,
+;;;                           that an item must have>]
+;;;    parallel: [:parallel [<list of referents>] [<list of item ids>]]
 
 ;;; An item referent indicates a dom node that describes a particular
 ;;; item. Typically, a dom that refers to an item will additionally
@@ -345,11 +346,12 @@
   (expr-let [tag-components
              (expr-seq
               map #(tag-component % parent-key inherited) tags)]
-    (add-attributes (vertical-stack tag-components :separators true)
-                    (cond-> {:class "tag"}
-                      (not= (count tags) 1)
-                      (assoc :key (prepend-to-key (condition-referent ['tag])
-                                                  parent-key))))))
+    (add-attributes
+     (vertical-stack tag-components :separators true)
+     (into {:class (str "tag-column" (when (empty? tags) " editable"))}
+           (when (not= (count tags) 1)
+             {:key (prepend-to-key (condition-referent ['tag])
+                                   parent-key)})))))
 
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where
@@ -381,9 +383,8 @@
       [:div {:style {:display "table-row"}}
        (add-attributes tags-dom
                        {:style {:display "table-cell"}
-                        :class (if (> (count item-doms) 1)
-                                 "tag-column for-multiple-items"
-                                 "tag-column")})
+                        :class (when (> (count item-doms) 1)
+                                 "for-multiple-items")})
        (add-attributes (vertical-stack item-doms :separators true)
                        {:style {:display "table-cell"}
                         :class "item-column"})])))

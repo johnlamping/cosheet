@@ -5,7 +5,7 @@
             (cosheet
              [utils :refer [dissoc-in]]
              [orderable :as orderable]
-             [entity :as entity :refer [description->entity
+             [entity :as entity :refer [description->entity to-list
                                         content elements label->elements]]
              [computation-manager :refer [new-management compute]]
              [debug :refer [current-value]]
@@ -16,7 +16,7 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl)
             (cosheet.server
-             [render :refer [item-DOM]]
+             [render :refer [item-DOM canonicalize-list]]
              [dom-tracker :refer [new-dom-tracker add-dom]]
              [actions :refer :all])
             ; :reload
@@ -46,9 +46,9 @@
            (45 (~o3 :order)
                ("age" ~'tag))))
 
-(deftest item-referents-test
+(deftest item-determining-referents-test
   (let [id (->ItemId "a")]
-    (is (= (item-referents
+    (is (= (item-determining-referents
             [[:parallel :a :b] [:content] [:group "a"] [:condition :b] id])
            [[:parallel :a :b] id]))))
 
@@ -126,7 +126,7 @@
                          [joe-id jane-id]]])
            [joe-male joe-age jane-age]))))
 
-(deftest parse-input-test
+(deftest parse-string-test
   (is (= (parse-string "x") "x"))
   (is (= (parse-string "1") 1))
   (is (= (parse-string " 1 ") 1))
@@ -165,13 +165,72 @@
             (set-content-handler store tracker "joe-root" "Wrong" "Jim")
             joe-id)
            "Joe"))
-    (swap! tracker #(assoc-in % [:id->key "test"]
-                              [[:parallel
-                                [(:item-id joe-age-tag) (:item-id joe-age)]
-                                [joe-id jane-id]]]))
+    (swap! tracker #(-> %
+                        (assoc-in [:id->key "test"]
+                                  [[:parallel
+                                    [(:item-id joe-age-tag) (:item-id joe-age)]
+                                    [joe-id jane-id]]])
+                        (assoc-in [:id->key "test2"]
+                                  [[:parallel
+                                    [[:content]
+                                     (:item-id joe-age-tag) (:item-id joe-age)]
+                                      [joe-id jane-id]]])))
     (let [modified (set-content-handler store tracker "test" "age" "oldness")]
       (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
       (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
     (do-actions mutable-store tracker
                 {1 [:set-content "joe-root" "Joe" "Fred"]})
     (is (= (current-value (content joe)) "Fred"))))
+
+(deftest update-add-entity-with-order-test
+  (let [[store joe-id] (add-entity (new-element-store) nil joe)]
+    (comment
+      (let [[s order] (update-add-entity-with-order
+                              store joe-id 6
+                              unused-orderable :before true)
+                   joe-entity (description->entity joe-id s)
+                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
+                   [o5 o6] (orderable/split unused-orderable :before)]
+               (is (= (to-list new-entity)
+                      `(6 (~o5 :order))))
+               (is (= order o6)))
+             (let [[s order] (update-add-entity-with-order
+                              store joe-id 6
+                              unused-orderable :before false)
+                   joe-entity (description->entity joe-id s)
+                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
+                   [o5 o6] (orderable/split unused-orderable :after)]
+               (is (= (to-list new-entity)
+                      `(6 (~o5 :order))))
+               (is (= order o6)))    
+             (let [[s order] (update-add-entity-with-order
+                              store joe-id 6
+                              unused-orderable :after false)
+                   joe-entity (description->entity joe-id s)
+                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
+                   [o5 o6] (orderable/split unused-orderable :before)]
+               (is (= (to-list new-entity)
+                      `(6 (~o6 :order))))
+               (is (= order o5))))
+    (let [[s order] (update-add-entity-with-order
+                     store joe-id '(6 ("height" tag))
+                     unused-orderable :before true)
+          joe-entity (description->entity joe-id s)
+          new-entity (first (label->elements joe-entity "height"))
+          [x o5] (orderable/split unused-orderable :before)
+          [o6 o7] (orderable/split x :after)]
+      (is (= (canonicalize-list (to-list new-entity))
+             (canonicalize-list `(6 (~o7 :order)
+                                    ("height" ~'tag (~o6 :order))))))
+      (is (= order o5)))
+    (let [[s order] (update-add-entity-with-order
+                     store joe-id '(6 ("height" tag))
+                     unused-orderable :before false)
+          joe-entity (description->entity joe-id s)
+          new-entity (first (label->elements joe-entity "height"))
+          [o5 x] (orderable/split unused-orderable :after)
+          [o6 o7] (orderable/split x :after)]
+      (is (= (canonicalize-list (to-list new-entity))
+             (canonicalize-list `(6 (~o5 :order)
+                                    ("height" ~'tag (~o6 :order))))))
+      (is (= order o7)))))

@@ -62,10 +62,10 @@
   (case preferred-side
     nil (quot (+ right left) 2)
     :before (if (> (- right left) 1024)
-                (- right 127)
+                (- right 128)
                 (quot (+ left (* 7 right)) 8))
     :after (if (> (- right left) 1024)
-               (+ left 128)
+               (+ left 127)
                (quot (+ (* 7 left) right) 8))))
 
 (defn- split-sequence
@@ -75,7 +75,8 @@
     (split (->Orderable (conj left least) most) preferred-side)))
 
 (defn split
-  "Split the item into two. If preferred-side is non-nil, it must be
+  "Split the item into two, returning the earlier and later halves.
+   If preferred-side is non-nil, it must be
    :before or :after, in which case the majority of the space
    is put on that side."
   [a & preferred-side]
@@ -92,5 +93,6 @@
       (if (== left right)
         (split-sequence [left] preferred-side)
         (let [m (get-midpoint left right preferred-side)]
-            [(->Orderable left m) (->Orderable (+ m 1) right)])))))
+          [(->Orderable left m) (->Orderable (+ m 1) right)])))))
+
 

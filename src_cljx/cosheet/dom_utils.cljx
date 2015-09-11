@@ -9,7 +9,9 @@
                        (fn [current]
                          (if current
                            (case key
-                             :class (str current " " value)
+                             :class (if (empty? value)
+                                      current
+                                      (str current " " value))
                              :style (into current value))
                            value))))
           accumulator attributes))

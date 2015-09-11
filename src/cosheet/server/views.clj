@@ -58,7 +58,7 @@
 
 (defn create-tracker
   [mutable-store]
-  (let [immutable-root-item (:v (first (cosheet.query-impl/query-matches
+  (let [immutable-root-item (:v (first (query-matches
                                         '(:variable (:v :name)
                                                     ((nil :root) :condition)
                                                     (true :reference))

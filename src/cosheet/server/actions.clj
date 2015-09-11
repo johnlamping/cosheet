@@ -8,8 +8,10 @@
     [store :refer [update-content add-simple-element do-update!]]
     store-impl
     mutable-store-impl
-    [entity :refer [StoredEntity description->entity content elements]]
-    [query :refer [query-matches]])
+    [entity :refer [StoredEntity description->entity
+                    content elements label->elements]]
+    [query :refer [query-matches]]
+    query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key]]
     [render :refer [visible-to-list canonicalize-list]])))
@@ -135,15 +137,15 @@
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
    Return the new store and the remaining order."
-  [store subject entity order side use-bigger]
+  [store subject-id entity order side use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
     (if (and (= entity-content 'tag) (empty? entity-elements))
       ;; Tags markers don't get an ordering.
-      (let [[s id] (add-simple-element store subject 'tag)]
+      (let [[s id] (add-simple-element store subject-id 'tag)]
         [s order])
       (let [[s1 id] (add-simple-element
-                     store subject (if (nil? entity-content)
+                     store subject-id (if (nil? entity-content)
                                      :none
                                      entity-content))
             ;; The next bunch of complication is to split the order up
@@ -157,7 +159,6 @@
             entity-order-index (case side :before 0 :after 1)
             other-side ([:after :before] entity-order-index)
             split-order (split order (if use-bigger side other-side))
-            _ (println "splitting on " (if use-bigger side other-side))
             bigger-index (if use-bigger
                            entity-order-index
                            (- 1 entity-order-index))
@@ -166,17 +167,32 @@
             [s2 bigger-order] (reduce (fn [[store order] element]
                                         (update-add-entity-with-order
                                          store id element order side false))
-                                      [s1 bigger-order] entity-elements)
+                                      [s1 bigger-order]
+                                      (case side ;; Make the order match
+                                        :before entity-elements
+                                        :after (reverse entity-elements)))
             [s3 order-id] (add-simple-element
                            s2 id (if use-bigger bigger-order smaller-order))
             [s4 _] (add-simple-element s3 order-id :order)]
         [s4 (if use-bigger smaller-order bigger-order)]))))
 
 (defn update-add-element
-  "Add a new element of the given item to the store, satisfying the condition."
-  [subject condition store item]
-  ;; TODO: code
-  )
+  "Add a new element of the given subject to the store,
+   with empty content and satisfying the condition."
+  [condition store subject]
+  (let [order-element (or (first (label->elements subject :order))
+                          (:v (first (query-matches
+                                      '(:variable
+                                        (:v :name)
+                                        ((nil :unused-orderable) :condition)
+                                        (true :reference))
+                                      store))))
+        order (content order-element)
+        new-element (cons "" (rest condition))
+        [store remainder] (update-add-entity-with-order
+                           store (:item-id subject) new-element
+                           order :after false)]
+    (update-content store (:item-id order-element) remainder)))
 
 (defn set-content-handler
   [store dom-tracker id from to]

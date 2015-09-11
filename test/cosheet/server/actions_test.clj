@@ -184,34 +184,35 @@
 
 (deftest update-add-entity-with-order-test
   (let [[store joe-id] (add-entity (new-element-store) nil joe)]
-    (comment
-      (let [[s order] (update-add-entity-with-order
-                              store joe-id 6
-                              unused-orderable :before true)
-                   joe-entity (description->entity joe-id s)
-                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
-                   [o5 o6] (orderable/split unused-orderable :before)]
-               (is (= (to-list new-entity)
-                      `(6 (~o5 :order))))
-               (is (= order o6)))
-             (let [[s order] (update-add-entity-with-order
-                              store joe-id 6
-                              unused-orderable :before false)
-                   joe-entity (description->entity joe-id s)
-                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
-                   [o5 o6] (orderable/split unused-orderable :after)]
-               (is (= (to-list new-entity)
-                      `(6 (~o5 :order))))
-               (is (= order o6)))    
-             (let [[s order] (update-add-entity-with-order
-                              store joe-id 6
-                              unused-orderable :after false)
-                   joe-entity (description->entity joe-id s)
-                   new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
-                   [o5 o6] (orderable/split unused-orderable :before)]
-               (is (= (to-list new-entity)
-                      `(6 (~o6 :order))))
-               (is (= order o5))))
+    (let [[s order] (update-add-entity-with-order
+                     store joe-id 6
+                     unused-orderable :before true)
+          joe-entity (description->entity joe-id s)
+          new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
+          [o5 o6] (orderable/split unused-orderable :before)]
+      (is (= (to-list new-entity)
+             `(6 (~o5 :order))))
+      (is (= order o6)))
+    (let [[s order] (update-add-entity-with-order
+                     store joe-id 6
+                     unused-orderable :before false)
+          joe-entity (description->entity joe-id s)
+          new-entity (first (filter #(= (content %) 6)
+                                    (elements joe-entity)))
+          [o5 o6] (orderable/split unused-orderable :after)]
+      (is (= (to-list new-entity)
+             `(6 (~o5 :order))))
+      (is (= order o6)))    
+    (let [[s order] (update-add-entity-with-order
+                     store joe-id 6
+                     unused-orderable :after true)
+          joe-entity (description->entity joe-id s)
+          new-entity (first (filter #(= (content %) 6)
+                                    (elements joe-entity)))
+          [o5 o6] (orderable/split unused-orderable :after)]
+      (is (= (to-list new-entity)
+             `(6 (~o6 :order))))
+      (is (= order o5)))
     (let [[s order] (update-add-entity-with-order
                      store joe-id '(6 ("height" tag))
                      unused-orderable :before true)
@@ -223,14 +224,47 @@
              (canonicalize-list `(6 (~o7 :order)
                                     ("height" ~'tag (~o6 :order))))))
       (is (= order o5)))
+    ;; Check that order in the list style entity is preserved in the
+    ;; :order values.
     (let [[s order] (update-add-entity-with-order
-                     store joe-id '(6 ("height" tag))
-                     unused-orderable :before false)
+                     store joe-id '(6 ("height" tag) ("weight" tag))
+                     unused-orderable :after false)
           joe-entity (description->entity joe-id s)
           new-entity (first (label->elements joe-entity "height"))
-          [o5 x] (orderable/split unused-orderable :after)
-          [o6 o7] (orderable/split x :after)]
+          [x o5] (orderable/split unused-orderable :before)
+          [x o6] (orderable/split x :before)
+          [o8 o7] (orderable/split x :before)]
       (is (= (canonicalize-list (to-list new-entity))
              (canonicalize-list `(6 (~o5 :order)
-                                    ("height" ~'tag (~o6 :order))))))
-      (is (= order o7)))))
+                                    ("height" ~'tag (~o7 :order))
+                                    ("weight" ~'tag (~o6 :order))))))
+      (is (= order o8)))))
+
+(deftest update-add-element-test
+  (let [[store jane-id] (add-entity (new-element-store) nil jane)
+         jane-entity (description->entity jane-id store)
+         order-entity (first (label->elements jane-entity :order))
+         order (content order-entity)
+         s (update-add-element [:condition 6] store jane-entity)
+         jane-entity (description->entity jane-id s)
+         new-element (first (filter #(= (content %) "")
+                                    (elements jane-entity)))
+         [x o5] (orderable/split order :before)
+         [o6 o7] (orderable/split x :before)]
+    (is (= (canonicalize-list (to-list new-element))
+           (canonicalize-list `("" (~o5 :order) (6 (~o7 :order))))))
+    (is (= (id->content s (:item-id order-entity)) o6)))
+  (let [[store sally-id] (add-entity (new-element-store) nil "Sally")
+        [store unused-id] (add-entity store nil o4)
+        [store _] (add-entity store unused-id :unused-orderable)
+        sally-entity (description->entity sally-id store)
+        order-entity (description->entity unused-id store)
+        s (update-add-element [:condition 6] store sally-entity)
+        sally-entity (description->entity sally-id s)
+        new-element (first (filter #(= (content %) "")
+                                   (elements sally-entity)))
+        [x o5] (orderable/split o4 :before)
+        [o6 o7] (orderable/split x :before)]
+    (is (= (canonicalize-list (to-list new-element))
+           (canonicalize-list `("" (~o5 :order) (6 (~o7 :order))))))
+    (is (= (id->content s (:item-id order-entity)) o6))))

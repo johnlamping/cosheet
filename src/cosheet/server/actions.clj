@@ -25,6 +25,8 @@
 (defn content-referent? [referent]
   (and (sequential? referent) (= ( first referent) :content)))
 
+(defn condition-referent? [referent]
+  (and (sequential? referent) (= ( first referent) :condition)))
 (defn parallel-referent? [referent]
   (and (sequential? referent) (= ( first referent) :parallel)))
 
@@ -140,6 +142,7 @@
   [store subject-id entity order side use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
+    (println "adding entity" entity "to" subject-id)
     (if (and (= entity-content 'tag) (empty? entity-elements))
       ;; Tags markers don't get an ordering.
       (let [[s id] (add-simple-element store subject-id 'tag)]
@@ -179,7 +182,7 @@
 (defn update-add-element
   "Add a new element of the given subject to the store,
    with empty content and satisfying the condition."
-  [condition store subject]
+  [condition new-content store subject]
   (let [order-element (or (first (label->elements subject :order))
                           (:v (first (query-matches
                                       '(:variable
@@ -188,7 +191,7 @@
                                         (true :reference))
                                       store))))
         order (content order-element)
-        new-element (cons "" (rest condition))
+        new-element (cons new-content (rest condition))
         [store remainder] (update-add-entity-with-order
                            store (:item-id subject) new-element
                            order :after false)]
@@ -209,6 +212,8 @@
     (reduce (cond ((some-fn nil? item-referent? content-referent?)
                    first-primitive)
                   (partial update-set-content from to)
+                  (condition-referent? first-primitive)
+                  (partial update-add-element first-primitive to)
                   true (fn [a b] a))
             store items)))
 

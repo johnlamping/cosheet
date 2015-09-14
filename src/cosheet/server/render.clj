@@ -373,11 +373,19 @@
                                                   {:sibling-elements
                                                    sibling-elements})))
                           items-and-tags)
-               tags-dom (let [parent-ref (if (= (count items) 1)
-                                           (item-referent (first items))
-                                           (parallel-referent [] items))
-                              parent-key (prepend-to-key
-                                          parent-ref parent-key)]
+               tags-dom (let [parent-key
+                              (if (= (count items) 1)
+                                (cond->>
+                                    (prepend-to-key
+                                     (item-referent (first items)) parent-key)
+                                  (= (count sample-tags) 1)
+                                  ;; Add the 'tag condition so the key
+                                  ;; won't be the same if the item used
+                                  ;; to not be a tag and appeared under
+                                  ;; the parent's component.
+                                  (prepend-to-key (condition-referent ['tag])))
+                                (prepend-to-key
+                                 (parallel-referent [] items) parent-key))]
                           (expr tags-DOM
                             (order-items sample-tags) parent-key inherited))]
       [:div {:style {:display "table-row"}}

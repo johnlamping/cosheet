@@ -112,7 +112,7 @@
     (process-acknowledgements @dom-tracker acknowledge)    
     (when actions
       (do-actions store @dom-tracker actions)
-      (compute management 100))
+      (compute management 1000))
     ;; Note: We must get the doms after doing the actions, so we can
     ;; immediately show the response to the actions.
     (let [doms (response-doms @@dom-tracker 10)

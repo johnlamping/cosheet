@@ -139,6 +139,76 @@
     (is (= dom
            [:div {:class "item content-text editable"
                   :key [(:item-id fred)]} "Fred"])))
+  ;; Check generation of a single tag for a single item.
+  (let [[dom age]
+        (let-propagated [age `(39 ("doubtful"
+                                   ("confidence" ~'tag)
+                                   (~o1 :order)))]
+          (expr-let [dom (item-DOM age [:age] #{} {:depth 0})]
+            [dom age]))
+        doubtful (first (current-value (entity/label->elements age o1)))
+        confidence (first (current-value
+                           (entity/label->elements doubtful 'tag)))
+        confidence-tag (first (current-value (entity/elements confidence)))
+        tag-key [(:item-id confidence)
+                 [:condition 'tag]
+                 (:item-id doubtful)
+                 :age]]
+    (is (= dom
+           [:div {:class "item" :key [:age]}
+            [:div {:style {:width "100%" :display "block"}
+                   :class "content-text editable"
+                   :key [[:content] :age]}
+             "39"]
+            [:div {:style {:display "table"
+                           :table-layout "fixed"
+                           :width "100%"}
+                   :class "element-table"}
+             [:div {:style {:display "table-row"}
+                    :class "last-row"}
+              [:component {:attributes
+                           {:style {:display "table-cell"}
+                            :class "tag-column"
+                            :sibling-elements ['tag]}
+                           :key tag-key
+                           :definition [item-DOM
+                                        confidence tag-key
+                                        #{confidence-tag} {:depth 1}]}]
+              [:component {:attributes {:class "item-column"
+                                        :style {:display "table-cell"}
+                                        :sibling-elements [["confidence" 'tag]]}
+                           :key [(:item-id doubtful) :age]
+                           :definition [item-DOM
+                                        doubtful [(:item-id doubtful) :age]
+                                        #{confidence} {:depth 1}]}]]]])))
+  ;; Check that we generate no-tags.
+  (let [[dom age]
+        (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
+          (expr-let [dom (item-DOM age [:age] #{} {:depth 0})]
+            [dom age]))
+        doubtful (first (current-value (entity/label->elements age o1)))]
+    (is (= dom
+           [:div {:class "item" :key [:age]}
+            [:div {:style {:width "100%" :display "block"}
+                   :class "content-text editable"
+                   :key [[:content] :age]}
+             "39"]
+            [:div {:style {:display "table"
+                           :table-layout "fixed"
+                           :width "100%"}
+                   :class "element-table"}
+             [:div {:style {:display "table-row"}
+                    :class "no-tags last-row"}
+              [:div {:style {:display "table-cell"}
+                     :class "tag-column editable"
+                     :key [[:condition 'tag] (:item-id doubtful) :age]}]
+              [:component {:attributes {:class "item-column"
+                                        :style {:display "table-cell"}
+                                        :sibling-elements nil}
+                           :key [(:item-id doubtful) :age]
+                           :definition [item-DOM
+                                        doubtful [(:item-id doubtful) :age]
+                                        #{} {:depth 1}]}]]]])))
   (let [[dom joe]
         (let-propagated [him joe]
           (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
@@ -221,38 +291,9 @@
                               :key [(:item-id age) :joe]
                               :definition [item-DOM
                                            age [(:item-id age) :joe]
-                                           #{age-tag} {:depth 1}]}]]]]]))))
-  (let [[dom age]
-        (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
-          (expr-let [dom (item-DOM age [:age] #{} {:depth 0})]
-            [dom age]))
-        doubtful (first (current-value (entity/label->elements age o1)))
-        funny (first (current-value (entity/label->elements age o2)))]
-    ;; Check that we generate no-tags.
-    (is (= dom
-           [:div {:class "item" :key [:age]}
-            [:div {:style {:width "100%" :display "block"}
-                   :class "content-text editable"
-                   :key [[:content] :age]}
-             "39"]
-            [:div {:style {:display "table"
-                           :table-layout "fixed"
-                           :width "100%"}
-                   :class "element-table"}
-             [:div {:style {:display "table-row"}
-                    :class "no-tags last-row"}
-              [:div {:style {:display "table-cell"}
-                     :class "tag-column editable"
-                     :key [[:condition 'tag] (:item-id doubtful) :age]}]
-              [:component {:attributes {:class "item-column"
-                                        :style {:display "table-cell"}
-                                        :sibling-elements nil}
-                           :key [(:item-id doubtful) :age]
-                           :definition [item-DOM
-                                        doubtful [(:item-id doubtful) :age]
-                                        #{} {:depth 1}]}]]]]))
-    ;; TODO: Test content that is an item.
-    ))
+                                           #{age-tag} {:depth 1}]}]]]]]))))  
+  ;; TODO: Test content that is an item.
+  )
 
 
 

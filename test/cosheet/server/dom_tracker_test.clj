@@ -32,16 +32,19 @@
     (is (= @a 4))))
 
 (deftest subcomponent->component-map-test
-  (is (= (subcomponent->component-map {:key [0 1] :definition 2} [0] 3)
+  (is (= (subcomponent->component-map {:key [0 1] :definition 2} 3)
          {:key [0 1] :definition 2 :depth 4})))
 
 (deftest dom->subcomponents-test
-  (is (= (set  (dom->subcomponents
-                [:div
-                 [:component {:foo :bar}]
-                 [:component {:bletch 1}]
-                 [:div "hi" [:component {1 2}]]]))
-         #{{:foo :bar} {:bletch 1} {1 2}})))
+  (is (= (set (dom->subcomponents
+               [:div
+                [:component {:key :a :definition :b}]
+                [:component {:key :c :definition :d}]
+                [:div "hi" [:component {:key :e :definition :f}]]]
+               4))
+         #{{:key :a :definition :b :depth 5}
+           {:key :c :definition :d :depth 5}
+           {:key :e :definition :f :depth 5}})))
 
 (deftest adjust-attributes-for-client-test
   (is (= (adjust-attributes-for-client

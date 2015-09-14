@@ -51,9 +51,8 @@
                        ;; Turn [:component {attributes} <id>]
                        ;; into [cosheet.client/component {attributes} id]
                        (replace-in-struct {:component component} (vec doms)))))
-    (process-response-for-pending response))
-  (if (:more response)
-    (ajax-request (take-pending-params)))
+    (process-response-for-pending response)
+    (ajax-if-pending))
   (start-watch-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]

@@ -43,8 +43,7 @@
 ;;;            :dom  The dom in hiccup format, as returned by the
 ;;;                  definition or the reporter it returns.
 ;;;                  Inside this dom, subcomponents are annotated as
-;;;                  [:component {:sibling-key
-;;;                               <A distinct object for each subcomponent>
+;;;                  [:component {:key <globally unique for each subcomponent>
 ;;;                               :definition <as above>
 ;;;                               :attributes
 ;;;                               <Additional attributes to add to the
@@ -54,7 +53,7 @@
 ;;;                                should fit into its parent. These
 ;;;                                are sent to the client as part of
 ;;;                                the component definition, before
-;;;                                the client gets the rest of the dom.>}]
+;;;                                the client gets the rest of its dom.>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
 ;;;        :version  An version number for client coordination. It
@@ -106,7 +105,7 @@
 (defn subcomponent->component-map
   "Given a subcomponent specified inside a dom,
    create a component map."
-  [{:keys [key definition]} parent-key parent-depth]
+  [{:keys [key definition]} parent-depth]
   (assert (not (nil? key)))
   (assert (not (nil? definition)))
   {:key key
@@ -114,14 +113,14 @@
    :depth (inc parent-depth)})
 
 (defn dom->subcomponents
-  "Given a dom that may contain subcomponents,
+  "Given a dom that may contain subcomponents, and its depth
    return a list of their component maps."
-  [dom]
+  [dom depth]
   (if (vector? dom)
     (if (= (first dom) :component)
-      [(second dom)]
+      [(subcomponent->component-map (second dom) depth)]
       (reduce (fn [subcomponents dom]
-                (into subcomponents (dom->subcomponents dom)))
+                (into subcomponents (dom->subcomponents dom depth)))
               [] dom))
     []))
 
@@ -162,6 +161,8 @@
     (if (= (first dom) :component)
       (let [component-map (second dom) 
             id (get-in data [:key->id (:key component-map)])]
+        (when (nil? id)
+          (println "No id found for key" (:key component-map)))
         (assert (not (nil? id)))
         (adjust-attributes-for-client
          data [:component (:attributes component-map) id]))
@@ -239,25 +240,39 @@
           (clojure.set/difference  (:subcomponents old-component-map)
                                    (:subcomponents new-component-map))))
 
+(defn check-subcomponents-stored
+  "Given data, dom that is stored there and, and its depth,
+  check that all the subcomponents of the dom are stored there."
+  [data dom depth]
+  (when dom
+    (let [subcomponents (dom->subcomponents dom depth)]
+      (doseq [subcomponent subcomponents]
+        (let [key (:key subcomponent)]
+          (let [stored-map (get-in data [:components key])]
+            (when stored-map
+              (assert (= (:definition stored-map)
+                         (:definition subcomponent))))))))))
+
 (defn update-dom
   "Given the data, a key, and the latest dom for the key,
    do all necessary updates."
   [data key dom]
   (let [component-map (get-in data [:components key])
+        old-dom (:dom component-map)
         depth (:depth component-map)]
-    (if (and component-map (not= dom (:dom component-map)))
-      (let [subcomponent-maps (map #(subcomponent->component-map % key depth)
-                                   (dom->subcomponents dom))
-            new-map (-> component-map
-                        (assoc :dom dom)
-                        (assoc :subcomponents
-                               (set (map :key subcomponent-maps)))
-                        (update-in [:version] inc))]
-        (-> (reduce update-set-component data subcomponent-maps)
-            (update-unneeded-subcomponents component-map new-map)
-            (update-ensure-ids-for-keys (dom->keys dom))
-            (update-in [:out-of-date-keys] #(assoc % key depth))
-            (assoc-in [:components key] new-map)))
+    (if (and component-map (not= dom old-dom))
+      (do (check-subcomponents-stored data old-dom depth)
+          (let [subcomponent-maps (dom->subcomponents dom depth)
+                new-map (-> component-map
+                            (assoc :dom dom)
+                            (assoc :subcomponents
+                                   (set (map :key subcomponent-maps)))
+                            (update-in [:version] inc))]
+            (-> (reduce update-set-component data subcomponent-maps)
+                (update-unneeded-subcomponents component-map new-map)
+                (update-ensure-ids-for-keys (dom->keys dom))
+                (update-in [:out-of-date-keys] #(assoc % key depth))
+                (assoc-in [:components key] new-map))))
       data)))
 
 (defn dom-callback

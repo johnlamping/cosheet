@@ -262,7 +262,14 @@
   [items]
   (expr-let [order-info
              (expr-seq map #(entity/label->content % :order) items)]
-    (map second (sort orderable-comparator (map vector order-info items)))))
+    (map second (sort orderable-comparator
+                      (map (fn [order item]
+                             ;; It is possible for an item not to have
+                             ;; order information, especially
+                             ;; temporarily while information is being
+                             ;; propagated. Tolerate that.
+                             (vector (or order orderable/initial) item))
+                           order-info items)))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."

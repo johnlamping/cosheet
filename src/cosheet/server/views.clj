@@ -27,7 +27,7 @@
      (include-css "style.css")]
     [:body
      [:div#app "Root"]
-     [:div#edit_holder [:input#edit_input]]
+     [:div#edit_holder [:textarea#edit_input]]
      [:script "cosheet.client.run();"]]))
 
 (defn create-store

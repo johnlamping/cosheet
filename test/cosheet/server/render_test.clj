@@ -6,8 +6,7 @@
              [orderable :as orderable]
              [entity :as entity  :refer [to-list description->entity]]
              [reporters :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value envs-to-list
-                            let-propagated let-propagated-store]]
+             [debug :refer [current-value let-propagated envs-to-list]]
              entity-impl
              store-impl
              mutable-store-impl)

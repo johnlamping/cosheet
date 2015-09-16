@@ -182,7 +182,8 @@
           (if (reporter/valid? value)
             (let [new-data
                   (cond-> (update-in data [:needed-values] disj from)
-                    (not= value (get-in data [:subordinate-values from]))
+                    (not= value
+                          (get-in data [:subordinate-values from] ::not-found))
                     (#(-> %
                           (assoc-in [:subordinate-values from] value)
                           (update-value-source to nil))))]

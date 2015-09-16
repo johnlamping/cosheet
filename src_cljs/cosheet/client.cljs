@@ -15,8 +15,7 @@
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
-;;; TODO: add selectable and editable classes to say which elements
-;;; support those operations.
+;;; TODO: Only allow selection of elements with ids.
 
 (def selected (atom nil)) ;; The currently selected dom.
 (def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.

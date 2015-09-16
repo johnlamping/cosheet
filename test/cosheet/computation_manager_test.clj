@@ -352,6 +352,22 @@
         (is (= (not (reporter/valid? (computation-value f45 m)))))
         (check-propagation #{} f45)))))
 
+(deftest nil-value-test
+  ;; There had been a bug with nil values throwing off propagation.
+  ;; This tests that it is fixed.
+  (let [m (new-management)
+        r0 (reporter/new-reporter)
+        r1 (expr identity r0)
+        r2 (expr identity r1)]
+    (request r2 m)
+    (compute m)
+    (is (= (reporter/value r2) reporter/invalid))
+    (reporter/set-value! r0 nil)
+    (compute m)
+    (is (= (reporter/value r2) nil))
+    (reporter/set-value! r0 1)
+    (compute m)
+    (is (= (reporter/value r2) 1))))
 
 (deftest asynchronous-test
   ;; Creates width base reporters, then a series layers of lookups that
@@ -397,7 +413,7 @@
                             pos (range width)]
                         [d pos])
             requests (into {} (for [[d pos] arguments]
-                                [[d pos] (request (indexer d pos)m)]))]
+                                [[d pos] (request (indexer d pos) m)]))]
         (compute m 1000000)
         (check requests (answers arguments))
         (doseq [i (range trials)]

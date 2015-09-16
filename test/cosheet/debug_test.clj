@@ -35,6 +35,7 @@
         ms (new-mutable-store s)
         i (make-id "i")
         ci (cosheet.store-impl/->ImplicitContentId i)
+        r (new-reporter :expression [+ 1 (new-reporter :fetch [+ 2 3])])
         m (mm/new-mutable-map)]
     (is (= (simplify-for-print 1) 1))
     (is (= (simplify-for-print s) 'Store))
@@ -49,6 +50,7 @@
     (is (= (simplify-for-print (description->entity ci ms))
            'Entity-content-Id-i))
     (is (= (simplify-for-print [#{{1 i}}]) [#{{1 'Id-i}}]))
+    (is (= (simplify-for-print r) '(_PLUS_ 1 (_PLUS_ 2 3))))
     (mm/assoc-in! m [:a] i)
     (is (= (simplify-for-print m) {:a 'Id-i}))
     (is (= (simplify-for-print inc) 'inc))

@@ -30,7 +30,7 @@
   (swap! watch-task
          (fn [handle]
            (when handle (js/clearInterval handle))
-           (js/setInterval #(ajax-request (take-pending-params)) 60000))))
+           (js/setInterval #(ajax-request (take-pending-params)) 600000))))
 
 (defn ajax-if-pending
   "Send an ajax request if we have pending information to send the server

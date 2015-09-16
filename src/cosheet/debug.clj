@@ -29,6 +29,18 @@
                      "_" "-")))) 
               name))))
 
+(defn reporter-computation
+  "Return an expression indicating the computation of the reporter,
+  recursing down to sub-expressions."
+  [expr]
+  (if (reporter? expr)
+    (let [data (data expr)
+          computation (or (:expression data) (:fetch data))]
+      (if computation
+        (map reporter-computation computation)
+        "Reporter"))
+    expr))
+
 (defn simplify-for-print [item]
   (cond (satisfies? store/Store item)
         (if (store/mutable-store? item)
@@ -40,6 +52,8 @@
             (instance? cosheet.entity_impl.MutableStoredItem item))
         (symbol
          (clojure.string/join ["Entity-" (simplify-for-print (:item-id item))]))
+        (reporter? item)
+        (simplify-for-print (reporter-computation item))
         (instance? clojure.lang.PersistentHashSet item)
         (set (map simplify-for-print item))
         (instance? clojure.lang.PersistentArrayMap item)

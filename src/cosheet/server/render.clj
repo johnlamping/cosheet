@@ -221,12 +221,12 @@
   (if (entity/atom? entity)
     (entity/content entity)
     (expr-let [content (entity/content entity)
-               elements (visible-elements entity)]
-      (expr-let [content-visible (visible-to-list content)
-                 element-visibles (expr-seq map visible-to-list elements)]
-        (if (empty? element-visibles)
-          content-visible
-          (into [content-visible] element-visibles))))))
+               elements (visible-elements entity)
+               content-visible (visible-to-list content)
+               element-visibles (expr-seq map visible-to-list elements)]
+      (if (empty? element-visibles)
+        content-visible
+        (into [content-visible] element-visibles)))))
 
 (defn canonicalize-list
   "Given the list form of an entity, return a canonical representation of it."
@@ -306,7 +306,7 @@
                 :attributes attributes}]))
 
 (defn group-by-tag
-  "Given a sequence of items, group consequtively, identically tagged,
+  "Given a sequence of items, group consecutive identically tagged,
    items together. Return a list of the groups, where each group is
    described as a list of [item, tags] pairs."
   [items]

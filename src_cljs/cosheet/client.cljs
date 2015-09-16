@@ -44,7 +44,6 @@
   (when (and target (not= target @edit-field-open-on))
     (let [edit-holder (js/document.getElementById "edit_holder")
           edit-input (js/document.getElementById "edit_input")
-          ; original_value (gdom/getTextContent target)
           original_value (.. target -firstChild -nodeValue)
           ]
       (set! (.-value edit-input) original_value)

@@ -40,11 +40,15 @@
     (.log js/console (str "Now with class " (.-className target) "."))
     (reset! selected target)))
 
+(defn dom-text [target]
+  (let [child (.-firstChild target)]
+    (if child (.-nodeValue child) "")))
+
 (defn open-edit-field [target]
   (when (and target (not= target @edit-field-open-on))
     (let [edit-holder (js/document.getElementById "edit_holder")
           edit-input (js/document.getElementById "edit_input")
-          original_value (.. target -firstChild -nodeValue)
+          original_value (dom-text target)
           ]
       (set! (.-value edit-input) original_value)
       (gdom/appendChild target edit-holder)
@@ -68,7 +72,7 @@
     (when target
       (let [edit-input (js/document.getElementById "edit_input")
             value (.-value edit-input)
-            old-value (.. target -firstChild -nodeValue)]
+            old-value (dom-text target)]
         (when (not= value old-value)
           (.log js/console (str "storing " value
                                 " into " (.-id target)))

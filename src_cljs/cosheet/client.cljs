@@ -44,7 +44,9 @@
   (when (and target (not= target @edit-field-open-on))
     (let [edit-holder (js/document.getElementById "edit_holder")
           edit-input (js/document.getElementById "edit_input")
-          original_value (gdom/getTextContent target)]
+          ; original_value (gdom/getTextContent target)
+          original_value (.. target -firstChild -nodeValue)
+          ]
       (set! (.-value edit-input) original_value)
       (gdom/appendChild target edit-holder)
       (.focus edit-input)
@@ -67,7 +69,7 @@
     (when target
       (let [edit-input (js/document.getElementById "edit_input")
             value (.-value edit-input)
-            old-value (gdom/getTextContent target)]
+            old-value (.. target -firstChild -nodeValue)]
         (when (not= value old-value)
           (.log js/console (str "storing " value
                                 " into " (.-id target)))

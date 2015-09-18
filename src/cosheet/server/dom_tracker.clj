@@ -40,20 +40,6 @@
 ;;;                  subcomponent that calls for it.
 ;;;       :reporter  The result of running the definition, either the
 ;;;                  dom, or a reporter that computes it.
-;;;            :dom  The dom in hiccup format, as returned by the
-;;;                  definition or the reporter it returns.
-;;;                  Inside this dom, subcomponents are annotated as
-;;;                  [:component {:key <globally unique for each subcomponent>
-;;;                               :definition <as above>
-;;;                               :attributes
-;;;                               <Additional attributes to add to the
-;;;                                dom produced by the definition.
-;;;                                These are typically things like
-;;;                                display, that say how the component
-;;;                                should fit into its parent. These
-;;;                                are sent to the client as part of
-;;;                                the component definition, before
-;;;                                the client gets the rest of its dom.>}]
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
 ;;;        :version  An version number for client coordination. It
@@ -62,10 +48,30 @@
 ;;; The information for all components is stored in an atom,
 ;;; containing a map with these elements:
 ;;;       :components  A map from key to component map.
-;;;          :id->key  A map from client id to key.
-;;;          :key->id  A map from key to client id. Unlike the key,
-;;;                    the client id must be a string that is allowed as a
-;;;                    DOM id.
+;;;          :key->id  A map from key to client id, for both keys of
+;;;                    components and keys of doms inside components.
+;;;                    Unlike the key, the client id must be a string
+;;;                    that is allowed as a DOM id.
+;;;          :id->key  The inverse of the key->id map
+;;;         :key->dom  A map from key to server  version of the dom
+;;;                    for that key. This provides access to extra
+;;;                    information, like :sibling-elements, needed to
+;;;                    interpret actions on a key.
+;;;                    The dom is in hiccup format, as returned by the
+;;;                    definition or the reporter it returns.
+;;;                    Inside this dom, subcomponents are annotated as
+;;;                    [:component {:key <globally unique for each subcomponent>
+;;;                                 :definition <as above>
+;;;                                 :attributes
+;;;                                 <Additional attributes to add to the
+;;;                                  dom produced by the definition.
+;;;                                  These are typically things like
+;;;                                  display, that say how the component
+;;;                                  should fit into its parent. These
+;;;                                  are sent to the client as part of
+;;;                                  the component definition, before
+;;;                                  the client gets the rest of its dom.>}]
+
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about.
@@ -124,15 +130,16 @@
               [] dom))
     []))
 
-(defn dom->keys
-  "Given a dom, return all keys in the dom."
+(defn dom->keys-and-dom
+  "Given a dom, return a map from key to dom for keys in the dom,
+   but don't descend into subcomponents."
   [dom]
-  (if (vector? dom)
+  (if (and (vector? dom) (not= (first dom) :component))
     (let [key (let [attributes (second dom)]
                 (when (map? attributes) (:key attributes)))]
-      (reduce (fn [keys dom] (into keys (dom->keys dom)))
-              (if (nil? key) #{} #{key}) (rest dom)))
-    []))
+      (reduce (fn [keys dom] (into keys (dom->keys-and-dom dom)))
+              (if (nil? key) {} {key dom}) (rest dom)))
+    {}))
 
 (defn adjust-attributes-for-client
   "Given the data and a dom, which must be a vector, remove dom attributes
@@ -178,7 +185,7 @@
   (let [component-map (get-in data [:components key])]
     (assert (not (nil? component-map)))
     (add-attributes
-     (adjust-dom-for-client data (:dom component-map))
+     (adjust-dom-for-client data (get-in data [:key->dom key]))
      {:version (:version component-map)})))
 
 (defn response-doms
@@ -241,7 +248,7 @@
                                    (:subcomponents new-component-map))))
 
 (defn check-subcomponents-stored
-  "Given data, dom that is stored there and, and its depth,
+  "Given data, dom that is stored there and its depth,
   check that all the subcomponents of the dom are stored there."
   [data dom depth]
   (when dom
@@ -258,19 +265,22 @@
    do all necessary updates."
   [data key dom]
   (let [component-map (get-in data [:components key])
-        old-dom (:dom component-map)
+        old-dom (get-in data [:key->dom key])
         depth (:depth component-map)]
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
           (let [subcomponent-maps (dom->subcomponents dom depth)
                 new-map (-> component-map
-                            (assoc :dom dom)
                             (assoc :subcomponents
                                    (set (map :key subcomponent-maps)))
                             (update-in [:version] inc))]
             (-> (reduce update-set-component data subcomponent-maps)
+                (update-in [:key->dom]
+                           #(into (apply dissoc %
+                                         (keys (dom->keys-and-dom old-dom)))
+                                  (dom->keys-and-dom dom)))
                 (update-unneeded-subcomponents component-map new-map)
-                (update-ensure-ids-for-keys (dom->keys dom))
+                (update-ensure-ids-for-keys (keys (dom->keys-and-dom dom)))
                 (update-in [:out-of-date-keys] #(assoc % key depth))
                 (assoc-in [:components key] new-map))))
       data)))
@@ -377,6 +387,7 @@
    {:components {}
     :id->key {}
     :key->id {}
+    :key->dom {}
     :next-id 0
     :out-of-date-keys (priority-map/priority-map)
     :management management}))

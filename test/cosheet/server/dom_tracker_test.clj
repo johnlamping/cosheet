@@ -71,15 +71,15 @@
 (deftest dom-for-client-test
   (is (= (dom-for-client
           {:components {[:p] {:key [:p]
-                              :dom [:div
-                                    {:key [:p]}
-                                    [:component {:key [:p :a]
-                                                 :attributes {:width 4}}]
-                                    [:div [:component {:key [:p :b]}]]]
                               :version 5}}
            :key->id {[:p] 1
                      [:p :a] 2
-                     [:p :b] 3}}
+                     [:p :b] 3}
+           :key->dom {[:p] [:div
+                            {:key [:p]}
+                            [:component {:key [:p :a]
+                                         :attributes {:width 4}}]
+                            [:div [:component {:key [:p :b]}]]]}}
           [:p])
          [:div
           {:id 1 :version 5}
@@ -90,18 +90,10 @@
   (is (= (response-doms {} 3) []))
   (is (= (set (response-doms
                {:components {[:p] {:key [:p]
-                                   :dom [:div
-                                         {:key [:p]}
-                                         [:component {:key [:p :a]}]
-                                         [:div  [:component
-                                                 {:attributes {:width 9}
-                                                  :key [:p :b]}]]]
                                    :attributes {:width 4}
                                    :version 3}
-                             [:p :a] {:dom [:div {:key [:p :a]}"hi"]
-                                      :version 5}
-                             [:p :b] {:dom [:div {:key [:p :b]} "there"]
-                                      :version 7
+                             [:p :a] {:version 5}
+                             [:p :b] {:version 7
                                       :attributes {:width 9}}}
                 :out-of-date-keys (-> (priority-map/priority-map)
                                       (assoc [:p] 0)
@@ -109,7 +101,15 @@
                                       (assoc [:p :b] 1))
                 :key->id {[:p] "id1"
                           [:p :a] "id2"
-                          [:p :b] "id3"}}
+                          [:p :b] "id3"}
+                :key->dom {[:p] [:div
+                                 {:key [:p]}
+                                 [:component {:key [:p :a]}]
+                                 [:div  [:component
+                                         {:attributes {:width 9}
+                                          :key [:p :b]}]]]
+                           [:p :a] [:div {:key [:p :a]}"hi"]
+                           [:p :b] [:div {:key [:p :b]} "there"]}}
                2))
          #{[:div
             {:id "id1" :version 3}
@@ -264,13 +264,13 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:k]])]
-      (is (= (:dom component) [:div {:key [:k]
-                                     :class "item content-text editable"}
-                               "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
-      (is (= (:components @tracker {[:k] component})))
-      (is (= (:id->key data {"root" [:k]})))
+      (is (= (:components @tracker) {[:k] component}))
+      (is (= (:id->key data) {"root" [:k]}))
+      (is (= (:key->dom data) {[:k] [:div {:key [:k]
+                                           :class "item content-text editable"}
+                                     "hi"]}))
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[[:k] 0]}))
       ;; Try some updates that don't change the definition.
@@ -289,16 +289,17 @@
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (reporter/set-value! reporter "ho")
       (compute management)
-      (is (= (get-in @tracker [:components [:k] :dom])
+      (is (= (get-in @tracker [:key->dom [:k]])
              [:div  {:key [:k] :class "item content-text editable"} "ho"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
-    (is (nil? (get-in @tracker [:components [:d] :dom])))
+    (is (nil? (get-in @tracker [:key->dom [:d]])))
     (compute management)
     (reporter/set-value! reporter "hi")
     (compute management)
-    (is (= (into {} (map (fn [[key component]] [key (:dom component)])
-                               (get-in @tracker [:components])))
+    (is (= (into {} (map (fn [[key component]]
+                           [key (get-in @tracker [:key->dom key])])
+                         (get-in @tracker [:components])))
            {[:k] [:div  {:key [:k] :class "item content-text editable"} "hi"]
             [:d] [:div {:key [:d]}
                   [:component {:key ["s" :d]
@@ -335,14 +336,15 @@
     (compute management)
     (let [data @tracker
           component (get-in data [:components [:root]])]
-      (is (= (:dom component) [:div {:key [:root]
-                                     :class "item content-text editable"}
-                               "hi"]))
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
       (is (= (:components @tracker) {[:root] component}))
       (is (= (:id->key data) {"root" [:root]}))
       (is (= (:key->id data  {[:root] "root"})))
+      (is (= (:key->dom data)
+             {[:root] [:div {:key [:root]
+                             :class "item content-text editable"}
+                       "hi"]}))
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
 

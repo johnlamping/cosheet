@@ -5,11 +5,12 @@
    (cosheet
     [debug :refer [simplify-for-print]]
     [orderable :refer [split]]
-    [store :refer [update-content add-simple-element do-update!]]
+    [store :refer [update-content add-simple-element do-update! id->subject]]
     store-impl
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
                     content elements label->elements]]
+    [dom-utils :refer [dom-attributes]]
     [query :refer [query-matches]]
     query-impl)
    (cosheet.server
@@ -50,12 +51,6 @@
   [item]
   (canonicalize-list (visible-to-list item)))
 
-(defn id->canonical-visible
-  "Return the canonical form of the visible information
-  for the id in the store."
-  [store id]
-  (item->canonical-visible (description->entity id store)))
-
 (defn visible-matching-element
   "Given the list form of visible information and an item,
   find an element of the item that matches the visible information.
@@ -70,7 +65,9 @@
   Return nil if there is no matching element."
   [store exemplar-id item]
   (visible-matching-element
-   store (id->canonical-visible store exemplar-id) item))
+   store
+   (item->canonical-visible (description->entity exemplar-id store))
+   item))
 
 (defn instantiate-exemplar
   "Given a store, an exemplar, and an item, instantiate the exemplar
@@ -179,17 +176,23 @@
             [s4 _] (add-simple-element s3 order-id :order)]
         [s4 (if use-bigger smaller-order bigger-order)]))))
 
+(defn order-element-for-item
+  "Return an element with the order information for item,
+   or, if that is not available, for the overall store."
+  [item store]
+  (or (first (label->elements item :order))
+      (:v (first (query-matches
+                  '(:variable
+                    (:v :name)
+                    ((nil :unused-orderable) :condition)
+                    (true :reference))
+                  store)))))
+
 (defn update-add-element
   "Add a new element of the given subject to the store,
    with empty content and satisfying the condition."
   [condition new-content store subject]
-  (let [order-element (or (first (label->elements subject :order))
-                          (:v (first (query-matches
-                                      '(:variable
-                                        (:v :name)
-                                        ((nil :unused-orderable) :condition)
-                                        (true :reference))
-                                      store))))
+  (let [order-element (order-element-for-item subject store)
         order (content order-element)
         new-element (cons new-content (rest condition))
         [store remainder] (update-add-entity-with-order
@@ -199,8 +202,7 @@
 
 (defn set-content-handler
   [store dom-tracker id from to]
-  ;; TODO: Handle adding and deleting. (In the former case, the key
-  ;; will be a :condition.)
+  ;; TODO: Handle deleting.
   (let [key (id->key dom-tracker id)
         first-primitive (first-primitive-referent key)
         items (key->items store key)
@@ -216,6 +218,23 @@
                   (partial update-add-element first-primitive to)
                   true (fn [a b] a))
             store items)))
+
+;;; TODO: Don't take dom, but just attributes. Those come either from
+;;; the dom in the dom-tracker, if present, or from the component map
+;;; is the dom is not yet known.
+(defn update-add-sibling
+  "Given an item and its dom, add a sibling
+  in the given direction (:before or :after)"
+  [item dom store direction]
+  (let [sibling-elements (:sibling-elements (dom-attributes dom))
+        order-element (order-element-for-item item store)
+        order (content order-element)
+        new-element (cons "" sibling-elements)
+        [store remainder] (update-add-entity-with-order
+                           store (id->subject store (:item-id item))
+                           new-element
+                           order direction true)]
+    (update-content store (:item-id order-element) remainder)))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.

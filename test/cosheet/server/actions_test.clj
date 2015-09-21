@@ -16,8 +16,8 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl)
             (cosheet.server
-             [render :refer [item-DOM canonicalize-list]]
-             [dom-tracker :refer [new-dom-tracker add-dom]]
+             [render :refer [item-DOM canonicalize-list item-referent]]
+             [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
             ; :reload
             ))
@@ -42,7 +42,7 @@
            (45 (~o4 :order)
                ("age" ~'tag))))
 (def jane `("Jane" (~o1 :order)
-           ("female" (~o1 :order))
+           ("female" (~o2 :order))
            (45 (~o3 :order)
                ("age" ~'tag))))
 
@@ -60,8 +60,7 @@
                            [39 {["age" {'tag 1}] 1
                                 ["doubtful" {"confidence" 1}] 1}] 1
                            [45 {["age" {'tag 1}] 1}] 1}]]
-      (is (= (item->canonical-visible joe) expected))
-      (is (= (id->canonical-visible store joe-id) expected)))))
+      (is (= (item->canonical-visible joe) expected)))))
 
 (deftest instantiate-exemplar-test
   (let [[store0 joe-id] (add-entity (new-element-store) nil joe)
@@ -242,15 +241,15 @@
 
 (deftest update-add-element-test
   (let [[store jane-id] (add-entity (new-element-store) nil jane)
-         jane-entity (description->entity jane-id store)
-         order-entity (first (label->elements jane-entity :order))
-         order (content order-entity)
-         s (update-add-element [:condition 6] "foo" store jane-entity)
-         jane-entity (description->entity jane-id s)
-         new-element (first (filter #(= (content %) "foo")
-                                    (elements jane-entity)))
-         [x o5] (orderable/split order :before)
-         [o6 o7] (orderable/split x :before)]
+        jane-entity (description->entity jane-id store)
+        order-entity (first (label->elements jane-entity :order))
+        order (content order-entity)
+        s (update-add-element [:condition 6] "foo" store jane-entity)
+        jane-entity (description->entity jane-id s)
+        new-element (first (filter #(= (content %) "foo")
+                                   (elements jane-entity)))
+        [x o5] (orderable/split order :before)
+        [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("foo" (~o5 :order) (6 (~o7 :order))))))
     (is (= (id->content s (:item-id order-entity)) o6)))
@@ -268,3 +267,25 @@
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("bar" (~o5 :order) (6 (~o7 :order))))))
     (is (= (id->content s (:item-id order-entity)) o6))))
+
+(deftest update-add-sibling-test
+  (let [[store jane-id] (add-entity (new-element-store) nil jane)
+        jane-entity (description->entity jane-id store)
+        jane-dom (item-DOM jane-entity [(item-referent jane-entity)]
+                           #{} {:depth 1})
+        age-element (first (filter #(= (content %) 45)
+                                   (elements jane-entity)))
+        order-entity (first (label->elements age-element :order))
+        order (content order-entity)
+        age-dom (first (filter #(= (first (:key (second %)))
+                                   (item-referent age-element))
+                               (dom->subcomponents jane-dom)))
+        s (update-add-sibling age-element age-dom store :after)
+        jane-entity (description->entity jane-id s)
+        new-element (first (filter #(= (content %) "")
+                                   (elements jane-entity)))
+        [o5 x] (orderable/split order :after)
+        [o6 o7] (orderable/split x :before)]
+    (is (= (canonicalize-list (to-list new-element))
+           (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
+    (is (= (id->content s (:item-id order-entity)) o5))))

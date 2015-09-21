@@ -32,11 +32,11 @@
     (is (= @a 4))))
 
 (deftest subcomponent->component-map-test
-  (is (= (subcomponent->component-map {:key [0 1] :definition 2} 3)
+  (is (= (component->component-map [:component {:key [0 1] :definition 2}] 3)
          {:key [0 1] :definition 2 :depth 4})))
 
-(deftest dom->subcomponents-test
-  (is (= (set (dom->subcomponents
+(deftest dom->subcomponent-maps-test
+  (is (= (set (dom->subcomponent-maps
                [:div
                 [:component {:key :a :definition :b}]
                 [:component {:key :c :definition :d}]

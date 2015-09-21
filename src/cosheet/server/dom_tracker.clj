@@ -108,10 +108,10 @@
 (def update-set-component)
 (def update-clear-component)
 
-(defn subcomponent->component-map
+(defn component->component-map
   "Given a subcomponent specified inside a dom,
    create a component map."
-  [{:keys [key definition]} parent-depth]
+  [[_ {:keys [key definition]}] parent-depth]
   (assert (not (nil? key)))
   (assert (not (nil? definition)))
   {:key key
@@ -119,16 +119,21 @@
    :depth (inc parent-depth)})
 
 (defn dom->subcomponents
+  "Given a dom that may contain subcomponents, return a list of them."
+  [dom]
+  (if (vector? dom)
+    (if (= (first dom) :component)
+      [dom]
+      (reduce (fn [subcomponents dom]
+                (into subcomponents (dom->subcomponents dom)))
+              [] dom))
+    []))
+
+(defn dom->subcomponent-maps
   "Given a dom that may contain subcomponents, and its depth
    return a list of their component maps."
   [dom depth]
-  (if (vector? dom)
-    (if (= (first dom) :component)
-      [(subcomponent->component-map (second dom) depth)]
-      (reduce (fn [subcomponents dom]
-                (into subcomponents (dom->subcomponents dom depth)))
-              [] dom))
-    []))
+  (map #(component->component-map % depth) (dom->subcomponents dom)))
 
 (defn dom->keys-and-dom
   "Given a dom, return a map from key to dom for keys in the dom,
@@ -252,7 +257,7 @@
   check that all the subcomponents of the dom are stored there."
   [data dom depth]
   (when dom
-    (let [subcomponents (dom->subcomponents dom depth)]
+    (let [subcomponents (dom->subcomponent-maps dom depth)]
       (doseq [subcomponent subcomponents]
         (let [key (:key subcomponent)]
           (let [stored-map (get-in data [:components key])]
@@ -269,7 +274,7 @@
         depth (:depth component-map)]
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
-          (let [subcomponent-maps (dom->subcomponents dom depth)
+          (let [subcomponent-maps (dom->subcomponent-maps dom depth)
                 new-map (-> component-map
                             (assoc :subcomponents
                                    (set (map :key subcomponent-maps)))

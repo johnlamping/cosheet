@@ -226,7 +226,7 @@
                element-visibles (expr-seq map visible-to-list elements)]
       (if (empty? element-visibles)
         content-visible
-        (into [content-visible] element-visibles)))))
+        (list* (into [content-visible] element-visibles))))))
 
 (defn canonicalize-list
   "Given the list form of an entity, return a canonical representation of it."

@@ -14,7 +14,7 @@
     [query :refer [query-matches]]
     query-impl)
    (cosheet.server
-    [dom-tracker :refer [id->key]]
+    [dom-tracker :refer [id->key key->attributes]]
     [render :refer [visible-to-list canonicalize-list]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
@@ -28,6 +28,7 @@
 
 (defn condition-referent? [referent]
   (and (sequential? referent) (= ( first referent) :condition)))
+
 (defn parallel-referent? [referent]
   (and (sequential? referent) (= ( first referent) :parallel)))
 
@@ -150,7 +151,7 @@
                                      entity-content))
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
-            ;; bigger and a smaller side, putting the bigger part on
+            ;; bigger and a smaller part, putting the bigger part on
             ;; correct side. Then, when we recursively add the
             ;; elements, we take their order from the bigger side,
             ;; leaving most of the space on the bigger side. Finally,
@@ -220,8 +221,7 @@
             store items)))
 
 ;;; TODO: Don't take dom, but just attributes. Those come either from
-;;; the dom in the dom-tracker, if present, or from the component map
-;;; is the dom is not yet known.
+;;; key->attributes.
 (defn update-add-sibling
   "Given an item and its dom, add a sibling
   in the given direction (:before or :after)"

@@ -328,6 +328,18 @@
     (is (= (id->key tracker "root")
            [:k]))))
 
+(deftest key->attributes-test
+  (let [management (new-management)
+        tracker (new-dom-tracker management)
+        reporter (new-reporter :value "hi")]
+    (add-dom tracker "root" [:root]
+             [identity [:div {:key [:root] :other :bar}
+                        [:component {:key [:foo :root]
+                                     :definition [identity [:div]]
+                                     :attributes {:other :foo}}]]])
+    (is (= (key->attributes tracker [:root]) {:key [:root] :other :bar}))
+    (is (= (key->attributes tracker [:foo :root]) {:other :foo}))))
+
 (deftest add-dom-test
   (let [management (new-management)
         tracker (new-dom-tracker management)

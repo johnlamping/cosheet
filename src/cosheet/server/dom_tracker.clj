@@ -5,7 +5,7 @@
                       :refer [value new-expression]]
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
-                     [dom-utils :refer [add-attributes]]
+                     [dom-utils :refer [dom-attributes add-attributes]]
                      [computation-manager :refer [manage]])))
 
 ;;; Records the current state of the dom, and which items need to be
@@ -40,6 +40,10 @@
 ;;;                  subcomponent that calls for it.
 ;;;       :reporter  The result of running the definition, either the
 ;;;                  dom, or a reporter that computes it.
+;;;     :attributes  A map of attributes to be added to the result of
+;;;                  running the definition. These attributes are
+;;;                  provided to the client even before the
+;;;                  component's dom is ready. 
 ;;;  :subcomponents  A set of the keys of the subcomponents of this
 ;;;                  component.
 ;;;        :version  An version number for client coordination. It
@@ -111,12 +115,13 @@
 (defn component->component-map
   "Given a subcomponent specified inside a dom,
    create a component map."
-  [[_ {:keys [key definition]}] parent-depth]
+  [[_ {:keys [key definition attributes]}] parent-depth]
   (assert (not (nil? key)))
   (assert (not (nil? definition)))
-  {:key key
-   :definition definition
-   :depth (inc parent-depth)})
+  (cond-> {:key key
+           :definition definition
+           :depth (inc parent-depth)}
+    attributes (assoc :attributes attributes)))
 
 (defn dom->subcomponents
   "Given a dom that may contain subcomponents, return a list of them."
@@ -382,8 +387,14 @@
   [tracker id]
   (get-in @tracker [:id->key id]))
 
-;;; TODO: We need to change the id->key map to give not just the key,
-;;; but all the non-client information.
+(defn key->attributes
+  "Return the attributes for the dom with the given key."
+  [tracker key]
+  (let [data @tracker
+        dom (get-in data [:key->dom key])]
+    (if dom
+      (dom-attributes dom)
+      (get-in data [:components key :attributes]))))
 
 (defn new-dom-tracker
   "Return a new dom tracker object"

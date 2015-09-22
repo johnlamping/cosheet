@@ -32,19 +32,19 @@
     (is (= @a 4))))
 
 (deftest subcomponent->component-map-test
-  (is (= (component->component-map [:component {:key [0 1] :definition 2}] 3)
-         {:key [0 1] :definition 2 :depth 4})))
+  (is (= (component->component-map [:component {:key [0 1]} 2] 3)
+         {:key [0 1] :definition 2 :depth 4 :attributes {}})))
 
 (deftest dom->subcomponent-maps-test
   (is (= (set (dom->subcomponent-maps
                [:div
-                [:component {:key :a :definition :b}]
-                [:component {:key :c :definition :d}]
-                [:div "hi" [:component {:key :e :definition :f}]]]
+                [:component {:key :a} :b]
+                [:component {:key :c} :d]
+                [:div "hi" [:component {:key :e} :f]]]
                4))
-         #{{:key :a :definition :b :depth 5}
-           {:key :c :definition :d :depth 5}
-           {:key :e :definition :f :depth 5}})))
+         #{{:key :a :definition :b :depth 5 :attributes {}}
+           {:key :c :definition :d :depth 5 :attributes {}}
+           {:key :e :definition :f :depth 5 :attributes {}}})))
 
 (deftest adjust-attributes-for-client-test
   (is (= (adjust-attributes-for-client
@@ -62,11 +62,11 @@
                      [:p :a] 2
                      [:p :b] 3}}
           [:div
-           [:component {:key [:p :a] :attributes {:width 5}}]
-           [:div {:key [:p]} [:component {:key [:p :b]}]]])
+           [:component {:key [:p :a] :width 5} :foo]
+           [:div {:key [:p]} [:component {:key [:p :b]} :bar]]])
          [:div
           [:component {:width 5} 2]
-          [:div {:id 1} [:component nil 3]]])))
+          [:div {:id 1} [:component {} 3]]])))
 
 (deftest dom-for-client-test
   (is (= (dom-for-client
@@ -78,13 +78,13 @@
            :key->dom {[:p] [:div
                             {:key [:p]}
                             [:component {:key [:p :a]
-                                         :attributes {:width 4}}]
+                                         :width 4}]
                             [:div [:component {:key [:p :b]}]]]}}
           [:p])
          [:div
           {:id 1 :version 5}
           [:component {:width 4} 2]
-          [:div [:component nil 3]]])))
+          [:div [:component {} 3]]])))
 
 (deftest response-doms-test
   (is (= (response-doms {} 3) []))
@@ -106,14 +106,14 @@
                                  {:key [:p]}
                                  [:component {:key [:p :a]}]
                                  [:div  [:component
-                                         {:attributes {:width 9}
+                                         {:width 9
                                           :key [:p :b]}]]]
                            [:p :a] [:div {:key [:p :a]}"hi"]
                            [:p :b] [:div {:key [:p :b]} "there"]}}
                2))
          #{[:div
             {:id "id1" :version 3}
-            [:component nil "id2"]
+            [:component {} "id2"]
             [:div [:component {:width 9} "id3"]]]
            [:div {:id "id3" :version 7} "there"]})))
 
@@ -244,18 +244,14 @@
                     [(fn [value]
                        (into [:div {:key [:d]}
                               [:component
-                               {:key ["s" :d]
-                                :definition [item-DOM
-                                             reporter ["s" :d]
-                                             #{} {:depth 1}]
-                                :attributes {:width 1}}]]
+                               {:key ["s" :d] :width 1}
+                               [item-DOM reporter ["s" :d] #{} {:depth 1}]]]
                              (map
                               (fn [c]
                                 [:component
-                                 {:key [(str c) :d]
-                                  :definition [item-DOM
-                                               (str c) [(str c) :d]
-                                               #{} {:depth 1}]}])
+                                 {:key [(str c) :d]}
+                                 [item-DOM
+                                  (str c) [(str c) :d] #{} {:depth 1}]])
                               value)))
                      reporter]}]
     (swap-and-act tracker #(-> %
@@ -303,15 +299,12 @@
            {[:k] [:div  {:key [:k] :class "item content-text editable"} "hi"]
             [:d] [:div {:key [:d]}
                   [:component {:key ["s" :d]
-                               :definition [item-DOM
-                                            reporter ["s" :d] #{} {:depth 1}]
-                               :attributes {:width 1}}]
-                  [:component {:key [(str "h") :d]
-                               :definition [item-DOM
-                                            "h" ["h" :d] #{} {:depth 1}]}]
-                  [:component {:key [(str "i") :d]
-                               :definition [item-DOM
-                                            "i" ["i" :d] #{} {:depth 1}]}]]
+                               :width 1}
+                   [item-DOM reporter ["s" :d] #{} {:depth 1}]]
+                  [:component {:key [(str "h") :d]}
+                   [item-DOM "h" ["h" :d] #{} {:depth 1}]]
+                  [:component {:key [(str "i") :d]}
+                   [item-DOM "i" ["i" :d] #{} {:depth 1}]]]
             ["s" :d] [:div  {:key ["s" :d]
                              :class "item content-text editable"} "hi"]
             ["h" :d] [:div  {:key ["h" :d]
@@ -335,8 +328,8 @@
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]
-                                     :definition [identity [:div]]
-                                     :attributes {:other :foo}}]]])
+                                     :other :foo}
+                         [identity [:div]]]]])
     (is (= (key->attributes tracker [:root]) {:key [:root] :other :bar}))
     (is (= (key->attributes tracker [:foo :root]) {:other :foo}))))
 

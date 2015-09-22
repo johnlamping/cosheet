@@ -8,6 +8,9 @@
                      [dom-utils :refer [dom-attributes add-attributes]]
                      [computation-manager :refer [manage]])))
 
+;;; TODO: have client form of component be just
+;;; :component {attributes, including id}]
+
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
 ;;; needed. (Where a computation manager's job is to update a bunch of
@@ -65,8 +68,6 @@
 ;;;                    definition or the reporter it returns.
 ;;;                    Inside this dom, subcomponents are annotated as
 ;;;                    [:component {:key <globally unique for each subcomponent>
-;;;                                 :definition <as above>
-;;;                                 :attributes
 ;;;                                 <Additional attributes to add to the
 ;;;                                  dom produced by the definition.
 ;;;                                  These are typically things like
@@ -74,7 +75,8 @@
 ;;;                                  should fit into its parent. These
 ;;;                                  are sent to the client as part of
 ;;;                                  the component definition, before
-;;;                                  the client gets the rest of its dom.>}]
+;;;                                  the client gets the rest of its dom.>}
+;;;                                 definition <as above>]
 
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
@@ -115,13 +117,13 @@
 (defn component->component-map
   "Given a subcomponent specified inside a dom,
    create a component map."
-  [[_ {:keys [key definition attributes]}] parent-depth]
-  (assert (not (nil? key)))
-  (assert (not (nil? definition)))
-  (cond-> {:key key
-           :definition definition
-           :depth (inc parent-depth)}
-    attributes (assoc :attributes attributes)))
+  [[_ attributes definition] parent-depth]
+  (assert (map? attributes))
+  (assert (:key attributes))
+  {:key (:key attributes)
+   :definition definition
+   :attributes (dissoc attributes :key)
+   :depth (inc parent-depth)})
 
 (defn dom->subcomponents
   "Given a dom that may contain subcomponents, return a list of them."
@@ -176,13 +178,13 @@
   [data dom]
   (if (vector? dom)
     (if (= (first dom) :component)
-      (let [component-map (second dom) 
-            id (get-in data [:key->id (:key component-map)])]
+      (let [attributes (second dom) 
+            id (get-in data [:key->id (:key attributes)])]
         (when (nil? id)
-          (println "No id found for key" (:key component-map)))
+          (println "No id found for key" (:key attributes)))
         (assert (not (nil? id)))
-        (adjust-attributes-for-client
-         data [:component (:attributes component-map) id]))
+        (adjust-attributes-for-client data
+                                      [:component (dissoc attributes :key) id]))
       (reduce (fn [subcomponents dom]
                 (conj subcomponents (adjust-dom-for-client data dom)))
               [] (adjust-attributes-for-client data dom)))

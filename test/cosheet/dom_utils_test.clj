@@ -28,22 +28,22 @@
     (is (= (dom-attributes [:div "hi"]) {}))
     (is (= (dom-attributes [:div attributes])
            attributes))
-    (is (= (dom-attributes [:component {:attributes attributes :definition 5}])
+    (is (= (dom-attributes [:component attributes 5])
            attributes))))
 
 (deftest add-attributes-test
-  (is (= (-> [:component {:definition [:foo :bar]}]
+  (is (= (-> [:component {} [:foo :bar]]
              (add-attributes {:class "foo"
                               :style {:font "bold"}
                               :other "abc"})
              (add-attributes {:class "bar"
                               :style {:text "large"}
                               :misc "junk"}))
-         [:component {:definition [:foo :bar]
-                      :attributes {:class "foo bar"
-                                   :style {:font "bold" :text "large"}
-                                   :other "abc"
-                                   :misc "junk"}}]))
+         [:component {:class "foo bar"
+                      :style {:font "bold" :text "large"}
+                      :other "abc"
+                      :misc "junk"}
+          [:foo :bar]]))
   (is (= (-> [:div "hi there"]
              (add-attributes {:class "foo"
                               :style {:font "bold"}

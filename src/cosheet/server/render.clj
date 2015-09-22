@@ -7,6 +7,8 @@
                      [reporters
                       :refer [value expr expr-let expr-seq]])))
 
+;;; TODO: Put attributes of components directly in the map.
+
 ;;; Code to create hiccup style dom for a database entity.
 
 ;;; For a basic entity, we show its contents and its user visible
@@ -48,11 +50,12 @@
 ;;; Instead, we generate dom that has subsidiary components. These are
 ;;; specified as
 ;;;   [:component {:key <key>
-;;;                :definition <definition>
-;;;                :attributes <attributes to add the definition's result>}]
-;;; The dom_tracker code understands these. It will give the client a
-;;; dom with these subsidiary components, and with the provided
-;;; attributes already present, and it will create additional
+;;;                <other attributes to add to the definition's
+;;;                 result>}
+;;;               definition}
+;;; The dom_tracker code understands these components. It will give
+;;; the client a dom with these subsidiary components, all with the
+;;; provided attributes already present, and it will create additional
 ;;; computations to compute the dom for the components, and pass them
 ;;; as updates to the client once they are computed.
 
@@ -294,16 +297,12 @@
 (def item-DOM)
 
 (defn make-component
-  "Make a component dom descriptor, with the given key and definition,
-   and, optionally, additional attributes."
-  ([key definition]
-   [:component {:key key
-                :definition definition}])
-  ([key definition attributes]
-   (assert (map? attributes))
-   [:component {:key key
-                :definition definition
-                :attributes attributes}]))
+  "Make a component dom descriptor, with the given attributes and definition.
+   The attributes must include a key."
+  [attributes definition]
+  (assert (map? attributes))
+  (assert (:key attributes))
+  [:component attributes  definition])
 
 (defn group-by-tag
   "Given a sequence of items, group consecutive identically tagged,
@@ -342,9 +341,8 @@
   [element parent-key inherited]
   (expr-let [tag-specs (tag-specifiers element)]
     (let [key (prepend-to-key (item-referent element) parent-key)]      
-      (make-component key
-                      [item-DOM element key (set tag-specs) inherited]
-                      {:sibling-elements ['tag]}))))
+      (make-component {:key key :sibling-elements ['tag]}
+                      [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
   "Given a sequence of items that are tags, return components for them,
@@ -374,11 +372,10 @@
                           map (fn [[item tag-list]]
                                 (let [key (prepend-to-key (item-referent item)
                                                           parent-key)]
-                                  (make-component key
-                                                  [item-DOM item key
-                                                   (set tag-list) inherited]
-                                                  {:sibling-elements
-                                                   sibling-elements})))
+                                  (make-component
+                                   {:key key :sibling-elements sibling-elements}
+                                   [item-DOM
+                                    item key (set tag-list) inherited])))
                           items-and-tags)
                tags-dom (let [parent-key
                               (if (= (count items) 1)
@@ -442,7 +439,8 @@
              (if (= content :none) "" (str content))]
             (let [child-key (prepend-to-key (item-referent content) key)]
               (make-component
-               child-key [item-DOM child-key content #{} inherited-down])))]
+               {:key child-key}
+               [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-DOM

@@ -98,11 +98,11 @@
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:component {:key [(:item-id fred) :k]
-                        :definition [item-DOM
-                                     fred [(:item-id fred) :k]
-                                     #{fred-tag} {:depth 0}]
-                        :attributes {:class "tag-column"
-                                     :sibling-elements ['tag]}}])))
+                        :class "tag-column"
+                        :sibling-elements ['tag]}
+            [item-DOM
+             fred [(:item-id fred) :k]
+             #{fred-tag} {:depth 0}]])))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
@@ -114,21 +114,21 @@
             {:class "tag-column"
              :key [[:condition 'tag] :k]}
             [:component {:key [(:item-id fred) :k]
-                         :definition [item-DOM
-                                      fred [(:item-id fred) :k]
-                                      #{fred-tag} {:depth 1}]
-                         :attributes {:style {:display "block"
-                                              :width "100%"}
+                         :style {:display "block"
+                                 :width "100%"}
                                       :class "vertical-separated"
-                                      :sibling-elements ['tag]}}]
+                         :sibling-elements ['tag]}
+             [item-DOM
+              fred [(:item-id fred) :k]
+              #{fred-tag} {:depth 1}]]
             [:component {:key [(:item-id fran) :k]
-                         :definition [item-DOM
-                                      fran [(:item-id fran) :k]
-                                      #{} {:depth 1}]
-                         :attributes {:style  {:display "block"
-                                               :width "100%"}
-                                      :class "vertical-separated"
-                                      :sibling-elements ['tag]}}]]))))
+                         :style  {:display "block"
+                                  :width "100%"}
+                         :class "vertical-separated"
+                         :sibling-elements ['tag]}
+             [item-DOM
+              fran [(:item-id fran) :k]
+              #{} {:depth 1}]]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]
@@ -165,21 +165,20 @@
                    :class "element-table"}
              [:div {:style {:display "table-row"}
                     :class "last-row"}
-              [:component {:attributes
-                           {:style {:display "table-cell"}
-                            :class "tag-column"
-                            :sibling-elements ['tag]}
-                           :key tag-key
-                           :definition [item-DOM
-                                        confidence tag-key
-                                        #{confidence-tag} {:depth 1}]}]
-              [:component {:attributes {:class "item-column"
-                                        :style {:display "table-cell"}
-                                        :sibling-elements [["confidence" 'tag]]}
-                           :key [(:item-id doubtful) :age]
-                           :definition [item-DOM
-                                        doubtful [(:item-id doubtful) :age]
-                                        #{confidence} {:depth 1}]}]]]])))
+              [:component {:key tag-key
+                           :style {:display "table-cell"}
+                           :class "tag-column"
+                           :sibling-elements ['tag]}
+               [item-DOM
+                confidence tag-key
+                #{confidence-tag} {:depth 1}]]
+              [:component {:key [(:item-id doubtful) :age]
+                           :class "item-column"
+                           :style {:display "table-cell"}
+                           :sibling-elements [["confidence" 'tag]]}
+               [item-DOM
+                doubtful [(:item-id doubtful) :age]
+                #{confidence} {:depth 1}]]]]])))
   ;; Check that we generate no-tags.
   (let [[dom age]
         (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
@@ -201,13 +200,13 @@
               [:div {:style {:display "table-cell"}
                      :class "tag-column editable"
                      :key [[:condition 'tag] (:item-id doubtful) :age]}]
-              [:component {:attributes {:class "item-column"
-                                        :style {:display "table-cell"}
-                                        :sibling-elements nil}
-                           :key [(:item-id doubtful) :age]
-                           :definition [item-DOM
-                                        doubtful [(:item-id doubtful) :age]
-                                        #{} {:depth 1}]}]]]])))
+              [:component {:key [(:item-id doubtful) :age]
+                           :class "item-column"
+                           :style {:display "table-cell"}
+                           :sibling-elements nil}
+               [item-DOM
+                doubtful [(:item-id doubtful) :age]
+                #{} {:depth 1}]]]]])))
   (let [[dom joe]
         (let-propagated [him joe]
           (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
@@ -242,55 +241,54 @@
                 [:div {:style {:display "table-cell"}
                        :class "tag-column editable"
                        :key [[:condition 'tag] (:item-id male) :joe]}]
-                [:component {:attributes {:style {:display "table-cell"}
-                                          :class "item-column"
-                                          :sibling-elements nil}
-                             :key [(:item-id male) :joe]
-                             :definition [item-DOM
-                                          male [(:item-id male) :joe]
-                                          #{} {:depth 1}]}]]
+                [:component {:key [(:item-id male) :joe]
+                             :style {:display "table-cell"}
+                             :class "item-column"
+                             :sibling-elements nil}
+                 [item-DOM
+                  male [(:item-id male) :joe]
+                  #{} {:depth 1}]]]
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
                        :class "tag-column editable"
                        :key [[:condition 'tag] (:item-id married) :joe]}]
-                [:component {:attributes {:style {:display "table-cell"}
-                                          :class "item-column"
-                                          :sibling-elements nil}
-                             :key [(:item-id married) :joe]
-                             :definition [item-DOM
-                                          married [(:item-id married) :joe]
-                                          #{} {:depth 1}]}]]
+                [:component {:key [(:item-id married) :joe]
+                             :style {:display "table-cell"}
+                             :class "item-column"
+                             :sibling-elements nil}
+                 [item-DOM
+                  married [(:item-id married) :joe]
+                  #{} {:depth 1}]]]
                [:div {:style {:display "table-row"}
                       :class "last-row"}
                 [:component
-                 {:attributes
-                  {:style {:display "table-cell"}
-                   :class "tag-column for-multiple-items"
-                   :sibling-elements ['tag]}
-                  :key [both-ages-ref :joe]
-                  :definition [item-DOM
-                               bogus-age-tag
-                               [both-ages-ref :joe]
-                               #{bogus-age-tag-spec} {:depth 1}]}]
+                 {:key [both-ages-ref :joe]
+                  :style {:display "table-cell"}
+                  :class "tag-column for-multiple-items"
+                  :sibling-elements ['tag]}
+                 [item-DOM
+                  bogus-age-tag
+                  [both-ages-ref :joe]
+                  #{bogus-age-tag-spec} {:depth 1}]]
                 [:div {:style {:display "table-cell"}
                        :class "item-column"}
-                 [:component {:attributes {:style {:width "100%"
-                                                   :display "block"}
-                                           :class "vertical-separated"
-                                           :sibling-elements [["age" 'tag]]}
-                              :key [(:item-id bogus-age) :joe]
-                              :definition [item-DOM
-                                           bogus-age
-                                           [(:item-id bogus-age) :joe]
-                                           #{bogus-age-tag} {:depth 1}]}]
-                 [:component {:attributes {:style {:width "100%"
-                                                   :display "block"}
-                                           :class "vertical-separated"
-                                           :sibling-elements [["age" 'tag]]}
-                              :key [(:item-id age) :joe]
-                              :definition [item-DOM
-                                           age [(:item-id age) :joe]
-                                           #{age-tag} {:depth 1}]}]]]]]))))  
+                 [:component {:key [(:item-id bogus-age) :joe]
+                              :style {:width "100%"
+                                      :display "block"}
+                              :class "vertical-separated"
+                              :sibling-elements [["age" 'tag]]}
+                  [item-DOM
+                   bogus-age
+                   [(:item-id bogus-age) :joe]
+                   #{bogus-age-tag} {:depth 1}]]
+                 [:component {:key [(:item-id age) :joe]
+                              :style {:width "100%"
+                                      :display "block"}
+                              :class "vertical-separated"
+                              :sibling-elements [["age" 'tag]]}
+                  [item-DOM
+                   age [(:item-id age) :joe]
+                   #{age-tag} {:depth 1}]]]]]]))))  
   ;; TODO: Test content that is an item.
   )
 

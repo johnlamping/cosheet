@@ -26,8 +26,8 @@
 
 (deftest subcomponent-ids-test
   (is (= (set (subcomponent-ids [:div
-                                 [component {} :message]
-                                 [component {} :clock]]))
+                                 [component {:id :message}]
+                                 [component {:id :clock}]]))
          #{:message :clock})))
 
 (deftest component-test
@@ -37,9 +37,9 @@
                                   :class "c"
                                   :style {:bar "bar"}}
                                  1])})
-  (is (= (component {} :a1)
+  (is (= (component {:id :a1})
          [:div {:id :a1 :class "c" :style {:bar "bar"}} 1]))
-  (is (= (component {:style {:foo "foo"} :width 5 :class "b"} :a1)
+  (is (= (component {:style {:foo "foo"} :width 5 :class "b" :id :a1})
          [:div
           {:id :a1
            :style {:bar "bar" :foo "foo"}
@@ -67,8 +67,8 @@
   (let [am (atom {:root (atom [:div {:id :root :version 0}])})]
     (into-atom-map am [[:div
                         {:id :root :version 1}
-                        [component {} :message]
-                        [component {} :clock]]])
+                        [component {:id :message}]
+                        [component {:id :clock}]]])
     (is (= (set (keys @am)) #{:root :message :clock}))
     (into-atom-map am [[:div {:id :message :version 1} "hi"]
                        [:div {:id :clock :version 1} "now"]
@@ -77,8 +77,8 @@
     (= @(@am :message) [:div {:id :message :version 1} "hi"])
     (into-atom-map am [[:div
                         {:id :root :version 2}
-                        [component {} :message]
-                        [component {} :tick]]
+                        [component {:id :message}]
+                        [component {:id :tick}]]
                        [:div {:id :tick :version 2} "tock"]])
     (is (= (set (keys @am)) #{:root :message :tick}))
     (= @(@am :tick) [:div {:id :message :version 2} "tock"]))

@@ -90,7 +90,7 @@
 ;;;                attributes will include a unique :id and a :version
 ;;;                number that will increase for each change of the dom
 ;;;                for that id. Inside the doms may be internal components
-;;;                encoded as [:component {attributes} id].
+;;;                encoded as [:component {<id and other attributes>}].
 ;;;   :acknowledge A vector of action ids of actions that have been
 ;;;                performed.
 ;;; TODO: Action ids should be required to be integers, and the server

@@ -54,10 +54,11 @@
 ;;; A map from component id to atom holding the current dom of that component.
 (def components (atom {}))
 
-(defn component [extra-attributes name]
-  (let [[tag dom-attributes & rest] @(@components name)]
+(defn component [attributes]
+  (let [id (:id attributes)
+        [tag dom-attributes & rest] @(@components id)]
     (into
-     [tag (into-attributes (dissoc dom-attributes :version) extra-attributes)]
+     [tag (into-attributes (dissoc dom-attributes :version :id) attributes)]
      rest)))
 
 (defn subcomponent-ids
@@ -65,7 +66,7 @@
   [dom]
   (if (vector? dom)
     (if (= (first dom) component)
-      [(nth dom 2)]
+      [(:id (second dom))]
       (reduce (fn [subcomponents dom]
                 (into subcomponents (subcomponent-ids dom)))
               [] dom))

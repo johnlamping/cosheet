@@ -8,9 +8,6 @@
                      [dom-utils :refer [dom-attributes add-attributes]]
                      [computation-manager :refer [manage]])))
 
-;;; TODO: have client form of component be just
-;;; :component {attributes, including id}]
-
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
 ;;; needed. (Where a computation manager's job is to update a bunch of
@@ -183,8 +180,7 @@
         (when (nil? id)
           (println "No id found for key" (:key attributes)))
         (assert (not (nil? id)))
-        (adjust-attributes-for-client data
-                                      [:component (dissoc attributes :key) id]))
+        (adjust-attributes-for-client data [:component attributes]))
       (reduce (fn [subcomponents dom]
                 (conj subcomponents (adjust-dom-for-client data dom)))
               [] (adjust-attributes-for-client data dom)))

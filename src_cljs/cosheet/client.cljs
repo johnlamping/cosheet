@@ -131,7 +131,7 @@
         edit-input (js/document.getElementById "edit_input")
         ;; The key handler makes events consistent across browsers.
         key-handler (gevents/KeyHandler. edit-input)]
-    (reagent/render [component {} "root"] app)
+    (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
     (gevents/listen key-handler key-handler/EventType.KEY

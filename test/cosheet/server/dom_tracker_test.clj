@@ -65,8 +65,8 @@
            [:component {:key [:p :a] :width 5} :foo]
            [:div {:key [:p]} [:component {:key [:p :b]} :bar]]])
          [:div
-          [:component {:width 5} 2]
-          [:div {:id 1} [:component {} 3]]])))
+          [:component {:width 5 :id 2}]
+          [:div {:id 1} [:component {:id 3}]]])))
 
 (deftest dom-for-client-test
   (is (= (dom-for-client
@@ -83,8 +83,8 @@
           [:p])
          [:div
           {:id 1 :version 5}
-          [:component {:width 4} 2]
-          [:div [:component {} 3]]])))
+          [:component {:width 4 :id 2}]
+          [:div [:component {:id 3}]]])))
 
 (deftest response-doms-test
   (is (= (response-doms {} 3) []))
@@ -113,8 +113,8 @@
                2))
          #{[:div
             {:id "id1" :version 3}
-            [:component {} "id2"]
-            [:div [:component {:width 9} "id3"]]]
+            [:component {:id "id2"}]
+            [:div [:component {:width 9 :id "id3"}]]]
            [:div {:id "id3" :version 7} "there"]})))
 
 (deftest update-acknowledgements-test

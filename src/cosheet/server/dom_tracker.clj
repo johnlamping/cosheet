@@ -171,7 +171,7 @@
 (defn adjust-dom-for-client
   "Given the data, and a piece of dom,
    adjust the dom to the form the client needs, replacing keys by ids,
-   and putting subcomponents into the form [:component <attributes> <id>]."
+   and putting subcomponents into the form [:component <attributes>]."
   [data dom]
   (if (vector? dom)
     (if (= (first dom) :component)
@@ -386,13 +386,14 @@
   (get-in @tracker [:id->key id]))
 
 (defn key->attributes
-  "Return the attributes for the dom with the given key."
+  "Return the attributes for the dom with the given key,
+   include both attributes specified by the dom definition and by
+   any component that gave rise to it."
   [tracker key]
   (let [data @tracker
         dom (get-in data [:key->dom key])]
-    (if dom
-      (dom-attributes dom)
-      (get-in data [:components key :attributes]))))
+    (into (or (and dom (dom-attributes dom)) {})
+          (get-in data [:components key :attributes]))))
 
 (defn new-dom-tracker
   "Return a new dom tracker object"

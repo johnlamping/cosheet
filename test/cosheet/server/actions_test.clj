@@ -10,7 +10,7 @@
              [computation-manager :refer [new-management compute]]
              [debug :refer [current-value]]
              entity-impl
-             [store :refer [new-element-store id->content
+             [store :refer [new-element-store id->content id-label->element-ids
                             new-mutable-store current-store]]
              [store-impl :refer [->ItemId]]
              [store-utils :refer [add-entity]]
@@ -134,7 +134,7 @@
   (is (= (parse-string "-1.0") -1))
   (is (= (parse-string " 1.5 ") 1.5)))
 
-(deftest set-content-test
+(deftest set-content-handler-test
   (let [[store0 joe-id] (add-entity (new-element-store) nil joe)
         [store jane-id] (add-entity store0 nil jane)
         mutable-store (new-mutable-store store)
@@ -142,7 +142,7 @@
         joe-age (first (filter #(= (current-value (content %)) 45)
                                (current-value (elements joe))))
         joe-age-tag (first (current-value (elements joe-age)))
-        jane (description->entity jane-id store)
+        jane (description->entity jane-id mutable-store)
         jane-age (first (current-value (label->elements jane "age")))
         jane-age-tag (first (current-value (elements jane-age)))
         management (new-management)
@@ -280,7 +280,8 @@
         age-dom (first (filter #(= (first (:key (second %)))
                                    (item-referent age-element))
                                (dom->subcomponents jane-dom)))
-        s (update-add-sibling age-element age-dom store :after)
+        s (update-add-sibling (:sibling-elements (second age-dom)) :after
+                              store age-element)
         jane-entity (description->entity jane-id s)
         new-element (first (filter #(= (content %) "")
                                    (elements jane-entity)))
@@ -289,3 +290,33 @@
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
     (is (= (id->content s (:item-id order-entity)) o5))))
+
+(deftest add-sibling-handler-test
+  (let [[store0 joe-id] (add-entity (new-element-store) nil joe)
+        [store jane-id] (add-entity store0 nil jane)
+        mutable-store (new-mutable-store store)
+        joe (description->entity joe-id mutable-store)
+        joe-age (first (filter #(= (current-value (content %)) 45)
+                               (current-value (elements joe))))
+        joe-age-tag (first (current-value (elements joe-age)))
+        jane (description->entity jane-id mutable-store)
+        management (new-management)
+        tracker (new-dom-tracker management)]
+    (add-dom tracker
+             "joe-root"
+             [joe-id :bob]
+             [item-DOM joe [joe-id :bob] #{} {:depth 1}])
+    (add-dom tracker
+             "jane-root"
+             [jane-id :bob]
+             [item-DOM jane [jane-id :bob] #{} {:depth 1}])
+    (compute management)
+    (let [joe-age-dom-id (first (filter
+                                 #(= (first (get-in @tracker [:id->key %]))
+                                     (:item-id joe-age))
+                                 (keys (:id->key @tracker))))
+          new-store (add-sibling-handler (current-store mutable-store)
+                                         tracker joe-age-dom-id :after)]
+      (let [joe-age-ids  (id-label->element-ids new-store joe-id "age")
+            joe-ages (map #(id->content new-store %) joe-age-ids)]
+          (is (= (set joe-ages) #{"" 39 45}))))))

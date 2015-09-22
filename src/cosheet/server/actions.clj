@@ -220,14 +220,12 @@
                   true (fn [a b] a))
             store items)))
 
-;;; TODO: Don't take dom, but just attributes. Those come either from
-;;; key->attributes.
 (defn update-add-sibling
-  "Given an item and its dom, add a sibling
+  "Given an item and elements that its siblings must have, add a sibling
   in the given direction (:before or :after)"
-  [item dom store direction]
-  (let [sibling-elements (:sibling-elements (dom-attributes dom))
-        order-element (order-element-for-item item store)
+  [sibling-elements direction store item]
+  (println "adding sibling for item" item "with content" (content item))
+  (let [order-element (order-element-for-item item store)
         order (content order-element)
         new-element (cons "" sibling-elements)
         [store remainder] (update-add-entity-with-order
@@ -235,6 +233,23 @@
                            new-element
                            order direction true)]
     (update-content store (:item-id order-element) remainder)))
+
+(defn add-sibling-handler
+  "Add a sibling to the item with the given client id"
+  [store dom-tracker id direction]
+  ;; TODO: Handle deleting.
+  (let [key (id->key dom-tracker id)
+        first-primitive (first-primitive-referent key)
+        items (key->items store key)
+        sibling-elements (:sibling-elements (key->attributes dom-tracker key))]
+    (println "sibling for id:" id " with key:" (simplify-for-print key))
+    (println "total items:" (count items))
+    (println "with content" (map content items))
+    (println "in direction" direction)
+    (println "dom for item" (get-in @dom-tracker [:key->dom key]))
+    (println "sibling elements" sibling-elements)
+    (reduce (partial update-add-sibling sibling-elements direction)
+            store items)))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.

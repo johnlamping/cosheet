@@ -136,9 +136,9 @@
     (when (not (or ctrl alt))
       (.log js/console (str "no modifiers"))
       (cond
-        (=  key-code key-codes/ESC) (close-edit-field)
-        (=  key-code key-codes/ENTER) (do (store-edit-field)
-                                          (close-edit-field))))))
+        (= key-code key-codes/ESC) (close-edit-field)
+        (= key-code key-codes/ENTER) (do (store-edit-field)
+                                         (close-edit-field))))))
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")

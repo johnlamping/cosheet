@@ -405,11 +405,12 @@
                        rows)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
-          (if (and (= (count rows) 1)
-                   (= (count (get-in rows [0 0 1])) 0))
-            [(add-attributes (first row-doms) {:class "no-tags last-row"})]
-            (concat (butlast row-doms)
-                    [(add-attributes (last row-doms) {:class "last-row"})])))))
+          (as-> row-doms row-doms
+            (if (every? #(empty? (get-in % [0 1])) rows)
+              (map #(add-attributes % {:class "no-tags"}) row-doms)
+              row-doms)
+            (update-in (vec row-doms) [(- (count rows) 1)]
+                       #(add-attributes % {:class "last-row"}))))))
 
 (defn item-DOM
   "Return a hiccup representation of DOM, with the given internal key,

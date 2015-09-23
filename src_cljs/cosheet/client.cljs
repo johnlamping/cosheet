@@ -15,8 +15,6 @@
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
-;;; TODO: Only allow selection of elements with ids.
-
 (def selected (atom nil)) ;; The currently selected dom.
 (def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.
 
@@ -42,7 +40,12 @@
 
 (defn dom-text [target]
   (let [child (.-firstChild target)]
-    (if child (.-nodeValue child) "")))
+    (or (and child (.-nodeValue child)) "")))
+
+(defn request-action
+  [action]
+  (add-pending-action action)
+  (ajax-if-pending))
 
 (defn open-edit-field [target]
   (when (and target (not= target @edit-field-open-on))
@@ -76,9 +79,8 @@
         (when (not= value old-value)
           (.log js/console (str "storing " value
                                 " into " (.-id target)))
-          (add-pending-action
-           [:set-content (.-id target) old-value value])
-          (ajax-if-pending))))))
+          (request-action
+           [:set-content (.-id target) old-value value]))))))
 
 (defn target-being-edited? [target]
   (#{@edit-field-open-on
@@ -95,7 +97,9 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (close-edit-field)
-      (select target))))
+      (if (.-id target)
+        (select target)
+        (deselect)))))
 
 (defn double-click-handler
   [event]
@@ -115,26 +119,39 @@
         alt (.-altKey event)
         key-code (.-keyCode event)
         ]
-    (when ctrl
-      (when (= key-code key-codes/Z)
+    (.log js/console
+          (str "keypress " (if ctrl "ctrl " "") (if alt "alt" "") key-code))
+    (when (and ctrl (not alt))
+      (cond  ; We can't use case, as it doesn't work right with key-codes/
         ;; TODO: If the edit field is not open, make this
         ;; undo the last action.
+        (= key-code key-codes/Z)
         (when @edit-field-open-on (close-edit-field))))
-    (when (not (or ctrl alt))
+    (when (and alt (not ctrl))
       (cond
-        (= key-code key-codes/ESC) (close-edit-field)
-        (= key-code key-codes/ENTER) (do (store-edit-field)
-                                         (close-edit-field))))))
+        (#{key-codes/EQUALS key-codes/NUM_PLUS} key-code)
+        (when @selected
+          (.log js/console "add-sibling")
+          (request-action [:add-sibling (.-id @selected) :after]))))
+    (when (not (or ctrl alt))
+      (.log js/console (str "no modifiers"))
+      (cond
+        (=  key-code key-codes/ESC) (close-edit-field)
+        (=  key-code key-codes/ENTER) (do (store-edit-field)
+                                          (close-edit-field))))))
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
         edit-input (js/document.getElementById "edit_input")
         ;; The key handler makes events consistent across browsers.
-        key-handler (gevents/KeyHandler. edit-input)]
+        edit-key-handler (gevents/KeyHandler. edit-input)
+        app-key-handler (gevents/KeyHandler. js/document)]
     (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
-    (gevents/listen key-handler key-handler/EventType.KEY
+    (gevents/listen edit-key-handler key-handler/EventType.KEY
+                    keypress-handler)
+    (gevents/listen app-key-handler key-handler/EventType.KEY
                     keypress-handler))
   (ajax-request {:initialize true}))
 

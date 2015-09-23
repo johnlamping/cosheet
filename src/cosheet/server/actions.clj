@@ -47,6 +47,16 @@
         (first-primitive-referent exemplar))
       referent)))
 
+(defn remove-content-referent
+  "If a key starts with a content referent, remove it."
+  [[first & rest]]
+  (cond (content-referent? first)
+        rest
+        (parallel-referent? first)
+        (let [[type exemplar items] first]
+          (vec (cons [type (remove-content-referent exemplar) items] rest)))
+        true (vec (cons first rest))))
+
 (defn item->canonical-visible
   "Return the canonical form of the visible information for the item."
   [item]
@@ -241,7 +251,9 @@
   (let [key (id->key dom-tracker id)
         first-primitive (first-primitive-referent key)
         items (key->items store key)
-        sibling-elements (:sibling-elements (key->attributes dom-tracker key))]
+        sibling-elements (:sibling-elements
+                          (key->attributes dom-tracker
+                                           (remove-content-referent key)))]
     (println "sibling for id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
@@ -258,6 +270,7 @@
   [mutable-store dom-tracker [action-type & action-args]]
   (let [handler (case action-type
                   :set-content set-content-handler
+                  :add-sibling add-sibling-handler
                   nil)]
     (if handler
       (do-update! mutable-store

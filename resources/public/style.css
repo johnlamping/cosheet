@@ -88,6 +88,10 @@
     border-bottom-width: 2px;
 }
 
+.content-text.item {
+    height: 24px;
+}
+
 .vertical-separated {
     border-width: 2px 0px 0px 0px;
 }

@@ -46,6 +46,14 @@
            (45 (~o3 :order)
                ("age" ~'tag))))
 
+(deftest remove-content-referent-test
+  (is (= (remove-content-referent [[:content] 3 4])
+         [3 4]))
+  (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
+         [[:parallel [1] [2 3]] 4]))
+  (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
+          [[:parallel [0 1] [2 3]] 4])))
+
 (deftest item-determining-referents-test
   (let [id (->ItemId "a")]
     (is (= (item-determining-referents

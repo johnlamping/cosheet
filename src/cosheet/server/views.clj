@@ -45,7 +45,7 @@
                         (39 (~o3 :order)
                             ("age" ~'tag)
                             ("doubtful" "confidence"))
-                        (45 (~o3 :order)
+                        (45 (~o4 :order)
                             ("age" ~'tag)))
         [store id] (add-entity (new-element-store) nil starting-item)
         [store _] (add-entity store nil (list unused-orderable

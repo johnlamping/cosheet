@@ -151,12 +151,6 @@
   (assert entity/mutable-entity? item)
   (:item-id item))
 
-(defn group-referent
-  "Create an group referent"
-  [items]
-  (doseq [item items] (assert entity/mutable-entity? item))
-  (into [:group] items))
-
 (defn condition-referent
   "Create a condition referent"
   [elements]

@@ -57,7 +57,7 @@
 ;;;                    Unlike the key, the client id must be a string
 ;;;                    that is allowed as a DOM id.
 ;;;          :id->key  The inverse of the key->id map
-;;;         :key->dom  A map from key to server  version of the dom
+;;;         :key->dom  A map from key to server version of the dom
 ;;;                    for that key. This provides access to extra
 ;;;                    information, like :sibling-elements, needed to
 ;;;                    interpret actions on a key.
@@ -266,7 +266,10 @@
           (let [stored-map (get-in data [:components key])]
             (when stored-map
               (assert (= (:definition stored-map)
-                         (:definition subcomponent))))))))))
+                         (:definition subcomponent))
+                      (str "differing definitions for " key
+                           "\ndom" (:definition subcomponent)
+                           "\nstored" (:definition stored-map))))))))))
 
 (defn update-dom
   "Given the data, a key, and the latest dom for the key,
@@ -305,7 +308,7 @@
        (swap-and-act
         data-atom
         (fn [data]
-          (when (= reporter (get-in @data-atom [:components key :reporter]))
+          (when (= reporter (get-in data [:components key :reporter]))
             (update-dom data key dom))))))))
 
 (defn set-attending

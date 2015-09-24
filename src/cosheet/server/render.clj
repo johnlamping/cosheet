@@ -333,8 +333,15 @@
 (defn tag-component
   "Return the component for a tag element."
   [element parent-key inherited]
+  (assert (not= (first parent-key) (condition-referent ['tag])))
   (expr-let [tag-specs (tag-specifiers element)]
-    (let [key (prepend-to-key (item-referent element) parent-key)]      
+    (let [key (->> parent-key
+                   ;; We must make this key different from what it
+                   ;; would have been if this element weren't a tag,
+                   ;; and were located under its parent's component.
+                   ;; Because it might have been in that situation.
+                   (prepend-to-key (condition-referent ['tag]))
+                   (prepend-to-key (item-referent element)))]      
       (make-component {:key key :sibling-elements ['tag]}
                       [item-DOM element key (set tag-specs) inherited]))))
 
@@ -342,6 +349,7 @@
   "Given a sequence of items that are tags, return components for them,
   wrapped in a div if there is more than one."
   [tags parent-key inherited]
+  (assert (not= (first parent-key) (condition-referent ['tag])))
   (expr-let [tag-components
              (expr-seq
               map #(tag-component % parent-key inherited) tags)]
@@ -373,15 +381,8 @@
                           items-and-tags)
                tags-dom (let [parent-key
                               (if (= (count items) 1)
-                                (cond->>
-                                    (prepend-to-key
-                                     (item-referent (first items)) parent-key)
-                                  (= (count sample-tags) 1)
-                                  ;; Add the 'tag condition so the key
-                                  ;; won't be the same if the item used
-                                  ;; to not be a tag and appeared under
-                                  ;; the parent's component.
-                                  (prepend-to-key (condition-referent ['tag])))
+                                (prepend-to-key
+                                 (item-referent (first items)) parent-key)
                                 (prepend-to-key
                                  (parallel-referent [] items) parent-key))]
                           (expr tags-DOM

@@ -97,11 +97,11 @@
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (= dom
-           [:component {:key [(:item-id fred) :k]
+           [:component {:key [(:item-id fred) [:condition 'tag] :k]
                         :class "tag-column"
                         :sibling-elements ['tag]}
             [item-DOM
-             fred [(:item-id fred) :k]
+             fred [(:item-id fred) [:condition 'tag] :k]
              #{fred-tag} {:depth 0}]])))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
@@ -113,21 +113,21 @@
            [:div
             {:class "tag-column"
              :key [[:condition 'tag] :k]}
-            [:component {:key [(:item-id fred) :k]
+            [:component {:key [(:item-id fred) [:condition 'tag] :k]
                          :style {:display "block"
                                  :width "100%"}
                                       :class "vertical-separated"
                          :sibling-elements ['tag]}
              [item-DOM
-              fred [(:item-id fred) :k]
+              fred [(:item-id fred) [:condition 'tag] :k]
               #{fred-tag} {:depth 1}]]
-            [:component {:key [(:item-id fran) :k]
+            [:component {:key [(:item-id fran) [:condition 'tag] :k]
                          :style  {:display "block"
                                   :width "100%"}
                          :class "vertical-separated"
                          :sibling-elements ['tag]}
              [item-DOM
-              fran [(:item-id fran) :k]
+              fran [(:item-id fran) [:condition 'tag] :k]
               #{} {:depth 1}]]]))))
 
 (deftest item-DOM-test
@@ -226,7 +226,7 @@
         age-tag-spec (first (current-value (entity/elements age-tag)))]
     (is (= dom
            (let [both-ages-ref [:parallel
-                                [(:item-id bogus-age-tag)]
+                                [(:item-id bogus-age-tag) [:condition 'tag]]
                                 [(:item-id bogus-age) (:item-id age)]]]
              [:div {:class "item" :key [:joe]}
               [:div {:style {:width "100%" :display "block"}

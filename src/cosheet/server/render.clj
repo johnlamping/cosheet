@@ -314,7 +314,7 @@
                                    #(conj % [item item-tags]))
                         (conj groups [[item item-tags]]))
                       item-canonical-tags])
-                   [[] ::none]
+                   [[] ::no-match]
                    (map vector items tag-lists canonical-tags)))))
 
 (defn vertical-stack

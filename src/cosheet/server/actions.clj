@@ -157,7 +157,7 @@
         [s order])
       (let [[s1 id] (add-simple-element
                      store subject-id (if (nil? entity-content)
-                                     :none
+                                     ""
                                      entity-content))
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
@@ -199,17 +199,35 @@
                     (true :reference))
                   store)))))
 
-(defn update-add-element
-  "Add a new element of the given subject to the store,
-   with empty content and satisfying the condition."
-  [condition new-content store subject]
-  (let [order-element (order-element-for-item subject store)
+(defn update-add-entity-with-order-item
+  "Add an entity with the given subject id and contents,
+   taking its order from the given item, in the given direction,
+   and giving the entity the bigger piece if use-bigger is true."
+  [store subject-id entity order-item side use-bigger]
+  (let [order-element (order-element-for-item order-item store)
         order (content order-element)
-        new-element (cons new-content (rest condition))
         [store remainder] (update-add-entity-with-order
-                           store (:item-id subject) new-element
-                           order :after false)]
+                           store subject-id entity
+                           order side use-bigger)]
     (update-content store (:item-id order-element) remainder)))
+
+(defn update-add-element
+  "Add an entity to thhe store as new element of the given subject."
+  [entity store subject]
+  (update-add-entity-with-order-item
+   store (:item-id subject) entity
+   subject :after false))
+
+(defn add-element-handler
+  "Add a element to the item with the given client id"
+  [store dom-tracker id]
+  (let [key (id->key dom-tracker id)
+        items (key->items store key)]
+    (println "new element for id:" id " with key:" (simplify-for-print key))
+    (println "total items:" (count items))
+    (println "with content" (map content items))
+    (reduce (partial update-add-element "")
+            store items)))
 
 (defn set-content-handler
   [store dom-tracker id from to]
@@ -226,7 +244,7 @@
                    first-primitive)
                   (partial update-set-content from to)
                   (condition-referent? first-primitive)
-                  (partial update-add-element first-primitive to)
+                  (partial update-add-element (cons to (rest first-primitive)))
                   true (fn [a b] a))
             store items)))
 
@@ -234,22 +252,14 @@
   "Given an item and elements that its siblings must have, add a sibling
   in the given direction (:before or :after)"
   [sibling-elements direction store item]
-  (println "adding sibling for item" item "with content" (content item))
-  (let [order-element (order-element-for-item item store)
-        order (content order-element)
-        new-element (cons "" sibling-elements)
-        [store remainder] (update-add-entity-with-order
-                           store (id->subject store (:item-id item))
-                           new-element
-                           order direction true)]
-    (update-content store (:item-id order-element) remainder)))
+  (update-add-entity-with-order-item
+   store (id->subject store (:item-id item)) (cons "" sibling-elements)
+   item direction true))
 
 (defn add-sibling-handler
   "Add a sibling to the item with the given client id"
   [store dom-tracker id direction]
-  ;; TODO: Handle deleting.
   (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent key)
         items (key->items store key)
         sibling-elements (:sibling-elements
                           (key->attributes dom-tracker
@@ -258,7 +268,6 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (println "in direction" direction)
-    (println "dom for item" (get-in @dom-tracker [:key->dom key]))
     (println "sibling elements" sibling-elements)
     (reduce (partial update-add-sibling sibling-elements direction)
             store items)))

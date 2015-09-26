@@ -132,7 +132,11 @@
         (#{key-codes/EQUALS key-codes/NUM_PLUS} key-code)
         (when @selected
           (.log js/console "add-sibling")
-          (request-action [:add-sibling (.-id @selected) :after]))))
+          (request-action [:add-sibling (.-id @selected) :after]))
+        (= key-codes/PERIOD key-code)
+        (when @selected
+          (.log js/console "add-element")
+          (request-action [:add-element (.-id @selected)]))))
     (when (not (or ctrl alt))
       (.log js/console (str "no modifiers"))
       (cond

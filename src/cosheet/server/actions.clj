@@ -222,12 +222,14 @@
   "Add a element to the item with the given client id"
   [store dom-tracker id]
   (let [key (id->key dom-tracker id)
-        items (key->items store key)]
+        items (key->items store key)
+        first-primitive (first-primitive-referent key)]
     (println "new element for id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
-    (reduce (partial update-add-element "")
-            store items)))
+    (when ((some-fn item-referent? content-referent?) first-primitive)
+      (reduce (partial update-add-element "")
+              store items))))
 
 (defn set-content-handler
   [store dom-tracker id from to]
@@ -243,7 +245,7 @@
     (reduce (cond ((some-fn nil? item-referent? content-referent?)
                    first-primitive)
                   (partial update-set-content from to)
-                  (condition-referent? first-primitive)
+                  (and (condition-referent? first-primitive) (not= to ""))
                   (partial update-add-element (cons to (rest first-primitive)))
                   true (fn [a b] a))
             store items)))
@@ -261,6 +263,7 @@
   [store dom-tracker id direction]
   (let [key (id->key dom-tracker id)
         items (key->items store key)
+        first-primitive (first-primitive-referent key)
         sibling-elements (:sibling-elements
                           (key->attributes dom-tracker
                                            (remove-content-referent key)))]
@@ -269,8 +272,9 @@
     (println "with content" (map content items))
     (println "in direction" direction)
     (println "sibling elements" sibling-elements)
-    (reduce (partial update-add-sibling sibling-elements direction)
-            store items)))
+    (when ((some-fn item-referent? content-referent?) first-primitive)
+      (reduce (partial update-add-sibling sibling-elements direction)
+              store items))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.
@@ -279,6 +283,7 @@
   [mutable-store dom-tracker [action-type & action-args]]
   (let [handler (case action-type
                   :set-content set-content-handler
+                  :add-element add-element-handler
                   :add-sibling add-sibling-handler
                   nil)]
     (if handler

@@ -84,40 +84,76 @@
   "Given a store, an exemplar, and an item, instantiate the exemplar
   to the item, returning the sequence of items matched.
   The exemplar must have been pruned to only referents that refer to items."
-  [store exemplar item]
+  [store exemplar item-id-instantiator]
   (assert (vector? exemplar))  ; So peek and pop take from end.
-  (if (empty? exemplar)
-    [item]
-    (let [last-referent (peek exemplar)
+  (let [last-referent (peek exemplar)
           remainder (pop exemplar)]
       (if (sequential? last-referent)
         (let [[type exemplar item-ids] last-referent
               exemplar-referents (item-determining-referents exemplar)]
           (assert (= type :parallel))  ; Other complex referents filtered.
           (assert (empty? remainder))  ; Parallel referents must be first.
-            (mapcat (partial instantiate-exemplar store exemplar-referents)
-                    (remove nil? (map #(instantiate-item-id store % item)
-                                      item-ids))))
-        (let [exemplar-item (instantiate-item-id store last-referent item)]
-          (if (nil? exemplar-item)
-            []
-            (instantiate-exemplar store remainder exemplar-item)))))))
+          (let [instantiated-items
+                (remove nil? (map item-id-instantiator item-ids))]
+            (if (empty? exemplar)
+              instantiated-items
+              (mapcat (partial instantiate-exemplar store exemplar-referents)
+                      (map (fn [item] #(instantiate-item-id store % item))
+                           instantiated-items)))))
+        (let [exemplar-item (item-id-instantiator last-referent)]
+          (cond (nil? exemplar-item) []
+                (empty? remainder) [exemplar-item]
+                true (instantiate-exemplar
+                      store remainder
+                      #(instantiate-item-id store % exemplar-item)))))))
 
 (defn key->items
   "Return the list of items that a key describes."
   [store key]
-  (let [referent (first (item-determining-referents key))]
-    (cond
-      (nil? referent)
-      []
-      (sequential? referent)
-      (let [[type exemplar item-ids] referent
-            exemplar-referents (item-determining-referents exemplar)]
-        (assert (= type :parallel))
-        (mapcat (partial instantiate-exemplar store exemplar-referents)
-                (map #(description->entity % store) item-ids)))
-      true
-      [(description->entity referent store)])))
+  (instantiate-exemplar
+   store [(first (item-determining-referents key))]
+   #(description->entity % store)))
+
+(defn instantiate-exemplar-to-groups
+  "Given a store, an exemplar, and a function to instantiate an item-id,
+  instantiate the exemplar, returning the sequence of groups of items matched.
+  (A group is formed by a parallel referent with empty exemplar.)
+  The exemplar must have been pruned to only referents that refer to items."
+  [store exemplar item-id-instantiator]
+  (assert (vector? exemplar))  ; So peek and pop take from end.
+  (let [last-referent (peek exemplar)
+          remainder (pop exemplar)]
+      (if (sequential? last-referent)
+        (let [[type exemplar item-ids] last-referent
+              exemplar-referents (item-determining-referents exemplar)]
+          (assert (= type :parallel))  ; Other complex referents filtered.
+          (assert (empty? remainder))  ; Parallel referents must be first.
+          (let [instantiated-items
+                (remove nil? (map item-id-instantiator item-ids))]
+            (if (empty? exemplar)
+              (if (empty? instantiated-items)
+                nil
+                [instantiated-items])
+              (mapcat (partial instantiate-exemplar-to-groups
+                               store exemplar-referents)
+                      (map (fn [item] #(instantiate-item-id store % item))
+                           instantiated-items)))))
+        (let [exemplar-item (item-id-instantiator last-referent)]
+          (cond (nil? exemplar-item) []
+                (empty? remainder) [[exemplar-item]]
+                true (instantiate-exemplar-to-groups
+                      store remainder
+                      #(instantiate-item-id store % exemplar-item)))))))
+
+(defn key->item-groups
+  "Given a key, return a list of the groups of items it describes.
+   If the first element of the key is a parallel with an empty exemplar,
+   there is one group for each instantiation of the items of the parallel.
+  Otherwise, each item is its own group."
+  [store key]
+  (instantiate-exemplar-to-groups
+   store [(first (item-determining-referents key))]
+   #(description->entity % store)))
 
 (defn parse-string
   "Parse user entered characters into a number if possible.
@@ -259,7 +295,7 @@
    item direction true))
 
 (defn add-sibling-handler
-  "Add a sibling to the item with the given client id"
+  "Add a sibling to the item with the given client id."
   [store dom-tracker id direction]
   (let [key (id->key dom-tracker id)
         items (key->items store key)
@@ -272,6 +308,24 @@
     (println "with content" (map content items))
     (println "in direction" direction)
     (println "sibling elements" sibling-elements)
+    (when ((some-fn item-referent? content-referent?) first-primitive)
+      (reduce (partial update-add-sibling sibling-elements direction)
+              store items))))
+
+(defn update-add-row-handler
+  "Add a row to the item with the given client id."
+    [store dom-tracker id direction]
+  (let [key (id->key dom-tracker id)
+        items (key->items store key)
+        first-primitive (first-primitive-referent key)
+        sibling-elements (:sibling-elements
+                          (key->attributes dom-tracker
+                                           (remove-content-referent key)))]
+    (println "row for id:" id " with key:" (simplify-for-print key))
+    (println "total items:" (count items))
+    (println "with content" (map content items))
+    (println "in direction" direction)
+    ;; TODO: Handle key->items right.
     (when ((some-fn item-referent? content-referent?) first-primitive)
       (reduce (partial update-add-sibling sibling-elements direction)
               store items))))

@@ -7,8 +7,6 @@
                      [reporters
                       :refer [value expr expr-let expr-seq]])))
 
-;;; TODO: Put attributes of components directly in the map.
-
 ;;; Code to create hiccup style dom for a database entity.
 
 ;;; For a basic entity, we show its contents and its user visible
@@ -33,9 +31,17 @@
 
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.
-;;; Those server specific attributes, which include :key,
-;;; :sibling-elements and :ordering, are removed by the dom manager
-;;; before dom is sent to the client.
+;;; Those server specific attributes, which include
+;;;                :key  A unique client side key further described below.
+;;;           :ordering  Optional ordering information, described below.
+;;;   :sibling-elements  Elements that a sibling of this item must have.
+;;;        :row-sibling  A key that a new row should be a sibling of.
+;;;                      If the key indicates multiple items, the row
+;;;                      is a sibling of the last, or, if there are
+;;;                      multiples groups of items, the last of each
+;;;                      group.
+;;;       :row-elements  Elements that a new row must have.
+;;; There are removed by the dom manager before dom is sent to the client.
 
 ;;; The value of the style attribute is represented with its own map,
 ;;; rather than as a string, so they are easier to adjust. Conviently,
@@ -358,7 +364,8 @@
      (into {:class (str "tag-column" (when (empty? tags) " editable"))}
            (when (not= (count tags) 1)
              {:key (prepend-to-key (condition-referent ['tag])
-                                   parent-key)})))))
+                                   parent-key)
+              :row-sibling parent-key})))))
 
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where

@@ -138,7 +138,6 @@
           (.log js/console "add-element")
           (request-action [:add-element (.-id @selected)]))))
     (when (not (or ctrl alt))
-      (.log js/console (str "no modifiers"))
       (cond
         (= key-code key-codes/ESC) (close-edit-field)
         (= key-code key-codes/ENTER) (do (store-edit-field)

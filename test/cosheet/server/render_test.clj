@@ -90,7 +90,8 @@
 
 (deftest tags-DOM-test
   (is (= (tags-DOM nil [:k] {}) [:div {:class "tag-column editable"
-                                       :key [[:condition 'tag] :k]}]))
+                                       :key [[:condition 'tag] :k]
+                                       :row-sibling [:k]}]))
   (let [[dom fred fred-tag]
         (let-propagated [fred '("Fred" tag)]
           (expr-let [dom (tags-DOM [fred] [:k] {:depth 0})
@@ -112,7 +113,8 @@
     (is (= dom
            [:div
             {:class "tag-column"
-             :key [[:condition 'tag] :k]}
+             :key [[:condition 'tag] :k]
+             :row-sibling [:k]}
             [:component {:key [(:item-id fred) [:condition 'tag] :k]
                          :style {:display "block"
                                  :width "100%"}
@@ -199,7 +201,8 @@
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
                      :class "tag-column editable"
-                     :key [[:condition 'tag] (:item-id doubtful) :age]}]
+                     :key [[:condition 'tag] (:item-id doubtful) :age]
+                     :row-sibling [(:item-id doubtful) :age]}]
               [:component {:key [(:item-id doubtful) :age]
                            :class "item-column"
                            :style {:display "table-cell"}
@@ -240,7 +243,8 @@
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
                        :class "tag-column editable"
-                       :key [[:condition 'tag] (:item-id male) :joe]}]
+                       :key [[:condition 'tag] (:item-id male) :joe]
+                       :row-sibling [(:item-id male) :joe]}]
                 [:component {:key [(:item-id male) :joe]
                              :style {:display "table-cell"}
                              :class "item-column"
@@ -251,7 +255,8 @@
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
                        :class "tag-column editable"
-                       :key [[:condition 'tag] (:item-id married) :joe]}]
+                       :key [[:condition 'tag] (:item-id married) :joe]
+                       :row-sibling [(:item-id married) :joe]}]
                 [:component {:key [(:item-id married) :joe]
                              :style {:display "table-cell"}
                              :class "item-column"

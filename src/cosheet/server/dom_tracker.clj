@@ -160,7 +160,8 @@
       dom
       (let [key (:key attributes)
             pruned-attributes (apply dissoc attributes
-                                     [:key :ordering :sibling-elements])
+                                     [:key :ordering :sibling-elements
+                                      :row-sibling :row-elements])
             client-attributes (if (nil? key)
                                 pruned-attributes
                                 (let [id (get-in data [:key->id key])]

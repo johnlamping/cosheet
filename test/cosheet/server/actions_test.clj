@@ -55,6 +55,8 @@
 (def joe-age (first (filter #(= (content %) 45) (elements joe-entity))))
 (def joe-age-tag (first (elements joe-age)))
 (def joe-male (first (filter #(= (content %) "male") (elements joe-entity))))
+(def joe-married (first (filter #(= (content %) "married")
+                                (elements joe-entity))))
 (def jane-entity (description->entity jane-id store))
 (def jane-age (first (label->elements jane-entity "age")))
 (def jane-age-tag (first (elements jane-age)))
@@ -188,10 +190,6 @@
                          [(:item-id joe-male) (:item-id joe-age)]]]
                        [joe-id jane-id]]])
          [joe-male joe-age jane-age])))
-
-(deftest instantiate-exemplar-to-groups-test
-  (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
-    ))
 
 (deftest key->item-groups-test
   (is (= (key->item-groups store [joe-id]) [[joe-entity]]))
@@ -376,4 +374,11 @@
                                          tracker joe-age-dom-id :after)]
       (let [joe-age-ids (id-label->element-ids new-store joe-id "age")
             joe-ages (map #(id->content new-store %) joe-age-ids)]
-          (is (= (set joe-ages) #{"" 39 45}))))))
+        (is (= (set joe-ages) #{"" 39 45}))))))
+
+(deftest furthest-item-test
+  (is (= (furthest-item [joe-married] :before) joe-married))
+  (is (= (furthest-item [joe-married joe-male] :before) joe-male))
+  (is (= (furthest-item [joe-married joe-male] :after) joe-married)))
+
+;;; TODO: test furthest-item and add-row-handler

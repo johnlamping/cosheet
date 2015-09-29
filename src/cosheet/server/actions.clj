@@ -4,12 +4,12 @@
    [ring.util.response :refer [response]]
    (cosheet
     [debug :refer [simplify-for-print]]
-    [orderable :refer [split]]
+    [orderable :refer [split earlier?]]
     [store :refer [update-content add-simple-element do-update! id->subject]]
     store-impl
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
-                    content elements label->elements]]
+                    content elements label->elements label->content]]
     [dom-utils :refer [dom-attributes]]
     [query :refer [query-matches]]
     query-impl)
@@ -287,23 +287,38 @@
       (reduce (partial update-add-sibling sibling-elements direction)
               store items))))
 
+(defn furthest-item
+  "Given a list of items and a direction,
+  return the furthest item in that direction."
+  [items direction]
+  (if (= (count items) 1)
+    (first items)
+    (second
+     (reduce (case direction
+               :before (fn [a b] (if (earlier? (first a) (first b)) a b))
+               :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
+             (map (fn [item] [(label->content item :order) item]) items)))))
+
 (defn update-add-row-handler
   "Add a row to the item with the given client id."
     [store dom-tracker id direction]
-  (let [key (id->key dom-tracker id)
-        items (key->items store key)
-        first-primitive (first-primitive-referent key)
-        sibling-elements (:sibling-elements
-                          (key->attributes dom-tracker
-                                           (remove-content-referent key)))]
+    (let [key (id->key dom-tracker id)
+          attributes (key->attributes dom-tracker (remove-content-referent key))
+          row-sibling (:row-sibling attributes)
+          row-elements (:row-elements attributes)
+          item-groups (if row-sibling
+                        (key->item-groups store row-sibling)
+                        (map vector (key->items store key))) 
+          first-primitive (first-primitive-referent key)]
     (println "row for id:" id " with key:" (simplify-for-print key))
-    (println "total items:" (count items))
-    (println "with content" (map content items))
+    (println "total groups:" (count item-groups))
+    (println "with content" (map #(map content %) item-groups))
     (println "in direction" direction)
-    ;; TODO: Handle key->items right.
     (when ((some-fn item-referent? content-referent?) first-primitive)
-      (reduce (partial update-add-sibling sibling-elements direction)
-              store items))))
+      (reduce (fn [store group]
+                (update-add-sibling row-elements direction store
+                                    (furthest-item group direction)))
+              store item-groups))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.

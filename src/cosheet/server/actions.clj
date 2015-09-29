@@ -81,10 +81,13 @@
    item))
 
 (defn instantiate-exemplar
-  "Given a store, an exemplar, and an item, instantiate the exemplar
-  to the item, returning the sequence of items matched.
-  The exemplar must have been pruned to only referents that refer to items."
-  [store exemplar item-id-instantiator]
+  "Given a store, an exemplar, and a function from item-id to entity,
+  instantiate the exemplar with respect to the function,
+  returning the sequence of items matched, or a sequence of
+  groups of items if group is true.
+  The exemplar must have been pruned to only referents that refer to items.
+  (A non-trivial group is formed by a parallel referent with empty exemplar.)"
+  [store group exemplar item-id-instantiator]
   (assert (vector? exemplar))  ; So peek and pop take from end.
   (let [last-referent (peek exemplar)
           remainder (pop exemplar)]
@@ -96,54 +99,26 @@
           (let [instantiated-items
                 (remove nil? (map item-id-instantiator item-ids))]
             (if (empty? exemplar)
-              instantiated-items
-              (mapcat (partial instantiate-exemplar store exemplar-referents)
+              (if group
+                (if (empty? instantiated-items) nil [instantiated-items])
+                instantiated-items)
+              (mapcat (partial instantiate-exemplar
+                               store group exemplar-referents)
                       (map (fn [item] #(instantiate-item-id store % item))
                            instantiated-items)))))
         (let [exemplar-item (item-id-instantiator last-referent)]
           (cond (nil? exemplar-item) []
-                (empty? remainder) [exemplar-item]
+                (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
                 true (instantiate-exemplar
-                      store remainder
+                      store group remainder
                       #(instantiate-item-id store % exemplar-item)))))))
 
 (defn key->items
   "Return the list of items that a key describes."
   [store key]
   (instantiate-exemplar
-   store [(first (item-determining-referents key))]
+   store false [(first (item-determining-referents key))]
    #(description->entity % store)))
-
-(defn instantiate-exemplar-to-groups
-  "Given a store, an exemplar, and a function to instantiate an item-id,
-  instantiate the exemplar, returning the sequence of groups of items matched.
-  (A group is formed by a parallel referent with empty exemplar.)
-  The exemplar must have been pruned to only referents that refer to items."
-  [store exemplar item-id-instantiator]
-  (assert (vector? exemplar))  ; So peek and pop take from end.
-  (let [last-referent (peek exemplar)
-          remainder (pop exemplar)]
-      (if (sequential? last-referent)
-        (let [[type exemplar item-ids] last-referent
-              exemplar-referents (item-determining-referents exemplar)]
-          (assert (= type :parallel))  ; Other complex referents filtered.
-          (assert (empty? remainder))  ; Parallel referents must be first.
-          (let [instantiated-items
-                (remove nil? (map item-id-instantiator item-ids))]
-            (if (empty? exemplar)
-              (if (empty? instantiated-items)
-                nil
-                [instantiated-items])
-              (mapcat (partial instantiate-exemplar-to-groups
-                               store exemplar-referents)
-                      (map (fn [item] #(instantiate-item-id store % item))
-                           instantiated-items)))))
-        (let [exemplar-item (item-id-instantiator last-referent)]
-          (cond (nil? exemplar-item) []
-                (empty? remainder) [[exemplar-item]]
-                true (instantiate-exemplar-to-groups
-                      store remainder
-                      #(instantiate-item-id store % exemplar-item)))))))
 
 (defn key->item-groups
   "Given a key, return a list of the groups of items it describes.
@@ -151,8 +126,8 @@
    there is one group for each instantiation of the items of the parallel.
   Otherwise, each item is its own group."
   [store key]
-  (instantiate-exemplar-to-groups
-   store [(first (item-determining-referents key))]
+  (instantiate-exemplar
+   store true [(first (item-determining-referents key))]
    #(description->entity % store)))
 
 (defn parse-string

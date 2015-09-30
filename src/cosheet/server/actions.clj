@@ -7,6 +7,7 @@
     [orderable :refer [split earlier?]]
     [store :refer [update-content add-simple-element do-update! id->subject]]
     store-impl
+    [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
                     content elements label->elements label->content]]
@@ -242,25 +243,6 @@
       (reduce (partial update-add-element "")
               store items))))
 
-(defn set-content-handler
-  [store dom-tracker id from to]
-  ;; TODO: Handle deleting.
-  (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent key)
-        items (key->items store key)
-        to (parse-string to)]
-    (println "set id:" id " with key:" (simplify-for-print key))
-    (println "total items:" (count items))
-    (println "with content" (map content items))
-    (println "from:" from " to:" to)
-    (reduce (cond ((some-fn nil? item-referent? content-referent?)
-                   first-primitive)
-                  (partial update-set-content from to)
-                  (and (condition-referent? first-primitive) (not= to ""))
-                  (partial update-add-element (cons to (rest first-primitive)))
-                  true (fn [a b] a))
-            store items)))
-
 (defn update-add-sibling
   "Given an item and elements that its siblings must have, add a sibling
   in the given direction (:before or :after)"
@@ -319,7 +301,42 @@
         (reduce (fn [store group]
                   (update-add-sibling row-elements direction store
                                       (furthest-item group direction)))
-              store item-groups))))
+                store item-groups))))
+
+(defn update-delete
+  "Given an item, remove it and all its elements from the store"
+  [store item]
+  (remove-entity-by-id store (:item-id item)))
+
+(defn delete-handler
+  [store dom-tracker id]
+  (let [key (id->key dom-tracker id)
+        first-primitive (first-primitive-referent key)
+        items (key->items store key)]
+    (println "delete id:" id " with key:" (simplify-for-print key))
+    (println "total items:" (count items))
+    (println "with content" (map content items))
+    (when ((some-fn item-referent? content-referent?) first-primitive)
+      (reduce update-delete store items))))
+
+(defn set-content-handler
+  [store dom-tracker id from to]
+  ;; TODO: Handle deleting.
+  (let [key (id->key dom-tracker id)
+        first-primitive (first-primitive-referent key)
+        items (key->items store key)
+        to (parse-string to)]
+    (println "set id:" id " with key:" (simplify-for-print key))
+    (println "total items:" (count items))
+    (println "with content" (map content items))
+    (println "from:" from " to:" to)
+    (reduce (cond ((some-fn nil? item-referent? content-referent?)
+                   first-primitive)
+                  (partial update-set-content from to)
+                  (and (condition-referent? first-primitive) (not= to ""))
+                  (partial update-add-element (cons to (rest first-primitive)))
+                  true (fn [a b] a))
+            store items)))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.
@@ -331,6 +348,7 @@
                   :add-element add-element-handler
                   :add-sibling add-sibling-handler
                   :add-row add-row-handler
+                  :delete delete-handler
                   nil)]
     (if handler
       (do-update! mutable-store

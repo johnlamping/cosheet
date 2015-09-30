@@ -53,6 +53,7 @@
 (def jane-id (second t2))
 (def joe-entity (description->entity joe-id store))
 (def joe-age (first (filter #(= (content %) 45) (elements joe-entity))))
+(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe-entity))))
 (def joe-age-tag (first (elements joe-age)))
 (def joe-male (first (filter #(= (content %) "male") (elements joe-entity))))
 (def joe-married (first (filter #(= (content %) "married")
@@ -316,36 +317,6 @@
       (is (= (item->canonical-visible new-joe-age)
              [45 {["age" {'tag 1}] 1, "" 1}])) )))
 
-(deftest set-content-handler-test
-  (let [mutable-store (new-mutable-store store)
-        mutable-joe (description->entity joe-id mutable-store)
-        tracker (new-joe-jane-tracker mutable-store)]
-    (is (= (id->content
-            (set-content-handler store tracker "joe-root" "Joe" "Jim")
-            joe-id)
-           "Jim"))
-    (is (= (id->content
-            (set-content-handler store tracker "joe-root" "Wrong" "Jim")
-            joe-id)
-           "Joe"))
-    (swap! tracker #(-> %
-                        (assoc-in [:id->key "test"]
-                                  [[:parallel
-                                    [(:item-id joe-age-tag) (:item-id joe-age)]
-                                    [joe-id jane-id]]])
-                        (assoc-in [:id->key "test2"]
-                                  [[:parallel
-                                    [[:content]
-                                     (:item-id joe-age-tag) (:item-id joe-age)]
-                                    [joe-id jane-id]]])))
-    ;; TODO: Add a test for when an entity is added.
-    (let [modified (set-content-handler store tracker "test" "age" "oldness")]
-      (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
-      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
-    (do-actions mutable-store tracker
-                {1 [:set-content "joe-root" "Joe" "Fred"]})
-    (is (= (current-value (content mutable-joe)) "Fred"))))
-
 (deftest update-add-sibling-test
   (let [jane-dom (item-DOM jane-entity [(item-referent jane-entity)]
                            #{} {:depth 1})
@@ -400,3 +371,44 @@
                       store tracker joe-age-tag-dom-id :after)]
       (is (= new-store1 new-store2)))))
 
+(deftest delete-handler-test
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-joe-jane-tracker mutable-store)]
+    (let [joe-bogus-age-dom-id (first (filter
+                                 #(= (first (get-in @tracker [:id->key %]))
+                                     (:item-id joe-bogus-age))
+                                 (keys (:id->key @tracker))))
+          new-store (delete-handler store tracker joe-bogus-age-dom-id)]
+      (let [joe-age-ids (id-label->element-ids new-store joe-id "age")
+            joe-ages (map #(id->content new-store %) joe-age-ids)]
+        (is (= (set joe-ages) #{45}))))))
+
+(deftest set-content-handler-test
+  (let [mutable-store (new-mutable-store store)
+        mutable-joe (description->entity joe-id mutable-store)
+        tracker (new-joe-jane-tracker mutable-store)]
+    (is (= (id->content
+            (set-content-handler store tracker "joe-root" "Joe" "Jim")
+            joe-id)
+           "Jim"))
+    (is (= (id->content
+            (set-content-handler store tracker "joe-root" "Wrong" "Jim")
+            joe-id)
+           "Joe"))
+    (swap! tracker #(-> %
+                        (assoc-in [:id->key "test"]
+                                  [[:parallel
+                                    [(:item-id joe-age-tag) (:item-id joe-age)]
+                                    [joe-id jane-id]]])
+                        (assoc-in [:id->key "test2"]
+                                  [[:parallel
+                                    [[:content]
+                                     (:item-id joe-age-tag) (:item-id joe-age)]
+                                    [joe-id jane-id]]])))
+    ;; TODO: Add a test for when an entity is added.
+    (let [modified (set-content-handler store tracker "test" "age" "oldness")]
+      (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
+      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
+    (do-actions mutable-store tracker
+                {1 [:set-content "joe-root" "Joe" "Fred"]})
+    (is (= (current-value (content mutable-joe)) "Fred"))))

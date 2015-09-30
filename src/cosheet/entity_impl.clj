@@ -138,7 +138,12 @@
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
-  (atom? [this] true))
+  (atom? [this] true)
+  (label->elements [this label] nil)
+  (elements [this] nil)
+  (content [this] this)
+  (content-reference [this] this)
+)
 
 (extend-protocol Description
   cosheet.store.StoredItemDescription

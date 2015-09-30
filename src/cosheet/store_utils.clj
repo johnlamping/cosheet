@@ -84,5 +84,4 @@
 (defn remove-entity-by-id!
   "Remove the entity with the given id, and all its elements and content."
   [store id]
-  (doseq [id (items-to-remove (current-store store) id)]
-    (remove-simple-id! store id)))
+  (do-update! store #(remove-entity-by-id % id)))

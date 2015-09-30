@@ -140,7 +140,12 @@
       (cond
         (= key-code key-codes/ESC) (close-edit-field)
         (= key-code key-codes/ENTER) (do (store-edit-field)
-                                         (close-edit-field))))))
+                                         (close-edit-field))
+        (= key-code key-codes/DELETE) (when (and @selected
+                                                 (not @edit-field-open-on))
+                                        (.log js/console (str [:delete]))
+                                        (request-action
+                                         [:delete (.-id @selected)]))))))
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")

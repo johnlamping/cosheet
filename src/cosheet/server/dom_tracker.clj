@@ -281,6 +281,8 @@
         depth (:depth component-map)]
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
+          (when (= key ["root"])
+            (println "new version for root dom" (inc (:version component-map))))
           (let [subcomponent-maps (dom->subcomponent-maps dom depth)
                 new-map (-> component-map
                             (assoc :subcomponents
@@ -300,16 +302,24 @@
 (defn dom-callback
   "Record a new value for the dom."
   [[_ key] reporter data-atom]
+  (when (= key ["root"])
+       (println "callback for dom for root"))
   (call-with-latest-value
    #(reporters/value reporter)
    (fn [dom]
+     (when (= key ["root"])
+       (println "got dom value"))
      ;;; TODO: When not valid, but we have a previous dom,
      ;;; set a style for the dom to indicate invalidity.
      (when (reporters/valid? dom)
+       (when (= key ["root"])
+              (println "value is valid"))
        (swap-and-act
         data-atom
         (fn [data]
           (when (= reporter (get-in data [:components key :reporter]))
+            (when (= key ["root"])
+              (println "reporter is current"))
             (update-dom data key dom))))))))
 
 (defn set-attending

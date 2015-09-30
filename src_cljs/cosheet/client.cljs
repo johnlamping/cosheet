@@ -128,15 +128,14 @@
         (= key-code key-codes/Z)
         (when @edit-field-open-on (close-edit-field))))
     (when (and alt (not ctrl))
-      (cond
-        (#{key-codes/EQUALS key-codes/NUM_PLUS} key-code)
-        (when @selected
-          (.log js/console "add-sibling")
-          (request-action [:add-sibling (.-id @selected) :after]))
-        (= key-codes/PERIOD key-code)
-        (when @selected
-          (.log js/console "add-element")
-          (request-action [:add-element (.-id @selected)]))))
+      (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling :after]
+                          (= key-codes/NUM_PLUS key-code) [:add-sibling :after] 
+                          (= key-codes/PERIOD key-code) [:add-element]
+                          (= key-codes/R key-code) [:add-row :after])]
+        (when (and command @selected)
+          (.log js/console (str command))
+          (request-action
+           (apply vector (first command) (.-id @selected) (rest command))))))
     (when (not (or ctrl alt))
       (cond
         (= key-code key-codes/ESC) (close-edit-field)
@@ -147,13 +146,10 @@
   (let [app (js/document.getElementById "app")
         edit-input (js/document.getElementById "edit_input")
         ;; The key handler makes events consistent across browsers.
-        edit-key-handler (gevents/KeyHandler. edit-input)
         app-key-handler (gevents/KeyHandler. js/document)]
     (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
-    (gevents/listen edit-key-handler key-handler/EventType.KEY
-                    keypress-handler)
     (gevents/listen app-key-handler key-handler/EventType.KEY
                     keypress-handler))
   (ajax-request {:initialize true}))

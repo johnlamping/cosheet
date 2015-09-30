@@ -104,10 +104,12 @@
 (deftest instantiate-exemplar-test
   (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
     (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)] (make-instantiator joe-entity))
+                                 [(:item-id joe-male)]
+                                 (make-instantiator joe-entity))
            [joe-male]))
     (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)] (make-instantiator jane-entity))
+                                 [(:item-id joe-male)]
+                                 (make-instantiator jane-entity))
            []))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
                                  (make-instantiator jane-entity))
@@ -381,4 +383,20 @@
   (is (= (furthest-item [joe-married joe-male] :before) joe-male))
   (is (= (furthest-item [joe-married joe-male] :after) joe-married)))
 
-;;; TODO: test furthest-item and add-row-handler
+(deftest add-row-handler-test
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-joe-jane-tracker mutable-store)]
+    (let [joe-age-dom-id (first (filter
+                                 #(= (first (get-in @tracker [:id->key %]))
+                                     (:item-id joe-age))
+                                 (keys (:id->key @tracker))))
+          joe-age-tag-dom-id (first (filter
+                                     #(parallel-referent?
+                                       (first (get-in @tracker [:id->key %])))
+                                     (keys (:id->key @tracker))))
+          new-store1 (update-add-sibling
+                      nil :after store joe-age)
+          new-store2 (add-row-handler
+                      store tracker joe-age-tag-dom-id :after)]
+      (is (= new-store1 new-store2)))))
+

@@ -100,7 +100,8 @@
     (is (= dom
            [:component {:key [(:item-id fred) [:condition 'tag] :k]
                         :class "tag-column"
-                        :sibling-elements ['tag]}
+                        :sibling-elements ['tag]
+                        :row-sibling [:k]}
             [item-DOM
              fred [(:item-id fred) [:condition 'tag] :k]
              #{fred-tag} {:depth 0}]])))
@@ -119,7 +120,8 @@
                          :style {:display "block"
                                  :width "100%"}
                                       :class "vertical-separated"
-                         :sibling-elements ['tag]}
+                         :sibling-elements ['tag]
+                         :row-sibling [:k]}
              [item-DOM
               fred [(:item-id fred) [:condition 'tag] :k]
               #{fred-tag} {:depth 1}]]
@@ -127,7 +129,8 @@
                          :style  {:display "block"
                                   :width "100%"}
                          :class "vertical-separated"
-                         :sibling-elements ['tag]}
+                         :sibling-elements ['tag]
+                         :row-sibling [:k]}
              [item-DOM
               fran [(:item-id fran) [:condition 'tag] :k]
               #{} {:depth 1}]]]))))
@@ -170,7 +173,8 @@
               [:component {:key tag-key
                            :style {:display "table-cell"}
                            :class "tag-column"
-                           :sibling-elements ['tag]}
+                           :sibling-elements ['tag]
+                           :row-sibling [(:item-id doubtful) :age]}
                [item-DOM
                 confidence tag-key
                 #{confidence-tag} {:depth 1}]]
@@ -270,7 +274,10 @@
                  {:key [both-ages-ref :joe]
                   :style {:display "table-cell"}
                   :class "tag-column for-multiple-items"
-                  :sibling-elements ['tag]}
+                  :sibling-elements ['tag]
+                  :row-sibling [[:parallel
+                                 [] [(:item-id bogus-age) (:item-id age)]]
+                                :joe]}
                  [item-DOM
                   bogus-age-tag
                   [both-ages-ref :joe]

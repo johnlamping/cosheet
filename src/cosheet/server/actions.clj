@@ -223,7 +223,7 @@
     (update-content store (:item-id order-element) remainder)))
 
 (defn update-add-element
-  "Add an entity to thhe store as new element of the given subject."
+  "Add an entity to the store as a new element of the given subject."
   [entity store subject]
   (update-add-entity-with-order-item
    store (:item-id subject) entity
@@ -299,7 +299,7 @@
                :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
              (map (fn [item] [(label->content item :order) item]) items)))))
 
-(defn update-add-row-handler
+(defn add-row-handler
   "Add a row to the item with the given client id."
     [store dom-tracker id direction]
     (let [key (id->key dom-tracker id)
@@ -309,15 +309,16 @@
           item-groups (if row-sibling
                         (key->item-groups store row-sibling)
                         (map vector (key->items store key))) 
-          first-primitive (first-primitive-referent key)]
-    (println "row for id:" id " with key:" (simplify-for-print key))
-    (println "total groups:" (count item-groups))
-    (println "with content" (map #(map content %) item-groups))
-    (println "in direction" direction)
-    (when ((some-fn item-referent? content-referent?) first-primitive)
-      (reduce (fn [store group]
-                (update-add-sibling row-elements direction store
-                                    (furthest-item group direction)))
+          first-primitive (first-primitive-referent (or row-sibling key))]
+      (println "new row for id:" id " with key:" (simplify-for-print key))
+      (println "row sibling" (simplify-for-print row-sibling))
+      (println "total groups:" (count item-groups))
+      (println "with content" (map #(map content %) item-groups))
+      (println "in direction" direction)
+      (when ((some-fn item-referent? content-referent?) first-primitive)
+        (reduce (fn [store group]
+                  (update-add-sibling row-elements direction store
+                                      (furthest-item group direction)))
               store item-groups))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
@@ -329,6 +330,7 @@
                   :set-content set-content-handler
                   :add-element add-element-handler
                   :add-sibling add-sibling-handler
+                  :add-row add-row-handler
                   nil)]
     (if handler
       (do-update! mutable-store

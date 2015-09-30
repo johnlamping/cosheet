@@ -348,7 +348,9 @@
                    ;; Because it might have been in that situation.
                    (prepend-to-key (condition-referent ['tag]))
                    (prepend-to-key (item-referent element)))]      
-      (make-component {:key key :sibling-elements ['tag]}
+      (make-component {:key key
+                       :sibling-elements ['tag] 
+                       :row-sibling parent-key}
                       [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
@@ -361,9 +363,9 @@
               map #(tag-component % parent-key inherited) tags)]
     (add-attributes
      (vertical-stack tag-components :separators true)
-     (into {:class (str "tag-column" (when (empty? tags) " editable"))}
-           (when (not= (count tags) 1)
-             {:key (prepend-to-key (condition-referent ['tag])
+     (cond-> {:class (str "tag-column" (when (empty? tags) " editable"))}
+       (not= (count tags) 1)
+       (into {:key (prepend-to-key (condition-referent ['tag])
                                    parent-key)
               :row-sibling parent-key})))))
 

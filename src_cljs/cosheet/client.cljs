@@ -47,13 +47,11 @@
   (add-pending-action action)
   (ajax-if-pending))
 
-(defn open-edit-field [target]
+(defn open-edit-field [target initial-content]
   (when (and target (not= target @edit-field-open-on))
     (let [edit-holder (js/document.getElementById "edit_holder")
-          edit-input (js/document.getElementById "edit_input")
-          original_value (dom-text target)
-          ]
-      (set! (.-value edit-input) original_value)
+          edit-input (js/document.getElementById "edit_input")]
+      (set! (.-value edit-input) initial-content)
       (gdom/appendChild target edit-holder)
       (.focus edit-input)
       (.select edit-input)
@@ -111,7 +109,7 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (select target)
-      (open-edit-field target))))
+      (open-edit-field target (dom-text target)))))
 
 (defn keypress-handler
   [event]
@@ -131,6 +129,7 @@
       (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling :after]
                           (= key-codes/NUM_PLUS key-code) [:add-sibling :after] 
                           (= key-codes/PERIOD key-code) [:add-element]
+                          (= key-codes/DASH key-code) [:add-row :after]
                           (= key-codes/R key-code) [:add-row :after])]
         (when (and command @selected)
           (.log js/console (str command))
@@ -145,7 +144,10 @@
                                                  (not @edit-field-open-on))
                                         (.log js/console (str [:delete]))
                                         (request-action
-                                         [:delete (.-id @selected)]))))))
+                                         [:delete (.-id @selected)]))
+        (key-codes/isCharacterKey key-code)
+        (when (and @selected (not @edit-field-open-on))
+          (open-edit-field @selected (str (.-charCode event))))))))
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")

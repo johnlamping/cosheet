@@ -33,7 +33,7 @@
     background-color: #C0F0FF;
 }
 
-.item {
+.item-column,.tag-column {
     padding: 3px;
 }
 
@@ -59,8 +59,11 @@
     border-width: 2px 0px 0px 2px;
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
-    text-align: right;
     width: 30%;
+}
+
+.content-text.tag-column {
+        text-align: right;
 }
 
 .tag-column.for-multiple-items {
@@ -78,6 +81,7 @@
 .item-column {
     border-width: 2px 2px 0px 2px;
     width: auto;
+    background-color: white;
 }
 
 .last-row > .item-column {
@@ -94,6 +98,14 @@
 
 .vertical-separated:first-child {
     border-width: 0px;
+}
+
+.item.with-elements.vertical-separated { 
+    padding: 0px 0px 3px 0px;
+}
+
+.item.with-elements.vertical-separated:last-child { 
+    padding: 0px 0px 0px 0px;
 }
 
 .editable {

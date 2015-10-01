@@ -159,7 +159,7 @@
                  (:item-id doubtful)
                  :age]]
     (is (= dom
-           [:div {:class "item" :key [:age]}
+           [:div {:class "item with-elements" :key [:age]}
             [:div {:style {:width "100%" :display "block"}
                    :class "content-text editable"
                    :key [[:content] :age]}
@@ -192,7 +192,7 @@
             [dom age]))
         doubtful (first (current-value (entity/label->elements age o1)))]
     (is (= dom
-           [:div {:class "item" :key [:age]}
+           [:div {:class "item with-elements" :key [:age]}
             [:div {:style {:width "100%" :display "block"}
                    :class "content-text editable"
                    :key [[:content] :age]}
@@ -235,7 +235,7 @@
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag) [:condition 'tag]]
                                 [(:item-id bogus-age) (:item-id age)]]]
-             [:div {:class "item" :key [:joe]}
+             [:div {:class "item with-elements" :key [:joe]}
               [:div {:style {:width "100%" :display "block"}
                      :class "content-text editable"
                      :key [[:content] :joe]}

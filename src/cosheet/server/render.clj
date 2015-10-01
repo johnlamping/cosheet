@@ -451,4 +451,4 @@
         (expr-let [elements-dom (tagged-items-DOM
                                  elements item key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
-                          {:class "item" :key key}))))))
+                          {:class "item with-elements" :key key}))))))

@@ -77,7 +77,7 @@
 
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
-;;;                    needs to know about.
+;;;                    needs to know about, prioritized by their depth.
 ;;;       :management  The management for our reporters on the server.
 ;;;  :further-actions  A list of [function arg arg ...] calls that
 ;;;                    need to be performed. The function will be
@@ -408,6 +408,16 @@
         dom (get-in data [:key->dom key])]
     (into (or (and dom (dom-attributes dom)) {})
           (get-in data [:components key :attributes]))))
+
+(defn request-client-refresh
+  "Mark all components as needing to be sent to the client."
+  [tracker]
+  (swap! tracker
+         (fn [data] (assoc data :out-of-date-keys
+                           (reduce (fn [map [key component]]
+                                     (assoc map key (:depth component )))
+                                   (priority-map/priority-map)
+                                   (:components data))))))
 
 (defn new-dom-tracker
   "Return a new dom tracker object"

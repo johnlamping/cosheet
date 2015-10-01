@@ -15,7 +15,7 @@
     [computation-manager :refer [new-management compute]])
    (cosheet.server
     [render :refer [item-DOM]]
-    [dom-tracker :refer [new-dom-tracker add-dom
+    [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms]]
     [actions :refer [do-actions]])))
 
@@ -99,15 +99,17 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [actions acknowledge initialize]} params
-        must-initialize (or initialize (nil? @dom-tracker))]
+        {:keys [actions acknowledge initialize]} params]
     (println "request params" params)
-    (when must-initialize
-      (println "initializing")
-      (reset! dom-tracker (create-tracker store))
-      (println "created tracker")
-      (compute management 1000)
-      (println "computed some"))
+    (if (nil? @dom-tracker)
+      (do
+        (reset! dom-tracker (create-tracker store))
+        (println "created tracker")
+        (compute management 1000)
+        (println "computed some"))
+      (when initialize
+        (println "requesting client refresh")
+        (request-client-refresh @dom-tracker)))
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements @dom-tracker acknowledge)    
     (when actions

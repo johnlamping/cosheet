@@ -66,6 +66,10 @@
         text-align: right;
 }
 
+.tag-column {
+    vertical-align: top;
+}
+
 .tag-column.for-multiple-items {
     vertical-align: middle;
 }

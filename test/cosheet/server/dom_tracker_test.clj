@@ -353,3 +353,19 @@
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
 
+(deftest request-client-refresh-test
+  (let [management (new-management)
+        tracker (new-dom-tracker management)
+        reporter (new-reporter :value "hi")]
+    (add-dom tracker "root" [:root]
+             [identity [:div {:key [:root] :other :bar}
+                        [:component {:key [:foo :root]
+                                     :other :foo}
+                         [identity [:div]]]]])
+    (compute management)
+    (let [old-out-of-date (:out-of-date-keys @tracker)]
+      (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
+      (is (not= old-out-of-date (:out-of-date-keys @tracker)))
+      (request-client-refresh tracker)
+      (is (= old-out-of-date (:out-of-date-keys @tracker))))))
+

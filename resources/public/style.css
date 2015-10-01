@@ -88,8 +88,17 @@
     border-bottom-width: 2px;
 }
 
-.content-text.item {
-    height: 24px;
+.editable:not(.content-text) {
+    background-color: gainsboro;
+}
+
+.editable.tag-column:not(.content-text) {
+    background-color: #C0E0F0;
+}
+
+.content-text {
+    height: 20px;
+    min-height: 20px
 }
 
 .vertical-separated {

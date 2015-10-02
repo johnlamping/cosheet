@@ -32,19 +32,23 @@
   (is (= (stored-item-id-string test-implicit-content) "content-2"))
   (is (= (stored-item-description-name test-implicit-content) "content-Id-2")))
 
+(deftest id-valid?-test
+  (is (id-valid? test-store (make-id "1")))
+  (is (not (id-valid? test-store (make-id "wrong")))))
+
 (deftest id-label->element-ids-test
   (is (= (id-label->element-ids test-store (make-id "0") "foo")
          [(make-id "1")]))
   (is (= (id-label->element-ids test-store (make-id "1") nil)
          [(make-id "7")]))
   (is (= (id-label->element-ids test-store (make-id "0") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-id "77") "bar") nil)))
+  (is (= (id-label->element-ids test-store (make-id "wrong") "bar") nil)))
 
 (deftest id->element-ids-test
   (is (= (id->element-ids test-store (make-id "0")) [(make-id "1")]))
   (is (= (set (id->element-ids test-store (make-id "1")))
          (set [(make-id "2") (make-id "7")])))
-  (is (= (id->element-ids test-store (make-id "77")) nil)))
+  (is (= (id->element-ids test-store (make-id "wrong")) nil)))
 
 (deftest id->content-test
   (is (= (id->content test-store (make-id "0")) nil))

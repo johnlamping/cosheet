@@ -26,6 +26,8 @@
                                                  ("Fred" ("by" :label))))
         mutable-store (new-mutable-store store)]
     ;; Test the accessors
+    (is (get-value (id-valid? mutable-store element)))
+    (is (not (get-value (id-valid? mutable-store (make-id "wrong")))))
     (is (= (get-value (id-label->element-ids mutable-store element :label))
            (id-label->element-ids store element :label)))
     (is (= (get-value (id->element-ids mutable-store element))

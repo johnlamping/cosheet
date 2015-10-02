@@ -328,6 +328,9 @@
   (call-with-latest-value
    #(= (get-in @data-atom [:components key :reporter]) reporter)
    (fn [should-attend]
+     ;; Note: The key we use to subscribe might be the same as other
+     ;; dom trackers use, but we only subscribe to reporters that we
+     ;; create, so there will never be a conflict.
      (apply reporters/set-attendee! reporter [:dom-request key]
             (when should-attend
               [dom-callback data-atom])))))

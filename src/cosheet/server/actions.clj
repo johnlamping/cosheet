@@ -5,7 +5,8 @@
    (cosheet
     [debug :refer [simplify-for-print]]
     [orderable :refer [split earlier?]]
-    [store :refer [update-content add-simple-element do-update! id->subject]]
+    [store :refer [update-content add-simple-element do-update!
+                   id->subject id-valid?]]
     store-impl
     [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
@@ -76,10 +77,11 @@
    of the item that matches the visible information of the exemplar.
   Return nil if there is no matching element."
   [store exemplar-id item]
-  (visible-matching-element
-   store
-   (item->canonical-visible (description->entity exemplar-id store))
-   item))
+  (when (id-valid? store exemplar-id)
+    (visible-matching-element
+     store
+     (item->canonical-visible (description->entity exemplar-id store))
+     item)))
 
 (defn instantiate-exemplar
   "Given a store, an exemplar, and a function from item-id to entity,
@@ -119,7 +121,7 @@
   [store key]
   (instantiate-exemplar
    store false [(first (item-determining-referents key))]
-   #(description->entity % store)))
+   #(when (id-valid? store %) (description->entity % store))))
 
 (defn key->item-groups
   "Given a key, return a list of the groups of items it describes.
@@ -129,7 +131,7 @@
   [store key]
   (instantiate-exemplar
    store true [(first (item-determining-referents key))]
-   #(description->entity % store)))
+   #(when (id-valid? store %) (description->entity % store))))
 
 (defn parse-string
   "Parse user entered characters into a number if possible.

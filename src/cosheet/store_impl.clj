@@ -218,6 +218,9 @@
 
   Store
 
+  (id-valid? [this id]
+    (contains? (:id->data this) id))
+
   (id-label->element-ids [this id label]
     (get-in this [:subject->label->ids id label]))
 

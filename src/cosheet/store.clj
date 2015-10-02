@@ -44,6 +44,9 @@
 
   ;; The methods that Item and Entity rely on stores having.
   ;; These take and return descriptions.
+
+  (id-valid? [this id]
+    "Returns true if the id is a valid id for the store.")
   
   (id-label->element-ids [this id label]
     "Returns a seq the ids of all ids that have the given subject and label.")

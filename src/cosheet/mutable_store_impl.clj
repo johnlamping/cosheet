@@ -113,6 +113,9 @@
 
   Store
 
+  (id-valid? [this id]
+    (get-or-make-reporter id id-valid? this id))
+
   (id-label->element-ids [this id label]
     (get-or-make-reporter id id-label->element-ids this id label))
 

@@ -18,6 +18,33 @@
 (def selected (atom nil)) ;; The currently selected dom.
 (def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.
 
+(defn is-editable? [dom]
+  (and dom (.. dom -classList (contains "editable"))))
+
+(defn find-editable
+  "Given a target and click event, return the target if it is editable,
+   or the nearest child to the click event, if that child is editable."
+  [target event]
+  (when target
+    (if (is-editable? target)
+      target
+      (let [x (.-clientX event)
+            y (.-clientY event)
+            [closest-child _]
+            (reduce (fn [[closest best-distance] child]
+                      (let [rect (.getBoundingClientRect child)
+                            dist (+ (max 0 (- (.-left rect) x))
+                                    (max 0 (- x (.-right rect)))
+                                    (max 0 (- (.-top rect) y))
+                                    (max 0 (- y (.-bottom rect))))]
+                        (if (< dist best-distance)
+                          [child dist]
+                          [closest best-distance])))
+                    [nil 1e10]
+                    (array-seq (.-childNodes target)))]
+        (when (is-editable? closest-child)
+          closest-child)))))
+
 (defn deselect []
   (let [target @selected]
     (when target
@@ -27,15 +54,10 @@
 (defn select [target]
   (.log js/console (str "Selecting id " (.-id target) "."))
   (.log js/console (str "current selection " @selected))
-  (.log js/console (str "test "  (and target (not= target @selected))))
-  (when (and target (not= target @selected))
-    (.log js/console (str "inside while "))
+  (when (not= target @selected)
     (deselect)
-    (.log js/console (str "after deslect "))
     (.add (.-classList target) "selected")
-    (.log js/console (str "after setting class "))
     (.log js/console (str "Selected id " (.-id target) "."))
-    (.log js/console (str "Now with class " (.-className target) "."))
     (reset! selected target)))
 
 (defn dom-text [target]
@@ -48,7 +70,7 @@
   (ajax-if-pending))
 
 (defn open-edit-field [target initial-content]
-  (when (and target (not= target @edit-field-open-on))
+  (when (not= target @edit-field-open-on)
     (let [edit-holder (js/document.getElementById "edit_holder")
           edit-input (js/document.getElementById "edit_input")]
       (set! (.-value edit-input) initial-content)
@@ -95,9 +117,10 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (close-edit-field)
-      (if (.-id target)
-        (select target)
-        (deselect)))))
+      (let [editable (find-editable target event)]
+        (if editable
+          (select (find-editable target event))
+          (deselect))))))
 
 (defn double-click-handler
   [event]
@@ -105,11 +128,14 @@
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Double click on " target "."))
-    ;; TODO: Check to see if it is editable before bringing up editor.
     (when (not (target-being-edited? target))
       (store-edit-field)
-      (select target)
-      (open-edit-field target (dom-text target)))))
+      (close-edit-field)
+      (let [editable (find-editable target event)]
+        (if editable
+          (do (select editable)
+              (open-edit-field editable (dom-text editable)))
+          (deselect))))))
 
 (defn keypress-handler
   [event]

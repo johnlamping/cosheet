@@ -39,6 +39,7 @@
 
 .element-table {
     border-spacing: 0;
+    margin-left: 3px;
 }
 
 .tag-column {

@@ -164,6 +164,8 @@
        (if source
          (assoc data :value-source source)
          (dissoc data :value-source))
+       ;; Add the new source before removing the old one, so that any
+       ;; shared subsidiary reporters will never lose demand.
        (filter identity [source old-source])))))
 
 (defn copy-subordinate-callback
@@ -212,13 +214,37 @@
         [copy-subordinate-callback management]))
    (fn [callback] (apply reporter/set-attendee! from to callback))))
 
+(defn reuse-parts
+  "Given an old reporter and a new reporter that is not yet managed,
+   and does not have an attendee,
+   if any of the parts of the expression of the reporter
+   are themselves reporters, and they have the same expression
+   as the expression of reporters that are parts of the old reporter,
+   return a new reporter with the matched reporters replaced 
+   by the matching ones from the old reporter."
+  [old new]
+  (let [expr #(:expression (reporter/data %))
+        reusable-map (let [reusable (filter #(and (reporter/reporter? %)
+                                                  (expr %))
+                                            (expr old))]
+                       (zipmap (map expr reusable) reusable))
+        new-expr (expr new)
+        reused-expr (map #(or (when (reporter/reporter? %)
+                                (reusable-map (expr %))) %)
+                         new-expr)]
+    (if (= new-expr reused-expr)
+      new
+      (apply reporter/new-reporter
+             (mapcat identity
+                     (assoc (reporter/data new) :expression reused-expr))))))
+
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, evaluate it."
   [reporter management]
   (modify-and-act
    reporter
    (fn [data]
-     (if (= (:needed-values data) #{})
+     (if (empty? (:needed-values data))
        (let [application (map (fn [term] (if (reporter/reporter? term)
                                            ((:subordinate-values data) term)
                                            term))

@@ -209,8 +209,24 @@
     (is (= (reporter/value r2) :r0))
     (is (= (reporter/value r3) :r0))))
 
+(deftest reuse-parts-test
+  (let [r0 (reporter/new-reporter :name :r0)
+        r1 (reporter/new-reporter :name :r1
+                                  :expression [inc 2])
+        r2 (reporter/new-reporter :name :r2
+                                  :expression [inc 2])
+        r-old (reporter/new-reporter :name :r-old
+                                     :expression [+ r0 r1])
+        r-new (reporter/new-reporter :name :r-old
+                                     :expression [inc r2])]
+    (let [reused (reuse-parts r-old r-new)]
+      (is (not= reused r-new))
+      (is (= (:expression (reporter/data reused)) [inc r1]))
+      (is (not= (:expression (reporter/data reused)) [inc r2])))
+    (is (= (reuse-parts r0 r-new) r-new))))
+
 (deftest eval-expression-if-ready-test
-  (let [r0 (reporter/new-reporter  :name :r0 :value 1)
+  (let [r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
                                   :value 3
                                   :expression [inc 2]

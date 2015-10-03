@@ -144,7 +144,9 @@
    and additional arguments, and returns a new expression reporter.
    But if the manager type is :eval and none of the parts are reporters,
    then it just evaluates the expression."
-  [expression & {:keys [trace manager-type] :as args :or {manager-type :eval}}]
+  [expression & {:keys [trace manager-type]
+                 :as args
+                 :or {manager-type :eval value invalid}}]
   (if (or (not= manager-type :eval) (some reporter? expression))
     (apply new-reporter
            :expression expression

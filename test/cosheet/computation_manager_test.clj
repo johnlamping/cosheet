@@ -147,7 +147,8 @@
 
 (deftest copy-value-test
   (let [r1 (reporter/new-reporter :value :v)
-        r2 (reporter/new-reporter :value-source r1)]
+        r2 (reporter/new-reporter :value-source r1)
+        r3 (reporter/new-reporter :old-value-source r1)]
     (register-copy-value r1 r2)
     (is (= (reporter/value r2) :v))
     (reporter/set-value! r1 :w)
@@ -155,7 +156,11 @@
     (swap! (reporter/data-atom r2) dissoc :value-source)
     (register-copy-value r1 r2)
     (reporter/set-value! r1 :x)
-    (is (= (reporter/value r2) :w))))
+    (is (= (reporter/value r2) :w))
+    (register-copy-value r1 r3)
+    (is (= (reporter/value r3) reporter/invalid))
+    (is  (= ((:attendees (reporter/data r1)) [:copy-value r3]
+             copy-value-callback)))))
 
 (deftest copy-subordinate-test
   (let [r0 (reporter/new-reporter :name :r0 :value :r0)
@@ -170,7 +175,7 @@
     (register-copy-subordinate r1 r2 m)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
-    (is (= (reporter/value r2) :x))
+    (is (= (reporter/value r2) reporter/invalid))
     (is (= (task-queue/current-tasks (:queue m))
            [[eval-expression-if-ready r2 m]]))
     ;; Change the subordinate value, and make sure it got propagated.
@@ -178,7 +183,7 @@
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
-    (is (= (reporter/value r2) :x))
+    (is (= (reporter/value r2) reporter/invalid))
     (is (= (task-queue/current-tasks (:queue m))
            [[eval-expression-if-ready r2 m]]))
     ;; Send a spurious update, and make sure things are unchanged.
@@ -186,7 +191,7 @@
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
-    (is (= (reporter/value r2) :x))
+    (is (= (reporter/value r2) reporter/invalid))
     (is (= (task-queue/current-tasks (:queue m)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
@@ -198,14 +203,13 @@
     (reporter/set-value! r1 reporter/invalid)
     (is (= (reporter/value r2) reporter/invalid))
     (is (= (reporter/value r3) reporter/invalid))
-    (is (= (:value-source (reporter/data r2)) r0)) ;; Last know source.
+    (is (= (:value-source (reporter/data r2)) nil))
+    (is (= (:old-value-source (reporter/data r2)) r0)) ;; Last known source.
     (is (= (task-queue/current-tasks (:queue m)) ()))
     ;; Now set the value back to the original value, and check the consequences.
+    ;; We don't need to compute, because it is just value copying.
     (reporter/set-value! r1 :v1)
     (is (= (:value-source (reporter/data r2)) r0)) ;; Same source.
-    (is (= (task-queue/current-tasks (:queue m))
-           [[copy-value-callback `(:copy-value ~r2) r0]]))
-    (compute m)
     (is (= (reporter/value r2) :r0))
     (is (= (reporter/value r3) :r0))))
 
@@ -233,7 +237,7 @@
                                   :manager-type :eval)
         r (reporter/new-reporter :name :r
                                  :expression [inc r0]
-                                 :needed-values #{r1}
+                                 :needed-values #{r0}
                                  :subordinate-values {r0 1})
         rc (reporter/new-reporter :name :rc :value-source r)
         m (new-management)]
@@ -248,19 +252,23 @@
     (is (= (reporter/value rc) 2))
     ;; Try when it is ready and computes a reporter.
     (swap! (reporter/data-atom r)
-           #(-> %
-                (assoc :subordinate-values {r0 (fn [] r1)})
-                (assoc :expression [r0])
-                (assoc :value-source r0)))
-    (register-copy-value r0 r)
-    (is (= (:attendees (reporter/data r0))
+           #(into % {:subordinate-values {r0 (fn [] r1)}
+                     :expression [r0]
+                     :value-source r1}))
+    (register-copy-value r1 r)
+    (is (= (:attendees (reporter/data r1))
            {[:copy-value r] [copy-value-callback]}))
     (is (= (:manager (reporter/data r1)) nil))
+    (reporter/set-value! r reporter/invalid)
     (eval-expression-if-ready r m)
-    (is (= (reporter/value r) 3))
-    (is (= (reporter/value rc) 3))
+    ;; r won't get a value yet, because r1 will have been set invalid.
+    (is (= (reporter/value r) reporter/invalid))
+    (is (= (reporter/value rc) reporter/invalid))
     (is (= (:attendees (reporter/data r0)) nil))
-    (is (= (:manager (reporter/data r1)) [eval-manager m]))))
+    (is (= (:manager (reporter/data r1)) [eval-manager m]))
+    (eval-expression-if-ready r1 m)
+    (is (= (reporter/value r) 3))
+    (is (= (reporter/value rc) 3))))
 
 (deftest eval-manager-test
   (let [r0 (reporter/new-reporter :value 1)
@@ -372,7 +380,7 @@
   ;; There had been a bug with nil values throwing off propagation.
   ;; This tests that it is fixed.
   (let [m (new-management)
-        r0 (reporter/new-reporter)
+        r0 (reporter/new-reporter :name :r0)
         r1 (expr identity r0)
         r2 (expr identity r1)]
     (request r2 m)

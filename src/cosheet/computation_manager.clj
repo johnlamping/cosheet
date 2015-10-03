@@ -19,13 +19,21 @@
 ;;; Added by this manager:
 ;;;       :value-source A reporter whose value should be the value of this
 ;;;                     reporter if we have no needed-values.
+;;;   :old-value-source We may suspend the value source if some of the
+;;;                     values we used to compute it went invalid, but
+;;;                     we haven't seen a valid contradiction to the
+;;;                     values we used. In that case, the value source
+;;;                     is put here, and we stay subscribed to it, but
+;;;                     don't copy its value.
 ;;;      :needed-values A set of reporters whose values this reporter needs
 ;;;                     to evaluate its expression and that it doesn't have a
-;;;                     valid value for.
+;;;                     valid value for. Not present if nothing is
+;;;                     attending to the reporter.
 ;;; :subordinate-values A map from reporters whose values this reporter needs
 ;;;                     to evaluate its expression to the last
-;;;                     value it saw for them, even if they have gone
-;;;                     invalid subsequently.
+;;;                     valid value it saw for them, even if they have gone
+;;;                     invalid subsequently. Not present if nothing
+;;;                     is attending to the reporter.
 ;;;    :further-actions A list of [function arg arg ...] calls that
 ;;;                     need to be performed. (These will never actually
 ;;;                     be stored in a reporter, but are added to the
@@ -97,7 +105,10 @@
   (.write w "<ManagementImpl>"))
 
 (defn update-new-further-action
-  "Given a map, add an an action to the further actions."
+  "Given a map, add an an action to the further actions.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
   [data & action]
   (update-in data [:further-actions] (fnil conj []) (vec action)))
 
@@ -120,7 +131,7 @@
 
 (defn update-value
   "Given the data from a reporter, and the reporter, set the value in the data,
-  and request the appropriate registrations."
+  and request the appropriate propagation."
   [data reporter value]
   (if (= value (:value data))
     data
@@ -135,10 +146,7 @@
    (fn [value] (modify-and-act
                 to
                 (fn [data] (if (= (:value-source data) from)
-                             (update-value data to
-                                           (if (empty? (:needed-values data))
-                                             value
-                                             reporter/invalid))
+                             (update-value data to value)
                              data))))))
 
 (defn register-copy-value
@@ -146,27 +154,32 @@
    the first reporter to become the value of the second."
   [from to]
   (call-with-latest-value
-   #(when (= (:value-source (reporter/data to)) from) [copy-value-callback])
+   #(let [data (reporter/data to)]
+      (when (or (= (:value-source data) from) (= (:old-value-source data) from))
+        [copy-value-callback]))
    (fn [callback]
      (apply reporter/set-attendee!
             from (list :copy-value to) callback))))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
-  to the given source, and request the appropriate registrations."
-  [data reporter source]
-  (let [old-source (:value-source data)]
-    (if (= source old-source)
+  to the given source, and request the appropriate registrations.
+   If the optional keyword :old true is passed,
+   update the old-value-source, rather than value-source."
+  [data reporter source & {:keys [old]}]
+  (let [source-key (if old :old-value-source :value-source)
+        original-source (source-key data)]
+    (if (= source original-source)
       data
       (reduce
        (fn [data src]
          (update-new-further-action data register-copy-value src reporter))
        (if source
-         (assoc data :value-source source)
-         (dissoc data :value-source))
+         (assoc data source-key source)
+         (dissoc data source-key))
        ;; Add the new source before removing the old one, so that any
-       ;; shared subsidiary reporters will never lose demand.
-       (filter identity [source old-source])))))
+       ;; subsidiary reporters common to both will always have demand.
+       (filter identity [source original-source])))))
 
 (defn copy-subordinate-callback
   [to from management]
@@ -176,32 +189,46 @@
      (modify-and-act
       to
       (fn [data]
-        (if (if (contains? (:needed-values data) from)
-              (= value reporter/invalid)
-              (or (not (contains? (:subordinate-values data) from))
-                  (= value (get-in data [:subordinate-values from]))))
-          data
-          (if (reporter/valid? value)
-            (let [new-data
-                  (cond-> (update-in data [:needed-values] disj from)
-                    (not= value
-                          (get-in data [:subordinate-values from] ::not-found))
-                    (#(-> %
-                          (assoc-in [:subordinate-values from] value)
-                          (update-value-source to nil))))]
-              (if (empty? (:needed-values new-data))
-                (apply update-new-further-action new-data
-                       add-task (:queue management)
-                       (if (nil? (:value-source new-data))
-                         [eval-expression-if-ready to management]
-                         ;; We have re-confirmed all old values for the source.
-                         ;; Get the value back.
-                         [copy-value-callback
-                          `(:copy-value ~to) (:value-source new-data)]))
-                new-data))
-            (-> data
-                (update-in [:needed-values] conj from)
-                (update-value to reporter/invalid)))))))))
+        (let [same-value
+              (= value (get-in data [:subordinate-values from] ::not-found))]
+          (if (or (not (contains? data :needed-values))
+                  (if (contains? (:needed-values data) from)
+                    (= value reporter/invalid)
+                    same-value))
+            data
+            ;; A value that we care about changed.
+            ;; We are invalid until the recomputation runs,
+            ;; which may not be for a while.
+            (let [newer-data (update-value data to reporter/invalid)]
+              (if (reporter/valid? value)
+                (let [new-data
+                      (cond-> (update-in newer-data [:needed-values] disj from)
+                        (not same-value)
+                        (#(-> %
+                              (assoc-in [:subordinate-values from] value)
+                              (update-value-source to nil)
+                              (update-value-source to nil :old true))))]
+                  (if (empty? (:needed-values new-data))
+                    (let [old-source (:old-value-source new-data)]
+                      (if old-source
+                        ;; We have re-confirmed all old values for
+                        ;; the old source. Make it current again.
+                        (-> new-data
+                            (update-value-source to old-source)
+                            (update-value-source to nil :old true))
+                        ;; Some value changed. Schedule recomputation.
+                        (apply update-new-further-action new-data 
+                               add-task (:queue management)
+                               [eval-expression-if-ready to management])))
+                    new-data))
+                (let [current-source (:value-source newer-data)]
+                  (update-in
+                   (if current-source
+                     (-> newer-data
+                         (update-value-source to current-source :old true)
+                         (update-value-source to nil))
+                     newer-data)
+                   [:needed-values] conj from)))))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
@@ -209,7 +236,7 @@
   [from to management]
   (call-with-latest-value
    #(let [data (reporter/data to)]
-      (when (or (contains? (:needed-values data) from)
+      (when (or (contains? (get data :needed-values #{}) from)
                 (contains? (:subordinate-values data) from))
         [copy-subordinate-callback management]))
    (fn [callback] (apply reporter/set-attendee! from to callback))))
@@ -239,16 +266,23 @@
                      (assoc (reporter/data new) :expression reused-expr))))))
 
 (defn eval-expression-if-ready
-  "If all the arguments for an eval reporter are ready, evaluate it."
+  "If all the arguments for an eval reporter are ready, and we don't have
+   a value, evaluate the expression."
   [reporter management]
   (modify-and-act
    reporter
    (fn [data]
-     (if (empty? (:needed-values data))
-       (let [application (map (fn [term] (if (reporter/reporter? term)
-                                           ((:subordinate-values data) term)
-                                           term))
-                              (:expression data))
+     ;; It is possible to get several eval-expression-if-ready queued
+     ;; up for the same reporter. In that case, the first one to run
+     ;; will do the evaluations, and the later ones will notice that
+     ;; the value is valid, and not bother to re-evaluate.
+     (if (and (not (reporter/valid? (:value data)))
+              ;; We don't run if we still need values, or if
+              ;; :needed-values is nil, because that
+              ;; means nobody is attending to the reporter.
+              (= (:needed-values data) #{}))
+       (let [value-map (:subordinate-values data)
+             application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
          (if (reporter/reporter? value)
            (-> data
@@ -276,7 +310,8 @@
                         data
                         register-copy-subordinate
                         subordinate reporter management))
-                     data subordinates)]
+                     (update-value data reporter reporter/invalid)
+                     subordinates)]
        (if (reporter/data-attended? new-data)
          (-> new-data
              (assoc :needed-values subordinates)
@@ -287,10 +322,7 @@
          (-> new-data
              (dissoc :needed-values)
              (dissoc :subordinate-values)
-             (update-value-source reporter nil)
-              ;;; Note, we are not attended, so it is OK to change the
-              ;;; value without notifying the callbacks.
-             (assoc :value reporter/invalid)))))))
+             (update-value-source reporter nil)))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."

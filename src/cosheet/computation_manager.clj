@@ -149,14 +149,18 @@
                              (update-value data to value)
                              data))))))
 
+(defn null-callback
+  [key reporter]
+  nil)
+
 (defn register-copy-value
   "Register the need to copy (or not copy) the value from
    the first reporter to become the value of the second."
   [from to]
   (call-with-latest-value
    #(let [data (reporter/data to)]
-      (when (or (= (:value-source data) from) (= (:old-value-source data) from))
-        [copy-value-callback]))
+      (cond (= (:value-source data) from) [copy-value-callback]
+            (= (:old-value-source data) from) [null-callback]))
    (fn [callback]
      (apply reporter/set-attendee!
             from (list :copy-value to) callback))))
@@ -303,26 +307,29 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [subordinates (set (filter reporter/reporter? (:expression data)))
-           new-data (reduce
-                     (fn [data subordinate]
-                       (update-new-further-action
-                        data
-                        register-copy-subordinate
-                        subordinate reporter management))
-                     (update-value data reporter reporter/invalid)
-                     subordinates)]
-       (if (reporter/data-attended? new-data)
-         (-> new-data
-             (assoc :needed-values subordinates)
-             (assoc :subordinate-values {})
-             (update-new-further-action
-              add-task (:queue management)
-              eval-expression-if-ready reporter management))
-         (-> new-data
-             (dissoc :needed-values)
-             (dissoc :subordinate-values)
-             (update-value-source reporter nil)))))))
+     (if (= (reporter/data-attended? data) (contains? data :needed-values))
+       data
+       (let [subordinates (set (filter reporter/reporter? (:expression data)))
+             new-data (reduce
+                       (fn [data subordinate]
+                         (update-new-further-action
+                          data
+                          register-copy-subordinate
+                          subordinate reporter management))
+                       (update-value data reporter reporter/invalid)
+                       subordinates)]
+         (if (reporter/data-attended? new-data)
+           (-> new-data
+               (assoc :needed-values subordinates)
+               (assoc :subordinate-values {})
+               (update-new-further-action
+                add-task (:queue management)
+                eval-expression-if-ready reporter management))
+           (-> new-data
+               (dissoc :needed-values)
+               (dissoc :subordinate-values)
+               (update-value-source reporter nil)
+               (update-value-source reporter nil :old true))))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."

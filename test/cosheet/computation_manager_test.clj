@@ -65,9 +65,22 @@
         source (:value-source data)]
     (if source
       (do (is (= (:value data) (reporter/value source)))
-          (is (contains? (:attendees (reporter/data source))
-                         `(:copy-value ~reporter)))
+          (is (= (get-in (reporter/data source)
+                         [:attendees `(:copy-value ~reporter)])
+                 [copy-value-callback]))
           (check-propagation already-checked source))
+      already-checked)))
+
+(defn check-old-source-propagation
+  [already-checked reporter]
+  (let [data (reporter/data reporter)
+        old-source (:old-value-source data)]
+    (if old-source
+      (do (is (= (:value data) (reporter/invalid)))
+          (is (= (get-in (reporter/data old-source)
+                         [:attendees `(:copy-value ~reporter)])
+                 [null-callback]))
+          (check-propagation already-checked old-source))
       already-checked)))
 
 (defn check-subordinate-propagation
@@ -131,6 +144,7 @@
       (-> already-checked
           (conj reporter)
           (check-source-propagation reporter)
+          (check-old-source-propagation reporter)
           (check-subordinate-propagation reporter)
           (check-needed-propagation reporter)
           (check-attendees reporter)))))
@@ -159,8 +173,8 @@
     (is (= (reporter/value r2) :w))
     (register-copy-value r1 r3)
     (is (= (reporter/value r3) reporter/invalid))
-    (is  (= ((:attendees (reporter/data r1)) [:copy-value r3]
-             copy-value-callback)))))
+    (is  (= ((:attendees (reporter/data r1)) [:copy-value r3])
+            [null-callback]))))
 
 (deftest copy-subordinate-test
   (let [r0 (reporter/new-reporter :name :r0 :value :r0)
@@ -273,7 +287,6 @@
 (deftest eval-manager-test
   (let [r0 (reporter/new-reporter :value 1)
         r (reporter/new-reporter :expression [inc r0]
-                                 :value 2
                                  :manager-type :eval)
         rc (reporter/new-reporter :value-source r)
         m (new-management)]

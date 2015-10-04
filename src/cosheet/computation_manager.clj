@@ -223,7 +223,11 @@
                         ;; Some value changed. Schedule recomputation.
                         (apply update-new-further-action new-data 
                                add-task (:queue management)
-                               [eval-expression-if-ready to management])))
+                               [eval-expression-if-ready
+                                ;; If just one value changed, we will
+                                ;; still have the :old-value-source,
+                                ;; and we will try to reuse its parts.
+                                to (:old-value-source data) management])))
                     new-data))
                 (let [current-source (:value-source newer-data)]
                   (update-in
@@ -271,8 +275,9 @@
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
-   a value, evaluate the expression."
-  [reporter management]
+  a value, evaluate the expression. The reusable argument is a reporter
+  whose parts may be reused if the expression returns a reporter."
+  [reporter reusable management]
   (modify-and-act
    reporter
    (fn [data]
@@ -289,13 +294,14 @@
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
          (if (reporter/reporter? value)
-           (-> data
-               ;; Manage the new value-source, before swapping it for
-               ;; the old one, so reporters that are used by both will
-               ;; always have some demand, and not be taken out of the
-               ;; cache.
-               (update-new-further-action manage value management)
-               (update-value-source reporter value))
+           (let [reused (if reusable (reuse-parts reusable value) value)]
+             (-> data
+                 ;; Manage the new value-source, before swapping it for
+                 ;; the old one, so reporters that are used by both will
+                 ;; always have some demand, and not be taken out of the
+                 ;; cache.
+                 (update-new-further-action manage reused management)
+                 (update-value-source reporter reused)))
            (-> data
                (update-value reporter value)
                (update-value-source reporter nil))))
@@ -324,7 +330,7 @@
                (assoc :subordinate-values {})
                (update-new-further-action
                 add-task (:queue management)
-                eval-expression-if-ready reporter management))
+                eval-expression-if-ready reporter nil management))
            (-> new-data
                (dissoc :needed-values)
                (dissoc :subordinate-values)

@@ -122,7 +122,8 @@
        (let [user (second key)]
          (is (= (first key) :copy-value))
          (is (reporter/reporter? user))
-         (is (= reporter (:value-source (reporter/data user))))
+         (is (or (= reporter (:value-source (reporter/data user)))
+                 (= reporter (:old-value-source (reporter/data user)))))
          (check-propagation checked user))
        :else
        checked))
@@ -191,7 +192,7 @@
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
     (is (= (reporter/value r2) reporter/invalid))
     (is (= (task-queue/current-tasks (:queue m))
-           [[eval-expression-if-ready r2 nil m]]))
+           [[eval-expression-if-ready r2 m]]))
     ;; Change the subordinate value, and make sure it got propagated.
     (reset! (:queue m) @(task-queue/new-priority-task-queue))
     (reporter/set-value! r1 :v1)
@@ -199,7 +200,7 @@
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
     (is (= (reporter/value r2) reporter/invalid))
     (is (= (task-queue/current-tasks (:queue m))
-           [[eval-expression-if-ready r2 nil m]]))
+           [[eval-expression-if-ready r2 m]]))
     ;; Send a spurious update, and make sure things are unchanged.
     (reset! (:queue m) @(task-queue/new-priority-task-queue))
     (reporter/inform-attendees r1)
@@ -257,11 +258,11 @@
         m (new-management)]
     (register-copy-value r rc)
     ;; Try when the expression is not ready.
-    (eval-expression-if-ready r nil m)
+    (eval-expression-if-ready r m)
     (is (= (reporter/value r) reporter/invalid))
     (swap! (reporter/data-atom r) assoc :needed-values #{})
     ;; Try when it is ready and computes a constant.
-    (eval-expression-if-ready r nil m)
+    (eval-expression-if-ready r m)
     (is (= (reporter/value r) 2))
     (is (= (reporter/value rc) 2))
     ;; Try when it is ready and computes a reporter.
@@ -274,13 +275,13 @@
            {[:copy-value r] [copy-value-callback]}))
     (is (= (:manager (reporter/data r1)) nil))
     (reporter/set-value! r reporter/invalid)
-    (eval-expression-if-ready r nil m)
+    (eval-expression-if-ready r m)
     ;; r won't get a value yet, because r1 will have been set invalid.
     (is (= (reporter/value r) reporter/invalid))
     (is (= (reporter/value rc) reporter/invalid))
     (is (= (:attendees (reporter/data r0)) nil))
     (is (= (:manager (reporter/data r1)) [eval-manager m]))
-    (eval-expression-if-ready r1 nil m)
+    (eval-expression-if-ready r1 m)
     (is (= (reporter/value r) 3))
     (is (= (reporter/value rc) 3))))
 

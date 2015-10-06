@@ -17,27 +17,30 @@
 ;;;       :manager-type A keyword describing what kind of manager the
 ;;;                     reporter should have.
 ;;; Added by this manager:
-;;;       :value-source A reporter whose value should be the value of this
-;;;                     reporter if we have no needed-values.
-;;;   :old-value-source We may suspend the value source if some of the
-;;;                     values we used to compute it went invalid, but
-;;;                     we haven't seen a valid contradiction to the
-;;;                     values we used. In that case, the value source
-;;;                     is put here, and we stay subscribed to it, but
-;;;                     don't copy its value.
-;;;      :needed-values A set of reporters whose values this reporter needs
-;;;                     to evaluate its expression and that it doesn't have a
-;;;                     valid value for. Not present if nothing is
-;;;                     attending to the reporter.
-;;; :subordinate-values A map from reporters whose values this reporter needs
-;;;                     to evaluate its expression to the last
-;;;                     valid value it saw for them, even if they have gone
-;;;                     invalid subsequently. Not present if nothing
-;;;                     is attending to the reporter.
-;;;    :further-actions A list of [function arg arg ...] calls that
-;;;                     need to be performed. (These will never actually
-;;;                     be stored in a reporter, but are added to the
-;;;                     map before it is stored.)
+;;;        :value-source A reporter whose value should be the value of this
+;;;                      reporter if we have no needed-values.
+;;;    :old-value-source We may suspend the value source if some of the
+;;;                      values we used to compute it went invalid, but
+;;;                      we haven't seen a valid contradiction to the
+;;;                      values we used. In that case, the value source
+;;;                      is put here, and we stay subscribed to it, but
+;;;                      don't copy its value.
+;;; :arguments-unchanged Present, and equal to true, is we have not
+;;;                      seen a valid value different from the ones
+;;;                      used to compute old-value-source.
+;;;       :needed-values A set of reporters whose values this reporter needs
+;;;                      to evaluate its expression and that it doesn't have a
+;;;                      valid value for. Not present if nothing is
+;;;                      attending to the reporter.
+;;;  :subordinate-values A map from reporters whose values this reporter needs
+;;;                      to evaluate its expression to the last
+;;;                      valid value it saw for them, even if they have gone
+;;;                      invalid subsequently. Not present if nothing
+;;;                      is attending to the reporter.
+;;;     :further-actions A list of [function arg arg ...] calls that
+;;;                      need to be performed. (These will never actually
+;;;                      be stored in a reporter, but are added to the
+;;;                      map before it is stored.)
 
 ;;; The computation is multi-threaded, but can avoid using locks and
 ;;; TSM because it just needs eventual consistency; it is just copying
@@ -167,7 +170,7 @@
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
-  to the given source, and request the appropriate registrations.
+   to the given source, and request the appropriate registrations.
    If the optional keyword :old true is passed,
    update the old-value-source, rather than value-source."
   [data reporter source & {:keys [old]}]
@@ -181,9 +184,13 @@
        (if source
          (assoc data source-key source)
          (dissoc data source-key))
-       ;; Add the new source before removing the old one, so that any
+       ;; Add the new source before removing any old one, so that any
        ;; subsidiary reporters common to both will always have demand.
        (filter identity [source original-source])))))
+
+(defn update-old-value-source
+  [data reporter source]
+  (update-value-source data reporter source :old true))
 
 (defn copy-subordinate-callback
   [to from management]
@@ -203,40 +210,37 @@
             ;; A value that we care about changed.
             ;; We are invalid until the recomputation runs,
             ;; which may not be for a while.
-            (let [newer-data (update-value data to reporter/invalid)]
+            (let [current-source (:value-source data)
+                  newer-data (cond-> (update-value data to reporter/invalid)
+                               current-source
+                               ;; We must do the copy from source to
+                               ;; old-source before clearing source,
+                               ;; so the source always has attendees.
+                               (#(-> %
+                                     (update-old-value-source to current-source)
+                                     (assoc :arguments-unchanged true)
+                                     (update-value-source to nil))))]
               (if (reporter/valid? value)
                 (let [new-data
                       (cond-> (update-in newer-data [:needed-values] disj from)
                         (not same-value)
                         (#(-> %
                               (assoc-in [:subordinate-values from] value)
-                              (update-value-source to nil)
-                              (update-value-source to nil :old true))))]
+                              (dissoc :arguments-unchanged))))]
                   (if (empty? (:needed-values new-data))
-                    (let [old-source (:old-value-source new-data)]
-                      (if old-source
-                        ;; We have re-confirmed all old values for
-                        ;; the old source. Make it current again.
-                        (-> new-data
-                            (update-value-source to old-source)
-                            (update-value-source to nil :old true))
-                        ;; Some value changed. Schedule recomputation.
-                        (apply update-new-further-action new-data 
-                               add-task (:queue management)
-                               [eval-expression-if-ready
-                                ;; If just one value changed, we will
-                                ;; still have the :old-value-source,
-                                ;; and we will try to reuse its parts.
-                                to (:old-value-source data) management])))
+                    (if (:arguments-unchanged new-data)
+                      ;; We have re-confirmed all old values for
+                      ;; the old source. Make it current again.
+                      (-> new-data
+                          (update-value-source to (:old-value-source new-data))
+                          (update-old-value-source to nil)
+                          (dissoc :arguments-unchanged))
+                      ;; Some value changed. Schedule recomputation.
+                      (apply update-new-further-action new-data 
+                             add-task (:queue management)
+                             [eval-expression-if-ready to management]))
                     new-data))
-                (let [current-source (:value-source newer-data)]
-                  (update-in
-                   (if current-source
-                     (-> newer-data
-                         (update-value-source to current-source :old true)
-                         (update-value-source to nil))
-                     newer-data)
-                   [:needed-values] conj from)))))))))))
+                (update-in newer-data [:needed-values] conj from))))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
@@ -249,35 +253,46 @@
         [copy-subordinate-callback management]))
    (fn [callback] (apply reporter/set-attendee! from to callback))))
 
+(defn- get-expression [reporter] (:expression (reporter/data reporter)))
+
 (defn reuse-parts
-  "Given an old reporter and a new reporter that is not yet managed,
-   and does not have an attendee,
-   if any of the parts of the expression of the reporter
+  "Given an old reporter and a new reporter, if the new reporter is
+   not yet managed and has no attendees, and
+   if any of the parts of the expression of the new reporter
    are themselves reporters, and they have the same expression
    as the expression of reporters that are parts of the old reporter,
    return a new reporter with the matched reporters replaced 
    by the matching ones from the old reporter."
   [old new]
-  (let [expr #(:expression (reporter/data %))
-        reusable-map (let [reusable (filter #(and (reporter/reporter? %)
-                                                  (expr %))
-                                            (expr old))]
-                       (zipmap (map expr reusable) reusable))
-        new-expr (expr new)
-        reused-expr (map #(or (when (reporter/reporter? %)
-                                (reusable-map (expr %))) %)
-                         new-expr)]
-    (if (= new-expr reused-expr)
-      new
-      (apply reporter/new-reporter
-             (mapcat identity
-                     (assoc (reporter/data new) :expression reused-expr))))))
+  (if (and old
+           (contains? (reporter/data old) :expression)
+           (let [data (reporter/data new)]
+             (and
+              (contains? data :expression)
+              (nil? (:manager data))
+              (empty? (:attendees data)))))
+    (let [reusable-map (let [reusable (filter #(and (reporter/reporter? %)
+                                                    (get-expression %))
+                                              (get-expression old))]
+                         (zipmap (map get-expression reusable) reusable))
+          new-expr (get-expression new)
+          reused-expr (map #(or (when (reporter/reporter? %)
+                                  (reusable-map (get-expression %)))
+                                %)
+                           new-expr)]
+      (if (= new-expr reused-expr)
+        new
+        ;; TODO: Get rid of this print.
+        (do (println "reusing")
+            (apply reporter/new-reporter
+                   (mapcat identity
+                           (assoc (reporter/data new) :expression reused-expr))))))
+    new))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
-  a value, evaluate the expression. The reusable argument is a reporter
-  whose parts may be reused if the expression returns a reporter."
-  [reporter reusable management]
+  a value, evaluate the expression."
+  [reporter management]
   (modify-and-act
    reporter
    (fn [data]
@@ -290,21 +305,24 @@
               ;; :needed-values is nil, because that
               ;; means nobody is attending to the reporter.
               (= (:needed-values data) #{}))
-       (let [value-map (:subordinate-values data)
+       (let [reusable (:old-value-source data)
+             value-map (:subordinate-values data)
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
-         (if (reporter/reporter? value)
-           (let [reused (if reusable (reuse-parts reusable value) value)]
-             (-> data
-                 ;; Manage the new value-source, before swapping it for
-                 ;; the old one, so reporters that are used by both will
-                 ;; always have some demand, and not be taken out of the
-                 ;; cache.
-                 (update-new-further-action manage reused management)
-                 (update-value-source reporter reused)))
-           (-> data
-               (update-value reporter value)
-               (update-value-source reporter nil))))
+         (-> (if (reporter/reporter? value)
+               (let [reused (reuse-parts reusable value)]
+                 (-> data
+                     ;; Manage the new value-source, before swapping it for
+                     ;; any old one, so reporters that are used by both will
+                     ;; always have some demand, and not be taken out of the
+                     ;; cache.
+                     (update-new-further-action manage reused management)
+                     (update-value-source reporter reused)))
+               (-> data
+                   (update-value reporter value)
+                   (update-value-source reporter nil)))
+             (update-old-value-source reporter nil)
+             (dissoc :arguments-unchanged)))
        data))))
 
 (defn eval-manager
@@ -330,12 +348,13 @@
                (assoc :subordinate-values {})
                (update-new-further-action
                 add-task (:queue management)
-                eval-expression-if-ready reporter nil management))
+                eval-expression-if-ready reporter management))
            (-> new-data
                (dissoc :needed-values)
                (dissoc :subordinate-values)
                (update-value-source reporter nil)
-               (update-value-source reporter nil :old true))))))))
+               (update-old-value-source reporter nil)
+               (dissoc :arguments-unchanged))))))))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."

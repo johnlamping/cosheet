@@ -54,7 +54,7 @@
 
 (defn data-atom
   "Return the atom holding the reporter's data. If any of the standard fields
-   are changed changed, the appropriate notifications must be done."
+   are changed, the appropriate notifications must be done."
   [reporter]
   (:data reporter))
 

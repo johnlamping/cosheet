@@ -255,38 +255,48 @@
 
 (defn- get-expression [reporter] (:expression (reporter/data reporter)))
 
+(defn- fresh-expression-reporter?
+  "Return true if the argument is an expression reporter that has no manager
+   or attendees."
+  [reporter]
+  (and (reporter/reporter? reporter)
+       (let [data (reporter/data reporter)]
+         (and (contains? data :expression)
+              (nil? (:manager data))
+              (empty? (:attendees data))))))
+
 (defn reuse-parts
   "Given an old reporter and a new reporter, if the new reporter is
-   not yet managed and has no attendees, and
-   if any of the parts of the expression of the new reporter
-   are themselves reporters, and they have the same expression
-   as the expression of reporters that are parts of the old reporter,
-   return a new reporter with the matched reporters replaced 
-   by the matching ones from the old reporter."
+   not yet managed and has no attendees, and if any of the arguments of
+   the expression of the new reporter are themselves reporters, and
+   have identical expressions to reporters that are arguments of the
+   old reporter, return a new reporter with the matched reporters
+   replaced by the matching ones from the old reporter. Even for
+   arguments that can't be matched, if the number of arguments of both
+   reporters is the same, pass down corresponding arguments of the old
+   reporter as old-value-sources of the arguments of the new one."
   [old new]
   (if (and old
            (contains? (reporter/data old) :expression)
-           (let [data (reporter/data new)]
-             (and
-              (contains? data :expression)
-              (nil? (:manager data))
-              (empty? (:attendees data)))))
-    (let [reusable-map (let [reusable (filter #(and (reporter/reporter? %)
-                                                    (get-expression %))
-                                              (get-expression old))]
+           (fresh-expression-reporter? new))
+    (let [old-expression (get-expression old)
+          new-expression (get-expression new)
+          reuse-map (let [reusable (filter #(and (reporter/reporter? %)
+                                                 (get-expression %))
+                                           old-expression)]
                          (zipmap (map get-expression reusable) reusable))
-          new-expr (get-expression new)
-          reused-expr (map #(or (when (reporter/reporter? %)
-                                  (reusable-map (get-expression %)))
-                                %)
-                           new-expr)]
-      (if (= new-expr reused-expr)
+          same-size (= (count old-expression) (count new-expression))
+          reused-expression (map #(or (when (reporter/reporter? %)
+                                        (reuse-map (get-expression %)))
+                                      %)
+                           new-expression)]
+      (if (= new-expression reused-expression)
         new
         ;; TODO: Get rid of this print.
         (do (println "reusing")
             (apply reporter/new-reporter
                    (mapcat identity
-                           (assoc (reporter/data new) :expression reused-expr))))))
+                           (assoc (reporter/data new) :expression reused-expression))))))
     new))
 
 (defn eval-expression-if-ready
@@ -302,15 +312,14 @@
      ;; the value is valid, and not bother to re-evaluate.
      (if (and (not (reporter/valid? (:value data)))
               ;; We don't run if we still need values, or if
-              ;; :needed-values is nil, because that
-              ;; means nobody is attending to the reporter.
+              ;; :needed-values is nil, which means
+              ;; nobody is attending to the reporter.
               (= (:needed-values data) #{}))
-       (let [reusable (:old-value-source data)
-             value-map (:subordinate-values data)
+       (let [value-map (:subordinate-values data)
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
          (-> (if (reporter/reporter? value)
-               (let [reused (reuse-parts reusable value)]
+               (let [reused (reuse-parts (:old-value-source data) value)]
                  (-> data
                      ;; Manage the new value-source, before swapping it for
                      ;; any old one, so reporters that are used by both will

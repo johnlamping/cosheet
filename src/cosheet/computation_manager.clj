@@ -17,6 +17,11 @@
 ;;;       :manager-type A keyword describing what kind of manager the
 ;;;                     reporter should have.
 ;;; Added by this manager:
+;;;   :reusable-reporter An optional reporter that is only present
+;;;                      before the reporter is managed, which is
+;;;                      already in use, and which can be scavenged to
+;;;                      replace arguments of the expression with
+;;;                      reporters that are already in use.
 ;;;        :value-source A reporter whose value should be the value of this
 ;;;                      reporter if we have no needed-values.
 ;;;    :old-value-source We may suspend the value source if some of the
@@ -97,8 +102,10 @@
 ;;; contain references back to the management record.)
 (defrecord ManagementImpl
     [queue  ; A task-queue of pending tasks.
-     manager-map ; A map from :manager-type of a reporter to a
-                 ; manager function.
+     manage-map ; A map from :manager-type of a reporter to a
+                ; function that takes a reporter and a management,
+                ; does any needed preparation putting the reporter
+                ; under management, and sets its manager.
      cache ; A mutable map from expression to reporter.
            ; (present if cache reporters are supported.)
      ])
@@ -174,6 +181,9 @@
    If the optional keyword :old true is passed,
    update the old-value-source, rather than value-source."
   [data reporter source & {:keys [old]}]
+  ;; We must only set to non-nil if there are attendees for our value,
+  ;; otherwise, we will create demand when we have none ourselves.
+  (assert (or (nil? source) (reporter/data-attended? data)))
   (let [source-key (if old :old-value-source :value-source)
         original-source (source-key data)]
     (if (= source original-source)
@@ -215,7 +225,7 @@
                                current-source
                                ;; We must do the copy from source to
                                ;; old-source before clearing source,
-                               ;; so the source always has attendees.
+                               ;; so the old source always has attendees.
                                (#(-> %
                                      (update-old-value-source to current-source)
                                      (assoc :arguments-unchanged true)
@@ -253,51 +263,52 @@
         [copy-subordinate-callback management]))
    (fn [callback] (apply reporter/set-attendee! from to callback))))
 
-(defn- get-expression [reporter] (:expression (reporter/data reporter)))
+(defn- get-expression [reporter]
+  (when (reporter/reporter? reporter)
+    (:expression (reporter/data reporter))))
 
-(defn- fresh-expression-reporter?
-  "Return true if the argument is an expression reporter that has no manager
-   or attendees."
-  [reporter]
-  (and (reporter/reporter? reporter)
-       (let [data (reporter/data reporter)]
-         (and (contains? data :expression)
-              (nil? (:manager data))
-              (empty? (:attendees data))))))
+(defn update-reuse-arguments
+  "Given data for a expression reporter and an old expression
+  reporter, if any of the arguments of the expression of the new
+  reporter are themselves reporters, and have identical expressions to
+  reporters that are arguments of the old reporter, update the data
+  with the matched reporters replaced by the matching ones from the
+  old reporter."
+  [data old-reporter]
+   (let [new-expression (:expression data)
+         old-data (reporter/data old-reporter)
+         old-expression (:expression old-data)
+         reuse-map (into {} (mapcat #(let [expression (get-expression %)]
+                                       (when expression [[expression %]]))
+                                    old-expression))]
+       (let [num-reused (count (filter #(reuse-map (get-expression %))
+                                       new-expression))]
+         (when (not= num-reused 0)
+           (println "reusing" num-reused "in" (first new-expression))))
+       (assoc data :expression
+              (map #(or (reuse-map (get-expression %)) %) new-expression))))
 
-(defn reuse-parts
-  "Given an old reporter and a new reporter, if the new reporter is
-   not yet managed and has no attendees, and if any of the arguments of
-   the expression of the new reporter are themselves reporters, and
-   have identical expressions to reporters that are arguments of the
-   old reporter, return a new reporter with the matched reporters
-   replaced by the matching ones from the old reporter. Even for
-   arguments that can't be matched, if the number of arguments of both
-   reporters is the same, pass down corresponding arguments of the old
-   reporter as old-value-sources of the arguments of the new one."
-  [old new]
-  (if (and old
-           (contains? (reporter/data old) :expression)
-           (fresh-expression-reporter? new))
-    (let [old-expression (get-expression old)
-          new-expression (get-expression new)
-          reuse-map (let [reusable (filter #(and (reporter/reporter? %)
-                                                 (get-expression %))
-                                           old-expression)]
-                         (zipmap (map get-expression reusable) reusable))
-          same-size (= (count old-expression) (count new-expression))
-          reused-expression (map #(or (when (reporter/reporter? %)
-                                        (reuse-map (get-expression %)))
-                                      %)
-                           new-expression)]
-      (if (= new-expression reused-expression)
-        new
-        ;; TODO: Get rid of this print.
-        (do (println "reusing")
-            (apply reporter/new-reporter
-                   (mapcat identity
-                           (assoc (reporter/data new) :expression reused-expression))))))
-    new))
+(defn provide-reusable-reporter
+  "Set the :reusable-reporter, provided both arguments are expression
+  reporters, there isn't already a :reusable-reporter, and the
+  reporter is not managed."
+  [reporter reusable-reporter]
+  (when (and (get-expression reporter) (get-expression reusable-reporter))
+    (swap! (reporter/data-atom reporter)
+           (fn [data]
+             (cond-> data
+               (not (or (:reusable-reporter data) (:manager data)))
+               (assoc :reusable-reporter reusable-reporter))))))
+
+(defn set-reusable-reporters
+  "If the number of arguments of both expressions is the same, then
+  when corresponding positions are both expression reporters, and the
+  reporter in the new position is unmanaged, set its
+  :reusable-reporter to the reporter in the old expression."
+  [new-expression old-expression]
+  (when (= (count new-expression) (count old-expression))
+    (doseq [[new old] (map list new-expression old-expression)]
+      (provide-reusable-reporter new old))))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
@@ -319,14 +330,16 @@
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
          (-> (if (reporter/reporter? value)
-               (let [reused (reuse-parts (:old-value-source data) value)]
-                 (-> data
-                     ;; Manage the new value-source, before swapping it for
-                     ;; any old one, so reporters that are used by both will
-                     ;; always have some demand, and not be taken out of the
-                     ;; cache.
-                     (update-new-further-action manage reused management)
-                     (update-value-source reporter reused)))
+               (let [old-value-source (:old-value-source data)]
+                 ;; We have to set our value source first, so we
+                 ;; generate demand for the new value, then set the
+                 ;; :reusable-reporter before we manage the new value,
+                 ;; so the manager can use it.
+                 (-> (cond-> (update-value-source data reporter value)
+                       old-value-source
+                       (update-new-further-action
+                        provide-reusable-reporter value old-value-source))
+                     (update-new-further-action manage value management)))
                (-> data
                    (update-value reporter value)
                    (update-value-source reporter nil)))
@@ -365,6 +378,36 @@
                (update-old-value-source reporter nil)
                (dissoc :arguments-unchanged))))))))
 
+(defn manage-eval
+  "Optimize the reporter, and have it be managed by the eval-manager."
+  [reporter management]
+  (let [old-reporter (:reusable-reporter (reporter/data reporter))]
+    ;; We do any expression adjusting before setting the manager,
+    ;; which uses the expression.
+    (when old-reporter
+      (let [old-value-source (let [old-data (reporter/data old-reporter)]
+                               (or (:value-source old-data)
+                                   (:old-value-source old-data)))]
+        (modify-and-act
+           reporter
+           (fn [data] (cond-> (-> data
+                                  (dissoc :reusable-reporter)
+                                  (update-reuse-arguments old-reporter))
+                        (and old-value-source
+                             ;; Setting the value source propagates
+                             ;; demand, so it is only allowed if we
+                             ;; have demand.
+                             (not (empty? (:attendees data))))
+                        (update-old-value-source reporter old-value-source)))))
+      (set-reusable-reporters (:expression (reporter/data reporter))
+                              (:expression (reporter/data old-reporter)))))
+  (reporter/set-manager! reporter eval-manager management)
+  ;; We manage the subexpressions after we set our manager. It gives
+  ;; them demand, so they will have demand they need before they are
+  ;; managed.
+  (doseq [term (:expression (reporter/data reporter))]
+    (manage term management)))
+
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
   [reporter management]
@@ -380,9 +423,9 @@
   (mm/update-in!
    (:cache management) [expression]
    #(or % (apply reporter/new-reporter
-                     :expression expression
-                     :manager-type :cached-eval
-                     (when original-name [:name ["cached" original-name]])))))
+                 :expression expression
+                 :manager-type :cached-eval
+                 (when original-name [:name ["cached" original-name]])))))
 
 (defn cache-manager
   "Manager that looks up the value of a reporter's expression in a cache of
@@ -409,11 +452,14 @@
   "Create the manager data for a caching evaluator."
   ([] (new-management 0))
   ([worker-threads]
-   (map->ManagementImpl {:cache (mm/new-mutable-map)
-                         :queue (new-priority-task-queue worker-threads)
-                         :manager-map {:cache cache-manager
-                                       :eval eval-manager
-                                       :cached-eval cached-eval-manager}})))
+   (map->ManagementImpl
+    {:cache (mm/new-mutable-map)
+     :queue (new-priority-task-queue worker-threads)
+     :manage-map {:cache (fn [r m] (reporter/set-manager!
+                                    r cache-manager m))
+                  :eval manage-eval
+                  :cached-eval (fn [r m] (reporter/set-manager!
+                                          r cached-eval-manager m))}})))
 
 (defn manage
   "Assign the manager to the reporter
@@ -423,11 +469,9 @@
     (let [data (reporter/data reporter)
           manager-type (:manager-type data)]
       (when (and manager-type (not (:manager data)))
-        (let [manager-fn (manager-type (:manager-map management))]
-          (assert manager-fn (format "Unknown manager type: %s" manager-type))
-          (reporter/set-manager! reporter manager-fn management))
-        (doseq [term (:expression data)]
-          (manage term management))))))
+        (let [manage-fn (manager-type (:manage-map management))]
+          (assert manage-fn (format "Unknown manager type: %s" manager-type))
+          (manage-fn reporter management))))))
 
 (defn request
   "Request computation of a reference."

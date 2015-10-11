@@ -1,11 +1,12 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset]]
+                     [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
                      [reporters
-                      :refer [value expr expr-let expr-seq]])))
+                      :refer [value expr expr-let expr-seq cache]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
@@ -357,6 +358,7 @@
   "Given a sequence of items that are tags, return components for them,
   wrapped in a div if there is more than one."
   [tags parent-key inherited]
+  (println "generating tags dom.")
   (assert (not= (first parent-key) (condition-referent ['tag])))
   (expr-let [tag-components
              (expr-seq
@@ -376,6 +378,7 @@
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
   [items-and-tags parent parent-key inherited]
+  (println "generating tag-item")
   (let [sample-tags (get-in items-and-tags [0 1])]
     (expr-let [sibling-elements (expr-seq map visible-to-list sample-tags)
                items (map first items-and-tags)
@@ -411,7 +414,7 @@
   [items parent parent-key inherited]
   (expr-let [rows (expr group-by-tag (order-items items))
              row-doms (expr-seq
-                       map #(tag-items-pair-DOM % parent parent-key inherited)
+                       map #(cache tag-items-pair-DOM % parent parent-key inherited)
                        rows)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
@@ -430,6 +433,7 @@
   [item key excluded inherited]
   ;;; TODO: for deep items, use a layout with tag above content to conserve
   ;;; horizontal space.
+  (println "Generating DOM for" (simplify-for-print key))
   (expr-let [content (entity/content item)
              elements (visible-elements item)]
     (let [elements (remove excluded elements)

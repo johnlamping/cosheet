@@ -53,7 +53,7 @@
         (symbol
          (clojure.string/join ["Entity-" (simplify-for-print (:item-id item))]))
         (reporter? item)
-        (simplify-for-print (reporter-computation item))
+        (list* "R" (simplify-for-print (reporter-computation item)))
         (instance? clojure.lang.PersistentHashSet item)
         (set (map simplify-for-print item))
         (instance? clojure.lang.PersistentArrayMap item)

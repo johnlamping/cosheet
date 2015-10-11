@@ -11,7 +11,7 @@
             ; :reload
             ))
 
-;;; NOTE: The next three functions are not used, but have been
+;;; NOTE: The next three functions are not currently used, but have been
 ;;; useful in avoiding huge print-outs in debugging.
 
 (defn pretty-expression
@@ -229,46 +229,6 @@
     (is (= (reporter/value r2) :r0))
     (is (= (reporter/value r3) :r0))))
 
-(deftest update-reuse-arguments-test
-  (let [r0 (reporter/new-reporter :name :r0)
-        r1 (reporter/new-reporter :name :r1
-                                  :expression [inc 2])
-        r2 (reporter/new-reporter :name :r2
-                                  :expression [inc 2])
-        r-old (reporter/new-reporter :name :r-old
-                                     :expression [+ r0 r1])
-        r-new (reporter/new-reporter :name :r-new
-                                     :expression [inc r2])
-        r-new-data (reporter/data r-new)]
-    (let [reused-data (update-reuse-arguments r-new-data r-old)]
-      (is (not= reused-data r-new-data))
-      (is (= (:expression reused-data) [inc r1]))
-      (is (not= (:expression reused-data) [inc r2])))
-    (is (= (update-reuse-arguments r-new-data r0) (reporter/data r-new)))))
-
-(deftest provide-reusable-reporter-test
-  (let [r0 (reporter/new-reporter :name :r0
-                                  :manager-type :eval
-                                  :expression [1 2])
-        r1 (reporter/new-reporter :name :r1
-                                  :manager-type :eval
-                                  :expression [1 2])
-        r2 (reporter/new-reporter :name :r2)
-        m (new-management)]
-    (provide-reusable-reporter r0 r1)
-    (is (= (:reusable-reporter (reporter/data r0)) r1))
-    (manage r1 m)
-    (provide-reusable-reporter r1 r2)
-    (is (= (:reusable-reporter (reporter/data r1)) nil))))
-
-(deftest set-reusable-reporters-test
-  (let [r0 (reporter/new-reporter :name :r0 :expression [+ 1 2])
-        r1 (reporter/new-reporter :name :r1 :expression [+ 1 2])]
-    (set-reusable-reporters [inc r1] [inc r0 r0])
-    (is (nil? (:reusable-reporter (reporter/data r1))))
-    (set-reusable-reporters [inc r1] [inc r0])
-    (is (= (:reusable-reporter (reporter/data r1)) r0))))
-
 (deftest eval-expression-if-ready-test
   (let [r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
@@ -331,25 +291,6 @@
     (is (not (contains? (reporter/data r) :needed-values)))
     (is (not (contains? (reporter/data r) :subordinate-values)))
     (is (empty? (:attendees (reporter/data r0))))))
-
-(deftest reuse-test
-  (let [r1 (reporter/new-reporter :value 1)
-        rs (reporter/new-reporter :value [1 2 3])
-        counter (atom 0)
-        counting-plus (fn counting-plus [x y] (swap! counter inc) (+ x y))
-        ;; The functions below need to superficially depend on r1 to
-        ;; keep the expressions from being evaluated immediately.
-        r (expr (fn s1-x [s1 x]
-                  (expr (fn s2-x [s2 x]
-                          (expr-seq map #(expr counting-plus r1 %) s2)) s1 r1))
-            rs r1)
-        m (new-management)]
-    (println r)
-    (is (= (computation-value r m) [2 3 4]))
-    (is (= @counter 3))
-    (reporter/set-value! rs [1 2 3 4])
-    (is (= (computation-value r m) [2 3 4 5]))
-    (is (= @counter 4))))
 
 (deftest ensure-in-cache-test
   (let [m (new-management)
@@ -433,6 +374,25 @@
         ;;; Now it should be invalid.
         (is (= (not (reporter/valid? (computation-value f45 m)))))
         (check-propagation #{} f45)))))
+
+;; Test that caching works with recomputations of subsidiary
+;; computations. This tests that :old-value-source is getting kept
+;; around long enough.
+(deftest reuse-test
+  (let [r1 (reporter/new-reporter :value 1)
+        rs (reporter/new-reporter :value [1 2 3])
+        counter (atom 0)
+        counting-plus (fn counting-plus [x y] (swap! counter inc) (+ x y))
+        dependency-introducer (fn [x] (cache counting-plus r1 x))
+        r (expr-let [s1 (expr-seq map dependency-introducer rs)
+                      s2 (expr-seq map dependency-introducer s1)]
+             s2)
+        m (new-management)]
+    (is (= (computation-value r m) [3 4 5]))
+    (is (= @counter 4))
+    (reporter/set-value! rs [1 2 3 4])
+    (is (= (computation-value r m) [3 4 5 6]))
+    (is (= @counter 5))))
 
 (deftest nil-value-test
   ;; There had been a bug with nil values throwing off propagation.

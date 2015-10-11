@@ -51,7 +51,7 @@
            'Entity-content-Id-i))
     (is (= (simplify-for-print []) []))
     (is (= (simplify-for-print [#{{1 i}}]) [#{{1 'Id-i}}]))
-    (is (= (simplify-for-print r) '(_PLUS_ 1 (_PLUS_ 2 3))))
+    (is (= (simplify-for-print r) '("R" _PLUS_ 1 (_PLUS_ 2 3))))
     (mm/assoc-in! m [:a] i)
     (is (= (simplify-for-print m) {:a 'Id-i}))
     (is (= (simplify-for-print inc) 'inc))

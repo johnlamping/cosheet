@@ -318,8 +318,9 @@
              [45 {["age" {'tag 1}] 1, "" 1}])) )))
 
 (deftest update-add-sibling-test
-  (let [jane-dom (item-DOM jane-entity [(item-referent jane-entity)]
-                           #{} {:depth 1})
+  (let [jane-dom (current-value
+                  (item-DOM jane-entity [(item-referent jane-entity)]
+                            #{} {:depth 1}))
         order-entity (first (label->elements jane-age :order))
         order (content order-entity)
         age-dom (first (filter #(= (first (:key (second %)))

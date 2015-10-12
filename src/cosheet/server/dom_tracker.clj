@@ -5,6 +5,7 @@
                       :refer [value new-expression]]
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
+                     [debug :refer [simplify-for-print]]
                      [dom-utils :refer [dom-attributes add-attributes]]
                      [computation-manager :refer [manage]])))
 
@@ -238,6 +239,7 @@
   (if (get-in data [:key->id key])
     data
     (let [id (str "id" (:next-id data))]
+      (println "added id" id "for key" (simplify-for-print key))
       (-> data
           (update-associate-key-to-id key id)
           (update-in [:next-id] inc)))))
@@ -281,8 +283,6 @@
         depth (:depth component-map)]
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
-          (when (= key ["root"])
-            (println "new version for root dom" (inc (:version component-map))))
           (let [subcomponent-maps (dom->subcomponent-maps dom depth)
                 new-map (-> component-map
                             (assoc :subcomponents
@@ -302,25 +302,22 @@
 (defn dom-callback
   "Record a new value for the dom."
   [[_ key] reporter data-atom]
-  (when (= key ["root"])
-       (println "callback for dom for root"))
   (call-with-latest-value
    #(reporters/value reporter)
    (fn [dom]
-     (when (= key ["root"])
-       (println "got dom value"))
+     (println "got dom value for key" (simplify-for-print key))
      ;;; TODO: When not valid, but we have a previous dom,
      ;;; set a style for the dom to indicate invalidity.
      (when (reporters/valid? dom)
-       (when (= key ["root"])
-              (println "value is valid"))
+       (println "value is valid")
        (swap-and-act
         data-atom
         (fn [data]
           (when (= reporter (get-in data [:components key :reporter]))
-            (when (= key ["root"])
-              (println "reporter is current"))
-            (update-dom data key dom))))))))
+            (println "reporter is current"))
+          (cond-> data
+            (= reporter (get-in data [:components key :reporter]))
+            (update-dom key dom))))))))
 
 (defn set-attending
   "Set whether or not we are attending to the reporter for the dom for the key."
@@ -365,6 +362,7 @@
           (update-in [:out-of-date-keys] #(dissoc % key))
           (update-in [:id->key] #(dissoc % id))
           (update-in [:key->id] #(dissoc % key))
+          (update-in [:key->dom] #(dissoc % key))
           (update-in [:components] #(dissoc % key))
           (update-request-set-attending component-map)
           (update-unneeded-subcomponents component-map {}))
@@ -381,6 +379,7 @@
       (assoc-in data [:components key] new-component-map)
       (let [reporter (new-expression definition)
             final-map (assoc new-component-map :reporter reporter)]
+        (println "created component map for" (simplify-for-print key))
         (-> data
             (update-request-set-attending original-component-map)
             (assoc-in [:components key] final-map)

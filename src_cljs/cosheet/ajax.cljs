@@ -4,7 +4,7 @@
              [component components
               replace-in-struct into-atom-map
               process-response-for-pending take-pending-params]]
-            cosheet.dom-utils
+            [cosheet.edit-field :refer [close-edit-field]]
             ))
 
 (declare ajax-handler)
@@ -41,12 +41,26 @@
       (when (not= params {})
         (ajax-request params)))))
 
+(defn close-edit-field-if-contained
+  "Given a list of dom revisions, return true if it will change
+   a dom containing the edit_holder."
+  [doms]
+  (when (some (fn [dom]
+                (let [{:keys [id]} (second dom)]
+                  (and (contains? @components id)
+                       (.contains
+                        (js/document.getElementById id)
+                        (js/document.getElementById "edit_holder")))))
+              doms)
+    (close-edit-field)))
+
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
   (when (not= response {})
     (.log js/console (str response))
     (let [doms (:doms response)]
       (when doms
+        (close-edit-field-if-contained doms)
         (into-atom-map components
                        ;; Turn [:component {attributes} <id>]
                        ;; into [cosheet.client/component {attributes} id]

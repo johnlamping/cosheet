@@ -11,12 +11,13 @@
              [component components add-pending-action]]
             cosheet.dom-utils
             [cosheet.ajax :refer [ajax-if-pending ajax-request]]
+            [cosheet.edit-field :refer [edit-field-open-on
+                                        open-edit-field close-edit-field]]
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
 (def selected (atom nil)) ;; The currently selected dom.
-(def edit-field-open-on (atom nil)) ;; The dom the edit field is open on.
 
 (defn is-editable? [dom]
   (and dom (.. dom -classList (contains "editable"))))
@@ -68,26 +69,6 @@
   [action]
   (add-pending-action action)
   (ajax-if-pending))
-
-(defn open-edit-field [target initial-content]
-  (when (not= target @edit-field-open-on)
-    (let [edit-holder (js/document.getElementById "edit_holder")
-          edit-input (js/document.getElementById "edit_input")]
-      (set! (.-value edit-input) initial-content)
-      (gdom/appendChild target edit-holder)
-      (.focus edit-input)
-      (.select edit-input)
-      (reset! edit-field-open-on target))))
-
-(defn close-edit-field
-  "Close the edit field, without storing the value."
-  []
-  (when @edit-field-open-on
-    (let [edit-holder (js/document.getElementById "edit_holder")
-          app (js/document.getElementById "app")]
-      (reset! edit-field-open-on nil)
-      ;; Put it at the end, where it will be invisible, but still findable.
-      (gdom/appendChild app edit-holder))))
 
 (defn store-edit-field
   []

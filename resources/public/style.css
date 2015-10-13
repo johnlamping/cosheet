@@ -37,11 +37,6 @@
     padding: 3px;
 }
 
-.element-table {
-    border-spacing: 0;
-    margin-left: 3px;
-}
-
 .tag-column {
     background:
     linear-gradient(to right,
@@ -106,6 +101,22 @@
     min-height: 20px
 }
 
+.element-table {
+    border-spacing: 0;
+    margin-left: 3px;
+}
+
+.item.with-elements {
+    /* Make room for the element-table, which will be offset 3 px,
+       but 100% size */
+    padding-right: 3px;
+}
+
+.item.with-elements.item-column {
+    /* Same as above, but must also allow for our border */
+    padding-right: 5px;
+}
+
 .vertical-separated {
     border-width: 2px 0px 0px 0px;
 }
@@ -115,11 +126,11 @@
 }
 
 .item.with-elements.vertical-separated { 
-    padding: 0px 0px 3px 0px;
+    padding-bottom: 3px;
 }
 
 .item.with-elements.vertical-separated:last-child { 
-    padding: 0px 0px 0px 0px;
+    padding-bottom: 0px;
 }
 
 .editable {

@@ -138,7 +138,7 @@
                           (= key-codes/PERIOD key-code) [:add-element]
                           (= key-codes/DASH key-code) [:add-row :after]
                           (= key-codes/R key-code) [:add-row :after])]
-        (when (and command @selected)
+        (when (and command @selected (not @edit-field-open-on))
           (.log js/console (str command))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))

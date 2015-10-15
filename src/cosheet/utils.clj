@@ -13,6 +13,10 @@
   [items]
   (reduce multiset-conj {} items))
 
+(defn update-last
+  "Update the last element of a vector."
+  [vec fun]
+  (update-in vec [(dec (count vec))] fun))
 
 ;;; Utilities for making clean maps.
 

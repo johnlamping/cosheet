@@ -1,6 +1,6 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
-                     [utils :refer [multiset]]
+                     [utils :refer [multiset update-last]]
                      [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [dom-utils
@@ -256,6 +256,120 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
+;;; This is the replacement for group-by-tag.
+;;; TODO: code it all up.
+(defn canonical-info-set-diff
+  "Given two canonical info sets, return a triple of canonical sets,
+   of what is in the first, but not the second, what is in the second,
+   but not the first, and what is in both."
+  [first second]
+  (reduce (fn [[first-only second-only both] key]
+            (let [first-count (get first key 0)
+                  second-count (get second key 0)]
+              [(cond-> first-only
+                 (> first-count second-count)
+                 (assoc key (- first-count second-count)))
+               (cond-> second-only
+                 (> second-count first-count)
+                 (assoc key (- second-count first-count)))
+               (cond-> both
+                 (and (pos? first-count) (pos? second-count))
+                 (assoc key (min first-count second-count)))]))
+          [{} {} {}]
+          (clojure.set/union (keys first) (keys second))))
+
+;;; A hierarchy, for our purposes here, consists of vector of nodes. A
+;;; node is a map with:
+;;;       :info A canonical-info-set.
+;;;      :items A vector of items with information matching the node.
+;;;   :children An optional vector of child nodes.
+;;; The information pertain to a child node includes all information
+;;; for its ancestors. For example, if a node has info {:b 1}, has a
+;;; parent with info {:a 1}, and has no other ancestors, the total
+;;; information pertaining to the node is {:a 1 :b 1}
+
+(defn append-to-hierarchy
+  "Given an info and corresponding item, add them to the hierarchy"
+  [hierarchy info item]
+  (if (empty? hierarchy)
+    [{:info info :items [item]}]
+    (let [last-entry (last hierarchy)
+          [old-only new-only both] (canonical-info-set-diff
+                                    (:info last-entry) info)]
+      (if (empty? old-only)
+        (update-last
+         hierarchy
+         (if (and (empty? new-only) (not (contains? last-entry :children)))
+           (fn [last] (update-in last [:items] #(conj % item)))
+           (fn [last] (update-in last [:children]
+                                 #(append-to-hierarchy % new-only item)))))
+        (if (empty? both)
+          (conj hierarchy {:info info :items [item]})
+          (append-to-hierarchy
+           (update-last hierarchy
+                        (fn [last] {:info both
+                                    :items []
+                                    :children [{:info old-only
+                                                :items (:items last)}]}))
+           info item))))))
+
+(defn hierarchy-by-info
+  "Given a set of canonical-set-info and items for each, return a hierarchy."
+  [infos-and-items]
+  (reduce (fn [hierarchy [info item]]
+            (append-to-hierarchy hierarchy info item))
+          []
+          infos-and-items))
+
+(def flatten-hierarchy)
+
+(defn flatten-hierarchy-node
+  "Given a hierarchy node and a depth, return a flattened version
+  in of its hierarchy in pre-order. For each descendent, also give
+  its depth, and whether it is a first child and/or last child."
+  [node depth]
+  (cons (assoc node :depth depth)
+        (flatten-hierarchy (:children node) (inc depth))))
+
+(defn flatten-hierarchy
+  "Given a hierarchy and a depth, return a flattened version in pre-order,
+  for each node of the hierarchy, also giving its depth,
+  and whether it is a first element and/or last element."
+  [hierarchy depth]
+  (if (empty? hierarchy)
+    []
+    (mapcat #(flatten-hierarchy-node % depth)
+            (-> (vec hierarchy)
+                (update-in [0] #(assoc % :first-child true))
+                (update-last #(assoc % :last-child true))))))
+
+(defn items-for-info
+  "Given a canonical-info-set, and a map from canonical-infos
+  to lists of items with those infos,
+  return a list of items matching the elements of the set."
+  [info item-map]
+  (reduce (fn [result [info count]]
+            (concat result (take count (item-map info))))
+          [] info))
+
+(defn group-by-tag
+  "Given a sequence of items, group consecutive identically tagged,
+   items together. Return a list of the groups, where each group is
+   described as a list of [item, tags] pairs."
+  [items]
+  (expr-let [tag-lists (expr-seq
+                        map #(entity/label->elements % 'tag) items)
+             canonical-tags (expr-seq map canonical-info-set tag-lists)]
+    (first (reduce (fn [[groups prev-item-canonical-tags]
+                        [item item-tags item-canonical-tags]]
+                     [(if (and (not (empty? item-canonical-tags))
+                               (= item-canonical-tags prev-item-canonical-tags))
+                        (update-last groups #(conj % [item item-tags]))
+                        (conj groups [[item item-tags]]))
+                      item-canonical-tags])
+                   [[] ::no-match]
+                   (map vector items tag-lists canonical-tags)))))
+
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
   [a b]
@@ -305,25 +419,6 @@
   (assert (:key attributes))
   [:component attributes  definition])
 
-(defn group-by-tag
-  "Given a sequence of items, group consecutive identically tagged,
-   items together. Return a list of the groups, where each group is
-   described as a list of [item, tags] pairs."
-  [items]
-  (expr-let [tag-lists (expr-seq
-                        map #(entity/label->elements % 'tag) items)
-             canonical-tags (expr-seq map canonical-info-set tag-lists)]
-    (first (reduce (fn [[groups prev-item-canonical-tags]
-                        [item item-tags item-canonical-tags]]
-                     [(if (and (not (empty? item-canonical-tags))
-                               (= item-canonical-tags prev-item-canonical-tags))
-                        (update-in groups [(dec (count groups))]
-                                   #(conj % [item item-tags]))
-                        (conj groups [[item item-tags]]))
-                      item-canonical-tags])
-                   [[] ::no-match]
-                   (map vector items tag-lists canonical-tags)))))
-
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
   a vertical stack of the items. Add a separator between items if specified."
@@ -371,6 +466,21 @@
                                    parent-key)
               :row-sibling parent-key})))))
 
+(defn components-DOM
+  "Given a list of [item, excluded-elements] pairs, 
+  Generate DOM for a vertical list of components for the items."
+  [items-and-excluded parent-key sibling-elements inherited]
+  (let [item-doms (map (fn [[item excluded-elements]]
+                         (let [key (prepend-to-key (item-referent item)
+                                                   parent-key)]
+                           (make-component
+                            {:key key :sibling-elements sibling-elements}
+                            [item-DOM
+                             item key (set excluded-elements) inherited])))
+                       items-and-excluded)]
+    (add-attributes (vertical-stack item-doms :separators true)
+                    {:class "item-column"})))
+
 (defn tag-items-pair-DOM
   "Given a list, each element of the form [item, [tag ... tag], where
    the tags for each item are equivalent, generate DOM for the items,
@@ -382,31 +492,22 @@
   (let [sample-tags (get-in items-and-tags [0 1])]
     (expr-let [sibling-elements (expr-seq map visible-to-list sample-tags)
                items (map first items-and-tags)
-               item-doms (expr-seq
-                          map (fn [[item tag-list]]
-                                (let [key (prepend-to-key (item-referent item)
-                                                          parent-key)]
-                                  (make-component
-                                   {:key key :sibling-elements sibling-elements}
-                                   [item-DOM
-                                    item key (set tag-list) inherited])))
-                          items-and-tags)
-               tags-dom (let [parent-key
+               tags-dom (let [items-referent
                               (if (= (count items) 1)
-                                (prepend-to-key
-                                 (item-referent (first items)) parent-key)
-                                (prepend-to-key
-                                 (parallel-referent [] items) parent-key))]
+                                (item-referent (first items))
+                                (parallel-referent [] items))
+                              parent-key
+                              (prepend-to-key items-referent parent-key)]
                           (expr tags-DOM
-                            (order-items sample-tags) parent-key inherited))]
+                            (order-items sample-tags) parent-key inherited))
+               items-dom (components-DOM
+                          items-and-tags parent-key sibling-elements inherited)]
       [:div {:style {:display "table-row"}}
        (add-attributes tags-dom
                        {:style {:display "table-cell"}
-                        :class (when (> (count item-doms) 1)
+                        :class (when (> (count items-and-tags) 1)
                                  "for-multiple-items")})
-       (add-attributes (vertical-stack item-doms :separators true)
-                       {:style {:display "table-cell"}
-                        :class "item-column"})])))
+       (add-attributes items-dom {:style {:display "table-cell"}})])))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."

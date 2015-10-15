@@ -80,6 +80,82 @@
             [45 {["age" {'tag 1}] 1}] 1}]1
             ["Jane" {"plain" 2}] 1})))
 
+(deftest canonical-info-set-diff-test
+  (is (= (canonical-info-set-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
+         [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
+
+(deftest append-to-hierarchy-test
+  (is (= (append-to-hierarchy [] {:a 1} :i)
+         [{:info {:a 1} :items [:i]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:a 1} :j)
+         [{:info {:a 1} :items [:i :j]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:b 1} :j)
+         [{:info {:a 1} :items [:i]} {:info {:b 1} :items [:j]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:a 1 :b 1} :j)
+         [{:info {:a 1} :items [:i] :children [{:info {:b 1} :items [:j]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :items [:i]}]
+                              {:a 1} :j)
+         [{:info {:a 1} :items [] :children [{:info {:b 1} :items [:i]}
+                                             {:info {} :items [:j]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :items [:i]}]
+                              {:a 1 :c 1} :j)
+         [{:info {:a 1} :items [] :children [{:info {:b 1} :items [:i]}
+                                             {:info {:c 1} :items [:j]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1}
+                                :items [:i]
+                                :children [{:info {:b 1} :items [:j]}]}]
+                              {:a 1 :b 1 :c 1} :k)
+         [{:info {:a 1}
+           :items [:i]
+           :children [{:info {:b 1}
+                       :items [:j]
+                       :children [{:info {:c 1} :items [:k]}]}]}]))
+    (is (= (append-to-hierarchy [{:info {:a 1}
+                                :items [:i]
+                                :children [{:info {:b 1} :items [:j]}]}]
+                              {:a 1} :k)
+         [{:info {:a 1}
+           :items [:i]
+           :children [{:info {:b 1} :items [:j]}
+                      {:info {} :items [:k]}]}])))
+
+(deftest hierarchy-by-info-test
+  (is (hierarchy-by-info [[{:a 1} :i] [{:a 1 :b 1} :j] [{:a 1 :c 1} :k]])
+      [{:info {:a 1} :items [:i] :children [{:info {:b 1} :items [:j]}
+                                            {:info {:c 1} :items [:k]}]}]))
+
+(deftest flatten-hierarchy-test
+  (is (= (flatten-hierarchy
+          [{:info {:a 1}
+            :items [:i]
+            :children [{:info {:b 1}
+                        :items [:j]
+                        :children [{:info {:c 1} :items [:l]}]}
+                       {:info {:c 1}
+                        :items [:k]}]}]
+          0)
+         [{:info {:a 1}
+           :depth 0
+           :first-child true
+           :last-child true
+           :items [:i]
+           :children [{:info {:b 1}
+                       :items [:j]
+                       :children [{:info {:c 1} :items [:l]}]}
+                      {:info {:c 1}
+                       :items [:k]}]}
+          {:info {:b 1}
+           :depth 1
+           :first-child true
+           :items [:j]
+           :children [{:info {:c 1} :items [:l]}]}
+          {:info {:c 1} :depth 2 :first-child true :last-child true :items [:l]}
+          {:info {:c 1} :depth 1 :last-child true :items [:k]}])))
+
+(deftest items-for-info-test
+  (is (= (set (items-for-info {:a 1 :b 2} {:a [:a1 :a2 :a3] :b [:b1 :b2 :b3]}))
+         #{:a1 :b1 :b2})))
+
 (deftest group-by-tag-test
   (let-propagated [him joe]
     (expr-let [elements (visible-elements him)

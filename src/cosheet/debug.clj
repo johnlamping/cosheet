@@ -119,6 +119,7 @@
 (defn pst [item]
   (pprint (simplify-for-print (trace-current item))))
 
+;;; TODO: Make this use the same store when there is more than one variable.
 (defmacro let-propagated-impl [[var entity & more-bindings] exp]
   (let [body (if (empty? more-bindings)
                exp

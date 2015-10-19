@@ -256,8 +256,6 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-;;; This is the replacement for group-by-tag.
-;;; TODO: code it all up.
 (defn canonical-info-set-diff
   "Given two canonical info sets, return a triple of canonical sets,
    of what is in the first, but not the second, what is in the second,
@@ -281,37 +279,44 @@
 ;;; A hierarchy, for our purposes here, consists of vector of nodes. A
 ;;; node is a map with:
 ;;;       :info A canonical-info-set.
-;;;      :items A vector of items with information matching the node.
+;;;    :members A vector of members matching the node.
 ;;;   :children An optional vector of child nodes.
 ;;; The information pertain to a child node includes all information
 ;;; for its ancestors. For example, if a node has info {:b 1}, has a
 ;;; parent with info {:a 1}, and has no other ancestors, the total
 ;;; information pertaining to the node is {:a 1 :b 1}
+;;; As used here, the members are themselves a map, containing
+;;;           :item The item that is the member
+;;;      :tag-items The elements of the item that are tags
+;;; :tag-canonicals The canonical-info for each item in :tag-items
 
 (defn append-to-hierarchy
   "Given an info and corresponding item, add them to the hierarchy"
   [hierarchy info item]
   (if (empty? hierarchy)
-    [{:info info :items [item]}]
-    (let [last-entry (last hierarchy)
-          [old-only new-only both] (canonical-info-set-diff
-                                    (:info last-entry) info)]
-      (if (empty? old-only)
-        (update-last
-         hierarchy
-         (if (and (empty? new-only) (not (contains? last-entry :children)))
-           (fn [last] (update-in last [:items] #(conj % item)))
-           (fn [last] (update-in last [:children]
-                                 #(append-to-hierarchy % new-only item)))))
-        (if (empty? both)
-          (conj hierarchy {:info info :items [item]})
-          (append-to-hierarchy
-           (update-last hierarchy
-                        (fn [last] {:info both
-                                    :items []
-                                    :children [{:info old-only
-                                                :items (:items last)}]}))
-           info item))))))
+    [{:info info :members [item]}]
+    (let [last-entry (last hierarchy)]
+      (if (or (empty? (:info last-entry)) (empty? info))
+        (conj hierarchy {:info info :members [item]})
+        (let [[old-only new-only both] (canonical-info-set-diff
+                                        (:info last-entry) info)]
+          (if (empty? old-only)
+            (update-last
+             hierarchy
+             (if (and (empty? new-only) (not (contains? last-entry :children)))
+               (fn [last] (update-in last [:members] #((fnil conj []) % item)))
+               (fn [last] (update-in last [:children]
+                                     #(append-to-hierarchy % new-only item)))))
+            (if (empty? both)
+              (conj hierarchy {:info info :members [item]})
+              (append-to-hierarchy
+               (update-last hierarchy
+                            (fn [last]
+                              {:info both
+                               :members []
+                               :children [{:info old-only
+                                           :members (:members last)}]}))
+               info item))))))))
 
 (defn hierarchy-by-info
   "Given a set of canonical-set-info and items for each, return a hierarchy."
@@ -320,6 +325,10 @@
             (append-to-hierarchy hierarchy info item))
           []
           infos-and-items))
+
+(defn hierarchy-node-descendants
+  [node]
+  (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
 
 (def flatten-hierarchy)
 
@@ -342,33 +351,6 @@
             (-> (vec hierarchy)
                 (update-in [0] #(assoc % :first-child true))
                 (update-last #(assoc % :last-child true))))))
-
-(defn items-for-info
-  "Given a canonical-info-set, and a map from canonical-infos
-  to lists of items with those infos,
-  return a list of items matching the elements of the set."
-  [info item-map]
-  (reduce (fn [result [info count]]
-            (concat result (take count (item-map info))))
-          [] info))
-
-(defn group-by-tag
-  "Given a sequence of items, group consecutive identically tagged,
-   items together. Return a list of the groups, where each group is
-   described as a list of [item, tags] pairs."
-  [items]
-  (expr-let [tag-lists (expr-seq
-                        map #(entity/label->elements % 'tag) items)
-             canonical-tags (expr-seq map canonical-info-set tag-lists)]
-    (first (reduce (fn [[groups prev-item-canonical-tags]
-                        [item item-tags item-canonical-tags]]
-                     [(if (and (not (empty? item-canonical-tags))
-                               (= item-canonical-tags prev-item-canonical-tags))
-                        (update-last groups #(conj % [item item-tags]))
-                        (conj groups [[item item-tags]]))
-                      item-canonical-tags])
-                   [[] ::no-match]
-                   (map vector items tag-lists canonical-tags)))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -469,7 +451,7 @@
 (defn components-DOM
   "Given a list of [item, excluded-elements] pairs, 
   Generate DOM for a vertical list of components for the items."
-  [items-and-excluded parent-key sibling-elements inherited]
+  [items-with-excluded parent-key sibling-elements inherited]
   (let [item-doms (map (fn [[item excluded-elements]]
                          (let [key (prepend-to-key (item-referent item)
                                                    parent-key)]
@@ -477,53 +459,99 @@
                             {:key key :sibling-elements sibling-elements}
                             [item-DOM
                              item key (set excluded-elements) inherited])))
-                       items-and-excluded)]
+                       items-with-excluded)]
     (add-attributes (vertical-stack item-doms :separators true)
                     {:class "item-column"})))
 
 (defn tag-items-pair-DOM
-  "Given a list, each element of the form [item, [tag ... tag], where
-   the tags for each item are equivalent, generate DOM for the items,
-   sharing a label with the tags."
+  "Given a list of tag items, a list of pairs of (item, excluded elements,
+  a list of elements (each in list form) that each item must satisfy,
+  and a list of all items that changes to the tags should apply to,
+  generate DOM for an element table row for the items."
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
-  [items-and-tags parent parent-key inherited]
-  (println "generating tag-item")
-  (let [sample-tags (get-in items-and-tags [0 1])]
-    (expr-let [sibling-elements (expr-seq map visible-to-list sample-tags)
-               items (map first items-and-tags)
-               tags-dom (let [items-referent
-                              (if (= (count items) 1)
-                                (item-referent (first items))
-                                (parallel-referent [] items))
-                              parent-key
-                              (prepend-to-key items-referent parent-key)]
-                          (expr tags-DOM
-                            (order-items sample-tags) parent-key inherited))
-               items-dom (components-DOM
-                          items-and-tags parent-key sibling-elements inherited)]
-      [:div {:style {:display "table-row"}}
-       (add-attributes tags-dom
-                       {:style {:display "table-cell"}
-                        :class (when (> (count items-and-tags) 1)
-                                 "for-multiple-items")})
-       (add-attributes items-dom {:style {:display "table-cell"}})])))
+  [[tag-items items-with-excluded sibling-elements affected-items]
+   parent-key inherited]
+  (expr-let [tags-dom (let [items-referent
+                            (if (= (count affected-items) 1)
+                              (item-referent (first affected-items))
+                              (parallel-referent [] affected-items))]
+                        (expr tags-DOM (order-items tag-items)
+                              (prepend-to-key items-referent parent-key)
+                              inherited))
+             items-dom (components-DOM items-with-excluded
+                                       parent-key sibling-elements inherited)]
+    [:div {:style {:display "table-row"}}
+     (add-attributes tags-dom
+                     {:style {:display "table-cell"}
+                      :class (when (> (count items-with-excluded) 1)
+                               "for-multiple-items")})
+     (add-attributes items-dom {:style {:display "table-cell"}})]))
+
+(defn items-for-info
+  "Given a canonical-info-set, a list of items, 
+  and a list of the canonical-infos for those items,
+  return a list of items matching the elements of the set."
+  [info items canonicals]
+  (let [;; A map from canonical-info to a vecor of tag elements with that info
+        canonicals-map (reduce (fn [map [tag canonical]]
+                                 (update-in map [canonical] #(conj % tag)))
+                               {} (map vector items canonicals))]
+    (reduce (fn [result [info count]]
+              (concat result (take count (canonicals-map info))))
+            [] info)))
+
+(defn hierarchy-node-to-row-info
+  "Given a flattened hierarcy element, compute the information needed
+  by tag-items-pair-DOM."
+  [node]
+  (let [descendants (hierarchy-node-descendants node)
+        example (first descendants)
+        tag-items (items-for-info
+                   (:info node) (:tag-items example) (:tag-canonicals example))
+        items-with-excluded (map #((juxt :item :tag-items) %) (:members node))
+        descendant-items (map :item descendants)]
+    (expr-let [sibling-elements
+               (expr-seq map visible-to-list
+                         (get-in node [:members 0 :tag-items]))]
+      [tag-items items-with-excluded sibling-elements descendant-items])))
+
+(defn tagged-items-hierarchy
+  "Given items, organize them into a flattened hierarchy by tag"
+  [items]
+  (expr-let [item-maps
+             (expr-seq map
+                       (fn [item]
+                         (expr-let [tag-items (entity/label->elements item 'tag)
+                                    tag-canonicals (expr-seq map canonical-info
+                                                             tag-items)]
+                           {:item item
+                            :tag-items tag-items
+                            :tag-canonicals tag-canonicals}))
+                       (order-items items))]
+    (let [hierarchy (hierarchy-by-info
+                     (map (fn [map] [(multiset (:tag-canonicals map)) map])
+                          item-maps))]
+      (flatten-hierarchy hierarchy 0))))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
-  ;; We use a table as a way of making all the cells of a row the same height.
-  [items parent parent-key inherited]
-  (expr-let [rows (expr group-by-tag (order-items items))
+  ;; We use a table as a way of making all the cells of a row
+  ;; be the same height.
+  [items parent-key inherited]
+  (expr-let [hierarchy (tagged-items-hierarchy items)
+             hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
              row-doms (expr-seq
-                       map #(cache tag-items-pair-DOM % parent parent-key inherited)
-                       rows)]
+                       map #(cache tag-items-pair-DOM
+                                   % parent-key inherited)
+                       hierarchy-info)]
     (into [:div {:class "element-table"
                  :style {:display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [0 1])) rows)
+            (if (every? #(empty? (get-in % [:members 0 :tag-items])) hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
-            (update-in (vec row-doms) [(- (count rows) 1)]
+            (update-in (vec row-doms) [(- (count row-doms) 1)]
                        #(add-attributes % {:class "last-row"}))))))
 
 (defn item-DOM
@@ -532,8 +560,6 @@
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
   [item key excluded inherited]
-  ;;; TODO: for deep items, use a layout with tag above content to conserve
-  ;;; horizontal space.
   (println "Generating DOM for" (simplify-for-print key))
   (expr-let [content (entity/content item)
              elements (visible-elements item)]
@@ -554,6 +580,6 @@
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-DOM
-                                 elements item key inherited-down)]
+                                 elements key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))

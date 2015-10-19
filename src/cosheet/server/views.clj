@@ -12,7 +12,9 @@
     [store-utils :refer [add-entity]]
     [query :refer [query-matches]]
     query-impl
-    [computation-manager :refer [new-management compute]])
+    [computation-manager :refer [new-management compute]]
+    [computation-manager-test :refer [check-propagation]]
+    [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
     [render :refer [item-DOM]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
@@ -106,7 +108,11 @@
         (reset! dom-tracker (create-tracker store))
         (println "created tracker")
         (compute management 1000)
-        (println "computed some"))
+        (println "computed some")
+        (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
+              task-queue (get-in @@dom-tracker [:management :queue])]
+          (when (finished-all-tasks? task-queue)
+            (check-propagation #{}  reporter))))
       (when initialize
         (println "requesting client refresh")
         (request-client-refresh @dom-tracker)))
@@ -114,7 +120,11 @@
     (process-acknowledgements @dom-tracker acknowledge)    
     (when actions
       (do-actions store @dom-tracker actions)
-      (compute management 1000))
+      (compute management 1000)
+      (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
+              task-queue (get-in @@dom-tracker [:management :queue])]
+          (when (finished-all-tasks? task-queue)
+            (check-propagation #{}  reporter))))
     ;; Note: We must get the doms after doing the actions, so we can
     ;; immediately show the response to the actions.
     (let [doms (response-doms @@dom-tracker 10)

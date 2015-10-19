@@ -5,8 +5,10 @@
             (cosheet
              [orderable :as orderable]
              [entity :as entity  :refer [to-list description->entity]]
-             [reporters :refer [expr expr-let expr-seq]]
+             [reporters :as reporter :refer [expr expr-let expr-seq]]
              [debug :refer [current-value let-propagated envs-to-list]]
+             [computation-manager :refer [new-management request compute]] 
+             [computation-manager-test :refer [check-propagation]]
              entity-impl
              store-impl
              mutable-store-impl)
@@ -86,83 +88,133 @@
 
 (deftest append-to-hierarchy-test
   (is (= (append-to-hierarchy [] {:a 1} :i)
-         [{:info {:a 1} :items [:i]}]))
-  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:a 1} :j)
-         [{:info {:a 1} :items [:i :j]}]))
-  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:b 1} :j)
-         [{:info {:a 1} :items [:i]} {:info {:b 1} :items [:j]}]))
-  (is (= (append-to-hierarchy [{:info {:a 1} :items [:i]}] {:a 1 :b 1} :j)
-         [{:info {:a 1} :items [:i] :children [{:info {:b 1} :items [:j]}]}]))
-  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :items [:i]}]
+         [{:info {:a 1} :members [:i]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:a 1} :j)
+         [{:info {:a 1} :members [:i :j]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:b 1} :j)
+         [{:info {:a 1} :members [:i]} {:info {:b 1} :members [:j]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:a 1 :b 1} :j)
+         [{:info {:a 1} :members [:i]
+           :children [{:info {:b 1} :members [:j]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :members [:i]}]
                               {:a 1} :j)
-         [{:info {:a 1} :items [] :children [{:info {:b 1} :items [:i]}
-                                             {:info {} :items [:j]}]}]))
-  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :items [:i]}]
+         [{:info {:a 1} :members [] :children [{:info {:b 1} :members [:i]}
+                                             {:info {} :members [:j]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1 :b 1} :members [:i]}]
                               {:a 1 :c 1} :j)
-         [{:info {:a 1} :items [] :children [{:info {:b 1} :items [:i]}
-                                             {:info {:c 1} :items [:j]}]}]))
+         [{:info {:a 1} :members [] :children [{:info {:b 1} :members [:i]}
+                                             {:info {:c 1} :members [:j]}]}]))
   (is (= (append-to-hierarchy [{:info {:a 1}
-                                :items [:i]
-                                :children [{:info {:b 1} :items [:j]}]}]
+                                :members [:i]
+                                :children [{:info {:b 1} :members [:j]}]}]
                               {:a 1 :b 1 :c 1} :k)
          [{:info {:a 1}
-           :items [:i]
+           :members [:i]
            :children [{:info {:b 1}
-                       :items [:j]
-                       :children [{:info {:c 1} :items [:k]}]}]}]))
+                       :members [:j]
+                       :children [{:info {:c 1} :members [:k]}]}]}]))
     (is (= (append-to-hierarchy [{:info {:a 1}
-                                :items [:i]
-                                :children [{:info {:b 1} :items [:j]}]}]
-                              {:a 1} :k)
+                                  :members [:i]
+                                  :children [{:info {:b 1} :members [:j]}]}]
+                                {:a 1} :k)
          [{:info {:a 1}
-           :items [:i]
-           :children [{:info {:b 1} :items [:j]}
-                      {:info {} :items [:k]}]}])))
+           :members [:i]
+           :children [{:info {:b 1} :members [:j]}
+                      {:info {} :members [:k]}]}])))
 
 (deftest hierarchy-by-info-test
-  (is (hierarchy-by-info [[{:a 1} :i] [{:a 1 :b 1} :j] [{:a 1 :c 1} :k]])
-      [{:info {:a 1} :items [:i] :children [{:info {:b 1} :items [:j]}
-                                            {:info {:c 1} :items [:k]}]}]))
+  (is (= (hierarchy-by-info [[{:a 1} :i] [{:a 1 :b 1} :j] [{:a 1 :c 1} :k]])
+         [{:info {:a 1} :members [:i]
+           :children [{:info {:b 1} :members [:j]}
+                      {:info {:c 1} :members [:k]}]}])))
+
+(deftest hierarchy-node-descendants-test
+  (is (= (set (hierarchy-node-descendants
+               {:info {:a 1}
+                :members [:i]
+                :children [{:info {:b 1} :members [:j]}]}))
+         #{:i :j})))
 
 (deftest flatten-hierarchy-test
   (is (= (flatten-hierarchy
           [{:info {:a 1}
-            :items [:i]
+            :members [:i]
             :children [{:info {:b 1}
-                        :items [:j]
-                        :children [{:info {:c 1} :items [:l]}]}
+                        :members [:j]
+                        :children [{:info {:c 1} :members [:l]}]}
                        {:info {:c 1}
-                        :items [:k]}]}]
+                        :members [:k]}]}]
           0)
          [{:info {:a 1}
            :depth 0
            :first-child true
            :last-child true
-           :items [:i]
+           :members [:i]
            :children [{:info {:b 1}
-                       :items [:j]
-                       :children [{:info {:c 1} :items [:l]}]}
+                       :members [:j]
+                       :children [{:info {:c 1} :members [:l]}]}
                       {:info {:c 1}
-                       :items [:k]}]}
+                       :members [:k]}]}
           {:info {:b 1}
            :depth 1
            :first-child true
-           :items [:j]
-           :children [{:info {:c 1} :items [:l]}]}
-          {:info {:c 1} :depth 2 :first-child true :last-child true :items [:l]}
-          {:info {:c 1} :depth 1 :last-child true :items [:k]}])))
+           :members [:j]
+           :children [{:info {:c 1} :members [:l]}]}
+          {:info {:c 1}
+           :depth 2 :first-child true :last-child true :members [:l]}
+          {:info {:c 1} :depth 1 :last-child true :members [:k]}])))
 
 (deftest items-for-info-test
-  (is (= (set (items-for-info {:a 1 :b 2} {:a [:a1 :a2 :a3] :b [:b1 :b2 :b3]}))
-         #{:a1 :b1 :b2})))
+  (is (= (set (items-for-info {:a 1 :b 2}
+                              [:a1 :a2 :a3 :b1 :b2 :b3]
+                              [:a :a :a :b :b :b]))
+         #{:a3 :b3 :b2})))
 
-(deftest group-by-tag-test
-  (let-propagated [him joe]
-    (expr-let [elements (visible-elements him)
-               groups (group-by-tag elements)]
-      (is (= (count groups) 3))
-      (is (= (set (map count groups)) #{1 2}))
-      (is (= (apply + (map #(count (second (first %))) groups)) 1)))))
+(deftest hierarchy-node-to-row-info-test
+  (let [him (let-propagated [him joe] him)
+        bogus-age (first (current-value
+                          (entity/label->elements him "doubtful")))
+        age (first (remove #{bogus-age}
+                           (current-value
+                            (entity/label->elements him "age"))))
+        bogus-age-tag (first (current-value
+                              (entity/label->elements bogus-age 'tag)))
+        age-tag (first (current-value (entity/label->elements age 'tag))) ]
+    (is (= (current-value
+            (hierarchy-node-to-row-info
+             {:depth 0 :last-child true :info {["age" {'tag 1}] 1}
+              :members [{:item bogus-age
+                         :tag-items [bogus-age-tag]
+                         :tag-canonicals [["age" {'tag 1}]]}
+                        {:item age
+                         :tag-items [age-tag]
+                         :tag-canonicals [["age" {'tag 1}]]}]}))
+           [[bogus-age-tag]
+            [[bogus-age [bogus-age-tag]] [age [age-tag]]]
+            [["age" 'tag]]
+            [bogus-age age]]))))
+
+(deftest tagged-items-hierarchy-test
+  (let [him (let-propagated [him joe] him)
+        gender (first (current-value (entity/label->elements him o1)))
+        bogus-age (first (current-value
+                          (entity/label->elements him "doubtful")))
+        age (first (remove #{bogus-age}
+                           (current-value
+                            (entity/label->elements him "age"))))
+        bogus-age-tag (first (current-value
+                              (entity/label->elements bogus-age 'tag)))
+        age-tag (first (current-value (entity/label->elements age 'tag)))]
+    (is (= (current-value (tagged-items-hierarchy [gender age bogus-age]))
+           [{:depth 0 :first-child true :info {}
+             :members [{:item gender, :tag-items nil, :tag-canonicals nil}]}
+            {:depth 0 :last-child true :info {["age" {'tag 1}] 1}
+             :members [{:item bogus-age
+                        :tag-items [bogus-age-tag]
+                        :tag-canonicals [["age" {'tag 1}]]}
+                       {:item age
+                        :tag-items [age-tag]
+                        :tag-canonicals [["age" {'tag 1}]]}]}]))))
 
 (deftest tags-DOM-test
   (is (= (tags-DOM nil [:k] {}) [:div {:class "tag-column editable"
@@ -290,10 +342,9 @@
                [item-DOM
                 doubtful [(:item-id doubtful) :age]
                 #{} {:depth 1}]]]]])))
-  (let [[dom joe]
+  (let [[dom-reporter joe]
         (let-propagated [him joe]
-          (expr-let [dom (item-DOM him [:joe] #{} {:depth 0})]
-            [dom him]))
+          (expr identity [(item-DOM him [:joe] #{} {:depth 0}) him]))
         male (first (current-value (entity/label->elements joe o1)))
         married (first (current-value (entity/label->elements joe o2)))
         bogus-age (first (current-value
@@ -307,7 +358,11 @@
                             (entity/label->elements joe "age"))))
         age-tag (first (current-value (entity/label->elements age 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))]
-    (is (= dom
+    (let [m (new-management)]
+      (request dom-reporter m)
+      (compute m))
+    (check-propagation #{} dom-reporter)
+    (is (= (reporter/value dom-reporter)
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag) [:condition 'tag]]
                                 [(:item-id bogus-age) (:item-id age)]]]
@@ -379,6 +434,3 @@
                    #{age-tag} {:depth 1}]]]]]]))))  
   ;; TODO: Test content that is an item.
   )
-
-
-

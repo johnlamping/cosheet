@@ -445,11 +445,11 @@
                               (str " indent-" depth)))
                           (case (:top-border appearance-info)
                             :top-level " top-border"
-                            :nested " top-border nested"
+                            :nested " top-nested-border"
                             nil)
                           (case (:bottom-border appearance-info)
                             :top-level " bottom-border"
-                            :nested " bottom-border nested"
+                            :nested " bottom-nested-border"
                             nil))}
        (not= (count tags) 1)
        (into {:key (prepend-to-key (condition-referent ['tag])

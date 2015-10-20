@@ -103,11 +103,11 @@
     background-color: #C0F0FF;
 }
 
-.tags.column.nested > div.top-border {
+.tags.column > div.top-nested-border {
     border-top-width: 2px;
 }
 
-.tags.column.nested > div.bottom-border {
+.tags.column > div.bottom-nested-border {
     border-bottom-width: 2px;
 }
 

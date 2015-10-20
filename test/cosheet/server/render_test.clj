@@ -242,7 +242,7 @@
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:component {:key [(:item-id fred) [:condition 'tag] :k]
-                        :class "tags column top-border nested"
+                        :class "tags column top-nested-border"
                         :sibling-elements ['tag]
                         :row-sibling [:k]}
             [item-DOM
@@ -251,12 +251,15 @@
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
-          (expr-let [dom (tags-DOM {:depth 0} [fred fran] [:k] {:depth 1})]
+          (expr-let [dom (tags-DOM {:depth 0
+                                    :top-border :top-level
+                                    :bottom-border :nested}
+                                   [fred fran] [:k] {:depth 1})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (= dom
            [:div
-            {:class "tags column"
+            {:class "tags column top-border bottom-nested-border"
              :key [[:condition 'tag] :k]
              :row-sibling [:k]}
             [:component {:key [(:item-id fred) [:condition 'tag] :k]
@@ -359,6 +362,7 @@
                [item-DOM
                 doubtful [(:item-id doubtful) :age]
                 #{} {:depth 1}]]]]])))
+  ;; Test added elements
   (let [[dom-reporter joe]
         (let-propagated [him joe]
           (expr identity [(item-DOM him [:joe] #{} {:depth 0}) him]))
@@ -373,8 +377,7 @@
         age (first (remove #{bogus-age}
                            (current-value
                             (entity/label->elements joe "age"))))
-        age-tag (first (current-value (entity/label->elements age 'tag)))
-        age-tag-spec (first (current-value (entity/elements age-tag)))]
+        age-tag (first (current-value (entity/label->elements age 'tag)))]
     (let [m (new-management)]
       (request dom-reporter m)
       (compute m))
@@ -449,6 +452,106 @@
                               :sibling-elements [["age" 'tag]]}
                   [item-DOM
                    age [(:item-id age) :joe]
-                   #{age-tag} {:depth 1}]]]]]]))))  
-  ;; TODO: Test content that is an item.
-  )
+                   #{age-tag} {:depth 1}]]]]]]))))
+  ;; Test a hierarchy.
+  (let [[dom-reporter joe]
+        (let-propagated [him `("Joe"
+                               (~o2 :order)
+                               ("1" (~o1 :order)
+                                    ("L1" ~'tag))
+                               (12 (~o2 :order)
+                                   ("L1" ~'tag (~o1 :order))
+                                   ("L2" ~'tag (~o2 :order)))
+                               (13 (~o3 :order)
+                                   ("L1" ~'tag (~o1 :order))
+                                   ("L3" ~'tag (~o2 :order))))]
+          (expr identity [(item-DOM him [:joe] #{} {:depth 0}) him]))
+        v1 (first (current-value (entity/label->elements joe o1)))
+        v12 (first (current-value (entity/label->elements joe o2)))
+        v13 (first (current-value (entity/label->elements joe o3)))
+        L1 (first (current-value (entity/label->elements v1 'tag)))
+        L1-spec (first (current-value (entity/elements L1)))
+        L121 (first (current-value (entity/label->elements v12 o1)))
+        L2 (first (current-value (entity/label->elements v12 o2)))
+        L2-spec (first (remove #{(first (current-value
+                                         (entity/label->elements L2 :order)))}
+                               (current-value (entity/elements L2))))
+        L131 (first (current-value (entity/label->elements v13 o1)))
+        L3 (first (current-value (entity/label->elements v13 o2)))
+        L3-spec (first (remove #{(first (current-value
+                                         (entity/label->elements L3 :order)))}
+                               (current-value (entity/elements L3))))]
+    (let [m (new-management)]
+      (request dom-reporter m)
+      (compute m))
+    (check-propagation #{} dom-reporter)
+    (is (= (reporter/value dom-reporter)
+           (let [labels-ref [:parallel
+                             [(:item-id L1) [:condition 'tag]]
+                             [(:item-id v1) (:item-id v12) (:item-id v13)]]]
+             [:div {:class "item with-elements" :key [:joe]}
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text editable"
+                     :key [[:content] :joe]}
+               "Joe"]
+              [:div {:style {:width "100%"
+                             :height "1px"
+                             :display "table"
+                             :table-layout "fixed"}
+                     :class "element-table"}
+               [:div {:style {:display "table-row"}}
+                [:component
+                 {:key [labels-ref :joe]
+                  :style {:display "table-cell"}
+                  :class "tags column top-border"
+                  :sibling-elements ['tag]
+                  :row-sibling [[:parallel []
+                                 [(:item-id v1) (:item-id v12) (:item-id v13)]]
+                                :joe]}
+                 [item-DOM
+                  L1
+                  [labels-ref :joe]
+                  #{L1-spec} {:depth 1}]]
+                [:component {:key [(:item-id v1) :joe]
+                             :style {:display "table-cell"}
+                             :class "items column"
+                             :sibling-elements [["L1" 'tag]]}
+                 [item-DOM
+                  v1 [(:item-id v1) :joe]
+                  #{L1} {:depth 1}]]]
+               [:div {:style {:display "table-row"}}
+                [:component
+                 {:key [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                  :style {:display "table-cell"}
+                  :class "tags column indent-1 top-nested-border bottom-nested-border"
+                  :sibling-elements ['tag]
+                  :row-sibling [(:item-id v12) :joe]}
+                 [item-DOM
+                  L2
+                  [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                  #{L2-spec} {:depth 1}]]
+                [:component {:key [(:item-id v12) :joe]
+                             :style {:display "table-cell"}
+                             :class "items column"
+                             :sibling-elements [["L1" 'tag] ["L2" 'tag]]}
+                 [item-DOM
+                  v12 [(:item-id v12) :joe]
+                  #{L121 L2} {:depth 1}]]]
+               [:div {:style {:display "table-row"} :class "last-row"}
+                [:component
+                 {:key [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                  :style {:display "table-cell"}
+                  :class "tags column indent-1 bottom-border"
+                  :sibling-elements ['tag]
+                  :row-sibling [(:item-id v13) :joe]}
+                 [item-DOM
+                  L3
+                  [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                  #{L3-spec} {:depth 1}]]
+                [:component {:key [(:item-id v13) :joe]
+                             :style {:display "table-cell"}
+                             :class "items column"
+                             :sibling-elements [["L1" 'tag] ["L3" 'tag]]}
+                 [item-DOM
+                  v13 [(:item-id v13) :joe]
+                  #{L131 L3} {:depth 1}]]]]])))))

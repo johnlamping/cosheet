@@ -21,7 +21,7 @@
     margin-left: 30px;
 }
 
-.selected, .tag-column.selected {
+.selected, .tags.column.selected {
     background:
     linear-gradient(to right,
                     rgba(64,128,255,1),
@@ -41,15 +41,16 @@
                     rgba(255,255,255,0));
 }
 
-.tag-column.selected {
+.tags.column.selected {
     background-color: #C0F0FF;
 }
 
-.item-column,.tag-column {
+.column {
     padding: 3px;
 }
 
-.tag-column {
+.tags.column {
+    vertical-align: top;
     background:
     linear-gradient(to right,
                     rgba(255,255,255,.7),
@@ -64,39 +65,71 @@
                     rgba(255,255,255,0) 7px,
                     rgba(255,255,255,0));
     background-color: #C0F0FF;
-    border-width: 2px 0px 0px 2px;
+    border-left-width: 2px;
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
     width: 30%;
 }
 
-.content-text.tag-column {
-        text-align: right;
-}
-
-.tag-column {
+.tags.column.nested {
     vertical-align: top;
+    background:
+    linear-gradient(to right,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0));
+    background-color: #C0F0FF;
+    width: 30%;
 }
 
-.tag-column.for-multiple-items {
-    vertical-align: middle;
+.top-border {
+    border-top-width: 2px;
 }
 
-.last-row > .tag-column {
+.bottom-border {
     border-bottom-width: 2px;
 }
 
-.no-tags > .tag-column {
-    width: 20px;
+.tags.column.nested > div {
+    background:
+    linear-gradient(to bottom,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0)),
+    linear-gradient(to top,
+                    rgba(255,255,255,.7),
+                    rgba(255,255,255,0) 7px,
+                    rgba(255,255,255,0));
+    background-color: #C0F0FF;
 }
 
-.item-column {
+.tags.column.nested > div.top-border {
+    border-top-width: 2px;
+}
+
+.tags.column.nested > div.bottom-border {
+    border-bottom-width: 2px;
+}
+
+.content-text.tags.column {
+        text-align: right;
+}
+
+.tags.column.for-multiple-items {
+    vertical-align: middle;
+}
+
+.no-tags > .tags.column {
+    width: 10px;
+}
+
+.items.column {
     border-width: 2px 2px 0px 2px;
     width: auto;
     background-color: white;
 }
 
-.last-row > .item-column {
+.last-row > .items.column {
     border-bottom-width: 2px;
 }
 
@@ -104,7 +137,7 @@
     background-color: gainsboro;
 }
 
-.editable.tag-column:not(.content-text) {
+.editable.tags.column:not(.content-text) {
     background-color: #C0E0F0;
 }
 
@@ -124,9 +157,9 @@
     padding-right: 3px;
 }
 
-.item.with-elements.item-column {
+.item.with-elements.column {
     /* Same as above, but must also allow for our border */
-    padding-right: 5px;
+    padding-right: 6px;
 }
 
 .vertical-separated {

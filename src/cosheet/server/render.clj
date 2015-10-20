@@ -335,22 +335,16 @@
 (defn flatten-hierarchy-node
   "Given a hierarchy node and a depth, return a flattened version
   in of its hierarchy in pre-order. For each descendent, also give
-  its depth, and whether it is a first child and/or last child."
+  its depth."
   [node depth]
   (cons (assoc node :depth depth)
         (flatten-hierarchy (:children node) (inc depth))))
 
 (defn flatten-hierarchy
   "Given a hierarchy and a depth, return a flattened version in pre-order,
-  for each node of the hierarchy, also giving its depth,
-  and whether it is a first element and/or last element."
+  for each node of the hierarchy, also giving its depth."
   [hierarchy depth]
-  (if (empty? hierarchy)
-    []
-    (mapcat #(flatten-hierarchy-node % depth)
-            (-> (vec hierarchy)
-                (update-in [0] #(assoc % :first-child true))
-                (update-last #(assoc % :last-child true))))))
+  (mapcat #(flatten-hierarchy-node % depth) hierarchy))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -432,9 +426,10 @@
                       [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
-  "Given a sequence of items that are tags, return components for them,
+  "Given information about the appearance of this node,
+  and a sequence of items that are tags, return components for them,
   wrapped in a div if there is more than one."
-  [tags parent-key inherited]
+  [appearance-info tags parent-key inherited]
   (println "generating tags dom.")
   (assert (not= (first parent-key) (condition-referent ['tag])))
   (expr-let [tag-components
@@ -442,7 +437,20 @@
               map #(tag-component % parent-key inherited) tags)]
     (add-attributes
      (vertical-stack tag-components :separators true)
-     (cond-> {:class (str "tag-column" (when (empty? tags) " editable"))}
+     ;; TODO: If depth is non-zero, make indented table wrapper.
+     (cond-> {:class (str "tags column"
+                          (when (empty? tags) " editable")
+                          (let [depth (:depth appearance-info)]
+                            (when (> depth 0)
+                              (str " indent-" depth)))
+                          (case (:top-border appearance-info)
+                            :top-level " top-border"
+                            :nested " top-border nested"
+                            nil)
+                          (case (:bottom-border appearance-info)
+                            :top-level " bottom-border"
+                            :nested " bottom-border nested"
+                            nil))}
        (not= (count tags) 1)
        (into {:key (prepend-to-key (condition-referent ['tag])
                                    parent-key)
@@ -461,22 +469,24 @@
                              item key (set excluded-elements) inherited])))
                        items-with-excluded)]
     (add-attributes (vertical-stack item-doms :separators true)
-                    {:class "item-column"})))
+                    {:class "items column"})))
 
 (defn tag-items-pair-DOM
-  "Given a list of tag items, a list of pairs of (item, excluded elements,
+  "Given information about the appearance of this node,
+  a list of tag items, a list of pairs of (item, excluded elements,
   a list of elements (each in list form) that each item must satisfy,
   and a list of all items that changes to the tags should apply to,
   generate DOM for an element table row for the items."
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
-  [[tag-items items-with-excluded sibling-elements affected-items]
+  [[appearance-info
+    tag-items items-with-excluded sibling-elements affected-items]
    parent-key inherited]
   (expr-let [tags-dom (let [items-referent
                             (if (= (count affected-items) 1)
                               (item-referent (first affected-items))
                               (parallel-referent [] affected-items))]
-                        (expr tags-DOM (order-items tag-items)
+                        (expr tags-DOM appearance-info (order-items tag-items)
                               (prepend-to-key items-referent parent-key)
                               inherited))
              items-dom (components-DOM items-with-excluded
@@ -493,7 +503,7 @@
   and a list of the canonical-infos for those items,
   return a list of items matching the elements of the set."
   [info items canonicals]
-  (let [;; A map from canonical-info to a vecor of tag elements with that info
+  (let [;; A map from canonical-info to a vector of tag elements with that info.
         canonicals-map (reduce (fn [map [tag canonical]]
                                  (update-in map [canonical] #(conj % tag)))
                                {} (map vector items canonicals))]
@@ -510,11 +520,36 @@
         tag-items (items-for-info
                    (:info node) (:tag-items example) (:tag-canonicals example))
         items-with-excluded (map #((juxt :item :tag-items) %) (:members node))
-        descendant-items (map :item descendants)]
+        descendant-items (map :item descendants)
+        appearance-info (select-keys node [:depth :top-border :bottom-border])]
     (expr-let [sibling-elements
                (expr-seq map visible-to-list
                          (get-in node [:members 0 :tag-items]))]
-      [tag-items items-with-excluded sibling-elements descendant-items])))
+      [appearance-info tag-items items-with-excluded
+       sibling-elements descendant-items])))
+
+(defn add-border-info
+  "Given the flattened hierarchy for one top level node,
+  add the information about what borders each node should be responsible for."
+  [nodes]
+  (let [nodes (vec nodes)
+        n (count nodes)
+        nz-depth (fn [d] (if (= d 0) 1e100 d))]
+    (for [i (range n)]
+      (as-> (nodes i) node
+        (if (= i 0)
+          (assoc node :top-border :top-level)
+          (if (< (nz-depth (:depth node)) (nz-depth (:depth (nodes (- i 1)))))
+            (assoc node :top-border :nested)
+            node))
+        (if (= i (dec n))
+          ;; Don't add a bottom border to the last node, as it will be
+          ;; handled by the top border of the first node of the next
+          ;; flattened hierarchy.
+          node 
+          (if (<= (nz-depth (:depth node)) (nz-depth (:depth (nodes (+ i 1)))))
+            (assoc node :bottom-border :nested)
+            node))))))
 
 (defn tagged-items-hierarchy
   "Given items, organize them into a flattened hierarchy by tag"
@@ -532,12 +567,31 @@
     (let [hierarchy (hierarchy-by-info
                      (map (fn [map] [(multiset (:tag-canonicals map)) map])
                           item-maps))]
-      (flatten-hierarchy hierarchy 0))))
+      (update-last 
+       (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0)) hierarchy))
+       ;; We need to put on a final closing border.
+       #(assoc % :bottom-border :top-level)))))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
+  ;; Hierarchies make this a bit tricky. We use a separate table row
+  ;; for each node of the hierarchy, so we can align the tags and
+  ;; items for each node. This means that all but the deepest nodes of
+  ;; a hierarchy will be displayed as several rows. A row thus needs
+  ;; to be responsible not only for borders of its node, but also for
+  ;; borders of nodes it is contained in. In practice, this means
+  ;; that a row needs to handle the left border of the outermost node
+  ;; it is in, and may need to deal with that node's top or bottom
+  ;; border as well. This is in addition to the node's own borders,
+  ;; which separate it from its adjacent nodes under the same top
+  ;; level node. When separating adjacent nodes, the border should be
+  ;; drawn by the less nested node, since that will have the right length.
+  ;; Thus, when laying out a row, we need to know:
+  ;;            :depth in the hierarchy, for the indendation
+  ;;       :top-border for a :top-level node, or for a :nested node
+  ;;    :bottom-border for a :top-level node, or for a :nested node
   [items parent-key inherited]
   (expr-let [hierarchy (tagged-items-hierarchy items)
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
@@ -546,7 +600,8 @@
                                    % parent-key inherited)
                        hierarchy-info)]
     (into [:div {:class "element-table"
-                 :style {:display "table" :table-layout "fixed"}}]
+                 :style {:height "1px" ;; So height:100% in rows will work.
+                         :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
             (if (every? #(empty? (get-in % [:members 0 :tag-items])) hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)

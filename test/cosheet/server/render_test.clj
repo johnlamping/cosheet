@@ -147,8 +147,6 @@
           0)
          [{:info {:a 1}
            :depth 0
-           :first-child true
-           :last-child true
            :members [:i]
            :children [{:info {:b 1}
                        :members [:j]
@@ -157,12 +155,11 @@
                        :members [:k]}]}
           {:info {:b 1}
            :depth 1
-           :first-child true
            :members [:j]
            :children [{:info {:c 1} :members [:l]}]}
           {:info {:c 1}
-           :depth 2 :first-child true :last-child true :members [:l]}
-          {:info {:c 1} :depth 1 :last-child true :members [:k]}])))
+           :depth 2 :members [:l]}
+          {:info {:c 1} :depth 1 :members [:k]}])))
 
 (deftest items-for-info-test
   (is (= (set (items-for-info {:a 1 :b 2}
@@ -182,17 +179,32 @@
         age-tag (first (current-value (entity/label->elements age 'tag))) ]
     (is (= (current-value
             (hierarchy-node-to-row-info
-             {:depth 0 :last-child true :info {["age" {'tag 1}] 1}
+             {:depth 0 :top-border :x :bottom-border :y
+              :info {["age" {'tag 1}] 1}
               :members [{:item bogus-age
                          :tag-items [bogus-age-tag]
                          :tag-canonicals [["age" {'tag 1}]]}
                         {:item age
                          :tag-items [age-tag]
                          :tag-canonicals [["age" {'tag 1}]]}]}))
-           [[bogus-age-tag]
+            [{:depth 0 :top-border :x :bottom-border :y}
+            [bogus-age-tag]
             [[bogus-age [bogus-age-tag]] [age [age-tag]]]
             [["age" 'tag]]
             [bogus-age age]]))))
+
+(deftest add-border-info-test
+  (is (= (add-border-info
+          [{:depth 0}
+           {:depth 1}
+           {:depth 2}
+           {:depth 2}
+           {:depth 1}])
+         [{:depth 0 :top-border :top-level}
+          {:depth 1 :top-border :nested :bottom-border :nested}
+          {:depth 2 :bottom-border :nested}
+          {:depth 2}
+          {:depth 1 :top-border :nested}])))
 
 (deftest tagged-items-hierarchy-test
   (let [him (let-propagated [him joe] him)
@@ -206,9 +218,11 @@
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
     (is (= (current-value (tagged-items-hierarchy [gender age bogus-age]))
-           [{:depth 0 :first-child true :info {}
+           [{:depth 0 :top-border :top-level
+             :info {}
              :members [{:item gender, :tag-items nil, :tag-canonicals nil}]}
-            {:depth 0 :last-child true :info {["age" {'tag 1}] 1}
+            {:depth 0 :top-border :top-level :bottom-border :top-level
+             :info {["age" {'tag 1}] 1}
              :members [{:item bogus-age
                         :tag-items [bogus-age-tag]
                         :tag-canonicals [["age" {'tag 1}]]}
@@ -217,17 +231,18 @@
                         :tag-canonicals [["age" {'tag 1}]]}]}]))))
 
 (deftest tags-DOM-test
-  (is (= (tags-DOM nil [:k] {}) [:div {:class "tag-column editable"
-                                       :key [[:condition 'tag] :k]
-                                       :row-sibling [:k]}]))
+  (is (= (tags-DOM {:depth 0} nil [:k] {}) [:div {:class "tags column editable"
+                                                  :key [[:condition 'tag] :k]
+                                                  :row-sibling [:k]}]))
   (let [[dom fred fred-tag]
         (let-propagated [fred '("Fred" tag)]
-          (expr-let [dom (tags-DOM [fred] [:k] {:depth 0})
+          (expr-let [dom (tags-DOM {:depth 0 :top-border :nested}
+                                   [fred] [:k] {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:component {:key [(:item-id fred) [:condition 'tag] :k]
-                        :class "tag-column"
+                        :class "tags column top-border nested"
                         :sibling-elements ['tag]
                         :row-sibling [:k]}
             [item-DOM
@@ -236,12 +251,12 @@
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
-          (expr-let [dom (tags-DOM [fred fran] [:k] {:depth 1})]
+          (expr-let [dom (tags-DOM {:depth 0} [fred fran] [:k] {:depth 1})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (= dom
            [:div
-            {:class "tag-column"
+            {:class "tags column"
              :key [[:condition 'tag] :k]
              :row-sibling [:k]}
             [:component {:key [(:item-id fred) [:condition 'tag] :k]
@@ -292,7 +307,8 @@
                    :class "content-text editable"
                    :key [[:content] :age]}
              "39"]
-            [:div {:style {:display "table"
+            [:div {:style {:height "1px"
+                           :display "table"
                            :table-layout "fixed"
                            :width "100%"}
                    :class "element-table"}
@@ -300,14 +316,14 @@
                     :class "last-row"}
               [:component {:key tag-key
                            :style {:display "table-cell"}
-                           :class "tag-column"
+                           :class "tags column top-border bottom-border"
                            :sibling-elements ['tag]
                            :row-sibling [(:item-id doubtful) :age]}
                [item-DOM
                 confidence tag-key
                 #{confidence-tag} {:depth 1}]]
               [:component {:key [(:item-id doubtful) :age]
-                           :class "item-column"
+                           :class "items column"
                            :style {:display "table-cell"}
                            :sibling-elements [["confidence" 'tag]]}
                [item-DOM
@@ -325,18 +341,19 @@
                    :class "content-text editable"
                    :key [[:content] :age]}
              "39"]
-            [:div {:style {:display "table"
+            [:div {:style {:height "1px"
+                           :display "table"
                            :table-layout "fixed"
                            :width "100%"}
                    :class "element-table"}
              [:div {:style {:display "table-row"}
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
-                     :class "tag-column editable"
+                     :class "tags column editable top-border bottom-border"
                      :key [[:condition 'tag] (:item-id doubtful) :age]
                      :row-sibling [(:item-id doubtful) :age]}]
               [:component {:key [(:item-id doubtful) :age]
-                           :class "item-column"
+                           :class "items column"
                            :style {:display "table-cell"}
                            :sibling-elements nil}
                [item-DOM
@@ -372,29 +389,30 @@
                      :key [[:content] :joe]}
                "Joe"]
               [:div {:style {:width "100%"
+                             :height "1px"
                              :display "table"
                              :table-layout "fixed"}
                      :class "element-table"}
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tag-column editable"
+                       :class "tags column editable top-border"
                        :key [[:condition 'tag] (:item-id male) :joe]
                        :row-sibling [(:item-id male) :joe]}]
                 [:component {:key [(:item-id male) :joe]
                              :style {:display "table-cell"}
-                             :class "item-column"
+                             :class "items column"
                              :sibling-elements nil}
                  [item-DOM
                   male [(:item-id male) :joe]
                   #{} {:depth 1}]]]
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tag-column editable"
+                       :class "tags column editable top-border"
                        :key [[:condition 'tag] (:item-id married) :joe]
                        :row-sibling [(:item-id married) :joe]}]
                 [:component {:key [(:item-id married) :joe]
                              :style {:display "table-cell"}
-                             :class "item-column"
+                             :class "items column"
                              :sibling-elements nil}
                  [item-DOM
                   married [(:item-id married) :joe]
@@ -404,7 +422,7 @@
                 [:component
                  {:key [both-ages-ref :joe]
                   :style {:display "table-cell"}
-                  :class "tag-column for-multiple-items"
+                  :class "tags column top-border bottom-border for-multiple-items"
                   :sibling-elements ['tag]
                   :row-sibling [[:parallel
                                  [] [(:item-id bogus-age) (:item-id age)]]
@@ -414,7 +432,7 @@
                   [both-ages-ref :joe]
                   #{bogus-age-tag-spec} {:depth 1}]]
                 [:div {:style {:display "table-cell"}
-                       :class "item-column"}
+                       :class "items column"}
                  [:component {:key [(:item-id bogus-age) :joe]
                               :style {:width "100%"
                                       :display "block"}

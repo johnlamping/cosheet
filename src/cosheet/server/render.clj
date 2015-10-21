@@ -435,26 +435,35 @@
   (expr-let [tag-components
              (expr-seq
               map #(tag-component % parent-key inherited) tags)]
-    (add-attributes
-     (vertical-stack tag-components :separators true)
-     ;; TODO: If depth is non-zero, make indented table wrapper.
-     (cond-> {:class (str "tags column"
-                          (when (empty? tags) " editable")
-                          (let [depth (:depth appearance-info)]
+    (let [depth (:depth appearance-info)
+          appearance-class (str
+                            (when (empty? tags) " editable")
                             (when (> depth 0)
-                              (str " indent-" depth)))
-                          (case (:top-border appearance-info)
-                            :top-level " top-border"
-                            :nested " top-nested-border"
-                            nil)
-                          (case (:bottom-border appearance-info)
-                            :top-level " bottom-border"
-                            :nested " bottom-nested-border"
-                            nil))}
-       (not= (count tags) 1)
-       (into {:key (prepend-to-key (condition-referent ['tag])
-                                   parent-key)
-              :row-sibling parent-key})))))
+                              (str " indent-" depth))
+                            (case (:top-border appearance-info)
+                              :nested " top-nested-border"
+                              nil)
+                            (case (:bottom-border appearance-info)
+                              :nested " bottom-nested-border"
+                              nil))
+          stack (cond-> (vertical-stack tag-components :separators true)
+                  (not= appearance-class "")
+                  (add-attributes
+                   {:class (clojure.string/trim appearance-class)}))]
+      (add-attributes
+       (if (> depth 0) [:div stack] stack)
+       (cond-> {:class (str "tags column"
+                            (case (:top-border appearance-info)
+                              :top-level " top-border"
+                              nil)
+                            (case (:bottom-border appearance-info)
+                              :top-level " bottom-border"
+                              :corner " bottom-corner"
+                              nil))}
+         (not= (count tags) 1)
+         (into {:key (prepend-to-key (condition-referent ['tag])
+                                     parent-key)
+                :row-sibling parent-key}))))))
 
 (defn components-DOM
   "Given a list of [item, excluded-elements] pairs, 
@@ -545,8 +554,8 @@
         (if (= i (dec n))
           ;; Don't add a bottom border to the last node, as it will be
           ;; handled by the top border of the first node of the next
-          ;; flattened hierarchy.
-          node 
+          ;; flattened hierarchy. But we do need to add curvature.
+          (assoc node :bottom-border :corner) 
           (if (<= (nz-depth (:depth node)) (nz-depth (:depth (nodes (+ i 1)))))
             (assoc node :bottom-border :nested)
             node))))))

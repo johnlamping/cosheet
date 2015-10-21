@@ -204,7 +204,7 @@
           {:depth 1 :top-border :nested :bottom-border :nested}
           {:depth 2 :bottom-border :nested}
           {:depth 2}
-          {:depth 1 :top-border :nested}])))
+          {:depth 1 :top-border :nested :bottom-border :corner}])))
 
 (deftest tagged-items-hierarchy-test
   (let [him (let-propagated [him joe] him)
@@ -218,7 +218,7 @@
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
     (is (= (current-value (tagged-items-hierarchy [gender age bogus-age]))
-           [{:depth 0 :top-border :top-level
+           [{:depth 0 :top-border :top-level :bottom-border :corner
              :info {}
              :members [{:item gender, :tag-items nil, :tag-canonicals nil}]}
             {:depth 0 :top-border :top-level :bottom-border :top-level
@@ -231,7 +231,7 @@
                         :tag-canonicals [["age" {'tag 1}]]}]}]))))
 
 (deftest tags-DOM-test
-  (is (= (tags-DOM {:depth 0} nil [:k] {}) [:div {:class "tags column editable"
+  (is (= (tags-DOM {:depth 0} nil [:k] {}) [:div {:class "editable tags column"
                                                   :key [[:condition 'tag] :k]
                                                   :row-sibling [:k]}]))
   (let [[dom fred fred-tag]
@@ -242,7 +242,7 @@
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:component {:key [(:item-id fred) [:condition 'tag] :k]
-                        :class "tags column top-nested-border"
+                        :class "top-nested-border tags column"
                         :sibling-elements ['tag]
                         :row-sibling [:k]}
             [item-DOM
@@ -259,7 +259,7 @@
         fred-tag (first (current-value (entity/elements fred)))]
     (is (= dom
            [:div
-            {:class "tags column top-border bottom-nested-border"
+            {:class "bottom-nested-border tags column top-border"
              :key [[:condition 'tag] :k]
              :row-sibling [:k]}
             [:component {:key [(:item-id fred) [:condition 'tag] :k]
@@ -352,7 +352,7 @@
              [:div {:style {:display "table-row"}
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
-                     :class "tags column editable top-border bottom-border"
+                     :class "editable tags column top-border bottom-border"
                      :key [[:condition 'tag] (:item-id doubtful) :age]
                      :row-sibling [(:item-id doubtful) :age]}]
               [:component {:key [(:item-id doubtful) :age]
@@ -398,7 +398,7 @@
                      :class "element-table"}
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tags column editable top-border"
+                       :class "editable tags column top-border bottom-corner"
                        :key [[:condition 'tag] (:item-id male) :joe]
                        :row-sibling [(:item-id male) :joe]}]
                 [:component {:key [(:item-id male) :joe]
@@ -410,7 +410,7 @@
                   #{} {:depth 1}]]]
                [:div {:style {:display "table-row"}}
                 [:div {:style {:display "table-cell"}
-                       :class "tags column editable top-border"
+                       :class "editable tags column top-border bottom-corner"
                        :key [[:condition 'tag] (:item-id married) :joe]
                        :row-sibling [(:item-id married) :joe]}]
                 [:component {:key [(:item-id married) :joe]
@@ -520,16 +520,16 @@
                   v1 [(:item-id v1) :joe]
                   #{L1} {:depth 1}]]]
                [:div {:style {:display "table-row"}}
-                [:component
-                 {:key [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
-                  :style {:display "table-cell"}
-                  :class "tags column indent-1 top-nested-border bottom-nested-border"
-                  :sibling-elements ['tag]
-                  :row-sibling [(:item-id v12) :joe]}
-                 [item-DOM
-                  L2
-                  [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
-                  #{L2-spec} {:depth 1}]]
+                [:div {:class "tags column" :style {:display "table-cell"}}
+                 [:component
+                  {:key [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                   :class "indent-1 top-nested-border bottom-nested-border"
+                   :sibling-elements ['tag]
+                   :row-sibling [(:item-id v12) :joe]}
+                  [item-DOM
+                   L2
+                   [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                   #{L2-spec} {:depth 1}]]]
                 [:component {:key [(:item-id v12) :joe]
                              :style {:display "table-cell"}
                              :class "items column"
@@ -538,16 +538,17 @@
                   v12 [(:item-id v12) :joe]
                   #{L121 L2} {:depth 1}]]]
                [:div {:style {:display "table-row"} :class "last-row"}
-                [:component
-                 {:key [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
-                  :style {:display "table-cell"}
-                  :class "tags column indent-1 bottom-border"
-                  :sibling-elements ['tag]
-                  :row-sibling [(:item-id v13) :joe]}
-                 [item-DOM
-                  L3
-                  [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
-                  #{L3-spec} {:depth 1}]]
+                [:div {:class "tags column bottom-border"
+                       :style {:display "table-cell"}}
+                 [:component
+                  {:key [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                   :class "indent-1"
+                   :sibling-elements ['tag]
+                   :row-sibling [(:item-id v13) :joe]}
+                  [item-DOM
+                   L3
+                   [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                   #{L3-spec} {:depth 1}]]]
                 [:component {:key [(:item-id v13) :joe]
                              :style {:display "table-cell"}
                              :class "items column"

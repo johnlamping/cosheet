@@ -66,8 +66,6 @@
                     rgba(255,255,255,0));
     background-color: #C0F0FF;
     border-left-width: 2px;
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
     width: 30%;
 }
 
@@ -83,12 +81,18 @@
 }
 
 .top-border {
+    border-top-left-radius: 7px;
     border-top-width: 2px;
 }
 
 .bottom-border {
+    border-bottom-left-radius: 7px;
     border-bottom-width: 2px;
 }
+
+.bottom-corner {
+    border-bottom-left-radius: 7px;
+}    
 
 .tags.column.nested > div {
     background:

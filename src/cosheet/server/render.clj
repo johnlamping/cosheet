@@ -32,7 +32,7 @@
 
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.
-;;; Those server specific attributes, which include
+;;; The server specific attributes include
 ;;;                :key  A unique client side key further described below.
 ;;;           :ordering  Optional ordering information, described below.
 ;;;   :sibling-elements  Elements that a sibling of this item must have.
@@ -118,6 +118,7 @@
 ;;; node, a condition node might be empty, or two sibling condition
 ;;; nodes might both show the same item.
 
+;;; NOTE: :ordering is not yet implemented, and may not be needed.
 ;;; Typically a dom for a group referent or a condition referent will
 ;;; additionally have a :ordering attribute that gives information
 ;;; about the first and last item in the group, or about the items
@@ -151,6 +152,27 @@
 ;;; at the end of each of the navigations. If the first referent is
 ;;; another exemplar, each item of the nested exemplar is matched, and
 ;;; the navigation recurses.
+
+;;; The emitted dom uses CSS classes to indicate formatting. One group
+;;; of classes gives information about how a div fits into a column of
+;;; values:
+;;;            column  The div spans the entire column.
+;;;              tags  The column spaning div contains tag elements at
+;;;                    top level. It may get "ll-corner".
+;;;          full-row  This is the most deeply nested div under a tags
+;;;                    that contains all the items for its row, and
+;;;                    spans the full height of its row. Its borders
+;;;                    will be set explicitly with "top-border" and
+;;;                    "bottom-border"
+;;;             stack  The div contains several items for its row.
+;;;                    It might not fill the entire column.
+;;;     with-children  Rows below this full-row are logical children.
+;;;      for-multiple  Everything in the full-row pertains to multiple items.
+;;;              item  The div contains an item.
+;;;     with-elements  The item div contains elements.
+;;; Several of these classes can pertain to a single div. For
+;;; example, a row with a single non-indented item would have all of
+;;; "column", "full-row", and "item".
 
 (defn item-referent
   "Create an item referent"
@@ -426,44 +448,44 @@
                       [item-DOM element key (set tag-specs) inherited]))))
 
 (defn tags-DOM
-  "Given information about the appearance of this node,
-  and a sequence of items that are tags, return components for them,
-  wrapped in a div if there is more than one."
+  "Given information about the appearance of a tag hierarchy node,
+  and a sequence of tag items in it, return components for each of them,
+  wrapped as necessary to give the right appearance."
   [appearance-info tags parent-key inherited]
   (println "generating tags dom.")
   (assert (not= (first parent-key) (condition-referent ['tag])))
+  ;; This code works by wrapping in successively more divs, if
+  ;; necessary, and adding the right classes at each level.
   (expr-let [tag-components
-             (expr-seq
-              map #(tag-component % parent-key inherited) tags)]
-    (let [depth (:depth appearance-info)
-          appearance-class (str
-                            (when (empty? tags) " editable")
-                            (when (> depth 0)
-                              (str " indent-" depth))
-                            (case (:top-border appearance-info)
-                              :nested " top-nested-border"
-                              nil)
-                            (case (:bottom-border appearance-info)
-                              :nested " bottom-nested-border"
-                              nil))
-          stack (cond-> (vertical-stack tag-components :separators true)
-                  (not= appearance-class "")
-                  (add-attributes
-                   {:class (clojure.string/trim appearance-class)}))]
-      (add-attributes
-       (if (> depth 0) [:div stack] stack)
-       (cond-> {:class (str "tags column"
-                            (case (:top-border appearance-info)
-                              :top-level " top-border"
-                              nil)
-                            (case (:bottom-border appearance-info)
-                              :top-level " bottom-border"
-                              :corner " bottom-corner"
-                              nil))}
-         (not= (count tags) 1)
-         (into {:key (prepend-to-key (condition-referent ['tag])
-                                     parent-key)
-                :row-sibling parent-key}))))))
+             (expr-seq map #(tag-component % parent-key inherited) tags)]
+    (let [{:keys [top-border bottom-border for-multiple with-children depth]}
+          appearance-info]
+      (as-> (vertical-stack tag-components :separators true) dom
+        (if (> (count tags) 1)
+          [:div [:div {:class "spacer"}] (add-attributes dom {:class "stack"})]
+          dom)
+        (add-attributes
+         dom
+         {:class (str "full-row"
+                      (when (= top-border :indented) " top-border")
+                      (when (= bottom-border :indented) " bottom-border")
+                      (when (empty? tags) " editable")
+                      (when with-children " with-children")
+                      (when for-multiple " for-multiple"))})
+        (let [depth (:depth appearance-info)]
+          (if (> depth 0)
+            [:div (add-attributes dom {:class (str "indent-" depth)})]
+            dom))
+        (add-attributes
+         dom (cond-> {:class
+                      (str "tags column"
+                           (when (= top-border :full) " top-border")
+                           (when (= bottom-border :full) " bottom-border")
+                           (when (= bottom-border :corner) " ll-corner"))}
+               (not= (count tags) 1)
+               (into {:key (prepend-to-key (condition-referent ['tag])
+                                           parent-key)
+                      :row-sibling parent-key})))))))
 
 (defn components-DOM
   "Given a list of [item, excluded-elements] pairs, 
@@ -478,7 +500,7 @@
                              item key (set excluded-elements) inherited])))
                        items-with-excluded)]
     (add-attributes (vertical-stack item-doms :separators true)
-                    {:class "items column"})))
+                    {:class "column"})))
 
 (defn tag-items-pair-DOM
   "Given information about the appearance of this node,
@@ -502,9 +524,7 @@
                                        parent-key sibling-elements inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
-                     {:style {:display "table-cell"}
-                      :class (when (> (count items-with-excluded) 1)
-                               "for-multiple-items")})
+                     {:style {:display "table-cell"}})
      (add-attributes items-dom {:style {:display "table-cell"}})]))
 
 (defn items-for-info
@@ -530,7 +550,8 @@
                    (:info node) (:tag-items example) (:tag-canonicals example))
         items-with-excluded (map #((juxt :item :tag-items) %) (:members node))
         descendant-items (map :item descendants)
-        appearance-info (select-keys node [:depth :top-border :bottom-border])]
+        appearance-info (select-keys node [:depth :for-multiple :with-children
+                                           :top-border :bottom-border])]
     (expr-let [sibling-elements
                (expr-seq map visible-to-list
                          (get-in node [:members 0 :tag-items]))]
@@ -538,27 +559,30 @@
        sibling-elements descendant-items])))
 
 (defn add-border-info
-  "Given the flattened hierarchy for one top level node,
-  add the information about what borders each node should be responsible for."
+  "Given the flattened hierarchy expansion of one top level node,
+  add the information about what borders each node in the expansion
+  should be responsible for."
   [nodes]
   (let [nodes (vec nodes)
-        n (count nodes)
-        nz-depth (fn [d] (if (= d 0) 1e100 d))]
+        n (count nodes)]
     (for [i (range n)]
       (as-> (nodes i) node
         (if (= i 0)
-          (assoc node :top-border :top-level)
-          (if (< (nz-depth (:depth node)) (nz-depth (:depth (nodes (- i 1)))))
-            (assoc node :top-border :nested)
+          (assoc node :top-border :full)
+          (if (> (:depth node) (:depth (nodes (- i 1))))
+            (assoc node :top-border :indented)
             node))
         (if (= i (dec n))
           ;; Don't add a bottom border to the last node, as it will be
           ;; handled by the top border of the first node of the next
           ;; flattened hierarchy. But we do need to add curvature.
           (assoc node :bottom-border :corner) 
-          (if (<= (nz-depth (:depth node)) (nz-depth (:depth (nodes (+ i 1)))))
-            (assoc node :bottom-border :nested)
-            node))))))
+          (if (>= (:depth node) (:depth (nodes (+ i 1))))
+            (assoc node :bottom-border :indented)
+            (assoc node :with-children true)))
+        (if (> (count (:members node)) 1)
+          (assoc node :for-multiple true)
+          node)))))
 
 (defn tagged-items-hierarchy
   "Given items, organize them into a flattened hierarchy by tag"
@@ -579,7 +603,7 @@
       (update-last 
        (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0)) hierarchy))
        ;; We need to put on a final closing border.
-       #(assoc % :bottom-border :top-level)))))
+       #(assoc % :bottom-border :full)))))
 
 (defn tagged-items-DOM
   "Return DOM for the given items, as a grid of tags and values."
@@ -599,8 +623,10 @@
   ;; drawn by the less nested node, since that will have the right length.
   ;; Thus, when laying out a row, we need to know:
   ;;            :depth in the hierarchy, for the indendation
-  ;;       :top-border for a :top-level node, or for a :nested node
-  ;;    :bottom-border for a :top-level node, or for a :nested node
+  ;;       :top-border :full or :indented
+  ;;    :bottom-border :full, :indented, or :corner, for only
+  ;;                   the lower left corner
+  ;;     :for-multiple true if this row applies to several items.
   [items parent-key inherited]
   (expr-let [hierarchy (tagged-items-hierarchy items)
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)

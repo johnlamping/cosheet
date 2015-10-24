@@ -11,7 +11,8 @@
                            (case key
                              :class (if (empty? value)
                                       current
-                                      (str current " " value))
+                                      (str current " "
+                                           (clojure.string/trim value)))
                              :style (into current value))
                            value))))
           accumulator attributes))

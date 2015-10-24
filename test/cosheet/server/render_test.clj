@@ -202,9 +202,9 @@
            {:depth 1}])
          [{:depth 0 :top-border :full :with-children true}
           {:depth 1 :top-border :indented :with-children true}
-          {:depth 2 :top-border :indented :bottom-border :indented}
-          {:depth 2 :bottom-border :indented}
-          {:depth 1 :bottom-border :corner}])))
+          {:depth 2 :top-border :indented}
+          {:depth 2 :top-border :indented}
+          {:depth 1 :top-border :indented :bottom-border :corner}])))
 
 (deftest tagged-items-hierarchy-test
   (let [him (let-propagated [him joe] him)
@@ -529,7 +529,7 @@
                 [:div {:class "tags column" :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
-                   :class "full-row top-border bottom-border indent-1"
+                   :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v12) :joe]}
                   [item-DOM
@@ -548,7 +548,7 @@
                        :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
-                   :class "full-row indent-1"
+                   :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v13) :joe]}
                   [item-DOM

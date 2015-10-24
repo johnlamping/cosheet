@@ -569,17 +569,15 @@
       (as-> (nodes i) node
         (if (= i 0)
           (assoc node :top-border :full)
-          (if (> (:depth node) (:depth (nodes (- i 1))))
-            (assoc node :top-border :indented)
-            node))
+          (assoc node :top-border (if (>= (:depth node) 0) :indented :full)))
         (if (= i (dec n))
           ;; Don't add a bottom border to the last node, as it will be
           ;; handled by the top border of the first node of the next
           ;; flattened hierarchy. But we do need to add curvature.
           (assoc node :bottom-border :corner) 
-          (if (>= (:depth node) (:depth (nodes (+ i 1))))
-            (assoc node :bottom-border :indented)
-            (assoc node :with-children true)))
+          (if (< (:depth node) (:depth (nodes (+ i 1))))
+            (assoc node :with-children true)
+            node))
         (if (> (count (:members node)) 1)
           (assoc node :for-multiple true)
           node)))))

@@ -120,7 +120,7 @@
     (process-acknowledgements @dom-tracker acknowledge)    
     (when actions
       (do-actions store @dom-tracker actions)
-      (compute management 1000)
+      (compute management 10000)
       (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
               task-queue (get-in @@dom-tracker [:management :queue])]
           (when (finished-all-tasks? task-queue)

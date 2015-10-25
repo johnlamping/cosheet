@@ -157,7 +157,7 @@
     height: 100%;
 }
 
-.for-multiple, .for-multiple > .stack {
+.for-multiple, .tags.column.for-multiple, .for-multiple > .stack {
     vertical-align: middle;
 }
 

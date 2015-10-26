@@ -174,7 +174,9 @@
     width: 10px;
 }
 
-.column {height: 1px;}
+.column {
+    height: 15px; /* Make no-content cells have minimum height */
+}
 
 .column:not(.tags) {
     border-width: 2px 2px 0px 2px;

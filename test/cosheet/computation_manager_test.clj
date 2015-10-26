@@ -187,6 +187,9 @@
                                   :subordinate-values {})
         r3 (reporter/new-reporter :name :r3 :value-source r2)
         m (new-management)]
+    ;; Give the ultimate reporters demand
+    (reporter/set-attendee! r2 :k (constantly nil))
+    (reporter/set-attendee! r3 :k (constantly nil))
     ;; Register, and check that the information is copied.
     (register-copy-subordinate r1 r2 m)
     (is (= (:needed-values (reporter/data r2)) #{}))

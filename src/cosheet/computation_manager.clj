@@ -236,7 +236,8 @@
       (fn [data]
         (let [same-value
               (= value (get-in data [:subordinate-values from] ::not-found))]
-          (if (or (not (contains? data :needed-values))
+          (if (or (not (reporter/data-attended? data))
+                  (not (contains? data :needed-values))
                   (if (contains? (:needed-values data) from)
                     (= value reporter/invalid)
                     same-value))

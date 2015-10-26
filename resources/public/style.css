@@ -65,7 +65,7 @@
     border-bottom-left-radius: 7px;
 }
 
-.full-row, .full-row.content-text {
+.full-row {
     box-sizing: content-box;
     height:100%;
     text-align: right;
@@ -167,7 +167,7 @@
     text-align: left;
 }
 
-.with-children, .tags.column.with-children {
+.with-children, .full-row.with-children {
     text-align: left;
 }
 

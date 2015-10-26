@@ -162,7 +162,8 @@
 }
 
 .stack {
-    display:inline-block;
+    vertical-align: top;
+    display: inline-block;
     text-align: left;
 }
 

@@ -12,12 +12,11 @@
             cosheet.dom-utils
             [cosheet.ajax :refer [ajax-if-pending ajax-request]]
             [cosheet.edit-field :refer [edit-field-open-on
-                                        open-edit-field close-edit-field]]
+                                        open-edit-field close-edit-field
+                                        selected select deselect]]
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
-
-(def selected (atom nil)) ;; The currently selected dom.
 
 (defn is-editable? [dom]
   (and dom (.. dom -classList (contains "editable"))))
@@ -45,21 +44,6 @@
                     (array-seq (.-childNodes target)))]
         (when (is-editable? closest-child)
           closest-child)))))
-
-(defn deselect []
-  (let [target @selected]
-    (when target
-    (.remove (.-classList target) "selected")
-    (reset! selected nil))))
-
-(defn select [target]
-  (.log js/console (str "Selecting id " (.-id target) "."))
-  (.log js/console (str "current selection " @selected))
-  (when (not= target @selected)
-    (deselect)
-    (.add (.-classList target) "selected")
-    (.log js/console (str "Selected id " (.-id target) "."))
-    (reset! selected target)))
 
 (defn dom-text [target]
   (let [child (.-firstChild target)]

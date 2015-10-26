@@ -4,7 +4,7 @@
              [component components
               replace-in-struct into-atom-map
               process-response-for-pending take-pending-params]]
-            [cosheet.edit-field :refer [close-edit-field]]
+            [cosheet.edit-field :refer [close-edit-field selected deselect]]
             ))
 
 (declare ajax-handler)
@@ -41,17 +41,33 @@
       (when (not= params {})
         (ajax-request params)))))
 
-(defn close-edit-field-if-contained
-  "Given a list of dom revisions, return true if it will change
-   a dom containing the edit_holder."
+(defn dom-contained-in-changes?
+  "Given a dom and a list of dom revisions, return true if the dom
+  might be changed."
+  ;; TODO: This sees through components, which is too paranoid, as
+  ;; a change to a component container won't affect the component
+  [dom changes]
+  (some (fn [change]
+          (let [{:keys [id]} (second change)]
+            (and (contains? @components id)
+                 (.contains (js/document.getElementById id) dom))))
+        changes))
+
+(defn deslect-if-contained
+  "Given a list of dom revisions, undo the selection if it is contained 
+  in one of the changes."
   [doms]
-  (when (some (fn [dom]
-                (let [{:keys [id]} (second dom)]
-                  (and (contains? @components id)
-                       (.contains
-                        (js/document.getElementById id)
-                        (js/document.getElementById "edit_holder")))))
-              doms)
+  (let [selection @selected]
+    (when (and selection
+               (dom-contained-in-changes? selection doms))
+      (deselect))))
+
+(defn close-edit-field-if-contained
+  "Given a list of dom revisions, close the edit field if it
+   is contained in one of the changes."
+  [doms]
+  (when (dom-contained-in-changes?
+         (js/document.getElementById "edit_holder") doms)
     (close-edit-field)))
 
 (defn ajax-handler [response]
@@ -60,6 +76,7 @@
     (.log js/console (str response))
     (let [doms (:doms response)]
       (when doms
+        (deslect-if-contained doms)
         (close-edit-field-if-contained doms)
         (into-atom-map components
                        ;; Turn [:component {attributes} <id>]

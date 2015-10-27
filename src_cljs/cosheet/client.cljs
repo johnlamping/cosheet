@@ -21,6 +21,20 @@
 (defn is-editable? [dom]
   (and dom (.. dom -classList (contains "editable"))))
 
+(defn descendant-with-editable
+  "Given a dom, if it has editable children, return it.
+  If not, but exactly one of its children has descendant-with-editable,
+  then return that child's descendant-with-editable."
+  [dom]
+  (let [children (array-seq (.-childNodes dom))]
+    (if (some is-editable? children)
+      dom
+      (let [candidates (filter identity
+                               (map descendant-with-editable children))]
+        (when (and (not (empty? candidates))   ;; We don't use count, so we
+                   (empty (rest candidates)))  ;; stay lazy.
+          (first candidates))))))
+
 (defn find-editable
   "Given a target and click event, return the target if it is editable,
    or the nearest child to the click event, if that child is editable."
@@ -28,22 +42,24 @@
   (when target
     (if (is-editable? target)
       target
-      (let [x (.-clientX event)
-            y (.-clientY event)
-            [closest-child _]
-            (reduce (fn [[closest best-distance] child]
-                      (let [rect (.getBoundingClientRect child)
-                            dist (+ (max 0 (- (.-left rect) x))
-                                    (max 0 (- x (.-right rect)))
-                                    (max 0 (- (.-top rect) y))
-                                    (max 0 (- y (.-bottom rect))))]
-                        (if (< dist best-distance)
-                          [child dist]
-                          [closest best-distance])))
-                    [nil 1e10]
-                    (array-seq (.-childNodes target)))]
-        (when (is-editable? closest-child)
-          closest-child)))))
+      (let [holder (descendant-with-editable target)]
+        (when holder
+          (let [x (.-clientX event)
+                y (.-clientY event)
+                [closest-child _]
+                (reduce (fn [[closest best-distance] child]
+                          (let [rect (.getBoundingClientRect child)
+                                dist (+ (max 0 (- (.-left rect) x))
+                                        (max 0 (- x (.-right rect)))
+                                        (max 0 (- (.-top rect) y))
+                                        (max 0 (- y (.-bottom rect))))]
+                            (if (< dist best-distance)
+                              [child dist]
+                              [closest best-distance])))
+                        [nil 1e10]
+                        (array-seq (.-childNodes holder)))]
+            (when (is-editable? closest-child)
+              closest-child)))))))
 
 (defn dom-text [target]
   (let [child (.-firstChild target)]

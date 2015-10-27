@@ -461,8 +461,11 @@
     (let [{:keys [top-border bottom-border for-multiple with-children depth]}
           appearance-info]
       (as-> (vertical-stack tag-components :separators true) dom
+        (if (> (count tags) 1)
+          (add-attributes dom {:class "stack"})
+          dom)
         (if (or for-multiple (> (count tags) 1))
-          [:div [:div {:class "spacer"}] (add-attributes dom {:class "stack"})]
+          [:div dom [:div {:class "spacer"}]]
           dom)
         (add-attributes
          dom

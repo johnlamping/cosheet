@@ -245,13 +245,14 @@
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:div {:class "tags column"}
-            [:component {:key [(:item-id fred) [:condition 'tag] :k]
-                         :class "full-row bottom-border with-children for-multiple indent-1"
-                         :sibling-elements ['tag]
-                         :row-sibling [:k]}
-             [item-DOM
-              fred [(:item-id fred) [:condition 'tag] :k]
-              #{fred-tag} {:depth 0}]]])))
+            [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
+             [:component {:key [(:item-id fred) [:condition 'tag] :k]
+                          :sibling-elements ['tag]
+                          :row-sibling [:k]}
+              [item-DOM
+               fred [(:item-id fred) [:condition 'tag] :k]
+               #{fred-tag} {:depth 0}]]
+             [:div {:class "spacer"}]]])))
   (let [[dom fred fran]
         (let-propagated [fred '("Fred" tag)
                          fran "Fran"]
@@ -266,7 +267,6 @@
             {:class "full-row tags column top-border ll-corner"
              :key [[:condition 'tag] :k]
              :row-sibling [:k]}
-            [:div {:class "spacer"}]
             [:div {:class "stack"}
              [:component {:key [(:item-id fred) [:condition 'tag] :k]
                           :style {:display "block"
@@ -285,7 +285,8 @@
                           :row-sibling [:k]}
               [item-DOM
                fran [(:item-id fran) [:condition 'tag] :k]
-               #{} {:depth 1}]]]]))))
+               #{} {:depth 1}]]]
+            [:div {:class "spacer"}]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]
@@ -428,18 +429,20 @@
                   #{} {:depth 1}]]]
                [:div {:style {:display "table-row"}
                       :class "last-row"}
-                [:component
-                 {:key [both-ages-ref :joe]
-                  :style {:display "table-cell"}
-                  :class "full-row for-multiple tags column top-border bottom-border"
-                  :sibling-elements ['tag]
-                  :row-sibling [[:parallel
-                                 [] [(:item-id bogus-age) (:item-id age)]]
-                                :joe]}
-                 [item-DOM
-                  bogus-age-tag
-                  [both-ages-ref :joe]
-                  #{bogus-age-tag-spec} {:depth 1}]]
+                [:div {:class "full-row for-multiple tags column top-border bottom-border"
+                       
+                   :style {:display "table-cell"}}
+                 [:component
+                  {:key [both-ages-ref :joe]
+                   :sibling-elements ['tag]
+                   :row-sibling [[:parallel
+                                  [] [(:item-id bogus-age) (:item-id age)]]
+                                 :joe]}
+                  [item-DOM
+                   bogus-age-tag
+                   [both-ages-ref :joe]
+                   #{bogus-age-tag-spec} {:depth 1}]]
+                 [:div {:class "spacer"}]]
                 [:div {:style {:display "table-cell"}
                        :class "column"}
                  [:component {:key [(:item-id bogus-age) :joe]

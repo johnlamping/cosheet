@@ -17,7 +17,8 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl)
             (cosheet.server
-             [render :refer [item-DOM canonicalize-list item-referent]]
+             [render :refer [item-DOM canonicalize-list
+                             item-referent prepend-to-key]]
              [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
             ; :reload
@@ -284,7 +285,7 @@
 (deftest update-add-element-test
   (let [order-entity (first (label->elements jane-entity :order))
         order (content order-entity)
-        s (update-add-element '("foo" 6) store jane-entity)
+        [s id] (update-add-element '("foo" 6) store jane-entity)
         new-jane-entity (description->entity jane-id s)
         new-element (first (filter #(= (content %) "foo")
                                    (elements new-jane-entity)))
@@ -292,14 +293,15 @@
         [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("foo" (~o5 :order) (6 (~o7 :order))))))
-    (is (= (id->content s (:item-id order-entity)) o6)))
+    (is (= (id->content s (:item-id order-entity)) o6))
+    (is (= id (:item-id new-element))))
   ;; Test the case where the subject doesn't have its own order information.
   (let [[store sally-id] (add-entity (new-element-store) nil "Sally")
         [store unused-id] (add-entity store nil o4)
         [store _] (add-entity store unused-id :unused-orderable)
         sally-entity (description->entity sally-id store)
         order-entity (description->entity unused-id store)
-        s (update-add-element '("bar" 6) store sally-entity)
+        [s id] (update-add-element '("bar" 6) store sally-entity)
         new-sally-entity (description->entity sally-id s)
         new-element (first (filter #(= (content %) "bar")
                                    (elements new-sally-entity)))
@@ -307,7 +309,8 @@
         [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("bar" (~o5 :order) (6 (~o7 :order))))))
-    (is (= (id->content s (:item-id order-entity)) o6))))
+    (is (= (id->content s (:item-id order-entity)) o6))
+    (is (= id (:item-id new-element)))))
 
 (deftest add-element-handler-test
   (let [joe-age-id (:item-id joe-age)
@@ -317,8 +320,13 @@
                                  #(= (first (get-in @tracker [:id->key %]))
                                      joe-age-id)
                                  (keys (:id->key @tracker))))
-          new-store (add-element-handler store tracker joe-age-dom-id)
-          new-joe-age (description->entity joe-age-id new-store)]
+          {:keys [store select]} (add-element-handler
+                                  store tracker joe-age-dom-id)
+          new-joe-age (description->entity joe-age-id store)
+          new-element (first (filter #(= (content %) "")
+                                     (elements new-joe-age)))]
+      (let [key (get-in @tracker [:id->key joe-age-dom-id])]
+        (is (= select (prepend-to-key (item-referent new-element) key))))
       (is (= (item->canonical-visible new-joe-age)
              [45 {["age" {'tag 1}] 1, "" 1}])) )))
 

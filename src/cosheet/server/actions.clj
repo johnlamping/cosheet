@@ -17,7 +17,8 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [render :refer [visible-to-list canonicalize-list]])))
+    [render :refer [visible-to-list canonicalize-list
+                    item-referent prepend-to-key]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
 ;;; crash.
@@ -216,42 +217,56 @@
 (defn update-add-entity-with-order-item
   "Add an entity with the given subject id and contents,
    taking its order from the given item, in the given direction,
-   and giving the entity the bigger piece if use-bigger is true."
+   and giving the entity the bigger piece if use-bigger is true.
+   Return the updated store and the id of the entity."
   [store subject-id entity order-item side use-bigger]
   (let [order-element (order-element-for-item order-item store)
         order (content order-element)
         [store id remainder] (update-add-entity-with-order
                               store subject-id entity
                               order side use-bigger)]
-    (update-content store (:item-id order-element) remainder)))
+    [(update-content store (:item-id order-element) remainder) id]))
 
 (defn update-add-element
-  "Add an entity to the store as a new element of the given subject."
+  "Add an entity to the store as a new element of the given subject.
+  Return the new store and the id of the new element."
   [entity store subject]
   (update-add-entity-with-order-item
    store (:item-id subject) entity
    subject :after false))
 
 (defn add-element-handler
-  "Add a element to the item with the given client id"
-  [store dom-tracker id]
-  (let [key (id->key dom-tracker id)
+  "Add a element to the item with the given client id.
+  Indicate that the new element should be selected."
+  [store dom-tracker client-id]
+  (let [key (id->key dom-tracker client-id)
         items (key->items store key)
         first-primitive (first-primitive-referent key)]
-    (println "new element for id:" id " with key:" (simplify-for-print key))
+    (println "new element for id:" client-id
+             " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when ((some-fn item-referent? content-referent?) first-primitive)
-      (reduce (partial update-add-element "")
-              store items))))
+      (let [[store element-id]
+            (reduce (fn [[store element-id] item]
+                      (let [[store new-id]
+                            (update-add-element "" store item)]
+                        [store (or element-id new-id)]))
+                    [store nil] items)]
+        (if element-id
+          {:store store
+           :select (prepend-to-key
+                    (item-referent (description->entity element-id store))
+                    key)}
+          store)))))
 
 (defn update-add-sibling
   "Given an item and elements that its siblings must have, add a sibling
   in the given direction (:before or :after)"
   [sibling-elements direction store item]
-  (update-add-entity-with-order-item
-   store (id->subject store (:item-id item)) (cons "" sibling-elements)
-   item direction true))
+  (first (update-add-entity-with-order-item
+          store (id->subject store (:item-id item)) (cons "" sibling-elements)
+          item direction true)))
 
 (defn add-sibling-handler
   "Add a sibling to the item with the given client id."

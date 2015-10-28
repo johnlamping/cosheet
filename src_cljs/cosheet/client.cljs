@@ -99,9 +99,11 @@
       (store-edit-field)
       (close-edit-field)
       (let [editable (find-editable target event)]
-        (if editable
-          (select (find-editable target event))
-          (deselect))))))
+        (when (not= editable @selected)
+          (if editable
+            (select editable)
+            (deselect))
+          (request-action [:selected (and editable (.-id editable))]))))))
 
 (defn double-click-handler
   [event]
@@ -116,7 +118,9 @@
         (if editable
           (do (select editable)
               (open-edit-field editable (dom-text editable)))
-          (deselect))))))
+          (deselect))
+        (when (not= editable @selected)
+          (request-action [:selected (and editable (.-id editable))]))))))
 
 (defn keypress-handler
   [event]

@@ -82,6 +82,11 @@
                        ;; Turn [:component {attributes} <id>]
                        ;; into [cosheet.client/component {attributes} id]
                        (replace-in-struct {:component component} (vec doms)))))
+    (let [[to-select if-selected] (:select response)]
+      (when (and to-select
+                 (nil? @edit-field-open-on)
+                 (or (nil? @selected) (some #{@selected} if-selected)))
+        (select to-select)))
     (process-response-for-pending response)
     (ajax-if-pending))
   (start-watch-task))

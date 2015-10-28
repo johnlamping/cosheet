@@ -5,7 +5,7 @@
    (cosheet
     [debug :refer [simplify-for-print]]
     [orderable :refer [split earlier?]]
-    [store :refer [update-content add-simple-element do-update!
+    [store :refer [update-content add-simple-element do-update-control-return!
                    id->subject id-valid?]]
     store-impl
     [store-utils :refer [remove-entity-by-id]]
@@ -160,15 +160,15 @@
    Put the new entity on the specified side (:before or :after) of
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
-   Return the new store and the remaining order."
+   Return the new store, the id of the item, and the remaining order."
   [store subject-id entity order side use-bigger]
+  (println "order arg" order)
   (let [entity-content (content entity)
         entity-elements (elements entity)]
-    (println "adding entity" entity "to" subject-id)
     (if (and (= entity-content 'tag) (empty? entity-elements))
       ;; Tags markers don't get an ordering.
       (let [[s id] (add-simple-element store subject-id 'tag)]
-        [s order])
+        [s id order])
       (let [[s1 id] (add-simple-element
                      store subject-id (if (nil? entity-content)
                                      ""
@@ -189,17 +189,17 @@
                            (- 1 entity-order-index))
             bigger-order (split-order bigger-index)
             smaller-order (split-order (- 1 bigger-index))
-            [s2 bigger-order] (reduce (fn [[store order] element]
-                                        (update-add-entity-with-order
-                                         store id element order side false))
-                                      [s1 bigger-order]
-                                      (case side ;; Make the order match
-                                        :before entity-elements
-                                        :after (reverse entity-elements)))
+            [s2 _ bigger-order] (reduce (fn [[store _ order] element]
+                                          (update-add-entity-with-order
+                                           store id element order side false))
+                                        [s1 nil bigger-order]
+                                        (case side ;; Make the order match
+                                          :before entity-elements
+                                          :after (reverse entity-elements)))
             [s3 order-id] (add-simple-element
                            s2 id (if use-bigger bigger-order smaller-order))
             [s4 _] (add-simple-element s3 order-id :order)]
-        [s4 (if use-bigger smaller-order bigger-order)]))))
+        [s4 id (if use-bigger smaller-order bigger-order)]))))
 
 (defn order-element-for-item
   "Return an element with the order information for item,
@@ -220,9 +220,9 @@
   [store subject-id entity order-item side use-bigger]
   (let [order-element (order-element-for-item order-item store)
         order (content order-element)
-        [store remainder] (update-add-entity-with-order
-                           store subject-id entity
-                           order side use-bigger)]
+        [store id remainder] (update-add-entity-with-order
+                              store subject-id entity
+                              order side use-bigger)]
     (update-content store (:item-id order-element) remainder)))
 
 (defn update-add-element
@@ -340,27 +340,54 @@
                   true (fn [a b] a))
             store items)))
 
-;;; TODO: Undo functionality should be added here. It shouldn't be
-;;; hard, because the updated store already has a list of changed ids.
-;;; Support could even be incorporated into immutable stores.
-(defn do-action
-  [mutable-store dom-tracker [action-type & action-args]]
+(defn selected-handler
+  [store dom-tracker id])
+
+(defn get-handler-function
+  "Given an action and other needed data return a function that
+  will take a store and call the handler with all the arguments it needs."
+  [dom-tracker [action-type & action-args]]
   (let [handler (case action-type
                   :set-content set-content-handler
                   :add-element add-element-handler
                   :add-sibling add-sibling-handler
                   :add-row add-row-handler
                   :delete delete-handler
+                  ;; TODO: Move this to another case that passes in
+                  ;; the session state, as well.
+                  :selected selected-handler
                   nil)]
     (if handler
-      (do-update! mutable-store
-                  (fn [store] (or (apply handler store dom-tracker action-args)
-                                  store)))
-      (println "unknown action type:" action-type))))
+      (fn [store] (apply handler store dom-tracker action-args))
+      (fn [store] (println "unknown action type:" action-type)))))
+
+;;; TODO: Undo functionality should be added here. It shouldn't be
+;;; hard, because the updated store already has a list of changed ids.
+;;; Support could even be incorporated into immutable stores.
+(defn do-action
+  [mutable-store dom-tracker action]
+  (let [remaining
+        (do-update-control-return!
+         mutable-store
+         (fn [store]
+           (let [result ((get-handler-function dom-tracker action) store)]
+             (if result
+               (if (instance? cosheet.store.Store result)
+                 [result nil]
+                 (do (assert (map? result))
+                     (println "result" result)
+                     (assert (:store result))
+                     [(:store result) (dissoc result store)]))
+               [store nil]))))]
+    remaining))
 
 (defn do-actions
+  "Run the actions, and return any additional information to be returned
+  to the client"
   [mutable-store dom-tracker actions]
-  (let [keys (sort (keys actions))]
-    (doseq [key keys]
-      (let [action (actions key)]
-        (do-action mutable-store dom-tracker action)))))
+  (let [keys (sort (keys actions)) ]
+    (reduce (fn [client-info key]
+              (let [action (actions key)
+                    remaining (do-action mutable-store dom-tracker action)]
+                (into client-info (select-keys remaining [:select]))))
+            {} keys)))

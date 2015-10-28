@@ -93,6 +93,9 @@
 ;;;                number that will increase for each change of the dom
 ;;;                for that id. Inside the doms may be internal components
 ;;;                encoded as [:component {<id and other attributes>}].
+;;;        :select A list of an id to select, and a list of only ids
+;;;                that may currently be selected for the command to
+;;;                take efffect.
 ;;;   :acknowledge A vector of action ids of actions that have been
 ;;;                performed.
 ;;; TODO: Action ids should be required to be integers, and the server

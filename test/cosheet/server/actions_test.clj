@@ -326,7 +326,8 @@
           new-element (first (filter #(= (content %) "")
                                      (elements new-joe-age)))]
       (let [key (get-in @tracker [:id->key joe-age-dom-id])]
-        (is (= select (prepend-to-key (item-referent new-element) key))))
+        (is (= select [(prepend-to-key (item-referent new-element) key)
+                       [key]])))
       (is (= (item->canonical-visible new-joe-age)
              [45 {["age" {'tag 1}] 1, "" 1}])) )))
 

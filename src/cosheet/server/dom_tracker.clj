@@ -74,8 +74,6 @@
 ;;;                                  are sent to the client as part of
 ;;;                                  the component definition, before
 ;;;                                  the client gets the rest of its dom.>}
-;;;                                 definition <as above>]
-
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about, prioritized by their depth.
@@ -397,9 +395,14 @@
         (update-set-component {:definition definition :key key}))))
 
 (defn id->key
-  "Return the hiccup key for the client id"
+  "Return the hiccup key for the client id."
   [tracker id]
   (get-in @tracker [:id->key id]))
+
+(defn key->id
+  "Return the client id for the hiccup key."
+  [tracker key]
+  (get-in @tracker [:key->id key]))
 
 (defn key->attributes
   "Return the attributes for the dom with the given key,

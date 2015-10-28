@@ -318,8 +318,13 @@
   (let [management (new-management)
         tracker (new-dom-tracker management)]
     (swap-and-act tracker #(update-associate-key-to-id % [:k] "root"))
-    (is (= (id->key tracker "root")
-           [:k]))))
+    (is (= (id->key tracker "root") [:k]))))
+
+(deftest key->id-test
+  (let [management (new-management)
+        tracker (new-dom-tracker management)]
+    (swap-and-act tracker #(update-associate-key-to-id % [:k] "root"))
+    (is (= (key->id tracker [:k]) "root"))))
 
 (deftest key->attributes-test
   (let [management (new-management)

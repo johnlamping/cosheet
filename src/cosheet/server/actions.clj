@@ -163,7 +163,6 @@
    use-bigger is true, otherwise return the bigger piece.
    Return the new store, the id of the item, and the remaining order."
   [store subject-id entity order side use-bigger]
-  (println "order arg" order)
   (let [entity-content (content entity)
         entity-elements (elements entity)]
     (if (and (= entity-content 'tag) (empty? entity-elements))
@@ -255,9 +254,10 @@
                     [store nil] items)]
         (if element-id
           {:store store
-           :select (prepend-to-key
-                    (item-referent (description->entity element-id store))
-                    key)}
+           :select [(prepend-to-key
+                     (item-referent (description->entity element-id store))
+                     (remove-content-referent key))
+                    [key]]}
           store)))))
 
 (defn update-add-sibling
@@ -351,7 +351,9 @@
                    first-primitive)
                   (partial update-set-content from to)
                   (and (condition-referent? first-primitive) (not= to ""))
-                  (partial update-add-element (cons to (rest first-primitive)))
+                  (fn [store item]
+                    (first (update-add-element
+                            (cons to (rest first-primitive)) store item)))
                   true (fn [a b] a))
             store items)))
 
@@ -387,12 +389,12 @@
          (fn [store]
            (let [result ((get-handler-function dom-tracker action) store)]
              (if result
-               (if (instance? cosheet.store.Store result)
+               (if (satisfies? cosheet.store/Store result)
                  [result nil]
-                 (do (assert (map? result))
-                     (println "result" result)
-                     (assert (:store result))
-                     [(:store result) (dissoc result store)]))
+                 (do
+                   (assert (map? result))
+                   (assert (:store result))
+                   [(:store result) (dissoc result store)]))
                [store nil]))))]
     remaining))
 

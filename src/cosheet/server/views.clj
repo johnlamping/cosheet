@@ -18,7 +18,8 @@
    (cosheet.server
     [render :refer [item-DOM]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
-                         process-acknowledgements response-doms]]
+                         process-acknowledgements response-doms
+                         key->id]]
     [actions :refer [do-actions]])))
 
 (defn initial-page []
@@ -121,18 +122,27 @@
         (request-client-refresh @dom-tracker)))
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements @dom-tracker acknowledge)    
-    (when actions
-      (do-actions store @dom-tracker actions)
+    (let [client-info (when actions (do-actions store @dom-tracker actions))]
       (compute management 10000)
       (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
-              task-queue (get-in @@dom-tracker [:management :queue])]
-          (when (finished-all-tasks? task-queue)
-            (check-propagation #{}  reporter))))
-    ;; Note: We must get the doms after doing the actions, so we can
-    ;; immediately show the response to the actions.
-    (let [doms (response-doms @@dom-tracker 10)
-          answer (cond-> {}
-                   (> (count doms) 0) (assoc :doms doms)
-                   actions (assoc :acknowledge (vec (keys actions))))]
-      (println "response" answer)
-      (response answer))))
+            task-queue (get-in @@dom-tracker [:management :queue])]
+        (when (finished-all-tasks? task-queue)
+          (check-propagation #{}  reporter)))
+      ;; Note: We must get the doms after doing the actions, so we can
+      ;; immediately show the response to the actions. Likewise, we
+      ;; have to pass down select requests after the new dom has been
+      ;; constructed, so the client has the dom we want it to select.      
+      (let [doms (response-doms @@dom-tracker 10)
+            select (let [[select if-selected] (:select client-info)]
+                     (when select
+                       (let [select-id (key->id @dom-tracker select)]
+                         [select-id
+                          (filter identity
+                                  (map (partial key->id @dom-tracker)
+                                       if-selected))])))
+            answer (cond-> {}
+                     (> (count doms) 0) (assoc :doms doms)
+                     select (assoc :select select)
+                     actions (assoc :acknowledge (vec (keys actions))))]
+        (println "response" answer)
+        (response answer)))))

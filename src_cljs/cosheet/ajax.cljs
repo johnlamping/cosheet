@@ -1,10 +1,12 @@
 (ns cosheet.ajax
   (:require [ajax.core :refer [GET POST transit-response-format]]
+            [reagent.core :as reagent]
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map
               process-response-for-pending take-pending-params]]
-            [cosheet.edit-field :refer [close-edit-field selected deselect]]
+            [cosheet.edit-field :refer [close-edit-field edit-field-open-on
+                                        select selected deselect]]
             ))
 
 (declare ajax-handler)
@@ -70,23 +72,35 @@
          (js/document.getElementById "edit_holder") doms)
     (close-edit-field)))
 
+(defn handle-ajax-doms
+  [response]
+  (let [doms (:doms response)]
+    (when doms
+      (deslect-if-contained doms)
+      (close-edit-field-if-contained doms)
+      (into-atom-map components
+                     ;; Turn [:component {attributes} <id>]
+                     ;; into [cosheet.client/component {attributes} id]
+                     (replace-in-struct {:component component} (vec doms))))))
+
+(defn handle-ajax-select
+  [response]
+  (let [[to-select if-selected] (:select response)
+        select-target (and to-select (js/document.getElementById to-select))
+        current-id (and @selected (.-id @selected))]
+    (when (and select-target
+               (nil? @edit-field-open-on)
+               (or (nil? current-id) (some #{current-id} if-selected)))
+      (.log js/console "doing select.")
+      (select select-target))))
+
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
   (when (not= response {})
     (.log js/console (str response))
-    (let [doms (:doms response)]
-      (when doms
-        (deslect-if-contained doms)
-        (close-edit-field-if-contained doms)
-        (into-atom-map components
-                       ;; Turn [:component {attributes} <id>]
-                       ;; into [cosheet.client/component {attributes} id]
-                       (replace-in-struct {:component component} (vec doms)))))
-    (let [[to-select if-selected] (:select response)]
-      (when (and to-select
-                 (nil? @edit-field-open-on)
-                 (or (nil? @selected) (some #{@selected} if-selected)))
-        (select to-select)))
+    (handle-ajax-doms response)
+    (reagent/flush)  ;; Must update the dom before the select is processed.
+    (handle-ajax-select response)
     (process-response-for-pending response)
     (ajax-if-pending))
   (start-watch-task))

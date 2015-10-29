@@ -17,8 +17,8 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl)
             (cosheet.server
-             [render :refer [item-DOM canonicalize-list
-                             item-referent prepend-to-key]]
+             [render :refer [item-DOM canonicalize-list visible-to-list
+                             item-referent condition-referent prepend-to-key]]
              [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
             ; :reload
@@ -401,6 +401,8 @@
 (deftest set-content-handler-test
   (let [mutable-store (new-mutable-store store)
         mutable-joe (description->entity joe-id mutable-store)
+        mutable-joe-male (description->entity (:item-id joe-male)
+                                              mutable-store)
         tracker (new-joe-jane-tracker mutable-store)]
     (is (= (id->content
             (set-content-handler store tracker "joe-root" "Joe" "Jim")
@@ -410,20 +412,25 @@
             (set-content-handler store tracker "joe-root" "Wrong" "Jim")
             joe-id)
            "Joe"))
+    ;; Now, try calling it when there is a parallel referent.
     (swap! tracker #(-> %
                         (assoc-in [:id->key "test"]
                                   [[:parallel
                                     [(:item-id joe-age-tag) (:item-id joe-age)]
                                     [joe-id jane-id]]])
                         (assoc-in [:id->key "test2"]
-                                  [[:parallel
-                                    [[:content]
-                                     (:item-id joe-age-tag) (:item-id joe-age)]
-                                    [joe-id jane-id]]])))
-    ;; TODO: Add a test for when an entity is added.
+                                  [(condition-referent '[tag])
+                                   (:item-id joe-male)
+                                   joe-id])))
     (let [modified (set-content-handler store tracker "test" "age" "oldness")]
       (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
       (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
+    ;; Try calling if from do-actions
     (do-actions mutable-store tracker
                 {1 [:set-content "joe-root" "Joe" "Fred"]})
-    (is (= (current-value (content mutable-joe)) "Fred"))))
+    (is (= (current-value (content mutable-joe)) "Fred"))
+    ;; Try when an entry is added.
+    (do-actions mutable-store tracker
+                {2 [:set-content "test2" nil "gender"]})
+    (is (= (current-value (visible-to-list mutable-joe-male))
+           ["male" ["gender" 'tag]]))))

@@ -50,6 +50,16 @@
         (first-primitive-referent exemplar))
       referent)))
 
+(defn remove-first-referent
+  "Remove the first referent from the key."
+  [[first & rest]]
+  (if (parallel-referent? first)
+    (let [[type exemplar items] first]
+      (if (empty? exemplar)
+        rest
+        (vec (cons [type (remove-first-referent exemplar) items] rest))))
+    rest))
+
 (defn remove-content-referent
   "If a key starts with a content referent, remove it."
   [[first & rest]]
@@ -234,6 +244,16 @@
    store (:item-id subject) entity
    subject :after false))
 
+(defn reduce-update
+  "Given a function from store and item to store and id, reduce it
+   on the store and each of the items, returning the final store
+   and the first item that came back." 
+  [f store items]
+  (reduce (fn [[store id] item]
+            (let [[store new-id] (f store item)]
+              [store (or id new-id)]))
+          [store nil] items))
+
 (defn add-element-handler
   "Add a element to the item with the given client id.
   Indicate that the new element should be selected."
@@ -246,12 +266,8 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when ((some-fn item-referent? content-referent?) first-primitive)
-      (let [[store element-id]
-            (reduce (fn [[store element-id] item]
-                      (let [[store new-id]
-                            (update-add-element "" store item)]
-                        [store (or element-id new-id)]))
-                    [store nil] items)]
+      (let [[store element-id] (reduce-update (partial update-add-element "")
+                                               store items)]
         (if element-id
           {:store store
            :select [(prepend-to-key
@@ -262,11 +278,12 @@
 
 (defn update-add-sibling
   "Given an item and elements that its siblings must have, add a sibling
-  in the given direction (:before or :after)"
+  in the given direction (:before or :after). Also return the id of the
+  new element"
   [sibling-elements direction store item]
-  (first (update-add-entity-with-order-item
-          store (id->subject store (:item-id item)) (cons "" sibling-elements)
-          item direction true)))
+  (update-add-entity-with-order-item
+   store (id->subject store (:item-id item)) (cons "" sibling-elements)
+   item direction true))
 
 (defn add-sibling-handler
   "Add a sibling to the item with the given client id."
@@ -283,8 +300,17 @@
     (println "in direction" direction)
     (println "sibling elements" sibling-elements)
     (when ((some-fn item-referent? content-referent?) first-primitive)
-      (reduce (partial update-add-sibling sibling-elements direction)
-              store items))))
+      (let [[store element-id]
+            (reduce-update (partial update-add-sibling
+                                    sibling-elements direction)
+                           store items)]
+        (if element-id
+          {:store store
+           :select [(prepend-to-key
+                     (item-referent (description->entity element-id store))
+                     (remove-first-referent (remove-content-referent key)))
+                    [key]]}
+          store)))))
 
 (defn furthest-item
   "Given a list of items and a direction,
@@ -316,8 +342,8 @@
       (println "in direction" direction)
       (when ((some-fn item-referent? content-referent?) first-primitive)
         (reduce (fn [store group]
-                  (update-add-sibling row-elements direction store
-                                      (furthest-item group direction)))
+                  (first (update-add-sibling row-elements direction store
+                                             (furthest-item group direction))))
                 store item-groups))))
 
 (defn update-delete

@@ -81,6 +81,14 @@
     (compute management)
     tracker))
 
+(deftest remove-first-referent-test
+  (is (= (remove-first-referent [3 4])
+         [4]))
+  (is (= (remove-first-referent [[:parallel [] [2 3]] 4])
+         [4]))
+  (is (= (remove-first-referent [[:parallel [0 1] [2 3]] 4])
+          [[:parallel [1] [2 3]] 4])))
+
 (deftest remove-content-referent-test
   (is (= (remove-content-referent [[:content] 3 4])
          [3 4]))
@@ -340,7 +348,7 @@
         age-dom (first (filter #(= (first (:key (second %)))
                                    (item-referent jane-age))
                                (dom->subcomponents jane-dom)))
-        s (update-add-sibling (:sibling-elements (second age-dom)) :after
+        [s id] (update-add-sibling (:sibling-elements (second age-dom)) :after
                               store jane-age)
         new-jane-entity (description->entity jane-id s)
         new-element (first (filter #(= (content %) "")
@@ -349,7 +357,8 @@
         [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
-    (is (= (id->content s (:item-id order-entity)) o5))))
+    (is (= (id->content s (:item-id order-entity)) o5))
+    (is (= id (:item-id new-element)))))
 
 (deftest add-sibling-handler-test
   (let [mutable-store (new-mutable-store store)
@@ -358,11 +367,17 @@
                                  #(= (first (get-in @tracker [:id->key %]))
                                      (:item-id joe-age))
                                  (keys (:id->key @tracker))))
-          new-store (add-sibling-handler store
-                                         tracker joe-age-dom-id :after)]
-      (let [joe-age-ids (id-label->element-ids new-store joe-id "age")
-            joe-ages (map #(id->content new-store %) joe-age-ids)]
-        (is (= (set joe-ages) #{"" 39 45}))))))
+          {:keys [store select]} (add-sibling-handler
+                                  store tracker joe-age-dom-id :after)]
+      (let [joe-age-ids (id-label->element-ids store joe-id "age")
+            joe-ages (map #(id->content store %) joe-age-ids)
+            new-element-id (first (filter #(= (id->content store %) "")
+                                       joe-age-ids))
+            key (get-in @tracker [:id->key joe-age-dom-id])]
+        (is (= (set joe-ages) #{"" 39 45}))
+        (is (= select [(prepend-to-key new-element-id
+                                       (remove-first-referent key))
+                       [key]]))))))
 
 (deftest furthest-item-test
   (is (= (furthest-item [joe-married] :before) joe-married))
@@ -380,8 +395,8 @@
                                      #(parallel-referent?
                                        (first (get-in @tracker [:id->key %])))
                                      (keys (:id->key @tracker))))
-          new-store1 (update-add-sibling
-                      nil :after store joe-age)
+          new-store1 (first (update-add-sibling
+                             nil :after store joe-age))
           new-store2 (add-row-handler
                       store tracker joe-age-tag-dom-id :after)]
       (is (= new-store1 new-store2)))))

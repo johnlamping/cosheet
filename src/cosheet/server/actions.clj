@@ -68,6 +68,7 @@
         (parallel-referent? first)
         (let [[type exemplar items] first]
           (vec (cons [type (remove-content-referent exemplar) items] rest)))
+        (nil? first) []
         true (vec (cons first rest))))
 
 (defn item->canonical-visible
@@ -333,7 +334,8 @@
           row-elements (:row-elements attributes)
           item-groups (if row-sibling
                         (key->item-groups store row-sibling)
-                        (map vector (key->items store key))) 
+                        (map vector (key->items store key)))
+          item-key (if row-sibling row-sibling key)
           first-primitive (first-primitive-referent (or row-sibling key))]
       (println "new row for id:" id " with key:" (simplify-for-print key))
       (println "row sibling" (simplify-for-print row-sibling))
@@ -341,10 +343,18 @@
       (println "with content" (map #(map content %) item-groups))
       (println "in direction" direction)
       (when ((some-fn item-referent? content-referent?) first-primitive)
-        (reduce (fn [store group]
-                  (first (update-add-sibling row-elements direction store
-                                             (furthest-item group direction))))
-                store item-groups))))
+        (let [[store element-id]
+              (reduce-update
+               (partial update-add-sibling row-elements direction)
+               store (map #(furthest-item % direction) item-groups))]
+          (if element-id
+            {:store store
+             :select [(prepend-to-key
+                       (item-referent (description->entity element-id store))
+                       (remove-first-referent
+                        (remove-content-referent item-key)))
+                      [key]]}
+            store)))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"

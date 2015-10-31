@@ -90,6 +90,8 @@
           [[:parallel [1] [2 3]] 4])))
 
 (deftest remove-content-referent-test
+  (is (= (remove-content-referent [])
+         []))
   (is (= (remove-content-referent [[:content] 3 4])
          [3 4]))
   (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
@@ -395,11 +397,14 @@
                                      #(parallel-referent?
                                        (first (get-in @tracker [:id->key %])))
                                      (keys (:id->key @tracker))))
-          new-store1 (first (update-add-sibling
-                             nil :after store joe-age))
-          new-store2 (add-row-handler
-                      store tracker joe-age-tag-dom-id :after)]
-      (is (= new-store1 new-store2)))))
+          [v-store v-id] (update-add-sibling nil :after store joe-age)
+          {:keys [store select]} (add-row-handler
+                                  store tracker joe-age-tag-dom-id :after)
+          joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
+          joe-age-tag-key (get-in @tracker [:id->key joe-age-tag-dom-id])]
+      (is (= store v-store))
+      (is (= select [(prepend-to-key v-id (remove-first-referent joe-age-key))
+                     [joe-age-tag-key]])))))
 
 (deftest delete-handler-test
   (let [mutable-store (new-mutable-store store)

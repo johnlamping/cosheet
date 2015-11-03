@@ -56,3 +56,9 @@
      "arg")
     (is (= @cell 5))))
 
+(deftest with-latest-value-test
+  (let [cell (atom 1)]
+    (with-latest-value [current @cell]
+      (reset! cell (min (inc current) 5)))
+    (is (= @cell 5))))
+

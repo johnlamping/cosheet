@@ -76,3 +76,12 @@
     (let [latest-value (thunk)]
       (when (not= value latest-value) (recur latest-value)))))
 
+(defmacro with-latest-value
+  "Run body with the current value of expression,
+  repeating until the value of the expression after it has been run
+  is the same as it was before."
+  [[var expression] & body]
+  `(call-with-latest-value
+    (fn [] ~expression)
+    (fn [~var] ~@body)))
+

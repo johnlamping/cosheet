@@ -3,7 +3,7 @@
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
                                     swap-control-return!
-                                    call-with-latest-value]]
+                                    with-latest-value]]
                      [debug :refer [simplify-for-print]]
                      [reporters :as reporter]
                      [mutable-map :as mm])))
@@ -156,18 +156,17 @@
 
 (defn copy-value-callback
   [[_ to] from]
-  (call-with-latest-value
-   #(reporter/value from)
-   (fn [value] (modify-and-act
-                to
-                (fn [data] (if (= (:value-source data) from)
-                             (cond-> (update-value data to value)
-                               (reporter/valid? value)
-                               ;; We have finished computing a value,
-                               ;; so the old source is not holding
-                               ;; onto anything useful.
-                               (update-old-value-source to nil))
-                             data))))))
+  (with-latest-value [value (reporter/value from)]
+    (modify-and-act
+     to
+     (fn [data] (if (= (:value-source data) from)
+                  (cond-> (update-value data to value)
+                    (reporter/valid? value)
+                    ;; We have finished computing a value,
+                    ;; so the old source is not holding
+                    ;; onto anything useful.
+                    (update-old-value-source to nil))
+                  data)))))
 
 (defn null-callback
   [key reporter]
@@ -177,13 +176,12 @@
   "Register the need to copy (or not copy) the value from
    the first reporter to become the value of the second."
   [from to]
-  (call-with-latest-value
-   #(let [data (reporter/data to)]
-      (cond (= (:value-source data) from) [copy-value-callback]
-            (= (:old-value-source data) from) [null-callback]))
-   (fn [callback]
-     (apply reporter/set-attendee!
-            from (list :copy-value to) callback))))
+  (with-latest-value
+    [callback (let [data (reporter/data to)]
+                (cond (= (:value-source data) from) [copy-value-callback]
+                      (= (:old-value-source data) from) [null-callback]))]    
+    (apply reporter/set-attendee!
+           from (list :copy-value to) callback)))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -228,64 +226,62 @@
 
 (defn copy-subordinate-callback
   [to from management]
-  (call-with-latest-value
-   #(reporter/value from)
-   (fn [value]
-     (modify-and-act
-      to
-      (fn [data]
-        (let [same-value
-              (= value (get-in data [:subordinate-values from] ::not-found))]
-          (if (or (not (reporter/data-attended? data))
-                  (not (contains? data :needed-values))
-                  (if (contains? (:needed-values data) from)
-                    (= value reporter/invalid)
-                    same-value))
-            data
-            ;; A value that we care about changed.
-            ;; We are invalid until the recomputation runs,
-            ;; which may not be for a while.
-            (let [current-source (:value-source data)
-                  newer-data (cond-> (update-value data to reporter/invalid)
-                               current-source
-                               ;; We must do the copy from source to
-                               ;; old-source before clearing source,
-                               ;; so the old source always has attendees.
-                               (#(-> %
-                                     (update-old-value-source to current-source)
-                                     (assoc :arguments-unchanged true)
-                                     (update-value-source to nil))))]
-              (if (reporter/valid? value)
-                (let [new-data
-                      (cond-> (update-in newer-data [:needed-values] disj from)
-                        (not same-value)
-                        (#(-> %
-                              (assoc-in [:subordinate-values from] value)
-                              (dissoc :arguments-unchanged))))]
-                  (if (empty? (:needed-values new-data))
-                    (if (:arguments-unchanged new-data)
-                      ;; We have re-confirmed all old values for
-                      ;; the old source. Make it current again.
-                      (-> new-data
-                          (update-value-source to (:old-value-source new-data))
-                          (update-old-value-source to nil))
-                      ;; Some value changed. Schedule recomputation.
-                      (apply update-new-further-action new-data 
-                             add-task (:queue management)
-                             [eval-expression-if-ready to management]))
-                    new-data))
-                (update-in newer-data [:needed-values] conj from))))))))))
+  (with-latest-value [value (reporter/value from)]
+    (modify-and-act
+     to
+     (fn [data]
+       (let [same-value
+             (= value (get-in data [:subordinate-values from] ::not-found))]
+         (if (or (not (reporter/data-attended? data))
+                 (not (contains? data :needed-values))
+                 (if (contains? (:needed-values data) from)
+                   (= value reporter/invalid)
+                   same-value))
+           data
+           ;; A value that we care about changed.
+           ;; We are invalid until the recomputation runs,
+           ;; which may not be for a while.
+           (let [current-source (:value-source data)
+                 newer-data (cond-> (update-value data to reporter/invalid)
+                              current-source
+                              ;; We must do the copy from source to
+                              ;; old-source before clearing source,
+                              ;; so the old source always has attendees.
+                              (#(-> %
+                                    (update-old-value-source to current-source)
+                                    (assoc :arguments-unchanged true)
+                                    (update-value-source to nil))))]
+             (if (reporter/valid? value)
+               (let [new-data
+                     (cond-> (update-in newer-data [:needed-values] disj from)
+                       (not same-value)
+                       (#(-> %
+                             (assoc-in [:subordinate-values from] value)
+                             (dissoc :arguments-unchanged))))]
+                 (if (empty? (:needed-values new-data))
+                   (if (:arguments-unchanged new-data)
+                     ;; We have re-confirmed all old values for
+                     ;; the old source. Make it current again.
+                     (-> new-data
+                         (update-value-source to (:old-value-source new-data))
+                         (update-old-value-source to nil))
+                     ;; Some value changed. Schedule recomputation.
+                     (apply update-new-further-action new-data 
+                            add-task (:queue management)
+                            [eval-expression-if-ready to management]))
+                   new-data))
+               (update-in newer-data [:needed-values] conj from)))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
   for use as an argument of the second."
   [from to management]
-  (call-with-latest-value
-   #(let [data (reporter/data to)]
-      (when (or (contains? (get data :needed-values #{}) from)
-                (contains? (:subordinate-values data) from))
-        [copy-subordinate-callback management]))
-   (fn [callback] (apply reporter/set-attendee! from to callback))))
+  (with-latest-value
+    [callback (let [data (reporter/data to)]
+                (when (or (contains? (get data :needed-values #{}) from)
+                          (contains? (:subordinate-values data) from))
+                  [copy-subordinate-callback management]))]
+    (apply reporter/set-attendee! from to callback)))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
@@ -390,18 +386,16 @@
         expression (:expression data)
         cache (:cache management)]
     ;;; We do side-effects, which can't run inside a swap!, so we have
-    ;;; to use call-with-latest-value.
-    (call-with-latest-value
-     #(reporter/attended? reporter)
-     (fn [attended]
-       (let [value-source (when attended
-                            (ensure-in-cache
-                             expression (:name data) management))]
-         (modify-and-act reporter
-                         #(update-value-source % reporter value-source))
-         ;; We can't do management until the registration is done,
-         ;; or the source's manager will take it out of the cache.
-         (when value-source (manage value-source management)))))))
+    ;;; to use with-latest-value.
+    (with-latest-value [attended (reporter/attended? reporter)]
+      (let [value-source (when attended
+                           (ensure-in-cache
+                            expression (:name data) management))]
+        (modify-and-act reporter
+                        #(update-value-source % reporter value-source))
+        ;; We can't do management until the registration is done,
+        ;; or the source's manager will take it out of the cache.
+        (when value-source (manage value-source management))))))
 
 (defn new-management
   "Create the manager data for a caching evaluator."

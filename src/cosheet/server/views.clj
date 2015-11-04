@@ -4,6 +4,7 @@
    [ring.util.response :refer [response]]
    (cosheet
     [orderable :as orderable]
+    [mutable-set :refer [new-mutable-set]]
     [store :refer [new-element-store new-mutable-store current-store]]
     store-impl
     mutable-store-impl
@@ -74,7 +75,25 @@
     tracker))
 
 ;;; TODO: this needs to be separate for each web page.
-(def dom-tracker (atom nil))
+(def session-state (atom nil))
+
+(defn tracker [] (:tracker @session-state))
+
+(defn check-propagation-if-quiescent []
+  (let [tracker-data @(tracker)
+        reporter (get-in tracker-data [:components ["root"] :reporter])
+        task-queue (get-in tracker-data [:management :queue])]
+    (when (finished-all-tasks? task-queue)
+      (check-propagation #{} reporter))))
+
+(defn initialize-session-state
+  []
+  (reset! session-state {:tracker (create-tracker store)
+                         :do-not-merge (new-mutable-set #{})})
+  (println "created tracker")
+  (compute management 1000)
+  (println "computed some")
+  (check-propagation-if-quiescent))
 
 ;;; The parameters for the ajax request and response are:
 ;;; request:
@@ -107,38 +126,27 @@
   (let [params (:params request)
         {:keys [actions acknowledge initialize]} params]
     (println "request params" params)
-    (if (nil? @dom-tracker)
-      (do
-        (reset! dom-tracker (create-tracker store))
-        (println "created tracker")
-        (compute management 1000)
-        (println "computed some")
-        (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
-              task-queue (get-in @@dom-tracker [:management :queue])]
-          (when (finished-all-tasks? task-queue)
-            (check-propagation #{}  reporter))))
+    (if (nil? @session-state)
+      (initialize-session-state)
       (when initialize
         (println "requesting client refresh")
-        (request-client-refresh @dom-tracker)))
+        (request-client-refresh (tracker))))
     (println "process acknowledgements" acknowledge)
-    (process-acknowledgements @dom-tracker acknowledge)    
-    (let [client-info (when actions (do-actions store @dom-tracker actions))]
+    (process-acknowledgements (tracker) acknowledge)    
+    (let [client-info (when actions (do-actions store (tracker) actions))]
       (compute management 10000)
-      (let [reporter (get-in @@dom-tracker [:components ["root"] :reporter])
-            task-queue (get-in @@dom-tracker [:management :queue])]
-        (when (finished-all-tasks? task-queue)
-          (check-propagation #{}  reporter)))
+      (check-propagation-if-quiescent)
       ;; Note: We must get the doms after doing the actions, so we can
       ;; immediately show the response to the actions. Likewise, we
       ;; have to pass down select requests after the new dom has been
       ;; constructed, so the client has the dom we want it to select.      
-      (let [doms (response-doms @@dom-tracker 10)
+      (let [doms (response-doms @(tracker) 10)
             select (let [[select if-selected] (:select client-info)]
                      (when select
-                       (let [select-id (key->id @dom-tracker select)]
+                       (let [select-id (key->id (tracker) select)]
                          [select-id
                           (filter identity
-                                  (map (partial key->id @dom-tracker)
+                                  (map (partial key->id (tracker))
                                        if-selected))])))
             answer (cond-> {}
                      (> (count doms) 0) (assoc :doms doms)

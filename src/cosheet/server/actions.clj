@@ -5,6 +5,7 @@
    (cosheet
     [debug :refer [simplify-for-print]]
     [orderable :refer [split earlier?]]
+    [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
                    id->subject id-valid?]]
     store-impl
@@ -70,6 +71,21 @@
           (vec (cons [type (remove-content-referent exemplar) items] rest)))
         (nil? first) []
         true (vec (cons first rest))))
+
+(defn items-referred-to
+  "Return all the items referred to by item referents in the key.
+  (Only includes exemplars items from parallel referents.)"
+  [key]
+  (when (not (empty? key))
+    (let [[first & rest] key
+          rest-items (items-referred-to rest)]
+      (cond (parallel-referent? first)
+            (let [[type exemplar items] first]
+              (concat (items-referred-to exemplar) rest-items))
+            (item-referent? first)
+            (cons first rest-items)
+            true
+            rest-items))))
 
 (defn item->canonical-visible
   "Return the canonical form of the visible information for the item."
@@ -394,53 +410,54 @@
             store items)))
 
 (defn selected-handler
-  [store dom-tracker id])
-
-(defn get-handler-function
-  "Given an action and other needed data return a function that
-  will take a store and call the handler with all the arguments it needs."
-  [dom-tracker [action-type & action-args]]
-  (let [handler (case action-type
-                  :set-content set-content-handler
-                  :add-element add-element-handler
-                  :add-sibling add-sibling-handler
-                  :add-row add-row-handler
-                  :delete delete-handler
-                  ;; TODO: Move this to another case that passes in
-                  ;; the session state, as well.
-                  :selected selected-handler
-                  nil)]
-    (if handler
-      (fn [store] (apply handler store dom-tracker action-args))
-      (fn [store] (println "unknown action type:" action-type)))))
+  [session-state id]
+  (let [key (id->key (:tracker session-state) id)
+        items (items-referred-to key)]
+    (mutable-set-swap! (:do-not-merge session-state) (fn [old] (set items)))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.
 ;;; Support could even be incorporated into immutable stores.
+(defn do-storage-update-action
+  [handler mutable-store tracker action-args]
+  (println "action-args" action-args)
+  (do-update-control-return!
+   mutable-store
+   (fn [store]
+     (let [result (apply handler store tracker action-args)]
+       (if result
+         (if (satisfies? cosheet.store/Store result)
+           [result nil]
+           (do
+             (assert (map? result))
+             (assert (:store result))
+             [(:store result) (dissoc result store)]))
+         [store nil])))))
+
 (defn do-action
-  [mutable-store dom-tracker action]
-  (let [remaining
-        (do-update-control-return!
-         mutable-store
-         (fn [store]
-           (let [result ((get-handler-function dom-tracker action) store)]
-             (if result
-               (if (satisfies? cosheet.store/Store result)
-                 [result nil]
-                 (do
-                   (assert (map? result))
-                   (assert (:store result))
-                   [(:store result) (dissoc result store)]))
-               [store nil]))))]
-    remaining))
+  [mutable-store session-state [action-type & action-args]]
+  (if-let [handler (case action-type
+                     :set-content set-content-handler
+                     :add-element add-element-handler
+                     :add-sibling add-sibling-handler
+                     :add-row add-row-handler
+                     :delete delete-handler                  
+                     nil)]
+    (do-storage-update-action
+     handler mutable-store (:tracker session-state) action-args)
+    (if-let [handler (case action-type
+                       :selected selected-handler
+                       nil)]
+      (apply handler session-state action-args)
+      (println "unknown action type:" action-type))))
 
 (defn do-actions
   "Run the actions, and return any additional information to be returned
   to the client"
-  [mutable-store dom-tracker actions]
-  (let [keys (sort (keys actions)) ]
+  [mutable-store session-state actions]
+  (let [keys (sort (keys actions))]
     (reduce (fn [client-info key]
               (let [action (actions key)
-                    remaining (do-action mutable-store dom-tracker action)]
+                    remaining (do-action mutable-store session-state action)]
                 (into client-info (select-keys remaining [:select]))))
             {} keys)))

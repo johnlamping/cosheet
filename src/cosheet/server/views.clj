@@ -133,7 +133,7 @@
         (request-client-refresh (tracker))))
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements (tracker) acknowledge)    
-    (let [client-info (when actions (do-actions store (tracker) actions))]
+    (let [client-info (when actions (do-actions store @session-state actions))]
       (compute management 10000)
       (check-propagation-if-quiescent)
       ;; Note: We must get the doms after doing the actions, so we can

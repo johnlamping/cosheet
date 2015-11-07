@@ -72,16 +72,16 @@
         (nil? first) []
         true (vec (cons first rest))))
 
-(defn items-referred-to
-  "Return all the items referred to by item referents in the key.
+(defn item-ids-referred-to
+  "Return all the item ids referred to by item referents in the key.
   (Only includes exemplars items from parallel referents.)"
   [key]
   (when (not (empty? key))
     (let [[first & rest] key
-          rest-items (items-referred-to rest)]
+          rest-items (item-ids-referred-to rest)]
       (cond (parallel-referent? first)
             (let [[type exemplar items] first]
-              (concat (items-referred-to exemplar) rest-items))
+              (concat (item-ids-referred-to exemplar) rest-items))
             (item-referent? first)
             (cons first rest-items)
             true
@@ -410,9 +410,11 @@
             store items)))
 
 (defn selected-handler
-  [session-state id]
+  [store session-state id]
   (let [key (id->key (:tracker session-state) id)
-        items (items-referred-to key)]
+        ids (item-ids-referred-to key)
+        items (map #(description->entity % store) ids)]
+    (println "Ids not to merge" ids)
     (mutable-set-swap! (:do-not-merge session-state) (fn [old] (set items)))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
@@ -448,7 +450,7 @@
     (if-let [handler (case action-type
                        :selected selected-handler
                        nil)]
-      (apply handler session-state action-args)
+      (apply handler mutable-store session-state action-args)
       (println "unknown action type:" action-type))))
 
 (defn do-actions

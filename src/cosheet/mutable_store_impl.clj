@@ -35,7 +35,7 @@
       "A store that contains an immutable store,
        supports mutation to that store,
        and returns reporter objects for queries."}
-  [management ;; A mutable-manager managemente holding the immutable
+  [management ;; A mutable-manager management holding the immutable
               ;; store as its value. 
    ]
 
@@ -91,7 +91,7 @@
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
-  (print-method (:state @(:data s)) w))
+  (print-method (:value @(:management s)) w))
 
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl

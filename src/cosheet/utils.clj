@@ -16,7 +16,9 @@
 (defn update-last
   "Update the last element of a vector."
   [vec fun]
-  (update-in vec [(dec (count vec))] fun))
+  (if (empty? vec)
+    [(fun nil)]
+    (update-in vec [(dec (count vec))] fun)))
 
 ;;; Utilities for making clean maps.
 

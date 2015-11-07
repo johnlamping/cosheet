@@ -9,7 +9,8 @@
          {:a 1 :b 2 :c 1})))
 
 (deftest update-last-test
-  (is (= (update-last [1 2 3] inc) [1 2 4])))
+  (is (= (update-last [1 2 3] inc) [1 2 4]))
+  (is (= (update-last [] #(conj % 1)) [[1]])))
 
 (deftest dissoc-in-test
   (is (empty? (dissoc-in {:a {:b {:c 1}}} [:a :b :c])))

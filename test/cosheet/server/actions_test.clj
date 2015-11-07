@@ -71,13 +71,13 @@
              [joe-id :bob]
              [item-DOM
               (description->entity joe-id mutable-store)
-              [joe-id :bob] #{} {:depth 1}])
+              [joe-id :bob] #{} {:depth 1 :do-not-merge #{}}])
     (add-dom tracker
              "jane-root"
              [jane-id :bob]
              [item-DOM
               (description->entity jane-id mutable-store)
-              [jane-id :bob] #{} {:depth 1}])
+              [jane-id :bob] #{} {:depth 1  :do-not-merge #{}}])
     (compute management)
     tracker))
 
@@ -99,8 +99,8 @@
   (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
          [[:parallel [0 1] [2 3]] 4])))
 
-(deftest items-referred-to-test
-  (is (= (set (items-referred-to [[:parallel [0 1] [2 3]] 4]))
+(deftest item-ids-referred-to-test
+  (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
          #{0 1 4})))
 
 (deftest item-determining-referents-test
@@ -348,7 +348,7 @@
 (deftest update-add-sibling-test
   (let [jane-dom (current-value
                   (item-DOM jane-entity [(item-referent jane-entity)]
-                            #{} {:depth 1}))
+                            #{} {:depth 1 :do-not-merge #{}}))
         order-entity (first (label->elements jane-age :order))
         order (content order-entity)
         age-dom (first (filter #(= (first (:key (second %)))

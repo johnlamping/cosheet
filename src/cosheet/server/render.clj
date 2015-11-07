@@ -1,6 +1,7 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset update-last]]
+                     [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [dom-utils
@@ -340,13 +341,33 @@
                                            :members (:members last)}]}))
                info item))))))))
 
-(defn hierarchy-by-info
-  "Given a set of canonical-set-info and items for each, return a hierarchy."
-  [infos-and-items]
-  (reduce (fn [hierarchy [info item]]
-            (append-to-hierarchy hierarchy info item))
-          []
-          infos-and-items))
+(defn split-by-subset
+  "Given a list of infos and item maps, and a subset of items not to merge,
+  return a list of lists, broken so that any info-and-item-maps whose item
+  is in the set gets its own list."
+  [infos-and-item-maps do-not-merge-subset]
+  (first
+   (reduce
+    (fn [[result do-not-merge-with-prev] info-and-item-map]
+      (cond (do-not-merge-subset (:item (second info-and-item-map)))
+            [(conj result [info-and-item-map]) true]
+            do-not-merge-with-prev
+            [(conj result [info-and-item-map]) false]
+            true
+            [(update-last result #((fnil conj []) % info-and-item-map)) false]))
+    [[] false]
+    infos-and-item-maps)))
+
+(defn hierarchy-by-canonical-info
+  "Given a list of canonical-set-info and item maps for each,
+  and a subset of items in the maps not to merge, return a hierarchy."
+  [infos-and-item-maps do-not-merge-subset]
+  (mapcat
+   #(reduce (fn [hierarchy [info item-map]]
+             (append-to-hierarchy hierarchy info item-map))
+           []
+           %)
+   (split-by-subset infos-and-item-maps do-not-merge-subset)))
 
 (defn hierarchy-node-descendants
   [node]
@@ -587,8 +608,9 @@
 
 (defn tagged-items-hierarchy
   "Given items, organize them into a flattened hierarchy by tag"
-  [items]
-  (expr-let [item-maps
+  [items do-not-merge]
+  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
+             item-maps
              (expr-seq map
                        (fn [item]
                          (expr-let [tag-items (entity/label->elements item 'tag)
@@ -598,9 +620,10 @@
                             :tag-items tag-items
                             :tag-canonicals tag-canonicals}))
                        (order-items items))]
-    (let [hierarchy (hierarchy-by-info
+    (let [hierarchy (hierarchy-by-canonical-info
                      (map (fn [map] [(multiset (:tag-canonicals map)) map])
-                          item-maps))]
+                          item-maps)
+                     do-not-merge-subset)]
       (update-last 
        (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0)) hierarchy))
        ;; We need to put on a final closing border.
@@ -629,7 +652,7 @@
   ;;                   the lower left corner
   ;;     :for-multiple true if this row applies to several items.
   [items parent-key inherited]
-  (expr-let [hierarchy (tagged-items-hierarchy items)
+  (expr-let [hierarchy (tagged-items-hierarchy items (:do-not-merge inherited))
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM

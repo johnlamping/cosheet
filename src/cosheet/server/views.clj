@@ -61,7 +61,7 @@
 (defonce management (new-management 1))
 
 (defn create-tracker
-  [mutable-store]
+  [mutable-store do-not-merge]
   (let [immutable-root-item (:v (first (query-matches
                                         '(:variable (:v :name)
                                                     ((nil :root) :condition)
@@ -69,7 +69,8 @@
                                         (current-store store))))
         root-item (description->entity (:item-id immutable-root-item)
                                         mutable-store)
-        definition [item-DOM root-item ["root"] #{} {:depth 0}]
+        definition [item-DOM root-item ["root"] #{}
+                    {:depth 0 :do-not-merge do-not-merge}]
         tracker (new-dom-tracker management)]
     (add-dom tracker "root" ["root"] definition)
     tracker))
@@ -88,8 +89,9 @@
 
 (defn initialize-session-state
   []
-  (reset! session-state {:tracker (create-tracker store)
-                         :do-not-merge (new-mutable-set #{})})
+  (reset! session-state (let [do-not-merge (new-mutable-set #{})]
+                          {:tracker (create-tracker store do-not-merge)
+                           :do-not-merge do-not-merge}))
   (println "created tracker")
   (compute management 1000)
   (println "computed some")

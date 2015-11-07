@@ -10,6 +10,8 @@
   (set-attendee! reporter :demand (fn [key reporter] nil)))
 
 (deftest mutable-set-test
+  (is (= (mutable-set-intersection #{1 2 3} [2 3 4])
+         #{2 3}))
   (let [ms (new-mutable-set #{1 2 3})
         r234 (mutable-set-intersection ms [2 3 4])
         r456 (mutable-set-intersection ms [4 5 6])]

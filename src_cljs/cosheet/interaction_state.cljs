@@ -1,4 +1,4 @@
-(ns cosheet.edit-field
+(ns cosheet.interaction-state
   (:require [goog.dom :as gdom]))
 
 ;;; These are the UI operations on the edit field and on selections. We

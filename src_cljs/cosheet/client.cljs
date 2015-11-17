@@ -11,9 +11,9 @@
              [component components add-pending-action]]
             cosheet.dom-utils
             [cosheet.ajax :refer [ajax-if-pending ajax-request]]
-            [cosheet.edit-field :refer [edit-field-open-on
-                                        open-edit-field close-edit-field
-                                        selected select deselect]]
+            [cosheet.interaction-state :refer [edit-field-open-on
+                                               open-edit-field close-edit-field
+                                               selected select deselect]]
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})

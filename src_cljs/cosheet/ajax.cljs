@@ -5,8 +5,9 @@
              [component components
               replace-in-struct into-atom-map
               process-response-for-pending take-pending-params]]
-            [cosheet.edit-field :refer [close-edit-field edit-field-open-on
-                                        select selected deselect]]
+            [cosheet.interaction-state :refer [close-edit-field
+                                               edit-field-open-on
+                                               select selected deselect]]
             ))
 
 (declare ajax-handler)
@@ -47,7 +48,7 @@
   "Given a dom and a list of dom revisions, return true if the dom
   might be changed."
   ;; TODO: This sees through components, which is too paranoid, as
-  ;; a change to a component container won't affect the component
+  ;; a change to a component container won't affect the component.
   [dom changes]
   (some (fn [change]
           (let [{:keys [id]} (second change)]
@@ -55,7 +56,7 @@
                  (.contains (js/document.getElementById id) dom))))
         changes))
 
-(defn deslect-if-contained
+(defn deselect-if-contained
   "Given a list of dom revisions, undo the selection if it is contained 
   in one of the changes."
   [doms]
@@ -76,7 +77,7 @@
   [response]
   (let [doms (:doms response)]
     (when doms
-      (deslect-if-contained doms)
+      (deselect-if-contained doms)
       (close-edit-field-if-contained doms)
       (into-atom-map components
                      ;; Turn [:component {attributes} <id>]
@@ -84,23 +85,29 @@
                      (replace-in-struct {:component component} (vec doms))))))
 
 (defn handle-ajax-select
-  [response]
-  (let [[to-select if-selected] (:select response)
-        select-target (and to-select (js/document.getElementById to-select))
-        current-id (and @selected (.-id @selected))]
-    (when (and select-target
-               (nil? @edit-field-open-on)
-               (or (nil? current-id) (some #{current-id} if-selected)))
-      (.log js/console "doing select.")
-      (select select-target))))
+  "Do the selection requested by the ajaz response, or if none,
+  but the old selection was temporarily cleared, restore that selection."
+  [response previously-selected-id]
+  (when (nil? @edit-field-open-on)
+    (let [[request-id if-selected] (:select response)
+          target-id (cond (or (nil? previously-selected-id)
+                              (some #{current-id} if-selected))
+                          request-id
+                          (nil? @selected)
+                          previously-selected-id)
+          select-target (and target-id (js/document.getElementById target-id))]
+      (when select-target
+        (.log js/console "doing select.")
+        (select select-target)))))
 
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
   (when (not= response {})
     (.log js/console (str response))
-    (handle-ajax-doms response)
-    (reagent/flush)  ;; Must update the dom before the select is processed.
-    (handle-ajax-select response)
+    (let [previously-selected-id (and @selected (.-id @selected))]
+      (handle-ajax-doms response)
+      (reagent/flush)  ;; Must update the dom before the select is processed.
+      (handle-ajax-select response previously-selected-id))
     (process-response-for-pending response)
     (ajax-if-pending))
   (start-watch-task))

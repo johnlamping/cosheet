@@ -73,7 +73,8 @@
         true (vec (cons first rest))))
 
 (defn item-ids-referred-to
-  "Return all the item ids referred to by item referents in the key.
+  "Return all the item ids referred to by item referents in the key,
+  in order from most specific to most generic
   (Only includes exemplars items from parallel referents.)"
   [key]
   (when (not (empty? key))
@@ -415,7 +416,13 @@
         ids (item-ids-referred-to key)
         items (map #(description->entity % store) ids)]
     (println "Ids not to merge" ids)
-    (mutable-set-swap! (:do-not-merge session-state) (fn [old] (set items)))))
+    (mutable-set-swap!
+     (:do-not-merge session-state)
+     (fn [old]
+       (if (empty? items)
+         #{}
+         (set (cons (first items)
+                    (clojure.set/intersection (set (rest items)) old))))))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.

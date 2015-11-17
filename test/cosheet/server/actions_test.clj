@@ -15,6 +15,8 @@
                             new-mutable-store current-store]]
              [store-impl :refer [->ItemId]]
              [store-utils :refer [add-entity]]
+             [mutable-manager :refer [current-mutable-value]]
+             [mutable-set :refer [new-mutable-set]]
              mutable-store-impl)
             (cosheet.server
              [render :refer [item-DOM canonicalize-list visible-to-list
@@ -34,33 +36,33 @@
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
-(def joe `("Joe"
-           (~o2 :order)
-           ("male" (~o1 :order))
-           (39 (~o3 :order)
-               ("age" ~'tag)
-               ("doubtful" "confidence"))
-           ("married" (~o2 :order))
-           (45 (~o4 :order)
-               ("age" ~'tag))))
-(def jane `("Jane" (~o1 :order)
-           ("female" (~o2 :order))
-           (45 (~o3 :order)
-               ("age" ~'tag))))
-(def t1 (add-entity (new-element-store) nil joe))
+(def joe-list `("Joe"
+                (~o2 :order)
+                ("male" (~o1 :order))
+                (39 (~o3 :order)
+                    ("age" ~'tag)
+                    ("doubtful" "confidence"))
+                ("married" (~o2 :order))
+                (45 (~o4 :order)
+                    ("age" ~'tag))))
+(def jane-list `("Jane" (~o1 :order)
+                 ("female" (~o2 :order))
+                 (45 (~o3 :order)
+                     ("age" ~'tag))))
+(def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
-(def t2 (add-entity (first t1) nil jane))
+(def t2 (add-entity (first t1) nil jane-list))
 (def store (first t2))
 (def jane-id (second t2))
-(def joe-entity (description->entity joe-id store))
-(def joe-age (first (filter #(= (content %) 45) (elements joe-entity))))
-(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe-entity))))
+(def joe (description->entity joe-id store))
+(def joe-age (first (filter #(= (content %) 45) (elements joe))))
+(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe))))
 (def joe-age-tag (first (elements joe-age)))
-(def joe-male (first (filter #(= (content %) "male") (elements joe-entity))))
+(def joe-male (first (filter #(= (content %) "male") (elements joe))))
 (def joe-married (first (filter #(= (content %) "married")
-                                (elements joe-entity))))
-(def jane-entity (description->entity jane-id store))
-(def jane-age (first (label->elements jane-entity "age")))
+                                (elements joe))))
+(def jane (description->entity jane-id store))
+(def jane-age (first (label->elements jane "age")))
 (def jane-age-tag (first (elements jane-age)))
 
 (defn new-joe-jane-tracker [mutable-store]
@@ -80,6 +82,14 @@
               [jane-id :bob] #{} {:depth 1  :do-not-merge #{}}])
     (compute management)
     tracker))
+
+(defn find-dom-id
+  "Given a tracker and an entity, find the id of the dom for that entity."
+  [tracker entity]
+  (let [id (:item-id entity)
+        tracker-data @tracker]
+    (first (filter #(= (first (get-in tracker-data [:id->key %])) id)
+                   (keys (:id->key tracker-data))))))
 
 (deftest remove-first-referent-test
   (is (= (remove-first-referent [3 4])
@@ -115,89 +125,89 @@
                          [39 {["age" {'tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
                               [45 {["age" {'tag 1}] 1}] 1}]]
-    (is (= (item->canonical-visible joe-entity) expected))))
+    (is (= (item->canonical-visible joe) expected))))
 
 (deftest instantiate-exemplar-test
   (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-male)]
-                                 (make-instantiator joe-entity))
+                                 (make-instantiator joe))
            [joe-male]))
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-male)]
-                                 (make-instantiator jane-entity))
+                                 (make-instantiator jane))
            []))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator jane-entity))
+                                 (make-instantiator jane))
            [jane-age]))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator joe-entity))
+                                 (make-instantiator joe))
            [joe-age]))
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-age-tag)
                                               (:item-id joe-age)]
-                                 (make-instantiator jane-entity))
+                                 (make-instantiator jane))
            [jane-age-tag]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel [] [(:item-id joe-male)
                                                  (:item-id joe-age)]]]
-                                 (make-instantiator joe-entity))
+                                 (make-instantiator joe))
            [joe-male joe-age]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel
                                    [(:item-id joe-age-tag)]
                                    [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe-entity))
+                                 (make-instantiator joe))
            [joe-age-tag]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel
                                    [[:parallel [] [(:item-id joe-age-tag)]]]
                                    [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe-entity))
+                                 (make-instantiator joe))
            [joe-age-tag]))
     (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator joe-entity))
+            store true [(:item-id joe-male)] (make-instantiator joe))
            [[joe-male]]))
     (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator jane-entity))
+            store true [(:item-id joe-male)] (make-instantiator jane))
            []))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator jane-entity))
+            store true [(:item-id jane-age)] (make-instantiator jane))
            [[jane-age]]))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator joe-entity))
+            store true [(:item-id jane-age)] (make-instantiator joe))
            [[joe-age]]))
     (is (= (instantiate-exemplar
             store true
             [(:item-id joe-age-tag) (:item-id joe-age)]
-            (make-instantiator jane-entity))
+            (make-instantiator jane))
            [[jane-age-tag]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel [] [(:item-id joe-male)
                             (:item-id joe-age)]]]
-            (make-instantiator joe-entity))
+            (make-instantiator joe))
            [[joe-male joe-age]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
               [(:item-id joe-age-tag)]
               [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe-entity))
+            (make-instantiator joe))
            [[joe-age-tag]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
               [[:parallel [] [(:item-id joe-age-tag)]]]
               [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe-entity))
+            (make-instantiator joe))
            [[joe-age-tag]]))))
 
 (deftest key->items-test
-  (is (= (key->items store [joe-id]) [joe-entity]))
-  (is (= (key->items store [joe-id jane-id]) [joe-entity]))
+  (is (= (key->items store [joe-id]) [joe]))
+  (is (= (key->items store [joe-id jane-id]) [joe]))
   (is (= (key->items store [[:parallel [] [joe-id jane-id]]])
-         [joe-entity jane-entity]))
+         [joe jane]))
   (is (= (key->items store
                      [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
          [joe-age jane-age]))
@@ -210,10 +220,10 @@
          [joe-male joe-age jane-age])))
 
 (deftest key->item-groups-test
-  (is (= (key->item-groups store [joe-id]) [[joe-entity]]))
-  (is (= (key->item-groups store [joe-id jane-id]) [[joe-entity]]))
+  (is (= (key->item-groups store [joe-id]) [[joe]]))
+  (is (= (key->item-groups store [joe-id jane-id]) [[joe]]))
   (is (= (key->item-groups store [[:parallel [] [joe-id jane-id]]])
-         [[joe-entity jane-entity]]))
+         [[joe jane]]))
   (is (= (key->item-groups store
                      [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
          [[joe-age] [jane-age]]))
@@ -238,8 +248,8 @@
   (let [[s id order] (update-add-entity-with-order
                       store joe-id 6
                       unused-orderable :before true)
-        joe-entity (description->entity joe-id s)
-        new-entity (first (filter #(= (content %) 6) (elements joe-entity)))
+        joe (description->entity joe-id s)
+        new-entity (first (filter #(= (content %) 6) (elements joe)))
         [o5 o6] (orderable/split unused-orderable :before)]
     (is (= (to-list new-entity)
            `(6 (~o5 :order))))
@@ -248,9 +258,9 @@
   (let [[s id order] (update-add-entity-with-order
                       store joe-id 6
                       unused-orderable :before false)
-        joe-entity (description->entity joe-id s)
+        joe (description->entity joe-id s)
         new-entity (first (filter #(= (content %) 6)
-                                  (elements joe-entity)))
+                                  (elements joe)))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
            `(6 (~o5 :order))))
@@ -259,9 +269,9 @@
   (let [[s id order] (update-add-entity-with-order
                       store joe-id 6
                       unused-orderable :after true)
-        joe-entity (description->entity joe-id s)
+        joe (description->entity joe-id s)
         new-entity (first (filter #(= (content %) 6)
-                                  (elements joe-entity)))
+                                  (elements joe)))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
            `(6 (~o6 :order))))
@@ -270,8 +280,8 @@
   (let [[s id order] (update-add-entity-with-order
                       store joe-id '(6 ("height" tag))
                       unused-orderable :before true)
-        joe-entity (description->entity joe-id s)
-        new-entity (first (label->elements joe-entity "height"))
+        joe (description->entity joe-id s)
+        new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
     (is (= (canonicalize-list (to-list new-entity))
@@ -284,8 +294,8 @@
   (let [[s id order] (update-add-entity-with-order
                       store joe-id '(6 ("height" tag) ("weight" tag))
                       unused-orderable :after false)
-        joe-entity (description->entity joe-id s)
-        new-entity (first (label->elements joe-entity "height"))
+        joe (description->entity joe-id s)
+        new-entity (first (label->elements joe "height"))
         [x o5] (orderable/split unused-orderable :before)
         [x o6] (orderable/split x :before)
         [o8 o7] (orderable/split x :before)]
@@ -297,12 +307,12 @@
     (is (= (:item-id new-entity) id))))
 
 (deftest update-add-element-test
-  (let [order-entity (first (label->elements jane-entity :order))
+  (let [order-entity (first (label->elements jane :order))
         order (content order-entity)
-        [s id] (update-add-element '("foo" 6) store jane-entity)
-        new-jane-entity (description->entity jane-id s)
+        [s id] (update-add-element '("foo" 6) store jane)
+        new-jane (description->entity jane-id s)
         new-element (first (filter #(= (content %) "foo")
-                                   (elements new-jane-entity)))
+                                   (elements new-jane)))
         [x o5] (orderable/split order :before)
         [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
@@ -330,10 +340,7 @@
   (let [joe-age-id (:item-id joe-age)
         mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (first (filter
-                                 #(= (first (get-in @tracker [:id->key %]))
-                                     joe-age-id)
-                                 (keys (:id->key @tracker))))
+    (let [joe-age-dom-id (find-dom-id tracker joe-age)
           {:keys [store select]} (add-element-handler
                                   store tracker joe-age-dom-id)
           new-joe-age (description->entity joe-age-id store)
@@ -347,7 +354,7 @@
 
 (deftest update-add-sibling-test
   (let [jane-dom (current-value
-                  (item-DOM jane-entity [(item-referent jane-entity)]
+                  (item-DOM jane [(item-referent jane)]
                             #{} {:depth 1 :do-not-merge #{}}))
         order-entity (first (label->elements jane-age :order))
         order (content order-entity)
@@ -356,9 +363,9 @@
                                (dom->subcomponents jane-dom)))
         [s id] (update-add-sibling (:sibling-elements (second age-dom)) :after
                               store jane-age)
-        new-jane-entity (description->entity jane-id s)
+        new-jane (description->entity jane-id s)
         new-element (first (filter #(= (content %) "")
-                                   (elements new-jane-entity)))
+                                   (elements new-jane)))
         [o5 x] (orderable/split order :after)
         [o6 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-element))
@@ -369,10 +376,7 @@
 (deftest add-sibling-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (first (filter
-                                 #(= (first (get-in @tracker [:id->key %]))
-                                     (:item-id joe-age))
-                                 (keys (:id->key @tracker))))
+    (let [joe-age-dom-id (find-dom-id tracker joe-age)
           {:keys [store select]} (add-sibling-handler
                                   store tracker joe-age-dom-id :after)]
       (let [joe-age-ids (id-label->element-ids store joe-id "age")
@@ -393,10 +397,7 @@
 (deftest add-row-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (first (filter
-                                 #(= (first (get-in @tracker [:id->key %]))
-                                     (:item-id joe-age))
-                                 (keys (:id->key @tracker))))
+    (let [joe-age-dom-id (find-dom-id tracker joe-age)
           joe-age-tag-dom-id (first (filter
                                      #(parallel-referent?
                                        (first (get-in @tracker [:id->key %])))
@@ -413,10 +414,7 @@
 (deftest delete-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-bogus-age-dom-id (first (filter
-                                 #(= (first (get-in @tracker [:id->key %]))
-                                     (:item-id joe-bogus-age))
-                                 (keys (:id->key @tracker))))
+    (let [joe-bogus-age-dom-id (find-dom-id tracker joe-bogus-age)
           new-store (delete-handler store tracker joe-bogus-age-dom-id)]
       (let [joe-age-ids (id-label->element-ids new-store joe-id "age")
             joe-ages (map #(id->content new-store %) joe-age-ids)]
@@ -458,3 +456,21 @@
                 {2 [:set-content "test2" nil "gender"]})
     (is (= (current-value (visible-to-list mutable-joe-male))
            ["male" ["gender" 'tag]]))))
+
+(deftest selected-handler-test
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-dom-id (find-dom-id tracker joe)
+        joe-male-dom-id (find-dom-id tracker joe-male)
+        jane-age-dom-id (find-dom-id tracker jane-age)
+        do-not-merge (new-mutable-set #{})
+        session-state {:tracker tracker
+                       :do-not-merge do-not-merge}]
+    (selected-handler store session-state joe-dom-id)
+    (is (= (current-mutable-value do-not-merge) #{joe}))
+    (selected-handler store session-state joe-male-dom-id)
+    (is (= (current-mutable-value do-not-merge) #{joe joe-male}))
+    (selected-handler store session-state jane-age-dom-id)
+    (is (= (current-mutable-value do-not-merge) #{jane-age}))
+    (selected-handler store session-state "No such id")
+    (is (= (current-mutable-value do-not-merge) #{}))))

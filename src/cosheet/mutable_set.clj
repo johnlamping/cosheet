@@ -4,7 +4,7 @@
                               get-or-make-reporter
                               describe-and-swap!]])))
 
-;;; Suppor for treating a mutable management as a mutable set of
+;;; Support for treating a mutable management as a mutable set of
 ;;; items, which supports an operation to find the intersection of the
 ;;; current content with a given set.
 

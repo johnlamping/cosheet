@@ -76,6 +76,9 @@
     tracker))
 
 ;;; TODO: this needs to be separate for each web page.
+;;; Session state consists of a map
+;;;        :tracker The tracker for the session.
+;;;   :do-not-merge A set of items that should not be merged.
 (def session-state (atom nil))
 
 (defn tracker [] (:tracker @session-state))

@@ -32,6 +32,11 @@
          ;; are any.
          :application->attended-reporter nil}))
 
+(defn current-mutable-value
+  "Return the current value of the managed item."
+  [management]
+  (:value @management))
+
 (defn compute-reporter
   "Given the value, compute the value for the reporter."
   [value reporter]

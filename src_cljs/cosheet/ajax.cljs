@@ -92,7 +92,7 @@
   (when (nil? @edit-field-open-on)
     (let [[request-id if-selected] (:select response)
           target-id (cond (or (nil? previously-selected-id)
-                              (some #{current-id} if-selected))
+                              (some #{previously-selected-id} if-selected))
                           request-id
                           (nil? @selected)
                           previously-selected-id)

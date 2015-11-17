@@ -53,7 +53,8 @@
   (some (fn [change]
           (let [{:keys [id]} (second change)]
             (and (contains? @components id)
-                 (.contains (js/document.getElementById id) dom))))
+                 (if-let [dom-for-id (js/document.getElementById id)]
+                   (.contains dom-for-id dom)))))
         changes))
 
 (defn deselect-if-contained

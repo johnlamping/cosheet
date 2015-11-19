@@ -1,6 +1,7 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
-                     [utils :refer [multiset update-last]]
+                     [utils :refer [multiset multiset-diff multiset-union
+                                    update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
@@ -33,17 +34,21 @@
 
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.
-;;; The server specific attributes include
+;;; There are removed by the dom manager before dom is sent to the client.
+;;; The server specific attributes are:
 ;;;                :key  A unique client side key further described below.
 ;;;           :ordering  Optional ordering information, described below.
 ;;;   :sibling-elements  Elements that a sibling of this item must have.
+;;;        :add-sibling  A key that a content item for this empty dom
+;;;                      should be a sibling of.
+;;;      :add-direction  Whether a content item for this empty dom
+;;;                      should come before or after :add-sibling
 ;;;        :row-sibling  A key that a new row should be a sibling of.
 ;;;                      If the key indicates multiple items, the row
 ;;;                      is a sibling of the last, or, if there are
-;;;                      multiples groups of items, the last of each
+;;;                      multiple groups of items, the last of each
 ;;;                      group.
 ;;;       :row-elements  Elements that a new row must have.
-;;; There are removed by the dom manager before dom is sent to the client.
 
 ;;; The value of the style attribute is represented with its own map,
 ;;; rather than as a string, so they are easier to adjust. Conviently,
@@ -267,6 +272,26 @@
      (multiset (map canonicalize-list (rest entity)))]
     entity))
 
+(def canonical-to-list)
+
+(defn canonical-set-to-list
+  "Given a set of canonicalized lists, with the set also in canonical form,
+  return a list of the items"
+  [set]
+  (when (not (empty? set))
+    (reduce (fn [result [key count]]
+              (concat result (repeat count (canonical-to-list key))))
+            [] (seq set))))
+
+(defn canonical-to-list
+  "Given a canonicalized list form of an item, return a list form for it."
+  [item]
+  (if (sequential? item)
+    (do (assert (= (count item) 2))
+        (cons (canonical-to-list (first item))
+              (canonical-set-to-list (second item))))
+    item))
+
 (defn canonical-info
   [entity]
   (expr-let [visible (visible-to-list entity)]
@@ -279,39 +304,26 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-(defn canonical-info-set-diff
-  "Given two canonical info sets, return a triple of canonical sets,
-   of what is in the first, but not the second, what is in the second,
-   but not the first, and what is in both."
-  [first second]
-  (reduce (fn [[first-only second-only both] key]
-            (let [first-count (get first key 0)
-                  second-count (get second key 0)]
-              [(cond-> first-only
-                 (> first-count second-count)
-                 (assoc key (- first-count second-count)))
-               (cond-> second-only
-                 (> second-count first-count)
-                 (assoc key (- second-count first-count)))
-               (cond-> both
-                 (and (pos? first-count) (pos? second-count))
-                 (assoc key (min first-count second-count)))]))
-          [{} {} {}]
-          (clojure.set/union (keys first) (keys second))))
-
 ;;; A hierarchy, for our purposes here, consists of vector of nodes. A
 ;;; node is a map with:
-;;;       :info A canonical-info-set.
-;;;    :members A vector of members matching the node.
-;;;   :children An optional vector of child nodes.
-;;; The information pertain to a child node includes all information
-;;; for its ancestors. For example, if a node has info {:b 1}, has a
-;;; parent with info {:a 1}, and has no other ancestors, the total
-;;; information pertaining to the node is {:a 1 :b 1}
+;;;           :info  A canonical-info-set of the new info at this level.
+;;; :cumulatve-info  A canonical-info-set all info for this node.
+;;;        :members  A vector of members matching the node.
+;;;       :children  An optional vector of child nodes.
+;;; The :info of a child node only includes the information not
+;;; reflected in any of its parents. When a hierarchy is flattened,
+;;; the cumulative information down through all parents is stored in
+;;; :cumulative-info.
+;;; For example, if a node has :info {:b 1}, and has a parent with
+;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
+;;; {:a 1 :b 1}
 ;;; As used here, the members are themselves a map, containing
 ;;;           :item The item that is the member
 ;;;      :tag-items The elements of the item that are tags
-;;; :tag-canonicals The canonical-info for each item in :tag-items
+;;; :tag-canonicals The canonical-info for all the item in :tag-items
+;;; The :tag-canonicals of each member of a flattened node will be the
+;;; same as its :cumulative-info, but a node might not have any
+;;; members, so we still need :cumulative-info.
 
 (defn append-to-hierarchy
   "Given an info and corresponding item, add them to the hierarchy"
@@ -321,8 +333,7 @@
     (let [last-entry (last hierarchy)]
       (if (or (empty? (:info last-entry)) (empty? info))
         (conj hierarchy {:info info :members [item]})
-        (let [[old-only new-only both] (canonical-info-set-diff
-                                        (:info last-entry) info)]
+        (let [[old-only new-only both] (multiset-diff (:info last-entry) info)]
           (if (empty? old-only)
             (update-last
              hierarchy
@@ -376,18 +387,22 @@
 (def flatten-hierarchy)
 
 (defn flatten-hierarchy-node
-  "Given a hierarchy node and a depth, return a flattened version
-  in of its hierarchy in pre-order. For each descendent, also give
-  its depth."
-  [node depth]
-  (cons (assoc node :depth depth)
-        (flatten-hierarchy (:children node) (inc depth))))
+  "Given a hierarchy node, a depth, and the combined info for all
+  ancestors, return a flattened version in of its hierarchy in
+  pre-order. Add :cumulative-info and :depth to the node and all its
+  descendants."
+  [node depth ancestor-info]
+  (let [cumulative-info (multiset-union (:info node) ancestor-info)]
+    (cons (-> node
+              (assoc :depth depth)
+              (assoc :cumulative-info cumulative-info))
+          (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
 
 (defn flatten-hierarchy
   "Given a hierarchy and a depth, return a flattened version in pre-order,
   for each node of the hierarchy, also giving its depth."
-  [hierarchy depth]
-  (mapcat #(flatten-hierarchy-node % depth) hierarchy))
+  [hierarchy depth ancestor-info]
+  (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -512,25 +527,37 @@
                       :row-sibling parent-key})))))))
 
 (defn components-DOM
-  "Given a list of [item, excluded-elements] pairs, 
-  Generate DOM for a vertical list of components for the items."
-  [items-with-excluded parent-key sibling-elements inherited]
-  (let [item-doms (map (fn [[item excluded-elements]]
-                         (let [key (prepend-to-key (item-referent item)
-                                                   parent-key)]
-                           (make-component
-                            {:key key :sibling-elements sibling-elements}
-                            [item-DOM
-                             item key (set excluded-elements) inherited])))
-                       items-with-excluded)]
-    (add-attributes (vertical-stack item-doms :separators true)
-                    {:class "column"})))
+  "Given a list of [item, excluded-elements] pairs, and the first item
+  of this or subsequent rows,
+  generate DOM for a vertical list of a component for each item."
+  [items-with-excluded first-affected-item parent-key
+   sibling-elements inherited]
+  (if (empty? items-with-excluded)
+    (add-attributes (vertical-stack nil :separators true)
+                    {:class "column editable"
+                     :key (prepend-to-key (condition-referent sibling-elements)
+                                          parent-key)
+                     :add-sibling (prepend-to-key
+                                   (item-referent first-affected-item)
+                                   parent-key)
+                     :add-direction :before})
+    (let [item-doms (map (fn [[item excluded-elements]]
+                           (let [key (prepend-to-key (item-referent item)
+                                                     parent-key)]
+                             (make-component
+                              {:key key :sibling-elements sibling-elements}
+                              [item-DOM
+                               item key (set excluded-elements) inherited])))
+                         items-with-excluded)]
+      (add-attributes (vertical-stack item-doms :separators true)
+                      {:class "column"}))))
 
 (defn tag-items-pair-DOM
   "Given information about the appearance of this node,
   a list of tag items, a list of pairs of (item, excluded elements,
   a list of elements (each in list form) that each item must satisfy,
-  and a list of all items that changes to the tags should apply to,
+  and a list of all items that changes to the tags should apply to, in
+  the order they appear,
   generate DOM for an element table row for the items."
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
@@ -545,6 +572,7 @@
                               (prepend-to-key items-referent parent-key)
                               inherited))
              items-dom (components-DOM items-with-excluded
+                                       (first affected-items)
                                        parent-key sibling-elements inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
@@ -556,7 +584,8 @@
   and a list of the canonical-infos for those items,
   return a list of items matching the elements of the set."
   [info items canonicals]
-  (let [;; A map from canonical-info to a vector of tag elements with that info.
+  (let [;; A map from canonical-info to a vector of tag elements
+        ;; with that info.
         canonicals-map (reduce (fn [map [tag canonical]]
                                  (update-in map [canonical] #(conj % tag)))
                                {} (map vector items canonicals))]
@@ -576,9 +605,7 @@
         descendant-items (map :item descendants)
         appearance-info (select-keys node [:depth :for-multiple :with-children
                                            :top-border :bottom-border])]
-    (expr-let [sibling-elements
-               (expr-seq map visible-to-list
-                         (get-in node [:members 0 :tag-items]))]
+    (let [sibling-elements (canonical-set-to-list (:cumulative-info node))]
       [appearance-info tag-items items-with-excluded
        sibling-elements descendant-items])))
 
@@ -625,7 +652,8 @@
                           item-maps)
                      do-not-merge-subset)]
       (update-last 
-       (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0)) hierarchy))
+       (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0 {}))
+                    hierarchy))
        ;; We need to put on a final closing border.
        #(assoc % :bottom-border :full)))))
 

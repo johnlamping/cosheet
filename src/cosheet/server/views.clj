@@ -17,7 +17,7 @@
     [computation-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
-    [render :refer [item-DOM]]
+    [render :refer [item-DOM item-referent]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -58,34 +58,37 @@
 
 (defonce store (create-store))
 
-(defonce management (new-management 1))
-
-(defn create-tracker
-  [mutable-store do-not-merge]
+(defonce root-item
   (let [immutable-root-item (:v (first (query-matches
                                         '(:variable (:v :name)
                                                     ((nil :root) :condition)
                                                     (true :reference))
-                                        (current-store store))))
-        root-item (description->entity (:item-id immutable-root-item)
-                                        mutable-store)
-        definition [item-DOM root-item ["root"] #{}
+                                        (current-store store))))]
+    (description->entity (:item-id immutable-root-item) store)))
+
+(defonce root-key [(item-referent root-item) "root"])
+
+(defonce management (new-management 1))
+
+(defn create-tracker
+  [do-not-merge]
+  (let [definition [item-DOM root-item root-key #{}
                     {:depth 0 :do-not-merge do-not-merge}]
         tracker (new-dom-tracker management)]
-    (add-dom tracker "root" ["root"] definition)
+    (add-dom tracker "root" root-key definition)
     tracker))
 
 ;;; TODO: this needs to be separate for each web page.
 ;;; Session state consists of a map
-;;;        :tracker The tracker for the session.
-;;;   :do-not-merge A set of items that should not be merged.
+;;;        :tracker  The tracker for the session.
+;;;   :do-not-merge  A set of items that should not be merged.
 (def session-state (atom nil))
 
 (defn tracker [] (:tracker @session-state))
 
 (defn check-propagation-if-quiescent []
   (let [tracker-data @(tracker)
-        reporter (get-in tracker-data [:components ["root"] :reporter])
+        reporter (get-in tracker-data [:components root-key :reporter])
         task-queue (get-in tracker-data [:management :queue])]
     (when (finished-all-tasks? task-queue)
       (check-propagation #{} reporter))))
@@ -93,7 +96,7 @@
 (defn initialize-session-state
   []
   (reset! session-state (let [do-not-merge (new-mutable-set #{})]
-                          {:tracker (create-tracker store do-not-merge)
+                          {:tracker (create-tracker do-not-merge)
                            :do-not-merge do-not-merge}))
   (println "created tracker")
   (compute management 1000)

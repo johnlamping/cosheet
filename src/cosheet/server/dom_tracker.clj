@@ -9,6 +9,9 @@
                      [dom-utils :refer [dom-attributes add-attributes]]
                      [computation-manager :refer [manage]])))
 
+;;; TODO: add a check when the dom of a component comes back that its
+;;; key matches the key the component is stored under.
+
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
 ;;; needed. (Where a computation manager's job is to update a bunch of
@@ -160,7 +163,8 @@
       (let [key (:key attributes)
             pruned-attributes (apply dissoc attributes
                                      [:key :ordering :sibling-elements
-                                      :row-sibling :row-elements])
+                                      :row-sibling :row-elements
+                                      :content-sibling :content-direction])
             client-attributes (if (nil? key)
                                 pruned-attributes
                                 (let [id (get-in data [:key->id key])]

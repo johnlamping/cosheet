@@ -397,25 +397,34 @@
         items (key->items store key)
         to (parse-string to)]
     (println "set id:" id " with key:" (simplify-for-print key))
-    (println "total items:" (count items))
-    (println "with content" (map content items))
     (println "from:" from " to:" to)
-    (reduce (cond ((some-fn nil? item-referent? content-referent?)
-                   first-primitive)
-                  (partial update-set-content from to)
-                  (and (condition-referent? first-primitive) (not= to ""))
-                  (fn [store item]
-                    (first (update-add-element
-                            (cons to (rest first-primitive)) store item)))
-                  true (fn [a b] a))
-            store items)))
+    (println "affecting" (count items) "items")
+    (cond ((some-fn nil? item-referent? content-referent?) first-primitive)
+          (reduce (partial update-set-content from to)
+                  store items)
+          (and (condition-referent? first-primitive) (not= to ""))
+          (let [attributes (key->attributes dom-tracker key)
+                sibling (:add-sibling attributes)
+                model-entity (cons to (rest first-primitive)) ]
+            (if sibling
+              (let [siblings (key->items store sibling)
+                    direction (:add-direction attributes)]
+                (assert (= (count items) (count siblings)))
+                (reduce (fn [store [subject sibling]]
+                          (first (update-add-entity-with-order-item
+                                  store (:item-id subject) model-entity
+                                  sibling direction false)))
+                        store (map vector items siblings)))
+              (reduce (fn [store item]
+                        (first (update-add-element model-entity store item)))
+                      store items)))))) 
 
 (defn selected-handler
   [store session-state id]
   (let [key (id->key (:tracker session-state) id)
         ids (item-ids-referred-to key)
         items (map #(description->entity % store) ids)]
-    (println "Ids not to merge" ids)
+    (println "Selected key" key)
     (mutable-set-swap!
      (:do-not-merge session-state)
      (fn [old]

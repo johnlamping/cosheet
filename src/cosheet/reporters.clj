@@ -53,36 +53,36 @@
 (defn data-atom
   "Return the atom holding the reporter's data. If any of the standard fields
    are changed, the appropriate notifications must be done."
-  [reporter]
-  (:data reporter))
+  [r]
+  (:data r))
 
 (defn data
   "Return all the current data for the reporter."
-  [reporter]
-  @(:data reporter))
+  [r]
+  @(:data r))
 
 (defn data-attended? [data]
   (not (empty? (:attendees data))))
 
-(defn attended? [reporter]
-  (data-attended? @(:data reporter)))
+(defn attended? [r]
+  (data-attended? @(:data r)))
 
 (defn inform-attendees
   "Notify the attendees that the value may have changed."
-  [reporter]
+  [r]
   ;;; Since the only guarantee is eventual callback, we can fetch the
   ;;; attendees map outside of any lock, since anything that changed
   ;;; the attendees will also do callbacks if appropriate.
-  (doseq [[key callback] (:attendees @(:data reporter))]
-    (call-callback callback key reporter)))
+  (doseq [[key callback] (:attendees @(:data r))]
+    (call-callback callback key r)))
 
 (defn set-value!
   "Set the value of the reporter, informing any attendees."
-  [reporter value]
+  [r value]
   (let [[old current]
-        (swap-returning-both! (:data reporter) #(assoc % :value value))]
+        (swap-returning-both! (:data r) #(assoc % :value value))]
     (if (not= (:value old) (:value current))
-      (inform-attendees reporter))))
+      (inform-attendees r))))
 
 (defn set-manager!
   "Set the manager for the reporter.
@@ -137,8 +137,10 @@
   (.write w (str (dissoc @(:data s) :attendees :manager)))
   (.write w ">"))
 
+;;; TODO: Factor below here out into its own expression file.
+
 (defn new-expression
-  "Takes a expression, and optionally a trace thunk, a manager type,
+  "Takes an expression, and optionally a trace thunk, a manager type,
    and additional arguments, and returns a new expression reporter.
    But if the manager type is :eval and none of the parts are reporters,
    then it just evaluates the expression."
@@ -175,7 +177,7 @@
    don't depend on any of the input variables or the variables bound
    in the prefix. Return a list of the binding forms, the values,
    and the suffix of remaining bindings."
-  [vars, bindings]
+  [vars bindings]
   (if (empty? bindings)
     [nil nil nil]
     (let [[binding-form value & rest] bindings]

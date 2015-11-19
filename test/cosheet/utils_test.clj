@@ -8,6 +8,14 @@
   (is (= (multiset [:a :b :c :b])
          {:a 1 :b 2 :c 1})))
 
+(deftest multiset-diff-test
+  (is (= (multiset-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
+         [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
+
+(deftest multiset-union-test
+  (is (= (multiset-union {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
+         {:a 1 :b 4 :c 6 :d 4})))
+
 (deftest update-last-test
   (is (= (update-last [1 2 3] inc) [1 2 4]))
   (is (= (update-last [] #(conj % 1)) [[1]])))

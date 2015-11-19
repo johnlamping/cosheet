@@ -6,7 +6,8 @@
              [utils :refer [dissoc-in]]
              [orderable :as orderable]
              [entity :as entity :refer [description->entity to-list
-                                        content elements label->elements]]
+                                        content elements
+                                        label->elements label->content]]
              [computation-manager :refer [new-management compute]]
              [debug :refer [current-value]]
              entity-impl
@@ -425,6 +426,14 @@
         mutable-joe (description->entity joe-id mutable-store)
         mutable-joe-male (description->entity (:item-id joe-male)
                                               mutable-store)
+        joe-male-tag-key [(condition-referent '[tag])
+                          (:item-id joe-male)
+                          joe-id]
+        mutable-joe-married (description->entity (:item-id joe-married)
+                                                 mutable-store)
+        joe-married-tag-key [(condition-referent '[tag])
+                             (:item-id joe-married)
+                             joe-id]
         tracker (new-joe-jane-tracker mutable-store)]
     (is (= (id->content
             (set-content-handler store tracker "joe-root" "Joe" "Jim")
@@ -441,21 +450,40 @@
                                     [(:item-id joe-age-tag) (:item-id joe-age)]
                                     [joe-id jane-id]]])
                         (assoc-in [:id->key "test2"]
-                                  [(condition-referent '[tag])
-                                   (:item-id joe-male)
-                                   joe-id])))
+                                  joe-male-tag-key)
+                        (assoc-in [:id->key "test3"]
+                                  joe-married-tag-key)
+                        (assoc-in [:components joe-married-tag-key
+                                   :attributes :add-sibling]
+                                  [joe-id])
+                        (assoc-in [:components joe-married-tag-key
+                                   :attributes :add-direction]
+                                  :before)))
     (let [modified (set-content-handler store tracker "test" "age" "oldness")]
       (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
       (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
-    ;; Try calling if from do-actions
+    ;; Try calling it from do-actions.
     (do-actions mutable-store {:tracker tracker}
                 {1 [:set-content "joe-root" "Joe" "Fred"]})
     (is (= (current-value (content mutable-joe)) "Fred"))
-    ;; Try when an entry is added.
+    ;; Try when an entry is added, also from do-actions.
     (do-actions mutable-store {:tracker tracker}
                 {2 [:set-content "test2" nil "gender"]})
     (is (= (current-value (visible-to-list mutable-joe-male))
-           ["male" ["gender" 'tag]]))))
+           ["male" ["gender" 'tag]]))
+    ;; Try when the sibling is explicitly specified.
+    (let [old-joe-order (current-value (label->content mutable-joe :order))]
+      (do-actions mutable-store {:tracker tracker}
+                  {3 [:set-content "test3" nil "marital status"]})
+      (is (= (current-value (visible-to-list mutable-joe-married))
+             ["married" ["marital status" 'tag]]))
+      (let [new-joe-order (current-value (label->content mutable-joe :order))
+            marital-status (first (current-value
+                                   (label->elements mutable-joe-married 'tag)))
+            marital-status-order (current-value
+                                  (label->content marital-status :order))]
+        (is (orderable/earlier? marital-status-order new-joe-order))
+        (is (not= old-joe-order new-joe-order))))))
 
 (deftest selected-handler-test
   (let [mutable-store (new-mutable-store store)

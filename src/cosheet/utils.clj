@@ -13,6 +13,34 @@
   [items]
   (reduce multiset-conj {} items))
 
+(defn multiset-diff
+  "Given two multisets, return a triple of multisets,
+   of what is in the first, but not the second, what is in the second,
+   but not the first, and what is in both."
+  [first second]
+  (reduce (fn [[first-only second-only both] key]
+            (let [first-count (get first key 0)
+                  second-count (get second key 0)]
+              [(cond-> first-only
+                 (> first-count second-count)
+                 (assoc key (- first-count second-count)))
+               (cond-> second-only
+                 (> second-count first-count)
+                 (assoc key (- second-count first-count)))
+               (cond-> both
+                 (and (pos? first-count) (pos? second-count))
+                 (assoc key (min first-count second-count)))]))
+          [{} {} {}]
+          (clojure.set/union (keys first) (keys second))))
+
+(defn multiset-union
+  "Return the union of two multisets."
+  [first second]
+  (let [keys (clojure.set/union (keys first) (keys second))]
+    (zipmap keys
+            (map (fn [key] (+ (get first key 0) (get second key 0)))
+                 keys))))
+
 (defn update-last
   "Update the last element of a vector."
   [vec fun]

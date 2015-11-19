@@ -83,6 +83,12 @@
             [45 {["age" {'tag 1}] 1}] 1}]1
             ["Jane" {"plain" 2}] 1})))
 
+(deftest canonical-to-list-test
+  (let [starting [joe jane jane]
+        canonical (canonicalize-list [starting])]
+    (is (= (canonicalize-list (canonical-to-list canonical))
+           canonical))))
+
 (deftest canonical-info-set-diff-test
   (is (= (canonical-info-set-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
@@ -162,8 +168,9 @@
                         :children [{:info {:c 1} :members [:l]}]}
                        {:info {:c 1}
                         :members [:k]}]}]
-          0)
+          0 {})
          [{:info {:a 1}
+           :cumulative-info {:a 1}
            :depth 0
            :members [:i]
            :children [{:info {:b 1}
@@ -172,12 +179,17 @@
                       {:info {:c 1}
                        :members [:k]}]}
           {:info {:b 1}
+           :cumulative-info {:a 1 :b 1}
            :depth 1
            :members [:j]
            :children [{:info {:c 1} :members [:l]}]}
           {:info {:c 1}
+           :cumulative-info {:a 1 :b 1 :c 1}
            :depth 2 :members [:l]}
-          {:info {:c 1} :depth 1 :members [:k]}])))
+          {:info {:c 1}
+           :cumulative-info {:a 1 :c 1}
+           :depth 1
+           :members [:k]}])))
 
 (deftest items-for-info-test
   (is (= (set (items-for-info {:a 1 :b 2}
@@ -194,11 +206,12 @@
                             (entity/label->elements him "age"))))
         bogus-age-tag (first (current-value
                               (entity/label->elements bogus-age 'tag)))
-        age-tag (first (current-value (entity/label->elements age 'tag))) ]
+        age-tag (first (current-value (entity/label->elements age 'tag)))]
     (is (= (current-value
             (hierarchy-node-to-row-info
              {:depth 0 :top-border :x :bottom-border :y
               :info {["age" {'tag 1}] 1}
+              :cumulative-info {["age" {'tag 1}] 1}
               :members [{:item bogus-age
                          :tag-items [bogus-age-tag]
                          :tag-canonicals [["age" {'tag 1}]]}
@@ -238,9 +251,11 @@
     (is (= (current-value (tagged-items-hierarchy [gender age bogus-age] #{}))
            [{:depth 0 :top-border :full :bottom-border :corner
              :info {}
+             :cumulative-info {}
              :members [{:item gender, :tag-items nil, :tag-canonicals nil}]}
             {:depth 0 :for-multiple true :top-border :full :bottom-border :full
              :info {["age" {'tag 1}] 1}
+             :cumulative-info {["age" {'tag 1}] 1}
              :members [{:item bogus-age
                         :tag-items [bogus-age-tag]
                         :tag-canonicals [["age" {'tag 1}]]}
@@ -608,6 +623,8 @@
       (request dom-reporter m)
       (compute m))
     (check-propagation #{} dom-reporter)
+    ;; TODO: The order of multiple :sibling-elements is arbitrary. Fix
+    ;; the test to accept either order.
     (is (= (reporter/value dom-reporter)
            (let [labels-ref [:parallel
                              [(:item-id L1) [:condition 'tag]]
@@ -656,7 +673,7 @@
                 [:component {:key [(:item-id v12) :joe]
                              :style {:display "table-cell"}
                              :class "column"
-                             :sibling-elements [["L1" 'tag] ["L2" 'tag]]}
+                             :sibling-elements [["L2" 'tag] ["L1" 'tag]]}
                  [item-DOM
                   v12 [(:item-id v12) :joe]
                   #{L121 L2} {:depth 1 :do-not-merge #{}}]]]
@@ -675,7 +692,101 @@
                 [:component {:key [(:item-id v13) :joe]
                              :style {:display "table-cell"}
                              :class "column"
-                             :sibling-elements [["L1" 'tag] ["L3" 'tag]]}
+                             :sibling-elements [["L3" 'tag] ["L1" 'tag]]}
                  [item-DOM
                   v13 [(:item-id v13) :joe]
-                  #{L131 L3} {:depth 1 :do-not-merge #{}}]]]]])))))
+                  #{L131 L3} {:depth 1 :do-not-merge #{}}]]]]]))))
+  ;; Test a hierarchy with an empty content in one row and an empty
+  ;; tag in another.
+  (let [[dom-reporter joe]
+        (let-propagated [him `("Joe"
+                               (~o2 :order)
+                               ("a" (~o2 :order)
+                                    ("L1" ~'tag (~o1 :order))
+                                    ("L2" ~'tag (~o2 :order)))
+                               ("b" (~o3 :order)
+                                    ("L1" ~'tag (~o1 :order))))]
+          (expr identity
+            [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge #{}}) him]))
+        va (first (current-value (entity/label->elements joe o2)))
+        vb (first (current-value (entity/label->elements joe o3)))
+        La1 (first (current-value (entity/label->elements va o1)))
+        La2 (first (current-value (entity/label->elements va o2)))
+        La1-spec (first (remove #{(first (current-value
+                                         (entity/label->elements La1 :order)))}
+                                (current-value (entity/elements La1))))
+        La2-spec (first (remove #{(first (current-value
+                                         (entity/label->elements La2 :order)))}
+                               (current-value (entity/elements La2))))
+        Lb1 (first (current-value (entity/label->elements vb o1)))
+        Lb1-spec (first (remove #{(first (current-value
+                                          (entity/label->elements Lb1 :order)))}
+                                (current-value (entity/elements Lb1))))]
+    (let [m (new-management)]
+      (request dom-reporter m)
+      (compute m))
+    (check-propagation #{} dom-reporter)
+    (is (= (reporter/value dom-reporter)
+           (let [L1s-ref [:parallel
+                             [(:item-id La1) [:condition 'tag]]
+                             [(:item-id va) (:item-id vb)]]]
+             [:div {:class "item with-elements" :key [:joe]}
+              [:div {:style {:width "100%" :display "block"}
+                     :class "content-text editable"
+                     :key [[:content] :joe]}
+               "Joe"]
+              [:div {:style {:width "100%"
+                             :height "1px"
+                             :display "table"
+                             :table-layout "fixed"}
+                     :class "element-table"}
+               [:div {:style {:display "table-row"}}
+                [:component
+                 {:key [L1s-ref :joe]
+                  :style {:display "table-cell"}
+                  :class "full-row with-children tags column top-border"
+                  :sibling-elements ['tag]
+                  :row-sibling [[:parallel []
+                                 [(:item-id va) (:item-id vb)]]
+                                :joe]}
+                 [item-DOM
+                  La1
+                  [L1s-ref :joe]
+                  #{La1-spec} {:depth 1 :do-not-merge #{}}]]
+                [:div {:key [[:condition ["L1" 'tag]] :joe]
+                       :style {:display "table-cell"}
+                       :class "column editable"
+                       :add-sibling [(:item-id va) :joe]
+                       :add-direction :before}]]
+               [:div {:style {:display "table-row"}}
+                [:div {:class "tags column" :style {:display "table-cell"}}
+                 [:component
+                  {:key [(:item-id La2) [:condition 'tag] (:item-id va) :joe]
+                   :class "full-row top-border indent-1"
+                   :sibling-elements ['tag]
+                   :row-sibling [(:item-id va) :joe]}
+                  [item-DOM
+                   La2
+                   [(:item-id La2) [:condition 'tag] (:item-id va) :joe]
+                   #{La2-spec} {:depth 1 :do-not-merge #{}}]]]
+                [:component {:key [(:item-id va) :joe]
+                             :style {:display "table-cell"}
+                             :class "column"
+                             :sibling-elements [["L2" 'tag] ["L1" 'tag]]}
+                 [item-DOM
+                  va [(:item-id va) :joe]
+                  #{La1 La2} {:depth 1 :do-not-merge #{}}]]]
+               [:div {:style {:display "table-row"} :class "last-row"}
+                [:div {:class "tags column bottom-border"
+                       :style {:display "table-cell"}
+                       :key [[:condition 'tag] (:item-id vb) :joe]
+                       :row-sibling [(:item-id vb) :joe]}
+                 ;; TODO: This should change once we handle this case.
+                 [:div {:class "full-row top-border editable indent-1"}]]
+                [:component {:key [(:item-id vb) :joe]
+                             :style {:display "table-cell"}
+                             :class "column"
+                             :sibling-elements [["L1" 'tag]]}
+                 [item-DOM
+                  vb [(:item-id vb) :joe]
+                  #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))

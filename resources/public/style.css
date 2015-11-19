@@ -191,7 +191,7 @@
 
 /* grayish indicators of places where there is no current content */
 .editable:not(.content-text) {
-    background-color: gainsboro;
+    background-color: hsl(0, 0%, 88%);
 }
 
 .editable.tags.column:not(.content-text) {

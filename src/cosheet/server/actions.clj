@@ -19,7 +19,7 @@
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
     [render :refer [visible-to-list canonicalize-list
-                    item-referent prepend-to-key]])))
+                    item-referent condition-referent prepend-to-key]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
 ;;; crash.
@@ -262,15 +262,15 @@
    store (:item-id subject) entity
    subject :after false))
 
-(defn reduce-update
-  "Given a function from store and item to store and id, reduce it
-   on the store and each of the items, returning the final store
+(defn reduce-update-add
+  "Given a function from store and data to store and id, reduce it
+   on the store and each of the datum, returning the final store
    and the first item that came back." 
-  [f store items]
-  (reduce (fn [[store id] item]
-            (let [[store new-id] (f store item)]
+  [f store datums]
+  (reduce (fn [[store id] data]
+            (let [[store new-id] (f store data)]
               [store (or id new-id)]))
-          [store nil] items))
+          [store nil] datums))
 
 (defn add-element-handler
   "Add a element to the item with the given client id.
@@ -284,8 +284,9 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when ((some-fn item-referent? content-referent?) first-primitive)
-      (let [[store element-id] (reduce-update (partial update-add-element "")
-                                               store items)]
+      (let [[store element-id] (reduce-update-add
+                                (partial update-add-element "")
+                                store items)]
         (if element-id
           {:store store
            :select [(prepend-to-key
@@ -319,9 +320,9 @@
     (println "sibling elements" sibling-elements)
     (when ((some-fn item-referent? content-referent?) first-primitive)
       (let [[store element-id]
-            (reduce-update (partial update-add-sibling
-                                    sibling-elements direction)
-                           store items)]
+            (reduce-update-add (partial update-add-sibling
+                                        sibling-elements direction)
+                               store items)]
         (if element-id
           {:store store
            :select [(prepend-to-key
@@ -361,7 +362,7 @@
       (println "in direction" direction)
       (when ((some-fn nil? item-referent? content-referent?) first-primitive)
         (let [[store element-id]
-              (reduce-update
+              (reduce-update-add
                (partial update-add-sibling row-elements direction)
                store (map #(furthest-item % direction) item-groups))]
           (if element-id
@@ -404,20 +405,31 @@
                   store items)
           (and (condition-referent? first-primitive) (not= to ""))
           (let [attributes (key->attributes dom-tracker key)
-                sibling (:add-sibling attributes)
-                model-entity (cons to (rest first-primitive)) ]
-            (if sibling
-              (let [siblings (key->items store sibling)
-                    direction (:add-direction attributes)]
-                (assert (= (count items) (count siblings)))
-                (reduce (fn [store [subject sibling]]
-                          (first (update-add-entity-with-order-item
-                                  store (:item-id subject) model-entity
-                                  sibling direction false)))
-                        store (map vector items siblings)))
-              (reduce (fn [store item]
-                        (first (update-add-element model-entity store item)))
-                      store items)))))) 
+                sibling-key (:add-sibling attributes)
+                model-entity (cons to (rest first-primitive))
+                [new-store new-id]
+                (if sibling-key
+                  (let [siblings (key->items store sibling-key)
+                        direction (:add-direction attributes)]
+                    (assert (= (count items) (count siblings)))
+                    (reduce-update-add
+                     (fn [store [subject sibling]]
+                       (update-add-entity-with-order-item
+                        store (:item-id subject) model-entity
+                        sibling direction false))
+                     store (map vector items siblings)))
+                  (reduce-update-add
+                   (fn [store item]
+                     (update-add-element model-entity store item))
+                   store items))]
+            {:store new-store
+             :select [(prepend-to-key
+                       (item-referent (description->entity new-id store))
+                       ;; Remove the condition, unless it is a tag condition.
+                       (if (= first-primitive (condition-referent ['tag]))
+                         key
+                         (remove-first-referent key)))
+                      [key]]})))) 
 
 (defn selected-handler
   [store session-state id]
@@ -437,6 +449,12 @@
 ;;; hard, because the updated store already has a list of changed ids.
 ;;; Support could even be incorporated into immutable stores.
 (defn do-storage-update-action
+  "Do an action that can update the store. The action is given the
+  store, the dom_tracker, and any additional arguments, and can either
+  return nil, meaning no change, a new store, or a map with a :store
+  value and any additional commands it wants to request of the
+  client (currently, only :select, whose value is the key of the dom
+  it wants to be selected)."
   [handler mutable-store tracker action-args]
   (println "action-args" action-args)
   (do-update-control-return!

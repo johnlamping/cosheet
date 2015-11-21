@@ -15,25 +15,33 @@
 
 (defrecord ReporterImpl
     ^{:doc
-      "A reporter object (an atom with a map of relevant information).
-       We use a record only so we can have a special print method that
+      "A reporter is essentially an atom that provides monitoring not only
+       of its value, but also of demand for its value. This allows
+       a computation to be associated with a reporter to keep its value up
+       to date as long as their is demand.
+       A reporter is implemented as a record holding an atom with
+       a map of relevant information.
+       We only use a record so we can have a special print method that
        can avoid printing circular references.
-       A reporter monitors a computation, and records its current value, or
-       the special token ::invalid.
+       The special value ::invalid indicates that there is no current
+       valid value.
        One or more callbacks can attend to the value of the reporter. Each
        callback is associated with a key, and optionally some additional
        arguments. Each attendee is guaranteed to eventually be called with
        the key, the reporter, and the attendee's additional arguments. It will
        eventually be similarly called after any change in the value, but not
        necessarily once per change.
-       In addition to these generic functions, specific kinds of reporters will
-       have additional information to support additional functionality.
-       A manager callback can be registered with the reporter, to implement
-       that functionality. It will be called the first time there are any
-       attendees to the reporter, and whenever there is a transition in
-       whether there are attendees. It can do things
+       (We use a key, rather than just passing in a closure, because an
+       equal key can be generated later, to refer to the callback when we
+       want to remove it, while an equal closure can't.)
+       A manager can be registered with the reporter, to be informed when
+       demand for the reporter's value changes. It will be called the
+       first time there are any attendees to the reporter, and whenever
+       there is a transition in whether there are attendees. It is responsible
+       for keeping the reporter's value up to date. It can do things
        like registering for callbacks to update its state, or removing those
-       callbacks when there is no more interest."}
+       callbacks when there is no more interest. It can put additional
+       information on the reporter to support its functionality."}
   [;;; An atom holding a map including :value, and possibly :manager,
    ;;; and :attendees, as well as other keys.
    data]

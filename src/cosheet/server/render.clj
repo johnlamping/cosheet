@@ -491,14 +491,18 @@
   (println "generating tags dom.")
   (assert (not= (first parent-key) (condition-referent ['tag])))
   ;; This code works by wrapping in successively more divs, if
-  ;; necessary, and adding the right classes at each level.
+  ;; necessary, and adding the right attributes at each level.
   (expr-let [tag-components
              (expr-seq map #(tag-component % parent-key inherited) tags)]
     (let [{:keys [top-border bottom-border for-multiple with-children depth]}
-          appearance-info]
+          appearance-info
+          condition-key (prepend-to-key (condition-referent ['tag]) parent-key)]
       (as-> (vertical-stack tag-components :separators true) dom
         (if (> (count tags) 1)
           (add-attributes dom {:class "stack"})
+          dom)
+        (if (empty? tags)
+          (add-attributes dom {:key condition-key})
           dom)
         (if (or for-multiple (> (count tags) 1))
           [:div dom [:div {:class "spacer"}]]
@@ -521,10 +525,10 @@
                            (when (= top-border :full) " top-border")
                            (when (= bottom-border :full) " bottom-border")
                            (when (= bottom-border :corner) " ll-corner"))}
+               (> (count tags) 1)
+               (into {:key condition-key})
                (not= (count tags) 1)
-               (into {:key (prepend-to-key (condition-referent ['tag])
-                                           parent-key)
-                      :row-sibling parent-key})))))))
+               (into {:row-sibling parent-key})))))))
 
 (defn components-DOM
   "Given a list of [item, excluded-elements] pairs, and the first item

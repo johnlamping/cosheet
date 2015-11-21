@@ -3,6 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
+             [utils :refer [multiset-diff]]
              [orderable :as orderable]
              [mutable-set :refer [new-mutable-set mutable-set-swap!]]
              [entity :as entity  :refer [to-list description->entity]]
@@ -90,7 +91,7 @@
            canonical))))
 
 (deftest canonical-info-set-diff-test
-  (is (= (canonical-info-set-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
+  (is (= (multiset-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
 
 (deftest append-to-hierarchy-test
@@ -779,10 +780,9 @@
                [:div {:style {:display "table-row"} :class "last-row"}
                 [:div {:class "tags column bottom-border"
                        :style {:display "table-cell"}
-                       :key [[:condition 'tag] (:item-id vb) :joe]
                        :row-sibling [(:item-id vb) :joe]}
-                 ;; TODO: This should change once we handle this case.
-                 [:div {:class "full-row top-border editable indent-1"}]]
+                 [:div {:class "full-row top-border editable indent-1"
+                       :key [[:condition 'tag] (:item-id vb) :joe]}]]
                 [:component {:key [(:item-id vb) :joe]
                              :style {:display "table-cell"}
                              :class "column"

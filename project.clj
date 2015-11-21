@@ -29,6 +29,8 @@
                    :rules :cljs}]}
   :prep-tasks [["cljx" "once"] "javac" "compile"]
   :source-paths ["src" "target/classes"]
+  ;; Keep lein ring from reloading tests.
+  :reload-paths ["src" "target/classes"] 
   :hooks [leiningen.cljsbuild]
   :cljsbuild {
     :builds [{:source-paths ["src_cljs" "target/classes"]

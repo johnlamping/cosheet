@@ -400,8 +400,11 @@
         tracker (new-joe-jane-tracker mutable-store)]
     (let [joe-age-dom-id (find-dom-id tracker joe-age)
           joe-age-tag-dom-id (first (filter
-                                     #(parallel-referent?
-                                       (first (get-in @tracker [:id->key %])))
+                                     #(let [key (get-in @tracker [:id->key %])
+                                            leading (first key)]
+                                        (and (parallel-referent? leading)
+                                             (item-referent?
+                                              (first (second leading)))))
                                      (keys (:id->key @tracker))))
           [v-store v-id] (update-add-sibling nil :after store joe-age)
           {:keys [store select]} (add-row-handler

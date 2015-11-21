@@ -25,7 +25,7 @@
 ;;; crash.
 
 (defn item-referent? [referent]
-  (not (sequential? referent)))
+  (and referent (not (sequential? referent))))
 
 (defn content-referent? [referent]
   (and (sequential? referent) (= ( first referent) :content)))
@@ -352,14 +352,14 @@
           item-groups (if row-sibling
                         (key->item-groups store row-sibling)
                         (map vector (key->items store key)))
-          item-key (if row-sibling row-sibling key)
-          first-primitive (first-primitive-referent (or row-sibling key))]
+          sibling-key (or row-sibling key)
+          first-primitive (first-primitive-referent sibling-key)]
       (println "new row for id:" id " with key:" (simplify-for-print key))
       (println "row sibling" (simplify-for-print row-sibling))
       (println "total groups:" (count item-groups))
       (println "with content" (map #(map content %) item-groups))
       (println "in direction" direction)
-      (when ((some-fn item-referent? content-referent?) first-primitive)
+      (when ((some-fn nil? item-referent? content-referent?) first-primitive)
         (let [[store element-id]
               (reduce-update
                (partial update-add-sibling row-elements direction)
@@ -369,7 +369,7 @@
              :select [(prepend-to-key
                        (item-referent (description->entity element-id store))
                        (remove-first-referent
-                        (remove-content-referent item-key)))
+                        (remove-content-referent sibling-key)))
                       [key]]}
             store)))))
 
@@ -426,12 +426,12 @@
         items (map #(description->entity % store) ids)]
     (println "Selected key" key)
     (mutable-set-swap!
-     (:do-not-merge session-state)
-     (fn [old]
-       (if (empty? items)
-         #{}
-         (set (cons (first items)
-                    (clojure.set/intersection (set (rest items)) old))))))))
+         (:do-not-merge session-state)
+         (fn [old]
+           (if (item-referent? (first key))
+               (set (cons (first items)
+                          (clojure.set/intersection (set (rest items)) old)))
+               (clojure.set/intersection (set items) old))))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.

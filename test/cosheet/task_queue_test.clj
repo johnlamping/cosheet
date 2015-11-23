@@ -54,4 +54,5 @@
     (add-task-with-priority queue -1 (task-factory :a8) :a8)
     (add-task-with-priority queue 1 (task-factory :a9) :a9)
     (run-some-pending-tasks queue 2)
+    (Thread/sleep 10) ;; Let the worker threads finish.
     (is (= (:num-running @queue) 0))))

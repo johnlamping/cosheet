@@ -31,8 +31,8 @@
 ;;;                      values. Second, we will generate demand for
 ;;;                      this reporter, causing its sub-computations
 ;;;                      to be kept active, so that if they
-;;;                      were cached, they will be to be available for
-;;;                      reused by the subcomputations of the current
+;;;                      were cached, they will be available for
+;;;                      reuse by the subcomputations of the current
 ;;;                      value source.
 ;;; :arguments-unchanged Present, and equal to true, is we have not
 ;;;                      seen a valid value different from the ones
@@ -290,15 +290,23 @@
   (modify-and-act
    reporter
    (fn [data]
-     ;; It is possible to get several eval-expression-if-ready queued
-     ;; up for the same reporter. In that case, the first one to run
-     ;; will do the evaluations, and the later ones will notice that
-     ;; the value is valid, and not bother to re-evaluate.
-     (if (and (not (reporter/valid? (:value data)))
-              ;; We don't run if we still need values, or if
-              ;; :needed-values is nil, which means that
-              ;; nobody is attending to the reporter.
-              (= (:needed-values data) #{}))
+     (if (or
+          ;; It is possible that we lost demand for this reporter
+          ;; since the request to evaluate it was queued, but our
+          ;; manager hasn't been informed yet, so this fact is not
+          ;; reflected in :needed-values.
+          (not (reporter/data-attended? data))
+          ;; It is possible to get several eval-expression-if-ready
+          ;; queued up for the same reporter. In that case, the first
+          ;; one to run will do the evaluations, and the later ones
+          ;; will notice that the value is valid, and not bother to
+          ;; re-evaluate.
+          (reporter/valid? (:value data))
+          ;; We don't run if we still need values, or if
+          ;; :needed-values is nil, which means that
+          ;; nobody is attending to the reporter.
+          (not= (:needed-values data) #{}))
+       data
        (let [value-map (:subordinate-values data)
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
@@ -312,8 +320,7 @@
                (-> data
                    (update-value reporter value)
                    (update-value-source reporter nil)
-                   (update-old-value-source reporter nil)))))
-       data))))
+                   (update-old-value-source reporter nil)))))))))
 
 (defn eval-manager
   "Manager for an eval reporter."
@@ -349,7 +356,7 @@
   "Have the reporter managed by the eval-manager,
    and manage the terms of its expression."
   [reporter management]
-    (reporter/set-manager! reporter eval-manager management)
+  (reporter/set-manager! reporter eval-manager management)
   ;; We manage the subexpressions after we set our manager. It gives
   ;; them demand, so they will have demand they need before they are
   ;; managed.
@@ -385,17 +392,23 @@
   (let [data (reporter/data reporter)
         expression (:expression data)
         cache (:cache management)]
-    ;;; We do side-effects, which can't run inside a swap!, so we have
-    ;;; to use with-latest-value.
+    ;;; ensure-in-cache has side-effects, which can't run inside a
+    ;;; swap!, so we have to use with-latest-value.
     (with-latest-value [attended (reporter/attended? reporter)]
       (let [value-source (when attended
                            (ensure-in-cache
                             expression (:name data) management))]
-        (modify-and-act reporter
-                        #(update-value-source % reporter value-source))
-        ;; We can't do management until the registration is done,
-        ;; or the source's manager will take it out of the cache.
-        (when value-source (manage value-source management))))))
+        (modify-and-act
+         reporter
+         (fn [data]
+           (update-value-source data reporter
+                                ;; Might have stopped being attended.
+                                (when (reporter/data-attended? data)
+                                  value-source))))
+        ;; We can't manage the source until the registration is done,
+        ;; or its manager will take it out of the cache.
+        (when value-source
+          (manage value-source management))))))
 
 (defn new-management
   "Create the manager data for a caching evaluator."

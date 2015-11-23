@@ -24,11 +24,16 @@
   In addition, if we are not at our maximum number of worker tasks,
   start up a new worker."
   [task-queue priority & task]
+  (assert task)
   (when (swap-control-return!
          task-queue
          (fn [data]
            (let [added (update-in data [:tasks] #(assoc % task priority))]
-             (if (< (:num-workers data) (:max-workers data))
+             ;; Don't add a thread if we already have a thread for
+             ;; every ten tasks.
+             (if (let [num-workers (:num-workers data)]
+                   (and (< num-workers (:max-workers data))
+                        (> (count (:tasks data)) (* 10 num-workers))))
                [(update-in added [:num-workers] inc) true]
                [added false]))))
     (future (do-work task-queue))))
@@ -41,27 +46,42 @@
 
 (defn run-pending-task
   "Execute the topmost task in the queue, if any, and pop the queue.
-   Return true if there was a task. The second argument is true
-   if we are a worker thread, in which case, we decrease the worker
-   count if we find no work."
-  ([task-queue]
-   (run-pending-task task-queue false))
-  ([task-queue is-worker]
-   (let [[task priority]
-         (peek (:tasks
-                (first (swap-returning-both!
-                        task-queue
-                        (fn [data] (if (empty? (:tasks data))
-                                     (if is-worker
-                                       (update-in data [:num-workers] dec)
-                                       data)
-                                     (-> data
-                                         (update-in [:tasks] pop)
-                                         (update-in [:num-running] inc))))))))]
-     (when task
-       (apply (first task) (rest task))
-       (swap! task-queue (fn [data] (update-in data [:num-running] dec)))
-       true))))
+   Return true if there was a task.
+   If the second argument is true, decrement the number of workers
+   if there was no task."
+  [task-queue decrement-workers-if-no-task]
+  (let [task (swap-control-return!
+              task-queue
+              (fn [data] 
+                (if (empty? (:tasks data))
+                  [(if decrement-workers-if-no-task
+                     (update-in data [:num-workers] dec)
+                     data)
+                   nil]
+                  [(-> data
+                       (update-in [:tasks] pop)
+                       (update-in [:num-running] inc))
+                   (first (peek (:tasks data)))])))]
+    (when task
+      ;; Keep a failure in the task from killing our thread, which
+      ;; would prevent us from realizing when we are done.
+      ;; TODO: Also check for a task that runs too long?
+      ;;       Note: To do that, make a future to run the task, do a
+      ;;             (deref f 1000 ::timeout) to give it one second to
+      ;;             run before returning ::timeout, and wrap the
+      ;;             deref in a try, because a failure in the task
+      ;;             will turn into a failure of the deref.
+      (try
+        (apply (first task) (rest task))
+        (catch Exception e
+          (println (str "Caught exception: " (.getMessage e)))
+          (clojure.stacktrace/print-stack-trace e))
+        (catch java.lang.Error e
+          (println (str "Caught error: " (.getMessage e)))
+          (clojure.stacktrace/print-stack-trace e))
+        (finally
+          (swap! task-queue (fn [data] (update-in data [:num-running] dec)))))
+      true)))
 
 (defn do-work
   "The function that a worker runs."
@@ -79,9 +99,10 @@
    until there are no more tasks and all tasks have terminated."
   [task-queue]
   (loop []
-    (run-pending-task task-queue)
-    (when (not (finished-all-tasks? task-queue))
-      (recur))))
+    (if (run-pending-task task-queue false)
+      (recur)
+      (when (not (finished-all-tasks? task-queue))
+        (recur)))))
 
 (defn run-some-pending-tasks
   "Execute tasks in the queue, in priority order, until there are no
@@ -89,7 +110,7 @@
   [task-queue max-tasks]
   (loop [num-done 0]
     (when (< num-done max-tasks)
-      (if (run-pending-task task-queue)
+      (if (run-pending-task task-queue false)
         (recur (+ num-done 1))
         (when (not (finished-all-tasks? task-queue))
           (recur num-done))))))

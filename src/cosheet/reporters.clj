@@ -141,9 +141,16 @@
       reporter)))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
-  (.write w "<Reporter")
-  (.write w (str (dissoc @(:data s) :attendees :manager)))
-  (.write w ">"))
+  (let [data @(:data s)]
+    (.write w "<Reporter")
+    (if-let [value (:value data)]
+      (.write w (str " value:" value)))
+    (if-let [type (:manager-type data)]
+      (.write w (str " manager-type:" type)))
+    (if-let [expression (:expression data)]
+      (.write w (str " expression:"
+                     (vec (map #(if (reporter? %) "<R>" %) expression)))))
+    (.write w ">")))
 
 ;;; TODO: Factor below here out into its own expression file.
 

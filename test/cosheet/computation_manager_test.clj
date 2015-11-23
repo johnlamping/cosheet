@@ -415,20 +415,21 @@
     (is (= (reporter/value r2) 1))))
 
 (deftest asynchronous-test
-  ;; Creates width base reporters, then a series layers of lookups that
-  ;; use the value
-  ;; at the previous layer as an index into another value at that
-  ;; layer. Makes sure the right results are returned, then starts
-  ;; changing the base values in one thread, while another thread
-  ;; propagates, and makes sure that the final answer is still right
-  (let [width 13
-        depth 7
-        trials 10; 0000
+  ;; Creates width base reporters, then a series layers of lookups
+  ;; that use the value at the previous layer as an index into another
+  ;; value at that layer. Makes sure the right results are returned,
+  ;; then starts changing the base values in one thread, while another
+  ;; thread propagates, and makes sure that the final answer is still
+  ;; right.
+  (let [width 37
+        depth 11
+        trials 3; 0000
         changes-per-trial 1000
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]
                                            :value (mod (inc i) width))))
-        m (new-management)]
+        m (new-management 4)
+        evals (atom 0)]
     (letfn [(indexer [d pos]
               (if (zero? d)
                 (base pos)
@@ -462,7 +463,7 @@
         (compute m 1000000)
         (check requests (answers arguments))
         (doseq [i (range trials)]
-          (when (= (mod i 1000) 0)
+          (when (= (mod i 100) 0)
             (println "starting trial" i))
           (doseq [j (range changes-per-trial)]
             (reporter/set-value! (base (mod (* i j) width))
@@ -470,6 +471,6 @@
             (when (zero? (mod j 17))
               (future (compute m (mod i 34)))))
           (compute m)
-          (check requests  (answers arguments)))))))
+          (check requests (answers arguments)))))))
 
 

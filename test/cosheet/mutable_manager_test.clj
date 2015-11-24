@@ -16,7 +16,7 @@
   (let [mm (new-mutable-management {:a 1 :b 2})
         fa #(:a %)
         ra (get-or-make-reporter [:a] fa mm)]
-    (is (= (value ra) reporter/invalid))
+    (is (= (value ra) invalid))
     (is (= (:value @mm {:a 1 :b 2})))
     (is (= (:subscriptions @mm) {}))
     (is (= (:application->attended-reporter @mm) nil))
@@ -30,7 +30,7 @@
     (describe-and-swap! mm (fn [v] [(assoc v :a 5) [:b :c]]))
     (is (= (value ra) 3))
     (unrequest ra)
-    (is (= (value ra) reporter/invalid))
+    (is (= (value ra) invalid))
     (is (= (:subscriptions @mm) {}))
     (is (= (:application->attended-reporter @mm) nil))))
 

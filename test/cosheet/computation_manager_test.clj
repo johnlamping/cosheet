@@ -5,7 +5,7 @@
             (cosheet [mutable-map :as mm]
                      [task-queue :as task-queue]
                      [reporters :as reporter :refer [expr expr-seq expr-let
-                                                     cache]]
+                                                     cache invalid]]
                      [utils :refer :all]
                      [computation-manager :refer :all])
             ; :reload
@@ -77,7 +77,7 @@
   (let [data (reporter/data reporter)
         old-source (:old-value-source data)]
     (if old-source
-      (do (is (= (:value data) (reporter/invalid)))
+      (do (is (= (:value data) invalid))
           (is (= (get-in (reporter/data old-source)
                          [:attendees `(:copy-value ~reporter)])
                  [null-callback]))
@@ -176,7 +176,7 @@
     (reporter/set-value! r1 :x)
     (is (= (reporter/value r2) :w))
     (register-copy-value r1 r3)
-    (is (= (reporter/value r3) reporter/invalid))
+    (is (= (reporter/value r3) invalid))
     (is  (= ((:attendees (reporter/data r1)) [:copy-value r3])
             [null-callback]))))
 
@@ -196,7 +196,7 @@
     (register-copy-subordinate r1 r2 m)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
-    (is (= (reporter/value r2) reporter/invalid))
+    (is (= (reporter/value r2) invalid))
     (is (= (task-queue/current-tasks (:queue m))
            [[eval-expression-if-ready r2 m]]))
     ;; Change the subordinate value, and make sure it got propagated.
@@ -204,7 +204,7 @@
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
-    (is (= (reporter/value r2) reporter/invalid))
+    (is (= (reporter/value r2) invalid))
     (is (= (task-queue/current-tasks (:queue m))
            [[eval-expression-if-ready r2 m]]))
     ;; Send a spurious update, and make sure things are unchanged.
@@ -212,7 +212,7 @@
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
-    (is (= (reporter/value r2) reporter/invalid))
+    (is (= (reporter/value r2) invalid))
     (is (= (task-queue/current-tasks (:queue m)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
@@ -221,9 +221,9 @@
     (register-copy-value r0 r2)
     (register-copy-value r2 r3)
     (is (= (reporter/value r3) :r0))
-    (reporter/set-value! r1 reporter/invalid)
-    (is (= (reporter/value r2) reporter/invalid))
-    (is (= (reporter/value r3) reporter/invalid))
+    (reporter/set-value! r1 invalid)
+    (is (= (reporter/value r2) invalid))
+    (is (= (reporter/value r3) invalid))
     (is (= (:value-source (reporter/data r2)) nil))
     (is (= (:old-value-source (reporter/data r2)) r0)) ;; Last known source.
     (is (= (task-queue/current-tasks (:queue m)) ()))
@@ -249,7 +249,7 @@
     (register-copy-value r rc)
     ;; Try when the expression is not ready.
     (eval-expression-if-ready r m)
-    (is (= (reporter/value r) reporter/invalid))
+    (is (= (reporter/value r) invalid))
     (swap! (reporter/data-atom r) assoc :needed-values #{})
     ;; Try when it is ready and computes a constant.
     (eval-expression-if-ready r m)
@@ -264,11 +264,11 @@
     (is (= (:attendees (reporter/data r1))
            {[:copy-value r] [copy-value-callback]}))
     (is (= (:manager (reporter/data r1)) nil))
-    (reporter/set-value! r reporter/invalid)
+    (reporter/set-value! r invalid)
     (eval-expression-if-ready r m)
     ;; r won't get a value yet, because r1 will have been set invalid.
-    (is (= (reporter/value r) reporter/invalid))
-    (is (= (reporter/value rc) reporter/invalid))
+    (is (= (reporter/value r) invalid))
+    (is (= (reporter/value rc) invalid))
     (is (= (:attendees (reporter/data r0)) nil))
     (is (= (:manager (reporter/data r1)) [eval-manager m]))
     (eval-expression-if-ready r1 m)
@@ -283,7 +283,7 @@
         m (new-management)]
     ;; Run manager when there is no interest.
     (eval-manager r m)
-    (is (= (reporter/value r) reporter/invalid))
+    (is (= (reporter/value r) invalid))
     ;; Run when there is interest.
     (register-copy-value r rc)
     (eval-manager r m)
@@ -375,7 +375,7 @@
         ;; Now it should be the right value.
         (is (= (computation-value f45 m) 1836311903))
         (check-propagation #{} f45)
-        (reporter/set-value! base reporter/invalid)
+        (reporter/set-value! base invalid)
         ;;; Now it should be invalid.
         (is (= (not (reporter/valid? (computation-value f45 m)))))
         (check-propagation #{} f45)))))
@@ -408,7 +408,7 @@
         r2 (expr identity r1)]
     (request r2 m)
     (compute m)
-    (is (= (reporter/value r2) reporter/invalid))
+    (is (= (reporter/value r2) invalid))
     (reporter/set-value! r0 nil)
     (compute m)
     (is (= (reporter/value r2) nil))

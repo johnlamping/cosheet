@@ -33,7 +33,7 @@
              ;; every ten tasks.
              (if (let [num-workers (:num-workers data)]
                    (and (< num-workers (:max-workers data))
-                        (> (count (:tasks data)) (* 10 num-workers))))
+                        (> (count (:tasks added)) (* 10 num-workers))))
                [(update-in added [:num-workers] inc) true]
                [added false]))))
     (future (do-work task-queue))))

@@ -161,7 +161,7 @@
    then it just evaluates the expression."
   [expression & {:keys [trace manager-type]
                  :as args
-                 :or {manager-type :eval value invalid}}]
+                 :or {manager-type :eval}}]
   (if (or (not= manager-type :eval) (some reporter? expression))
     (apply new-reporter
            :expression expression

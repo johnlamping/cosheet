@@ -6,7 +6,7 @@
                               describe-and-swap-control-return!]]
                      [reporters :as reporter
                       :refer [set-value! set-manager!
-                              attended? new-reporter invalid]]
+                              attended? new-reporter]]
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]])))

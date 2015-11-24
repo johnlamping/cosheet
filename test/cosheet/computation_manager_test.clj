@@ -456,6 +456,9 @@
                        (answers-map [d pos])))))
             (check [requests answers-map]
               (right-results? requests answers-map)
+              ;; Note: almost all of the time of this test occurs
+              ;; here, not in the computation, because each (is ...)
+              ;; in the check does a transaction on the test counter.
               (reduce check-propagation #{} (vals requests)))]
       (let [arguments (for [d (range depth)
                             pos (range width)]

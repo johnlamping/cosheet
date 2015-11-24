@@ -115,16 +115,18 @@
    (fn [checked [key _]]
      (cond
        (reporter/reporter? key)
-       (do (is (or
-                (contains? (:subordinate-values (reporter/data key)) reporter)
-                (contains? (:needed-values (reporter/data key)) reporter)))
-           (check-propagation checked key))
+       (let [data (reporter/data key)]
+         (is (or
+              (contains? (:subordinate-values data) reporter)
+              (contains? (:needed-values data) reporter)))
+         (check-propagation checked key))
        (list? key)
-       (let [user (second key)]
+       (let [user (second key)
+             data (reporter/data user)]
          (is (= (first key) :copy-value))
          (is (reporter/reporter? user))
-         (is (or (= reporter (:value-source (reporter/data user)))
-                 (= reporter (:old-value-source (reporter/data user)))))
+         (is (or (= reporter (:value-source data))
+                 (= reporter (:old-value-source data))))
          (check-propagation checked user))
        :else
        checked))
@@ -142,7 +144,7 @@
       (is (= (set (filter reporter/reporter? (:expression data)))
              (clojure.set/union (set (keys (:subordinate-values data)))
                                 (:needed-values data))))
-      (not (empty? (:attendees data)))
+      (is (not (empty? (:attendees data))))
       (-> already-checked
           (conj reporter)
           (check-source-propagation reporter)
@@ -466,7 +468,7 @@
           (when (= (mod i 100) 0)
             (println "starting trial" i))
           (doseq [j (range changes-per-trial)]
-            (reporter/set-value! (base (mod (* i j) width))
+            (reporter/set-value! (base (mod (* (inc i) j) width))
                                  (mod (* j j) width))
             (when (zero? (mod j 17))
               (future (compute m (mod i 34)))))

@@ -436,11 +436,11 @@
           (manage-fn reporter management))))))
 
 (defn request
-  "Request computation of a reference."
-  [x management]
-  (reporter/set-attendee! x :computation-request (fn [key value] nil))
-  (manage x management)
-  x)
+  "Request computation of a reporter, returning the reporter."
+  [r management]
+  (reporter/set-attendee! r :computation-request (fn [key value] nil))
+  (manage r management)
+  r)
 
 (defn compute
   "Do all pending computations, or if the second argument is provided,

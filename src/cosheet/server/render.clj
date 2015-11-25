@@ -34,20 +34,22 @@
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.
 ;;; There are removed by the dom manager before dom is sent to the client.
-;;; The server specific attributes are:
-;;;                :key  A unique client side key further described below.
-;;;           :ordering  Optional ordering information, described below.
-;;;   :sibling-elements  Elements that a sibling of this item must have.
-;;;        :add-sibling  A key that a content item for this empty dom
-;;;                      should be a sibling of.
-;;;      :add-direction  Whether a content item for this empty dom
-;;;                      should come before or after :add-sibling
-;;;        :row-sibling  A key that a new row should be a sibling of.
-;;;                      If the key indicates multiple items, the row
-;;;                      is a sibling of the last, or, if there are
-;;;                      multiple groups of items, the last of each
-;;;                      group.
-;;;       :row-elements  Elements that a new row must have.
+(def server-specific-attributes
+  [               :key  ; A unique client side key further described below.
+             :ordering  ; Optional ordering information, described below.
+     :sibling-elements  ; Elements that a sibling of this item must have.
+      :content-sibling  ; A key that a content item for this empty dom
+                        ; should be a sibling of. Used for getting
+                        ; ordering information.
+    :content-direction  ; Whether a content item for this empty dom
+                        ; should come before or after :content-sibling
+          :row-sibling  ; A key that a new adjacent row should be a sibling
+                        ; of. If the key indicates multiple items, the row
+                        ; is a sibling of the last, or, if there are
+                        ; multiple groups of items, the last of each
+                        ; group.
+         :row-elements  ; Elements that a new adjacent row must have.
+    ])
 
 ;;; The value of the style attribute is represented with its own map,
 ;;; rather than as a string, so they are easier to adjust. Conviently,

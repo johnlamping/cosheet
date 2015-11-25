@@ -6,7 +6,9 @@
                                     call-with-latest-value]]
                      [debug :refer [simplify-for-print]]
                      [dom-utils :refer [dom-attributes add-attributes]]
-                     [expression-manager :refer [manage]])))
+                     [expression-manager :refer [manage]])
+            
+            (cosheet.server [render :refer [server-specific-attributes]])))
 
 ;;; TODO: add a check when the dom of a component comes back that its
 ;;; key matches the key the component is stored under.
@@ -161,9 +163,7 @@
       dom
       (let [key (:key attributes)
             pruned-attributes (apply dissoc attributes
-                                     [:key :ordering :sibling-elements
-                                      :row-sibling :row-elements
-                                      :content-sibling :content-direction])
+                                     server-specific-attributes)
             client-attributes (if (nil? key)
                                 pruned-attributes
                                 (let [id (get-in data [:key->id key])]

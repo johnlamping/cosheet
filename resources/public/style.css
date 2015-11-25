@@ -167,7 +167,8 @@
     text-align: left;
 }
 
-.with-children, .full-row.with-children, .full-row.with-elements {
+.with-children, .full-row.with-children,
+.with-elements, .full-row.with-elements {
     text-align: left;
 }
 

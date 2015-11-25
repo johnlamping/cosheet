@@ -13,8 +13,8 @@
     [store-utils :refer [add-entity]]
     [query :refer [query-matches]]
     query-impl
-    [computation-manager :refer [new-management compute]]
-    [computation-manager-test :refer [check-propagation]]
+    [expression-manager :refer [new-expression-manager-data compute]]
+    [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
     [render :refer [item-DOM item-referent]]
@@ -68,13 +68,13 @@
 
 (defonce root-key [(item-referent root-item) "root"])
 
-(defonce management (new-management 1))
+(defonce manager-data (new-expression-manager-data 1))
 
 (defn create-tracker
   [do-not-merge]
   (let [definition [item-DOM root-item root-key #{}
                     {:depth 0 :do-not-merge do-not-merge}]
-        tracker (new-dom-tracker management)]
+        tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     tracker))
 
@@ -89,7 +89,7 @@
 (defn check-propagation-if-quiescent []
   (let [tracker-data @(tracker)
         reporter (get-in tracker-data [:components root-key :reporter])
-        task-queue (get-in tracker-data [:management :queue])]
+        task-queue (get-in tracker-data [:manager-data :queue])]
     (when (finished-all-tasks? task-queue)
       (check-propagation #{} reporter))))
 
@@ -99,7 +99,7 @@
                           {:tracker (create-tracker do-not-merge)
                            :do-not-merge do-not-merge}))
   (println "created tracker")
-  (compute management 1000)
+  (compute manager-data 1000)
   (println "computed some")
   (check-propagation-if-quiescent))
 
@@ -142,7 +142,7 @@
     (println "process acknowledgements" acknowledge)
     (process-acknowledgements (tracker) acknowledge)    
     (let [client-info (when actions (do-actions store @session-state actions))]
-      (compute management 10000)
+      (compute manager-data 10000)
       (check-propagation-if-quiescent)
       ;; Note: We must get the doms after doing the actions, so we can
       ;; immediately show the response to the actions. Likewise, we

@@ -7,7 +7,7 @@
              [utils :refer [dissoc-in]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
-             [computation-manager :refer [new-management compute]]
+             [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [current-value envs-to-list
                             let-propagated let-propagated-store]]
              entity-impl
@@ -232,8 +232,8 @@
                (assoc :next-id (inc id)))))))
 
 (deftest update-set-component-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)
         reporter (new-reporter :value "hi")
         c-map {:key [:k]
                :definition [item-DOM reporter [:k] #{} {:depth 0}]
@@ -257,7 +257,7 @@
     (swap-and-act tracker #(-> %
                                (update-associate-key-to-id [:k] "root")
                                (update-set-component c-map)))
-    (compute management)
+    (compute md)
     (let [data @tracker
           component (get-in data [:components [:k]])]
       (is (= (:version component) 1))
@@ -271,28 +271,28 @@
       (is (= (set (:out-of-date-keys data)) #{[[:k] 0]}))
       ;; Try some updates that don't change the definition.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
-      (compute management)
+      (compute md)
       (let [data @tracker]
         (swap-and-act tracker #(update-set-component % c-map))
-        (compute management)
+        (compute md)
         (is (= @tracker data))
         (swap-and-act tracker #(update-set-component % alt-c-map))
-        (compute management)
+        (compute md)
         (is (= (get-in @tracker [:components [:k]])
                (assoc component :attributes (:attributes alt-c-map))))
         (is (= (set (:out-of-date-keys @tracker)) #{})))
       ;; Change the value of the reporter, and make sure the dom updates.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (reporter/set-value! reporter "ho")
-      (compute management)
+      (compute md)
       (is (= (get-in @tracker [:key->dom [:k]])
              [:div  {:key [:k] :class "item content-text editable"} "ho"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:key->dom [:d]])))
-    (compute management)
+    (compute md)
     (reporter/set-value! reporter "hi")
-    (compute management)
+    (compute md)
     (is (= (into {} (map (fn [[key component]]
                            [key (get-in @tracker [:key->dom key])])
                          (get-in @tracker [:components])))
@@ -315,20 +315,20 @@
     ))
 
 (deftest id->key-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)]
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)]
     (swap-and-act tracker #(update-associate-key-to-id % [:k] "root"))
     (is (= (id->key tracker "root") [:k]))))
 
 (deftest key->id-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)]
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)]
     (swap-and-act tracker #(update-associate-key-to-id % [:k] "root"))
     (is (= (key->id tracker [:k]) "root"))))
 
 (deftest key->attributes-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)
         reporter (new-reporter :value "hi")]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
@@ -339,11 +339,11 @@
     (is (= (key->attributes tracker [:foo :root]) {:other :foo}))))
 
 (deftest add-dom-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)
         reporter (new-reporter :value "hi")]
     (add-dom tracker "root" [:root] [item-DOM reporter [:root] #{} {:depth 0}])
-    (compute management)
+    (compute md)
     (let [data @tracker
           component (get-in data [:components [:root]])]
       (is (= (:version component) 1))
@@ -359,15 +359,15 @@
       (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
 
 (deftest request-client-refresh-test
-  (let [management (new-management)
-        tracker (new-dom-tracker management)
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)
         reporter (new-reporter :value "hi")]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]
                                      :other :foo}
                          [identity [:div]]]]])
-    (compute management)
+    (compute md)
     (let [old-out-of-date (:out-of-date-keys @tracker)]
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (is (not= old-out-of-date (:out-of-date-keys @tracker)))

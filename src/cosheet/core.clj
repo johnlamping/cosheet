@@ -2,7 +2,7 @@
   (:require (cosheet utils orderable dom-utils
                      reporters expression store entity query
                      mutable-manager mutable-set
-                     mutable-map task-queue computation-manager
+                     mutable-map task-queue expression-manager
                      store-impl store-utils entity-impl query-impl
                      mutable_store_impl debug)
             ;; Note: the reload below is key to making reporters.clj

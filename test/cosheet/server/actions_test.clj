@@ -8,7 +8,7 @@
              [entity :as entity :refer [description->entity to-list
                                         content elements
                                         label->elements label->content]]
-             [computation-manager :refer [new-management compute]]
+             [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [current-value]]
              entity-impl
              [store :refer [new-element-store
@@ -67,8 +67,8 @@
 (def jane-age-tag (first (elements jane-age)))
 
 (defn new-joe-jane-tracker [mutable-store]
-  (let [management (new-management)
-        tracker (new-dom-tracker management)]
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)]
     (add-dom tracker
              "joe-root"
              [joe-id :bob]
@@ -81,7 +81,7 @@
              [item-DOM
               (description->entity jane-id mutable-store)
               [jane-id :bob] #{} {:depth 1  :do-not-merge #{}}])
-    (compute management)
+    (compute md)
     tracker))
 
 (defn find-dom-id

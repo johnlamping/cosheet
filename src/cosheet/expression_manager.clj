@@ -1,4 +1,4 @@
-(ns cosheet.computation-manager
+(ns cosheet.expression-manager
   (:require (cosheet [task-queue :refer :all]
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
@@ -99,24 +99,24 @@
 ;;;     this reporter.
 
 
-;;; The management record contains all the information that the
-;;; various managers and propagators need.
+;;; The manager data record contains all the information that the
+;;; various expression managers need.
 ;;; By making it a record, we can define our own print-method, to
 ;;; avoid infinite loops when it is printed out. (The queue will
-;;; contain references back to the management record.)
-(defrecord ManagementImpl
+;;; contain references back to the manager data record.)
+(defrecord ExpressionManagerData
     [queue  ; A task-queue of pending tasks.
      manage-map ; A map from :manager-type of a reporter to a
-                ; function that takes a reporter and a management,
+                ; function that takes a reporter and a manager data,
                 ; does any needed preparation putting the reporter
                 ; under management, and sets its manager.
      cache ; A mutable map from expression to reporter.
            ; (present if cache reporters are supported.)
      ])
 
-(defmethod print-method ManagementImpl [s ^java.io.Writer w]
+(defmethod print-method ExpressionManagerData [s ^java.io.Writer w]
   ;; Avoid huge print-outs.
-  (.write w "<ManagementImpl>"))
+  (.write w "<ExpressionManagerData>"))
 
 (defn update-new-further-action
   "Given a map, add an an action to the further actions.
@@ -225,7 +225,7 @@
    (fn [data] (update-old-value-source data reporter nil))))
 
 (defn copy-subordinate-callback
-  [to from management]
+  [to from md]
   (with-latest-value [value (reporter/value from)]
     (modify-and-act
      to
@@ -267,26 +267,26 @@
                          (update-old-value-source to nil))
                      ;; Some value changed. Schedule recomputation.
                      (apply update-new-further-action new-data 
-                            add-task (:queue management)
-                            [eval-expression-if-ready to management]))
+                            add-task (:queue md)
+                            [eval-expression-if-ready to md]))
                    new-data))
                (update-in newer-data [:needed-values] conj from)))))))))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
   for use as an argument of the second."
-  [from to management]
+  [from to md]
   (with-latest-value
     [callback (let [data (reporter/data to)]
                 (when (or (contains? (get data :needed-values #{}) from)
                           (contains? (:subordinate-values data) from))
-                  [copy-subordinate-callback management]))]
+                  [copy-subordinate-callback md]))]
     (apply reporter/set-attendee! from to callback)))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
   a value, evaluate the expression."
-  [reporter management]
+  [reporter md]
   (modify-and-act
    reporter
    (fn [data]
@@ -316,7 +316,7 @@
                    ;; generate demand for the new value, before we
                    ;; manage it.
                    (update-value-source reporter value)
-                   (update-new-further-action manage value management))
+                   (update-new-further-action manage value md))
                (-> data
                    (update-value reporter value)
                    (update-value-source reporter nil)
@@ -324,7 +324,7 @@
 
 (defn eval-manager
   "Manager for an eval reporter."
-  [reporter management]
+  [reporter md]
   (modify-and-act
    reporter
    (fn [data]
@@ -336,7 +336,7 @@
                          (update-new-further-action
                           data
                           register-copy-subordinate
-                          subordinate reporter management))
+                          subordinate reporter md))
                        (update-value data reporter reporter/invalid)
                        subordinates)]
          (if (reporter/data-attended? new-data)
@@ -344,8 +344,8 @@
                (assoc :needed-values subordinates)
                (assoc :subordinate-values {})
                (update-new-further-action
-                add-task (:queue management)
-                eval-expression-if-ready reporter management))
+                add-task (:queue md)
+                eval-expression-if-ready reporter md))
            (-> new-data
                (dissoc :needed-values)
                (dissoc :subordinate-values)
@@ -355,28 +355,28 @@
 (defn manage-eval
   "Have the reporter managed by the eval-manager,
    and manage the terms of its expression."
-  [reporter management]
-  (reporter/set-manager! reporter eval-manager management)
+  [reporter md]
+  (reporter/set-manager! reporter eval-manager md)
   ;; We manage the subexpressions after we set our manager. It gives
   ;; them demand, so they will have demand they need before they are
   ;; managed.
   (doseq [term (:expression (reporter/data reporter))]
-    (manage term management)))
+    (manage term md)))
 
 (defn cached-eval-manager
   "Manager for an eval reporter that is also stored in the cache."
-  [reporter management]
+  [reporter md]
   (when (not (reporter/attended? reporter))
-    (mm/dissoc-in! (:cache management)
+    (mm/dissoc-in! (:cache md)
                    [(:expression (reporter/data reporter))]))
-  (eval-manager reporter management))
+  (eval-manager reporter md))
 
 (defn ensure-in-cache
   "Get or make an cached-eval reporter for the given expression in the cache.
   It may not be managed."
-  [expression original-name management]
+  [expression original-name md]
   (mm/update-in!
-   (:cache management) [expression]
+   (:cache md) [expression]
    #(or % (apply reporter/new-reporter
                  :expression expression
                  :manager-type :cached-eval
@@ -388,16 +388,16 @@
   ;; TODO: Add manage-cache, which will replace cache reporters in the
   ;; expression with their cached-eval reporters, to canonicalize the
   ;; expression before it is used.
-  [reporter management]
+  [reporter md]
   (let [data (reporter/data reporter)
         expression (:expression data)
-        cache (:cache management)]
+        cache (:cache md)]
     ;;; ensure-in-cache has side-effects, which can't run inside a
     ;;; swap!, so we have to use with-latest-value.
     (with-latest-value [attended (reporter/attended? reporter)]
       (let [value-source (when attended
                            (ensure-in-cache
-                            expression (:name data) management))]
+                            expression (:name data) md))]
         (modify-and-act
          reporter
          (fn [data]
@@ -408,13 +408,13 @@
         ;; We can't manage the source until the registration is done,
         ;; or its manager will take it out of the cache.
         (when value-source
-          (manage value-source management))))))
+          (manage value-source md))))))
 
-(defn new-management
+(defn new-expression-manager-data
   "Create the manager data for a caching evaluator."
-  ([] (new-management 0))
+  ([] (new-expression-manager-data 0))
   ([worker-threads]
-   (map->ManagementImpl
+   (map->ExpressionManagerData
     {:cache (mm/new-mutable-map)
      :queue (new-priority-task-queue worker-threads)
      :manage-map {:cache (fn [r m] (reporter/set-manager!
@@ -426,37 +426,37 @@
 (defn manage
   "Assign the manager to the reporter
   and to any reporters referenced by its expression."
-  [reporter management]
+  [reporter md]
   (when (reporter/reporter? reporter)
     (let [data (reporter/data reporter)
           manager-type (:manager-type data)]
       (when (and manager-type (not (:manager data)))
-        (let [manage-fn (manager-type (:manage-map management))]
+        (let [manage-fn (manager-type (:manage-map md))]
           (assert manage-fn (format "Unknown manager type: %s" manager-type))
-          (manage-fn reporter management))))))
+          (manage-fn reporter md))))))
 
 (defn request
   "Request computation of a reporter, returning the reporter."
-  [r management]
+  [r md]
   (reporter/set-attendee! r :computation-request (fn [key value] nil))
-  (manage r management)
+  (manage r md)
   r)
 
 (defn compute
   "Do all pending computations, or if the second argument is provided,
    all or that many, which ever comes first."
-  ([management]
-   (run-all-pending-tasks (:queue management)))
-  ([management max-tasks]
-   (run-some-pending-tasks (:queue management) max-tasks)))
+  ([md]
+   (run-all-pending-tasks (:queue md)))
+  ([md max-tasks]
+   (run-some-pending-tasks (:queue md) max-tasks)))
 
 (defn computation-value
   "Given a possible reporter, compute its value and return it."
-  [x management]
-  (if (reporter/reporter? x)
+  [r md]
+  (if (reporter/reporter? r)
     (do
-      (request x management)
-      (compute management)
-      (reporter/value x))
-    x))
+      (request r md)
+      (compute md)
+      (reporter/value r))
+    r))
 

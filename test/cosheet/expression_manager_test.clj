@@ -1,4 +1,4 @@
-(ns cosheet.computation-manager-test
+(ns cosheet.expression-manager-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
@@ -7,7 +7,7 @@
                      [reporters :as reporter]
                      [expression :refer [expr expr-seq expr-let cache invalid]]
                      [utils :refer :all]
-                     [computation-manager :refer :all])
+                     [expression-manager :refer :all])
             ; :reload
             ))
 
@@ -58,6 +58,9 @@
 
 ;;; This function checks that exactly the right callbacks are in
 ;;; place, and that all copied information is up to date.
+;;; TODO: the recursion can blow out the Java stack if memory is
+;;; tight. Rearchitect check-propagation to keep a queue of reporters
+;;; that need testing.
 (def check-propagation)
 
 (defn check-source-propagation
@@ -188,35 +191,35 @@
                                   :needed-values #{r1}
                                   :subordinate-values {})
         r3 (reporter/new-reporter :name :r3 :value-source r2)
-        m (new-management)]
+        md (new-expression-manager-data)]
     ;; Give the ultimate reporters demand
     (reporter/set-attendee! r2 :k (constantly nil))
     (reporter/set-attendee! r3 :k (constantly nil))
     ;; Register, and check that the information is copied.
-    (register-copy-subordinate r1 r2 m)
+    (register-copy-subordinate r1 r2 md)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue m))
-           [[eval-expression-if-ready r2 m]]))
+    (is (= (task-queue/current-tasks (:queue md))
+           [[eval-expression-if-ready r2 md]]))
     ;; Change the subordinate value, and make sure it got propagated.
-    (reset! (:queue m) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(task-queue/new-priority-task-queue))
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue m))
-           [[eval-expression-if-ready r2 m]]))
+    (is (= (task-queue/current-tasks (:queue md))
+           [[eval-expression-if-ready r2 md]]))
     ;; Send a spurious update, and make sure things are unchanged.
-    (reset! (:queue m) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(task-queue/new-priority-task-queue))
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue m)) ()))
+    (is (= (task-queue/current-tasks (:queue md)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
-    (reset! (:queue m) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(task-queue/new-priority-task-queue))
     (swap! (reporter/data-atom r2) assoc :value-source r0)
     (register-copy-value r0 r2)
     (register-copy-value r2 r3)
@@ -226,7 +229,7 @@
     (is (= (reporter/value r3) invalid))
     (is (= (:value-source (reporter/data r2)) nil))
     (is (= (:old-value-source (reporter/data r2)) r0)) ;; Last known source.
-    (is (= (task-queue/current-tasks (:queue m)) ()))
+    (is (= (task-queue/current-tasks (:queue md)) ()))
     ;; Now set the value back to the original value, and check the consequences.
     ;; We don't need to compute, because it is just value copying.
     (reporter/set-value! r1 :v1)
@@ -245,14 +248,14 @@
                                  :needed-values #{r0}
                                  :subordinate-values {r0 1})
         rc (reporter/new-reporter :name :rc :value-source r)
-        m (new-management)]
+        md (new-expression-manager-data)]
     (register-copy-value r rc)
     ;; Try when the expression is not ready.
-    (eval-expression-if-ready r m)
+    (eval-expression-if-ready r md)
     (is (= (reporter/value r) invalid))
     (swap! (reporter/data-atom r) assoc :needed-values #{})
     ;; Try when it is ready and computes a constant.
-    (eval-expression-if-ready r m)
+    (eval-expression-if-ready r md)
     (is (= (reporter/value r) 2))
     (is (= (reporter/value rc) 2))
     ;; Try when it is ready and computes a reporter.
@@ -265,13 +268,13 @@
            {[:copy-value r] [copy-value-callback]}))
     (is (= (:manager (reporter/data r1)) nil))
     (reporter/set-value! r invalid)
-    (eval-expression-if-ready r m)
+    (eval-expression-if-ready r md)
     ;; r won't get a value yet, because r1 will have been set invalid.
     (is (= (reporter/value r) invalid))
     (is (= (reporter/value rc) invalid))
     (is (= (:attendees (reporter/data r0)) nil))
-    (is (= (:manager (reporter/data r1)) [eval-manager m]))
-    (eval-expression-if-ready r1 m)
+    (is (= (:manager (reporter/data r1)) [eval-manager md]))
+    (eval-expression-if-ready r1 md)
     (is (= (reporter/value r) 3))
     (is (= (reporter/value rc) 3))))
 
@@ -280,35 +283,35 @@
         r (reporter/new-reporter :expression [inc r0]
                                  :manager-type :eval)
         rc (reporter/new-reporter :value-source r)
-        m (new-management)]
+        md (new-expression-manager-data)]
     ;; Run manager when there is no interest.
-    (eval-manager r m)
+    (eval-manager r md)
     (is (= (reporter/value r) invalid))
     ;; Run when there is interest.
     (register-copy-value r rc)
-    (eval-manager r m)
+    (eval-manager r md)
     (is (= (:needed-values (reporter/data r)) #{}))
     (is (= (:subordinate-values (reporter/data r)) {r0 1}))
     ;; Run when there is no interest again.
     (swap! (reporter/data-atom rc) dissoc :value-source)
     (register-copy-value r rc)
-    (eval-manager r m)
+    (eval-manager r md)
     (is (not (contains? (reporter/data r) :needed-values)))
     (is (not (contains? (reporter/data r) :subordinate-values)))
     (is (empty? (:attendees (reporter/data r0))))))
 
 (deftest ensure-in-cache-test
-  (let [m (new-management)
-        r0 (ensure-in-cache [:a :b] "ab" m)
-        r1 (ensure-in-cache [:a :c] "bc" m)
-        r2 (ensure-in-cache [:a :b] "changed" m)]
+  (let [md (new-expression-manager-data)
+        r0 (ensure-in-cache [:a :b] "ab" md)
+        r1 (ensure-in-cache [:a :c] "bc" md)
+        r2 (ensure-in-cache [:a :b] "changed" md)]
     (is (= r0 r2))
     (is (= (:expression (reporter/data r0)) [:a :b]))
     (is (= (:manager-type (reporter/data r0)) :cached-eval))
     (is (not= r0 r1))))
 
 (deftest cache-manager-test
-  (let [m (new-management)
+  (let [md (new-expression-manager-data)
         r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
                                   :expression [inc r0]
@@ -319,15 +322,15 @@
         r3 (reporter/new-reporter :name :r3 :value-source r1)
         r4 (reporter/new-reporter :name :r4 :value-source r2)]
     ;; Nothing should happen when there is no demand for r1.
-    (cache-manager r1 m)
+    (cache-manager r1 md)
     (is (not (contains? (reporter/data r1) :value-source)))
     ;; With demand, the cached value should be created.
     (register-copy-value r1 r3)
-    (cache-manager r1 m)
+    (cache-manager r1 md)
     (is (contains? (reporter/data r1) :value-source))
     ;; And we should pick it up for the other reporter with the same expr.
     (register-copy-value r2 r4)
-    (cache-manager r2 m)
+    (cache-manager r2 md)
     (is (= (:value-source  (reporter/data r1))
            (:value-source  (reporter/data r2))))
     (let [orig-source (:value-source  (reporter/data r1))]
@@ -335,33 +338,33 @@
       ;; source should come back.
       (swap! (reporter/data-atom r3) dissoc :value-source)
       (register-copy-value r1 r3)
-      (cache-manager r1 m)
-      (cached-eval-manager orig-source m)
+      (cache-manager r1 md)
+      (cached-eval-manager orig-source md)
       (is (not (contains? (reporter/data r1) :value-source)))
       (swap! (reporter/data-atom r3) assoc :value-source r1)
       (register-copy-value r1 r3)
-      (cache-manager r1 m)
+      (cache-manager r1 md)
       (is (= (:value-source (reporter/data r1))
              orig-source))
       ;; Now, lose interest in both reporters with that expression,
       ;; and the cache should drop it.
       (swap! (reporter/data-atom r3) dissoc :value-source)
       (register-copy-value r1 r3)
-      (cache-manager r1 m)
+      (cache-manager r1 md)
       (swap! (reporter/data-atom r4) dissoc :value-source)
       (register-copy-value r2 r4)
-      (cache-manager r2 m)
-      (cached-eval-manager orig-source m)
+      (cache-manager r2 md)
+      (cached-eval-manager orig-source md)
       (swap! (reporter/data-atom r3) assoc :value-source r1)
       (register-copy-value r1 r3)
-      (cache-manager r1 m)
+      (cache-manager r1 md)
       (is (not= (:value-source (reporter/data r1))
                 orig-source)))))
 
 ;;; Test that caching is working by doing a recursive computation that would
 ;;; take a very long time if it weren't cached.
 (deftest fib-cache-test
-  (let [m (new-management)
+  (let [md (new-expression-manager-data)
         base (reporter/new-reporter :value 0)]
     (letfn [(fib [n] (if (<= n 1)
                        base
@@ -369,15 +372,15 @@
       ;; Since the base is 0, fib should be 0 everywhere, and since
       ;; the computations should be cached, this should be fast.
       (let [f45 (fib 45)]
-        (is (= (computation-value f45 m) 0))
+        (is (= (computation-value f45 md) 0))
         (check-propagation #{} f45)
         (reporter/set-value! base 1)
         ;; Now it should be the right value.
-        (is (= (computation-value f45 m) 1836311903))
+        (is (= (computation-value f45 md) 1836311903))
         (check-propagation #{} f45)
         (reporter/set-value! base invalid)
         ;;; Now it should be invalid.
-        (is (= (not (reporter/valid? (computation-value f45 m)))))
+        (is (= (not (reporter/valid? (computation-value f45 md)))))
         (check-propagation #{} f45)))))
 
 ;; Test that caching works with recomputations of subsidiary
@@ -392,28 +395,28 @@
         r (expr-let [s1 (expr-seq map dependency-introducer rs)
                       s2 (expr-seq map dependency-introducer s1)]
              s2)
-        m (new-management)]
-    (is (= (computation-value r m) [3 4 5]))
+        md (new-expression-manager-data)]
+    (is (= (computation-value r md) [3 4 5]))
     (is (= @counter 4))
     (reporter/set-value! rs [1 2 3 4])
-    (is (= (computation-value r m) [3 4 5 6]))
+    (is (= (computation-value r md) [3 4 5 6]))
     (is (= @counter 5))))
 
 (deftest nil-value-test
   ;; There had been a bug with nil values throwing off propagation.
   ;; This tests that it is fixed.
-  (let [m (new-management)
+  (let [md (new-expression-manager-data)
         r0 (reporter/new-reporter :name :r0)
         r1 (expr identity r0)
         r2 (expr identity r1)]
-    (request r2 m)
-    (compute m)
+    (request r2 md)
+    (compute md)
     (is (= (reporter/value r2) invalid))
     (reporter/set-value! r0 nil)
-    (compute m)
+    (compute md)
     (is (= (reporter/value r2) nil))
     (reporter/set-value! r0 1)
-    (compute m)
+    (compute md)
     (is (= (reporter/value r2) 1))))
 
 (deftest asynchronous-test
@@ -430,7 +433,7 @@
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]
                                            :value (mod (inc i) width))))
-        m (new-management 4)
+        md (new-expression-manager-data 4)
         evals (atom 0)]
     (letfn [(indexer [d pos]
               (if (zero? d)
@@ -464,8 +467,8 @@
                             pos (range width)]
                         [d pos])
             requests (into {} (for [[d pos] arguments]
-                                [[d pos] (request (indexer d pos) m)]))]
-        (compute m 1000000)
+                                [[d pos] (request (indexer d pos) md)]))]
+        (compute md 1000000)
         (check requests (answers arguments))
         (doseq [i (range trials)]
           (when (= (mod i 100) 0)
@@ -474,8 +477,8 @@
             (reporter/set-value! (base (mod (* (inc i) j) width))
                                  (mod (* j j) width))
             (when (zero? (mod j 17))
-              (future (compute m (mod i 34)))))
-          (compute m)
+              (future (compute md (mod i 34)))))
+          (compute md)
           (check requests (answers arguments)))))))
 
 

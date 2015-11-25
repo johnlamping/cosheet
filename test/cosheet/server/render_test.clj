@@ -10,8 +10,9 @@
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
              [debug :refer [current-value let-propagated envs-to-list]]
-             [computation-manager :refer [new-management request compute]] 
-             [computation-manager-test :refer [check-propagation]]
+             [expression-manager :refer [new-expression-manager-data
+                                         request compute]] 
+             [expression-manager-test :refer [check-propagation]]
              entity-impl
              store-impl
              mutable-store-impl)
@@ -427,9 +428,9 @@
                             (entity/label->elements joe "age"))))
         age-tag (first (current-value (entity/label->elements age 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))]
-    (let [m (new-management)]
-      (request dom-reporter m)
-      (compute m)
+    (let [md (new-expression-manager-data)]
+      (request dom-reporter md)
+      (compute md)
       (check-propagation #{} dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
@@ -506,7 +507,7 @@
                      #{age-tag} {:depth 1 :do-not-merge do-not-merge}]]]]]])))
       ;; Now, make the do-not-merge be non-trivial
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
-      (compute m)
+      (compute md)
       (check-propagation #{} dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
@@ -621,9 +622,9 @@
         L3-spec (first (remove #{(first (current-value
                                          (entity/label->elements L3 :order)))}
                                (current-value (entity/elements L3))))]
-    (let [m (new-management)]
-      (request dom-reporter m)
-      (compute m))
+    (let [md (new-expression-manager-data)]
+      (request dom-reporter md)
+      (compute md))
     (check-propagation #{} dom-reporter)
     ;; TODO: The order of multiple :sibling-elements is arbitrary. Fix
     ;; the test to accept either order.
@@ -724,9 +725,9 @@
         Lb1-spec (first (remove #{(first (current-value
                                           (entity/label->elements Lb1 :order)))}
                                 (current-value (entity/elements Lb1))))]
-    (let [m (new-management)]
-      (request dom-reporter m)
-      (compute m))
+    (let [md (new-expression-manager-data)]
+      (request dom-reporter md)
+      (compute md))
     (check-propagation #{} dom-reporter)
     (is (= (reporter/value dom-reporter)
            (let [L1s-ref [:parallel

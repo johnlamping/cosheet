@@ -6,7 +6,7 @@
                                     call-with-latest-value]]
                      [debug :refer [simplify-for-print]]
                      [dom-utils :refer [dom-attributes add-attributes]]
-                     [computation-manager :refer [manage]])))
+                     [expression-manager :refer [manage]])))
 
 ;;; TODO: add a check when the dom of a component comes back that its
 ;;; key matches the key the component is stored under.
@@ -79,7 +79,7 @@
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about, prioritized by their depth.
-;;;       :management  The management for our reporters on the server.
+;;;     :manager-data  The management for our reporters on the server.
 ;;;  :further-actions  A list of [function arg arg ...] calls that
 ;;;                    need to be performed. The function will be
 ;;;                    called with the atom, and the additional
@@ -386,7 +386,7 @@
             (assoc-in [:components key] final-map)
             (update-request-set-attending final-map)
             (update-new-further-action
-             (fn [atom] (manage reporter (:management data)))))))))
+             (fn [atom] (manage reporter (:manager-data data)))))))))
 
 (defn add-dom
   "Add dom with the given client id, key, and definition to the tracker."
@@ -429,7 +429,7 @@
 
 (defn new-dom-tracker
   "Return a new dom tracker object"
-  [management]
+  [md]
   (atom
    {:components {}
     :id->key {}
@@ -437,6 +437,6 @@
     :key->dom {}
     :next-id 0
     :out-of-date-keys (priority-map/priority-map)
-    :management management}))
+    :manager-data md}))
 
 

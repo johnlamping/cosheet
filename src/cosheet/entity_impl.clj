@@ -8,7 +8,7 @@
                                     stored-item-id-string]]
                      [orderable :as orderable]
                      [entity :refer :all]
-                     [reporters :refer [expr-seq expr-let expr]])))
+                     [expression :refer [expr-seq expr-let expr]])))
 
 (defrecord
     ^{:doc "An item whose elements are described by a store."}

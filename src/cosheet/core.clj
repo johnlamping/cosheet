@@ -1,12 +1,12 @@
 (ns cosheet.core
   (:require (cosheet utils orderable dom-utils
-                     reporters store entity query
+                     reporters expression store entity query
                      mutable-manager mutable-set
                      mutable-map task-queue computation-manager
                      store-impl store-utils entity-impl query-impl
                      mutable_store_impl debug)
             ;; Note: the reload below is key to making reporters.clj
-            ;; load successfully. Not clear why
+            ;; load successfully. Not clear why.
             :reload)
   (:gen-class))
 

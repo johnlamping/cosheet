@@ -1,8 +1,7 @@
 (ns cosheet.server.dom-tracker
   (:require [clojure.data.priority-map :as priority-map]
-            (cosheet [reporters
-                      :as reporters
-                      :refer [value new-expression]]
+            (cosheet [reporters :as reporter]
+                     [expression :refer [new-expression]]
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
                      [debug :refer [simplify-for-print]]
@@ -305,12 +304,12 @@
   "Record a new value for the dom."
   [[_ key] reporter data-atom]
   (call-with-latest-value
-   #(reporters/value reporter)
+   #(reporter/value reporter)
    (fn [dom]
      (println "got dom value for key" (simplify-for-print key))
      ;;; TODO: When not valid, but we have a previous dom,
      ;;; set a style for the dom to indicate invalidity.
-     (when (reporters/valid? dom)
+     (when (reporter/valid? dom)
        (println "value is valid")
        (swap-and-act
         data-atom
@@ -330,7 +329,7 @@
      ;; Note: The key we use to subscribe might be the same as other
      ;; dom trackers use, but we only subscribe to reporters that we
      ;; create, so there will never be a conflict.
-     (apply reporters/set-attendee! reporter [:dom-request key]
+     (apply reporter/set-attendee! reporter [:dom-request key]
             (when should-attend
               [dom-callback data-atom])))))
 

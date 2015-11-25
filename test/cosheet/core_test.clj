@@ -4,7 +4,8 @@
             debug-test
             client-utils-test dom-utils-test
             utils-test orderable-test
-            reporters-test mutable-manager-test mutable-set-test
+            reporters-test expression-test
+            mutable-manager-test mutable-set-test
             entity-test store-test query-test
             mutable-map-test task-queue-test computation-manager-test
             mutable-store-test store-utils-test)

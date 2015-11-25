@@ -5,7 +5,7 @@
                      [query :refer [extended-by-m?
                                     template-matches-m
                                     query-matches-m]]
-                     [reporters :refer [expr expr-let expr-seq]]
+                     [expression :refer [expr expr-let expr-seq]]
                      [debug :refer [current-value trace-current
                                     simplify-for-print]])))
 

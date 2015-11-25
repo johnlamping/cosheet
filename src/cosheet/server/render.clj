@@ -7,8 +7,7 @@
                      [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
-                     [reporters
-                      :refer [value expr expr-let expr-seq cache]])))
+                     [expression :refer [expr expr-let expr-seq cache]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 

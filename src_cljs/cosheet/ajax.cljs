@@ -104,7 +104,9 @@
           select-target (and target-id (js/document.getElementById target-id))]
       (when select-target
         (.log js/console "doing select.")
-        (select select-target)))))
+        (select select-target)
+        ;; Tell the server that their selection request went through.
+        (add-pending-action [:selected target-id])))))
 
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)

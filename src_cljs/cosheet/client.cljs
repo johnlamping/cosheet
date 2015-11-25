@@ -10,7 +10,7 @@
             [cosheet.client-utils :refer
              [component components add-pending-action]]
             cosheet.dom-utils
-            [cosheet.ajax :refer [ajax-if-pending ajax-request]]
+            [cosheet.ajax :refer [request-action ajax-request]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                open-edit-field close-edit-field
                                                selected select deselect]]
@@ -64,11 +64,6 @@
 (defn dom-text [target]
   (let [child (.-firstChild target)]
     (or (and child (.-nodeValue child)) "")))
-
-(defn request-action
-  [action]
-  (add-pending-action action)
-  (ajax-if-pending))
 
 (defn store-edit-field
   []

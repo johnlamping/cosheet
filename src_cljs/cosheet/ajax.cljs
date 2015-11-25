@@ -3,7 +3,7 @@
             [reagent.core :as reagent]
             [cosheet.client-utils :refer
              [component components
-              replace-in-struct into-atom-map
+              replace-in-struct into-atom-map add-pending-action
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
@@ -43,6 +43,11 @@
     (let [params (take-pending-params)]
       (when (not= params {})
         (ajax-request params)))))
+
+(defn request-action
+  [action]
+  (add-pending-action action)
+  (ajax-if-pending))
 
 (defn dom-contained-in-changes?
   "Given a dom and a list of dom revisions, return true if the dom
@@ -86,7 +91,7 @@
                      (replace-in-struct {:component component} (vec doms))))))
 
 (defn handle-ajax-select
-  "Do the selection requested by the ajaz response, or if none,
+  "Do the selection requested by the ajax response, or if none,
   but the old selection was temporarily cleared, restore that selection."
   [response previously-selected-id]
   (when (nil? @edit-field-open-on)

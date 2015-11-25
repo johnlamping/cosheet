@@ -440,7 +440,7 @@
     (mutable-set-swap!
          (:do-not-merge session-state)
          (fn [old]
-           (if (item-referent? (first key))
+           (if (item-referent? (first (remove-content-referent key)))
                (set (cons (first items)
                           (clojure.set/intersection (set (rest items)) old)))
                (clojure.set/intersection (set items) old))))))

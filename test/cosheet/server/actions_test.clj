@@ -236,15 +236,6 @@
                        [joe-id jane-id]]])
          [[joe-male joe-age] [jane-age]])))
 
-(deftest parse-string-test
-  (is (= (parse-string "x") "x"))
-  (is (= (parse-string "1") 1))
-  (is (= (parse-string " 1 ") 1))
-  (is (= (parse-string "1 1") "1 1"))
-  (is (= (parse-string " 1.0 ") 1))
-  (is (= (parse-string "-1.0") -1))
-  (is (= (parse-string " 1.5 ") 1.5)))
-
 (deftest update-add-entity-with-order-test
   (let [[s id order] (update-add-entity-with-order
                       store joe-id 6

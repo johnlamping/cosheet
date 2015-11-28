@@ -71,3 +71,12 @@
       (reset! cell (min (inc current) 5)))
     (is (= @cell 5))))
 
+(deftest parse-string--as-number-test
+  (is (= (parse-string-as-number "x") "x"))
+  (is (= (parse-string-as-number "1") 1))
+  (is (= (parse-string-as-number " 1 ") 1))
+  (is (= (parse-string-as-number "1 1") "1 1"))
+  (is (= (parse-string-as-number " 1.0 ") 1))
+  (is (= (parse-string-as-number "-1.0") -1))
+  (is (= (parse-string-as-number " 1.5 ") 1.5)))
+

@@ -115,3 +115,14 @@
     (fn [] ~expression)
     (fn [~var] ~@body)))
 
+;;; Parsing
+
+(defn parse-string-as-number
+  "Parse user entered characters into a number if possible.
+  Otherwise return the characters as a string."
+  ;; NOTE: This is not compabible with ClojureScript.
+  [str]
+  (try (let [x (Float/parseFloat (clojure.string/trim str))
+             int-x (int x)]
+         (if (== x int-x) int-x x))
+       (catch Exception e str)))

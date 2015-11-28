@@ -1,7 +1,8 @@
 (ns cosheet.debug
   (:require [clojure.set :as set]
             [clojure.pprint :refer [pprint]]
-            (cosheet [store :as store]
+            (cosheet [utils :refer [parse-string-as-number]]
+                     [store :as store]
                      [entity :as entity]
                      [reporters :refer [reporter? attended? data value
                                        set-attendee!]]
@@ -16,9 +17,11 @@
         matches (re-matches #"(.+?)(?:__\d+)?@.+" name)]
     (symbol (if matches
               (let [name (matches 1)
-                    matches (re-matches #"clojure.*\$(.*)" name)]
+                    matches (re-matches #"(clojure.*)\$(.*)" name)]
                 (if matches
-                  (matches 1)
+                  (if (number? (parse-string-as-number (matches 2)))
+                    (matches 1)
+                    (matches 2))
                   (let [matches (re-matches #"cosheet\.(.*)" name)]
                     (clojure.string/replace
                      (clojure.string/replace
@@ -118,6 +121,121 @@
 
 (defn pst [item]
   (pprint (simplify-for-print (trace-current item))))
+
+;;; Code to walk reporters and generate a profile.
+;;; See doc for reporters-profile for a description of the output.
+;;; Many of these functions also take a set of reporters already seen
+;;; on some other path through the dag. They will be charged only to
+;;; the first path seen to them. They also take a seq of function
+;;; names of ancestors to the given reporter.
+
+(def accumulate-profile)
+
+(defn accumulate-invocations
+  "Count one invocation of fun-name, under each of its ancestors, plus
+  just itself."
+  [acc fun-name ancestors]
+  (reduce (fn [acc ancestor]
+            (update-in acc [ancestor fun-name] (fnil inc 0)))
+          acc (conj ancestors nil)))
+
+(defn accumulate-expression-reporter-profile
+  "Accumulate one expression into the profile information, given its data."
+  [acc seen data ancestors]
+  (let [expression (:expression data)
+        source (:value-source data)
+        fun (first expression)
+        fun-name (when (instance? clojure.lang.Fn fun) (function-name fun))
+        [acc ancestors] (if fun-name
+                          [(accumulate-invocations acc fun-name ancestors)
+                           (conj ancestors fun-name)]
+                          [acc ancestors])
+        reporters (cond-> (filter reporter? (rest expression))
+                    source (conj source))]
+    (accumulate-profile acc seen reporters ancestors)))
+
+(defn accumulate-mutable-reporter-profile
+  "Accumulate one mutable-manager reporter into the profile
+  information, given its data."
+  [acc seen data ancestors]
+  (let [application (:application data)
+        fun (first application)
+        fun-name (when (instance? clojure.lang.Fn fun) (function-name fun))]
+    [(cond-> acc
+       fun-name (accumulate-invocations fun-name ancestors))
+     seen]))
+
+(defn accumulate-reporter-profile
+  "Accumulate one reporter into the profile. Return the profile, 
+  set of reporters seen, and a seq of [reporter ancestors] pairs
+  that still need to be processed."
+  [acc seen reporter ancestors]
+  (if (seen reporter)
+    [acc seen]
+    (let [seen (conj seen reporter)
+          data (data reporter)]
+      (cond
+        (:expression data)
+        (accumulate-expression-reporter-profile acc seen data ancestors)
+        (:application data)
+        (accumulate-mutable-reporter-profile acc seen data ancestors)
+        true
+        [acc seen]))))
+
+(defn accumulate-profile
+  "Accumulate profile information on reporters, returning the profile
+  and the set of reporters seen."
+  [acc seen reporters ancestors]
+  (reduce (fn [[acc seen] reporter]
+            (accumulate-reporter-profile acc seen reporter ancestors))
+          [acc seen] reporters))
+
+(defn reporters-profile
+  "Return profile information on reporters. The profile is a map of
+  maps of counts: f -> f -> n, from name of function to name of
+  function necessary to evaluate expressions headed by the first
+  funtion to how often that happens. The first  function name can also
+  be nil, in which case the count is just the number of invocations of
+  the second function.
+
+  Notice that unlike a typical profile, which notes the functions
+  called by a function, this notes the function calls necessary to
+  evaluate all applications headed by a function. That is what is
+  recorded in the reporter tree. Since the tree doesn't include
+  intermediate function calls that weren't reporter expressions, its
+  picture of the reporters created by a function call would be quite
+  hard to interpret, as many intermediate causes would be missing."
+  [reporters]
+  (first (accumulate-profile {} #{} reporters [])))
+
+(defn print-profile
+  "Print a summary of a profile, showing only the max-fns most
+  important functions, and, for each of them, only the most important
+  max-descendants."
+  [profile max-fns max-descendants]
+  (let [calls (profile nil)
+        num-calls (apply + (vals calls))
+        top-subsidiaries (->> (seq profile)
+                              (filter #(not (nil? (first %))))
+                              (map (fn [[fun counts]]
+                                     [fun (apply + (vals counts))]))
+                              (sort-by #(+ (get calls (first %) 0) (second %)))
+                              reverse
+                              (take max-fns))]
+    (println "Total calls:" num-calls)
+    (doseq [[fun below-count] top-subsidiaries]
+      (println fun "calls:" (calls fun) " has-below:" below-count)
+      (let [top-descendants (->> (seq (profile fun))
+                                 (sort-by second)
+                                 reverse
+                                 (take max-descendants))]
+        (doseq [[fun count] top-descendants]
+          (println "  " fun "called:" count))))))
+
+(defn profile-reporters
+  ([reporters] (profile-reporters reporters 10 10))
+  ([reporters max-fns max-descendants]
+   (print-profile (reporters-profile reporters) max-fns max-descendants)))
 
 ;;; TODO: Make this use the same store when there is more than one variable.
 (defmacro let-propagated-impl [[var entity & more-bindings] exp]

@@ -4,6 +4,7 @@
    [ring.util.response :refer [response]]
    (cosheet
     [debug :refer [simplify-for-print]]
+    [utils :refer [parse-string-as-number]]
     [orderable :refer [split earlier?]]
     [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
@@ -162,21 +163,11 @@
    store true [(first (item-determining-referents key))]
    #(when (id-valid? store %) (description->entity % store))))
 
-(defn parse-string
-  "Parse user entered characters into a number if possible.
-  Otherwise return the characters as a string."
-  ;; NOTE: This is not compabible with ClojureScript.
-  [str]
-  (try (let [x (Float/parseFloat (clojure.string/trim str))
-             int-x (int x)]
-         (if (== x int-x) int-x x))
-       (catch Exception e str)))
-
 (defn update-set-content
   "Set the content of the item in the store provided the current content
    matches 'from'."
   [from to store item]
-  (if (= (content item) (parse-string from))
+  (if (= (content item) (parse-string-as-number from))
     (update-content store (:item-id item) to)
     (do (println "content doesn't match" (content item) from)
         store)))
@@ -396,7 +387,7 @@
   (let [key (id->key dom-tracker id)
         first-primitive (first-primitive-referent key)
         items (key->items store key)
-        to (parse-string to)]
+        to (parse-string-as-number to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "from:" from " to:" to)
     (println "affecting" (count items) "items")

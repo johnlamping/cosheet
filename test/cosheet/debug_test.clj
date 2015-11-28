@@ -5,9 +5,11 @@
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
                      [reporters :refer [new-reporter set-value!]]
-                     [expression :refer [expr expr-let]]
+                     [expression :refer [expr expr-let cache]]
                      [store :refer :all]
                      [entity :refer :all]
+                     [mutable-set
+                      :refer [new-mutable-set mutable-set-intersection]]
                      store-impl)
             ; :reload
             ))
@@ -58,5 +60,21 @@
     (is (= (simplify-for-print inc) 'inc))
     (is (= (simplify-for-print simplify-for-print) 'debug/simplify-for-print))))
 
-
-
+(deftest profile-test
+  (let [ms (new-mutable-set #{:a :b})
+        rc (cache max
+                  (expr min (mutable-set-intersection ms #{:a})
+                        (mutable-set-intersection ms #{:b}))
+                  (expr min (mutable-set-intersection ms #{:c})))
+        r (expr list rc rc)]
+    (is (= (reporters-profile [r])
+           {'min {'intersection 3},
+            'max {'intersection 3,
+                  'min 2},
+            'clojure.lang.PersistentList {'intersection 3,
+                                          'min 2,
+                                          'max 1},
+            nil {'intersection 3,
+                 'min 2,
+                 'max 1,
+                 'clojure.lang.PersistentList 1}}))))

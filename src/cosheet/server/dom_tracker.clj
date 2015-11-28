@@ -81,11 +81,12 @@
 ;;;          :next-id  The next free client id number.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about, prioritized by their depth.
-;;;     :manager-data  The management for our reporters on the server.
+;;;     :manager-data  The expression manager-data for our reporters
+;;;                    on the server.
 ;;;  :further-actions  A list of [function arg arg ...] calls that
 ;;;                    need to be performed. The function will be
 ;;;                    called with the atom, and the additional
-;;;                    arguments. (These actions are actually
+;;;                    arguments. (These actions are not actually
 ;;;                    stored in the atom, but are added to the
 ;;;                    data before it is stored to request actions.)
 

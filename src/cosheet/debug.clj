@@ -206,7 +206,7 @@
   picture of the reporters created by a function call would be quite
   hard to interpret, as many intermediate causes would be missing."
   [reporters]
-  (first (accumulate-profile {} #{} reporters [])))
+  (first (accumulate-profile {} #{} reporters #{})))
 
 (defn print-profile
   "Print a summary of a profile, showing only the max-fns most
@@ -232,8 +232,8 @@
         (doseq [[fun count] top-descendants]
           (println "  " fun "called:" count))))))
 
-(defn profile-reporters
-  ([reporters] (profile-reporters reporters 10 10))
+(defn profile-and-print-reporters
+  ([reporters] (profile-and-print-reporters reporters 10 10))
   ([reporters max-fns max-descendants]
    (print-profile (reporters-profile reporters) max-fns max-descendants)))
 

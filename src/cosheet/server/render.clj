@@ -503,6 +503,20 @@
   "Given the flattened hierarchy expansion of one top level node,
   add the information about what borders each node in the expansion
   should be responsible for."
+  ;; Hierarchies make this a bit tricky. We use a separate table row
+  ;; for each node of the hierarchy, so we can align the tags and
+  ;; items for each node. This means that all but the deepest nodes of
+  ;; a hierarchy will be displayed as several rows. A row thus needs
+  ;; to be responsible not only for borders of its node, but also for
+  ;; parts of the borders of nodes it is contained in. In practice,
+  ;; this means that a row needs to handle the left border of the
+  ;; outermost node it is in. By making nodes always resposible for
+  ;; their own top border, we get the border lengths between nodes
+  ;; right.. Thus, when laying out a row, we need to know:
+  ;;            :depth in the hierarchy, for the indendation
+  ;;       :top-border :full or :indented
+  ;;    :bottom-border :corner, for only the lower left corner
+  ;;     :for-multiple true if this row applies to several items.
   [nodes]
   (let [nodes (vec nodes)
         n (count nodes)]
@@ -551,24 +565,6 @@
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
-  ;; Hierarchies make this a bit tricky. We use a separate table row
-  ;; for each node of the hierarchy, so we can align the tags and
-  ;; items for each node. This means that all but the deepest nodes of
-  ;; a hierarchy will be displayed as several rows. A row thus needs
-  ;; to be responsible not only for borders of its node, but also for
-  ;; borders of nodes it is contained in. In practice, this means
-  ;; that a row needs to handle the left border of the outermost node
-  ;; it is in, and may need to deal with that node's top or bottom
-  ;; border as well. This is in addition to the node's own borders,
-  ;; which separate it from its adjacent nodes under the same top
-  ;; level node. When separating adjacent nodes, the border should be
-  ;; drawn by the less nested node, since that will have the right length.
-  ;; Thus, when laying out a row, we need to know:
-  ;;            :depth in the hierarchy, for the indendation
-  ;;       :top-border :full or :indented
-  ;;    :bottom-border :full, :indented, or :corner, for only
-  ;;                   the lower left corner
-  ;;     :for-multiple true if this row applies to several items.
   [items parent-key inherited]
   (expr-let [hierarchy (tagged-items-hierarchy items (:do-not-merge inherited))
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)

@@ -17,7 +17,8 @@
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
-    [render :refer [item-DOM item-referent]]
+    [key :refer [item-referent]]
+    [render :refer [item-DOM]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]

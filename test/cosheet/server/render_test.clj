@@ -16,7 +16,9 @@
              entity-impl
              store-impl
              mutable-store-impl)
-            [cosheet.server.render :refer :all]
+            (cosheet.server
+             [key :refer [item-referent]]
+             [render :refer :all])
             ; :reload
             ))
 
@@ -40,20 +42,6 @@
                ("doubtful" "confidence"))
            (45 (~o4 :order)
                ("age" ~'tag))))
-
-(deftest prepend-to-key-test
-  (let [a (item-referent :a)
-        b (item-referent :b)
-        c (item-referent :c)
-        p (parallel-referent [] [b])
-        pp (parallel-referent [p a] [b])]
-    (is (= (prepend-to-key a [b]) [a b]))
-    (is (= (prepend-to-key c [p a])
-           [(parallel-referent [c] [b]) a]))
-    (is (= (prepend-to-key c [pp a])
-           [(parallel-referent [(parallel-referent [c] [b]) a]
-                               [b])
-            a]))))
 
 (deftest visible-test
   (let [visible (let-propagated [him joe]

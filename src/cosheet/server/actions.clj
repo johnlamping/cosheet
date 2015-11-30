@@ -19,75 +19,15 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [render :refer [visible-to-list canonicalize-list
-                    item-referent condition-referent prepend-to-key]])))
+    [key :refer [item-referent condition-referent prepend-to-key
+                 item-referent? content-referent?
+                 condition-referent? item-determining-referents
+                 first-primitive-referent remove-first-referent
+                 remove-content-referent item-ids-referred-to]]
+    [render :refer [visible-to-list canonicalize-list]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
 ;;; crash.
-
-(defn item-referent? [referent]
-  (and referent (not (sequential? referent))))
-
-(defn content-referent? [referent]
-  (and (sequential? referent) (= ( first referent) :content)))
-
-(defn condition-referent? [referent]
-  (and (sequential? referent) (= ( first referent) :condition)))
-
-(defn parallel-referent? [referent]
-  (and (sequential? referent) (= ( first referent) :parallel)))
-
-(defn item-determining-referents
-  "Return the elements of a key that may be needed to determine the items
-   it means."
-  [key]
-  (vec (filter (some-fn item-referent? parallel-referent?) key)))
-
-(defn first-primitive-referent
-  "Return the first non-parallel referent of a key."
-  [key]
-  (let [referent (first key)]
-    (if (parallel-referent? referent)
-      (let [[type exemplar items] referent]
-        (first-primitive-referent exemplar))
-      referent)))
-
-(defn remove-first-referent
-  "Remove the first referent from the key."
-  [[first & rest]]
-  (if (parallel-referent? first)
-    (let [[type exemplar items] first]
-      (if (empty? exemplar)
-        rest
-        (vec (cons [type (remove-first-referent exemplar) items] rest))))
-    rest))
-
-(defn remove-content-referent
-  "If a key starts with a content referent, remove it."
-  [[first & rest]]
-  (cond (content-referent? first)
-        rest
-        (parallel-referent? first)
-        (let [[type exemplar items] first]
-          (vec (cons [type (remove-content-referent exemplar) items] rest)))
-        (nil? first) []
-        true (vec (cons first rest))))
-
-(defn item-ids-referred-to
-  "Return all the item ids referred to by item referents in the key,
-  in order from most specific to most generic
-  (Only includes exemplars items from parallel referents.)"
-  [key]
-  (when (not (empty? key))
-    (let [[first & rest] key
-          rest-items (item-ids-referred-to rest)]
-      (cond (parallel-referent? first)
-            (let [[type exemplar items] first]
-              (concat (item-ids-referred-to exemplar) rest-items))
-            (item-referent? first)
-            (cons first rest-items)
-            true
-            rest-items))))
 
 (defn item->canonical-visible
   "Return the canonical form of the visible information for the item."

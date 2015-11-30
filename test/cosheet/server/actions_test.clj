@@ -9,7 +9,8 @@
                                         content elements
                                         label->elements label->content]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value]]
+             [debug :refer [current-value profile-and-print-reporters]]
+             [reporters :as reporter]
              entity-impl
              [store :refer [new-element-store
                             id->content id->element-ids id-label->element-ids
@@ -20,8 +21,10 @@
              [mutable-set :refer [new-mutable-set]]
              mutable-store-impl)
             (cosheet.server
-             [render :refer [item-DOM canonicalize-list visible-to-list
-                             item-referent condition-referent prepend-to-key]]
+             [key :refer [item-referent condition-referent prepend-to-key
+                          item-referent? parallel-referent?
+                          remove-first-referent]]
+             [render :refer [item-DOM canonicalize-list visible-to-list]]
              [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
             ; :reload
@@ -91,34 +94,6 @@
         tracker-data @tracker]
     (first (filter #(= (first (get-in tracker-data [:id->key %])) id)
                    (keys (:id->key tracker-data))))))
-
-(deftest remove-first-referent-test
-  (is (= (remove-first-referent [3 4])
-         [4]))
-  (is (= (remove-first-referent [[:parallel [] [2 3]] 4])
-         [4]))
-  (is (= (remove-first-referent [[:parallel [0 1] [2 3]] 4])
-          [[:parallel [1] [2 3]] 4])))
-
-(deftest remove-content-referent-test
-  (is (= (remove-content-referent [])
-         []))
-  (is (= (remove-content-referent [[:content] 3 4])
-         [3 4]))
-  (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
-         [[:parallel [1] [2 3]] 4]))
-  (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
-         [[:parallel [0 1] [2 3]] 4])))
-
-(deftest item-ids-referred-to-test
-  (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
-         #{0 1 4})))
-
-(deftest item-determining-referents-test
-  (let [id (->ItemId "a")]
-    (is (= (item-determining-referents
-            [[:parallel :a :b] [:content] [:group "a"] [:condition :b] id])
-           [[:parallel :a :b] id]))))
 
 (deftest canonical-visible-test
   (let [expected ["Joe" {"male" 1
@@ -496,3 +471,18 @@
     (is (= (current-mutable-value do-not-merge) #{jane-age}))
     (selected-handler store session-state "No such id")
     (is (= (current-mutable-value do-not-merge) #{}))))
+
+;;; TODO: remove this once profiling is done.
+(defn profile-test
+  []
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-dom-id (find-dom-id tracker joe)
+        joe-male-dom-id (find-dom-id tracker joe-male)
+        jane-age-dom-id (find-dom-id tracker jane-age)
+        do-not-merge (new-mutable-set #{})
+        session-state {:tracker tracker
+                       :do-not-merge do-not-merge}]
+    (profile-and-print-reporters (->> (vals (:components @tracker))
+                                      (map :reporter)
+                                      (filter reporter/reporter?)))))

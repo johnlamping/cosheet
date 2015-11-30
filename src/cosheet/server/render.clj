@@ -7,7 +7,9 @@
                      [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
-                     [expression :refer [expr expr-let expr-seq cache]])))
+                     [expression :refer [expr expr-let expr-seq cache]])
+            (cosheet.server [key :refer [item-referent condition-referent
+                                         parallel-referent prepend-to-key]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
@@ -63,7 +65,7 @@
 
 ;;; Instead, we generate dom that has subsidiary components. These are
 ;;; specified as
-;;;   [:component {:key <key>
+;;;   [:component {:key <key>  See key.clj for more on keys.
 ;;;                <other attributes to add to the definition's
 ;;;                 result>}
 ;;;               definition}
@@ -72,93 +74,6 @@
 ;;; provided attributes already present, and it will create additional
 ;;; computations to compute the dom for the components, and pass them
 ;;; as updates to the client once they are computed.
-
-;;; A key is used both for components and for any other dom node that
-;;; the user might interact with. Every key must be unique, even if
-;;; two dom nodes describe the same item. This is handled by having
-;;; keys reflect the path of containment in the dom. The key of a
-;;; component must not change unless it's parent dom changes, or the
-;;; connection between parent and child component will be lost, and
-;;; messages between client and server not understood.
-
-;;; All keys are sequences. Their first element is a referent that
-;;; gives the information needed by action interpretation, while their
-;;; subsequent elements are referents for parent pieces of dom, not
-;;; necessarily for every parent, but for enough to make the key
-;;; unique among all doms, and sometimes to give any additional
-;;; information necessary to interpret the referent key.
-
-;;; There are several kinds of referents
-;;;        item: <an item id>
-;;;     content: [:content]
-;;;       group: [:group <An item id of the group, typically the first>]
-;;;   condition: [:condition @<list of elements, each in list form,
-;;;                           that an item must have>]
-;;;    parallel: [:parallel [<list of referents>] [<list of item ids>]]
-
-;;; An item referent indicates a dom node that describes a particular
-;;; item. Typically, a dom that refers to an item will additionally
-;;; have a :sibling-elements attribute giving a list of elements that
-;;; a sibling item must have, each in list form. This condition
-;;; attribute is not the same as a condition referent. Incorporating
-;;; the condition into the item referent would be a mistake, as the
-;;; referent could then change even though the identity of the item
-;;; hadn't.
-
-;;; A content referent indicates a subnode of an item node that holds
-;;; its atomic content. Since atomic content nodes don't have
-;;; subnodes, a content referent will always be the first referent of
-;;; its key. The next referent of the key will be the item node.
-
-;;; A group referent indicates a dom node that holds several items,
-;;; the first of which is the given item. It's prototypical use is
-;;; when several items from a list are grouped into one dom for
-;;; display purposes.
-
-;;; A condition referent also indicates a dom node that holds several
-;;; items, but one where the items are defined to be all the ones
-;;; whose subject is the previous item in the key, and that satisfy a
-;;; particular condition. Currently, the condition is just a sequence
-;;; of elements, in list form. Condition referents are used for tag
-;;; nodes, since they show all tags of the subject, and for cells of a
-;;; table, if the table columns are conditions. In contrast to a group
-;;; node, a condition node might be empty, or two sibling condition
-;;; nodes might both show the same item.
-
-;;; NOTE: :ordering is not yet implemented, and may not be needed.
-;;; Typically a dom for a group referent or a condition referent will
-;;; additionally have a :ordering attribute that gives information
-;;; about the first and last item in the group, or about the items
-;;; just before or after it. If there are any elements in the node,
-;;; then first-item and last-item will be listed, so that ordering
-;;; information can be inferred for items added at the beginning and
-;;; end of the node. If the node is empty, then before-item and
-;;; after-item may be listed, giving items that an item added to the
-;;; node should come after or before.
-
-;;; A parallel referent stands for a set of keys. Its prototypical use
-;;; is when the tags of several items would be displayed identically,
-;;; and the display of the tags is collapsed into a single dom node. A
-;;; change to that node should change tags for each of the items. The
-;;; parallel referent's job is to indicate the set of items
-;;; corresponding to those parallel tags. A key can have at most one
-;;; parallel referent, while will be the first referent of the key.
-;;; But as described below, a parallel referent can itself have
-;;; another key, which can contain another parallel referent.
-
-;;; A parallel referent consists of an exemplar key, and a list of
-;;; items. In the simplest case, the exemplar key is empty, in which
-;;; case the parallel reference refers to each of its items. A
-;;; non-empty exemplar describes a navigation path to be traced
-;;; through each of the items. Starting with each item, the navigation
-;;; finds an element whose visible information matches the visible
-;;; information of the last item in the exemplar. That becomes the new
-;;; item in the navigation, which continues moving foward in the
-;;; exemplar. If the first referent of the exemplar is an item, then
-;;; the parallel referent refers to what that item ended up matching
-;;; at the end of each of the navigations. If the first referent is
-;;; another exemplar, each item of the nested exemplar is matched, and
-;;; the navigation recurses.
 
 ;;; The emitted dom uses CSS classes to indicate formatting. One group
 ;;; of classes gives information about how a div fits into a column of
@@ -180,36 +95,6 @@
 ;;; Several of these classes can pertain to a single div. For
 ;;; example, a row with a single non-indented item would have all of
 ;;; "column", "full-row", and "item".
-
-(defn item-referent
-  "Create an item referent"
-  [item]
-  (assert entity/mutable-entity? item)
-  (:item-id item))
-
-(defn condition-referent
-  "Create a condition referent"
-  [elements]
-  (into [:condition] elements))
-
-(defn parallel-referent
-  "Create a parallel referent"
-  [exemplar items]
-  (doseq [item items] (assert entity/mutable-entity? item))
-  [:parallel exemplar (map :item-id items)])
-
-(defn prepend-to-key
-  "Prepend a new referent to the front of a key, maintaining the invariant
-  that a parallel referent can only occur in first position."
-  [referent key]
-  (let [initial (first key)]
-    (vec
-     (if (and (sequential? initial)
-              (= :parallel (first initial)))
-       (let [[_ exemplar item-ids] initial]
-         (cons [:parallel (prepend-to-key referent exemplar) item-ids]
-               (rest key)))
-       (cons referent key)))))
 
 (defn visible-entity?
   "Return true if an entity is visible to the user

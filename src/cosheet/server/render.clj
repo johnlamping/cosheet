@@ -512,7 +512,7 @@
   ;; this means that a row needs to handle the left border of the
   ;; outermost node it is in. By making nodes always resposible for
   ;; their own top border, we get the border lengths between nodes
-  ;; right.. Thus, when laying out a row, we need to know:
+  ;; right. Thus, when laying out a row, we need to know:
   ;;            :depth in the hierarchy, for the indendation
   ;;       :top-border :full or :indented
   ;;    :bottom-border :corner, for only the lower left corner
@@ -611,3 +611,21 @@
                                  elements key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
+
+(defn table-DOM
+  "Return a hiccup representation of DOM, with the given internal key,
+  describing a table."
+  ;; The following elements of item describe the table:
+  ;;  :row-query  The content is an item whose list form gives the
+  ;;              requirements for an item to appear as a row
+  ;;     :column  The content is an item whose list form gives the
+  ;;              requirements for an element of a row to appear in
+  ;;              this column.
+  [item key inherited]
+  (println "Generating DOM for table" (simplify-for-print key))
+  (expr-let [row-query-item (entity/label->content item :row-query)
+             columns (entity/label->elements item :column)
+             row-query (visible-elements row-query-item)
+             column-elements (expr-seq
+                              (map #(visible-elements (entity/content %))
+                                   columns))]))

@@ -1,5 +1,6 @@
 (ns cosheet.query
-  (:require [cosheet.entity :as entity]))
+  (:require [cosheet.entity :as entity]
+            [cosheet.expression :refer [expr expr-seq expr-let]]))
 
 ;;; Variables are represented as items of the form
 ;;; (:variable (<name> :name)
@@ -33,7 +34,19 @@
 
 (defn template-matches
   ([template target] (template-matches-m template {} target))
-  ([template env target] (template-matches-m template env target))  )
+  ([template env target] (template-matches-m template env target)))
+
+(defn matching-elements
+  "Return all elements of the target that match the condition (which
+  must be immutable.)"
+  [condition target]
+  (expr-let [matches (template-matches
+                      `(nil (:variable
+                             (:v :name)
+                             (~condition :condition)
+                             (true :reference)))
+                      target)]
+    (expr-seq map :v matches)))
   
 (defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given
@@ -45,4 +58,17 @@
    environment and where the store satisfies the instantiated query."
   ([query store] (query-matches-m query {} store))
   ([query env store] (query-matches-m query env store)))
+
+(defn matching-items
+  "Return all items in the store that match the condition (which
+  must be immutable.)"
+  [condition store]
+  (expr-let [matches (query-matches
+                      `(:variable
+                        (:v :name)
+                        (~condition :condition)
+                        (true :reference))
+                      store)]
+    (expr-seq map :v matches)))
+
   

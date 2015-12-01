@@ -9,7 +9,7 @@
              [entity :as entity  :refer [to-list description->entity]]
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value let-propagated envs-to-list]]
+             [debug :refer [current-value let-mutated envs-to-list]]
              [expression-manager :refer [new-expression-manager-data
                                          request compute]] 
              [expression-manager-test :refer [check-propagation]]
@@ -44,7 +44,7 @@
                ("age" ~'tag))))
 
 (deftest visible-test
-  (let [visible (let-propagated [him joe]
+  (let [visible (let-mutated [him joe]
                   (visible-to-list him))]
     (is (= (first visible) "Joe"))
     (is (= (set (map canonicalize-list (rest visible)))
@@ -54,18 +54,18 @@
                    ("doubtful" {"confidence" 1}) 1})
              '(45 {["age" {tag 1}] 1})})))
   (is (= (set (map canonicalize-list
-                   (let-propagated [him joe]
+                   (let-mutated [him joe]
                      (expr-seq map to-list (visible-elements him)))))
          (set (map canonicalize-list (rest (rest joe)))))))
 
 (deftest tag-specifiers-test
   (is (= (map canonicalize-list
-              (let-propagated [test '("age" tag "not-tag")]
+              (let-mutated [test '("age" tag "not-tag")]
                 (expr-seq map to-list (tag-specifiers test))))
          ['tag])))
 
 (deftest canonical-info-set-test
-  (is (= (let-propagated [him joe, her jane]
+  (is (= (let-mutated [him joe, her jane]
            (canonical-info-set [him her]))
          {["Joe"
            {"married" 1
@@ -189,7 +189,7 @@
          #{:a3 :b3 :b2})))
 
 (deftest hierarchy-node-to-row-info-test
-  (let [him (let-propagated [him joe] him)
+  (let [him (let-mutated [him joe] him)
         bogus-age (first (current-value
                           (entity/label->elements him "doubtful")))
         age (first (remove #{bogus-age}
@@ -229,7 +229,7 @@
           {:depth 1 :top-border :indented :bottom-border :corner}])))
 
 (deftest tagged-items-hierarchy-test
-  (let [him (let-propagated [him joe] him)
+  (let [him (let-mutated [him joe] him)
         gender (first (current-value (entity/label->elements him o1)))
         bogus-age (first (current-value
                           (entity/label->elements him "doubtful")))
@@ -260,7 +260,7 @@
                 :key [[:condition 'tag] :k]
                 :row-sibling [:k]}]))
   (let [[dom fred fred-tag]
-        (let-propagated [fred '("Fred" tag)]
+        (let-mutated [fred '("Fred" tag)]
           (expr-let [dom (tags-DOM {:depth 1
                                     :bottom-border :indented
                                     :for-multiple true
@@ -279,8 +279,8 @@
                #{fred-tag} {:depth 0}]]
              [:div {:class "spacer"}]]])))
   (let [[dom fred fran]
-        (let-propagated [fred '("Fred" tag)
-                         fran "Fran"]
+        (let-mutated [fred '("Fred" tag)
+                      fran "Fran"]
           (expr-let [dom (tags-DOM {:depth 0
                                     :top-border :full
                                     :bottom-border :corner}
@@ -316,7 +316,7 @@
 
 (deftest item-DOM-test
   (let [[dom fred]
-        (let-propagated [fred "Fred"]
+        (let-mutated [fred "Fred"]
           (expr-let [dom (item-DOM fred [(:item-id fred)] #{}
                                    {:depth 0 :do-not-merge #{}})]
             [dom fred]))]
@@ -325,9 +325,9 @@
                   :key [(:item-id fred)]} "Fred"])))
   ;; Check generation of a single tag for a single item.
   (let [[dom age]
-        (let-propagated [age `(39 ("doubtful"
-                                   ("confidence" ~'tag)
-                                   (~o1 :order)))]
+        (let-mutated [age `(39 ("doubtful"
+                                ("confidence" ~'tag)
+                                (~o1 :order)))]
           (expr-let [dom (item-DOM age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
         doubtful (first (current-value (entity/label->elements age o1)))
@@ -368,7 +368,7 @@
                 #{confidence} {:depth 1 :do-not-merge #{}}]]]]])))
   ;; Check that we generate no-tags.
   (let [[dom age]
-        (let-propagated [age `(39 ("doubtful" (~o1 :order)))]
+        (let-mutated [age `(39 ("doubtful" (~o1 :order)))]
           (expr-let [dom (item-DOM age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
         doubtful (first (current-value (entity/label->elements age o1)))]
@@ -399,7 +399,7 @@
   ;; Test added elements, and a mutable set for do-not-merge
   (let [do-not-merge (new-mutable-set #{})
         [dom-reporter joe]
-        (let-propagated [him joe]
+        (let-mutated [him joe]
           (expr identity
             [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge do-not-merge})
              him]))
@@ -583,16 +583,16 @@
                )))))
   ;; Test a hierarchy.
   (let [[dom-reporter joe]
-        (let-propagated [him `("Joe"
-                               (~o2 :order)
-                               ("1" (~o1 :order)
-                                    ("L1" ~'tag))
-                               (12 (~o2 :order)
-                                   ("L1" ~'tag (~o1 :order))
-                                   ("L2" ~'tag (~o2 :order)))
-                               (13 (~o3 :order)
-                                   ("L1" ~'tag (~o1 :order))
-                                   ("L3" ~'tag (~o2 :order))))]
+        (let-mutated [him `("Joe"
+                            (~o2 :order)
+                            ("1" (~o1 :order)
+                             ("L1" ~'tag))
+                            (12 (~o2 :order)
+                                ("L1" ~'tag (~o1 :order))
+                                ("L2" ~'tag (~o2 :order)))
+                            (13 (~o3 :order)
+                                ("L1" ~'tag (~o1 :order))
+                                ("L3" ~'tag (~o2 :order))))]
           (expr identity
             [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge #{}}) him]))
         v1 (first (current-value (entity/label->elements joe o1)))
@@ -690,13 +690,13 @@
   ;; Test a hierarchy with an empty content in one row and an empty
   ;; tag in another.
   (let [[dom-reporter joe]
-        (let-propagated [him `("Joe"
-                               (~o2 :order)
-                               ("a" (~o2 :order)
-                                    ("L1" ~'tag (~o1 :order))
-                                    ("L2" ~'tag (~o2 :order)))
-                               ("b" (~o3 :order)
-                                    ("L1" ~'tag (~o1 :order))))]
+        (let-mutated [him `("Joe"
+                            (~o2 :order)
+                            ("a" (~o2 :order)
+                             ("L1" ~'tag (~o1 :order))
+                             ("L2" ~'tag (~o2 :order)))
+                            ("b" (~o3 :order)
+                             ("L1" ~'tag (~o1 :order))))]
           (expr identity
             [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge #{}}) him]))
         va (first (current-value (entity/label->elements joe o2)))

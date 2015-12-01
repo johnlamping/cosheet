@@ -8,8 +8,7 @@
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value envs-to-list
-                            let-propagated let-propagated-store]]
+             [debug :refer [current-value envs-to-list]]
              entity-impl
              store-impl
              mutable-store-impl)

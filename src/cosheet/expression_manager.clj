@@ -4,7 +4,6 @@
                                     swap-returning-both!
                                     swap-control-return!
                                     with-latest-value]]
-                     [debug :refer [simplify-for-print]]
                      [reporters :as reporter]
                      [mutable-map :as mm])))
 

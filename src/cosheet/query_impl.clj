@@ -26,7 +26,8 @@
 (def extended-by?)
 
 (defn has-element-satisfying? [element target]
-  "Return true if the item has an element satisfying the given element)."
+  "Return true if the target item has an element satisfying
+  the given element)."
   (when (not (entity/atom? target))
     (expr-let
         [annotations (entity/elements element)
@@ -261,9 +262,12 @@
                                      (query-matches-m first env store)))]
     (seq (distinct matches))))
 
-;;; TODO: We are passing store/candidate-matching-ids a possibly
-;;; mutable entity, which it can't handle
+;;; TODO: 
 (defn item-matches-in-store [item env store]
+  ;;; We don't handle mutable items, because we pass them to
+  ;;; store/candidate-matching-ids, which can't handle them.
+  ;;; TODO: Maybe handle this case?
+  (assert (not (entity/mutable-entity? item)))
   (expr-let [matches
              (expr apply concat
                    (expr-seq

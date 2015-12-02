@@ -2,7 +2,8 @@
   (:require (cosheet [utils :refer [multiset]]
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :as entity :refer [elements description->entity]]
-                     [store :refer [id-valid?]])))
+                     [store :refer [id-valid?]]
+                     [query :refer [matching-elements]])))
 
 ;;; A key is used both for components and for any other dom node that
 ;;; the user might interact with. Every key must be unique, even if
@@ -250,8 +251,11 @@
   Return nil if there is no matching element.
   Only works on immutable items."
   [visible-info item]
-  (first (filter #(= (item->canonical-visible %) visible-info)
-                 (elements item))))
+  (let [canonical-visible (canonicalize-list visible-info)]
+    (->> (matching-elements visible-info item)
+         ;; Get rid of the ones with extra visible info.
+         (filter #(= (item->canonical-visible %) canonical-visible))
+         first)))
 
 (defn instantiate-item-id
   "Given the id of an exemplar item and a regular item, find an element
@@ -261,8 +265,7 @@
   [immutable-store exemplar-id item]
   (when (id-valid? immutable-store exemplar-id)
     (visible-matching-element
-     (item->canonical-visible
-      (description->entity exemplar-id immutable-store))
+     (visible-to-list (description->entity exemplar-id immutable-store))
      item)))
 
 (defn instantiate-exemplar

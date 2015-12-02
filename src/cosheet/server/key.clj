@@ -239,37 +239,40 @@
     entity))
 
 (defn item->canonical-visible
-  "Return the canonical form of the visible information for the item."
+  "Return the canonical form of the visible information for the item.
+  Only works on immutable items."
   [item]
   (canonicalize-list (visible-to-list item)))
 
 (defn visible-matching-element
   "Given the list form of visible information and an item,
   find an element of the item that matches the visible information.
-  Return nil if there is no matching element."
-  [store visible-info item]
+  Return nil if there is no matching element.
+  Only works on immutable items."
+  [visible-info item]
   (first (filter #(= (item->canonical-visible %) visible-info)
                  (elements item))))
 
 (defn instantiate-item-id
   "Given the id of an exemplar item and a regular item, find an element
    of the item that matches the visible information of the exemplar.
-   Return nil if there is no matching element."
-  [store exemplar-id item]
-  (when (id-valid? store exemplar-id)
+   Return nil if there is no matching element.
+   The store and item must be immutable."
+  [immutable-store exemplar-id item]
+  (when (id-valid? immutable-store exemplar-id)
     (visible-matching-element
-     store
-     (item->canonical-visible (description->entity exemplar-id store))
+     (item->canonical-visible
+      (description->entity exemplar-id immutable-store))
      item)))
 
 (defn instantiate-exemplar
-  "Given a store, an exemplar, and a function from item-id to entity,
-  instantiate the exemplar with respect to the function,
-  returning the sequence of items matched, or a sequence of
-  groups of items if group is true.
-  The exemplar must have been pruned to only referents that refer to items.
+  "Given a store, an exemplar, and a function from item-id to
+  immutable entity, instantiate the exemplar with respect to the
+  function, returning the sequence of items matched, or a sequence of
+  groups of items if group is true. The exemplar must have been pruned
+  to only referents that refer to items.
   (A non-trivial group is formed by a parallel referent with empty exemplar.)"
-  [store group exemplar item-id-instantiator]
+  [immutable-store group exemplar item-id-instantiator]
   (assert (vector? exemplar))  ; So peek and pop take from end.
   (let [last-referent (peek exemplar)
           remainder (pop exemplar)]
@@ -285,29 +288,33 @@
                 (if (empty? instantiated-items) nil [instantiated-items])
                 instantiated-items)
               (mapcat (partial instantiate-exemplar
-                               store group exemplar-referents)
-                      (map (fn [item] #(instantiate-item-id store % item))
+                               immutable-store group exemplar-referents)
+                      (map (fn [item] #(instantiate-item-id immutable-store % item))
                            instantiated-items)))))
         (let [exemplar-item (item-id-instantiator last-referent)]
           (cond (nil? exemplar-item) []
                 (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
                 true (instantiate-exemplar
-                      store group remainder
-                      #(instantiate-item-id store % exemplar-item)))))))
+                      immutable-store group remainder
+                      #(instantiate-item-id immutable-store % exemplar-item)))))))
 
 (defn key->items
-  "Return the list of items that a key describes."
-  [store key]
+  "Return the list of items that a key describes.
+  The store must be immutable."
+  [immutable-store key]
   (instantiate-exemplar
-   store false [(first (item-determining-referents key))]
-   #(when (id-valid? store %) (description->entity % store))))
+   immutable-store false [(first (item-determining-referents key))]
+   #(when (id-valid? immutable-store %)
+      (description->entity % immutable-store))))
 
 (defn key->item-groups
   "Given a key, return a list of the groups of items it describes.
-   If the first element of the key is a parallel with an empty exemplar,
-   there is one group for each instantiation of the items of the parallel.
-  Otherwise, each item is its own group."
-  [store key]
+  If the first element of the key is a parallel with an empty exemplar,
+  there is one group for each instantiation of the items of the parallel.
+  Otherwise, each item is its own group.
+  The store must be immutable."
+  [immutable-store key]
   (instantiate-exemplar
-   store true [(first (item-determining-referents key))]
-   #(when (id-valid? store %) (description->entity % store))))
+   immutable-store true [(first (item-determining-referents key))]
+   #(when (id-valid? immutable-store %)
+      (description->entity % immutable-store))))

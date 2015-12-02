@@ -268,6 +268,25 @@
      (visible-to-list (description->entity exemplar-id immutable-store))
      item)))
 
+(def instantiate-exemplar)
+
+(defn instantiate-parallel-referent
+  [immutable-store group referent item-id-instantiator]
+  (let [[type exemplar item-ids] referent
+        exemplar-referents (item-determining-referents exemplar)]
+    (assert (= type :parallel))
+    (let [instantiated-items
+          (remove nil? (map item-id-instantiator item-ids))]
+      (if (empty? exemplar)
+        (if group
+          (if (empty? instantiated-items) nil [instantiated-items])
+          instantiated-items)
+        (mapcat (partial instantiate-exemplar
+                         immutable-store group exemplar-referents)
+                (map (fn [item]
+                       #(instantiate-item-id immutable-store % item))
+                     instantiated-items))))))
+
 (defn instantiate-exemplar
   "Given a store, an exemplar, and a function from item-id to
   immutable entity, instantiate the exemplar with respect to the
@@ -279,27 +298,18 @@
   (assert (vector? exemplar))  ; So peek and pop take from end.
   (let [last-referent (peek exemplar)
           remainder (pop exemplar)]
-      (if (sequential? last-referent)
-        (let [[type exemplar item-ids] last-referent
-              exemplar-referents (item-determining-referents exemplar)]
-          (assert (= type :parallel))  ; Other complex referents filtered.
-          (assert (empty? remainder))  ; Parallel referents must be first.
-          (let [instantiated-items
-                (remove nil? (map item-id-instantiator item-ids))]
-            (if (empty? exemplar)
-              (if group
-                (if (empty? instantiated-items) nil [instantiated-items])
-                instantiated-items)
-              (mapcat (partial instantiate-exemplar
-                               immutable-store group exemplar-referents)
-                      (map (fn [item] #(instantiate-item-id immutable-store % item))
-                           instantiated-items)))))
-        (let [exemplar-item (item-id-instantiator last-referent)]
-          (cond (nil? exemplar-item) []
-                (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
-                true (instantiate-exemplar
-                      immutable-store group remainder
-                      #(instantiate-item-id immutable-store % exemplar-item)))))))
+    (if (sequential? last-referent)
+      (do ;; Must be parallel, because other types have been filtered.
+        (assert (empty? remainder))  ; Parallel referents must be first.
+        (instantiate-parallel-referent
+         immutable-store group last-referent item-id-instantiator))
+      (let [exemplar-item (item-id-instantiator last-referent)]
+        (cond (nil? exemplar-item) []
+              (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
+              true (instantiate-exemplar
+                    immutable-store group remainder
+                    #(instantiate-item-id
+                      immutable-store % exemplar-item)))))))
 
 (defn key->items
   "Return the list of items that a key describes.

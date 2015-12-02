@@ -17,7 +17,7 @@
              store-impl
              mutable-store-impl)
             (cosheet.server
-             [key :refer [item-referent]]
+             [key :refer [item-referent canonicalize-list]]
              [render :refer :all])
             ; :reload
             ))
@@ -42,21 +42,6 @@
                ("doubtful" "confidence"))
            (45 (~o4 :order)
                ("age" ~'tag))))
-
-(deftest visible-test
-  (let [visible (let-mutated [him joe]
-                  (visible-to-list him))]
-    (is (= (first visible) "Joe"))
-    (is (= (set (map canonicalize-list (rest visible)))
-           #{"male"
-             "married"
-             '(39 {["age" {tag 1}] 1
-                   ("doubtful" {"confidence" 1}) 1})
-             '(45 {["age" {tag 1}] 1})})))
-  (is (= (set (map canonicalize-list
-                   (let-mutated [him joe]
-                     (expr-seq map to-list (visible-elements him)))))
-         (set (map canonicalize-list (rest (rest joe)))))))
 
 (deftest tag-specifiers-test
   (is (= (map canonicalize-list

@@ -1,5 +1,8 @@
 (ns cosheet.server.key
-  (:require (cosheet [entity :as entity])))
+  (:require (cosheet [utils :refer [multiset]]
+                     [expression :refer [expr expr-let expr-seq]]
+                     [entity :as entity :refer [elements description->entity]]
+                     [store :refer [id-valid?]])))
 
 ;;; A key is used both for components and for any other dom node that
 ;;; the user might interact with. Every key must be unique, even if
@@ -94,7 +97,10 @@
   (assert entity/mutable-entity? item)
   (:item-id item))
 
-;;; TODO: define content-referent, and use it in render.
+(defn content-referent
+  "Create a condent referent"
+  []
+  [:content])
 
 (defn condition-referent
   "Create a condition referent"
@@ -183,3 +189,125 @@
             (cons first rest-items)
             true
             rest-items))))
+
+(defn filtered-elements
+  "Return a seq of all elements of the entity that satisfy the condition."
+  [entity condition]
+  (expr-let [elements (entity/elements entity)
+             passed (expr-seq map #(expr-let [passes (condition %)]
+                                        (when passes %))
+                              elements)]
+    (filter identity passed)))
+
+(defn visible-entity?
+  "Return true if an entity is visible to the user
+  (Doesn't have a keyword element.)"
+  [entity]
+  (expr-let [elements (entity/elements entity)
+             element-contents (expr-seq map entity/content elements)]
+    (not-any? keyword? element-contents)))
+
+(defn visible-elements
+  "Return the elements of an entity that are visible to the user."
+  [entity]
+  (filtered-elements entity visible-entity?))
+
+(defn visible-to-list
+  "Given an entity, make a list representation of the visible information
+  of the item."
+  [entity]
+  (if (entity/atom? entity)
+    (entity/content entity)
+    (expr-let [content (entity/content entity)
+               elements (visible-elements entity)
+               content-visible (visible-to-list content)
+               element-visibles (expr-seq map visible-to-list elements)]
+      (if (empty? element-visibles)
+        content-visible
+        (list* (into [content-visible] element-visibles))))))
+
+(defn canonicalize-list
+  "Given the list form of an entity, return a canonical representation of it."
+  ;; We record the elements as a map from element to multiplicities,
+  ;; so that we are not sensitive to the order of the elements.
+  ;; That is easier than sorting, because Clojure doesn't define
+  ;; a sort order between heterogenous types, like strings and ints.
+  [entity]
+  (if (sequential? entity)
+    [(canonicalize-list (first entity))
+     (multiset (map canonicalize-list (rest entity)))]
+    entity))
+
+(defn item->canonical-visible
+  "Return the canonical form of the visible information for the item."
+  [item]
+  (canonicalize-list (visible-to-list item)))
+
+(defn visible-matching-element
+  "Given the list form of visible information and an item,
+  find an element of the item that matches the visible information.
+  Return nil if there is no matching element."
+  [store visible-info item]
+  (first (filter #(= (item->canonical-visible %) visible-info)
+                 (elements item))))
+
+(defn instantiate-item-id
+  "Given the id of an exemplar item and a regular item, find an element
+   of the item that matches the visible information of the exemplar.
+   Return nil if there is no matching element."
+  [store exemplar-id item]
+  (when (id-valid? store exemplar-id)
+    (visible-matching-element
+     store
+     (item->canonical-visible (description->entity exemplar-id store))
+     item)))
+
+(defn instantiate-exemplar
+  "Given a store, an exemplar, and a function from item-id to entity,
+  instantiate the exemplar with respect to the function,
+  returning the sequence of items matched, or a sequence of
+  groups of items if group is true.
+  The exemplar must have been pruned to only referents that refer to items.
+  (A non-trivial group is formed by a parallel referent with empty exemplar.)"
+  [store group exemplar item-id-instantiator]
+  (assert (vector? exemplar))  ; So peek and pop take from end.
+  (let [last-referent (peek exemplar)
+          remainder (pop exemplar)]
+      (if (sequential? last-referent)
+        (let [[type exemplar item-ids] last-referent
+              exemplar-referents (item-determining-referents exemplar)]
+          (assert (= type :parallel))  ; Other complex referents filtered.
+          (assert (empty? remainder))  ; Parallel referents must be first.
+          (let [instantiated-items
+                (remove nil? (map item-id-instantiator item-ids))]
+            (if (empty? exemplar)
+              (if group
+                (if (empty? instantiated-items) nil [instantiated-items])
+                instantiated-items)
+              (mapcat (partial instantiate-exemplar
+                               store group exemplar-referents)
+                      (map (fn [item] #(instantiate-item-id store % item))
+                           instantiated-items)))))
+        (let [exemplar-item (item-id-instantiator last-referent)]
+          (cond (nil? exemplar-item) []
+                (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
+                true (instantiate-exemplar
+                      store group remainder
+                      #(instantiate-item-id store % exemplar-item)))))))
+
+(defn key->items
+  "Return the list of items that a key describes."
+  [store key]
+  (instantiate-exemplar
+   store false [(first (item-determining-referents key))]
+   #(when (id-valid? store %) (description->entity % store))))
+
+(defn key->item-groups
+  "Given a key, return a list of the groups of items it describes.
+   If the first element of the key is a parallel with an empty exemplar,
+   there is one group for each instantiation of the items of the parallel.
+  Otherwise, each item is its own group."
+  [store key]
+  (instantiate-exemplar
+   store true [(first (item-determining-referents key))]
+   #(when (id-valid? store %) (description->entity % store))))

@@ -8,8 +8,11 @@
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
-            (cosheet.server [key :refer [item-referent condition-referent
-                                         parallel-referent prepend-to-key]])))
+            (cosheet.server [key :refer [item-referent content-referent
+                                         condition-referent parallel-referent
+                                         prepend-to-key
+                                         visible-elements filtered-elements
+                                         canonicalize-list visible-to-list]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
@@ -96,14 +99,6 @@
 ;;; example, a row with a single non-indented item would have all of
 ;;; "column", "full-row", and "item".
 
-(defn visible-entity?
-  "Return true if an entity is visible to the user
-  (Doesn't have a keyword element.)"
-  [entity]
-  (expr-let [elements (entity/elements entity)
-             element-contents (expr-seq map entity/content elements)]
-    (not-any? keyword? element-contents)))
-
 (defn tag-specifier?
   "Return true if an element specifies that the item it pertains to is
    a tag. (Note that a tag specifier is considered visible, because its
@@ -113,50 +108,10 @@
   (expr-let [content (entity/content element)]
     (= content 'tag)))
 
-(defn filtered-elements
-  "Return a seq of all elements of the entity that satisfy the condition."
-  [entity condition]
-  (expr-let [elements (entity/elements entity)
-             passed (expr-seq map #(expr-let [passes (condition %)]
-                                        (when passes %))
-                              elements)]
-    (filter identity passed)))
-
-(defn visible-elements
-  "Return the elements of an entity that are visible to the user."
-  [entity]
-  (filtered-elements entity visible-entity?))
-
 (defn tag-specifiers
   "Return the tag specifiers of an entity."
   [entity]
   (filtered-elements entity tag-specifier?))
-
-(defn visible-to-list
-  "Given an entity, make a list representation of the visible information
-  of the item."
-  [entity]
-  (if (entity/atom? entity)
-    (entity/content entity)
-    (expr-let [content (entity/content entity)
-               elements (visible-elements entity)
-               content-visible (visible-to-list content)
-               element-visibles (expr-seq map visible-to-list elements)]
-      (if (empty? element-visibles)
-        content-visible
-        (list* (into [content-visible] element-visibles))))))
-
-(defn canonicalize-list
-  "Given the list form of an entity, return a canonical representation of it."
-  ;; We record the elements as a map from element to multiplicities,
-  ;; so that we are not sensitive to the order of the elements.
-  ;; That is easier than sorting, because Clojure doesn't define
-  ;; a sort order between heterogenous types, like strings and ints.
-  [entity]
-  (if (sequential? entity)
-    [(canonicalize-list (first entity))
-     (multiset (map canonicalize-list (rest entity)))]
-    entity))
 
 (def canonical-to-list)
 
@@ -599,7 +554,7 @@
                     {:class "item content-text editable"
                      :key key}
                     {:class "content-text editable"
-                     :key  (prepend-to-key [:content] key)})
+                     :key  (prepend-to-key (content-referent) key)})
              (if (= content :none) "" (str content))]
             (let [child-key (prepend-to-key (item-referent content) key)]
               (make-component

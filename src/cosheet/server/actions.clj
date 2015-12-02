@@ -23,85 +23,11 @@
                  item-referent? content-referent?
                  condition-referent? item-determining-referents
                  first-primitive-referent remove-first-referent
-                 remove-content-referent item-ids-referred-to]]
-    [render :refer [visible-to-list canonicalize-list]])))
+                 remove-content-referent item-ids-referred-to
+                 key->items key->item-groups]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
 ;;; crash.
-
-(defn item->canonical-visible
-  "Return the canonical form of the visible information for the item."
-  [item]
-  (canonicalize-list (visible-to-list item)))
-
-(defn visible-matching-element
-  "Given the list form of visible information and an item,
-  find an element of the item that matches the visible information.
-  Return nil if there is no matching element."
-  [store visible-info item]
-  (first (filter #(= (item->canonical-visible %) visible-info)
-                 (elements item))))
-
-(defn instantiate-item-id
-  "Given the id of an exemplar item and a regular item, find an element
-   of the item that matches the visible information of the exemplar.
-  Return nil if there is no matching element."
-  [store exemplar-id item]
-  (when (id-valid? store exemplar-id)
-    (visible-matching-element
-     store
-     (item->canonical-visible (description->entity exemplar-id store))
-     item)))
-
-(defn instantiate-exemplar
-  "Given a store, an exemplar, and a function from item-id to entity,
-  instantiate the exemplar with respect to the function,
-  returning the sequence of items matched, or a sequence of
-  groups of items if group is true.
-  The exemplar must have been pruned to only referents that refer to items.
-  (A non-trivial group is formed by a parallel referent with empty exemplar.)"
-  [store group exemplar item-id-instantiator]
-  (assert (vector? exemplar))  ; So peek and pop take from end.
-  (let [last-referent (peek exemplar)
-          remainder (pop exemplar)]
-      (if (sequential? last-referent)
-        (let [[type exemplar item-ids] last-referent
-              exemplar-referents (item-determining-referents exemplar)]
-          (assert (= type :parallel))  ; Other complex referents filtered.
-          (assert (empty? remainder))  ; Parallel referents must be first.
-          (let [instantiated-items
-                (remove nil? (map item-id-instantiator item-ids))]
-            (if (empty? exemplar)
-              (if group
-                (if (empty? instantiated-items) nil [instantiated-items])
-                instantiated-items)
-              (mapcat (partial instantiate-exemplar
-                               store group exemplar-referents)
-                      (map (fn [item] #(instantiate-item-id store % item))
-                           instantiated-items)))))
-        (let [exemplar-item (item-id-instantiator last-referent)]
-          (cond (nil? exemplar-item) []
-                (empty? remainder) (if group [[exemplar-item]] [exemplar-item])
-                true (instantiate-exemplar
-                      store group remainder
-                      #(instantiate-item-id store % exemplar-item)))))))
-
-(defn key->items
-  "Return the list of items that a key describes."
-  [store key]
-  (instantiate-exemplar
-   store false [(first (item-determining-referents key))]
-   #(when (id-valid? store %) (description->entity % store))))
-
-(defn key->item-groups
-  "Given a key, return a list of the groups of items it describes.
-   If the first element of the key is a parallel with an empty exemplar,
-   there is one group for each instantiation of the items of the parallel.
-  Otherwise, each item is its own group."
-  [store key]
-  (instantiate-exemplar
-   store true [(first (item-determining-referents key))]
-   #(when (id-valid? store %) (description->entity % store))))
 
 (defn update-set-content
   "Set the content of the item in the store provided the current content

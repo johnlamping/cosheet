@@ -23,8 +23,10 @@
             (cosheet.server
              [key :refer [item-referent condition-referent prepend-to-key
                           item-referent? parallel-referent?
-                          remove-first-referent]]
-             [render :refer [item-DOM canonicalize-list visible-to-list]]
+                          remove-first-referent
+                          canonicalize-list visible-to-list
+                          item->canonical-visible]]
+             [render :refer [item-DOM]]
              [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
             ; :reload
@@ -94,122 +96,6 @@
         tracker-data @tracker]
     (first (filter #(= (first (get-in tracker-data [:id->key %])) id)
                    (keys (:id->key tracker-data))))))
-
-(deftest canonical-visible-test
-  (let [expected ["Joe" {"male" 1
-                         "married" 1
-                         [39 {["age" {'tag 1}] 1
-                              ["doubtful" {"confidence" 1}] 1}] 1
-                              [45 {["age" {'tag 1}] 1}] 1}]]
-    (is (= (item->canonical-visible joe) expected))))
-
-(deftest instantiate-exemplar-test
-  (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
-    (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)]
-                                 (make-instantiator joe))
-           [joe-male]))
-    (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)]
-                                 (make-instantiator jane))
-           []))
-    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator jane))
-           [jane-age]))
-    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator joe))
-           [joe-age]))
-    (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-age-tag)
-                                              (:item-id joe-age)]
-                                 (make-instantiator jane))
-           [jane-age-tag]))
-    (is (= (instantiate-exemplar store false
-                                 [[:parallel [] [(:item-id joe-male)
-                                                 (:item-id joe-age)]]]
-                                 (make-instantiator joe))
-           [joe-male joe-age]))
-    (is (= (instantiate-exemplar store false
-                                 [[:parallel
-                                   [(:item-id joe-age-tag)]
-                                   [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe))
-           [joe-age-tag]))
-    (is (= (instantiate-exemplar store false
-                                 [[:parallel
-                                   [[:parallel [] [(:item-id joe-age-tag)]]]
-                                   [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe))
-           [joe-age-tag]))
-    (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator joe))
-           [[joe-male]]))
-    (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator jane))
-           []))
-    (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator jane))
-           [[jane-age]]))
-    (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator joe))
-           [[joe-age]]))
-    (is (= (instantiate-exemplar
-            store true
-            [(:item-id joe-age-tag) (:item-id joe-age)]
-            (make-instantiator jane))
-           [[jane-age-tag]]))
-    (is (= (instantiate-exemplar
-            store true
-            [[:parallel [] [(:item-id joe-male)
-                            (:item-id joe-age)]]]
-            (make-instantiator joe))
-           [[joe-male joe-age]]))
-    (is (= (instantiate-exemplar
-            store true
-            [[:parallel
-              [(:item-id joe-age-tag)]
-              [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe))
-           [[joe-age-tag]]))
-    (is (= (instantiate-exemplar
-            store true
-            [[:parallel
-              [[:parallel [] [(:item-id joe-age-tag)]]]
-              [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe))
-           [[joe-age-tag]]))))
-
-(deftest key->items-test
-  (is (= (key->items store [joe-id]) [joe]))
-  (is (= (key->items store [joe-id jane-id]) [joe]))
-  (is (= (key->items store [[:parallel [] [joe-id jane-id]]])
-         [joe jane]))
-  (is (= (key->items store
-                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
-         [joe-age jane-age]))
-  (is (= (key->items store
-                     [[:parallel
-                       [[:parallel
-                         []
-                         [(:item-id joe-male) (:item-id joe-age)]]]
-                       [joe-id jane-id]]])
-         [joe-male joe-age jane-age])))
-
-(deftest key->item-groups-test
-  (is (= (key->item-groups store [joe-id]) [[joe]]))
-  (is (= (key->item-groups store [joe-id jane-id]) [[joe]]))
-  (is (= (key->item-groups store [[:parallel [] [joe-id jane-id]]])
-         [[joe jane]]))
-  (is (= (key->item-groups store
-                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
-         [[joe-age] [jane-age]]))
-  (is (= (key->item-groups store
-                     [[:parallel
-                       [[:parallel
-                         []
-                         [(:item-id joe-male) (:item-id joe-age)]]]
-                       [joe-id jane-id]]])
-         [[joe-male joe-age] [jane-age]])))
 
 (deftest update-add-entity-with-order-test
   (let [[s id order] (update-add-entity-with-order

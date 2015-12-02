@@ -2,10 +2,16 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet 
-             [store-impl :refer [->ItemId]])
-            (cosheet.server
-             [key :refer :all])
+            (cosheet [orderable :as orderable]
+                     [entity :as entity  :refer [to-list description->entity
+                                                 content elements
+                                                 label->elements]]
+                     [store :refer [new-element-store]]
+                     [store-impl :refer [->ItemId]]
+                     [store-utils :refer [add-entity]]
+                     [expression :refer [expr expr-let expr-seq]]
+                     [debug :refer [let-mutated]])
+            (cosheet.server [key :refer :all])
             ; :reload
             ))
 
@@ -51,3 +57,171 @@
             [[:parallel :a :b] [:content] [:group "a"] [:condition :b] id])
            [[:parallel :a :b] id]))))
 
+(def orderables (reduce (fn [os _]
+                          (vec (concat (pop os)
+                                       (orderable/split (peek os) :after))))
+                        [orderable/initial]
+                        (range 4)))
+(def o1 (nth orderables 0))
+(def o2 (nth orderables 1))
+(def o3 (nth orderables 2))
+(def o4 (nth orderables 3))
+(def joe-list `("Joe"
+                (~o2 :order)
+                ("male" (~o1 :order))
+                (39 (~o3 :order)
+                    ("age" ~'tag)
+                    ("doubtful" "confidence"))
+                ("married" (~o2 :order))
+                (45 (~o4 :order)
+                    ("age" ~'tag))))
+(def jane-list `("Jane" (~o1 :order)
+                 ("female" (~o2 :order))
+                 (45 (~o3 :order)
+                     ("age" ~'tag))))
+(def t1 (add-entity (new-element-store) nil joe-list))
+(def joe-id (second t1))
+(def t2 (add-entity (first t1) nil jane-list))
+(def store (first t2))
+(def jane-id (second t2))
+(def joe (description->entity joe-id store))
+(def joe-age (first (filter #(= (content %) 45) (elements joe))))
+(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe))))
+(def joe-age-tag (first (elements joe-age)))
+(def joe-male (first (filter #(= (content %) "male") (elements joe))))
+(def joe-married (first (filter #(= (content %) "married")
+                                (elements joe))))
+(def jane (description->entity jane-id store))
+(def jane-age (first (label->elements jane "age")))
+(def jane-age-tag (first (elements jane-age)))
+
+(deftest visible-test
+  (let [visible (let-mutated [him joe-list]
+                  (visible-to-list him))]
+    (is (= (first visible) "Joe"))
+    (is (= (set (map canonicalize-list (rest visible)))
+           #{"male"
+             "married"
+             '(39 {["age" {tag 1}] 1
+                   ("doubtful" {"confidence" 1}) 1})
+             '(45 {["age" {tag 1}] 1})})))
+  (is (= (set (map canonicalize-list
+                   (let-mutated [him joe-list]
+                     (expr-seq map to-list (visible-elements him)))))
+         (set (map canonicalize-list (rest (rest joe-list)))))))
+
+(deftest canonical-visible-test
+  (let [expected ["Joe" {"male" 1
+                         "married" 1
+                         [39 {["age" {'tag 1}] 1
+                              ["doubtful" {"confidence" 1}] 1}] 1
+                              [45 {["age" {'tag 1}] 1}] 1}]]
+    (is (= (item->canonical-visible joe-list) expected))))
+
+(deftest instantiate-exemplar-test
+  (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
+    (is (= (instantiate-exemplar store false
+                                 [(:item-id joe-male)]
+                                 (make-instantiator joe))
+           [joe-male]))
+    (is (= (instantiate-exemplar store false
+                                 [(:item-id joe-male)]
+                                 (make-instantiator jane))
+           []))
+    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
+                                 (make-instantiator jane))
+           [jane-age]))
+    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
+                                 (make-instantiator joe))
+           [joe-age]))
+    (is (= (instantiate-exemplar store false
+                                 [(:item-id joe-age-tag)
+                                              (:item-id joe-age)]
+                                 (make-instantiator jane))
+           [jane-age-tag]))
+    (is (= (instantiate-exemplar store false
+                                 [[:parallel [] [(:item-id joe-male)
+                                                 (:item-id joe-age)]]]
+                                 (make-instantiator joe))
+           [joe-male joe-age]))
+    (is (= (instantiate-exemplar store false
+                                 [[:parallel
+                                   [(:item-id joe-age-tag)]
+                                   [(:item-id joe-male) (:item-id joe-age)]]]
+                                 (make-instantiator joe))
+           [joe-age-tag]))
+    (is (= (instantiate-exemplar store false
+                                 [[:parallel
+                                   [[:parallel [] [(:item-id joe-age-tag)]]]
+                                   [(:item-id joe-male) (:item-id joe-age)]]]
+                                 (make-instantiator joe))
+           [joe-age-tag]))
+    (is (= (instantiate-exemplar
+            store true [(:item-id joe-male)] (make-instantiator joe))
+           [[joe-male]]))
+    (is (= (instantiate-exemplar
+            store true [(:item-id joe-male)] (make-instantiator jane))
+           []))
+    (is (= (instantiate-exemplar
+            store true [(:item-id jane-age)] (make-instantiator jane))
+           [[jane-age]]))
+    (is (= (instantiate-exemplar
+            store true [(:item-id jane-age)] (make-instantiator joe))
+           [[joe-age]]))
+    (is (= (instantiate-exemplar
+            store true
+            [(:item-id joe-age-tag) (:item-id joe-age)]
+            (make-instantiator jane))
+           [[jane-age-tag]]))
+    (is (= (instantiate-exemplar
+            store true
+            [[:parallel [] [(:item-id joe-male)
+                            (:item-id joe-age)]]]
+            (make-instantiator joe))
+           [[joe-male joe-age]]))
+    (is (= (instantiate-exemplar
+            store true
+            [[:parallel
+              [(:item-id joe-age-tag)]
+              [(:item-id joe-male) (:item-id joe-age)]]]
+            (make-instantiator joe))
+           [[joe-age-tag]]))
+    (is (= (instantiate-exemplar
+            store true
+            [[:parallel
+              [[:parallel [] [(:item-id joe-age-tag)]]]
+              [(:item-id joe-male) (:item-id joe-age)]]]
+            (make-instantiator joe))
+           [[joe-age-tag]]))))
+
+(deftest key->items-test
+  (is (= (key->items store [joe-id]) [joe]))
+  (is (= (key->items store [joe-id jane-id]) [joe]))
+  (is (= (key->items store [[:parallel [] [joe-id jane-id]]])
+         [joe jane]))
+  (is (= (key->items store
+                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
+         [joe-age jane-age]))
+  (is (= (key->items store
+                     [[:parallel
+                       [[:parallel
+                         []
+                         [(:item-id joe-male) (:item-id joe-age)]]]
+                       [joe-id jane-id]]])
+         [joe-male joe-age jane-age])))
+
+(deftest key->item-groups-test
+  (is (= (key->item-groups store [joe-id]) [[joe]]))
+  (is (= (key->item-groups store [joe-id jane-id]) [[joe]]))
+  (is (= (key->item-groups store [[:parallel [] [joe-id jane-id]]])
+         [[joe jane]]))
+  (is (= (key->item-groups store
+                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
+         [[joe-age] [jane-age]]))
+  (is (= (key->item-groups store
+                     [[:parallel
+                       [[:parallel
+                         []
+                         [(:item-id joe-male) (:item-id joe-age)]]]
+                       [joe-id jane-id]]])
+         [[joe-male joe-age] [jane-age]])))

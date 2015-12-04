@@ -23,7 +23,7 @@
             (cosheet.server
              [key :refer [item-referent condition-referent prepend-to-key
                           item-referent? parallel-referent?
-                          remove-first-referent
+                          remove-first-primitive-referent
                           canonicalize-list visible-to-list
                           item->canonical-visible]]
              [render :refer [item-DOM]]
@@ -239,7 +239,7 @@
             key (get-in @tracker [:id->key joe-age-dom-id])]
         (is (= (set joe-ages) #{"" 39 45}))
         (is (= select [(prepend-to-key new-element-id
-                                       (remove-first-referent key))
+                                       (remove-first-primitive-referent key))
                        [key]]))))))
 
 (deftest furthest-item-test
@@ -264,7 +264,8 @@
           joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
           joe-age-tag-key (get-in @tracker [:id->key joe-age-tag-dom-id])]
       (is (= store v-store))
-      (is (= select [(prepend-to-key v-id (remove-first-referent joe-age-key))
+      (is (= select [(prepend-to-key v-id (remove-first-primitive-referent
+                                           joe-age-key))
                      [joe-age-tag-key]])))))
 
 (deftest delete-handler-test

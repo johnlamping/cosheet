@@ -21,8 +21,8 @@
     [dom-tracker :refer [id->key key->attributes]]
     [key :refer [item-referent condition-referent prepend-to-key
                  item-referent? content-referent?
-                 condition-referent? item-determining-referents
-                 first-primitive-referent remove-first-referent
+                 condition-referent?
+                 first-primitive-referent remove-first-primitive-referent
                  remove-content-referent item-ids-referred-to
                  key->items key->item-groups]])))
 
@@ -184,7 +184,8 @@
           {:store store
            :select [(prepend-to-key
                      (item-referent (description->entity element-id store))
-                     (remove-first-referent (remove-content-referent key)))
+                     (remove-first-primitive-referent
+                      (remove-content-referent key)))
                     [key]]}
           store)))))
 
@@ -226,7 +227,7 @@
             {:store store
              :select [(prepend-to-key
                        (item-referent (description->entity element-id store))
-                       (remove-first-referent
+                       (remove-first-primitive-referent
                         (remove-content-referent sibling-key)))
                       [key]]}
             store)))))
@@ -251,17 +252,16 @@
   [store dom-tracker id from to]
   ;; TODO: Handle deleting.
   (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent key)
-        items (key->items store key)
+        first-primitive (first-primitive-referent key) 
         to (parse-string-as-number to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "from:" from " to:" to)
-    (println "affecting" (count items) "items")
     (cond ((some-fn nil? item-referent? content-referent?) first-primitive)
           (reduce (partial update-set-content from to)
-                  store items)
+                  store (key->items store key))
           (and (condition-referent? first-primitive) (not= to ""))
-          (let [attributes (key->attributes dom-tracker key)
+          (let [items (key->items store (remove-first-primitive-referent key))
+                attributes (key->attributes dom-tracker key)
                 sibling-key (:add-sibling attributes)
                 model-entity (cons to (rest first-primitive))
                 [new-store new-id]
@@ -285,7 +285,7 @@
                        ;; Remove the condition, unless it is a tag condition.
                        (if (= first-primitive (condition-referent ['tag]))
                          key
-                         (remove-first-referent key)))
+                         (remove-first-primitive-referent key)))
                       [key]]})))) 
 
 (defn selected-handler

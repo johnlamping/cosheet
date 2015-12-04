@@ -15,48 +15,6 @@
             ; :reload
             ))
 
-(deftest prepend-to-key-test
-  (let [a (item-referent :a)
-        b (item-referent :b)
-        c (item-referent :c)
-        p (parallel-referent [] [b])
-        pp (parallel-referent [p a] [b])]
-    (is (= (prepend-to-key a [b]) [a b]))
-    (is (= (prepend-to-key c [p a])
-           [(parallel-referent [c] [b]) a]))
-    (is (= (prepend-to-key c [pp a])
-           [(parallel-referent [(parallel-referent [c] [b]) a]
-                               [b])
-            a]))))
-
-(deftest remove-first-referent-test
-  (is (= (remove-first-referent [3 4])
-         [4]))
-  (is (= (remove-first-referent [[:parallel [] [2 3]] 4])
-         [4]))
-  (is (= (remove-first-referent [[:parallel [0 1] [2 3]] 4])
-          [[:parallel [1] [2 3]] 4])))
-
-(deftest remove-content-referent-test
-  (is (= (remove-content-referent [])
-         []))
-  (is (= (remove-content-referent [[:content] 3 4])
-         [3 4]))
-  (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
-         [[:parallel [1] [2 3]] 4]))
-  (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
-         [[:parallel [0 1] [2 3]] 4])))
-
-(deftest item-ids-referred-to-test
-  (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
-         #{0 1 4})))
-
-(deftest item-determining-referents-test
-  (let [id (->ItemId "a")]
-    (is (= (item-determining-referents
-            [[:parallel :a :b] [:content] [:group "a"] [:condition :b] id])
-           [[:parallel :a :b] id]))))
-
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
@@ -95,6 +53,66 @@
 (def jane-age (first (label->elements jane "age")))
 (def jane-age-tag (first (elements jane-age)))
 
+(deftest prepend-to-key-test
+  (let [a (item-referent (description->entity (->ItemId :a) store))
+        b (item-referent (description->entity (->ItemId :b) store))
+        c (item-referent (description->entity (->ItemId :c) store))
+        p (parallel-referent [] [b])
+        pp (parallel-referent [p a] [b])]
+    (is (= (prepend-to-key a [b]) [a b]))
+    (is (= (prepend-to-key c [p a])
+           [(parallel-referent [c] [b]) a]))
+    (is (= (prepend-to-key c [pp a])
+           [(parallel-referent [(parallel-referent [c] [b]) a]
+                               [b])
+            a]))))
+
+(deftest remove-first-primitive-referent-test
+  (is (= (remove-first-primitive-referent [3 4])
+         [4]))
+  (is (= (remove-first-primitive-referent [[:parallel [] [2 3]] 4])
+         [4]))
+  (is (= (remove-first-primitive-referent [[:parallel [0 1] [2 3]] 4])
+          [[:parallel [1] [2 3]] 4])))
+
+(deftest remove-content-referent-test
+  (is (= (remove-content-referent [])
+         []))
+  (is (= (remove-content-referent [[:content] 3 4])
+         [3 4]))
+  (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
+         [[:parallel [1] [2 3]] 4]))
+  (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
+         [[:parallel [0 1] [2 3]] 4])))
+
+(deftest item-ids-referred-to-test
+  (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
+         #{0 1 4})))
+
+(deftest subject-path-referents-test
+  (let [id (->ItemId "a")]
+    (is (= (subject-path-referents
+            [[:content]
+             [:query :q]
+             [:parallel [:a :b] :b]
+             [:content]
+             [:group "a"]
+             [:elements :b :c]
+             [:query :q]
+             id])
+           [[:query :q]
+            [:parallel [:a :b] :b]
+            id]))
+    (is (= (subject-path-referents
+            [[:parallel [:a :b] :b]
+             [:content]
+             [:group "a"]
+             [:elements :b :c]
+             [:query :q]
+             id])
+           [[:parallel [:a :b] :b]
+            id]))))
+
 (deftest visible-test
   (let [visible (let-mutated [him joe-list]
                   (visible-to-list him))]
@@ -119,15 +137,15 @@
     (is (= (item->canonical-visible joe-list) expected))))
 
 (deftest instantiate-exemplar-test
-  (let [make-instantiator (fn [item] #(instantiate-item-id store % item))]
+  (let [make-instantiator
+        (fn [item] #(instantiate-exemplar-item-id store % item))]
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-male)]
                                  (make-instantiator joe))
            [joe-male]))
-    (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)]
-                                 (make-instantiator jane))
-           []))
+    (is (empty? (instantiate-exemplar store false
+                                      [(:item-id joe-male)]
+                                      (make-instantiator jane))))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
                                  (make-instantiator jane))
            [jane-age]))
@@ -159,9 +177,8 @@
     (is (= (instantiate-exemplar
             store true [(:item-id joe-male)] (make-instantiator joe))
            [[joe-male]]))
-    (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator jane))
-           []))
+    (is (empty? (instantiate-exemplar
+                 store true [(:item-id joe-male)] (make-instantiator jane))))
     (is (= (instantiate-exemplar
             store true [(:item-id jane-age)] (make-instantiator jane))
            [[jane-age]]))
@@ -189,10 +206,42 @@
     (is (= (instantiate-exemplar
             store true
             [[:parallel
-              [[:parallel [] [(:item-id joe-age-tag)]]]
+              [(parallel-referent [] [joe-age-tag])]
               [(:item-id joe-male) (:item-id joe-age)]]]
             (make-instantiator joe))
-           [[joe-age-tag]]))))
+           [[joe-age-tag]]))
+    ;; Try a query referent
+    (is (= (set (instantiate-exemplar
+                 store false
+                 [(query-referent '(nil (nil "age")))]
+                 #(description->entity % store)))
+           #{joe jane}))
+    ;; With an item as the condition
+    (is (= (set (instantiate-exemplar
+                 store false
+                 [(query-referent joe-age)]
+                 #(description->entity % store)))
+           #{joe-age jane-age}))
+    ;; Try an element referent
+    (is (= (set (instantiate-exemplar
+                 store false
+                 [(elements-referent joe '(nil "age"))]
+                 #(description->entity % store)))
+           #{joe-age joe-bogus-age}))
+    ;; With an item as the condition
+    (is (= (set (instantiate-exemplar
+                 store false
+                 [(elements-referent joe jane-age)]
+                 #(description->entity % store)))
+           #{joe-age}))
+    ;; Try a parallel referent with an elements referent as its referents
+    (is (= (map set (instantiate-exemplar
+                     store true
+                     [(parallel-referent
+                       []
+                       [(elements-referent joe '(nil "age"))])]
+                     #(description->entity % store)))
+           [#{joe-age joe-bogus-age}]))))
 
 (deftest key->items-test
   (is (= (key->items store [joe-id]) [joe]))

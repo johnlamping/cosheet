@@ -41,7 +41,6 @@
 ;;; There are removed by the dom manager before dom is sent to the client.
 (def server-specific-attributes
   [               :key  ; A unique client side key further described below.
-             :ordering  ; Optional ordering information, described below.
      :sibling-elements  ; Elements that a sibling of this item must have.
       :content-sibling  ; A key that a content item for this empty dom
                         ; should be a sibling of. Used for getting

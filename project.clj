@@ -18,7 +18,8 @@
                  [com.keminglabs/cljx "0.6.0"]
                  ]
   :plugins [[lein-cljsbuild "1.0.5"]
-            [lein-ring "0.9.2"]]
+            [lein-ring "0.9.2"]
+            [cider/cider-nrepl "0.10.0"]]
   :profiles {:uberjar {:aot :all}
              :dev {:plugins [[com.keminglabs/cljx "0.6.0"]]}}
   :cljx {:builds [{:source-paths ["src_cljx"]

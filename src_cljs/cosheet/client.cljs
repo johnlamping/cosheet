@@ -151,6 +151,13 @@
                                         (.log js/console (str [:delete]))
                                         (request-action
                                          [:delete (.-id @selected)]))
+        (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
+                                           (when @selected
+                                             (.log js/console (str [:backspace]))
+                                             (request-action
+                                              [:delete (.-id @selected)]))
+                                           ;; Prevent navigating to prev page.
+                                           (.preventDefault event))
         (key-codes/isCharacterKey key-code)
         (when (and @selected (not @edit-field-open-on))
           (open-edit-field @selected (str (.-charCode event))))))))

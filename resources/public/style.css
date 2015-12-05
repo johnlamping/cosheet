@@ -261,6 +261,7 @@
     font-size: 100%;
     height: auto;
     background-color: cornsilk;
+    box-shadow: 5px 5px 3px grey;
     resize: none;
     overflow-y: visible;
     left: 0;

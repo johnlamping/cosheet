@@ -26,9 +26,6 @@
 ;;;        item: <an item-id>
 ;;;     content: [:content]
 ;;;       group: [:group <An item-id of the group, typically the first>]
-;;;   condition: [:condition @<list of elements, each in list form,
-;;;                           that an item must have>]
-;;;              TODO: This is obsolete, and should be replaced by elements
 ;;;       query: [:query <condition>]
 ;;;    elements: [:elements <item-id> <condition>]
 ;;;    parallel: [:parallel <list of exemplar referents>
@@ -51,16 +48,6 @@
 ;;; the first of which is the given item. It's prototypical use is
 ;;; when several items from a list are grouped into one dom for
 ;;; display purposes. (Not currently used.)
-
-;;; TODO: These should be eliminated.
-;;; A condition referent indicates a dom node that holds those items
-;;; whose subject is the previous item in the key, and that satisfy a
-;;; particular condition. Currently, the condition is just a sequence
-;;; of elements, in list form. Condition referents are used for tag
-;;; nodes, since they show all tags of the subject, and for cells of a
-;;; table, if the table columns are conditions. In contrast to a group
-;;; node, a condition node might be empty, or two sibling condition
-;;; nodes might both show the same item.
 
 ;;; A query referent indicates a dom node that holds those all items
 ;;; that satisfy the given condition, which is either an item id or
@@ -114,9 +101,6 @@
 (defn content-referent? [referent]
   (and (sequential? referent) (= ( first referent) :content)))
 
-(defn condition-referent? [referent]
-  (and (sequential? referent) (= ( first referent) :condition)))
-
 (defn query-referent? [referent]
   (and (sequential? referent) (= ( first referent) :query)))
 
@@ -144,12 +128,6 @@
   "Create a content referent"
   []
   [:content])
-
-;;; TODO: Get rid of this
-(defn condition-referent
-  "Create a condition referent"
-  [elements]
-  (into [:condition] elements))
 
 (defn query-referent
   "Create an query referent"

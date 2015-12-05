@@ -14,7 +14,9 @@
                                          request compute]] 
              [expression-manager-test :refer [check-propagation]]
              entity-impl
+             [store :refer [new-element-store]]
              store-impl
+             [store-utils :refer [add-entity]]
              mutable-store-impl)
             (cosheet.server
              [key :refer [item-referent canonicalize-list]]
@@ -239,28 +241,33 @@
                         :tag-items [age-tag]
                         :tag-canonicals [["age" {'tag 1}]]}]}]))))
 
+(def t1 (add-entity (new-element-store) nil 'joe))
+(def store (first t1))
+(def rid (second t1))
+(def root (description->entity rid store))
+
 (deftest tags-DOM-test
-  (is (= (tags-DOM {:depth 0} nil [:k] {})
+  (is (= (tags-DOM {:depth 0} nil root [rid] {})
          [:div {:class "full-row editable tags column"
-                :key [[:condition 'tag] :k]
-                :row-sibling [:k]}]))
+                :key [[:elements rid [nil 'tag]] rid]
+                :row-sibling [rid]}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" tag)]
           (expr-let [dom (tags-DOM {:depth 1
                                     :bottom-border :indented
                                     :for-multiple true
                                     :with-children true}
-                                   [fred] [:k] {:depth 0})
+                                   [fred] root [rid] {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (= dom
            [:div {:class "tags column"}
             [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
-             [:component {:key [(:item-id fred) [:condition 'tag] :k]
+             [:component {:key [(:item-id fred) [:elements rid [nil 'tag]] rid]
                           :sibling-elements ['tag]
-                          :row-sibling [:k]}
+                          :row-sibling [rid]}
               [item-DOM
-               fred [(:item-id fred) [:condition 'tag] :k]
+               fred [(:item-id fred) [:elements rid [nil 'tag]] rid]
                #{fred-tag} {:depth 0}]]
              [:div {:class "spacer"}]]])))
   (let [[dom fred fran]
@@ -269,33 +276,33 @@
           (expr-let [dom (tags-DOM {:depth 0
                                     :top-border :full
                                     :bottom-border :corner}
-                                   [fred fran] [:k] {:depth 1
-                                                     :do-not-merge #{}})]
+                                   [fred fran] root [rid] {:depth 1
+                                                          :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (= dom
            [:div
             {:class "full-row tags column top-border ll-corner"
-             :key [[:condition 'tag] :k]
-             :row-sibling [:k]}
+             :key [[:elements rid [nil 'tag]] rid]
+             :row-sibling [rid]}
             [:div {:class "stack"}
-             [:component {:key [(:item-id fred) [:condition 'tag] :k]
+             [:component {:key [(:item-id fred) [:elements rid [nil 'tag]] rid]
                           :style {:display "block"
                                   :width "100%"}
                           :class "vertical-separated"
                           :sibling-elements ['tag]
-                          :row-sibling [:k]}
+                          :row-sibling [rid]}
               [item-DOM
-               fred [(:item-id fred) [:condition 'tag] :k]
+               fred [(:item-id fred) [:elements rid [nil 'tag]] rid]
                #{fred-tag} {:depth 1 :do-not-merge #{}}]]
-             [:component {:key [(:item-id fran) [:condition 'tag] :k]
+             [:component {:key [(:item-id fran) [:elements rid [nil 'tag]] rid]
                           :style  {:display "block"
                                    :width "100%"}
                           :class "vertical-separated"
                           :sibling-elements ['tag]
-                          :row-sibling [:k]}
+                          :row-sibling [rid]}
               [item-DOM
-               fran [(:item-id fran) [:condition 'tag] :k]
+               fran [(:item-id fran) [:elements rid [nil 'tag]] rid]
                #{} {:depth 1 :do-not-merge #{}}]]]
             [:div {:class "spacer"}]]))))
 
@@ -320,7 +327,7 @@
                            (entity/label->elements doubtful 'tag)))
         confidence-tag (first (current-value (entity/elements confidence)))
         tag-key [(:item-id confidence)
-                 [:condition 'tag]
+                 [:elements (:item-id doubtful) [nil 'tag]]
                  (:item-id doubtful)
                  :age]]
     (is (= dom
@@ -372,7 +379,8 @@
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
                      :class "full-row editable tags column top-border bottom-border"
-                     :key [[:condition 'tag] (:item-id doubtful) :age]
+                     :key [[:elements (:item-id doubtful) [nil 'tag]]
+                           (:item-id doubtful) :age]
                      :row-sibling [(:item-id doubtful) :age]}]
               [:component {:key [(:item-id doubtful) :age]
                            :class "column"
@@ -407,7 +415,8 @@
       (check-propagation #{} dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
-                                  [(:item-id bogus-age-tag) [:condition 'tag]]
+                                  [(:item-id bogus-age-tag)
+                                   [:elements (:item-id bogus-age) [nil 'tag]]]
                                   [(:item-id bogus-age) (:item-id age)]]]
                [:div {:class "item with-elements" :key [:joe]}
                 [:div {:style {:width "100%" :display "block"}
@@ -422,7 +431,8 @@
                  [:div {:style {:display "table-row"}}
                   [:div {:style {:display "table-cell"}
                          :class "full-row editable tags column top-border ll-corner"
-                         :key [[:condition 'tag] (:item-id male) :joe]
+                         :key [[:elements (:item-id male) [nil 'tag]]
+                               (:item-id male) :joe]
                          :row-sibling [(:item-id male) :joe]}]
                   [:component {:key [(:item-id male) :joe]
                                :style {:display "table-cell"}
@@ -434,7 +444,8 @@
                  [:div {:style {:display "table-row"}}
                   [:div {:style {:display "table-cell"}
                          :class "full-row editable tags column top-border ll-corner"
-                         :key [[:condition 'tag] (:item-id married) :joe]
+                         :key [[:elements (:item-id married) [nil 'tag]]
+                               (:item-id married) :joe]
                          :row-sibling [(:item-id married) :joe]}]
                   [:component {:key [(:item-id married) :joe]
                                :style {:display "table-cell"}
@@ -484,7 +495,8 @@
       (check-propagation #{} dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
-                                  [(:item-id bogus-age-tag) [:condition 'tag]]
+                                  [(:item-id bogus-age-tag)
+                                   [:elements (:item-id bogus-age) [nil 'tag]]]
                                   [(:item-id bogus-age) (:item-id age)]]]
                [:div {:class "item with-elements" :key [:joe]}
                 [:div {:style {:width "100%" :display "block"}
@@ -499,7 +511,8 @@
                  [:div {:style {:display "table-row"}}
                   [:div {:style {:display "table-cell"}
                          :class "full-row editable tags column top-border ll-corner"
-                         :key [[:condition 'tag] (:item-id male) :joe]
+                         :key [[:elements (:item-id male) [nil 'tag]]
+                               (:item-id male) :joe]
                          :row-sibling [(:item-id male) :joe]}]
                   [:component {:key [(:item-id male) :joe]
                                :style {:display "table-cell"}
@@ -511,7 +524,8 @@
                  [:div {:style {:display "table-row"}}
                   [:div {:style {:display "table-cell"}
                          :class "full-row editable tags column top-border ll-corner"
-                         :key [[:condition 'tag] (:item-id married) :joe]
+                         :key [[:elements (:item-id married) [nil 'tag]]
+                               (:item-id married) :joe]
                          :row-sibling [(:item-id married) :joe]}]
                   [:component {:key [(:item-id married) :joe]
                                :style {:display "table-cell"}
@@ -522,7 +536,7 @@
                     #{} {:depth 1 :do-not-merge do-not-merge}]]]
                  [:div {:style {:display "table-row"}}
                   [:component {:key [(:item-id bogus-age-tag)
-                                     [:condition 'tag]
+                                     [:elements (:item-id bogus-age) [nil 'tag]]
                                      (:item-id bogus-age)
                                      :joe]
                                :style {:display "table-cell"}
@@ -531,7 +545,8 @@
                                :sibling-elements '[tag]}
                    [item-DOM
                     bogus-age-tag [(:item-id bogus-age-tag)
-                                   [:condition 'tag] (:item-id bogus-age) :joe]
+                                   [:elements (:item-id bogus-age) [nil 'tag]]
+                                   (:item-id bogus-age) :joe]
                     #{bogus-age-tag-spec}
                     {:depth 1 :do-not-merge do-not-merge}]]
                   [:component {:key [(:item-id bogus-age) :joe]
@@ -545,7 +560,7 @@
                  [:div {:style {:display "table-row"}
                         :class "last-row"}
                   [:component {:key [(:item-id age-tag)
-                                     [:condition 'tag]
+                                     [:elements (:item-id age) [nil 'tag]]
                                      (:item-id age)
                                      :joe]
                                :style {:display "table-cell"}
@@ -554,7 +569,8 @@
                                :sibling-elements '[tag]}
                    [item-DOM
                     age-tag [(:item-id age-tag)
-                                   [:condition 'tag] (:item-id age) :joe]
+                             [:elements (:item-id age) [nil 'tag]]
+                             (:item-id age) :joe]
                     #{age-tag-spec}
                     {:depth 1 :do-not-merge do-not-merge}]]
                   [:component {:key [(:item-id age) :joe]
@@ -603,7 +619,8 @@
     ;; the test to accept either order.
     (is (= (reporter/value dom-reporter)
            (let [labels-ref [:parallel
-                             [(:item-id L1) [:condition 'tag]]
+                             [(:item-id L1)
+                              [:elements (:item-id v1) [nil 'tag]]]
                              [(:item-id v1) (:item-id v12) (:item-id v13)]]]
              [:div {:class "item with-elements" :key [:joe]}
               [:div {:style {:width "100%" :display "block"}
@@ -638,13 +655,17 @@
                [:div {:style {:display "table-row"}}
                 [:div {:class "tags column" :style {:display "table-cell"}}
                  [:component
-                  {:key [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                  {:key [(:item-id L2)
+                         [:elements (:item-id v12) [nil 'tag]]
+                         (:item-id v12)
+                         :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v12) :joe]}
                   [item-DOM
                    L2
-                   [(:item-id L2) [:condition 'tag] (:item-id v12) :joe]
+                   [(:item-id L2) [:elements (:item-id v12) [nil 'tag]]
+                    (:item-id v12) :joe]
                    #{L2-spec} {:depth 1 :do-not-merge #{}}]]]
                 [:component {:key [(:item-id v12) :joe]
                              :style {:display "table-cell"}
@@ -657,13 +678,15 @@
                 [:div {:class "tags column bottom-border"
                        :style {:display "table-cell"}}
                  [:component
-                  {:key [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                  {:key [(:item-id L3) [:elements (:item-id v13) [nil 'tag]]
+                         (:item-id v13) :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v13) :joe]}
                   [item-DOM
                    L3
-                   [(:item-id L3) [:condition 'tag] (:item-id v13) :joe]
+                   [(:item-id L3) [:elements (:item-id v13) [nil 'tag]]
+                    (:item-id v13) :joe]
                    #{L3-spec} {:depth 1 :do-not-merge #{}}]]]
                 [:component {:key [(:item-id v13) :joe]
                              :style {:display "table-cell"}
@@ -683,7 +706,7 @@
                             ("b" (~o3 :order)
                              ("L1" ~'tag (~o1 :order))))]
           (expr identity
-            [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge #{}}) him]))
+            [(item-DOM him [rid] #{} {:depth 0 :do-not-merge #{}}) him]))
         va (first (current-value (entity/label->elements joe o2)))
         vb (first (current-value (entity/label->elements joe o3)))
         La1 (first (current-value (entity/label->elements va o1)))
@@ -704,12 +727,12 @@
     (check-propagation #{} dom-reporter)
     (is (= (reporter/value dom-reporter)
            (let [L1s-ref [:parallel
-                             [(:item-id La1) [:condition 'tag]]
-                             [(:item-id va) (:item-id vb)]]]
-             [:div {:class "item with-elements" :key [:joe]}
+                          [(:item-id La1) [:elements (:item-id va) [nil 'tag]]]
+                          [(:item-id va) (:item-id vb)]]]
+             [:div {:class "item with-elements" :key [rid]}
               [:div {:style {:width "100%" :display "block"}
                      :class "content-text editable"
-                     :key [[:content] :joe]}
+                     :key [[:content] rid]}
                "Joe"]
               [:div {:style {:width "100%"
                              :height "1px"
@@ -718,50 +741,55 @@
                      :class "element-table"}
                [:div {:style {:display "table-row"}}
                 [:component
-                 {:key [L1s-ref :joe]
+                 {:key [L1s-ref rid]
                   :style {:display "table-cell"}
                   :class "full-row with-children tags column top-border"
                   :sibling-elements ['tag]
                   :row-sibling [[:parallel []
                                  [(:item-id va) (:item-id vb)]]
-                                :joe]}
+                                rid]}
                  [item-DOM
                   La1
-                  [L1s-ref :joe]
+                  [L1s-ref rid]
                   #{La1-spec} {:depth 1 :do-not-merge #{}}]]
-                [:div {:key [[:condition ["L1" 'tag]] :joe]
+                [:div {:key [[:elements rid [nil ["L1" 'tag]]] rid]
                        :style {:display "table-cell"}
                        :class "column editable"
-                       :add-sibling [(:item-id va) :joe]
+                       :add-sibling [(:item-id va) rid]
                        :add-direction :before}]]
                [:div {:style {:display "table-row"}}
                 [:div {:class "tags column" :style {:display "table-cell"}}
                  [:component
-                  {:key [(:item-id La2) [:condition 'tag] (:item-id va) :joe]
+                  {:key [(:item-id La2)
+                         [:elements (:item-id va) [nil 'tag]]
+                         (:item-id va) rid]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
-                   :row-sibling [(:item-id va) :joe]}
+                   :row-sibling [(:item-id va) rid]}
                   [item-DOM
                    La2
-                   [(:item-id La2) [:condition 'tag] (:item-id va) :joe]
+                   [(:item-id La2)
+                    [:elements (:item-id va) [nil 'tag]]
+                    (:item-id va) rid]
                    #{La2-spec} {:depth 1 :do-not-merge #{}}]]]
-                [:component {:key [(:item-id va) :joe]
+                [:component {:key [(:item-id va) rid]
                              :style {:display "table-cell"}
                              :class "column"
                              :sibling-elements [["L2" 'tag] ["L1" 'tag]]}
                  [item-DOM
-                  va [(:item-id va) :joe]
+                  va [(:item-id va) rid]
                   #{La1 La2} {:depth 1 :do-not-merge #{}}]]]
                [:div {:style {:display "table-row"} :class "last-row"}
                 [:div {:class "tags column bottom-border"
                        :style {:display "table-cell"}
-                       :row-sibling [(:item-id vb) :joe]}
+                       :row-sibling [(:item-id vb) rid]}
                  [:div {:class "full-row top-border editable indent-1"
-                       :key [[:condition 'tag] (:item-id vb) :joe]}]]
-                [:component {:key [(:item-id vb) :joe]
+                        :key [[:elements (:item-id vb) [nil 'tag]]
+                              (:item-id vb) rid]}]]
+                [:component {:key [(:item-id vb) rid]
                              :style {:display "table-cell"}
                              :class "column"
                              :sibling-elements [["L1" 'tag]]}
                  [item-DOM
-                  vb [(:item-id vb) :joe]
+                  vb [(:item-id vb) rid]
                   #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))

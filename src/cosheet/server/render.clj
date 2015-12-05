@@ -9,8 +9,8 @@
                       :refer [into-attributes dom-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
-                                         condition-referent parallel-referent
-                                         prepend-to-key
+                                         elements-referent parallel-referent
+                                         prepend-to-key elements-referent?
                                          visible-elements filtered-elements
                                          canonicalize-list visible-to-list]])))
 
@@ -308,15 +308,15 @@
 
 (defn tag-component
   "Return the component for a tag element."
-  [element parent-key inherited]
-  (assert (not= (first parent-key) (condition-referent ['tag])))
+  [element parent-item parent-key inherited]
+  (assert (not (elements-referent? (first parent-key))))
   (expr-let [tag-specs (tag-specifiers element)]
     (let [key (->> parent-key
                    ;; We must make this key different from what it
                    ;; would have been if this element weren't a tag,
                    ;; and were located under its parent's component.
                    ;; Because it might have been in that situation.
-                   (prepend-to-key (condition-referent ['tag]))
+                   (prepend-to-key (elements-referent parent-item [nil 'tag]))
                    (prepend-to-key (item-referent element)))]      
       (make-component {:key key
                        :sibling-elements ['tag] 
@@ -327,22 +327,24 @@
   "Given information about the appearance of a tag hierarchy node,
   and a sequence of tag items in it, return components for each of them,
   wrapped as necessary to give the right appearance."
-  [appearance-info tags parent-key inherited]
+  [appearance-info tags parent-item parent-key inherited]
   (println "generating tags dom.")
-  (assert (not= (first parent-key) (condition-referent ['tag])))
+  (assert (not (elements-referent? (first parent-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
   (expr-let [tag-components
-             (expr-seq map #(tag-component % parent-key inherited) tags)]
+             (expr-seq map #(tag-component % parent-item parent-key inherited)
+                       tags)]
     (let [{:keys [top-border bottom-border for-multiple with-children depth]}
           appearance-info
-          condition-key (prepend-to-key (condition-referent ['tag]) parent-key)]
+          elements-key (prepend-to-key
+                        (elements-referent parent-item [nil 'tag]) parent-key)]
       (as-> (vertical-stack tag-components :separators true) dom
         (if (> (count tags) 1)
           (add-attributes dom {:class "stack"})
           dom)
         (if (empty? tags)
-          (add-attributes dom {:key condition-key})
+          (add-attributes dom {:key elements-key})
           dom)
         (if (or for-multiple (> (count tags) 1))
           [:div dom [:div {:class "spacer"}]]
@@ -366,7 +368,7 @@
                            (when (= bottom-border :full) " bottom-border")
                            (when (= bottom-border :corner) " ll-corner"))}
                (> (count tags) 1)
-               (into {:key condition-key})
+               (into {:key elements-key})
                (not= (count tags) 1)
                (into {:row-sibling parent-key})))))))
 
@@ -374,13 +376,15 @@
   "Given a list of [item, excluded-elements] pairs, and the first item
   of this or subsequent rows,
   generate DOM for a vertical list of a component for each item."
-  [items-with-excluded first-affected-item parent-key
+  [items-with-excluded first-affected-item parent-item parent-key
    sibling-elements inherited]
   (if (empty? items-with-excluded)
     (add-attributes (vertical-stack nil :separators true)
                     {:class "column editable"
-                     :key (prepend-to-key (condition-referent sibling-elements)
-                                          parent-key)
+                     :key (prepend-to-key
+                           (elements-referent
+                            parent-item (cons nil sibling-elements))
+                           parent-key)
                      :add-sibling (prepend-to-key
                                    (item-referent first-affected-item)
                                    parent-key)
@@ -398,8 +402,8 @@
 
 (defn tag-items-pair-DOM
   "Given information about the appearance of this node,
-  a list of tag items, a list of pairs of (item, excluded elements,
-  a list of elements (each in list form) that each item must satisfy,
+  a list of tag items, a list of pairs of (item, excluded elements),
+  a list of elements (each in list form) that all items must satisfy,
   and a list of all items that changes to the tags should apply to, in
   the order they appear,
   generate DOM for an element table row for the items."
@@ -407,17 +411,19 @@
   ;; horizontal space.
   [[appearance-info
     tag-items items-with-excluded sibling-elements affected-items]
-   parent-key inherited]
+   parent-item parent-key inherited]
   (expr-let [tags-dom (let [items-referent
                             (if (= (count affected-items) 1)
                               (item-referent (first affected-items))
                               (parallel-referent [] affected-items))]
                         (expr tags-DOM appearance-info (order-items tag-items)
+                              (first affected-items)
                               (prepend-to-key items-referent parent-key)
                               inherited))
              items-dom (components-DOM items-with-excluded
                                        (first affected-items)
-                                       parent-key sibling-elements inherited)]
+                                       parent-item parent-key
+                                       sibling-elements inherited)]
     [:div {:style {:display "table-row"}}
      (add-attributes tags-dom
                      {:style {:display "table-cell"}})
@@ -519,12 +525,12 @@
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
-  [items parent-key inherited]
+  [items parent-item parent-key inherited]
   (expr-let [hierarchy (tagged-items-hierarchy items (:do-not-merge inherited))
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM
-                                   % parent-key inherited)
+                                   % parent-item parent-key inherited)
                        hierarchy-info)]
     (into [:div {:class "element-table"
                  :style {:height "1px" ;; So height:100% in rows will work.
@@ -562,7 +568,7 @@
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-DOM
-                                 elements key inherited-down)]
+                                 elements item key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
 

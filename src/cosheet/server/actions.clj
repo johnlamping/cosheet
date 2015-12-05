@@ -19,9 +19,9 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [key :refer [item-referent condition-referent prepend-to-key
+    [key :refer [item-referent elements-referent prepend-to-key
                  item-referent? content-referent?
-                 condition-referent?
+                 elements-referent?
                  first-primitive-referent remove-first-primitive-referent
                  remove-content-referent item-ids-referred-to
                  key->items key->item-groups]])))
@@ -259,11 +259,12 @@
     (cond ((some-fn nil? item-referent? content-referent?) first-primitive)
           (reduce (partial update-set-content from to)
                   store (key->items store key))
-          (and (condition-referent? first-primitive) (not= to ""))
+          (and (elements-referent? first-primitive) (not= to ""))
           (let [items (key->items store (remove-first-primitive-referent key))
                 attributes (key->attributes dom-tracker key)
                 sibling-key (:add-sibling attributes)
-                model-entity (cons to (rest first-primitive))
+                [_ subject condition] first-primitive
+                model-entity (cons to (rest condition))
                 [new-store new-id]
                 (if sibling-key
                   (let [siblings (key->items store sibling-key)
@@ -283,7 +284,7 @@
              :select [(prepend-to-key
                        (item-referent (description->entity new-id store))
                        ;; Remove the condition, unless it is a tag condition.
-                       (if (= first-primitive (condition-referent ['tag]))
+                       (if (= condition [nil 'tag])
                          key
                          (remove-first-primitive-referent key)))
                       [key]]})))) 

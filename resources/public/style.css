@@ -192,10 +192,11 @@
 
 /* grayish indicators of places where there is no current content */
 .editable:not(.content-text) {
-    background-color: hsl(0, 0%, 88%);
+    background-color: hsl(0, 0%, 95%);
 }
 
-.editable.tags.column:not(.content-text) {
+.editable.tags.column:not(.content-text),
+.tags.column > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 

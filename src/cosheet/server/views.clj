@@ -92,7 +92,7 @@
         reporter (get-in tracker-data [:components root-key :reporter])
         task-queue (get-in tracker-data [:manager-data :queue])]
     (when (finished-all-tasks? task-queue)
-      (check-propagation #{} reporter))))
+      (check-propagation reporter))))
 
 (defn initialize-session-state
   []

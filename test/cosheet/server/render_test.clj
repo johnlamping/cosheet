@@ -412,7 +412,7 @@
     (let [md (new-expression-manager-data)]
       (request dom-reporter md)
       (compute md)
-      (check-propagation #{} dom-reporter)
+      (check-propagation dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
                                   [(:item-id bogus-age-tag)
@@ -492,7 +492,7 @@
       ;; Now, make the do-not-merge be non-trivial
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
       (compute md)
-      (check-propagation #{} dom-reporter)
+      (check-propagation dom-reporter)
       (is (= (reporter/value dom-reporter)
              (let [both-ages-ref [:parallel
                                   [(:item-id bogus-age-tag)
@@ -614,7 +614,7 @@
     (let [md (new-expression-manager-data)]
       (request dom-reporter md)
       (compute md))
-    (check-propagation #{} dom-reporter)
+    (check-propagation dom-reporter)
     ;; TODO: The order of multiple :sibling-elements is arbitrary. Fix
     ;; the test to accept either order.
     (is (= (reporter/value dom-reporter)
@@ -724,7 +724,7 @@
     (let [md (new-expression-manager-data)]
       (request dom-reporter md)
       (compute md))
-    (check-propagation #{} dom-reporter)
+    (check-propagation dom-reporter)
     (is (= (reporter/value dom-reporter)
            (let [L1s-ref [:parallel
                           [(:item-id La1) [:elements (:item-id va) [nil 'tag]]]

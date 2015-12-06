@@ -56,15 +56,11 @@
       (print "It's source:")
       (print-sources source))))
 
-;;; This function checks that exactly the right callbacks are in
+;;; These functions check that exactly the right callbacks are in
 ;;; place, and that all copied information is up to date.
-;;; TODO: the recursion can blow out the Java stack if memory is
-;;; tight. Rearchitect check-propagation to keep a queue of reporters
-;;; that need testing.
-(def check-propagation)
 
 (defn check-source-propagation
-  [already-checked reporter]
+  [need-checking reporter]
   (let [data (reporter/data reporter)
         source (:value-source data)]
     (if source
@@ -72,11 +68,11 @@
           (is (= (get-in (reporter/data source)
                          [:attendees `(:copy-value ~reporter)])
                  [copy-value-callback]))
-          (check-propagation already-checked source))
-      already-checked)))
+          (conj need-checking source))
+      need-checking)))
 
 (defn check-old-source-propagation
-  [already-checked reporter]
+  [need-checking reporter]
   (let [data (reporter/data reporter)
         old-source (:old-value-source data)]
     (if old-source
@@ -84,45 +80,45 @@
           (is (= (get-in (reporter/data old-source)
                          [:attendees `(:copy-value ~reporter)])
                  [null-callback]))
-          (check-propagation already-checked old-source))
-      already-checked)))
+          (conj need-checking old-source))
+      need-checking)))
 
 (defn check-subordinate-propagation
-  [already-checked reporter]
+  [need-checking reporter]
   (let [data (reporter/data reporter)]
     (reduce
-     (fn [checked [subordinate value]]
+     (fn [need-checking [subordinate value]]
        (if (contains? (:needed-values data) subordinate)
-         checked
+         need-checking
          (do
            (is (= value (reporter/value subordinate)))
            (is (contains? (:attendees (reporter/data subordinate)) reporter))
-           (check-propagation checked subordinate))))
-     already-checked
+           (conj need-checking subordinate))))
+     need-checking
      (:subordinate-values data))))
 
 (defn check-needed-propagation
-  [already-checked reporter]
+  [need-checking reporter]
   (let [data (reporter/data reporter)]
     (reduce
      (fn [checked needed]
        (is (not (reporter/valid? (reporter/value needed))))
        (is (contains? (:attendees (reporter/data needed)) reporter))
-       (check-propagation checked needed))
-     already-checked
+       (conj need-checking needed))
+     need-checking
      (:needed-values data))))
 
 (defn check-attendees
-  [already-checked reporter]
+  [need-checking reporter]
   (reduce
-   (fn [checked [key _]]
+   (fn [need-checking [key _]]
      (cond
        (reporter/reporter? key)
        (let [data (reporter/data key)]
          (is (or
               (contains? (:subordinate-values data) reporter)
               (contains? (:needed-values data) reporter)))
-         (check-propagation checked key))
+         (conj need-checking key))
        (list? key)
        (let [user (second key)
              data (reporter/data user)]
@@ -130,31 +126,47 @@
          (is (reporter/reporter? user))
          (is (or (= reporter (:value-source data))
                  (= reporter (:old-value-source data))))
-         (check-propagation checked user))
+         (conj need-checking user))
        :else
-       checked))
-   already-checked
+       need-checking))
+   need-checking
    (:attendees (reporter/data reporter))))
 
-(defn check-propagation
-  "Check that all the right information has been propagated to any reporter
-  reachable from this one.
-  Returns a set of reporters that have already been checked."
-  [already-checked reporter]
-  (if (contains? already-checked reporter)
-    already-checked
-    (let [data (reporter/data reporter)]
+(defn check-propagation-for-one-reporter
+  "Check that this reporter reflects everything it should,
+  and return a list of reporters reachable from this one."
+  [reporter]
+  (let [data (reporter/data reporter)]
       (is (= (set (filter reporter/reporter? (:expression data)))
              (clojure.set/union (set (keys (:subordinate-values data)))
                                 (:needed-values data))))
       (is (not (empty? (:attendees data))))
-      (-> already-checked
-          (conj reporter)
+      (-> []
           (check-source-propagation reporter)
           (check-old-source-propagation reporter)
           (check-subordinate-propagation reporter)
           (check-needed-propagation reporter)
-          (check-attendees reporter)))))
+          (check-attendees reporter))))
+
+(defn check-propagation
+  "Check that all the right information has been propagated to any reporter
+  reachable from this one."
+  ;; We can't do a simple recursion that checks reporters as we hear
+  ;; about them without possibly blowing out the stack, so, instead,
+  ;; as we check, we accumulate a list of reporters we hear about, and
+  ;; use a loop to check them until we have no more to check.
+  [reporter-or-reporters]
+  (loop [already-checked #{}
+         need-to-check (if (reporter/reporter? reporter-or-reporters)
+                         [reporter-or-reporters]
+                         reporter-or-reporters)]
+    (when (not (empty? need-to-check))
+      (let [[reporter & rest] need-to-check]
+        (if (contains? already-checked reporter)
+          (recur already-checked rest)
+          (recur  (conj already-checked reporter)
+                  (concat rest
+                          (check-propagation-for-one-reporter reporter))))))))
 
 (deftest modify-and-act-test
   (let [r (reporter/new-reporter :test 10)
@@ -373,15 +385,15 @@
       ;; the computations should be cached, this should be fast.
       (let [f45 (fib 45)]
         (is (= (computation-value f45 md) 0))
-        (check-propagation #{} f45)
+        (check-propagation f45)
         (reporter/set-value! base 1)
         ;; Now it should be the right value.
         (is (= (computation-value f45 md) 1836311903))
-        (check-propagation #{} f45)
+        (check-propagation f45)
         (reporter/set-value! base invalid)
         ;;; Now it should be invalid.
         (is (= (not (reporter/valid? (computation-value f45 md)))))
-        (check-propagation #{} f45)))))
+        (check-propagation f45)))))
 
 ;; Test that caching works with recomputations of subsidiary
 ;; computations. This tests that :old-value-source is getting kept
@@ -428,7 +440,7 @@
   ;; right.
   (let [width 37
         depth 11
-        trials 3; 0000
+        trials 10; 0000
         changes-per-trial 1000
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]
@@ -462,7 +474,7 @@
               ;; Note: almost all of the time of this test occurs
               ;; here, not in the computation, because each (is ...)
               ;; in the check does a transaction on the test counter.
-              (reduce check-propagation #{} (vals requests)))]
+              (check-propagation (vals requests)))]
       (let [arguments (for [d (range depth)
                             pos (range width)]
                         [d pos])

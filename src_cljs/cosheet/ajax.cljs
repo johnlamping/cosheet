@@ -24,16 +24,34 @@
          :timeout 5000})
   (reset! ajax-request-pending true))
 
-;;; A handle to the current running ajax refresh task.
-(def watch-task (atom nil))
+;;; A handle to the current pending ajax poll task.
+(def pending-poll-task (atom nil))
 
-(defn start-watch-task
-  "Set the ajax watch task to run in 10 seconds."
+;;; The timeout until the next ajax poll.
+(def poll-delay (atom 500))
+
+(defn reset-poll-delay
+  "Reset the poll delay to the shortest duration. 
+  It will increase if nothing happens."
   []
-  (swap! watch-task
+  (reset! poll-delay 500))
+
+(def schedule-poll-task)
+
+(defn poll-task
+  "The task to run when it is time to poll for server changes."
+  []
+  (swap! poll-delay #(min (* % 10) 3600000))
+  (schedule-poll-task)
+  (ajax-request (take-pending-params)))
+
+(defn schedule-poll-task
+  "Schedule the ajax poll task to run after the current delay."
+  []
+  (swap! pending-poll-task
          (fn [handle]
-           (when handle (js/clearInterval handle))
-           (js/setInterval #(ajax-request (take-pending-params)) 600000))))
+           (when handle (js/clearTimeout handle))
+           (js/setTimeout poll-task @poll-delay))))
 
 (defn ajax-if-pending
   "Send an ajax request if we have pending information to send the server
@@ -47,6 +65,7 @@
 (defn request-action
   [action]
   (add-pending-action action)
+  (reset-poll-delay)
   (ajax-if-pending))
 
 (defn dom-contained-in-changes?
@@ -112,15 +131,16 @@
   (reset! ajax-request-pending false)
   (when (not= response {})
     (.log js/console (str response))
+    (reset-poll-delay)
     (let [previously-selected-id (and @selected (.-id @selected))]
       (handle-ajax-doms response)
       (reagent/flush)  ;; Must update the dom before the select is processed.
       (handle-ajax-select response previously-selected-id))
     (process-response-for-pending response)
     (ajax-if-pending))
-  (start-watch-task))
+  (schedule-poll-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (reset! ajax-request-pending false)
   (.log js/console (str "ajax-error: " status " " status-text))
-  (start-watch-task))
+  (schedule-poll-task))

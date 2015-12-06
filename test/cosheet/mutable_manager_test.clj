@@ -13,7 +13,7 @@
   (set-attendee! reporter :demand))
 
 (deftest mutable-manager-test
-  (let [mm (new-mutable-management {:a 1 :b 2})
+  (let [mm (new-mutable-manager-data {:a 1 :b 2})
         fa #(:a %)
         ra (get-or-make-reporter [:a] fa mm)]
     (is (= (value ra) invalid))

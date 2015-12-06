@@ -17,7 +17,7 @@
 ;;; function that should be called, together with any additional
 ;;; arguments beyond the value
 
-(defn new-mutable-management [value]
+(defn new-mutable-manager-data [value]
   (atom {
          ;; The current value
          :value value
@@ -34,8 +34,8 @@
 
 (defn current-mutable-value
   "Return the current value of the managed item."
-  [management]
-  (:value @management))
+  [manager-data]
+  (:value @manager-data))
 
 (defn compute-reporter
   "Given the value, compute the value for the reporter."
@@ -45,26 +45,26 @@
 
 (defn recompute-reporter
   "Recompute the reporter using the latest value."
-  [management reporter]
-  (with-latest-value [value (:value @management)]
+  [manager-data reporter]
+  (with-latest-value [value (:value @manager-data)]
     (compute-reporter value reporter)))
 
 (defn recompute-reporters-for-keys
   "Update all reporters that care about the changes represented by the keys."
-  [management keys]
+  [manager-data keys]
   ;; It is OK to get the subscriptions outside of
   ;; with-latest-value, since it is sufficient to inform all the
   ;; ones that were active at some time after the value changed.
   (when (not (empty? keys))
-    (let [subscriptions (:subscriptions @management)
+    (let [subscriptions (:subscriptions @manager-data)
           ;; Avoid calling the same reporter twice.
           reporters (set (mapcat (partial get subscriptions) keys))]
-      (with-latest-value [value (:value @management)]
+      (with-latest-value [value (:value @manager-data)]
         (doseq [reporter reporters]
           (compute-reporter value reporter))))))
 
 (defn add-subscriptions
-  "Given the management data, a reporter, and its keys,
+  "Given the current manager data, a reporter, and its keys,
   add subscriptions for all the keys."
   [data reporter keys]
   (update-in data [:subscriptions]
@@ -75,7 +75,7 @@
                        subscriptions keys))))
 
 (defn remove-subscriptions
-  "Given the management data, a reporter, and its keys,
+  "Given the current manager data, a reporter, and its keys,
   add subscriptions for all the keys."
   [data reporter keys]
   (update-in data [:subscriptions]
@@ -87,12 +87,12 @@
 
 (defn manager-callback
   "Callback when a reporter starts or stops needing updates."
-  [reporter management keys]
+  [reporter manager-data keys]
   (with-latest-value [attended (attended? reporter)]
     (let [application (:application (reporter/data reporter))]
       (if attended
         (do
-          (swap! management
+          (swap! manager-data
                  (fn [data]
                    (-> data
                        (add-subscriptions reporter keys)
@@ -101,10 +101,10 @@
                                   ;; have another reporter for this
                                   ;; expression, in which case, leave it.
                                   (fn [existing] (or existing reporter))))))
-          (recompute-reporter management reporter))
+          (recompute-reporter manager-data reporter))
         (do
           (set-value! reporter invalid)
-          (swap! management
+          (swap! manager-data
                  (fn [data]
                    (-> data
                        (remove-subscriptions reporter keys)
@@ -120,10 +120,10 @@
   "Retrieve or create a reporter that gives the value of the function
    applied to the current value and the arguments. The keys are
    the changes that will cause recomputation."
-  [keys fn management & args]
+  [keys fn manager-data & args]
   (let [application (cons fn args)]
-    (or (get-in @management [:application->attended-reporter application])
-        (new-reporter :manager [manager-callback management keys]
+    (or (get-in @manager-data [:application->attended-reporter application])
+        (new-reporter :manager [manager-callback manager-data keys]
                       :application application))))
 
 (defn describe-and-swap-control-return!
@@ -131,23 +131,23 @@
   a list of keys that might have been affected, and a return value.
   Update the value to the new value, update all reporters that depend
   on the keys, and return the return value."
-  [management update-fn]
+  [manager-data update-fn]
   (let [[affected-keys result]
         (swap-control-return!
-         management
+         manager-data
          (fn [data]
            (let [[new-value affected-keys result] (update-fn (:value data))]
              [(assoc data :value new-value)
               [affected-keys result]])))]
-    (recompute-reporters-for-keys management affected-keys)
+    (recompute-reporters-for-keys manager-data affected-keys)
     result))
 
 (defn describe-and-swap!
   "Run the function on the current value. It must return a new value 
   and a list of keys that might have been affected. Update the value
   to the new value, and update all reporters that depend on the keys."
-  [management update-fn]
+  [manager-data update-fn]
   (describe-and-swap-control-return!
-   management
+   manager-data
    (fn [value] (let [[new-value keys] (update-fn value)]
                  [new-value keys nil]))))

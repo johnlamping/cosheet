@@ -1,17 +1,17 @@
 (ns cosheet.mutable-set
   (:require (cosheet [mutable-manager
-                      :refer [new-mutable-management
+                      :refer [new-mutable-manager-data
                               get-or-make-reporter
                               describe-and-swap!]])))
 
-;;; Support for treating a mutable management as a mutable set of
+;;; Support for treating a mutable manager as a mutable set of
 ;;; items, which supports an operation to find the intersection of the
 ;;; current content with a given set.
 
 (defn new-mutable-set
   [initial]
   (assert (set? initial))
-  (new-mutable-management initial))
+  (new-mutable-manager-data initial))
 
 (defn mutable-set-intersection
   "Return a reporter with the intersection of the current value

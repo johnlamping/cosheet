@@ -98,14 +98,24 @@
            :children [{:info {:b 1}
                        :members [:j]
                        :children [{:info {:c 1} :members [:k]}]}]}]))
-    (is (= (append-to-hierarchy [{:info {:a 1}
-                                  :members [:i]
-                                  :children [{:info {:b 1} :members [:j]}]}]
-                                {:a 1} :k)
+  (is (= (append-to-hierarchy [{:info {:a 1}
+                                :members [:i]
+                                :children [{:info {:b 1} :members [:j]}]}]
+                              {:a 1} :k)
          [{:info {:a 1}
            :members [:i]
            :children [{:info {:b 1} :members [:j]}
-                      {:info {} :members [:k]}]}])))
+                      {:info {} :members [:k]}]}]))
+  (is (= (append-to-hierarchy [{:info {:a 1 :b 1}
+                                :members [:i]
+                                :children [{:info {:c 1} :members [:j]}]}]
+                              {:a 1 :c 1} :k)
+         [{:info {:a 1}
+           :members []
+           :children [{:info {:b 1}
+                       :members [:i]
+                       :children [{:info {:c 1} :members [:j]}]}
+                      {:info {:c 1} :members [:k]}]}])))
 
 (deftest split-by-subset-test
   (is (= (split-by-subset [[1 {:item :i}]

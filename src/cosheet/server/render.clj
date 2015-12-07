@@ -157,7 +157,7 @@
 ;;; For example, if a node has :info {:b 1}, and has a parent with
 ;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
 ;;; {:a 1 :b 1}
-;;; As used here, the members are themselves a map, containing
+;;; As used here, each member is itself a map, containing
 ;;;           :item The item that is the member
 ;;;      :tag-items The elements of the item that are tags
 ;;; :tag-canonicals The canonical-info for all the item in :tag-items
@@ -166,7 +166,7 @@
 ;;; members, so we still need :cumulative-info.
 
 (defn append-to-hierarchy
-  "Given an info and corresponding item, add them to the hierarchy"
+  "Given an info and corresponding item, add them to the hierarchy."
   [hierarchy info item]
   (if (empty? hierarchy)
     [{:info info :members [item]}]
@@ -188,8 +188,8 @@
                             (fn [last]
                               {:info both
                                :members []
-                               :children [{:info old-only
-                                           :members (:members last)}]}))
+                               :children [(assoc last :info old-only)]
+                               }))
                info item))))))))
 
 (defn split-by-subset

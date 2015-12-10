@@ -1,6 +1,6 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
-                     [query :as query]
+                     [query :refer [matching-elements matching-items]]
                      [utils :refer [multiset multiset-diff multiset-union
                                     update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
@@ -99,19 +99,18 @@
 ;;; example, a row with a single non-indented item would have all of
 ;;; "column", "full-row", and "item".
 
-(defn tag-specifier?
-  "Return true if an element specifies that the item it pertains to is
-   a tag. (Note that a tag specifier is considered visible, because its
-   presence affects the user visible structure, even though it is not
-   shown as its own cell."
-  [element]
-  (expr-let [content (entity/content element)]
-    (= content 'tag)))
+(defn condition-specifier?
+  "Return true if an element contributes to specifying that the item
+  it pertains to satisfies a condition (in list form), and doesn't
+  specify any additional information."
+  [element condition]
+  (expr-let [as-list (visible-to-list element)]
+    (some #(= as-list %) (rest condition))))
 
-(defn tag-specifiers
+(defn condition-specifiers
   "Return the tag specifiers of an entity."
-  [entity]
-  (filtered-elements entity tag-specifier?))
+  [entity condition]
+  (filtered-elements entity #(condition-specifier? % condition)))
 
 (def canonical-to-list)
 
@@ -308,22 +307,22 @@
                    stack-vertical)
                  doms)))))
 
-(defn tag-component
-  "Return the component for a tag element."
-  [element parent-item parent-key inherited]
+(defn condition-component
+  "Return the component for an element that satisfied a condition."
+  [element condition parent-item parent-key inherited]
   (assert (not (elements-referent? (first parent-key))))
-  (expr-let [tag-specs (tag-specifiers element)]
+  (expr-let [condition-specs (condition-specifiers element condition)]
     (let [key (->> parent-key
                    ;; We must make this key different from what it
-                   ;; would have been if this element weren't a tag,
-                   ;; and were located under its parent's component.
+                   ;; would have been if this element were displayed
+                   ;; under its parent's component.
                    ;; Because it might have been in that situation.
-                   (prepend-to-key (elements-referent parent-item [nil 'tag]))
+                   (prepend-to-key (elements-referent parent-item condition))
                    (prepend-to-key (item-referent element)))]      
       (make-component {:key key
-                       :sibling-elements ['tag] 
+                       :sibling-elements (rest condition) 
                        :row-sibling parent-key}
-                      [item-DOM element key (set tag-specs) inherited]))))
+                      [item-DOM element key (set condition-specs) inherited]))))
 
 (defn tags-DOM
   "Given information about the appearance of a tag hierarchy node,
@@ -335,7 +334,8 @@
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
   (expr-let [tag-components
-             (expr-seq map #(tag-component % parent-item parent-key inherited)
+             (expr-seq map #(condition-component
+                             % '(nil tag) parent-item parent-key inherited)
                        tags)]
     (let [{:keys [top-border bottom-border for-multiple with-children depth]}
           appearance-info
@@ -379,7 +379,7 @@
   "Given a list of [item, excluded-elements] pairs, and the first item
   of this or subsequent rows,
   generate DOM for a vertical list of a component for each item."
-  [items-with-excluded first-affected-item parent-item parent-key
+  [items-with-excluded first-adjacent-item parent-item parent-key
    sibling-elements inherited]
   (if (empty? items-with-excluded)
     (add-attributes (vertical-stack nil :separators true)
@@ -389,7 +389,7 @@
                             parent-item (cons nil sibling-elements))
                            parent-key)
                      :add-adjacent (prepend-to-key
-                                   (item-referent first-affected-item)
+                                   (item-referent first-adjacent-item)
                                    parent-key)
                      :add-direction :before})
     (let [item-doms (map (fn [[item excluded-elements]]
@@ -502,15 +502,17 @@
           (assoc node :for-multiple true)
           node)))))
 
-(defn tagged-items-hierarchy
-  "Given items, organize them into a flattened hierarchy by tag"
-  [items do-not-merge]
+(defn flattened-items-hierarchy
+  "Given items, organize them into a flattened hierarchy by their value
+  on elements matching the condition. Don't merge items that are in
+  do-not-merge."
+  [items do-not-merge condition]
   (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
              item-maps
              (expr-seq
               map
               (fn [item]
-                (expr-let [info-elements (entity/label->elements item 'tag)
+                (expr-let [info-elements (matching-elements condition item)
                            info-canonicals (expr-seq map canonical-info
                                                      info-elements)]
                   {:item item
@@ -527,6 +529,11 @@
              hierarchy))
        ;; We need to put on a final closing border.
        #(assoc % :bottom-border :full)))))
+
+(defn tagged-items-hierarchy
+  "Given items, organize them into a flattened hierarchy by tag"
+  [items do-not-merge]
+  (flattened-items-hierarchy items do-not-merge '(nil tag)))
 
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
@@ -605,5 +612,5 @@
                column-descriptions (expr-seq
                                     (map #(visible-elements (entity/content %))
                                          columns))
-               row-items (query/matching-items row-query store)]
+               row-items (matching-items row-query store)]
       (let [headers nil]))))

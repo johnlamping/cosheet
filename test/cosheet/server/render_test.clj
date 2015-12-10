@@ -46,11 +46,22 @@
            (45 (~o4 :order)
                ("age" ~'tag))))
 
-(deftest tag-specifiers-test
-  (is (= (map canonicalize-list
-              (let-mutated [test '("age" tag "not-tag")]
-                (expr-seq map to-list (tag-specifiers test))))
-         ['tag])))
+(deftest condition-specifiers-test
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a)))))
+             [:a]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a :c)))))
+             (as-set [:a :c])))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a :b)))))
+             [:a])))
 
 (deftest canonical-info-set-test
   (is (= (let-mutated [him joe, her jane]

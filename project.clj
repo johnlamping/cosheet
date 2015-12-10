@@ -30,8 +30,6 @@
                    :rules :cljs}]}
   :prep-tasks [["cljx" "once"] "javac" "compile"]
   :source-paths ["src" "target/classes"]
-  ;; Keep lein ring from reloading tests.
-  :reload-paths ["src" "target/classes"] 
   :hooks [leiningen.cljsbuild]
   :cljsbuild {
     :builds [{:source-paths ["src_cljs" "target/classes"]
@@ -39,6 +37,8 @@
                          :optimizations :whitespace
                          :pretty-print true
                          :preamble ["reagent/react.js"]}}]}
-  :ring {:handler cosheet.server.routes/app}
+  :ring {:handler cosheet.server.routes/app
+         ;; Keep lein ring from reloading tests.
+         :reload-paths ["src" "target/classes"]}
   :main ^:skip-aot cosheet.core
   :target-path "target/%s")

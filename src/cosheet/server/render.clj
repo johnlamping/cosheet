@@ -535,17 +535,13 @@
        ;; We need to put on a final closing border.
        #(assoc % :bottom-border :full)))))
 
-(defn tagged-items-hierarchy
-  "Given items, organize them into a flattened hierarchy by tag"
-  [items do-not-merge]
-  (flattened-items-hierarchy items do-not-merge '(nil tag)))
-
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
   [items parent-item parent-key inherited]
-  (expr-let [hierarchy (tagged-items-hierarchy items (:do-not-merge inherited))
+  (expr-let [hierarchy (flattened-items-hierarchy
+                        items (:do-not-merge inherited) '(nil tag))
              hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM

@@ -238,7 +238,7 @@
               {:depth 2 :top-border :indented}
               {:depth 1 :top-border :indented :bottom-border :corner}])))
 
-(deftest tagged-items-hierarchy-test
+(deftest flattened-items-hierarchy-test
   (let [him (let-mutated [him joe] him)
         gender (first (current-value (entity/label->elements him o1)))
         bogus-age (first (current-value
@@ -250,7 +250,8 @@
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
     (is (check
-         (current-value (tagged-items-hierarchy [gender age bogus-age] #{}))
+         (current-value (flattened-items-hierarchy [gender age bogus-age]
+                                                   #{} '(nil tag)))
          [{:depth 0 :top-border :full :bottom-border :corner
            :info {}
            :cumulative-info {}

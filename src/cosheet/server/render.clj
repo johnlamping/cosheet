@@ -308,7 +308,8 @@
                  doms)))))
 
 (defn condition-component
-  "Return the component for an element that satisfied a condition."
+  "Return the component for an element that satisfies a condition and
+  is displayed under the condition, rather than under its parent."
   [element condition parent-item parent-key inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-specifiers element condition)]
@@ -324,32 +325,33 @@
                        :row-sibling parent-key}
                       [item-DOM element key (set condition-specs) inherited]))))
 
-(defn tags-DOM
-  "Given information about the appearance of a tag hierarchy node,
-  and a sequence of tag items in it, return components for each of them,
-  wrapped as necessary to give the right appearance."
-  [appearance-info tags parent-item parent-key inherited]
-  (println "generating tags dom.")
+(defn row-header-DOM
+  "Given information about the appearance of a hierarchy node for a
+  row header, and a sequence of items in it, return a DOM containing
+  components for each of them, wrapped as necessary to give the right
+  appearance."
+  [appearance-info items condition parent-item parent-key inherited]
+  (println "generating row-header dom.")
   (assert (not (elements-referent? (first parent-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
-  (expr-let [tag-components
+  (expr-let [components
              (expr-seq map #(condition-component
-                             % '(nil tag) parent-item parent-key inherited)
-                       tags)]
-    (let [{:keys [top-border bottom-border for-multiple with-children depth]}
-          appearance-info
-          elements-key
-          (prepend-to-key
-           (elements-referent parent-item [nil 'tag]) parent-key)]
-      (as-> (vertical-stack tag-components :separators true) dom
-        (if (> (count tags) 1)
+                             % condition parent-item parent-key inherited)
+                       items)]
+    (let [num-items (count items)
+          elements-key (prepend-to-key
+                        (elements-referent parent-item condition) parent-key)
+          {:keys [is-tags top-border bottom-border
+                  for-multiple with-children depth]} appearance-info]
+      (as-> (vertical-stack components :separators true) dom
+        (if (> num-items 1)
           (add-attributes dom {:class "stack"})
           dom)
-        (if (empty? tags)
+        (if (empty? items)
           (add-attributes dom {:key elements-key})
           dom)
-        (if (or for-multiple (> (count tags) 1))
+        (if (or for-multiple (> num-items 1))
           [:div dom [:div {:class "spacer"}]]
           dom)
         (add-attributes
@@ -357,7 +359,7 @@
          {:class (str "full-row"
                       (when (= top-border :indented) " top-border")
                       (when (= bottom-border :indented) " bottom-border")
-                      (when (empty? tags) " editable")
+                      (when (empty? items) " editable")
                       (when with-children " with-children")
                       (when for-multiple " for-multiple"))})
         (let [depth (:depth appearance-info)]
@@ -366,13 +368,14 @@
             dom))
         (add-attributes
          dom (cond-> {:class
-                      (str "tags column"
+                      (str "column"
+                           (when is-tags " tags")
                            (when (= top-border :full) " top-border")
                            (when (= bottom-border :full) " bottom-border")
                            (when (= bottom-border :corner) " ll-corner"))}
-               (> (count tags) 1)
+               (> num-items 1)
                (into {:key elements-key})
-               (not= (count tags) 1)
+               (not= num-items 1)
                (into {:row-sibling parent-key})))))))
 
 (defn components-DOM
@@ -419,10 +422,12 @@
                             (if (= (count affected-items) 1)
                               (item-referent (first affected-items))
                               (parallel-referent [] affected-items))]
-                        (expr tags-DOM appearance-info (order-items tag-items)
-                              (first affected-items)
-                              (prepend-to-key items-referent parent-key)
-                              inherited))
+                        (expr row-header-DOM
+                          (assoc appearance-info :is-tags true)
+                          (order-items tag-items) '(nil tag)
+                          (first affected-items)
+                          (prepend-to-key items-referent parent-key)
+                          inherited))
              items-dom (components-DOM items-with-excluded
                                        (first affected-items)
                                        parent-item parent-key
@@ -469,7 +474,7 @@
   header, add the information about what borders each node in the
   expansion should be responsible for."
   ;; Hierarchies make this a bit tricky. We use a separate table row
-  ;; for each node of the hierarchy, so we can align the tags and
+  ;; for each node of the hierarchy, so we can align the header and
   ;; items for each node. This means that all but the deepest nodes of
   ;; a hierarchy will be displayed as several rows. A row thus needs
   ;; to be responsible not only for borders of its node, but also for

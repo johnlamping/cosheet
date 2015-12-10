@@ -97,6 +97,10 @@
 
 ;;; Define check as a macro for the is test.
 
+;;; Used in (is (check <value> <pattern>))
+;;; Handled by the method on assert-expr.
+(def check) 
+
 (defmethod assert-expr 'check [msg form]
   (let [args (rest form)
         pred (first form)]

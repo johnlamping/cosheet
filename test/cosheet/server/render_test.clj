@@ -270,23 +270,26 @@
 (def rid (second t1))
 (def root (description->entity rid store))
 
-(deftest tags-DOM-test
-  (is (check (tags-DOM {:depth 0} nil root [rid] {})
-             [:div {:class "full-row editable tags column"
+(deftest row-header-DOM-test
+  (is (check (row-header-DOM {:depth 0 :is-tags true}
+                             nil '(nil tag) root [rid] {})
+             [:div {:class "full-row editable column tags"
                     :key [[:elements rid [nil 'tag]] rid]
                     :row-sibling [rid]}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" tag)]
-          (expr-let [dom (tags-DOM {:depth 1
-                                    :bottom-border :indented
-                                    :for-multiple true
-                                    :with-children true}
-                                   [fred] root [rid] {:depth 0})
+          (expr-let [dom (row-header-DOM {:depth 1
+                                          :is-tags true
+                                          :bottom-border :indented
+                                          :for-multiple true
+                                          :with-children true}
+                                         [fred] '(nil tag) root [rid]
+                                         {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (check
          dom
-         [:div {:class "tags column"}
+         [:div {:class "column tags"}
           [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
            [:component {:key [(:item-id fred) [:elements rid [nil 'tag]] rid]
                         :sibling-elements ['tag]
@@ -298,17 +301,18 @@
   (let [[dom fred fran]
         (let-mutated [fred '("Fred" tag)
                       fran "Fran"]
-          (expr-let [dom (tags-DOM {:depth 0
-                                    :top-border :full
-                                    :bottom-border :corner}
-                                   [fred fran] root [rid] {:depth 1
-                                                          :do-not-merge #{}})]
+          (expr-let [dom (row-header-DOM {:depth 0
+                                          :is-tags true
+                                          :top-border :full
+                                          :bottom-border :corner}
+                                         [fred fran] '(nil tag) root [rid]
+                                         {:depth 1 :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (check
          dom
          [:div
-          {:class "full-row tags column top-border ll-corner"
+          {:class "full-row column tags top-border ll-corner"
            :key [[:elements rid [nil 'tag]] rid]
            :row-sibling [rid]}
           [:div {:class "stack"}
@@ -372,7 +376,7 @@
                   :class "last-row"}
             [:component {:key tag-key
                          :style {:display "table-cell"}
-                         :class "full-row tags column top-border bottom-border"
+                         :class "full-row column tags top-border bottom-border"
                          :sibling-elements ['tag]
                          :row-sibling [(:item-id doubtful) :age]}
              [item-DOM
@@ -398,7 +402,7 @@
              [:div {:style {:display "table-row"}
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
-                     :class "full-row editable tags column top-border bottom-border"
+                     :class "full-row editable column tags top-border bottom-border"
                      :key [[:elements (:item-id doubtful) [nil 'tag]]
                            (:item-id doubtful) :age]
                      :row-sibling [(:item-id doubtful) :age]}]
@@ -555,7 +559,7 @@
                 [:component
                  {:key [labels-ref :joe]
                   :style {:display "table-cell"}
-                  :class "full-row with-children tags column top-border"
+                  :class "full-row with-children column tags top-border"
                   :sibling-elements ['tag]
                   :row-sibling [[:parallel []
                                  (as-set [(:item-id v1)
@@ -569,7 +573,7 @@
                              :sibling-elements [["L1" 'tag]]}
                  [item-DOM v1 [(:item-id v1) :joe] #{L1} (any map?)]]]
                [:div {:style {:display "table-row"}}
-                [:div {:class "tags column" :style {:display "table-cell"}}
+                [:div {:class "column tags" :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L2)
                          [:elements (:item-id v12) [nil 'tag]]
@@ -589,7 +593,7 @@
                                                         ["L2" 'tag]])}
                  [item-DOM v12 [(:item-id v12) :joe] #{L121 L2} (any map?)]]]
                [:div {:style {:display "table-row"} :class "last-row"}
-                [:div {:class "tags column bottom-border"
+                [:div {:class "column tags bottom-border"
                        :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L3) [:elements (:item-id v13) [nil 'tag]]
@@ -649,7 +653,7 @@
               [:component
                {:key [L1s-ref rid]
                 :style {:display "table-cell"}
-                :class "full-row with-children tags column top-border"
+                :class "full-row with-children column tags top-border"
                 :sibling-elements ['tag]
                 :row-sibling [[:parallel []
                                [(:item-id va) (:item-id vb)]]
@@ -661,7 +665,7 @@
                      :add-adjacent [(:item-id va) rid]
                      :add-direction :before}]]
              [:div {:style {:display "table-row"}}
-              [:div {:class "tags column" :style {:display "table-cell"}}
+              [:div {:class "column tags" :style {:display "table-cell"}}
                [:component
                 {:key [(:item-id La2)
                        [:elements (:item-id va) [nil 'tag]]
@@ -680,7 +684,7 @@
                            :sibling-elements [["L2" 'tag] ["L1" 'tag]]}
                [item-DOM va [(:item-id va) rid] #{La1 La2} (any map?)]]]
              [:div {:style {:display "table-row"} :class "last-row"}
-              [:div {:class "tags column bottom-border"
+              [:div {:class "column tags bottom-border"
                      :style {:display "table-cell"}
                      :row-sibling [(:item-id vb) rid]}
                [:div {:class "full-row top-border editable indent-1"

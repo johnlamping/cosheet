@@ -262,20 +262,20 @@
           (and (elements-referent? first-primitive) (not= to ""))
           (let [items (key->items store (remove-first-primitive-referent key))
                 attributes (key->attributes dom-tracker key)
-                sibling-key (:add-sibling attributes)
+                adjacent-key (:add-adjacent attributes)
                 [_ subject condition] first-primitive
                 model-entity (cons to (rest condition))
                 [new-store new-id]
-                (if sibling-key
-                  (let [siblings (key->items store sibling-key)
+                (if adjacent-key
+                  (let [adjacents (key->items store adjacent-key)
                         direction (:add-direction attributes)]
-                    (assert (= (count items) (count siblings)))
+                    (assert (= (count items) (count adjacents)))
                     (reduce-update-add
-                     (fn [store [subject sibling]]
+                     (fn [store [subject adjacent]]
                        (update-add-entity-with-order-item
                         store (:item-id subject) model-entity
-                        sibling direction false))
-                     store (map vector items siblings)))
+                        adjacent direction false))
+                     store (map vector items adjacents)))
                   (reduce-update-add
                    (fn [store item]
                      (update-add-element model-entity store item))

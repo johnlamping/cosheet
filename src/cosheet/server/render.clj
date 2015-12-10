@@ -1,5 +1,6 @@
 (ns cosheet.server.render
   (:require (cosheet [entity :as entity]
+                     [query :as query]
                      [utils :refer [multiset multiset-diff multiset-union
                                     update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
@@ -42,11 +43,10 @@
 (def server-specific-attributes
   [               :key  ; A unique client side key further described below.
      :sibling-elements  ; Elements that a sibling of this item must have.
-      :content-sibling  ; A key that a content item for this empty dom
-                        ; should be a sibling of. Used for getting
-                        ; ordering information.
-    :content-direction  ; Whether a content item for this empty dom
-                        ; should come before or after :content-sibling
+         :add-adjacent  ; A key that a new item for this empty dom
+                        ; should be adjacent to in the ordering.
+        :add-direction  ; Whether a new item for this empty dom
+                        ; should come before or after :add-adjacent
           :row-sibling  ; A key that a new adjacent row should be a sibling
                         ; of. If the key indicates multiple items, the row
                         ; is a sibling of the last, or, if there are
@@ -85,7 +85,8 @@
 ;;;                    top level. It may get "ll-corner".
 ;;;          full-row  This is the most deeply nested div under a tags
 ;;;                    that contains all the items for its row, and
-;;;                    spans the full height of its row. Its borders
+;;;                    spans the full height of its row. If indented,
+;;;                    it may not span its full column. Its borders
 ;;;                    will be set explicitly with "top-border" and
 ;;;                    "bottom-border"
 ;;;             stack  The div contains several items for its row.
@@ -157,11 +158,12 @@
 ;;; For example, if a node has :info {:b 1}, and has a parent with
 ;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
 ;;; {:a 1 :b 1}
-;;; As used here, each member is itself a map, containing
-;;;           :item The item that is the member
-;;;      :tag-items The elements of the item that are tags
-;;; :tag-canonicals The canonical-info for all the item in :tag-items
-;;; The :tag-canonicals of each member of a flattened node will be the
+;;; As typically used, each member is itself a map, containing
+;;;              :item  The item that is the member
+;;;     :info-elements  The elements of the item that contribute
+;;;                     to the hierarchy info
+;;;   :info-canonicals  The canonical-info for all the item in :info-elements
+;;; The :info-canonicals of each member of a flattened node will be the
 ;;; same as its :cumulative-info, but a node might not have any
 ;;; members, so we still need :cumulative-info.
 
@@ -337,8 +339,9 @@
                        tags)]
     (let [{:keys [top-border bottom-border for-multiple with-children depth]}
           appearance-info
-          elements-key (prepend-to-key
-                        (elements-referent parent-item [nil 'tag]) parent-key)]
+          elements-key
+          (prepend-to-key
+           (elements-referent parent-item [nil 'tag]) parent-key)]
       (as-> (vertical-stack tag-components :separators true) dom
         (if (> (count tags) 1)
           (add-attributes dom {:class "stack"})
@@ -385,7 +388,7 @@
                            (elements-referent
                             parent-item (cons nil sibling-elements))
                            parent-key)
-                     :add-sibling (prepend-to-key
+                     :add-adjacent (prepend-to-key
                                    (item-referent first-affected-item)
                                    parent-key)
                      :add-direction :before})
@@ -450,8 +453,10 @@
   (let [descendants (hierarchy-node-descendants node)
         example (first descendants)
         tag-items (items-for-info
-                   (:info node) (:tag-items example) (:tag-canonicals example))
-        items-with-excluded (map #((juxt :item :tag-items) %) (:members node))
+                   (:info node)
+                   (:info-elements example) (:info-canonicals example))
+        items-with-excluded (map #((juxt :item :info-elements) %)
+                                 (:members node))
         descendant-items (map :item descendants)
         appearance-info (select-keys node [:depth :for-multiple :with-children
                                            :top-border :bottom-border])]
@@ -459,10 +464,10 @@
       [appearance-info tag-items items-with-excluded
        sibling-elements descendant-items])))
 
-(defn add-border-info
-  "Given the flattened hierarchy expansion of one top level node,
-  add the information about what borders each node in the expansion
-  should be responsible for."
+(defn add-row-header-border-info
+  "Given the flattened hierarchy expansion of one node of a row
+  header, add the information about what borders each node in the
+  expansion should be responsible for."
   ;; Hierarchies make this a bit tricky. We use a separate table row
   ;; for each node of the hierarchy, so we can align the tags and
   ;; items for each node. This means that all but the deepest nodes of
@@ -502,26 +507,28 @@
   [items do-not-merge]
   (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
              item-maps
-             (expr-seq map
-                       (fn [item]
-                         (expr-let [tag-items (entity/label->elements item 'tag)
-                                    tag-canonicals (expr-seq map canonical-info
-                                                             tag-items)]
-                           {:item item
-                            :tag-items tag-items
-                            :tag-canonicals tag-canonicals}))
-                       (order-items items))]
+             (expr-seq
+              map
+              (fn [item]
+                (expr-let [info-elements (entity/label->elements item 'tag)
+                           info-canonicals (expr-seq map canonical-info
+                                                     info-elements)]
+                  {:item item
+                   :info-elements info-elements
+                   :info-canonicals info-canonicals}))
+              (order-items items))]
     (let [hierarchy (hierarchy-by-canonical-info
-                     (map (fn [map] [(multiset (:tag-canonicals map)) map])
+                     (map (fn [map] [(multiset (:info-canonicals map)) map])
                           item-maps)
                      do-not-merge-subset)]
       (update-last 
-       (vec (mapcat #(add-border-info (flatten-hierarchy-node % 0 {}))
-                    hierarchy))
+       (vec (mapcat
+             #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
+             hierarchy))
        ;; We need to put on a final closing border.
        #(assoc % :bottom-border :full)))))
 
-(defn tagged-items-DOM
+(defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
@@ -536,7 +543,8 @@
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [:members 0 :tag-items])) hierarchy)
+            (if (every? #(empty? (get-in % [:members 0 :info-elements]))
+                        hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
             (update-in (vec row-doms) [(- (count row-doms) 1)]
@@ -567,10 +575,13 @@
                [item-DOM child-key content #{} inherited-down])))]
       (if (empty? elements)
         content-dom
-        (expr-let [elements-dom (tagged-items-DOM
+        (expr-let [elements-dom (tagged-items-table-DOM
                                  elements item key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
+
+(defn table-header-DOM
+  [column-elements])
 
 (defn table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
@@ -580,12 +591,19 @@
   ;;              requirements for an item to appear as a row
   ;;     :column  The content is an item whose list form gives the
   ;;              requirements for an element of a row to appear in
-  ;;              this column.
+  ;;              this column. The special contens :other means to show
+  ;;              everything not shown in any other column.
+  ;; TODO: Make there there be an element on a column descriptor that
+  ;;       says how the column is described
   [item key inherited]
   (println "Generating DOM for table" (simplify-for-print key))
-  (expr-let [row-query-item (entity/label->content item :row-query)
-             columns (entity/label->elements item :column)
-             row-query (visible-elements row-query-item)
-             column-elements (expr-seq
-                              (map #(visible-elements (entity/content %))
-                                   columns))]))
+  (assert (satisfies? entity/StoredEntity item))
+  (let [store (:store item)]
+    (expr-let [row-query-item (entity/label->content item :row-query)
+               columns (expr order-items (entity/label->elements item :column))
+               row-query (visible-elements row-query-item)
+               column-descriptions (expr-seq
+                                    (map #(visible-elements (entity/content %))
+                                         columns))
+               row-items (query/matching-items row-query store)]
+      (let [headers nil]))))

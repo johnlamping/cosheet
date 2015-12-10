@@ -310,7 +310,7 @@
                         (assoc-in [:id->key "test3"]
                                   joe-married-tag-key)
                         (assoc-in [:components joe-married-tag-key
-                                   :attributes :add-sibling]
+                                   :attributes :add-adjacent]
                                   [joe-id])
                         (assoc-in [:components joe-married-tag-key
                                    :attributes :add-direction]

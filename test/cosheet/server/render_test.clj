@@ -203,19 +203,19 @@
                   :info {["age" {'tag 1}] 1}
                   :cumulative-info {["age" {'tag 1}] 1}
                   :members [{:item bogus-age
-                             :tag-items [bogus-age-tag]
-                             :tag-canonicals [["age" {'tag 1}]]}
+                             :info-elements [bogus-age-tag]
+                             :info-canonicals [["age" {'tag 1}]]}
                             {:item age
-                             :tag-items [age-tag]
-                             :tag-canonicals [["age" {'tag 1}]]}]}))
+                             :info-elements [age-tag]
+                             :info-canonicals [["age" {'tag 1}]]}]}))
                [{:depth 0 :top-border :x :bottom-border :y}
                 [bogus-age-tag]
                 [[bogus-age [bogus-age-tag]] [age [age-tag]]]
                 [["age" 'tag]]
                 [bogus-age age]]))))
 
-(deftest add-border-info-test
-  (is (check (add-border-info
+(deftest add-row-header-border-info-test
+  (is (check (add-row-header-border-info
               [{:depth 0}
                {:depth 1}
                {:depth 2}
@@ -243,16 +243,16 @@
          [{:depth 0 :top-border :full :bottom-border :corner
            :info {}
            :cumulative-info {}
-           :members [{:item gender, :tag-items nil, :tag-canonicals nil}]}
+           :members [{:item gender, :info-elements nil, :info-canonicals nil}]}
           {:depth 0 :for-multiple true :top-border :full :bottom-border :full
            :info {["age" {'tag 1}] 1}
            :cumulative-info {["age" {'tag 1}] 1}
            :members [{:item bogus-age
-                      :tag-items [bogus-age-tag]
-                      :tag-canonicals [["age" {'tag 1}]]}
+                      :info-elements [bogus-age-tag]
+                      :info-canonicals [["age" {'tag 1}]]}
                      {:item age
-                      :tag-items [age-tag]
-                      :tag-canonicals [["age" {'tag 1}]]}]}]))))
+                      :info-elements [age-tag]
+                      :info-canonicals [["age" {'tag 1}]]}]}]))))
 
 (def t1 (add-entity (new-element-store) nil 'joe))
 (def store (first t1))
@@ -647,7 +647,7 @@
               [:div {:key [[:elements rid [nil ["L1" 'tag]]] rid]
                      :style {:display "table-cell"}
                      :class "column editable"
-                     :add-sibling [(:item-id va) rid]
+                     :add-adjacent [(:item-id va) rid]
                      :add-direction :before}]]
              [:div {:style {:display "table-row"}}
               [:div {:class "tags column" :style {:display "table-cell"}}

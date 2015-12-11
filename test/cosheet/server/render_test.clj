@@ -198,33 +198,6 @@
                                   [:a :a :a :b :b :b]))
              #{:a3 :b3 :b2})))
 
-(deftest hierarchy-node-to-row-info-test
-  (let [him (let-mutated [him joe] him)
-        bogus-age (first (current-value
-                          (entity/label->elements him "doubtful")))
-        age (first (remove #{bogus-age}
-                           (current-value
-                            (entity/label->elements him "age"))))
-        bogus-age-tag (first (current-value
-                              (entity/label->elements bogus-age 'tag)))
-        age-tag (first (current-value (entity/label->elements age 'tag)))]
-    (is (check (current-value
-                (hierarchy-node-to-row-info
-                 {:depth 0 :top-border :x :bottom-border :y
-                  :info {["age" {'tag 1}] 1}
-                  :cumulative-info {["age" {'tag 1}] 1}
-                  :members [{:item bogus-age
-                             :info-elements [bogus-age-tag]
-                             :info-canonicals [["age" {'tag 1}]]}
-                            {:item age
-                             :info-elements [age-tag]
-                             :info-canonicals [["age" {'tag 1}]]}]}))
-               {:appearance-info {:depth 0 :top-border :x :bottom-border :y}
-                :example-items [bogus-age-tag]
-                :items-with-excluded [[bogus-age [bogus-age-tag]] [age [age-tag]]]
-                :sibling-elements [["age" 'tag]]
-                :affected-items [bogus-age age]}))))
-
 (deftest add-row-header-border-info-test
   (is (check (add-row-header-border-info
               [{:depth 0}

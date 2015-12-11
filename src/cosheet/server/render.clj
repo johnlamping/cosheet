@@ -420,21 +420,44 @@
               (concat result (take count (canonicals-map info))))
             [] info)))
 
-(defn hierarchy-node-to-row-info
-  "Given a flattened hierarcy element, compute the information needed
-  by tag-items-pair-DOM."
-  [node]
-  (let [descendants (hierarchy-node-descendants node)
-        example (first descendants)]
-    {:appearance-info (select-keys node [:depth :for-multiple :with-children
-                                         :top-border :bottom-border])
-     :example-items (items-generating-canonical-info
-                     (:info node)
+(defn tag-label-DOM
+  "Given a flattened hierarchy node with tags as the info,
+  generate DOM for a tag label."
+  [hierarchy-node parent-item parent-key inherited]
+  (let [descendants (hierarchy-node-descendants hierarchy-node)
+        example (first descendants)
+        appearance-info (select-keys hierarchy-node
+                                     [:depth :for-multiple :with-children
+                                      :top-border :bottom-border])
+        example-items (items-generating-canonical-info
+                     (:info hierarchy-node)
                      (:info-elements example) (:info-canonicals example))
-     :items-with-excluded (map #((juxt :item :info-elements) %)
-                               (:members node))
-     :sibling-elements (canonical-set-to-list (:cumulative-info node))
-     :affected-items (map :item descendants)}))
+        affected-items (map :item descendants)]
+    (let [items-referent (if (= (count affected-items) 1)
+                           (item-referent (first affected-items))
+                           (parallel-referent [] affected-items))]
+      (expr row-header-DOM
+        (assoc appearance-info :is-tags true)
+        (order-items example-items)
+        '(nil tag)
+        (first affected-items)
+        (prepend-to-key items-referent parent-key)
+        inherited))))
+
+(defn tag-items-DOM
+  "Given a flattened hierarchy node with tags as the info,
+  generate DOM for the elements."
+  [hierarchy-node parent-item parent-key inherited]
+  (let [descendants (hierarchy-node-descendants hierarchy-node)
+        items-with-excluded (map #((juxt :item :info-elements) %)
+                                 (:members hierarchy-node))
+        sibling-elements (canonical-set-to-list
+                          (:cumulative-info hierarchy-node))
+        affected-items (map :item descendants)]
+    (components-DOM items-with-excluded
+                    (first affected-items)
+                    parent-item parent-key
+                    sibling-elements inherited)))
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
@@ -442,27 +465,13 @@
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
   [hierarchy-node parent-item parent-key inherited]
-  (let [{:keys [appearance-info example-items items-with-excluded
-                sibling-elements affected-items]}
-        (hierarchy-node-to-row-info hierarchy-node)]
-    (expr-let [tags-dom (let [items-referent
-                              (if (= (count affected-items) 1)
-                                (item-referent (first affected-items))
-                                (parallel-referent [] affected-items))]
-                          (expr row-header-DOM
-                            (assoc appearance-info :is-tags true)
-                            (order-items example-items) '(nil tag)
-                            (first affected-items)
-                            (prepend-to-key items-referent parent-key)
-                            inherited))
-               items-dom (components-DOM items-with-excluded
-                                         (first affected-items)
-                                         parent-item parent-key
-                                         sibling-elements inherited)]
-      [:div {:style {:display "table-row"}}
-       (add-attributes tags-dom
-                       {:style {:display "table-cell"}})
-       (add-attributes items-dom {:style {:display "table-cell"}})])))
+  (expr-let [tags-label-dom (tag-label-DOM
+                             hierarchy-node parent-item parent-key inherited)
+             tags-items-dom (tag-items-DOM
+                             hierarchy-node parent-item parent-key inherited)]
+    (into [:div {:style {:display "table-row"}}]
+          (map #(add-attributes % {:style {:display "table-cell"}})
+               [tags-label-dom tags-items-dom]))))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of one node of a row

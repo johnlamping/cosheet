@@ -192,11 +192,10 @@
                :depth 1
                :members [:k]}])))
 
-(deftest items-generating-canonical-info-test
-  (is (check (set (items-generating-canonical-info {:a 1 :b 2}
-                                  [:a1 :a2 :a3 :b1 :b2 :b3]
-                                  [:a :a :a :b :b :b]))
-             #{:a3 :b3 :b2})))
+(deftest canonical-info-to-generating-items-test
+  (is (check (canonical-info-to-generating-items
+               {:a 1 :b 2} [:a1 :a2 :a3 :b1 :b2 :b3] [:a :a :a :b :b :b])
+             (as-set [:a3 :b2 :b3]))))
 
 (deftest add-row-header-border-info-test
   (is (check (add-row-header-border-info
@@ -223,8 +222,10 @@
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
     (is (check
-         (current-value (flattened-items-hierarchy [gender age bogus-age]
-                                                   #{} '(nil tag)))
+         (let [hierarchy (current-value
+                          (items-hierarchy-by-condition
+                           [gender age bogus-age] #{} '(nil tag)))]
+           (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
            :info {}
            :cumulative-info {}

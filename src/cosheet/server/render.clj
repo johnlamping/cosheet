@@ -99,19 +99,6 @@
 ;;; example, a row with a single non-indented item would have all of
 ;;; "column", "full-row", and "item".
 
-(defn condition-specifier?
-  "Return true if an element contributes to specifying that the item
-  it pertains to satisfies a condition (in list form), and doesn't
-  specify any additional information."
-  [element condition]
-  (expr-let [as-list (visible-to-list element)]
-    (some #(= as-list %) (rest condition))))
-
-(defn condition-specifiers
-  "Return the tag specifiers of an entity."
-  [entity condition]
-  (filtered-elements entity #(condition-specifier? % condition)))
-
 (def canonical-to-list)
 
 (defn canonical-set-to-list
@@ -286,14 +273,6 @@
 
 (def item-DOM)
 
-(defn make-component
-  "Make a component dom descriptor, with the given attributes and definition.
-   The attributes must include a key."
-  [attributes definition]
-  (assert (map? attributes))
-  (assert (:key attributes))
-  [:component attributes  definition])
-
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
   a vertical stack of the items. Add a separator between items if specified."
@@ -306,6 +285,27 @@
                    (comp vertical-separated stack-vertical)
                    stack-vertical)
                  doms)))))
+
+(defn make-component
+  "Make a component dom descriptor, with the given attributes and definition.
+   The attributes must include a key."
+  [attributes definition]
+  (assert (map? attributes))
+  (assert (:key attributes))
+  [:component attributes  definition])
+
+(defn condition-specifier?
+  "Return true if an element contributes to specifying that the item
+  it pertains to satisfies a condition (in list form), and doesn't
+  specify any additional information."
+  [element condition]
+  (expr-let [as-list (visible-to-list element)]
+    (some #(= as-list %) (rest condition))))
+
+(defn condition-specifiers
+  "Return the tag specifiers of an entity."
+  [entity condition]
+  (filtered-elements entity #(condition-specifier? % condition)))
 
 (defn condition-component
   "Return the component for an element that satisfies a condition and
@@ -406,19 +406,19 @@
       (add-attributes (vertical-stack item-doms :separators true)
                       {:class "column"}))))
 
-(defn items-generating-canonical-info
+(defn canonical-info-to-generating-items
   "Given a canonical-info-set, a list of items, and a list of the
   canonical-infos of those items, return a list of items whose
   canonical-infos add up to the canonical-info-set."
-  [info items canonicals]
+  [canonical-info items item-canonicals]
   (let [;; A map from canonical-info to a vector of elements
         ;; with that info.
         canonicals-map (reduce (fn [map [item canonical]]
                                  (update-in map [canonical] #(conj % item)))
-                               {} (map vector items canonicals))]
+                               {} (map vector items item-canonicals))]
     (reduce (fn [result [info count]]
               (concat result (take count (canonicals-map info))))
-            [] info)))
+            [] canonical-info)))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
@@ -429,9 +429,9 @@
         appearance-info (select-keys hierarchy-node
                                      [:depth :for-multiple :with-children
                                       :top-border :bottom-border])
-        example-items (items-generating-canonical-info
-                     (:info hierarchy-node)
-                     (:info-elements example) (:info-canonicals example))
+        example-items (canonical-info-to-generating-items
+                       (:info hierarchy-node)
+                       (:info-elements example) (:info-canonicals example))
         affected-items (map :item descendants)]
     (let [items-referent (if (= (count affected-items) 1)
                            (item-referent (first affected-items))
@@ -473,6 +473,28 @@
           (map #(add-attributes % {:style {:display "table-cell"}})
                [tags-label-dom tags-items-dom]))))
 
+(defn items-hierarchy-by-condition
+  "Given items, organize them into a hierarchy by their value
+  on elements matching the condition. Don't merge items that are in
+  do-not-merge."
+  [items do-not-merge condition]
+  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
+             item-maps
+             (expr-seq
+              map
+              (fn [item]
+                (expr-let [info-elements (matching-elements condition item)
+                           info-canonicals (expr-seq map canonical-info
+                                                     info-elements)]
+                  {:item item
+                   :info-elements info-elements
+                   :info-canonicals info-canonicals}))
+              (order-items items))]
+    (hierarchy-by-canonical-info
+     (map (fn [map] [(multiset (:info-canonicals map)) map])
+          item-maps)
+     do-not-merge-subset)))
+
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of one node of a row
   header, add the information about what borders each node in the
@@ -487,10 +509,12 @@
   ;; outermost node it is in. By making nodes always resposible for
   ;; their own top border, we get the border lengths between nodes
   ;; right. Thus, when laying out a row, we need to know:
-  ;;            :depth in the hierarchy, for the indendation
-  ;;       :top-border :full or :indented
-  ;;    :bottom-border :corner, for only the lower left corner
-  ;;     :for-multiple true if this row applies to several items.
+  ;;            :depth  in the hierarchy, for the indendation
+  ;;       :top-border  :full or :indented
+  ;;    :bottom-border  :corner, for only the lower left corner
+  ;;     :for-multiple  true if this row applies to several items.
+  ;; In addition, other processing may add
+  ;;          :is-tags  true if this node holds tags
   [nodes]
   (let [nodes (vec nodes)
         n (count nodes)]
@@ -511,51 +535,34 @@
           (assoc node :for-multiple true)
           node)))))
 
-(defn flattened-items-hierarchy
-  "Given items, organize them into a flattened hierarchy by their value
-  on elements matching the condition. Don't merge items that are in
-  do-not-merge."
-  [items do-not-merge condition]
-  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
-             item-maps
-             (expr-seq
-              map
-              (fn [item]
-                (expr-let [info-elements (matching-elements condition item)
-                           info-canonicals (expr-seq map canonical-info
-                                                     info-elements)]
-                  {:item item
-                   :info-elements info-elements
-                   :info-canonicals info-canonicals}))
-              (order-items items))]
-    (let [hierarchy (hierarchy-by-canonical-info
-                     (map (fn [map] [(multiset (:info-canonicals map)) map])
-                          item-maps)
-                     do-not-merge-subset)]
-      (update-last 
-       (vec (mapcat
-             #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
-             hierarchy))
-       ;; We need to put on a final closing border.
-       #(assoc % :bottom-border :full)))))
+(defn flatten-hierarchy-add-row-header-border-info
+  [hierarchy]
+  (update-last 
+   (vec (mapcat
+         #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
+         hierarchy))
+   ;; We need to put on a final closing border.
+   #(assoc % :bottom-border :full)))
 
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
   [items parent-item parent-key inherited]
-  (expr-let [hierarchy (flattened-items-hierarchy
+  (expr-let [hierarchy (items-hierarchy-by-condition
                         items (:do-not-merge inherited) '(nil tag))
+             flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
+                                  hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM
                                    % parent-item parent-key inherited)
-                       hierarchy)]
+                       flattened-hierarchy)]
     (into [:div {:class "element-table"
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
             (if (every? #(empty? (get-in % [:members 0 :info-elements]))
-                        hierarchy)
+                        flattened-hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
             (update-in (vec row-doms) [(- (count row-doms) 1)]

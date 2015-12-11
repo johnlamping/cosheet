@@ -99,6 +99,25 @@
 ;;; example, a row with a single non-indented item would have all of
 ;;; "column", "full-row", and "item".
 
+(defn orderable-comparator
+  "Compare two sequences each of whose first element is an orderable."
+  [a b]
+  (orderable/earlier? (first a) (first b)))
+
+(defn order-items
+  "Return the items in the proper sort order."
+  [items]
+  (expr-let [order-info
+             (expr-seq map #(entity/label->content % :order) items)]
+    (map second (sort orderable-comparator
+                      (map (fn [order item]
+                             ;; It is possible for an item not to have
+                             ;; order information, especially
+                             ;; temporarily while information is being
+                             ;; propagated. Tolerate that.
+                             (vector (or order orderable/initial) item))
+                           order-info items)))))
+
 (def canonical-to-list)
 
 (defn canonical-set-to-list
@@ -208,9 +227,27 @@
            %)
    (split-by-subset infos-and-item-maps do-not-merge-subset)))
 
-(defn hierarchy-node-descendants
-  [node]
-  (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
+(defn items-hierarchy-by-condition
+  "Given items, organize them into a hierarchy by their value
+  on elements matching the condition. Don't merge items that are in
+  do-not-merge."
+  [items do-not-merge condition]
+  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
+             item-maps
+             (expr-seq
+              map
+              (fn [item]
+                (expr-let [info-elements (matching-elements condition item)
+                           info-canonicals (expr-seq map canonical-info
+                                                     info-elements)]
+                  {:item item
+                   :info-elements info-elements
+                   :info-canonicals info-canonicals}))
+              (order-items items))]
+    (hierarchy-by-canonical-info
+     (map (fn [map] [(multiset (:info-canonicals map)) map])
+          item-maps)
+     do-not-merge-subset)))
 
 (def flatten-hierarchy)
 
@@ -232,24 +269,9 @@
   [hierarchy depth ancestor-info]
   (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
-(defn orderable-comparator
-  "Compare two sequences each of whose first element is an orderable."
-  [a b]
-  (orderable/earlier? (first a) (first b)))
-
-(defn order-items
-  "Return the items in the proper sort order."
-  [items]
-  (expr-let [order-info
-             (expr-seq map #(entity/label->content % :order) items)]
-    (map second (sort orderable-comparator
-                      (map (fn [order item]
-                             ;; It is possible for an item not to have
-                             ;; order information, especially
-                             ;; temporarily while information is being
-                             ;; propagated. Tolerate that.
-                             (vector (or order orderable/initial) item))
-                           order-info items)))))
+(defn hierarchy-node-descendants
+  [node]
+  (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
@@ -325,11 +347,102 @@
                        :row-sibling parent-key}
                       [item-DOM element key (set condition-specs) inherited]))))
 
+(defn components-DOM
+  "Given a list of [item, excluded-elements] pairs, and the first item
+  of this or subsequent rows,
+  generate DOM for a vertical list of a component for each item."
+  [items-with-excluded first-adjacent-item parent-item parent-key
+   sibling-elements inherited]
+  (if (empty? items-with-excluded)
+    (add-attributes (vertical-stack nil :separators true)
+                    {:class "column editable"
+                     :key (prepend-to-key
+                           (elements-referent
+                            parent-item (cons nil sibling-elements))
+                           parent-key)
+                     :add-adjacent (prepend-to-key
+                                   (item-referent first-adjacent-item)
+                                   parent-key)
+                     :add-direction :before})
+    (let [item-doms (map (fn [[item excluded-elements]]
+                           (let [key (prepend-to-key (item-referent item)
+                                                     parent-key)]
+                             (make-component
+                              {:key key :sibling-elements sibling-elements}
+                              [item-DOM
+                               item key (set excluded-elements) inherited])))
+                         items-with-excluded)]
+      (add-attributes (vertical-stack item-doms :separators true)
+                      {:class "column"}))))
+
+(defn canonical-info-to-generating-items
+  "Given a canonical-info-set, a list of items, and a list of the
+  canonical-infos of those items, return a list of items whose
+  canonical-infos add up to the canonical-info-set."
+  [canonical-info items item-canonicals]
+  (let [;; A map from canonical-info to a vector of elements
+        ;; with that info.
+        canonicals-map (reduce (fn [map [item canonical]]
+                                 (update-in map [canonical] #(conj % item)))
+                               {} (map vector items item-canonicals))]
+    (reduce (fn [result [info count]]
+              (concat result (take count (canonicals-map info))))
+            [] canonical-info)))
+
+(defn add-row-header-border-info
+  "Given the flattened hierarchy expansion of one node of a row
+  header, add the information about what borders each node in the
+  expansion should be responsible for."
+  ;; Hierarchies make this a bit tricky. We use a separate table row
+  ;; for each node of the hierarchy, so we can align the header and
+  ;; items for each node. This means that all but the deepest nodes of
+  ;; a hierarchy will be displayed as several rows. A row thus needs
+  ;; to be responsible not only for borders of its node, but also for
+  ;; parts of the borders of nodes it is contained in. In practice,
+  ;; this means that a row needs to handle the left border of the
+  ;; outermost node it is in. By making nodes always resposible for
+  ;; their own top border, we get the border lengths between nodes
+  ;; right. Thus, when laying out a row, we need to know:
+  ;;            :depth  in the hierarchy, for the indendation
+  ;;       :top-border  :full or :indented
+  ;;    :bottom-border  :corner, for only the lower left corner
+  ;;     :for-multiple  true if this row applies to several items.
+  ;; In addition, other processing may add
+  ;;          :is-tags  true if this node holds tags
+  [nodes]
+  (let [nodes (vec nodes)
+        n (count nodes)]
+    (for [i (range n)]
+      (as-> (nodes i) node
+        (if (= i 0)
+          (assoc node :top-border :full)
+          (assoc node :top-border (if (>= (:depth node) 0) :indented :full)))
+        (if (= i (dec n))
+          ;; Don't add a bottom border to the last node, as it will be
+          ;; handled by the top border of the first node of the next
+          ;; flattened hierarchy. But we do need to add curvature.
+          (assoc node :bottom-border :corner) 
+          (if (< (:depth node) (:depth (nodes (+ i 1))))
+            (assoc node :with-children true)
+            node))
+        (if (> (count (:members node)) 1)
+          (assoc node :for-multiple true)
+          node)))))
+
+(defn flatten-hierarchy-add-row-header-border-info
+  [hierarchy]
+  (update-last 
+   (vec (mapcat
+         #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
+         hierarchy))
+   ;; We need to put on a final closing border.
+   #(assoc % :bottom-border :full)))
+
 (defn row-header-DOM
-  "Given information about the appearance of a hierarchy node for a
-  row header, and a sequence of items in it, return a DOM containing
-  components for each of them, wrapped as necessary to give the right
-  appearance."
+  "Given information about the appearance of a flattened hierarchy
+  node for a row header, and a sequence of items in it, return a DOM
+  containing components for each of them, wrapped as necessary to give
+  the right appearance."
   [appearance-info items condition parent-item parent-key inherited]
   (println "generating row-header dom.")
   (assert (not (elements-referent? (first parent-key))))
@@ -377,48 +490,6 @@
                (into {:key elements-key})
                (not= num-items 1)
                (into {:row-sibling parent-key})))))))
-
-(defn components-DOM
-  "Given a list of [item, excluded-elements] pairs, and the first item
-  of this or subsequent rows,
-  generate DOM for a vertical list of a component for each item."
-  [items-with-excluded first-adjacent-item parent-item parent-key
-   sibling-elements inherited]
-  (if (empty? items-with-excluded)
-    (add-attributes (vertical-stack nil :separators true)
-                    {:class "column editable"
-                     :key (prepend-to-key
-                           (elements-referent
-                            parent-item (cons nil sibling-elements))
-                           parent-key)
-                     :add-adjacent (prepend-to-key
-                                   (item-referent first-adjacent-item)
-                                   parent-key)
-                     :add-direction :before})
-    (let [item-doms (map (fn [[item excluded-elements]]
-                           (let [key (prepend-to-key (item-referent item)
-                                                     parent-key)]
-                             (make-component
-                              {:key key :sibling-elements sibling-elements}
-                              [item-DOM
-                               item key (set excluded-elements) inherited])))
-                         items-with-excluded)]
-      (add-attributes (vertical-stack item-doms :separators true)
-                      {:class "column"}))))
-
-(defn canonical-info-to-generating-items
-  "Given a canonical-info-set, a list of items, and a list of the
-  canonical-infos of those items, return a list of items whose
-  canonical-infos add up to the canonical-info-set."
-  [canonical-info items item-canonicals]
-  (let [;; A map from canonical-info to a vector of elements
-        ;; with that info.
-        canonicals-map (reduce (fn [map [item canonical]]
-                                 (update-in map [canonical] #(conj % item)))
-                               {} (map vector items item-canonicals))]
-    (reduce (fn [result [info count]]
-              (concat result (take count (canonicals-map info))))
-            [] canonical-info)))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
@@ -472,77 +543,6 @@
     (into [:div {:style {:display "table-row"}}]
           (map #(add-attributes % {:style {:display "table-cell"}})
                [tags-label-dom tags-items-dom]))))
-
-(defn items-hierarchy-by-condition
-  "Given items, organize them into a hierarchy by their value
-  on elements matching the condition. Don't merge items that are in
-  do-not-merge."
-  [items do-not-merge condition]
-  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
-             item-maps
-             (expr-seq
-              map
-              (fn [item]
-                (expr-let [info-elements (matching-elements condition item)
-                           info-canonicals (expr-seq map canonical-info
-                                                     info-elements)]
-                  {:item item
-                   :info-elements info-elements
-                   :info-canonicals info-canonicals}))
-              (order-items items))]
-    (hierarchy-by-canonical-info
-     (map (fn [map] [(multiset (:info-canonicals map)) map])
-          item-maps)
-     do-not-merge-subset)))
-
-(defn add-row-header-border-info
-  "Given the flattened hierarchy expansion of one node of a row
-  header, add the information about what borders each node in the
-  expansion should be responsible for."
-  ;; Hierarchies make this a bit tricky. We use a separate table row
-  ;; for each node of the hierarchy, so we can align the header and
-  ;; items for each node. This means that all but the deepest nodes of
-  ;; a hierarchy will be displayed as several rows. A row thus needs
-  ;; to be responsible not only for borders of its node, but also for
-  ;; parts of the borders of nodes it is contained in. In practice,
-  ;; this means that a row needs to handle the left border of the
-  ;; outermost node it is in. By making nodes always resposible for
-  ;; their own top border, we get the border lengths between nodes
-  ;; right. Thus, when laying out a row, we need to know:
-  ;;            :depth  in the hierarchy, for the indendation
-  ;;       :top-border  :full or :indented
-  ;;    :bottom-border  :corner, for only the lower left corner
-  ;;     :for-multiple  true if this row applies to several items.
-  ;; In addition, other processing may add
-  ;;          :is-tags  true if this node holds tags
-  [nodes]
-  (let [nodes (vec nodes)
-        n (count nodes)]
-    (for [i (range n)]
-      (as-> (nodes i) node
-        (if (= i 0)
-          (assoc node :top-border :full)
-          (assoc node :top-border (if (>= (:depth node) 0) :indented :full)))
-        (if (= i (dec n))
-          ;; Don't add a bottom border to the last node, as it will be
-          ;; handled by the top border of the first node of the next
-          ;; flattened hierarchy. But we do need to add curvature.
-          (assoc node :bottom-border :corner) 
-          (if (< (:depth node) (:depth (nodes (+ i 1))))
-            (assoc node :with-children true)
-            node))
-        (if (> (count (:members node)) 1)
-          (assoc node :for-multiple true)
-          node)))))
-
-(defn flatten-hierarchy-add-row-header-border-info
-  [hierarchy]
-  (update-last 
-   (vec (mapcat
-         #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
-         hierarchy))
-   ;; We need to put on a final closing border.
-   #(assoc % :bottom-border :full)))
 
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."

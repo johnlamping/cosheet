@@ -192,8 +192,8 @@
                :depth 1
                :members [:k]}])))
 
-(deftest items-for-info-test
-  (is (check (set (items-for-info {:a 1 :b 2}
+(deftest items-generating-canonical-info-test
+  (is (check (set (items-generating-canonical-info {:a 1 :b 2}
                                   [:a1 :a2 :a3 :b1 :b2 :b3]
                                   [:a :a :a :b :b :b]))
              #{:a3 :b3 :b2})))
@@ -219,11 +219,11 @@
                             {:item age
                              :info-elements [age-tag]
                              :info-canonicals [["age" {'tag 1}]]}]}))
-               [{:depth 0 :top-border :x :bottom-border :y}
-                [bogus-age-tag]
-                [[bogus-age [bogus-age-tag]] [age [age-tag]]]
-                [["age" 'tag]]
-                [bogus-age age]]))))
+               {:appearance-info {:depth 0 :top-border :x :bottom-border :y}
+                :example-items [bogus-age-tag]
+                :items-with-excluded [[bogus-age [bogus-age-tag]] [age [age-tag]]]
+                :sibling-elements [["age" 'tag]]
+                :affected-items [bogus-age age]}))))
 
 (deftest add-row-header-border-info-test
   (is (check (add-row-header-border-info

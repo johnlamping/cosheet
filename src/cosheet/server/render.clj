@@ -406,46 +406,15 @@
       (add-attributes (vertical-stack item-doms :separators true)
                       {:class "column"}))))
 
-(defn tag-items-pair-DOM
-  "Given information about the appearance of this node,
-  a list of tag items, a list of pairs of (item, excluded elements),
-  a list of elements (each in list form) that all items must satisfy,
-  and a list of all items that changes to the tags should apply to, in
-  the order they appear,
-  generate DOM for an element table row for the items."
-  ;; TODO: for deep items, use a layout with tag above content to conserve
-  ;; horizontal space.
-  [[appearance-info
-    tag-items items-with-excluded sibling-elements affected-items]
-   parent-item parent-key inherited]
-  (expr-let [tags-dom (let [items-referent
-                            (if (= (count affected-items) 1)
-                              (item-referent (first affected-items))
-                              (parallel-referent [] affected-items))]
-                        (expr row-header-DOM
-                          (assoc appearance-info :is-tags true)
-                          (order-items tag-items) '(nil tag)
-                          (first affected-items)
-                          (prepend-to-key items-referent parent-key)
-                          inherited))
-             items-dom (components-DOM items-with-excluded
-                                       (first affected-items)
-                                       parent-item parent-key
-                                       sibling-elements inherited)]
-    [:div {:style {:display "table-row"}}
-     (add-attributes tags-dom
-                     {:style {:display "table-cell"}})
-     (add-attributes items-dom {:style {:display "table-cell"}})]))
-
-(defn items-for-info
-  "Given a canonical-info-set, a list of items, 
-  and a list of the canonical-infos for those items,
-  return a list of items matching the elements of the set."
+(defn items-generating-canonical-info
+  "Given a canonical-info-set, a list of items, and a list of the
+  canonical-infos of those items, return a list of items whose
+  canonical-infos add up to the canonical-info-set."
   [info items canonicals]
-  (let [;; A map from canonical-info to a vector of tag elements
+  (let [;; A map from canonical-info to a vector of elements
         ;; with that info.
-        canonicals-map (reduce (fn [map [tag canonical]]
-                                 (update-in map [canonical] #(conj % tag)))
+        canonicals-map (reduce (fn [map [item canonical]]
+                                 (update-in map [canonical] #(conj % item)))
                                {} (map vector items canonicals))]
     (reduce (fn [result [info count]]
               (concat result (take count (canonicals-map info))))
@@ -456,18 +425,44 @@
   by tag-items-pair-DOM."
   [node]
   (let [descendants (hierarchy-node-descendants node)
-        example (first descendants)
-        tag-items (items-for-info
-                   (:info node)
-                   (:info-elements example) (:info-canonicals example))
-        items-with-excluded (map #((juxt :item :info-elements) %)
-                                 (:members node))
-        descendant-items (map :item descendants)
-        appearance-info (select-keys node [:depth :for-multiple :with-children
-                                           :top-border :bottom-border])]
-    (let [sibling-elements (canonical-set-to-list (:cumulative-info node))]
-      [appearance-info tag-items items-with-excluded
-       sibling-elements descendant-items])))
+        example (first descendants)]
+    {:appearance-info (select-keys node [:depth :for-multiple :with-children
+                                         :top-border :bottom-border])
+     :example-items (items-generating-canonical-info
+                     (:info node)
+                     (:info-elements example) (:info-canonicals example))
+     :items-with-excluded (map #((juxt :item :info-elements) %)
+                               (:members node))
+     :sibling-elements (canonical-set-to-list (:cumulative-info node))
+     :affected-items (map :item descendants)}))
+
+(defn tag-items-pair-DOM
+  "Given a flattened hierarchy node,
+  generate DOM for an element table row for the items."
+  ;; TODO: for deep items, use a layout with tag above content to conserve
+  ;; horizontal space.
+  [hierarchy-node parent-item parent-key inherited]
+  (let [{:keys [appearance-info example-items items-with-excluded
+                sibling-elements affected-items]}
+        (hierarchy-node-to-row-info hierarchy-node)]
+    (expr-let [tags-dom (let [items-referent
+                              (if (= (count affected-items) 1)
+                                (item-referent (first affected-items))
+                                (parallel-referent [] affected-items))]
+                          (expr row-header-DOM
+                            (assoc appearance-info :is-tags true)
+                            (order-items example-items) '(nil tag)
+                            (first affected-items)
+                            (prepend-to-key items-referent parent-key)
+                            inherited))
+               items-dom (components-DOM items-with-excluded
+                                         (first affected-items)
+                                         parent-item parent-key
+                                         sibling-elements inherited)]
+      [:div {:style {:display "table-row"}}
+       (add-attributes tags-dom
+                       {:style {:display "table-cell"}})
+       (add-attributes items-dom {:style {:display "table-cell"}})])))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of one node of a row
@@ -542,11 +537,10 @@
   [items parent-item parent-key inherited]
   (expr-let [hierarchy (flattened-items-hierarchy
                         items (:do-not-merge inherited) '(nil tag))
-             hierarchy-info (expr-seq map hierarchy-node-to-row-info hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM
                                    % parent-item parent-key inherited)
-                       hierarchy-info)]
+                       hierarchy)]
     (into [:div {:class "element-table"
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]

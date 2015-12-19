@@ -14,6 +14,8 @@
   [expression & {:keys [trace manager-type]
                  :as args
                  :or {manager-type :eval value invalid}}]
+  ;; Avoid some errors that leave no stack trace.
+  (assert ((some-fn ifn? reporter/reporter?) (first expression)))
   (if (or (not= manager-type :eval) (some reporter/reporter? expression))
     (apply reporter/new-reporter
            :expression expression
@@ -77,7 +79,8 @@
   "Given an expression that may evaluate to a sequence of reporters, make
    a reporter whose value is the sequence of corresponding values."
   [& args]
-  `(expr-let [sequence# ~(list* 'expr args)]
+  `(expr-let
+       [sequence# ~(list* 'cosheet.expression/expr args)]
      (when (not (empty? sequence#))
        (new-expression (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))

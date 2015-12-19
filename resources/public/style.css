@@ -190,6 +190,22 @@
     border-bottom-width: 2px;
 }
 
+.column_header_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border-width: 0px 2px 0px 2px;
+    box-sizing: content-box;
+}
+
+.column_header {
+    width: 100px;
+}
+
+.column_header_sequence {
+    display: flex;
+}
+
 /* grayish indicators of places where there is no current content */
 .editable:not(.content-text) {
     background-color: hsl(0, 0%, 95%);

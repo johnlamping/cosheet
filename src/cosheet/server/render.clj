@@ -4,13 +4,14 @@
                      [utils :refer [multiset multiset-diff multiset-union
                                     update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
-                     [debug :refer [simplify-for-print]]
+                     [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes dom-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
-                                         elements-referent parallel-referent
+                                         elements-referent query-referent
+                                         parallel-referent
                                          prepend-to-key elements-referent?
                                          visible-elements filtered-elements
                                          canonicalize-list visible-to-list]])))
@@ -150,11 +151,16 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-;;; A hierarchy, for our purposes here, consists of vector of nodes. A
-;;; node is a map with:
-;;;           :info  A canonical-info-set of the new info at this level.
-;;; :cumulatve-info  A canonical-info-set all info for this node.
-;;;        :members  A vector of members matching the node.
+;;; A hierarchy, for our purposes here, organizes a bunch of "members"
+;;; into a hierarchy based on common "information". The data about
+;;; each member is recorded as a canonical-info-set. The hierarchy
+;;; consists of vector of nodes. All members at or below a hierarchy
+;;; node share all the common information for that node.
+;;; The data for each node consists of
+;;;           :info  A canonical-info-set of the new common info at this node.
+;;; :cumulatve-info  A canonical-info-set all common info for this node.
+;;;        :members  A vector of members exactly matching the cumulative-info
+;;;                  for this node.
 ;;;       :children  An optional vector of child nodes.
 ;;; The :info of a child node only includes the information not
 ;;; reflected in any of its parents. When a hierarchy is flattened,
@@ -163,14 +169,18 @@
 ;;; For example, if a node has :info {:b 1}, and has a parent with
 ;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
 ;;; {:a 1 :b 1}
-;;; As typically used, each member is itself a map, containing
+;;; There are no requirements on members but as typically used,
+;;; each member is itself a map, containing
 ;;;              :item  The item that is the member
 ;;;     :info-elements  The elements of the item that contribute
 ;;;                     to the hierarchy info
 ;;;   :info-canonicals  The canonical-info for all the item in :info-elements
-;;; The :info-canonicals of each member of a flattened node will be the
-;;; same as its :cumulative-info, but a node might not have any
-;;; members, so we still need :cumulative-info.
+;;; For a flattened node, the :cumulative-info for each member will be
+;;; the same as :info-canonicals. But a node might not have any
+;;; members, so we still need :info-canonicals.
+
+;;; TODO: Change hierarchy creation to assume that the member
+;;; has :info-canonicals present.
 
 (defn append-to-hierarchy
   "Given an info and corresponding item, add them to the hierarchy."
@@ -347,6 +357,8 @@
                        :row-sibling parent-key}
                       [item-DOM element key (set condition-specs) inherited]))))
 
+;;; TODO: Split this into the two cases, which makes the arguments
+;;; make more sense.
 (defn components-DOM
   "Given a list of [item, excluded-elements] pairs, and the first item
   of this or subsequent rows,
@@ -438,33 +450,33 @@
    ;; We need to put on a final closing border.
    #(assoc % :bottom-border :full)))
 
-(defn row-header-DOM
+(defn row-header-elements-DOM
   "Given information about the appearance of a flattened hierarchy
-  node for a row header, and a sequence of items in it, return a DOM
+  node for a row header, and a sequence of elements in it, return a DOM
   containing components for each of them, wrapped as necessary to give
   the right appearance."
-  [appearance-info items condition parent-item parent-key inherited]
+  [appearance-info elements condition row-item row-key inherited]
   (println "generating row-header dom.")
-  (assert (not (elements-referent? (first parent-key))))
+  (assert (not (elements-referent? (first row-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
   (expr-let [components
              (expr-seq map #(condition-component
-                             % condition parent-item parent-key inherited)
-                       items)]
-    (let [num-items (count items)
+                             % condition row-item row-key inherited)
+                       elements)]
+    (let [num-elements (count elements)
           elements-key (prepend-to-key
-                        (elements-referent parent-item condition) parent-key)
+                        (elements-referent row-item condition) row-key)
           {:keys [is-tags top-border bottom-border
                   for-multiple with-children depth]} appearance-info]
       (as-> (vertical-stack components :separators true) dom
-        (if (> num-items 1)
+        (if (> num-elements 1)
           (add-attributes dom {:class "stack"})
           dom)
-        (if (empty? items)
+        (if (empty? elements)
           (add-attributes dom {:key elements-key})
           dom)
-        (if (or for-multiple (> num-items 1))
+        (if (or for-multiple (> num-elements 1))
           [:div dom [:div {:class "spacer"}]]
           dom)
         (add-attributes
@@ -472,7 +484,7 @@
          {:class (str "full-row"
                       (when (= top-border :indented) " top-border")
                       (when (= bottom-border :indented) " bottom-border")
-                      (when (empty? items) " editable")
+                      (when (empty? elements) " editable")
                       (when with-children " with-children")
                       (when for-multiple " for-multiple"))})
         (let [depth (:depth appearance-info)]
@@ -486,10 +498,10 @@
                            (when (= top-border :full) " top-border")
                            (when (= bottom-border :full) " bottom-border")
                            (when (= bottom-border :corner) " ll-corner"))}
-               (> num-items 1)
+               (> num-elements 1)
                (into {:key elements-key})
-               (not= num-items 1)
-               (into {:row-sibling parent-key})))))))
+               (not= num-elements 1)
+               (into {:row-sibling row-key})))))))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
@@ -500,33 +512,33 @@
         appearance-info (select-keys hierarchy-node
                                      [:depth :for-multiple :with-children
                                       :top-border :bottom-border])
-        example-items (canonical-info-to-generating-items
-                       (:info hierarchy-node)
-                       (:info-elements example) (:info-canonicals example))
-        affected-items (map :item descendants)]
-    (let [items-referent (if (= (count affected-items) 1)
-                           (item-referent (first affected-items))
-                           (parallel-referent [] affected-items))]
-      (expr row-header-DOM
-        (assoc appearance-info :is-tags true)
-        (order-items example-items)
-        '(nil tag)
-        (first affected-items)
-        (prepend-to-key items-referent parent-key)
-        inherited))))
+        example-elements (canonical-info-to-generating-items
+                          (:info hierarchy-node)
+                          (:info-elements example) (:info-canonicals example))
+        affected-items (map :item descendants)
+        items-referent (if (= (count affected-items) 1)
+                         (item-referent (first affected-items))
+                         (parallel-referent [] affected-items))]
+    (expr row-header-elements-DOM
+      (assoc appearance-info :is-tags true)
+      (order-items example-elements) ; Why we need the expr
+      '(nil tag)
+      (:item example)
+      (prepend-to-key items-referent parent-key)
+      inherited)))
 
 (defn tag-items-DOM
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for the elements."
   [hierarchy-node parent-item parent-key inherited]
-  (let [descendants (hierarchy-node-descendants hierarchy-node)
-        items-with-excluded (map #((juxt :item :info-elements) %)
+  (let [items-with-excluded (map #((juxt :item :info-elements) %)
                                  (:members hierarchy-node))
         sibling-elements (canonical-set-to-list
                           (:cumulative-info hierarchy-node))
-        affected-items (map :item descendants)]
+        first-descendant-item (first (map :item (hierarchy-node-descendants
+                                                 hierarchy-node)))]
     (components-DOM items-with-excluded
-                    (first affected-items)
+                    first-descendant-item
                     parent-item parent-key
                     sibling-elements inherited)))
 
@@ -544,6 +556,8 @@
           (map #(add-attributes % {:style {:display "table-cell"}})
                [tags-label-dom tags-items-dom]))))
 
+;;; TODO: make this use flex boxes, rather than a table,
+;;;       to get the full heights.
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
@@ -568,6 +582,7 @@
             (update-in (vec row-doms) [(- (count row-doms) 1)]
                        #(add-attributes % {:class "last-row"}))))))
 
+;;; TODO: Make this handle an item that needs to be wrapped in some labels.
 (defn item-DOM
   "Return a hiccup representation of DOM, with the given internal key,
    describing an item and all its elements, except the ones in
@@ -598,8 +613,96 @@
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
 
+(defn table-header-elements-DOM
+  "Generate the dom for one node of a table header hierarchy."
+  [elements column-condition parent-item parent-key inherited]
+  (println "generating header elements dom")
+  (assert (not (elements-referent? (first parent-key))))
+  (expr-let [components
+             (expr-seq map
+                       #(condition-component
+                         % column-condition parent-item parent-key inherited)
+                       elements)]
+    (let [num-elements (count elements)
+          elements-key (prepend-to-key
+                        (elements-referent parent-item column-condition)
+                        parent-key)]
+      (as-> (vertical-stack components :separators true) dom
+        (if (> num-elements 1)
+          (add-attributes dom {:class "stack"})
+          dom)
+        (if (empty? elements)
+          (add-attributes dom {:key elements-key})
+          dom)
+        [:div {:class "column-header-container"} dom]
+        ;; TODO: add more appearance info.
+        (add-attributes dom {:class "column tags column_header"})))))
+
+(defn table-header-subtree-DOM
+  "Generate the dom for a subtree of a table header hierarchy.
+  The scope-referent should specify all the items from which
+  this header selects elements."
+  [node column-condition parent-key scope-referent inherited]
+  (println "generating subtree dom" scope-referent)
+  (let [{:keys [info members children]} node
+        width (count (hierarchy-node-descendants node))
+        descendants (hierarchy-node-descendants node)
+        example (first descendants)
+        example-elements (canonical-info-to-generating-items
+                          info 
+                          (:info-elements example) (:info-canonicals example))
+        affected-header-items (map :item descendants)
+        items-referent (parallel-referent
+                        []
+                        ;; TODO: When keys support it, make the header
+                        ;; items trace the entire path, so it will
+                        ;; work inside another parallel.
+                        (vec (cons scope-referent affected-header-items)))
+        node-dom (expr table-header-elements-DOM
+                   (order-items example-elements) ; Why we need the expr
+                   column-condition
+                   (:item example)
+                   (prepend-to-key items-referent parent-key)
+                   inherited)]
+    (if (empty? children)
+      node-dom
+      (let [inherited (update-in inherited [:level] inc)
+            members-referent (parallel-referent
+                              []
+                              ;; TODO: When keys support it, make the header
+                              ;; items trace the entire path, so it will
+                              ;; work inside another parallel.
+                              (vec (cons scope-referent (map :item members))))]
+        [:div node-dom [:div {:class "column_header_sequence"}
+                        (concat
+                         (map #(table-header-elements-DOM
+                                nil
+                                column-condition
+                                (:item example)
+                                (prepend-to-key members-referent parent-key)
+                                inherited)))
+                         (map #(table-header-subtree-DOM
+                                % parent-key scope-referent inherited)
+                              children)]]))))
+
 (defn table-header-DOM
-  [column-elements])
+  "Generate DOM for column headers for the specified templates."
+  [column-templates column-condition key row-referent inherited]
+  (println "generating table header dom")
+  (let [inherited (assoc inherited :level 0)]
+    ;; Unlike row headers for tags, where the header information is
+    ;; computed from the items of the rows, here the header information
+    ;; explicitly provided by the table definition, so the "items" for
+    ;; the hierarchy are the column definitions.
+    ;; TODO: Make this handle column definitions like x: 1, x: 2, x: 3
+    ;; by adding a new step after hierarchy generation that combines
+    ;; elements that have common tags but different values.
+    (expr-let [hierarchy (items-hierarchy-by-condition
+                          column-templates #{} column-condition)]
+      (into [:div {:class "column-header-sequence"}]
+            (map #(table-header-subtree-DOM
+                   % column-condition key row-referent inherited)
+                 hierarchy)))))
 
 (defn table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
@@ -612,16 +715,20 @@
   ;;              this column. The special contens :other means to show
   ;;              everything not shown in any other column.
   ;; TODO: Make there there be an element on a column descriptor that
-  ;;       says how the column is described
+  ;;       says how the column is described, rather than the current '(nil tag)
   [item key inherited]
   (println "Generating DOM for table" (simplify-for-print key))
   (assert (satisfies? entity/StoredEntity item))
   (let [store (:store item)]
-    (expr-let [row-query-item (entity/label->content item :row-query)
-               columns (expr order-items (entity/label->elements item :column))
-               row-query (visible-elements row-query-item)
-               column-descriptions (expr-seq
-                                    (map #(visible-elements (entity/content %))
-                                         columns))
-               row-items (matching-items row-query store)]
-      (let [headers nil]))))
+    (expr-let [row-query-item (entity/label->content item :row-query)]
+      ;; Don't do anything if we don't yet have the table information filled in.
+      (when row-query-item
+        (expr-let [row-query (visible-elements row-query-item)
+                   columns (expr order-items
+                             (entity/label->elements item :column))
+                   column-templates (expr-seq map entity/content columns)
+                   ; row-items (matching-items row-query store)
+                   headers (table-header-DOM column-templates '(nil tag)
+                                             key (query-referent row-query)
+                                             inherited)]
+          headers)))))

@@ -16,6 +16,13 @@
 ;;; dom, or the connection between parent and child component will be
 ;;; lost, and messages between client and server not understood.
 
+;;; TODO: Say that all items in the subject/content nagivation path
+;;; must be present, at least below a parallel, because that is
+;;; necessary to be able to instantiate examplars. Add a new kind of
+;;; referent that is explicitly not part of the content path, to
+;;; indicate visual continment to get uniqueness, without breaking the
+;;; navigation path.
+
 ;;; Keys are sequences. The first element is a referent that specifies
 ;;; the item(s) the DOM reflects, while the rest of the sequence
 ;;; typically forms a key for the parent dom or some other ancestor,
@@ -38,6 +45,9 @@
 ;;; into the item referent would be a mistake, as the referent could
 ;;; then change even though the identity of the item hadn't, causing
 ;;; the key of a component to change unexpectedly.
+
+;;; TODO: Support content for the case when the content is itself an
+;;; item, in which case it is not the first referent.
 
 ;;; A content referent indicates a subnode of an item node that holds
 ;;; its atomic content. Since atomic content nodes don't have
@@ -72,6 +82,10 @@
 ;;; parallel referent, which will be the first referent of the key.
 ;;; But as described below, a parallel referent can itself have
 ;;; another key, which can contain another parallel referent.
+
+;;; TODO: allow parallel referents to take a vector of items as one of
+;;; its parallel referents, not just simple referents. That way,
+;;; different path lengths are supported.
 
 ;;; A parallel referent consists of an exemplar key, and a list of
 ;;; item, query, or elements referents. In the simplest case, the
@@ -228,6 +242,16 @@
                                         (when passes %))
                               elements)]
     (filter identity passed)))
+
+;;; TODO: Replace "visible" with "semantic", because it is what counts
+;;; for matching purposes, not what is displayed. In particular, table
+;;; layouts are certainly visible, but only the contents of the table
+;;; is semantic.
+
+;;; Note that the item that makes an element non-semantic for its
+;;; subject is a semantic part of the element. This makes it possible
+;;; to find a non-semantic element of one item that matches a
+;;; non-semantic element of an exemplar item.
 
 (defn visible-entity?
   "Return true if an entity is visible to the user

@@ -245,21 +245,21 @@
 (def rid (second t1))
 (def root (description->entity rid store))
 
-(deftest row-header-DOM-test
-  (is (check (row-header-DOM {:depth 0 :is-tags true}
-                             nil '(nil tag) root [rid] {})
+(deftest row-header-elements-DOM-test
+  (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
+                                      nil '(nil tag) root [rid] {})
              [:div {:class "full-row editable column tags"
                     :key [[:elements rid [nil 'tag]] rid]
                     :row-sibling [rid]}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" tag)]
-          (expr-let [dom (row-header-DOM {:depth 1
-                                          :is-tags true
-                                          :bottom-border :indented
-                                          :for-multiple true
-                                          :with-children true}
-                                         [fred] '(nil tag) root [rid]
-                                         {:depth 0})
+          (expr-let [dom (row-header-elements-DOM {:depth 1
+                                                   :is-tags true
+                                                   :bottom-border :indented
+                                                   :for-multiple true
+                                                   :with-children true}
+                                                  [fred] '(nil tag) root [rid]
+                                                  {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (check
@@ -276,12 +276,13 @@
   (let [[dom fred fran]
         (let-mutated [fred '("Fred" tag)
                       fran "Fran"]
-          (expr-let [dom (row-header-DOM {:depth 0
-                                          :is-tags true
-                                          :top-border :full
-                                          :bottom-border :corner}
-                                         [fred fran] '(nil tag) root [rid]
-                                         {:depth 1 :do-not-merge #{}})]
+          (expr-let [dom (row-header-elements-DOM
+                          {:depth 0
+                           :is-tags true
+                           :top-border :full
+                           :bottom-border :corner}
+                          [fred fran] '(nil tag) root [rid]
+                          {:depth 1 :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (check
@@ -672,3 +673,14 @@
                [item-DOM
                 vb [(:item-id vb) rid]
                 #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))
+
+(deftest table-DOM-test
+  (let [[dom spec]
+        (let-mutated [spec `("table" ('(:none "row") :row-query)
+                             ((:none ("age" 'tag) (~o1 :order)) :column)
+                             ((:none ("size" 'tag) (~o2 :order)) :column))]
+          (expr-let [dom (table-DOM spec [:age] {:depth 0 :do-not-merge #{}})]
+            [dom spec]))
+        age (first (current-value (entity/label->elements spec o1)))
+        size (first (current-value (entity/label->elements spec o2)))]
+    (println dom)))

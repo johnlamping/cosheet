@@ -61,6 +61,21 @@
                   (let-mutated [test '("age" :a (:b 1) :c)]
                     (expr-seq map to-list
                               (condition-specifiers test '(nil :a :b)))))
+             [:a]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a :b)))))
+             [:a]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a :a :b)))))
+             [:a :a]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (condition-specifiers test '(nil :a :a :b)))))
              [:a])))
 
 (deftest canonical-info-set-test
@@ -229,7 +244,7 @@
          [{:depth 0 :top-border :full :bottom-border :corner
            :info {}
            :cumulative-info {}
-           :members [{:item gender, :info-elements nil, :info-canonicals nil}]}
+           :members [{:item gender, :info-elements '() :info-canonicals nil}]}
           {:depth 0 :for-multiple true :top-border :full :bottom-border :full
            :info {["age" {'tag 1}] 1}
            :cumulative-info {["age" {'tag 1}] 1}
@@ -249,7 +264,7 @@
   (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
                                       nil '(nil tag) root [rid] {})
              [:div {:class "full-row editable column tags"
-                    :key [[:elements rid [nil 'tag]] rid]
+                    :key [[:elements [nil 'tag]] rid]
                     :row-sibling [rid]}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" tag)]
@@ -266,11 +281,11 @@
          dom
          [:div {:class "column tags"}
           [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
-           [:component {:key [(:item-id fred) [:elements rid [nil 'tag]] rid]
+           [:component {:key [(:item-id fred) [:elements [nil 'tag]] rid]
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fred [(:item-id fred) [:elements rid [nil 'tag]] rid]
+             fred [(:item-id fred) [:elements [nil 'tag]] rid]
              #{fred-tag} {:depth 0}]]
            [:div {:class "spacer"}]]])))
   (let [[dom fred fran]
@@ -289,26 +304,26 @@
          dom
          [:div
           {:class "full-row column tags top-border ll-corner"
-           :key [[:elements rid [nil 'tag]] rid]
+           :key [[:elements [nil 'tag]] rid]
            :row-sibling [rid]}
           [:div {:class "stack"}
-           [:component {:key [(:item-id fred) [:elements rid [nil 'tag]] rid]
+           [:component {:key [(:item-id fred) [:elements [nil 'tag]] rid]
                         :style {:display "block"
                                 :width "100%"}
                         :class "vertical-separated"
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fred [(:item-id fred) [:elements rid [nil 'tag]] rid]
+             fred [(:item-id fred) [:elements [nil 'tag]] rid]
              #{fred-tag} {:depth 1 :do-not-merge #{}}]]
-           [:component {:key [(:item-id fran) [:elements rid [nil 'tag]] rid]
+           [:component {:key [(:item-id fran) [:elements [nil 'tag]] rid]
                         :style  {:display "block"
                                  :width "100%"}
                         :class "vertical-separated"
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fran [(:item-id fran) [:elements rid [nil 'tag]] rid]
+             fran [(:item-id fran) [:elements [nil 'tag]] rid]
              #{} {:depth 1 :do-not-merge #{}}]]]
           [:div {:class "spacer"}]]))))
 
@@ -333,7 +348,7 @@
                            (entity/label->elements doubtful 'tag)))
         confidence-tag (first (current-value (entity/elements confidence)))
         tag-key [(:item-id confidence)
-                 [:elements (:item-id doubtful) [nil 'tag]]
+                 [:elements [nil 'tag]]
                  (:item-id doubtful)
                  :age]]
     (is (check
@@ -379,7 +394,7 @@
                     :class "no-tags last-row"}
               [:div {:style {:display "table-cell"}
                      :class "full-row editable column tags top-border bottom-border"
-                     :key [[:elements (:item-id doubtful) [nil 'tag]]
+                     :key [[:elements [nil 'tag]]
                            (:item-id doubtful) :age]
                      :row-sibling [(:item-id doubtful) :age]}]
               [:component {:key [(:item-id doubtful) :age]
@@ -417,7 +432,7 @@
            (reporter/value dom-reporter)
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag)
-                                 [:elements (:item-id bogus-age) [nil 'tag]]]
+                                 [:elements [nil 'tag]]]
                                 [(:item-id bogus-age) (:item-id age)]]]
              [:div {:class "item with-elements" :key [:joe]}
               (any vector?)
@@ -456,7 +471,7 @@
            (reporter/value dom-reporter)
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag)
-                                 [:elements (:item-id bogus-age) [nil 'tag]]]
+                                 [:elements [nil 'tag]]]
                                 [(:item-id bogus-age) (:item-id age)]]]
              [:div {:class "item with-elements" :key [:joe]}
               (any vector?)
@@ -467,7 +482,7 @@
                 [:component (any map?)
                  [item-DOM
                   bogus-age-tag [(:item-id bogus-age-tag)
-                                 [:elements (:item-id bogus-age) [nil 'tag]]
+                                 [:elements [nil 'tag]]
                                  (:item-id bogus-age) :joe]
                   #{bogus-age-tag-spec} (any map?)]]
                 [:component (any map?)
@@ -479,7 +494,7 @@
                 [:component (any map?)
                  [item-DOM
                   age-tag [(:item-id age-tag)
-                           [:elements (:item-id age) [nil 'tag]]
+                           [:elements [nil 'tag]]
                            (:item-id age) :joe]
                   #{age-tag-spec} (any map?)]]
                 [:component (any map?)
@@ -526,7 +541,7 @@
          (reporter/value dom-reporter)
          (let [labels-ref [:parallel
                            [(:item-id L1)
-                            [:elements (:item-id v1) [nil 'tag]]]
+                            [:elements [nil 'tag]]]
                            [(:item-id v1) (:item-id v12) (:item-id v13)]]]
            [:div {:class "item with-elements" :key [:joe]}
             (any vector?)
@@ -552,14 +567,14 @@
                 [:div {:class "column tags" :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L2)
-                         [:elements (:item-id v12) [nil 'tag]]
+                         [:elements [nil 'tag]]
                          (:item-id v12)
                          :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v12) :joe]}
                   [item-DOM
-                   L2 [(:item-id L2) [:elements (:item-id v12) [nil 'tag]]
+                   L2 [(:item-id L2) [:elements [nil 'tag]]
                        (:item-id v12) :joe]
                    #{L2-spec} (any map?)]]]
                 [:component {:key [(:item-id v12) :joe]
@@ -572,13 +587,13 @@
                 [:div {:class "column tags bottom-border"
                        :style {:display "table-cell"}}
                  [:component
-                  {:key [(:item-id L3) [:elements (:item-id v13) [nil 'tag]]
+                  {:key [(:item-id L3) [:elements [nil 'tag]]
                          (:item-id v13) :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v13) :joe]}
                   [item-DOM
-                   L3 [(:item-id L3) [:elements (:item-id v13) [nil 'tag]]
+                   L3 [(:item-id L3) [:elements [nil 'tag]]
                        (:item-id v13) :joe]
                    #{L3-spec} (any map?)]]]
                 [:component {:key [(:item-id v13) :joe]
@@ -620,7 +635,7 @@
     (is (check
          (reporter/value dom-reporter)
          (let [L1s-ref [:parallel
-                        [(:item-id La1) [:elements (:item-id va) [nil 'tag]]]
+                        [(:item-id La1) [:elements [nil 'tag]]]
                         [(:item-id va) (:item-id vb)]]]
            [:div {:class "item with-elements" :key [rid]}
             (any vector?)
@@ -635,7 +650,7 @@
                                [(:item-id va) (:item-id vb)]]
                               rid]}
                [item-DOM La1 [L1s-ref rid] #{La1-spec} (any map?)]]
-              [:div {:key [[:elements rid [nil ["L1" 'tag]]] rid]
+              [:div {:key [[:elements [nil ["L1" 'tag]]] rid]
                      :style {:display "table-cell"}
                      :class "column editable"
                      :add-adjacent [(:item-id va) rid]
@@ -644,14 +659,14 @@
               [:div {:class "column tags" :style {:display "table-cell"}}
                [:component
                 {:key [(:item-id La2)
-                       [:elements (:item-id va) [nil 'tag]]
+                       [:elements [nil 'tag]]
                        (:item-id va) rid]
                  :class "full-row top-border indent-1"
                  :sibling-elements ['tag]
                  :row-sibling [(:item-id va) rid]}
                 [item-DOM
                  La2 [(:item-id La2)
-                      [:elements (:item-id va) [nil 'tag]]
+                      [:elements [nil 'tag]]
                       (:item-id va) rid]
                  #{La2-spec} (any map?)]]]
               [:component {:key [(:item-id va) rid]
@@ -664,7 +679,7 @@
                      :style {:display "table-cell"}
                      :row-sibling [(:item-id vb) rid]}
                [:div {:class "full-row top-border editable indent-1"
-                      :key [[:elements (:item-id vb) [nil 'tag]]
+                      :key [[:elements [nil 'tag]]
                             (:item-id vb) rid]}]]
               [:component {:key [(:item-id vb) rid]
                            :style {:display "table-cell"}
@@ -675,12 +690,50 @@
                 #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))
 
 (deftest table-DOM-test
-  (let [[dom spec]
-        (let-mutated [spec `("table" ('(:none "row") :row-query)
-                             ((:none ("age" 'tag) (~o1 :order)) :column)
-                             ((:none ("size" 'tag) (~o2 :order)) :column))]
-          (expr-let [dom (table-DOM spec [:age] {:depth 0 :do-not-merge #{}})]
-            [dom spec]))
-        age (first (current-value (entity/label->elements spec o1)))
-        size (first (current-value (entity/label->elements spec o2)))]
-    (println dom)))
+  (let [[dom table him her]
+        (let-mutated [table `("table"
+                              ((:none (:none "age")) :row-query)
+                              ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
+                              ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
+                      him joe
+                      her jane]
+          (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
+            [dom table him her]))
+        query (current-value (entity/label->content table :row-query))
+        age (first (current-value (entity/label->elements table :c1)))
+        age-content (current-value (entity/content age))
+        age-tag (first
+                 (current-value (entity/label->elements age-content 'tag)))
+        age-tag-spec (first (current-value (entity/elements age-tag)))
+        size (first (current-value (entity/label->elements table :c2)))]
+    (println dom)
+    (println age)
+    (println age-content)
+    (println "row query" (current-value (entity/to-list query)))
+    (is (check
+         dom
+         (let [age-header-key [[:parallel
+                                [(:item-id age-tag)
+                                 [:elements '(nil tag)]]
+                                [[:query (:item-id query)]
+                                 (:item-id age-content)]]
+                               :foo]]
+           [:div {:class "table"}
+            [:div {:class "column_header_sequence"}
+             [:div {:class "column_header_container column tags column_header"}
+              [:component {:key age-header-key
+                           ;; TODO: Shouldn't have a row sibling.
+                           :row-sibling [[:parallel
+                                          []
+                                          [[:query (:item-id query)]
+                                           (:item-id age-content)]]
+                                         :foo]
+                           :sibling-elements '(tag)}
+               [item-DOM
+                age-tag age-header-key #{age-tag-spec}
+                {:level 0, :depth 0, :do-not-merge #{}}]]
+              (any)]
+             (any)]
+            ;; TODO: check out first row.
+            (any)
+            (any)])))))

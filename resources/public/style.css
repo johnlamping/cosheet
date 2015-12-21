@@ -195,7 +195,6 @@
     flex-direction: column;
     justify-content: flex-end;
     border-width: 0px 2px 0px 2px;
-    box-sizing: content-box;
 }
 
 .column_header {
@@ -203,6 +202,15 @@
 }
 
 .column_header_sequence {
+    display: flex;
+}
+
+.table_cell {
+    width: 100px;
+    border-width: 0px 0px 2px 2px;
+}
+
+.table_row {
     display: flex;
 }
 

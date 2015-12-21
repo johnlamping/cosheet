@@ -263,7 +263,7 @@
           (let [items (key->items store (remove-first-primitive-referent key))
                 attributes (key->attributes dom-tracker key)
                 adjacent-key (:add-adjacent attributes)
-                [_ subject condition] first-primitive
+                [_ condition] first-primitive
                 model-entity (cons to (rest condition))
                 [new-store new-id]
                 (if adjacent-key

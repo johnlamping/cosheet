@@ -13,30 +13,34 @@
 ;;; uniqueness is achived by handled by having keys indicate not only
 ;;; the item(s), but also the path of containment in the dom. The key
 ;;; of a component must not change throughout the life of its parent
-;;; dom, or the connection between parent and child component will be
-;;; lost, and messages between client and server not understood.
-
-;;; TODO: Say that all items in the subject/content nagivation path
-;;; must be present, at least below a parallel, because that is
-;;; necessary to be able to instantiate examplars. Add a new kind of
-;;; referent that is explicitly not part of the content path, to
-;;; indicate visual continment to get uniqueness, without breaking the
-;;; navigation path.
+;;; dom, because we keep a mapping between client DOM ids and server keys,
+;;; which will be broken if the key changes.
 
 ;;; Keys are sequences. The first element is a referent that specifies
-;;; the item(s) the DOM reflects, while the rest of the sequence
-;;; typically forms a key for the parent dom or some other ancestor,
-;;; enough to make the overall key unique, and possibly to provide
-;;; additional contextual information for action interpretation.
+;;; the item(s) the key refers to, while the rest of the sequence
+;;; gives a context for those items. Each referent along the key that
+;;; refers to items must be the next step up the subject/content
+;;; hierarchy. Elements referents rely on this to find their subject,
+;;; and parallel referents rely on it to be able to instantiate their
+;;; exemplar keys into multiple examples. Additional information, in
+;;; the form of comment referents, may make the key unique, even among
+;;; keys that refer to the same item(s).
 
 ;;; There are several kinds of referents
 ;;;        item: <an item-id>
+;;;     comment: [:comment <information>
 ;;;     content: [:content]
 ;;;       group: [:group <An item-id of the group, typically the first>]
 ;;;       query: [:query <condition>]
-;;;    elements: [:elements <item-id> <condition>]
+;;;    elements: [:elements <condition>]
 ;;;    parallel: [:parallel <list of exemplar referents>
 ;;;                         <list of item, query, or elements referents>]
+
+;;; Query, elements, and parallel reverents inherently indicate
+;;; multiple items. A key can have at most one of them, which must be
+;;; the first referent of the key.  As described below, however, a
+;;; parallel referent can itself have another key, which can contain
+;;; another multiple item referent.
 
 ;;; An item referent indicates a dom node that describes a particular
 ;;; item. Typically, a dom that refers to an item will additionally
@@ -48,6 +52,10 @@
 
 ;;; TODO: Support content for the case when the content is itself an
 ;;; item, in which case it is not the first referent.
+
+;;; A comment referent does not refer to an item, and has no effect on
+;;; what the key refers to. It is used to make a key unique among
+;;; other keys that refer to the same item.
 
 ;;; A content referent indicates a subnode of an item node that holds
 ;;; its atomic content. Since atomic content nodes don't have
@@ -65,23 +73,20 @@
 ;;; to find all the items for their rows.
 
 ;;; An elements referent indicates a dom node that holds those
-;;; elements of the given subject that satisfy the given condition,
-;;; which is either an item id or the list form of an element. Element
-;;; referents are used for tag nodes, since they show all tags of the
-;;; subject, and for cells of a table, if the table columns are
-;;; conditions. In contrast to a group node, a condition node might be
-;;; empty, or two sibling condition nodes might both show the same
-;;; item.
+;;; elements that satisfy the given condition and whose subject is
+;;; what the later part of the key refers to. The condition is either
+;;; an item id or the list form of an element. Element referents are
+;;; used for tag nodes, since they show all tags of the subject, and
+;;; for cells of a table, if the table columns are conditions. In
+;;; contrast to a group node, a condition node might be empty, or two
+;;; sibling condition nodes might both show the same item.
 
 ;;; A parallel referent stands for a set of items. Its prototypical use
 ;;; is when the tags of several items would be displayed identically,
 ;;; and the display of the tags is collapsed into a single dom node. A
 ;;; change to that node should change tags for each of the items. The
 ;;; parallel referent's job is to indicate the set of items
-;;; corresponding to those parallel tags. A key can have at most one
-;;; parallel referent, which will be the first referent of the key.
-;;; But as described below, a parallel referent can itself have
-;;; another key, which can contain another parallel referent.
+;;; corresponding to those parallel tags.
 
 ;;; TODO: allow parallel referents to take a vector of items as one of
 ;;; its parallel referents, not just simple referents. That way,
@@ -112,6 +117,9 @@
 (defn item-referent? [referent]
   (and referent (not (sequential? referent))))
 
+(defn comment-referent? [referent]
+  (and (sequential? referent) (= ( first referent) :comment)))
+
 (defn content-referent? [referent]
   (and (sequential? referent) (= ( first referent) :content)))
 
@@ -138,28 +146,32 @@
   (assert (satisfies? StoredEntity item))
   (:item-id item))
 
+(defn comment-referent
+  "Create a content referent."
+  [info]
+  [:comment info])
+
 (defn content-referent
-  "Create a content referent"
+  "Create a content referent."
   []
   [:content])
 
 (defn query-referent
-  "Create an query referent"
+  "Create an query referent."
   [condition]
   [:query (if (satisfies? StoredEntity condition)
             (:item-id condition)
             condition)])
 
 (defn elements-referent
-  "Create an elements referent"
-  [subject condition]
-  (assert (satisfies? StoredEntity subject))
-  [:elements (:item-id subject) (if (satisfies? StoredEntity condition)
-                                  (:item-id condition)
-                                  condition)])
+  "Create an elements referent."
+  [condition]
+  [:elements (if (satisfies? StoredEntity condition)
+               (:item-id condition)
+               condition)])
 
 (defn parallel-referent
-  "Create a parallel referent"
+  "Create a parallel referent."
   [exemplar parallel-referents]
   (doseq [referent exemplar] (assert (referent? referent)))
   (doseq [x parallel-referents]
@@ -169,7 +181,7 @@
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant
-  that a parallel referent can only occur in first position."
+  that a parallel referent may only occur in first position."
   [referent key]
   (let [initial (first key)]
     (vec
@@ -186,9 +198,7 @@
   [key]
   (when key
     (let [removed (if (content-referent? (first key)) (rest key) key)]
-      (vec (cons (first removed)
-                 (filter (some-fn item-referent? parallel-referent?)
-                         (rest removed)))))))
+      (vec (remove comment-referent? removed)))))
 
 (defn first-primitive-referent
   "Return the first non-parallel referent of a key, recursing through
@@ -234,14 +244,20 @@
             true
             rest-items))))
 
+(defn filtered-items
+  "Run the filter on each of the items,
+  returning the items for which it is true."
+  [condition items]
+  (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
+                                     (when passes %))
+                              items)]
+    (filter identity passed)))
+
 (defn filtered-elements
   "Return a seq of all elements of the entity that satisfy the condition."
   [entity condition]
-  (expr-let [elements (entity/elements entity)
-             passed (expr-seq map #(expr-let [passes (condition %)]
-                                        (when passes %))
-                              elements)]
-    (filter identity passed)))
+  (expr-let [elements (entity/elements entity)]
+    (filtered-items condition elements)))
 
 ;;; TODO: Replace "visible" with "semantic", because it is what counts
 ;;; for matching purposes, not what is displayed. In particular, table
@@ -325,13 +341,13 @@
 (def instantiate-referent)
 
 (defn instantiate-parallel-referent
-  [immutable-store group referent item-id-instantiator]
+  [immutable-store group referent parent item-id-instantiator]
   (let [[type exemplar parallel-referents] referent
         exemplar-referents (subject-path-referents exemplar)]
     (assert (= type :parallel))
     (let [instantiated-items
           (mapcat #(instantiate-referent
-                    immutable-store false % item-id-instantiator)
+                    immutable-store false % parent item-id-instantiator)
                   parallel-referents)]
       (if (empty? exemplar)
         (if group
@@ -339,6 +355,7 @@
           instantiated-items)
         (mapcat (partial instantiate-exemplar
                          immutable-store group exemplar-referents)
+                instantiated-items
                 (map (fn [item]
                        #(instantiate-exemplar-item-id immutable-store % item))
                      instantiated-items))))))
@@ -352,10 +369,10 @@
     condition))
 
 (defn instantiate-referent
-  [immutable-store group referent item-id-instantiator]
+  [immutable-store group referent parent item-id-instantiator]
   (if (parallel-referent? referent)
     (instantiate-parallel-referent
-     immutable-store group referent item-id-instantiator)
+     immutable-store group referent parent item-id-instantiator)
     (let [items
           (case (referent-type referent)
             :item (when-let [item (item-id-instantiator referent)] [item])
@@ -363,41 +380,52 @@
                      (matching-items
                       (condition-as-list condition item-id-instantiator)
                       immutable-store))
-            :elements (let [[_ item-id condition] referent]
-                        (when-let [item (item-id-instantiator item-id)]
-                          (matching-elements
+            :elements (let [[_ condition] referent]
+                        (matching-elements
                            (condition-as-list condition item-id-instantiator)
-                           item))))]
+                           parent)))]
       (if group (when items [items]) items))))
 
 (defn instantiate-exemplar
-  "Given a store, an exemplar, and a function from item-id to
-  immutable entity, instantiate the exemplar with respect to the
-  function, returning the sequence of items matched, or a sequence of
-  groups of items if group is true. The exemplar must have been pruned
-  to only referents that refer to items.
-  (The groups are all the items returned by the ultimate first referent.)"
-  [immutable-store group exemplar item-id-instantiator]
+  "Given a store, an exemplar, a parent item, and a function from
+  item-id to immutable entity, instantiate the exemplar with respect
+  to the function, returning the sequence of items matched, or a
+  sequence of groups of items if group is true. The exemplar must have
+  been pruned to only referents that refer to items. (The groups are
+  all the items returned by the ultimate first referent.)"
+  [immutable-store group exemplar parent item-id-instantiator]
   (assert (vector? exemplar))  ; So peek and pop take from end.
   (let [last-referent (peek exemplar)
         remainder (pop exemplar) ]
     (if (empty? remainder)
       (instantiate-referent
-       immutable-store group last-referent item-id-instantiator)
+       immutable-store group last-referent parent item-id-instantiator)
       (do (assert (item-referent? last-referent))
           (when-let [item (item-id-instantiator last-referent)]
             (instantiate-exemplar
              immutable-store group remainder
-             #(instantiate-exemplar-item-id immutable-store % item)))))))
+             item #(instantiate-exemplar-item-id immutable-store % item)))))))
+
+(defn key->items-or-item-groups
+  "Return the list of items or groups of items that a key describes.
+  The store must be immutable."
+  [immutable-store key group]
+  (let [content-removed (remove-content-referent key)
+        ;; We include at least one item referent, to make sure we have
+        ;; a parent item for the first referent to make use of.
+        sufficient-key (if (item-referent? (first key))
+                         [(first key)]
+                         (vec (take 2 key)))]
+    (instantiate-exemplar
+     immutable-store group sufficient-key nil
+     #(when (id-valid? immutable-store %)
+        (description->entity % immutable-store)))))
 
 (defn key->items
   "Return the list of items that a key describes.
   The store must be immutable."
   [immutable-store key]
-  (instantiate-exemplar
-   immutable-store false [(first (remove-content-referent key))]
-   #(when (id-valid? immutable-store %)
-      (description->entity % immutable-store))))
+  (key->items-or-item-groups immutable-store key false))
 
 (defn key->item-groups
   "Given a key, return a list of the groups of items it describes.
@@ -406,7 +434,4 @@
   Otherwise, each item is its own group.
   The store must be immutable."
   [immutable-store key]
-  (instantiate-exemplar
-   immutable-store true [(first (remove-content-referent key))]
-   #(when (id-valid? immutable-store %)
-      (description->entity % immutable-store))))
+  (key->items-or-item-groups immutable-store key true))

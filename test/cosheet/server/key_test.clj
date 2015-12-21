@@ -10,7 +10,8 @@
                      [store-impl :refer [->ItemId]]
                      [store-utils :refer [add-entity]]
                      [expression :refer [expr expr-let expr-seq]]
-                     [debug :refer [let-mutated]])
+                     [debug :refer [let-mutated]]
+                     [test-utils :refer [check any as-set]])
             (cosheet.server [key :refer :all])
             ; :reload
             ))
@@ -91,27 +92,30 @@
 
 (deftest subject-path-referents-test
   (let [id (->ItemId "a")]
-    (is (= (subject-path-referents
-            [[:content]
-             [:query :q]
-             [:parallel [:a :b] :b]
-             [:content]
-             [:group "a"]
-             [:elements :b :c]
-             [:query :q]
-             id])
-           [[:query :q]
-            [:parallel [:a :b] :b]
-            id]))
-    (is (= (subject-path-referents
-            [[:parallel [:a :b] :b]
-             [:content]
-             [:group "a"]
-             [:elements :b :c]
-             [:query :q]
-             id])
-           [[:parallel [:a :b] :b]
-            id]))))
+    (is (check (subject-path-referents
+                [(content-referent)
+                 (comment-referent "comment")
+                 (parallel-referent [:a :b] [:c])
+                 (content-referent)
+                 [:elements :c]
+                 (query-referent :q)
+                 id])
+               [[:parallel [:a :b] [:c]]
+                [:content]
+                [:elements :c]
+                [:query :q]
+                id]))
+    (is (check (subject-path-referents            
+                [(parallel-referent [:a :b] [:c])
+                 (content-referent)
+                 [:elements :c]
+                 (query-referent :q)
+                 id])
+               [[:parallel [:a :b] [:c]]
+                [:content]
+                [:elements :c]
+                [:query :q]
+                id]))))
 
 (deftest visible-test
   (let [visible (let-mutated [him joe-list]
@@ -141,107 +145,119 @@
         (fn [item] #(instantiate-exemplar-item-id store % item))]
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-male)]
-                                 (make-instantiator joe))
+                                 joe (make-instantiator joe))
            [joe-male]))
     (is (empty? (instantiate-exemplar store false
                                       [(:item-id joe-male)]
-                                      (make-instantiator jane))))
+                                      jane (make-instantiator jane))))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator jane))
+                                 jane (make-instantiator jane))
            [jane-age]))
     (is (= (instantiate-exemplar store false [(:item-id jane-age)]
-                                 (make-instantiator joe))
+                                 joe (make-instantiator joe))
            [joe-age]))
     (is (= (instantiate-exemplar store false
                                  [(:item-id joe-age-tag)
                                               (:item-id joe-age)]
-                                 (make-instantiator jane))
+                                 jane (make-instantiator jane))
            [jane-age-tag]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel [] [(:item-id joe-male)
                                                  (:item-id joe-age)]]]
-                                 (make-instantiator joe))
+                                 joe (make-instantiator joe))
            [joe-male joe-age]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel
                                    [(:item-id joe-age-tag)]
                                    [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe))
+                                 joe (make-instantiator joe))
            [joe-age-tag]))
     (is (= (instantiate-exemplar store false
                                  [[:parallel
                                    [[:parallel [] [(:item-id joe-age-tag)]]]
                                    [(:item-id joe-male) (:item-id joe-age)]]]
-                                 (make-instantiator joe))
+                                 joe (make-instantiator joe))
            [joe-age-tag]))
     (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] (make-instantiator joe))
+            store true [(:item-id joe-male)] joe (make-instantiator joe))
            [[joe-male]]))
     (is (empty? (instantiate-exemplar
-                 store true [(:item-id joe-male)] (make-instantiator jane))))
+                 store true [(:item-id joe-male)] jane (make-instantiator jane))))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator jane))
+            store true [(:item-id jane-age)] jane (make-instantiator jane))
            [[jane-age]]))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] (make-instantiator joe))
+            store true [(:item-id jane-age)] joe (make-instantiator joe))
            [[joe-age]]))
     (is (= (instantiate-exemplar
             store true
             [(:item-id joe-age-tag) (:item-id joe-age)]
-            (make-instantiator jane))
+            jane (make-instantiator jane))
            [[jane-age-tag]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel [] [(:item-id joe-male)
                             (:item-id joe-age)]]]
-            (make-instantiator joe))
+            joe (make-instantiator joe))
            [[joe-male joe-age]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
               [(:item-id joe-age-tag)]
               [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe))
+            joe (make-instantiator joe))
            [[joe-age-tag]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
               [(parallel-referent [] [joe-age-tag])]
               [(:item-id joe-male) (:item-id joe-age)]]]
-            (make-instantiator joe))
+            joe (make-instantiator joe))
            [[joe-age-tag]]))
     ;; Try a query referent
-    (is (= (set (instantiate-exemplar
-                 store false
-                 [(query-referent '(nil (nil "age")))]
-                 #(description->entity % store)))
-           #{joe jane}))
+    (is (check (instantiate-exemplar
+                store false
+                [(query-referent '(nil (nil "age")))]
+                nil #(description->entity % store))
+               (as-set [joe jane])))
     ;; With an item as the condition
-    (is (= (set (instantiate-exemplar
-                 store false
-                 [(query-referent joe-age)]
-                 #(description->entity % store)))
-           #{joe-age jane-age}))
+    (is (check (instantiate-exemplar
+                store false
+                [(query-referent joe-age)]
+                nil #(description->entity % store))
+               (as-set [joe-age jane-age])))
     ;; Try an element referent
-    (is (= (set (instantiate-exemplar
-                 store false
-                 [(elements-referent joe '(nil "age"))]
-                 #(description->entity % store)))
-           #{joe-age joe-bogus-age}))
+    (is (check (instantiate-exemplar
+                store false
+                [(elements-referent '(nil "age")) (item-referent joe)]
+                nil #(description->entity % store))
+               (as-set [joe-age joe-bogus-age])))
     ;; With an item as the condition
-    (is (= (set (instantiate-exemplar
-                 store false
-                 [(elements-referent joe jane-age)]
-                 #(description->entity % store)))
-           #{joe-age}))
+    (is (= (instantiate-exemplar
+                store false
+                [(elements-referent jane-age) (item-referent joe)]
+                nil #(description->entity % store))
+           [joe-age]))
     ;; Try a parallel referent with an elements referent as its referents
-    (is (= (map set (instantiate-exemplar
-                     store true
-                     [(parallel-referent
-                       []
-                       [(elements-referent joe '(nil "age"))])]
-                     #(description->entity % store)))
-           [#{joe-age joe-bogus-age}]))))
+    (is (check (instantiate-exemplar
+                store true
+                [(parallel-referent
+                  []
+                  [(elements-referent '(nil "age"))])
+                 (item-referent joe)]
+                nil #(description->entity % store))
+               [(as-set [joe-age joe-bogus-age])]))
+    ;; Try a parallel referent with another parallel referent as its referents.
+    (is (check (instantiate-exemplar
+                store false
+                [(parallel-referent
+                  [(elements-referent '(nil "age"))]
+                  [(parallel-referent
+                    []
+                    [(query-referent '(nil (nil "age")))])])]
+                nil #(description->entity % store))
+               (as-set [joe-age joe-bogus-age jane-age])))
+    ))
 
 (deftest key->items-test
   (is (= (key->items store [joe-id]) [joe]))

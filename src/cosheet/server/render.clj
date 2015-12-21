@@ -11,9 +11,9 @@
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
                                          elements-referent query-referent
-                                         parallel-referent
+                                         parallel-referent visible-entity?
                                          prepend-to-key elements-referent?
-                                         visible-elements filtered-elements
+                                         visible-elements filtered-items
                                          canonicalize-list visible-to-list]])))
 
 ;;; Code to create hiccup style dom for a database entity.
@@ -151,6 +151,32 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
+(defn condition-specifiers
+  "Return a sequence of elements of an entity sufficient to make it
+  satisfy the condition and nothing extra. The condition must be in list form.
+  and have a nil content.
+  If part of a condition is not satisfied by any element, ignore that part."
+  [entity condition]
+  (assert (and (sequential? condition)
+               (not (empty? condition))
+               (nil? (first condition))))
+  (println "condition specifiers for" condition)
+  ;; Both the elements and the condition might have repeated items,
+  ;; so we have to keep track of what has been used.
+  (expr-let [elements (entity/elements entity)
+             canonical-elements (expr-seq map canonical-info elements)]
+    (let [elements-map (reduce (fn [elements-map [element canonical]]
+                                 (update-in elements-map [canonical]
+                                            #(conj % element)))
+                               {} (map vector elements canonical-elements))]
+      (first (reduce (fn [[result elements-map] sub-condition]
+                       (let [canonical (canonical-info sub-condition)]
+                         (if (empty? (get elements-map canonical))
+                           [result elements-map]
+                           [(conj result (peek (elements-map canonical)))
+                            (update-in elements-map [canonical] pop)])))
+                     [[] elements-map] (rest condition))))))
+
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
 ;;; into a hierarchy based on common "information". The data about
 ;;; each member is recorded as a canonical-info-set. The hierarchy
@@ -248,10 +274,12 @@
               map
               (fn [item]
                 (expr-let [info-elements (matching-elements condition item)
+                           visible-info-elements (filtered-items
+                                                  visible-entity? info-elements)
                            info-canonicals (expr-seq map canonical-info
-                                                     info-elements)]
+                                                     visible-info-elements)]
                   {:item item
-                   :info-elements info-elements
+                   :info-elements visible-info-elements
                    :info-canonicals info-canonicals}))
               (order-items items))]
     (hierarchy-by-canonical-info
@@ -326,23 +354,11 @@
   (assert (:key attributes))
   [:component attributes  definition])
 
-(defn condition-specifier?
-  "Return true if an element contributes to specifying that the item
-  it pertains to satisfies a condition (in list form), and doesn't
-  specify any additional information."
-  [element condition]
-  (expr-let [as-list (visible-to-list element)]
-    (some #(= as-list %) (rest condition))))
-
-(defn condition-specifiers
-  "Return the tag specifiers of an entity."
-  [entity condition]
-  (filtered-elements entity #(condition-specifier? % condition)))
-
 (defn condition-component
   "Return the component for an element that satisfies a condition and
   is displayed under the condition, rather than under its parent."
   [element condition parent-item parent-key inherited]
+  (println "condition-component for" condition)
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-specifiers element condition)]
     (let [key (->> parent-key
@@ -350,33 +366,39 @@
                    ;; would have been if this element were displayed
                    ;; under its parent's component.
                    ;; Because it might have been in that situation.
-                   (prepend-to-key (elements-referent parent-item condition))
+                   (prepend-to-key (elements-referent condition))
                    (prepend-to-key (item-referent element)))]      
       (make-component {:key key
                        :sibling-elements (rest condition) 
                        :row-sibling parent-key}
                       [item-DOM element key (set condition-specs) inherited]))))
 
-;;; TODO: Split this into the two cases, which makes the arguments
-;;; make more sense.
+(defn empty-DOM
+  "Generate dom for an empty editable cell. A map may be provided so
+  that when content is added it will be put adjacent to the specified
+  item in the specified direction."
+  [parent-item parent-key sibling-elements inherited
+   & {:keys [adjacent-item adjacent-direction]
+      :or {adjacent-item nil adjacent-direction nil}}]
+  (when adjacent-item
+    (assert (#{:before :after} adjacent-direction)))
+  (add-attributes (vertical-stack nil)
+                  (cond-> {:class "column editable"
+                           :key (prepend-to-key
+                                 (elements-referent (cons nil sibling-elements))
+                                 parent-key)}
+                    adjacent-item
+                    (assoc :add-adjacent (prepend-to-key
+                                          (item-referent adjacent-item)
+                                          parent-key)
+                           :add-direction adjacent-direction))))
+
 (defn components-DOM
-  "Given a list of [item, excluded-elements] pairs, and the first item
-  of this or subsequent rows,
+  "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item."
-  [items-with-excluded first-adjacent-item parent-item parent-key
-   sibling-elements inherited]
-  (if (empty? items-with-excluded)
-    (add-attributes (vertical-stack nil :separators true)
-                    {:class "column editable"
-                     :key (prepend-to-key
-                           (elements-referent
-                            parent-item (cons nil sibling-elements))
-                           parent-key)
-                     :add-adjacent (prepend-to-key
-                                   (item-referent first-adjacent-item)
-                                   parent-key)
-                     :add-direction :before})
-    (let [item-doms (map (fn [[item excluded-elements]]
+  [items-with-excluded parent-key sibling-elements inherited]
+  (assert (not (empty? items-with-excluded)))
+  (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
                                                      parent-key)]
                              (make-component
@@ -385,7 +407,7 @@
                                item key (set excluded-elements) inherited])))
                          items-with-excluded)]
       (add-attributes (vertical-stack item-doms :separators true)
-                      {:class "column"}))))
+                      {:class "column"})))
 
 (defn canonical-info-to-generating-items
   "Given a canonical-info-set, a list of items, and a list of the
@@ -402,18 +424,18 @@
             [] canonical-info)))
 
 (defn add-row-header-border-info
-  "Given the flattened hierarchy expansion of one node of a row
+  "Given the flattened hierarchy expansion of a top level node of a row
   header, add the information about what borders each node in the
   expansion should be responsible for."
   ;; Hierarchies make this a bit tricky. We use a separate table row
   ;; for each node of the hierarchy, so we can align the header and
   ;; items for each node. This means that all but the deepest nodes of
-  ;; a hierarchy will be displayed as several rows. A row thus needs
-  ;; to be responsible not only for borders of its node, but also for
-  ;; parts of the borders of nodes it is contained in. In practice,
-  ;; this means that a row needs to handle the left border of the
-  ;; outermost node it is in. By making nodes always resposible for
-  ;; their own top border, we get the border lengths between nodes
+  ;; a hierarchy will be displayed as several rows of the table. A row
+  ;; thus needs to be responsible not only for borders of its node,
+  ;; but also for parts of the borders of nodes it is contained in. In
+  ;; practice, this means that a row needs to handle the left border
+  ;; of the outermost node it is in. By making nodes always resposible
+  ;; for their own top border, we get the border lengths between nodes
   ;; right. Thus, when laying out a row, we need to know:
   ;;            :depth  in the hierarchy, for the indendation
   ;;       :top-border  :full or :indented
@@ -466,7 +488,7 @@
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
-                        (elements-referent row-item condition) row-key)
+                        (elements-referent condition) row-key)
           {:keys [is-tags top-border bottom-border
                   for-multiple with-children depth]} appearance-info]
       (as-> (vertical-stack components :separators true) dom
@@ -534,13 +556,14 @@
   (let [items-with-excluded (map #((juxt :item :info-elements) %)
                                  (:members hierarchy-node))
         sibling-elements (canonical-set-to-list
-                          (:cumulative-info hierarchy-node))
-        first-descendant-item (first (map :item (hierarchy-node-descendants
-                                                 hierarchy-node)))]
-    (components-DOM items-with-excluded
-                    first-descendant-item
-                    parent-item parent-key
-                    sibling-elements inherited)))
+                          (:cumulative-info hierarchy-node))]
+    (if (empty? items-with-excluded)
+      (empty-DOM parent-item parent-key sibling-elements inherited
+                 :adjacent-item (:item (first (hierarchy-node-descendants
+                                               hierarchy-node)))
+                 :adjacent-direction :before)
+      (components-DOM items-with-excluded
+                      parent-key sibling-elements inherited))))
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
@@ -616,7 +639,7 @@
 (defn table-header-elements-DOM
   "Generate the dom for one node of a table header hierarchy."
   [elements column-condition parent-item parent-key inherited]
-  (println "generating header elements dom")
+  (println "generating header elements dom for " (count elements) " elements")
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
@@ -625,7 +648,7 @@
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
-                        (elements-referent parent-item column-condition)
+                        (elements-referent column-condition)
                         parent-key)]
       (as-> (vertical-stack components :separators true) dom
         (if (> num-elements 1)
@@ -634,7 +657,7 @@
         (if (empty? elements)
           (add-attributes dom {:key elements-key})
           dom)
-        [:div {:class "column-header-container"} dom]
+        [:div {:class "column_header_container"} dom]
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "column tags column_header"})))))
 
@@ -686,7 +709,8 @@
                               children)]]))))
 
 (defn table-header-DOM
-  "Generate DOM for column headers for the specified templates."
+  "Generate DOM for column headers for the specified templates.
+  The column will contain those elements of the rows that match the templates."
   [column-templates column-condition key row-referent inherited]
   (println "generating table header dom")
   (let [inherited (assoc inherited :level 0)]
@@ -698,11 +722,48 @@
     ;; by adding a new step after hierarchy generation that combines
     ;; elements that have common tags but different values.
     (expr-let [hierarchy (items-hierarchy-by-condition
-                          column-templates #{} column-condition)]
-      (into [:div {:class "column-header-sequence"}]
-            (map #(table-header-subtree-DOM
-                   % column-condition key row-referent inherited)
-                 hierarchy)))))
+                          column-templates #{} '(nil))
+               columns (expr-seq
+                        map #(table-header-subtree-DOM
+                              % column-condition key row-referent inherited)
+                        hierarchy)]
+      (println "hierrchy" hierarchy)
+      (into [:div {:class "column_header_sequence"}]
+            columns))))
+
+(defn table-cell-DOM
+  "Return the dom for one cell of a table. The condition must be in list form."
+  [items condition row-item row-key inherited]
+  (if (empty? items)
+    ;; TODO: Get our left neighbor as an arg, and pass it in
+    ;; as adjacent information.
+    (empty-DOM row-item row-key (rest condition) inherited)
+    (expr-let [excluded (expr-seq map #(condition-specifiers % condition)
+                                  items)]
+      (add-attributes
+       (components-DOM (map vector items excluded)
+                       row-key (rest condition) inherited)
+       {:class "table_cell"}))))
+
+(defn table-row-DOM
+  "Generate the dom for one row of a table."
+  [item column-conditions key inherited]
+  ;; TODO: Need the column spec items too, so they can be added to the
+  ;; cell keys to make cells for otherwise identical columns be different.
+  (expr-let [cell-items (expr-seq map #(matching-elements % item)
+                                     column-conditions)
+             cells (expr-seq
+                    map (fn [items condition]
+                          (table-cell-DOM items condition item key inherited))
+                    cell-items column-conditions)]
+    (into [:div {:class "table_row"}] cells)))
+
+(defn replace-nones
+  "Replace any :none in the seq with nil"
+  [x]
+  (cond (sequential? x) (map replace-nones x)
+        (= x :none) nil
+        true x))
 
 (defn table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
@@ -716,6 +777,7 @@
   ;;              everything not shown in any other column.
   ;; TODO: Make there there be an element on a column descriptor that
   ;;       says how the column is described, rather than the current '(nil tag)
+  ;; TODO: Add the "other" column to all tables.
   [item key inherited]
   (println "Generating DOM for table" (simplify-for-print key))
   (assert (satisfies? entity/StoredEntity item))
@@ -726,9 +788,17 @@
         (expr-let [row-query (visible-elements row-query-item)
                    columns (expr order-items
                              (entity/label->elements item :column))
-                   column-templates (expr-seq map entity/content columns)
-                   ; row-items (matching-items row-query store)
+                   column-templates (expr-seq map entity/content columns) 
+                   column-conditions (expr-seq map
+                                               #(expr replace-nones
+                                                  (expr visible-to-list %))
+                                               column-templates)
+                   row-items (matching-items row-query store)
                    headers (table-header-DOM column-templates '(nil tag)
-                                             key (query-referent row-query)
-                                             inherited)]
-          headers)))))
+                                             key (query-referent row-query-item)
+                                             inherited)
+                   rows (expr-seq map #(table-row-DOM
+                                        % column-conditions key inherited)
+                                  row-items)]
+          (println "column conditions" (current-value (expr-seq map entity/to-list column-conditions)))
+          (into [:div {:class "table"} headers] rows))))))

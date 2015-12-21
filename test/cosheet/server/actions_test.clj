@@ -282,12 +282,12 @@
         mutable-joe (description->entity joe-id mutable-store)
         mutable-joe-male (description->entity (:item-id joe-male)
                                               mutable-store)
-        joe-male-tag-key [(elements-referent joe-male [nil 'tag])
+        joe-male-tag-key [(elements-referent [nil 'tag])
                           (:item-id joe-male)
                           joe-id]
         mutable-joe-married (description->entity (:item-id joe-married)
                                                  mutable-store)
-        joe-married-tag-key [(elements-referent joe-married [nil 'tag])
+        joe-married-tag-key [(elements-referent [nil 'tag])
                              (:item-id joe-married)
                              joe-id]
         tracker (new-joe-jane-tracker mutable-store)]

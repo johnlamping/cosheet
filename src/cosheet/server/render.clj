@@ -161,7 +161,6 @@
   (assert (and (sequential? condition)
                (not (empty? condition))
                (nil? (first condition))))
-  (println "condition specifiers for" condition)
   ;; Both the elements and the condition might have repeated items,
   ;; so we have to keep track of what has been used.
   (expr-let [elements (entity/elements entity)
@@ -358,8 +357,7 @@
 (defn condition-component
   "Return the component for an element that satisfies a condition and
   is displayed under the condition, rather than under its parent."
-  [element condition parent-item parent-key inherited]
-  (println "condition-component for" condition)
+  [element condition parent-key inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-specifiers element condition)]
     (let [key (->> parent-key
@@ -378,7 +376,7 @@
   "Generate dom for an empty editable cell. A map may be provided so
   that when content is added it will be put adjacent to the specified
   item in the specified direction."
-  [parent-item parent-key sibling-elements inherited
+  [parent-key sibling-elements inherited
    & {:keys [adjacent-item adjacent-direction]
       :or {adjacent-item nil adjacent-direction nil}}]
   (when adjacent-item
@@ -479,13 +477,12 @@
   containing components for each of them, wrapped as necessary to give
   the right appearance."
   [appearance-info elements condition row-item row-key inherited]
-  (println "generating row-header dom.")
   (assert (not (elements-referent? (first row-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
   (expr-let [components
              (expr-seq map #(condition-component
-                             % condition row-item row-key inherited)
+                             % condition row-key inherited)
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
@@ -529,7 +526,7 @@
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for a tag label."
-  [hierarchy-node parent-item parent-key inherited]
+  [hierarchy-node parent-key inherited]
   (let [descendants (hierarchy-node-descendants hierarchy-node)
         example (first descendants)
         appearance-info (select-keys hierarchy-node
@@ -553,13 +550,13 @@
 (defn tag-items-DOM
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for the elements."
-  [hierarchy-node parent-item parent-key inherited]
+  [hierarchy-node parent-key inherited]
   (let [items-with-excluded (map #((juxt :item :info-elements) %)
                                  (:members hierarchy-node))
         sibling-elements (canonical-set-to-list
                           (:cumulative-info hierarchy-node))]
     (if (empty? items-with-excluded)
-      (empty-DOM parent-item parent-key sibling-elements inherited
+      (empty-DOM parent-key sibling-elements inherited
                  :adjacent-item (:item (first (hierarchy-node-descendants
                                                hierarchy-node)))
                  :adjacent-direction :before)
@@ -571,11 +568,11 @@
   generate DOM for an element table row for the items."
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
-  [hierarchy-node parent-item parent-key inherited]
+  [hierarchy-node parent-key inherited]
   (expr-let [tags-label-dom (tag-label-DOM
-                             hierarchy-node parent-item parent-key inherited)
+                             hierarchy-node parent-key inherited)
              tags-items-dom (tag-items-DOM
-                             hierarchy-node parent-item parent-key inherited)]
+                             hierarchy-node parent-key inherited)]
     (into [:div {:style {:display "table-row"}}]
           (map #(add-attributes % {:style {:display "table-cell"}})
                [tags-label-dom tags-items-dom]))))
@@ -586,14 +583,14 @@
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
-  [items parent-item parent-key inherited]
+  [items parent-key inherited]
   (expr-let [hierarchy (items-hierarchy-by-condition
                         items (:do-not-merge inherited) '(nil tag))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
                        map #(cache tag-items-pair-DOM
-                                   % parent-item parent-key inherited)
+                                   % parent-key inherited)
                        flattened-hierarchy)]
     (into [:div {:class "element-table"
                  :style {:height "1px" ;; So height:100% in rows will work.
@@ -633,19 +630,19 @@
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-table-DOM
-                                 elements item key inherited-down)]
+                                 elements key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
 
 (defn table-header-elements-DOM
   "Generate the dom for one node of a table header hierarchy."
-  [elements column-condition parent-item parent-key inherited]
+  [elements column-condition parent-key inherited]
   (println "generating header elements dom for " (count elements) " elements")
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
                        #(condition-component
-                         % column-condition parent-item parent-key inherited)
+                         % column-condition parent-key inherited)
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
@@ -685,7 +682,6 @@
         node-dom (expr table-header-elements-DOM
                    (order-items example-elements) ; Why we need the expr
                    column-condition
-                   (:item example)
                    (prepend-to-key items-referent parent-key)
                    inherited)]
     (if (empty? children)
@@ -702,7 +698,6 @@
                          (map #(table-header-elements-DOM
                                 nil
                                 column-condition
-                                (:item example)
                                 (prepend-to-key members-referent parent-key)
                                 inherited)))
                          (map #(table-header-subtree-DOM
@@ -738,7 +733,7 @@
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
-    (empty-DOM row-item row-key (rest condition) inherited)
+    (empty-DOM row-key (rest condition) inherited)
     (expr-let [excluded (expr-seq map #(condition-specifiers % condition)
                                   items)]
       (add-attributes

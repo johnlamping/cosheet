@@ -20,10 +20,10 @@
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
     [key :refer [item-referent elements-referent prepend-to-key
-                 item-referent? content-referent?
+                 item-referent? content-location-referent?
                  elements-referent?
                  first-primitive-referent remove-first-primitive-referent
-                 remove-content-referent item-ids-referred-to
+                 remove-content-location-referent item-ids-referred-to
                  key->items key->item-groups]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
@@ -140,7 +140,7 @@
              " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
-    (when ((some-fn item-referent? content-referent?) first-primitive)
+    (when ((some-fn item-referent? content-location-referent?) first-primitive)
       (let [[store element-id] (reduce-update-add
                                 (partial update-add-element "")
                                 store items)]
@@ -148,7 +148,7 @@
           {:store store
            :select [(prepend-to-key
                      (item-referent (description->entity element-id store))
-                     (remove-content-referent key))
+                     (remove-content-location-referent key))
                     [key]]}
           store)))))
 
@@ -168,14 +168,15 @@
         items (key->items store key)
         first-primitive (first-primitive-referent key)
         sibling-elements (:sibling-elements
-                          (key->attributes dom-tracker
-                                           (remove-content-referent key)))]
+                          (key->attributes
+                           dom-tracker
+                           (remove-content-location-referent key)))]
     (println "sibling for id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
     (println "in direction" direction)
     (println "sibling elements" sibling-elements)
-    (when ((some-fn item-referent? content-referent?) first-primitive)
+    (when ((some-fn item-referent? content-location-referent?) first-primitive)
       (let [[store element-id]
             (reduce-update-add (partial update-add-sibling
                                         sibling-elements direction)
@@ -185,7 +186,7 @@
            :select [(prepend-to-key
                      (item-referent (description->entity element-id store))
                      (remove-first-primitive-referent
-                      (remove-content-referent key)))
+                      (remove-content-location-referent key)))
                     [key]]}
           store)))))
 
@@ -205,7 +206,8 @@
   "Add a row to the item with the given client id."
     [store dom-tracker id direction]
     (let [key (id->key dom-tracker id)
-          attributes (key->attributes dom-tracker (remove-content-referent key))
+          attributes (key->attributes
+                      dom-tracker (remove-content-location-referent key))
           row-sibling (:row-sibling attributes)
           row-elements (:row-elements attributes)
           item-groups (if row-sibling
@@ -228,7 +230,7 @@
              :select [(prepend-to-key
                        (item-referent (description->entity element-id store))
                        (remove-first-primitive-referent
-                        (remove-content-referent sibling-key)))
+                        (remove-content-location-referent sibling-key)))
                       [key]]}
             store)))))
 
@@ -299,7 +301,7 @@
          (:do-not-merge session-state)
          (fn [old]
            (if (item-referent? (first-primitive-referent
-                                (remove-content-referent key)))
+                                (remove-content-location-referent key)))
                (set (cons (first items)
                           (clojure.set/intersection (set (rest items)) old)))
                (clojure.set/intersection (set items) old))))))

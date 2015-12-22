@@ -50,17 +50,11 @@
 ;;; then change even though the identity of the item hadn't, causing
 ;;; the key of a component to change unexpectedly.
 
-;;; TODO: Support content for the case when the content is itself an
-;;; item, in which case it is not the first referent.
-
 ;;; A comment referent does not refer to an item, and has no effect on
 ;;; what the key refers to. It is used to make a key unique among
 ;;; other keys that refer to the same item.
 
-;;; A content referent indicates a subnode of an item node that holds
-;;; its atomic content. Since atomic content nodes don't have
-;;; subnodes, a content referent will always be the first referent of
-;;; its key. The next referent of the key will be the item node.
+;;; A content referent indicates the content of an item.
 
 ;;; A group referent indicates a dom node that holds several items,
 ;;; the first of which is the given item. It's prototypical use is
@@ -120,6 +114,13 @@
 (defn comment-referent? [referent]
   (and (sequential? referent) (= ( first referent) :comment)))
 
+;;; A content location referent refers to the location of a content,
+;;; not its current value, so it leaves the item to still be the item
+;;; that holds the content. Thus, it is just a comment.
+(defn content-location-referent? [referent]
+  (and (comment-referent? referent)
+       (= (second referent) 'content-location)))
+
 (defn content-referent? [referent]
   (and (sequential? referent) (= ( first referent) :content)))
 
@@ -150,6 +151,11 @@
   "Create a content referent."
   [info]
   [:comment info])
+
+(defn content-location-referent
+  "Create a content location referent."
+  []
+  (comment-referent 'content-location))
 
 (defn content-referent
   "Create a content referent."
@@ -193,12 +199,10 @@
        (cons referent key)))))
 
 (defn subject-path-referents
-  "Restrict a key to its first referent that returns item(s) and the
-  referents that return its subject ancestors."
+  "Restrict the comments from a key."
   [key]
   (when key
-    (let [removed (if (content-referent? (first key)) (rest key) key)]
-      (vec (remove comment-referent? removed)))))
+    (vec (remove comment-referent? key))))
 
 (defn first-primitive-referent
   "Return the first non-parallel referent of a key, recursing through
@@ -221,10 +225,10 @@
                    rest))))
     rest))
 
-(defn remove-content-referent
-  "If a key starts with a content referent, remove it."
+(defn remove-content-location-referent
+  "If a key starts with a content location referent, remove it."
   [key]
-  (if (content-referent? (first-primitive-referent key))
+  (if (content-location-referent? (first-primitive-referent key))
     (remove-first-primitive-referent key)
     key))
 
@@ -376,6 +380,7 @@
     (let [items
           (case (referent-type referent)
             :item (when-let [item (item-id-instantiator referent)] [item])
+            :content (entity/content parent)
             :query (let [[_ condition] referent]
                      (matching-items
                       (condition-as-list condition item-id-instantiator)

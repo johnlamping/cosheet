@@ -20,9 +20,10 @@
              mutable-store-impl
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [key :refer [item-referent canonicalize-list]]
+             [key :refer [item-referent content-location-referent
+                          canonicalize-list]]
              [render :refer :all])
-            ; :reload
+                                        ; :reload
             ))
 
 (def orderables (reduce (fn [os _]
@@ -360,7 +361,7 @@
          [:div {:class "item with-elements" :key [:age]}
           [:div {:style {:width "100%" :display "block"}
                  :class "content-text editable"
-                 :key [[:content] :age]}
+                 :key [(content-location-referent) :age]}
            "39"]
           [:div {:style {:height "1px"
                          :display "table"

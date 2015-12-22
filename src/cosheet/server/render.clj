@@ -11,6 +11,7 @@
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
                                          comment-referent
+                                         content-location-referent
                                          elements-referent query-referent
                                          parallel-referent visible-entity?
                                          prepend-to-key elements-referent?
@@ -621,7 +622,7 @@
                     {:class "item content-text editable"
                      :key key}
                     {:class "content-text editable"
-                     :key  (prepend-to-key (content-referent) key)})
+                     :key  (prepend-to-key (content-location-referent) key)})
              (if (= content :none) "" (str content))]
             (let [child-key (prepend-to-key (item-referent content) key)]
               (make-component
@@ -634,19 +635,19 @@
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
 
-(defn table-header-elements-DOM
+(defn table-header-node-DOM
   "Generate the dom for one node of a table header hierarchy."
-  [elements column-condition parent-key inherited]
+  [elements header-condition parent-key inherited]
   (println "generating header elements dom for " (count elements) " elements")
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
                        #(condition-component
-                         % column-condition parent-key inherited)
+                         % header-condition parent-key inherited)
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
-                        (elements-referent column-condition)
+                        (elements-referent header-condition)
                         parent-key)]
       (as-> (vertical-stack components :separators true) dom
         (if (> num-elements 1)
@@ -663,7 +664,7 @@
   "Generate the dom for a subtree of a table header hierarchy.
   The scope-referent should specify all the items from which
   this header selects elements."
-  [node column-condition parent-key scope-referent inherited]
+  [node header-condition parent-key scope-referent inherited]
   (println "generating subtree dom" scope-referent)
   (let [{:keys [info members children]} node
         width (count (hierarchy-node-descendants node))
@@ -679,9 +680,9 @@
                         ;; items trace the entire path, so it will
                         ;; work inside another parallel.
                         (vec (cons scope-referent affected-header-items)))
-        node-dom (expr table-header-elements-DOM
+        node-dom (expr table-header-node-DOM
                    (order-items example-elements) ; Why we need the expr
-                   column-condition
+                   header-condition
                    (prepend-to-key items-referent parent-key)
                    inherited)]
     (if (empty? children)
@@ -697,7 +698,7 @@
                         (concat
                          (map #(table-header-elements-DOM
                                 nil
-                                column-condition
+                                header-condition
                                 (prepend-to-key members-referent parent-key)
                                 inherited)))
                          (map #(table-header-subtree-DOM
@@ -707,7 +708,7 @@
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
-  [column-templates column-condition key row-referent inherited]
+  [column-templates header-condition key row-referent inherited]
   (println "generating table header dom")
   (let [inherited (assoc inherited :level 0)]
     ;; Unlike row headers for tags, where the header information is
@@ -721,7 +722,7 @@
                           column-templates #{} '(nil))
                columns (expr-seq
                         map #(table-header-subtree-DOM
-                              % column-condition key row-referent inherited)
+                              % header-condition key row-referent inherited)
                         hierarchy)]
       (println "hierrchy" hierarchy)
       (into [:div {:class "column_header_sequence"}]

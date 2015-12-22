@@ -76,14 +76,15 @@
   (is (= (remove-first-primitive-referent [[:parallel [0 1] [2 3]] 4])
           [[:parallel [1] [2 3]] 4])))
 
-(deftest remove-content-referent-test
-  (is (= (remove-content-referent [])
+(deftest remove-content-location-referent-test
+  (is (= (remove-content-location-referent [])
          []))
-  (is (= (remove-content-referent [[:content] 3 4])
+  (is (= (remove-content-location-referent [(content-location-referent) 3 4])
          [3 4]))
-  (is (= (remove-content-referent [[:parallel [[:content] 1] [2 3]] 4])
+  (is (= (remove-content-location-referent
+          [[:parallel [(content-location-referent) 1] [2 3]] 4])
          [[:parallel [1] [2 3]] 4]))
-  (is (= (remove-content-referent [[:parallel [0 1] [2 3]] 4])
+  (is (= (remove-content-location-referent [[:parallel [0 1] [2 3]] 4])
          [[:parallel [0 1] [2 3]] 4])))
 
 (deftest item-ids-referred-to-test
@@ -93,7 +94,7 @@
 (deftest subject-path-referents-test
   (let [id (->ItemId "a")]
     (is (check (subject-path-referents
-                [(content-referent)
+                [(content-location-referent)
                  (comment-referent "comment")
                  (parallel-referent [:a :b] [:c])
                  (content-referent)

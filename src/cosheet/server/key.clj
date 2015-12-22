@@ -135,7 +135,7 @@
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:content :query :elements :parallel} (first referent)))))
+           (#{:comment :content :query :elements :parallel} (first referent)))))
 
 (defn referent-type [referent]
   (if (sequential? referent) (first referent) :item))

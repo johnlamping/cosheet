@@ -10,6 +10,7 @@
                       :refer [into-attributes dom-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
+                                         comment-referent
                                          elements-referent query-referent
                                          parallel-referent visible-entity?
                                          prepend-to-key elements-referent?
@@ -366,7 +367,7 @@
                    ;; would have been if this element were displayed
                    ;; under its parent's component.
                    ;; Because it might have been in that situation.
-                   (prepend-to-key (elements-referent condition))
+                   (prepend-to-key (comment-referent condition))
                    (prepend-to-key (item-referent element)))]      
       (make-component {:key key
                        :sibling-elements (rest condition) 

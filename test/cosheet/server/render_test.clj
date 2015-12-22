@@ -281,11 +281,11 @@
          dom
          [:div {:class "column tags"}
           [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
-           [:component {:key [(:item-id fred) [:elements [nil 'tag]] rid]
+           [:component {:key [(:item-id fred) [:comment [nil 'tag]] rid]
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fred [(:item-id fred) [:elements [nil 'tag]] rid]
+             fred [(:item-id fred) [:comment [nil 'tag]] rid]
              #{fred-tag} {:depth 0}]]
            [:div {:class "spacer"}]]])))
   (let [[dom fred fran]
@@ -307,23 +307,23 @@
            :key [[:elements [nil 'tag]] rid]
            :row-sibling [rid]}
           [:div {:class "stack"}
-           [:component {:key [(:item-id fred) [:elements [nil 'tag]] rid]
+           [:component {:key [(:item-id fred) [:comment [nil 'tag]] rid]
                         :style {:display "block"
                                 :width "100%"}
                         :class "vertical-separated"
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fred [(:item-id fred) [:elements [nil 'tag]] rid]
+             fred [(:item-id fred) [:comment [nil 'tag]] rid]
              #{fred-tag} {:depth 1 :do-not-merge #{}}]]
-           [:component {:key [(:item-id fran) [:elements [nil 'tag]] rid]
+           [:component {:key [(:item-id fran) [:comment [nil 'tag]] rid]
                         :style  {:display "block"
                                  :width "100%"}
                         :class "vertical-separated"
                         :sibling-elements ['tag]
                         :row-sibling [rid]}
             [item-DOM
-             fran [(:item-id fran) [:elements [nil 'tag]] rid]
+             fran [(:item-id fran) [:comment [nil 'tag]] rid]
              #{} {:depth 1 :do-not-merge #{}}]]]
           [:div {:class "spacer"}]]))))
 
@@ -348,7 +348,7 @@
                            (entity/label->elements doubtful 'tag)))
         confidence-tag (first (current-value (entity/elements confidence)))
         tag-key [(:item-id confidence)
-                 [:elements [nil 'tag]]
+                 [:comment [nil 'tag]]
                  (:item-id doubtful)
                  :age]]
     (is (check
@@ -432,7 +432,7 @@
            (reporter/value dom-reporter)
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag)
-                                 [:elements [nil 'tag]]]
+                                 [:comment [nil 'tag]]]
                                 [(:item-id bogus-age) (:item-id age)]]]
              [:div {:class "item with-elements" :key [:joe]}
               (any vector?)
@@ -471,7 +471,7 @@
            (reporter/value dom-reporter)
            (let [both-ages-ref [:parallel
                                 [(:item-id bogus-age-tag)
-                                 [:elements [nil 'tag]]]
+                                 [:comment [nil 'tag]]]
                                 [(:item-id bogus-age) (:item-id age)]]]
              [:div {:class "item with-elements" :key [:joe]}
               (any vector?)
@@ -482,7 +482,7 @@
                 [:component (any map?)
                  [item-DOM
                   bogus-age-tag [(:item-id bogus-age-tag)
-                                 [:elements [nil 'tag]]
+                                 [:comment [nil 'tag]]
                                  (:item-id bogus-age) :joe]
                   #{bogus-age-tag-spec} (any map?)]]
                 [:component (any map?)
@@ -494,7 +494,7 @@
                 [:component (any map?)
                  [item-DOM
                   age-tag [(:item-id age-tag)
-                           [:elements [nil 'tag]]
+                           [:comment [nil 'tag]]
                            (:item-id age) :joe]
                   #{age-tag-spec} (any map?)]]
                 [:component (any map?)
@@ -541,7 +541,7 @@
          (reporter/value dom-reporter)
          (let [labels-ref [:parallel
                            [(:item-id L1)
-                            [:elements [nil 'tag]]]
+                            [:comment [nil 'tag]]]
                            [(:item-id v1) (:item-id v12) (:item-id v13)]]]
            [:div {:class "item with-elements" :key [:joe]}
             (any vector?)
@@ -567,14 +567,14 @@
                 [:div {:class "column tags" :style {:display "table-cell"}}
                  [:component
                   {:key [(:item-id L2)
-                         [:elements [nil 'tag]]
+                         [:comment [nil 'tag]]
                          (:item-id v12)
                          :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v12) :joe]}
                   [item-DOM
-                   L2 [(:item-id L2) [:elements [nil 'tag]]
+                   L2 [(:item-id L2) [:comment [nil 'tag]]
                        (:item-id v12) :joe]
                    #{L2-spec} (any map?)]]]
                 [:component {:key [(:item-id v12) :joe]
@@ -587,13 +587,13 @@
                 [:div {:class "column tags bottom-border"
                        :style {:display "table-cell"}}
                  [:component
-                  {:key [(:item-id L3) [:elements [nil 'tag]]
+                  {:key [(:item-id L3) [:comment [nil 'tag]]
                          (:item-id v13) :joe]
                    :class "full-row top-border indent-1"
                    :sibling-elements ['tag]
                    :row-sibling [(:item-id v13) :joe]}
                   [item-DOM
-                   L3 [(:item-id L3) [:elements [nil 'tag]]
+                   L3 [(:item-id L3) [:comment [nil 'tag]]
                        (:item-id v13) :joe]
                    #{L3-spec} (any map?)]]]
                 [:component {:key [(:item-id v13) :joe]
@@ -635,7 +635,7 @@
     (is (check
          (reporter/value dom-reporter)
          (let [L1s-ref [:parallel
-                        [(:item-id La1) [:elements [nil 'tag]]]
+                        [(:item-id La1) [:comment [nil 'tag]]]
                         [(:item-id va) (:item-id vb)]]]
            [:div {:class "item with-elements" :key [rid]}
             (any vector?)
@@ -659,14 +659,14 @@
               [:div {:class "column tags" :style {:display "table-cell"}}
                [:component
                 {:key [(:item-id La2)
-                       [:elements [nil 'tag]]
+                       [:comment [nil 'tag]]
                        (:item-id va) rid]
                  :class "full-row top-border indent-1"
                  :sibling-elements ['tag]
                  :row-sibling [(:item-id va) rid]}
                 [item-DOM
                  La2 [(:item-id La2)
-                      [:elements [nil 'tag]]
+                      [:comment [nil 'tag]]
                       (:item-id va) rid]
                  #{La2-spec} (any map?)]]]
               [:component {:key [(:item-id va) rid]
@@ -714,7 +714,7 @@
          dom
          (let [age-header-key [[:parallel
                                 [(:item-id age-tag)
-                                 [:elements '(nil tag)]]
+                                 [:comment '(nil tag)]]
                                 [[:query (:item-id query)]
                                  (:item-id age-content)]]
                                :foo]]

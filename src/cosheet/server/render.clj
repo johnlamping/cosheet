@@ -177,6 +177,20 @@
                             (update-in elements-map [canonical] pop)])))
                      [[] elements-map] (rest condition))))))
 
+(defn canonical-info-to-generating-items
+  "Given a canonical-info-set, a list of items, and a list of the
+  canonical-infos of those items, return a list of items whose
+  canonical-infos add up to the canonical-info-set."
+  [canonical-info items item-canonicals]
+  (let [;; A map from canonical-info to a vector of elements
+        ;; with that info.
+        canonicals-map (reduce (fn [map [item canonical]]
+                                 (update-in map [canonical] #(conj % item)))
+                               {} (map vector items item-canonicals))]
+    (reduce (fn [result [info count]]
+              (concat result (take count (canonicals-map info))))
+            [] canonical-info)))
+
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
 ;;; into a hierarchy based on common "information". The data about
 ;;; each member is recorded as a canonical-info-set. The hierarchy
@@ -195,12 +209,14 @@
 ;;; For example, if a node has :info {:b 1}, and has a parent with
 ;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
 ;;; {:a 1 :b 1}
-;;; There are no requirements on members but as typically used,
-;;; each member is itself a map, containing
+;;; There are no requirements on members but some of the hierarchy
+;;; building functions assume each member is itself a map, containing
 ;;;              :item  The item that is the member
+;;;   :info-canonicals  A list canonical-info-sets that contribute to the
+;;;                     canonical-info-set for the item
+;;; Other information may be present, such as
 ;;;     :info-elements  The elements of the item that contribute
-;;;                     to the hierarchy info
-;;;   :info-canonicals  The canonical-info for all the item in :info-elements
+;;;                     to the :info-canonicals
 ;;; For a flattened node, the :cumulative-info for each member will be
 ;;; the same as :info-canonicals. But a node might not have any
 ;;; members, so we still need :info-canonicals.
@@ -236,32 +252,33 @@
                info item))))))))
 
 (defn split-by-subset
-  "Given a list of infos and item maps, and a subset of items not to merge,
-  return a list of lists, broken so that any info-and-item-maps whose item
+  "Given a list of item maps, and a subset of items not to merge,
+  return a list of lists, broken so that any item-info-map whose item
   is in the set gets its own list."
-  [infos-and-item-maps do-not-merge-subset]
+  [item-info-maps do-not-merge-subset]
   (first
    (reduce
-    (fn [[result do-not-merge-with-prev] info-and-item-map]
-      (cond (do-not-merge-subset (:item (second info-and-item-map)))
-            [(conj result [info-and-item-map]) true]
+    (fn [[result do-not-merge-with-prev] item-info-map]
+      (cond (do-not-merge-subset (:item item-info-map))
+            [(conj result [item-info-map]) true]
             do-not-merge-with-prev
-            [(conj result [info-and-item-map]) false]
+            [(conj result [item-info-map]) false]
             true
-            [(update-last result #((fnil conj []) % info-and-item-map)) false]))
+            [(update-last result #((fnil conj []) % item-info-map)) false]))
     [[] false]
-    infos-and-item-maps)))
+    item-info-maps)))
 
 (defn hierarchy-by-canonical-info
-  "Given a list of canonical-set-info and item maps for each,
-  and a subset of items in the maps not to merge, return a hierarchy."
-  [infos-and-item-maps do-not-merge-subset]
+  "Given a list of item maps, and a subset of items in the maps not to
+  merge, return a hierarchy."
+  [item-info-maps do-not-merge-subset]
   (mapcat
-   #(reduce (fn [hierarchy [info item-map]]
-             (append-to-hierarchy hierarchy info item-map))
-           []
-           %)
-   (split-by-subset infos-and-item-maps do-not-merge-subset)))
+   #(reduce (fn [hierarchy item-info-map]
+              (append-to-hierarchy
+               hierarchy (multiset (:info-canonicals item-info-map))
+               item-info-map))
+           [] %)
+   (split-by-subset item-info-maps do-not-merge-subset)))
 
 (defn items-hierarchy-by-condition
   "Given items, organize them into a hierarchy by their value
@@ -269,7 +286,7 @@
   do-not-merge."
   [items do-not-merge condition]
   (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
-             item-maps
+             item-info-maps
              (expr-seq
               map
               (fn [item]
@@ -282,10 +299,7 @@
                    :info-elements visible-info-elements
                    :info-canonicals info-canonicals}))
               (order-items items))]
-    (hierarchy-by-canonical-info
-     (map (fn [map] [(multiset (:info-canonicals map)) map])
-          item-maps)
-     do-not-merge-subset)))
+    (hierarchy-by-canonical-info item-info-maps do-not-merge-subset)))
 
 (def flatten-hierarchy)
 
@@ -407,20 +421,6 @@
                          items-with-excluded)]
       (add-attributes (vertical-stack item-doms :separators true)
                       {:class "column"})))
-
-(defn canonical-info-to-generating-items
-  "Given a canonical-info-set, a list of items, and a list of the
-  canonical-infos of those items, return a list of items whose
-  canonical-infos add up to the canonical-info-set."
-  [canonical-info items item-canonicals]
-  (let [;; A map from canonical-info to a vector of elements
-        ;; with that info.
-        canonicals-map (reduce (fn [map [item canonical]]
-                                 (update-in map [canonical] #(conj % item)))
-                               {} (map vector items item-canonicals))]
-    (reduce (fn [result [info count]]
-              (concat result (take count (canonicals-map info))))
-            [] canonical-info)))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of a top level node of a row

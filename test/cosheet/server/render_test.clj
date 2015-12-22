@@ -146,27 +146,29 @@
                           {:info {:c 1} :members [:k]}]}])))
 
 (deftest split-by-subset-test
-  (is (check (split-by-subset [[1 {:item :i}]
-                               [2 {:item :j}]
-                               [3 {:item :k}]
-                               [4 {:item :l}]
-                               [5 {:item :m}]
-                               [6 {:item :n}]
-                               [7 {:item :o}]]
-                              #{:i :l :m :o})
-             [[[1 {:item :i}]]
-              [[2 {:item :j}] [3 {:item :k}]]
-              [[4 {:item :l}]]
-              [[5 {:item :m}]]
-              [[6 {:item :n}]]
-              [[7 {:item :o}]]])))
+  (is (check (split-by-subset
+              (map (fn [x] {:item x}) [:i :j :k :l :m :n :o])
+              #{:i :l :m :o})
+             [[{:item :i}]
+              [{:item :j} {:item :k}]
+              [{:item :l}]
+              [{:item :m}]
+              [{:item :n}]
+              [{:item :o}]])))
 
 (deftest hierarchy-by-canonical-info-test
-  (is (check (hierarchy-by-canonical-info
-              [[{:a 1} :i] [{:a 1 :b 1} :j] [{:a 1 :c 1} :k]] #{})
-             [{:info {:a 1} :members [:i]
-               :children [{:info {:b 1} :members [:j]}
-                          {:info {:c 1} :members [:k]}]}])))
+  (is (check
+       (hierarchy-by-canonical-info
+        [{:info-canonicals [:a] :item :i}
+         {:info-canonicals [:a :b] :info :j}
+         {:info-canonicals [:a :c] :info :k}]
+        #{})
+       [{:info {:a 1}
+         :members [{:info-canonicals [:a] :item :i}]
+         :children [{:info {:b 1}
+                     :members [{:info-canonicals [:a :b] :info :j}]}
+                    {:info {:c 1}
+                     :members [{:info-canonicals [:a :c] :info :k}]}]}])))
 
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
@@ -236,10 +238,12 @@
         bogus-age-tag (first (current-value
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
+    (println "starting check")
     (is (check
          (let [hierarchy (current-value
                           (items-hierarchy-by-condition
                            [gender age bogus-age] #{} '(nil tag)))]
+           (println "got hierarchy")
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
            :info {}

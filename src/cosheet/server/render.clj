@@ -192,13 +192,13 @@
             [] canonical-info)))
 
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
-;;; into a hierarchy based on common "information". The data about
+;;; into a hierarchy based on common "information". The information for
 ;;; each member is recorded as a canonical-info-set. The hierarchy
 ;;; consists of vector of nodes. All members at or below a hierarchy
-;;; node share all the common information for that node.
+;;; node have information that subsumes the information for that node.
 ;;; The data for each node consists of
-;;;           :info  A canonical-info-set of the new common info at this node.
-;;; :cumulatve-info  A canonical-info-set all common info for this node.
+;;;           :info  A canonical-info-set of the info added by this node.
+;;; :cumulatve-info  A canonical-info-set all info for this node.
 ;;;        :members  A vector of members exactly matching the cumulative-info
 ;;;                  for this node.
 ;;;       :children  An optional vector of child nodes.
@@ -212,11 +212,11 @@
 ;;; There are no requirements on members but some of the hierarchy
 ;;; building functions assume each member is itself a map, containing
 ;;;              :item  The item that is the member
-;;;   :info-canonicals  A list canonical-info-sets that contribute to the
-;;;                     canonical-info-set for the item
 ;;; Other information may be present, such as
 ;;;     :info-elements  The elements of the item that contribute
-;;;                     to the :info-canonicals
+;;;                     to the :cumulative-info of this node in the hierarchy
+;;;   :info-canonicals  A list canonical-info-sets for each element in
+;;;                     :info-elements.
 ;;; For a flattened node, the :cumulative-info for each member will be
 ;;; the same as :info-canonicals. But a node might not have any
 ;;; members, so we still need :info-canonicals.

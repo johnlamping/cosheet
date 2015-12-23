@@ -118,74 +118,99 @@
   (let [make-instantiator
         (fn [item] #(instantiate-exemplar-item-id store % item))]
     (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-male)]
+                                 [(item-referent joe-male)]
                                  joe (make-instantiator joe))
            [joe-male]))
+    (is (= (instantiate-exemplar store false
+                                 [(comment-referent :c)
+                                  (item-referent joe-male)
+                                  (comment-referent :d)]
+                                 joe (make-instantiator joe))
+           [joe-male]))
+    (is (= (instantiate-exemplar store false
+                                 [(content-referent)
+                                  (item-referent joe-male)]
+                                 joe (make-instantiator joe))
+           ["male"]))
     (is (empty? (instantiate-exemplar store false
-                                      [(:item-id joe-male)]
+                                      [(item-referent joe-male)]
                                       jane (make-instantiator jane))))
-    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
+    (is (= (instantiate-exemplar store false [(item-referent jane-age)]
                                  jane (make-instantiator jane))
            [jane-age]))
-    (is (= (instantiate-exemplar store false [(:item-id jane-age)]
+    (is (= (instantiate-exemplar store false [(item-referent jane-age)]
                                  joe (make-instantiator joe))
            [joe-age]))
     (is (= (instantiate-exemplar store false
-                                 [(:item-id joe-age-tag)
-                                              (:item-id joe-age)]
+                                 [(item-referent joe-age-tag)
+                                              (item-referent joe-age)]
                                  jane (make-instantiator jane))
            [jane-age-tag]))
     (is (= (instantiate-exemplar store false
-                                 [[:parallel [] [(:item-id joe-male)
-                                                 (:item-id joe-age)]]]
+                                 [(key-referent [joe-age-tag joe-age])]
+                                 jane (make-instantiator jane))
+           [jane-age-tag]))
+    (is (= (instantiate-exemplar store false
+                                 [(parallel-referent [] [joe-male joe-age])]
                                  joe (make-instantiator joe))
            [joe-male joe-age]))
-    (is (= (instantiate-exemplar store false
-                                 [[:parallel
-                                   [(:item-id joe-age-tag)]
-                                   [(:item-id joe-male) (:item-id joe-age)]]]
-                                 joe (make-instantiator joe))
-           [joe-age-tag]))
-    (is (= (instantiate-exemplar store false
-                                 [[:parallel
-                                   [[:parallel [] [(:item-id joe-age-tag)]]]
-                                   [(:item-id joe-male) (:item-id joe-age)]]]
-                                 joe (make-instantiator joe))
-           [joe-age-tag]))
     (is (= (instantiate-exemplar
-            store true [(:item-id joe-male)] joe (make-instantiator joe))
+            store false
+            [(parallel-referent [joe-age-tag] [joe-male joe-age])]
+            joe (make-instantiator joe))
+           [joe-age-tag]))
+    ;; Try key referents in a parallel
+    (is (= (instantiate-exemplar
+            store false
+            [(parallel-referent
+              []
+              [(key-referent [joe-age-tag joe-age])])]
+            joe (make-instantiator joe))
+           [joe-age-tag]))
+    ;; Try nested parallel.
+    (is (= (instantiate-exemplar
+            store false
+            [(parallel-referent
+              [(parallel-referent [] [joe-age-tag])]
+              [joe-male joe-age])]
+            joe (make-instantiator joe))
+           [joe-age-tag]))
+    ;; Now try the same things, but grouped.
+    (is (= (instantiate-exemplar
+            store true [(item-referent joe-male)] joe (make-instantiator joe))
            [[joe-male]]))
     (is (empty? (instantiate-exemplar
-                 store true [(:item-id joe-male)] jane (make-instantiator jane))))
+                 store true [(item-referent joe-male)]
+                 jane (make-instantiator jane))))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] jane (make-instantiator jane))
+            store true [(item-referent jane-age)] jane (make-instantiator jane))
            [[jane-age]]))
     (is (= (instantiate-exemplar
-            store true [(:item-id jane-age)] joe (make-instantiator joe))
+            store true [(item-referent jane-age)] joe (make-instantiator joe))
            [[joe-age]]))
     (is (= (instantiate-exemplar
             store true
-            [(:item-id joe-age-tag) (:item-id joe-age)]
+            [(item-referent joe-age-tag) (item-referent joe-age)]
             jane (make-instantiator jane))
            [[jane-age-tag]]))
     (is (= (instantiate-exemplar
             store true
-            [[:parallel [] [(:item-id joe-male)
-                            (:item-id joe-age)]]]
+            [[:parallel [] [(item-referent joe-male)
+                            (item-referent joe-age)]]]
             joe (make-instantiator joe))
            [[joe-male joe-age]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
-              [(:item-id joe-age-tag)]
-              [(:item-id joe-male) (:item-id joe-age)]]]
+              [(item-referent joe-age-tag)]
+              [(item-referent joe-male) (item-referent joe-age)]]]
             joe (make-instantiator joe))
            [[joe-age-tag]]))
     (is (= (instantiate-exemplar
             store true
             [[:parallel
               [(parallel-referent [] [joe-age-tag])]
-              [(:item-id joe-male) (:item-id joe-age)]]]
+              [(item-referent joe-male) (item-referent joe-age)]]]
             joe (make-instantiator joe))
            [[joe-age-tag]]))
     ;; Try a query referent
@@ -239,13 +264,13 @@
   (is (= (key->items store [[:parallel [] [joe-id jane-id]]])
          [joe jane]))
   (is (= (key->items store
-                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
+                     [[:parallel [(item-referent joe-age)] [joe-id jane-id]]])
          [joe-age jane-age]))
   (is (= (key->items store
                      [[:parallel
                        [[:parallel
                          []
-                         [(:item-id joe-male) (:item-id joe-age)]]]
+                         [(item-referent joe-male) (item-referent joe-age)]]]
                        [joe-id jane-id]]])
          [joe-male joe-age jane-age])))
 
@@ -255,12 +280,12 @@
   (is (= (key->item-groups store [[:parallel [] [joe-id jane-id]]])
          [[joe jane]]))
   (is (= (key->item-groups store
-                     [[:parallel [(:item-id joe-age)] [joe-id jane-id]]])
+                     [[:parallel [(item-referent joe-age)] [joe-id jane-id]]])
          [[joe-age] [jane-age]]))
   (is (= (key->item-groups store
                      [[:parallel
                        [[:parallel
                          []
-                         [(:item-id joe-male) (:item-id joe-age)]]]
+                         [(item-referent joe-male) (item-referent joe-age)]]]
                        [joe-id jane-id]]])
          [[joe-male joe-age] [jane-age]])))

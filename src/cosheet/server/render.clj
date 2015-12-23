@@ -696,7 +696,7 @@
                               (vec (cons scope-referent (map :item members))))]
         [:div node-dom [:div {:class "column_header_sequence"}
                         (concat
-                         (map #(table-header-elements-DOM
+                         (map #(table-header-node-DOM
                                 nil
                                 header-condition
                                 (prepend-to-key members-referent parent-key)

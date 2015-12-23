@@ -198,12 +198,6 @@
                (rest key)))
        (cons referent key)))))
 
-(defn subject-path-referents
-  "Restrict the comments from a key."
-  [key]
-  (when key
-    (vec (remove comment-referent? key))))
-
 (defn first-primitive-referent
   "Return the first non-parallel referent of a key, recursing through
   the exemplars of parallels."
@@ -221,7 +215,9 @@
     (let [[type exemplar items] first]
       (if (empty? exemplar)
         rest
-        (vec (cons [type (remove-first-primitive-referent exemplar) items]
+        (vec (cons [type
+                    (vec (remove-first-primitive-referent exemplar))
+                    items]
                    rest))))
     rest))
 
@@ -346,8 +342,7 @@
 
 (defn instantiate-parallel-referent
   [immutable-store group referent parent item-id-instantiator]
-  (let [[type exemplar parallel-referents] referent
-        exemplar-referents (subject-path-referents exemplar)]
+  (let [[type exemplar parallel-referents] referent]
     (assert (= type :parallel))
     (let [instantiated-items
           (mapcat #(instantiate-referent
@@ -358,7 +353,7 @@
           (if (empty? instantiated-items) nil [instantiated-items])
           instantiated-items)
         (mapcat (partial instantiate-exemplar
-                         immutable-store group exemplar-referents)
+                         immutable-store group exemplar)
                 instantiated-items
                 (map (fn [item]
                        #(instantiate-exemplar-item-id immutable-store % item))
@@ -380,7 +375,8 @@
     (let [items
           (case (referent-type referent)
             :item (when-let [item (item-id-instantiator referent)] [item])
-            :content (entity/content parent)
+            :comment [parent]
+            :content [(entity/content parent)]
             :query (let [[_ condition] referent]
                      (matching-items
                       (condition-as-list condition item-id-instantiator)
@@ -405,8 +401,13 @@
     (if (empty? remainder)
       (instantiate-referent
        immutable-store group last-referent parent item-id-instantiator)
-      (do (assert (item-referent? last-referent))
-          (when-let [item (item-id-instantiator last-referent)]
+      (do (assert ((some-fn item-referent?
+                            content-referent?
+                            comment-referent?)
+                   last-referent))
+          (when-let [item (first (instantiate-referent
+                                  immutable-store false last-referent
+                                  parent item-id-instantiator))]
             (instantiate-exemplar
              immutable-store group remainder
              item #(instantiate-exemplar-item-id immutable-store % item)))))))
@@ -415,12 +416,16 @@
   "Return the list of items or groups of items that a key describes.
   The store must be immutable."
   [immutable-store key group]
-  (let [content-removed (remove-content-referent key)
+  (println "items for key" key)
+  (let [first-item-referent-index
+        (first (keep-indexed
+                (fn [index referent] (when (item-referent? referent) index))
+                key))
         ;; We include at least one item referent, to make sure we have
         ;; a parent item for the first referent to make use of.
-        sufficient-key (if (item-referent? (first key))
-                         [(first key)]
-                         (vec (take 2 key)))]
+        sufficient-key (if first-item-referent-index
+                         (vec (take (inc first-item-referent-index) key))
+                         key)]
     (instantiate-exemplar
      immutable-store group sufficient-key nil
      #(when (id-valid? immutable-store %)

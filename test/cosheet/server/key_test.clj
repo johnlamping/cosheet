@@ -91,33 +91,6 @@
   (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
          #{0 1 4})))
 
-(deftest subject-path-referents-test
-  (let [id (->ItemId "a")]
-    (is (check (subject-path-referents
-                [(content-location-referent)
-                 (comment-referent "comment")
-                 (parallel-referent [:a :b] [:c])
-                 (content-referent)
-                 [:elements :c]
-                 (query-referent :q)
-                 id])
-               [[:parallel [:a :b] [:c]]
-                [:content]
-                [:elements :c]
-                [:query :q]
-                id]))
-    (is (check (subject-path-referents            
-                [(parallel-referent [:a :b] [:c])
-                 (content-referent)
-                 [:elements :c]
-                 (query-referent :q)
-                 id])
-               [[:parallel [:a :b] [:c]]
-                [:content]
-                [:elements :c]
-                [:query :q]
-                id]))))
-
 (deftest visible-test
   (let [visible (let-mutated [him joe-list]
                   (visible-to-list him))]

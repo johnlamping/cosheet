@@ -220,7 +220,8 @@
       (println "total groups:" (count item-groups))
       (println "with content" (map #(map content %) item-groups))
       (println "in direction" direction)
-      (when ((some-fn nil? item-referent? content-referent?) first-primitive)
+      (when ((some-fn nil? item-referent? content-location-referent?)
+             first-primitive)
         (let [[store element-id]
               (reduce-update-add
                (partial update-add-sibling row-elements direction)
@@ -247,7 +248,7 @@
     (println "delete id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
-    (when ((some-fn item-referent? content-referent?) first-primitive)
+    (when ((some-fn item-referent? content-location-referent?) first-primitive)
       (reduce update-delete store items))))
 
 (defn set-content-handler
@@ -258,7 +259,8 @@
         to (parse-string-as-number to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "from:" from " to:" to)
-    (cond ((some-fn nil? item-referent? content-referent?) first-primitive)
+    (cond ((some-fn nil? item-referent? content-location-referent?)
+           first-primitive)
           (reduce (partial update-set-content from to)
                   store (key->items store key))
           (and (elements-referent? first-primitive) (not= to ""))

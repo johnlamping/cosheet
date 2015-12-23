@@ -21,6 +21,7 @@
              [test-utils :refer [check any as-set]])
             (cosheet.server
              [key :refer [item-referent content-location-referent
+                          query-referent key-referent content-referent
                           canonicalize-list]]
              [render :refer :all])
                                         ; :reload
@@ -720,19 +721,15 @@
          (let [age-header-key [[:parallel
                                 [(:item-id age-tag)
                                  [:comment '(nil tag)]]
-                                [[:query (:item-id query)]
-                                 (:item-id age-content)]]
+                                [(query-referent (:item-id query))
+                                 (key-referent [(content-referent)
+                                                (item-referent age)
+                                                (item-referent table)])]]
                                :foo]]
            [:div {:class "table"}
             [:div {:class "column_header_sequence"}
              [:div {:class "column_header_container column tags column_header"}
               [:component {:key age-header-key
-                           ;; TODO: Shouldn't have a row sibling.
-                           :row-sibling [[:parallel
-                                          []
-                                          [[:query (:item-id query)]
-                                           (:item-id age-content)]]
-                                         :foo]
                            :sibling-elements '(tag)}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}

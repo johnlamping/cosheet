@@ -10,7 +10,7 @@
                       :refer [into-attributes dom-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server [key :refer [item-referent content-referent
-                                         comment-referent
+                                         comment-referent key-referent
                                          content-location-referent
                                          elements-referent query-referent
                                          parallel-referent visible-entity?
@@ -282,10 +282,13 @@
    (split-by-subset item-info-maps do-not-merge-subset)))
 
 (defn items-hierarchy-by-condition
-  "Given items, organize them into a hierarchy by their value
-  on elements matching the condition. Don't merge items that are in
-  do-not-merge."
-  [items do-not-merge condition]
+  "Given items, organize them into a hierarchy by their value on
+  elements matching the condition. Don't merge items that are in
+  do-not-merge. If extra-data-map is provided, it must be a map from
+  label to map from item to data for that item. The data will be
+  stored with the item-map for that item, under the key used in the
+  extra data map."
+  [items do-not-merge condition & {:as extra-data-map}]
   (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
              item-info-maps
              (expr-seq
@@ -296,9 +299,13 @@
                                                   visible-entity? info-elements)
                            info-canonicals (expr-seq map canonical-info
                                                      visible-info-elements)]
-                  {:item item
-                   :info-elements visible-info-elements
-                   :info-canonicals info-canonicals}))
+                  (cond-> {:item item
+                           :info-elements visible-info-elements
+                           :info-canonicals info-canonicals}
+                    extra-data-map
+                    (into (let [keys (keys extra-data-map)]
+                            (zipmap keys
+                                    (map #((extra-data-map %) item) keys)))))))
               (order-items items))]
     (hierarchy-by-canonical-info item-info-maps do-not-merge-subset)))
 
@@ -372,7 +379,7 @@
 (defn condition-component
   "Return the component for an element that satisfies a condition and
   is displayed under the condition, rather than under its parent."
-  [element condition parent-key inherited]
+  [element condition parent-key inherited & {:as extra-attributes}]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-specifiers element condition)]
     (let [key (->> parent-key
@@ -382,9 +389,9 @@
                    ;; Because it might have been in that situation.
                    (prepend-to-key (comment-referent condition))
                    (prepend-to-key (item-referent element)))]      
-      (make-component {:key key
-                       :sibling-elements (rest condition) 
-                       :row-sibling parent-key}
+      (make-component (into {:key key
+                             :sibling-elements (rest condition)}
+                            extra-attributes)
                       [item-DOM element key (set condition-specs) inherited]))))
 
 (defn empty-DOM
@@ -483,7 +490,8 @@
   ;; necessary, and adding the right attributes at each level.
   (expr-let [components
              (expr-seq map #(condition-component
-                             % condition row-key inherited)
+                             % condition row-key inherited
+                             :row-sibling row-key)
                        elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
@@ -660,11 +668,19 @@
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "column tags column_header"})))))
 
+(defn table-header-member-referents
+  "Generate referents for a table header, given the info-maps of
+   the header requests it applies to, and the item that specifies the table."
+  [info-maps table-item]
+  (map 
+   #(key-referent [(content-referent) (:item-container %) table-item])
+   info-maps))
+
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy.
   The scope-referent should specify all the items from which
   this header selects elements."
-  [node header-condition parent-key scope-referent inherited]
+  [table-item node header-condition parent-key scope-referent inherited]
   (println "generating subtree dom" scope-referent)
   (let [{:keys [info members children]} node
         width (count (hierarchy-node-descendants node))
@@ -674,33 +690,32 @@
                           info 
                           (:info-elements example) (:info-canonicals example))
         affected-header-items (map :item descendants)
-        items-referent (parallel-referent
-                        []
-                        ;; TODO: When keys support it, make the header
-                        ;; items trace the entire path, so it will
-                        ;; work inside another parallel.
-                        (vec (cons scope-referent affected-header-items)))
+        downward-key (prepend-to-key
+                      (parallel-referent
+                       []
+                       (vec (cons scope-referent
+                                  (table-header-member-referents
+                                   descendants table-item))))
+                      parent-key)
         node-dom (expr table-header-node-DOM
                    (order-items example-elements) ; Why we need the expr
-                   header-condition
-                   (prepend-to-key items-referent parent-key)
-                   inherited)]
+                   header-condition downward-key inherited)]
     (if (empty? children)
       node-dom
       (let [inherited (update-in inherited [:level] inc)
-            members-referent (parallel-referent
-                              []
-                              ;; TODO: When keys support it, make the header
-                              ;; items trace the entire path, so it will
-                              ;; work inside another parallel.
-                              (vec (cons scope-referent (map :item members))))]
+            downward-key (prepend-to-key
+                          (parallel-referent
+                           []
+                           (vec (cons scope-referent
+                                      (table-header-member-referents
+                                       members table-item))))
+                          parent-key)]
         [:div node-dom [:div {:class "column_header_sequence"}
-                        (concat
+                        (cons
                          (map #(table-header-node-DOM
-                                nil
-                                header-condition
-                                (prepend-to-key members-referent parent-key)
-                                inherited)))
+                               nil
+                               header-condition downward-key inherited)
+                              members))
                          (map #(table-header-subtree-DOM
                                 % parent-key scope-referent inherited)
                               children)]]))))
@@ -708,7 +723,8 @@
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
-  [column-templates header-condition key row-referent inherited]
+  [table-item column-items column-templates header-condition
+   parent-key row-referent inherited]
   (println "generating table header dom")
   (let [inherited (assoc inherited :level 0)]
     ;; Unlike row headers for tags, where the header information is
@@ -719,10 +735,13 @@
     ;; by adding a new step after hierarchy generation that combines
     ;; elements that have common tags but different values.
     (expr-let [hierarchy (items-hierarchy-by-condition
-                          column-templates #{} '(nil))
+                          column-templates #{} '(nil)
+                          :item-container
+                          (zipmap column-templates column-items))
                columns (expr-seq
                         map #(table-header-subtree-DOM
-                              % header-condition key row-referent inherited)
+                              table-item % header-condition parent-key
+                              row-referent inherited)
                         hierarchy)]
       (println "hierrchy" hierarchy)
       (into [:div {:class "column_header_sequence"}]
@@ -744,14 +763,15 @@
 
 (defn table-row-DOM
   "Generate the dom for one row of a table."
-  [item column-conditions key inherited]
+  [item column-conditions parent-key inherited]
   ;; TODO: Need the column spec items too, so they can be added to the
   ;; cell keys to make cells for otherwise identical columns be different.
   (expr-let [cell-items (expr-seq map #(matching-elements % item)
                                      column-conditions)
              cells (expr-seq
                     map (fn [items condition]
-                          (table-cell-DOM items condition item key inherited))
+                          (table-cell-DOM
+                           items condition item parent-key inherited))
                     cell-items column-conditions)]
     (into [:div {:class "table_row"}] cells)))
 
@@ -775,8 +795,8 @@
   ;; TODO: Make there there be an element on a column descriptor that
   ;;       says how the column is described, rather than the current '(nil tag)
   ;; TODO: Add the "other" column to all tables.
-  [item key inherited]
-  (println "Generating DOM for table" (simplify-for-print key))
+  [item parent-key inherited]
+  (println "Generating DOM for table" (simplify-for-print parent-key))
   (assert (satisfies? entity/StoredEntity item))
   (let [store (:store item)]
     (expr-let [row-query-item (entity/label->content item :row-query)]
@@ -791,11 +811,15 @@
                                                   (expr visible-to-list %))
                                                column-templates)
                    row-items (matching-items row-query store)
-                   headers (table-header-DOM column-templates '(nil tag)
-                                             key (query-referent row-query-item)
+                   headers (table-header-DOM item columns column-templates
+                                             '(nil tag) parent-key
+                                             (query-referent row-query-item)
                                              inherited)
-                   rows (expr-seq map #(table-row-DOM
-                                        % column-conditions key inherited)
-                                  row-items)]
-          (println "column conditions" (current-value (expr-seq map entity/to-list column-conditions)))
+                   rows (expr-seq
+                         map #(table-row-DOM
+                               % column-conditions parent-key inherited)
+                         row-items)]
+          (println "column conditions"
+                   (current-value
+                    (expr-seq map entity/to-list column-conditions)))
           (into [:div {:class "table"} headers] rows))))))

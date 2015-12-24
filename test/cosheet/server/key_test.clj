@@ -91,11 +91,11 @@
   (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
          #{0 1 4})))
 
-(deftest visible-test
-  (let [visible (let-mutated [him joe-list]
-                  (visible-to-list him))]
-    (is (= (first visible) "Joe"))
-    (is (= (set (map canonicalize-list (rest visible)))
+(deftest semantic-test
+  (let [semantic (let-mutated [him joe-list]
+                  (semantic-to-list him))]
+    (is (= (first semantic) "Joe"))
+    (is (= (set (map canonicalize-list (rest semantic)))
            #{"male"
              "married"
              '(39 {["age" {tag 1}] 1
@@ -103,16 +103,16 @@
              '(45 {["age" {tag 1}] 1})})))
   (is (= (set (map canonicalize-list
                    (let-mutated [him joe-list]
-                     (expr-seq map to-list (visible-elements him)))))
+                     (expr-seq map to-list (semantic-elements him)))))
          (set (map canonicalize-list (rest (rest joe-list)))))))
 
-(deftest canonical-visible-test
+(deftest canonical-semantic-test
   (let [expected ["Joe" {"male" 1
                          "married" 1
                          [39 {["age" {'tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
                               [45 {["age" {'tag 1}] 1}] 1}]]
-    (is (= (item->canonical-visible joe-list) expected))))
+    (is (= (item->canonical-semantic joe-list) expected))))
 
 (deftest instantiate-exemplar-test
   (let [make-instantiator

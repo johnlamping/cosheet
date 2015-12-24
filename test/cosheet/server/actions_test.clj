@@ -24,8 +24,8 @@
              [key :refer [item-referent elements-referent prepend-to-key
                           item-referent? parallel-referent?
                           remove-first-primitive-referent
-                          canonicalize-list visible-to-list
-                          item->canonical-visible]]
+                          canonicalize-list semantic-to-list
+                          item->canonical-semantic]]
              [render :refer [item-DOM]]
              [dom-tracker :refer [new-dom-tracker add-dom  dom->subcomponents]]
              [actions :refer :all])
@@ -202,7 +202,7 @@
       (let [key (get-in @tracker [:id->key joe-age-dom-id])]
         (is (= select [(prepend-to-key (item-referent new-element) key)
                        [key]])))
-      (is (= (item->canonical-visible new-joe-age)
+      (is (= (item->canonical-semantic new-joe-age)
              [45 {["age" {'tag 1}] 1, "" 1}])) )))
 
 (deftest update-add-sibling-test
@@ -325,13 +325,13 @@
     ;; Try when an entry is added, also from do-actions.
     (do-actions mutable-store {:tracker tracker}
                 {2 [:set-content "test2" nil "gender"]})
-    (is (= (current-value (visible-to-list mutable-joe-male))
+    (is (= (current-value (semantic-to-list mutable-joe-male))
            ["male" ["gender" 'tag]]))
     ;; Try when the sibling is explicitly specified.
     (let [old-joe-order (current-value (label->content mutable-joe :order))]
       (do-actions mutable-store {:tracker tracker}
                   {3 [:set-content "test3" nil "marital status"]})
-      (is (= (current-value (visible-to-list mutable-joe-married))
+      (is (= (current-value (semantic-to-list mutable-joe-married))
              ["married" ["marital status" 'tag]]))
       (let [new-joe-order (current-value (label->content mutable-joe :order))
             marital-status (first (current-value

@@ -94,7 +94,7 @@
 ;;; to each of items referred to any of the referents. A non-empty
 ;;; exemplar describes a navigation path to be traced through each of
 ;;; those items. Starting with each item, the navigation finds an
-;;; element whose visible information matches the visible information
+;;; element whose semantic information matches the semantic information
 ;;; of the last item in the exemplar. That becomes the new item in the
 ;;; navigation, which continues moving foward in the exemplar. If the
 ;;; first referent of the exemplar is an item, then the parallel
@@ -282,42 +282,47 @@
   (expr-let [elements (entity/elements entity)]
     (filtered-items condition elements)))
 
-;;; TODO: Replace "visible" with "semantic", because it is what counts
-;;; for matching purposes, not what is displayed. In particular, table
-;;; layouts are certainly visible, but only the contents of the table
-;;; is semantic.
+;;; For purposes of comparing two entities, not all of their elements
+;;; matter. In particular, order information, or other information
+;;; about how to display the eements is considered irrelevant for
+;;; coalescing entities. We call the elements that matter the semantic
+;;; elements. Non-semantic elements will always themselves have an
+;;; element with a keyword as content. For example, order information
+;;; has :order as an element's value, and so is not semantic.
 
-;;; Note that the item that makes an element non-semantic for its
-;;; subject is a semantic part of the element. This makes it possible
-;;; to find a non-semantic element of one item that matches a
+;;; Note, however that being non-semantic is a relationship between an
+;;; element and its subject, not an intrinsic property of the
+;;; element. Typically, even though an element is non-semantic to its
+;;; parent, all its elements are semantic to it.  This makes it
+;;; possible to find a non-semantic element of one item that matches a
 ;;; non-semantic element of an exemplar item.
 
-(defn visible-entity?
-  "Return true if an entity is visible to the user
+(defn semantic-entity?
+  "Return true if an entity counts as semantic information
   (Doesn't have a keyword element.)"
   [entity]
   (expr-let [elements (entity/elements entity)
              element-contents (expr-seq map entity/content elements)]
     (not-any? keyword? element-contents)))
 
-(defn visible-elements
-  "Return the elements of an entity that are visible to the user."
+(defn semantic-elements
+  "Return the elements of an entity that are semantic to it."
   [entity]
-  (filtered-elements entity visible-entity?))
+  (filtered-elements entity semantic-entity?))
 
-(defn visible-to-list
-  "Given an entity, make a list representation of the visible information
+(defn semantic-to-list
+  "Given an entity, make a list representation of the semantic information
   of the item."
   [entity]
   (if (entity/atom? entity)
     (entity/content entity)
     (expr-let [content (entity/content entity)
-               elements (visible-elements entity)
-               content-visible (visible-to-list content)
-               element-visibles (expr-seq map visible-to-list elements)]
-      (if (empty? element-visibles)
-        content-visible
-        (list* (into [content-visible] element-visibles))))))
+               elements (semantic-elements entity)
+               content-semantic (semantic-to-list content)
+               element-semantics (expr-seq map semantic-to-list elements)]
+      (if (empty? element-semantics)
+        content-semantic
+        (list* (into [content-semantic] element-semantics))))))
 
 (defn canonicalize-list
   "Given the list form of an entity, return a canonical representation of it."
@@ -331,33 +336,33 @@
      (multiset (map canonicalize-list (rest entity)))]
     entity))
 
-(defn item->canonical-visible
-  "Return the canonical form of the visible information for the item.
+(defn item->canonical-semantic
+  "Return the canonical form of the semantic information for the item.
   Only works on immutable items."
   [item]
-  (canonicalize-list (visible-to-list item)))
+  (canonicalize-list (semantic-to-list item)))
 
-(defn visible-matching-element
-  "Given the list form of visible information and an item,
-  find an element of the item that matches the visible information.
+(defn semantic-matching-element
+  "Given the list form of semantic information and an item,
+  find an element of the item that matches the semantic information.
   Return nil if there is no matching element.
   Only works on immutable items."
-  [visible-info item]
-  (let [canonical-visible (canonicalize-list visible-info)]
-    (->> (matching-elements visible-info item)
-         ;; Get rid of the ones with extra visible info.
-         (filter #(= (item->canonical-visible %) canonical-visible))
+  [semantic-info item]
+  (let [canonical-semantic (canonicalize-list semantic-info)]
+    (->> (matching-elements semantic-info item)
+         ;; Get rid of the ones with extra semantic info.
+         (filter #(= (item->canonical-semantic %) canonical-semantic))
          first)))
 
 (defn instantiate-exemplar-item-id
   "Given the id of an exemplar item and a regular item, find an element
-   of the item that matches the visible information of the exemplar.
+   of the item that matches the semantic information of the exemplar.
    Return nil if there is no matching element.
    The store and item must be immutable."
   [immutable-store exemplar-id item]
   (when (id-valid? immutable-store exemplar-id)
-    (visible-matching-element
-     (visible-to-list (description->entity exemplar-id immutable-store))
+    (semantic-matching-element
+     (semantic-to-list (description->entity exemplar-id immutable-store))
      item)))
 
 (def instantiate-exemplar)
@@ -383,11 +388,11 @@
                      instantiated-items))))))
 
 (defn condition-as-list
-  "If the condition is an item id, return its visible list form, otherwise,
-  assume it is already in visible list form."
+  "If the condition is an item id, return its semantic list form, otherwise,
+  assume it is already in semantic list form."
   [condition item-id-instantiator]
   (if (satisfies? StoredItemDescription condition)
-    (visible-to-list (item-id-instantiator condition))
+    (semantic-to-list (item-id-instantiator condition))
     condition))
 
 (defn instantiate-referent

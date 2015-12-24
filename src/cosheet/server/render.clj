@@ -13,21 +13,19 @@
                                          comment-referent key-referent
                                          content-location-referent
                                          elements-referent query-referent
-                                         parallel-referent visible-entity?
+                                         parallel-referent semantic-entity?
                                          prepend-to-key elements-referent?
-                                         visible-elements filtered-items
-                                         canonicalize-list visible-to-list]])))
+                                         semantic-elements filtered-items
+                                         canonicalize-list semantic-to-list]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
-;;; For a basic entity, we show its contents and its user visible
-;;; elements, but not its non-user visible elements. The latter are
+;;; For a basic entity, we show its contents and its user semantic
+;;; elements, but not its non-semantic elements. The latter are
 ;;; identified by, themselves, having elements with keyword contents.
 ;;; in addition, an entity may be marked as a tag, by having
 ;;; an element whose content is 'tag. The 'tag mark is considered
-;;; visible, because it changes the visible appearance of its element,
-;;; and, more importantly, matters for whether two items are
-;;; considered equal, even though it is not shown in the usual way.
+;;; semantic.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
 ;;;        ("married" (1 :order)
@@ -143,8 +141,8 @@
 
 (defn canonical-info
   [entity]
-  (expr-let [visible (visible-to-list entity)]
-    (canonicalize-list visible)))
+  (expr-let [semantic (semantic-to-list entity)]
+    (canonicalize-list semantic)))
 
 (defn canonical-info-set
   "Given a seq of items, return a canonical representation of the items,
@@ -295,12 +293,13 @@
               map
               (fn [item]
                 (expr-let [info-elements (matching-elements condition item)
-                           visible-info-elements (filtered-items
-                                                  visible-entity? info-elements)
+                           semantic-info-elements (filtered-items
+                                                   semantic-entity?
+                                                   info-elements)
                            info-canonicals (expr-seq map canonical-info
-                                                     visible-info-elements)]
+                                                     semantic-info-elements)]
                   (cond-> {:item item
-                           :info-elements visible-info-elements
+                           :info-elements semantic-info-elements
                            :info-canonicals info-canonicals}
                     extra-data-map
                     (into (let [keys (keys extra-data-map)]
@@ -621,7 +620,7 @@
   [item key excluded inherited]
   (println "Generating DOM for" (simplify-for-print key))
   (expr-let [content (entity/content item)
-             elements (visible-elements item)]
+             elements (semantic-elements item)]
     (let [elements (remove excluded elements)
           inherited-down (update-in inherited [:depth] inc)
           content-dom
@@ -802,13 +801,13 @@
     (expr-let [row-query-item (entity/label->content item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
-        (expr-let [row-query (visible-elements row-query-item)
+        (expr-let [row-query (semantic-elements row-query-item)
                    columns (expr order-items
                              (entity/label->elements item :column))
                    column-templates (expr-seq map entity/content columns) 
                    column-conditions (expr-seq map
                                                #(expr replace-nones
-                                                  (expr visible-to-list %))
+                                                  (expr semantic-to-list %))
                                                column-templates)
                    row-items (matching-items row-query store)
                    headers (table-header-DOM item columns column-templates

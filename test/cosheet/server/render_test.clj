@@ -722,18 +722,7 @@
                                        (entity/elements joe-bogus-age-tag)))
         joe-age (first (remove #{joe-bogus-age}
                                (current-value
-                                (entity/label->elements joe "age"))))
-        joe-age-tag (first (current-value
-                                  (entity/label->elements joe-age 'tag)))
-        joe-age-tag-spec (first (current-value
-                                       (entity/elements joe-age-tag)))
-]
-    (println joe-bogus-age joe-age)
-    (println "joe-bogus-age"(current-value (entity/to-list joe-bogus-age)))
-    (println "joe-age"(current-value (entity/to-list joe-age)))
-    (let [key (-> dom (nth 3) (nth 2 ) (nth 1) :key)]
-      (println "key" key )
-      (println "first" (current-value (entity/to-list (entity/description->entity (first key) (:store joe))))))
+                                (entity/label->elements joe "age"))))]
     (is (check
          dom
          (let [age-header-key [[:parallel
@@ -757,15 +746,16 @@
             ;; TODO: why is regular age first?
             [:div {:class "table_row"}
              [:div {:class "column table_cell"}
-              [:component {:key [(:item-id joe-age) :foo],
+              [:component {:key [(:item-id joe-bogus-age) :foo]
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
                            :sibling-elements [["age" 'tag]]}
                [item-DOM
-                joe-age [(:item-id joe-age) :foo] #{joe-age-tag}
+                joe-bogus-age [(:item-id joe-bogus-age) :foo]
+                #{joe-bogus-age-tag}
                 {:depth 0, :do-not-merge #{}}]]
-              [:component {:key [(:item-id joe-bogus-age) :foo],
+              [:component {:key [(:item-id joe-age) :foo],
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}

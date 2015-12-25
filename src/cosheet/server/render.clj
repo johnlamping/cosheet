@@ -751,7 +751,8 @@
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
     (empty-DOM row-key (rest condition) inherited)
-    (expr-let [excluded (expr-seq map #(condition-specifiers % condition)
+    (expr-let [items (order-items items)
+               excluded (expr-seq map #(condition-specifiers % condition)
                                   items)]
       (add-attributes
        (components-DOM (map vector items excluded)
@@ -814,7 +815,6 @@
                    row-query (add-element-to-entity-list
                               (replace-nones basic-row-query)
                               ['(:top-level :non-semantic)])
-                   _ (println "row query" row-query)
                    columns (expr order-items
                              (entity/label->elements item :column))
                    column-templates (expr-seq map entity/content columns) 
@@ -822,7 +822,8 @@
                                                #(expr replace-nones
                                                   (expr semantic-to-list %))
                                                column-templates)
-                   row-items (matching-items row-query store)
+                   row-items (expr order-items
+                               (matching-items row-query store))
                    headers (table-header-DOM item columns column-templates
                                              '(nil tag) parent-key
                                              (query-referent row-query-item)

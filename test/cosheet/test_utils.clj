@@ -81,13 +81,15 @@
 
 ;;; Functions that make special forms
 
-(defn- no-difference [value] nil)
+(defn- anything [value]
+  (when (= value ::nothing)
+    (report-difference value "anything")))
 (defn- test-pred [value pred]
   (when (not (pred value))
     (report-difference value pred)))
 
 (defn any
-  ([] [::test no-difference])
+  ([] [::test anything])
   ([pred] [::test test-pred pred]))
 
 (defn- differences-as-sets [value pattern]

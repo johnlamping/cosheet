@@ -37,16 +37,16 @@
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
-(def jane `("Jane" (~o1 :order) "plain" "plain"))
-(def joe `("Joe"
-           (~o2 :order)
-           ("male" (~o1 :order))
-           ("married" (~o2 :order))
-           (39 (~o3 :order)
-               ("age" ~'tag)
-               ("doubtful" "confidence"))
-           (45 (~o4 :order)
-               ("age" ~'tag))))
+(def jane-list `("Jane" (~o1 :order) "plain" "plain"))
+(def joe-list `("Joe"
+               (~o2 :order)
+               ("male" (~o1 :order))
+               ("married" (~o2 :order))
+               (39 (~o3 :order)
+                   ("age" ~'tag)
+                   ("doubtful" "confidence"))
+               (45 (~o4 :order)
+                   ("age" ~'tag))))
 
 (deftest condition-specifiers-test
   (is (check (map canonicalize-list
@@ -81,8 +81,8 @@
              [:a])))
 
 (deftest canonical-info-set-test
-  (is (= (let-mutated [him joe, her jane]
-           (canonical-info-set [him her]))
+  (is (= (let-mutated [joe joe-list, jane jane-list]
+           (canonical-info-set [joe jane]))
          {["Joe"
            {"married" 1
             "male" 1
@@ -91,7 +91,7 @@
             ["Jane" {"plain" 2}] 1})))
 
 (deftest canonical-to-list-test
-  (let [starting [joe jane jane]
+  (let [starting [joe-list jane-list jane-list]
         canonical (canonicalize-list [starting])]
     (is (= (canonicalize-list (canonical-to-list canonical))
            canonical))))
@@ -230,13 +230,13 @@
               {:depth 1 :top-border :indented :bottom-border :corner}])))
 
 (deftest flattened-items-hierarchy-test
-  (let [him (let-mutated [him joe] him)
-        gender (first (current-value (entity/label->elements him o1)))
+  (let [joe (let-mutated [joe joe-list] joe)
+        gender (first (current-value (entity/label->elements joe o1)))
         bogus-age (first (current-value
-                          (entity/label->elements him "doubtful")))
+                          (entity/label->elements joe "doubtful")))
         age (first (remove #{bogus-age}
                            (current-value
-                            (entity/label->elements him "age"))))
+                            (entity/label->elements joe "age"))))
         bogus-age-tag (first (current-value
                               (entity/label->elements bogus-age 'tag)))
         age-tag (first (current-value (entity/label->elements age 'tag)))]
@@ -413,10 +413,10 @@
   ;; Test added elements, and a mutable set for do-not-merge
   (let [do-not-merge (new-mutable-set #{})
         [dom-reporter joe]
-        (let-mutated [him joe]
+        (let-mutated [joe joe-list]
           (expr identity
-            [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge do-not-merge})
-             him]))
+            [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge do-not-merge})
+             joe]))
         male (first (current-value (entity/label->elements joe o1)))
         married (first (current-value (entity/label->elements joe o2)))
         bogus-age (first (current-value
@@ -510,7 +510,7 @@
              )))))
   ;; Test a hierarchy.
   (let [[dom-reporter joe]
-        (let-mutated [him `("Joe"
+        (let-mutated [joe `("Joe"
                             (~o2 :order)
                             ("1" (~o1 :order)
                                  ("L1" ~'tag))
@@ -521,7 +521,7 @@
                                 ("L1" ~'tag (~o1 :order))
                                 ("L3" ~'tag (~o2 :order))))]
           (expr identity
-            [(item-DOM him [:joe] #{} {:depth 0 :do-not-merge #{}}) him]))
+            [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge #{}}) joe]))
         v1 (first (current-value (entity/label->elements joe o1)))
         v12 (first (current-value (entity/label->elements joe o2)))
         v13 (first (current-value (entity/label->elements joe o3)))
@@ -611,7 +611,7 @@
   ;; Test a hierarchy with an empty content in one row and an empty
   ;; tag in another.
   (let [[dom-reporter joe]
-        (let-mutated [him `("Joe"
+        (let-mutated [joe `("Joe"
                             (~o2 :order)
                             ("a" (~o2 :order)
                              ("L1" ~'tag (~o1 :order))
@@ -619,7 +619,7 @@
                             ("b" (~o3 :order)
                              ("L1" ~'tag (~o1 :order))))]
           (expr identity
-            [(item-DOM him [rid] #{} {:depth 0 :do-not-merge #{}}) him]))
+            [(item-DOM joe [rid] #{} {:depth 0 :do-not-merge #{}}) joe]))
         va (first (current-value (entity/label->elements joe o2)))
         vb (first (current-value (entity/label->elements joe o3)))
         La1 (first (current-value (entity/label->elements va o1)))
@@ -696,26 +696,44 @@
                 #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))
 
 (deftest table-DOM-test
-  (let [[dom table him her]
+  (let [[dom table joe jane]
         (let-mutated [table `("table"
-                              ((:none (:none "age")) :row-query)
+                              ((:none (:none ("age" ~'tag))) :row-query)
                               ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
                               ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
-                      him joe
-                      her jane]
+                      joe (list* (concat joe-list
+                                         ['(:top-level :non-semantic)]))
+                      jane (list* (concat jane-list
+                                          ['(:top-level :non-semantic)]))]
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
-            [dom table him her]))
+            [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
         age (first (current-value (entity/label->elements table :c1)))
         age-content (current-value (entity/content age))
         age-tag (first
                  (current-value (entity/label->elements age-content 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))
-        size (first (current-value (entity/label->elements table :c2)))]
-    (println dom)
-    (println age)
-    (println age-content)
-    (println "row query" (current-value (entity/to-list query)))
+        size (first (current-value (entity/label->elements table :c2)))
+        joe-bogus-age (first (current-value
+                              (entity/label->elements joe "doubtful")))
+        joe-bogus-age-tag (first (current-value
+                                  (entity/label->elements joe-bogus-age 'tag)))
+        joe-bogus-age-tag-spec (first (current-value
+                                       (entity/elements joe-bogus-age-tag)))
+        joe-age (first (remove #{joe-bogus-age}
+                               (current-value
+                                (entity/label->elements joe "age"))))
+        joe-age-tag (first (current-value
+                                  (entity/label->elements joe-age 'tag)))
+        joe-age-tag-spec (first (current-value
+                                       (entity/elements joe-age-tag)))
+]
+    (println joe-bogus-age joe-age)
+    (println "joe-bogus-age"(current-value (entity/to-list joe-bogus-age)))
+    (println "joe-age"(current-value (entity/to-list joe-age)))
+    (let [key (-> dom (nth 3) (nth 2 ) (nth 1) :key)]
+      (println "key" key )
+      (println "first" (current-value (entity/to-list (entity/description->entity (first key) (:store joe))))))
     (is (check
          dom
          (let [age-header-key [[:parallel
@@ -730,12 +748,28 @@
             [:div {:class "column_header_sequence"}
              [:div {:class "column_header_container column tags column_header"}
               [:component {:key age-header-key
-                           :sibling-elements '(tag)}
+                           :sibling-elements ['tag]}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
-                {:level 0, :depth 0, :do-not-merge #{}}]]
-              (any)]
+                {:level 0, :depth 0, :do-not-merge #{}}]]]
+             ;; Ignore second column.
              (any)]
-            ;; TODO: check out first row.
-            (any)
-            (any)])))))
+            ;; TODO: why is regular age first?
+            [:div {:class "table_row"}
+             [:div {:class "column table_cell"}
+              [:component {:key [(:item-id joe-age) :foo],
+                           :class "vertical-separated"
+                           :style {:width "100%"
+                                   :display "block"}
+                           :sibling-elements [["age" 'tag]]}
+               [item-DOM
+                joe-age [(:item-id joe-age) :foo] #{joe-age-tag}
+                {:depth 0, :do-not-merge #{}}]]
+              [:component {:key [(:item-id joe-bogus-age) :foo],
+                           :class "vertical-separated"
+                           :style {:width "100%"
+                                   :display "block"}
+                           :sibling-elements [["age" 'tag]]}
+               (any)]]
+             [:div {:key [[:elements '(nil ("size" tag))] :foo],
+                    :class "column editable"}]]])))))

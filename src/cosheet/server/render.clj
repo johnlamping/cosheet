@@ -642,10 +642,11 @@
           (add-attributes (vertical-stack [content-dom elements-dom])
                           {:class "item with-elements" :key key}))))))
 
+;;; Tables
+
 (defn table-header-node-DOM
   "Generate the dom for one node of a table header hierarchy."
   [elements header-condition parent-key inherited]
-  (println "generating header elements dom for " (count elements) " elements")
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
@@ -680,7 +681,6 @@
   The scope-referent should specify all the items from which
   this header selects elements."
   [table-item node header-condition parent-key scope-referent inherited]
-  (println "generating subtree dom" scope-referent)
   (let [{:keys [info members children]} node
         width (count (hierarchy-node-descendants node))
         descendants (hierarchy-node-descendants node)
@@ -724,7 +724,6 @@
   The column will contain those elements of the rows that match the templates."
   [table-item column-items column-templates header-condition
    parent-key row-referent inherited]
-  (println "generating table header dom")
   (let [inherited (assoc inherited :level 0)]
     ;; Unlike row headers for tags, where the header information is
     ;; computed from the items of the rows, here the header information
@@ -742,7 +741,6 @@
                               table-item % header-condition parent-key
                               row-referent inherited)
                         hierarchy)]
-      (println "hierrchy" hierarchy)
       (into [:div {:class "column_header_sequence"}]
             columns))))
 
@@ -765,8 +763,10 @@
   [item column-conditions parent-key inherited]
   ;; TODO: Need the column spec items too, so they can be added to the
   ;; cell keys to make cells for otherwise identical columns be different.
+  (println "row for" item column-conditions)
+  (println "row item" (current-value (entity/to-list item)))
   (expr-let [cell-items (expr-seq map #(matching-elements % item)
-                                     column-conditions)
+                                  column-conditions)
              cells (expr-seq
                     map (fn [items condition]
                           (table-cell-DOM
@@ -781,12 +781,20 @@
         (= x :none) nil
         true x))
 
+(defn add-element-to-entity-list
+  [entity element]
+  (concat (if (sequential? entity) entity (list entity))
+          element))
+
 (defn table-DOM
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
   ;; The following elements of item describe the table:
   ;;  :row-query  The content is an item whose list form gives the
   ;;              requirements for an item to appear as a row
+  ;;              An extra [:top-level :non-semantic] element is added to this,
+  ;;              to keep the query, which is also in the database,
+  ;;              from matching itself.
   ;;     :column  The content is an item whose list form gives the
   ;;              requirements for an element of a row to appear in
   ;;              this column. The special contens :other means to show
@@ -795,13 +803,18 @@
   ;;       says how the column is described, rather than the current '(nil tag)
   ;; TODO: Add the "other" column to all tables.
   [item parent-key inherited]
-  (println "Generating DOM for table" (simplify-for-print parent-key))
+  (println "Generating DOM for table" (simplify-for-print item))
   (assert (satisfies? entity/StoredEntity item))
   (let [store (:store item)]
     (expr-let [row-query-item (entity/label->content item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
-        (expr-let [row-query (semantic-elements row-query-item)
+        (println "row-query-item" (current-value (entity/to-list row-query-item)))
+        (expr-let [basic-row-query (semantic-to-list row-query-item)
+                   row-query (add-element-to-entity-list
+                              (replace-nones basic-row-query)
+                              ['(:top-level :non-semantic)])
+                   _ (println "row query" row-query)
                    columns (expr order-items
                              (entity/label->elements item :column))
                    column-templates (expr-seq map entity/content columns) 

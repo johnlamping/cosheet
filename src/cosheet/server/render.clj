@@ -761,19 +761,20 @@
 
 (defn table-row-DOM
   "Generate the dom for one row of a table."
-  [item column-conditions parent-key inherited]
-  ;; TODO: Need the column spec items too, so they can be added to the
-  ;; cell keys to make cells for otherwise identical columns be different.
-  (println "row for" item column-conditions)
-  (println "row item" (current-value (entity/to-list item)))
-  (expr-let [cell-items (expr-seq map #(matching-elements % item)
-                                  column-conditions)
-             cells (expr-seq
-                    map (fn [items condition]
-                          (table-cell-DOM
-                           items condition item parent-key inherited))
-                    cell-items column-conditions)]
-    (into [:div {:class "table_row"}] cells)))
+  [row-item column-definitions column-conditions parent-key inherited]
+  (let [column-parent-keys (map #(prepend-to-key (-> %
+                                                     item-referent
+                                                     comment-referent)
+                                                 parent-key)
+                                column-definitions)]
+    (expr-let [cell-items (expr-seq map #(matching-elements % row-item)
+                                    column-conditions)
+               cells (expr-seq
+                      map (fn [items parent-key condition]
+                            (table-cell-DOM
+                             items condition row-item parent-key inherited))
+                      cell-items column-parent-keys column-conditions)]
+      (into [:div {:class "table_row"}] cells))))
 
 (defn replace-nones
   "Replace any :none in the seq with nil"
@@ -830,7 +831,7 @@
                                              inherited)
                    rows (expr-seq
                          map #(table-row-DOM
-                               % column-conditions parent-key inherited)
+                               % columns column-conditions parent-key inherited)
                          row-items)]
           (println "column conditions"
                    (current-value

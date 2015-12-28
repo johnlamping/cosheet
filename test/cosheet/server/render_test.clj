@@ -20,8 +20,9 @@
              mutable-store-impl
              [test-utils :refer [check any as-set]])
             (cosheet.server
-             [key :refer [item-referent content-location-referent
-                          query-referent key-referent content-referent
+             [key :refer [item-referent comment-referent
+                          content-location-referent query-referent
+                          key-referent content-referent
                           canonicalize-list]]
              [render :refer :all])
                                         ; :reload
@@ -743,23 +744,30 @@
                 {:level 0, :depth 0, :do-not-merge #{}}]]]
              ;; Ignore second column.
              (any)]
-            ;; TODO: why is regular age first?
             [:div {:class "table_row"}
              [:div {:class "column table_cell"}
-              [:component {:key [(:item-id joe-bogus-age) :foo]
+              [:component {:key [(:item-id joe-bogus-age)
+                                 (comment-referent (item-referent age))
+                                 :foo]
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
                            :sibling-elements [["age" 'tag]]}
                [item-DOM
-                joe-bogus-age [(:item-id joe-bogus-age) :foo]
+                joe-bogus-age [(:item-id joe-bogus-age)
+                               (comment-referent (item-referent age))
+                               :foo]
                 #{joe-bogus-age-tag}
                 {:depth 0, :do-not-merge #{}}]]
-              [:component {:key [(:item-id joe-age) :foo],
+              [:component {:key [(:item-id joe-age)
+                                 (comment-referent (item-referent age))
+                                 :foo],
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
                            :sibling-elements [["age" 'tag]]}
                (any)]]
-             [:div {:key [[:elements '(nil ("size" tag))] :foo],
+             [:div {:key [[:elements '(nil ("size" tag))]
+                          (comment-referent (item-referent size))
+                          :foo],
                     :class "column editable"}]]])))))

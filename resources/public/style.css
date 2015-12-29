@@ -305,14 +305,14 @@
 }
 
 #edit_input {
-    min-width: 100%;
     min-height: 100%;
     font-size: 100%;
+    min-width: 200px;
     height: auto;
     background-color: cornsilk;
     box-shadow: 5px 5px 3px grey;
     resize: none;
-    overflow-y: visible;
+    overflow: visible;
     left: 0;
     right: 0;
     position: absolute;

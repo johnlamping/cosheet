@@ -397,21 +397,14 @@
   "Generate dom for an empty editable cell. A map may be provided so
   that when content is added it will be put adjacent to the specified
   item in the specified direction."
-  [parent-key sibling-elements inherited
-   & {:keys [adjacent-item adjacent-direction]
-      :or {adjacent-item nil adjacent-direction nil}}]
+  [parent-key sibling-elements inherited]
   (when adjacent-item
     (assert (#{:before :after} adjacent-direction)))
   (add-attributes (vertical-stack nil)
-                  (cond-> {:class "column editable"
-                           :key (prepend-to-key
-                                 (elements-referent (cons nil sibling-elements))
-                                 parent-key)}
-                    adjacent-item
-                    (assoc :add-adjacent (prepend-to-key
-                                          (item-referent adjacent-item)
-                                          parent-key)
-                           :add-direction adjacent-direction))))
+                  {:class "editable"
+                   :key (prepend-to-key
+                         (elements-referent (cons nil sibling-elements))
+                         parent-key)}))
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
@@ -426,8 +419,7 @@
                               [item-DOM
                                item key (set excluded-elements) inherited])))
                          items-with-excluded)]
-      (add-attributes (vertical-stack item-doms :separators true)
-                      {:class "column"})))
+      (vertical-stack item-doms :separators true)))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of a top level node of a row
@@ -564,12 +556,18 @@
         sibling-elements (canonical-set-to-list
                           (:cumulative-info hierarchy-node))]
     (if (empty? items-with-excluded)
-      (empty-DOM parent-key sibling-elements inherited
-                 :adjacent-item (:item (first (hierarchy-node-descendants
-                                               hierarchy-node)))
-                 :adjacent-direction :before)
-      (components-DOM items-with-excluded
-                      parent-key sibling-elements inherited))))
+      (let [adjacent-item (:item
+                           (first (hierarchy-node-descendants hierarchy-node)))]
+        (add-attributes
+         (empty-DOM parent-key sibling-elements inherited)
+         {:add-adjacent (prepend-to-key (item-referent adjacent-item)
+                                        parent-key)
+          :add-direction :before
+          :class "column"}))
+      (add-attributes
+       (components-DOM items-with-excluded
+                       parent-key sibling-elements inherited)
+       {:class "column"}))))
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
@@ -664,9 +662,10 @@
         (if (empty? elements)
           (add-attributes dom {:key elements-key})
           dom)
+        (add-attributes dom {:class "column_header"})
         [:div {:class "column_header_container"} dom]
         ;; TODO: add more appearance info.
-        (add-attributes dom {:class "column tags column_header"})))))
+        (add-attributes dom {:class "tags"})))))
 
 (defn table-header-member-referents
   "Generate referents for a table header, given the info-maps of
@@ -750,7 +749,8 @@
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
-    (empty-DOM row-key (rest condition) inherited)
+    (add-attributes (empty-DOM row-key (rest condition) inherited)
+                     {:class "table_cell"})
     (expr-let [items (order-items items)
                excluded (expr-seq map #(condition-specifiers % condition)
                                   items)]
@@ -761,6 +761,9 @@
 
 (defn table-row-DOM
   "Generate the dom for one row of a table."
+  ;; TODO: Find the items of a row with knowledge of the column
+  ;; hierarchy, so that an item won't show up at the general level if
+  ;; it also shows up at a more specific level.
   [row-item column-definitions column-conditions parent-key inherited]
   (let [column-parent-keys (map #(prepend-to-key (-> %
                                                      item-referent
@@ -804,7 +807,7 @@
   ;; TODO: Make there there be an element on a column descriptor that
   ;;       says how the column is described, rather than the current '(nil tag)
   ;; TODO: Add the "other" column to all tables.
-  [item parent-key inherited]
+  [item key inherited]
   (println "Generating DOM for table" (simplify-for-print item))
   (assert (satisfies? entity/StoredEntity item))
   (let [store (:store item)]
@@ -826,14 +829,14 @@
                    row-items (expr order-items
                                (matching-items row-query store))
                    headers (table-header-DOM item columns column-templates
-                                             '(nil tag) parent-key
+                                             '(nil tag) key
                                              (query-referent row-query-item)
                                              inherited)
                    rows (expr-seq
                          map #(table-row-DOM
-                               % columns column-conditions parent-key inherited)
+                               % columns column-conditions key inherited)
                          row-items)]
           (println "column conditions"
                    (current-value
                     (expr-seq map entity/to-list column-conditions)))
-          (into [:div {:class "table"} headers] rows))))))
+          (into [:div {:class "table" :key key} headers] rows))))))

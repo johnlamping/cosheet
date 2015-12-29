@@ -11,14 +11,15 @@
     [entity :refer [description->entity]]
     entity-impl
     [store-utils :refer [add-entity]]
-    [query :refer [query-matches]]
+    [query :refer [matching-items]]
     query-impl
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
     [key :refer [item-referent]]
-    [render :refer [item-DOM]]
+    ;; TODO: Make item-DOM recognize tables, so we can just call it.
+    [render :refer [item-DOM table-DOM]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -43,7 +44,8 @@
         [o3 unused-orderable] (orderable/split unused-orderable :after)
         [o4 unused-orderable] (orderable/split unused-orderable :after)
         starting-item `("Joe"
-                        (:root :invisible)
+                        ; (:root :invisible)
+                        (:top-level :non-semantic)
                         (~o1 :order)
                         ("male" (~o1 :order))
                         ("married" (~o2 :order))
@@ -53,6 +55,12 @@
                         (45 (~o4 :order)
                             ("age" ~'tag)))
         [store id] (add-entity (new-element-store) nil starting-item)
+        starting-table `("table"
+                         (:root :invisible)
+                         ((:none (:none ("age" ~'tag))) :row-query)
+                         ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
+                         ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
+        [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
     (new-mutable-store store)))
@@ -60,11 +68,8 @@
 (defonce store (create-store))
 
 (defonce root-item
-  (let [immutable-root-item (:v (first (query-matches
-                                        '(:variable (:v :name)
-                                                    ((nil :root) :condition)
-                                                    (true :reference))
-                                        (current-store store))))]
+  (let [immutable-root-item (first (matching-items '(nil :root)
+                                                   (current-store store)))]
     (description->entity (:item-id immutable-root-item) store)))
 
 (defonce root-key [(item-referent root-item) "root"])
@@ -73,7 +78,7 @@
 
 (defn create-tracker
   [do-not-merge]
-  (let [definition [item-DOM root-item root-key #{}
+  (let [definition [table-DOM root-item root-key
                     {:depth 0 :do-not-merge do-not-merge}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)

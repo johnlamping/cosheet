@@ -659,7 +659,7 @@
                [item-DOM La1 [L1s-ref rid] #{La1-spec} (any map?)]]
               [:div {:key [[:elements [nil ["L1" 'tag]]] rid]
                      :style {:display "table-cell"}
-                     :class "column editable"
+                     :class "editable column"
                      :add-adjacent [(:item-id va) rid]
                      :add-direction :before}]]
              [:div {:style {:display "table-row"}}
@@ -734,18 +734,19 @@
                                                 (item-referent age)
                                                 (item-referent table)])]]
                                :foo]]
-           [:div {:class "table"}
+           [:div {:class "table" :key [:foo]}
             [:div {:class "column_header_sequence"}
-             [:div {:class "column_header_container column tags column_header"}
+             [:div {:class "column_header_container tags"}
               [:component {:key age-header-key
-                           :sibling-elements ['tag]}
+                           :sibling-elements ['tag]
+                           :class "column_header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
                 {:level 0, :depth 0, :do-not-merge #{}}]]]
              ;; Ignore second column.
              (any)]
             [:div {:class "table_row"}
-             [:div {:class "column table_cell"}
+             [:div {:class "table_cell"}
               [:component {:key [(:item-id joe-bogus-age)
                                  (comment-referent (item-referent age))
                                  :foo]
@@ -770,4 +771,4 @@
              [:div {:key [[:elements '(nil ("size" tag))]
                           (comment-referent (item-referent size))
                           :foo],
-                    :class "column editable"}]]])))))
+                    :class "editable table_cell"}]]])))))

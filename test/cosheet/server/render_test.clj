@@ -28,6 +28,9 @@
                                         ; :reload
             ))
 
+;;; TODO: Write a key checker that walks a DOM, finds all the keys,
+;;; and makes sure that item ids follow up the subject/containment hierarchy.
+
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
@@ -733,8 +736,9 @@
                                  (key-referent [(content-referent)
                                                 (item-referent age)
                                                 (item-referent table)])]]
+                               (item-referent table)
                                :foo]]
-           [:div {:class "table" :key [:foo]}
+           [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column_header_sequence"}
              [:div {:class "column_header_container tags"}
               [:component {:key age-header-key
@@ -749,6 +753,7 @@
              [:div {:class "table_cell"}
               [:component {:key [(:item-id joe-bogus-age)
                                  (comment-referent (item-referent age))
+                                 (:item-id joe)
                                  :foo]
                            :class "vertical-separated"
                            :style {:width "100%"
@@ -757,11 +762,13 @@
                [item-DOM
                 joe-bogus-age [(:item-id joe-bogus-age)
                                (comment-referent (item-referent age))
+                               (:item-id joe)
                                :foo]
                 #{joe-bogus-age-tag}
                 {:depth 0, :do-not-merge #{}}]]
               [:component {:key [(:item-id joe-age)
                                  (comment-referent (item-referent age))
+                                 (:item-id joe)
                                  :foo],
                            :class "vertical-separated"
                            :style {:width "100%"
@@ -770,5 +777,6 @@
                (any)]]
              [:div {:key [[:elements '(nil ("size" tag))]
                           (comment-referent (item-referent size))
+                          (:item-id joe)
                           :foo],
                     :class "editable table_cell"}]]])))))

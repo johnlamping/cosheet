@@ -398,8 +398,6 @@
   that when content is added it will be put adjacent to the specified
   item in the specified direction."
   [parent-key sibling-elements inherited]
-  (when adjacent-item
-    (assert (#{:before :after} adjacent-direction)))
   (add-attributes (vertical-stack nil)
                   {:class "editable"
                    :key (prepend-to-key
@@ -721,6 +719,9 @@
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
+  ;; TODO: Currrently, the elements-referent used the condition. It should
+  ;; use the item that contains the condition, so the key won't change
+  ;; if the header value changes.
   [table-item column-items column-templates header-condition
    parent-key row-referent inherited]
   (let [inherited (assoc inherited :level 0)]
@@ -728,9 +729,6 @@
     ;; computed from the items of the rows, here the header information
     ;; explicitly provided by the table definition, so the "items" for
     ;; the hierarchy are the column definitions.
-    ;; TODO: Make this handle column definitions like x: 1, x: 2, x: 3
-    ;; by adding a new step after hierarchy generation that combines
-    ;; elements that have common tags but different values.
     (expr-let [hierarchy (items-hierarchy-by-condition
                           column-templates #{} '(nil)
                           :item-container
@@ -746,6 +744,7 @@
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
   [items condition row-item row-key inherited]
+  (println "Computing table cell for " (count items) "items, row key " row-key)
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
@@ -765,18 +764,20 @@
   ;; hierarchy, so that an item won't show up at the general level if
   ;; it also shows up at a more specific level.
   [row-item column-definitions column-conditions parent-key inherited]
-  (let [column-parent-keys (map #(prepend-to-key (-> %
+  (let [row-key (prepend-to-key (item-referent row-item) parent-key)
+        column-parent-keys (map #(prepend-to-key (-> %
                                                      item-referent
                                                      comment-referent)
-                                                 parent-key)
+                                                 row-key)
                                 column-definitions)]
-    (expr-let [cell-items (expr-seq map #(matching-elements % row-item)
+    (expr-let [cell-items (expr-seq map #(do (println "running cell query: " row-item " " %) (matching-elements % row-item))
                                     column-conditions)
                cells (expr-seq
                       map (fn [items parent-key condition]
                             (table-cell-DOM
                              items condition row-item parent-key inherited))
                       cell-items column-parent-keys column-conditions)]
+      (println "computed table row")
       (into [:div {:class "table_row"}] cells))))
 
 (defn replace-nones
@@ -807,11 +808,12 @@
   ;; TODO: Make there there be an element on a column descriptor that
   ;;       says how the column is described, rather than the current '(nil tag)
   ;; TODO: Add the "other" column to all tables.
-  [item key inherited]
-  (println "Generating DOM for table" (simplify-for-print item))
-  (assert (satisfies? entity/StoredEntity item))
-  (let [store (:store item)]
-    (expr-let [row-query-item (entity/label->content item :row-query)]
+  [table-item parent-key inherited]
+  (println "Generating DOM for table" (simplify-for-print table-item))
+  (assert (satisfies? entity/StoredEntity table-item))
+  (let [store (:store table-item) 
+        table-key (prepend-to-key (item-referent table-item) parent-key)]
+    (expr-let [row-query-item (entity/label->content table-item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
         (println "row-query-item" (current-value (entity/to-list row-query-item)))
@@ -820,7 +822,7 @@
                               (replace-nones basic-row-query)
                               ['(:top-level :non-semantic)])
                    columns (expr order-items
-                             (entity/label->elements item :column))
+                             (entity/label->elements table-item :column))
                    column-templates (expr-seq map entity/content columns) 
                    column-conditions (expr-seq map
                                                #(expr replace-nones
@@ -828,15 +830,15 @@
                                                column-templates)
                    row-items (expr order-items
                                (matching-items row-query store))
-                   headers (table-header-DOM item columns column-templates
-                                             '(nil tag) key
+                   headers (table-header-DOM table-item columns column-templates
+                                             '(nil tag) table-key
                                              (query-referent row-query-item)
                                              inherited)
                    rows (expr-seq
-                         map #(table-row-DOM
-                               % columns column-conditions key inherited)
+                         map #(table-row-DOM % columns column-conditions
+                                             parent-key inherited)
                          row-items)]
           (println "column conditions"
                    (current-value
                     (expr-seq map entity/to-list column-conditions)))
-          (into [:div {:class "table" :key key} headers] rows))))))
+          (into [:div {:class "table" :key table-key} headers] rows))))))

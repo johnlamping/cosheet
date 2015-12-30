@@ -17,7 +17,7 @@
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]])
    (cosheet.server
-    [key :refer [item-referent]]
+    [key :refer [item-referent prepend-to-key]]
     ;; TODO: Make item-DOM recognize tables, so we can just call it.
     [render :refer [item-DOM table-DOM]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
@@ -72,13 +72,15 @@
                                                    (current-store store)))]
     (description->entity (:item-id immutable-root-item) store)))
 
-(defonce root-key [(item-referent root-item) "root"])
+(defonce root-parent-key ["root"])
+
+(defonce root-key (prepend-to-key (item-referent root-item) root-parent-key))
 
 (defonce manager-data (new-expression-manager-data 1))
 
 (defn create-tracker
   [do-not-merge]
-  (let [definition [table-DOM root-item root-key
+  (let [definition [table-DOM root-item root-parent-key
                     {:depth 0 :do-not-merge do-not-merge}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)

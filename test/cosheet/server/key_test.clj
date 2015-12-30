@@ -87,6 +87,18 @@
   (is (= (remove-content-location-referent [[:parallel [0 1] [2 3]] 4])
          [[:parallel [0 1] [2 3]] 4])))
 
+(deftest remove-comments-test
+  (is (= (remove-comments
+          [[:parallel
+            [(content-location-referent)
+             (comment-referent :foo)
+             1]
+            [(key-referent [1 (comment-referent :bar)]) 3]]
+           (comment-referent :baz)])
+         [[:parallel
+            [1]
+            [(key-referent [1]) 3]]])))
+
 (deftest item-ids-referred-to-test
   (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
          #{0 1 4})))

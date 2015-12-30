@@ -23,7 +23,8 @@
                  item-referent? content-location-referent?
                  elements-referent?
                  first-primitive-referent remove-first-primitive-referent
-                 remove-content-location-referent item-ids-referred-to
+                 remove-content-location-referent remove-comments
+                 item-ids-referred-to
                  key->items key->item-groups]])))
 
 ;;; TODO: validate the data coming in, so nothing can cause us to
@@ -135,12 +136,12 @@
   [store dom-tracker client-id]
   (let [key (id->key dom-tracker client-id)
         items (key->items store key)
-        first-primitive (first-primitive-referent key)]
+        first-primitive (first-primitive-referent (remove-comments key))]
     (println "new element for id:" client-id
              " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
-    (when ((some-fn item-referent? content-location-referent?) first-primitive)
+    (when (item-referent? first-primitive)
       (let [[store element-id] (reduce-update-add
                                 (partial update-add-element "")
                                 store items)]
@@ -166,7 +167,7 @@
   [store dom-tracker id direction]
   (let [key (id->key dom-tracker id)
         items (key->items store key)
-        first-primitive (first-primitive-referent key)
+        first-primitive (first-primitive-referent (remove-comments key))
         sibling-elements (:sibling-elements
                           (key->attributes
                            dom-tracker
@@ -176,7 +177,7 @@
     (println "with content" (map content items))
     (println "in direction" direction)
     (println "sibling elements" sibling-elements)
-    (when ((some-fn item-referent? content-location-referent?) first-primitive)
+    (when (item-referent? first-primitive)
       (let [[store element-id]
             (reduce-update-add (partial update-add-sibling
                                         sibling-elements direction)
@@ -243,28 +244,30 @@
 (defn delete-handler
   [store dom-tracker id]
   (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent key)
+        first-primitive (first-primitive-referent (remove-comments key))
         items (key->items store key)]
     (println "delete id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
-    (when ((some-fn item-referent? content-location-referent?) first-primitive)
+    (when (item-referent? first-primitive)
       (reduce update-delete store items))))
 
 (defn set-content-handler
   [store dom-tracker id from to]
   ;; TODO: Handle deleting.
   (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent key) 
+        basic-key (remove-comments key)
+        first-primitive (first-primitive-referent basic-key) 
         to (parse-string-as-number to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "from:" from " to:" to)
     (cond ((some-fn nil? item-referent? content-location-referent?)
            first-primitive)
           (reduce (partial update-set-content from to)
-                  store (key->items store key))
+                  store (key->items store basic-key))
           (and (elements-referent? first-primitive) (not= to ""))
-          (let [items (key->items store (remove-first-primitive-referent key))
+          (let [items (key->items store (remove-first-primitive-referent
+                                         basic-key))
                 attributes (key->attributes dom-tracker key)
                 adjacent-key (:add-adjacent attributes)
                 [_ condition] first-primitive
@@ -302,8 +305,7 @@
     (mutable-set-swap!
          (:do-not-merge session-state)
          (fn [old]
-           (if (item-referent? (first-primitive-referent
-                                (remove-content-location-referent key)))
+           (if (item-referent? (first-primitive-referent (remove-comments key)))
                (set (cons (first items)
                           (clojure.set/intersection (set (rest items)) old)))
                (clojure.set/intersection (set items) old))))))

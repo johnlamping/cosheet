@@ -167,7 +167,7 @@
   (vec (map convert-item-to-referent referents)))
 
 (defn comment-referent
-  "Create a content referent."
+  "Create a comment referent."
   [info]
   [:comment info])
 
@@ -250,6 +250,29 @@
   (if (content-location-referent? (first-primitive-referent key))
     (remove-first-primitive-referent key)
     key))
+
+(def remove-comments)
+
+(defn remove-comments-from-referent
+  "Remove the comments from the referent,
+   returning nil if the referent is itself a comment."
+  [referent]
+  (when (not (comment-referent? referent))
+    (cond (parallel-referent? referent)
+          (let [[tag exemplar items] referent]
+            (parallel-referent
+             (remove-comments exemplar) (remove-comments items)))
+          (key-referent? referent)
+          (let [[tag key] referent]
+            (key-referent (remove-comments key)))
+          true
+          referent)))
+
+(defn remove-comments
+  "Remove the comment referents (including content-location-referent)
+  from the key"
+  [key]
+  (vec (filter identity (map remove-comments-from-referent key))))
 
 (defn item-ids-referred-to
   "Return all the item ids referred to by item referents in the key,

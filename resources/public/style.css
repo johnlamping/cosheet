@@ -251,6 +251,7 @@
 
 .content-text {
     min-height: 20px;
+    overflow-wrap: break-word;
 }
 
 .element-table {

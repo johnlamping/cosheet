@@ -6,7 +6,8 @@
              [utils :refer [multiset-diff]]
              [orderable :as orderable]
              [mutable-set :refer [new-mutable-set mutable-set-swap!]]
-             [entity :as entity  :refer [to-list description->entity]]
+             [entity :as entity  :refer [to-list description->entity
+                                         label->elements]]
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
              [debug :refer [current-value let-mutated envs-to-list]]
@@ -280,15 +281,15 @@
 
 (deftest flattened-items-hierarchy-test
   (let [joe (let-mutated [joe joe-list] joe)
-        gender (first (current-value (entity/label->elements joe o1)))
+        gender (first (current-value (label->elements joe o1)))
         bogus-age (first (current-value
-                          (entity/label->elements joe "doubtful")))
+                          (label->elements joe "doubtful")))
         age (first (remove #{bogus-age}
                            (current-value
-                            (entity/label->elements joe "age"))))
+                            (label->elements joe "age"))))
         bogus-age-tag (first (current-value
-                              (entity/label->elements bogus-age 'tag)))
-        age-tag (first (current-value (entity/label->elements age 'tag)))]
+                              (label->elements bogus-age 'tag)))
+        age-tag (first (current-value (label->elements age 'tag)))]
     (println "starting check")
     (is (check
          (let [hierarchy (current-value
@@ -401,9 +402,9 @@
                                 (~o1 :order)))]
           (expr-let [dom (item-DOM age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
-        doubtful (first (current-value (entity/label->elements age o1)))
+        doubtful (first (current-value (label->elements age o1)))
         confidence (first (current-value
-                           (entity/label->elements doubtful 'tag)))
+                           (label->elements doubtful 'tag)))
         confidence-tag (first (current-value (entity/elements confidence)))
         item-key [(item-referent age) :age]
         tag-key (into [[:comment [nil 'tag]] (:item-id doubtful)] item-key)]
@@ -442,7 +443,7 @@
         (let-mutated [age `(39 ("doubtful" (~o1 :order)))]
           (expr-let [dom (item-DOM age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
-        doubtful (first (current-value (entity/label->elements age o1)))
+        doubtful (first (current-value (label->elements age o1)))
         item-key [(item-referent age) :age]]
     (validate-keys dom age)
     (is (check dom
@@ -470,18 +471,18 @@
           (expr identity
             [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge do-not-merge})
              joe]))
-        male (first (current-value (entity/label->elements joe o1)))
-        married (first (current-value (entity/label->elements joe o2)))
+        male (first (current-value (label->elements joe o1)))
+        married (first (current-value (label->elements joe o2)))
         bogus-age (first (current-value
-                          (entity/label->elements joe "doubtful")))
+                          (label->elements joe "doubtful")))
         bogus-age-tag (first (current-value
-                              (entity/label->elements bogus-age 'tag)))
+                              (label->elements bogus-age 'tag)))
         bogus-age-tag-spec (first (current-value
                                    (entity/elements bogus-age-tag)))
         age (first (remove #{bogus-age}
                            (current-value
-                            (entity/label->elements joe "age"))))
-        age-tag (first (current-value (entity/label->elements age 'tag)))
+                            (label->elements joe "age"))))
+        age-tag (first (current-value (label->elements age 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))]
     (let [md (new-expression-manager-data)
           item-key [(item-referent joe) :joe]
@@ -568,20 +569,20 @@
                                 ("L3" ~'tag (~o2 :order))))]
           (expr identity
             [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge #{}}) joe]))
-        v1 (first (current-value (entity/label->elements joe o1)))
-        v12 (first (current-value (entity/label->elements joe o2)))
-        v13 (first (current-value (entity/label->elements joe o3)))
-        L1 (first (current-value (entity/label->elements v1 'tag)))
+        v1 (first (current-value (label->elements joe o1)))
+        v12 (first (current-value (label->elements joe o2)))
+        v13 (first (current-value (label->elements joe o3)))
+        L1 (first (current-value (label->elements v1 'tag)))
         L1-spec (first (current-value (entity/elements L1)))
-        L121 (first (current-value (entity/label->elements v12 o1)))
-        L2 (first (current-value (entity/label->elements v12 o2)))
+        L121 (first (current-value (label->elements v12 o1)))
+        L2 (first (current-value (label->elements v12 o2)))
         L2-spec (first (remove #{(first (current-value
-                                         (entity/label->elements L2 :order)))}
+                                         (label->elements L2 :order)))}
                                (current-value (entity/elements L2))))
-        L131 (first (current-value (entity/label->elements v13 o1)))
-        L3 (first (current-value (entity/label->elements v13 o2)))
+        L131 (first (current-value (label->elements v13 o1)))
+        L3 (first (current-value (label->elements v13 o2)))
         L3-spec (first (remove #{(first (current-value
-                                         (entity/label->elements L3 :order)))}
+                                         (label->elements L3 :order)))}
                                (current-value (entity/elements L3))))]
     (let [md (new-expression-manager-data)]
       (request dom-reporter md)
@@ -674,19 +675,19 @@
                              ("L1" ~'tag (~o1 :order))))]
           (expr identity
             [(item-DOM joe [rid] #{} {:depth 0 :do-not-merge #{}}) joe]))
-        va (first (current-value (entity/label->elements joe o2)))
-        vb (first (current-value (entity/label->elements joe o3)))
-        La1 (first (current-value (entity/label->elements va o1)))
-        La2 (first (current-value (entity/label->elements va o2)))
+        va (first (current-value (label->elements joe o2)))
+        vb (first (current-value (label->elements joe o3)))
+        La1 (first (current-value (label->elements va o1)))
+        La2 (first (current-value (label->elements va o2)))
         La1-spec (first (remove #{(first (current-value
-                                         (entity/label->elements La1 :order)))}
+                                         (label->elements La1 :order)))}
                                 (current-value (entity/elements La1))))
         La2-spec (first (remove #{(first (current-value
-                                         (entity/label->elements La2 :order)))}
+                                         (label->elements La2 :order)))}
                                (current-value (entity/elements La2))))
-        Lb1 (first (current-value (entity/label->elements vb o1)))
+        Lb1 (first (current-value (label->elements vb o1)))
         Lb1-spec (first (remove #{(first (current-value
-                                          (entity/label->elements Lb1 :order)))}
+                                          (label->elements Lb1 :order)))}
                                 (current-value (entity/elements Lb1))))]
     (let [md (new-expression-manager-data)]
       (request dom-reporter md)
@@ -770,21 +771,21 @@
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
-        age (first (current-value (entity/label->elements table :c1)))
+        age (first (current-value (label->elements table :c1)))
         age-content (current-value (entity/content age))
         age-tag (first
-                 (current-value (entity/label->elements age-content 'tag)))
+                 (current-value (label->elements age-content 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))
-        size (first (current-value (entity/label->elements table :c2)))
+        size (first (current-value (label->elements table :c2)))
         joe-bogus-age (first (current-value
-                              (entity/label->elements joe "doubtful")))
+                              (label->elements joe "doubtful")))
         joe-bogus-age-tag (first (current-value
-                                  (entity/label->elements joe-bogus-age 'tag)))
+                                  (label->elements joe-bogus-age 'tag)))
         joe-bogus-age-tag-spec (first (current-value
                                        (entity/elements joe-bogus-age-tag)))
         joe-age (first (remove #{joe-bogus-age}
                                (current-value
-                                (entity/label->elements joe "age"))))]
+                                (label->elements joe "age"))))]
     (validate-keys dom joe)
     (is (check
          dom
@@ -798,19 +799,19 @@
                                                       (item-referent table)])]]]
                                     item-key)]
            [:div {:class "table" :key item-key}
-            [:div {:class "column_header_sequence"}
-             [:div {:class "column_header_container tags"}
+            [:div {:class "column-header-sequence"}
+             [:div {:class "column-header-container tags"}
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
                            :sibling-elements ['tag]
-                           :class "column_header"}
+                           :class "column-header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
                 {:level 0, :depth 0, :do-not-merge #{}}]]]
-             ;; Ignore second column.
+             ;; Size column.
              (any)]
-            [:div {:class "table_row"}
-             [:div {:class "table_cell"}
+            [:div {:class "table-row"}
+             [:div {:class "table-cell"}
               [:component {:key (into [(:item-id joe-bogus-age)
                                        (comment-referent (item-referent age))]
                                       joe-key)
@@ -834,4 +835,90 @@
              [:div {:key (into [[:elements '(nil ("size" tag))]
                                 (comment-referent (item-referent size))]
                                joe-key),
-                    :class "editable table_cell"}]]])))))
+                    :class "editable table-cell"}]]]))))
+  ;; Test a header with two labels.
+  (let [[dom table joe jane]
+        (let-mutated [table `("table"
+                              ((:none (:none)) :row-query)
+                              ((:none ("name" ~'tag (~o1 :order))
+                                      ("id" ~'tag (~o2 :order))
+                                      (~o1 :order))
+                               :column :c1)
+                              ((:none ("age" ~'tag) (~o2 :order)) :column :c2))
+                      joe `("Joe"
+                            (~o1 :order)
+                            (:top-level :non-semantic)
+                            ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+                            (45 ("age" ~'tag) (~o2 :order)))
+                      jane `("Jane"
+                             (~o2 :order)
+                             (:top-level :non-semantic)
+                             ("Jane" ("name" ~'tag) (~o1 :order))
+                             (44 ("age" ~'tag) (~o2 :order)))]
+          (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
+            [dom table joe jane]))
+        query (current-value (entity/label->content table :row-query))
+        name-id (first (current-value (label->elements table :c1)))
+        name-id-content (current-value (entity/content name-id))
+        name-tag (first
+                  (current-value (label->elements name-id-content o1)))
+        name-tag-order (first (current-value (label->elements name-tag :order)))
+        name-tag-spec (first
+                       (remove #{name-tag-order}
+                               (current-value (entity/elements name-tag))))
+        joe-name (first (current-value
+                         (label->elements joe "name")))
+        joe-name-tags (current-value
+                       (label->elements joe-name 'tag))]
+    (validate-keys dom joe)
+    (is (check
+         dom
+         (let [item-key [(item-referent table) :foo]
+               joe-key [(item-referent joe) :foo]
+               name-header-key (into [[:parallel
+                                      [[:comment '(nil tag)]]
+                                      [(query-referent (:item-id query))
+                                       (key-referent [(content-referent)
+                                                      (item-referent name-id)
+                                                      (item-referent table)])]]]
+                                    item-key)]
+           [:div {:class "table" :key item-key}
+            [:div {:class "column-header-sequence"}
+             [:div {:class "column-header-container tags"}
+              [:div {:class "stack column-header"}
+               [:component {:key (prepend-to-key (item-referent name-tag)
+                                                 name-header-key)
+                            :sibling-elements ['tag]
+                            :style {:width "100%", :display "block"}
+                            :class "vertical-separated"}
+                [item-DOM
+                 name-tag name-header-key #{name-tag-spec}
+                 {:level 0, :depth 0, :do-not-merge #{}}]]
+               ;; id label
+               (any)]]
+             ;; Age column
+             (any)]
+            [:div {:class "table-row"}
+             [:component {:key (into [(:item-id joe-name)
+                                      (comment-referent
+                                       (item-referent name-id))]
+                                      joe-key)
+                           :class "table-cell"
+                          :sibling-elements (as-set [["name" 'tag]
+                                                     ["id" 'tag]])}
+               [item-DOM
+                joe-name (into [(comment-referent (item-referent name-id))]
+                               joe-key)
+                (set joe-name-tags)
+                {:depth 0, :do-not-merge #{}}]]
+             ;; Joe's age
+             (any)]
+            [:div {:class "table-row"}
+             [:div {:key [[:elements (as-set
+                                      '(nil ("name" tag) ("id" tag)))]
+                                (comment-referent (item-referent name-id))
+                                (item-referent jane)
+                                :foo],
+                    :class "editable table-cell"}]
+             ;; Jane's age
+             (any)]])))))

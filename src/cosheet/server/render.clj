@@ -661,8 +661,8 @@
         (if (empty? elements)
           (add-attributes dom {:key elements-key})
           dom)
-        (add-attributes dom {:class "column_header"})
-        [:div {:class "column_header_container"} dom]
+        (add-attributes dom {:class "column-header"})
+        [:div {:class "column-header-container"} dom]
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "tags"})))))
 
@@ -707,7 +707,7 @@
                                       (table-header-member-referents
                                        members table-item))))
                           parent-key)]
-        [:div node-dom [:div {:class "column_header_sequence"}
+        [:div node-dom [:div {:class "column-header-sequence"}
                         (cons
                          (map #(table-header-node-DOM
                                nil
@@ -739,7 +739,7 @@
                               table-item % header-condition parent-key
                               row-referent inherited)
                         hierarchy)]
-      (into [:div {:class "column_header_sequence"}]
+      (into [:div {:class "column-header-sequence"}]
             columns))))
 
 (defn table-cell-DOM
@@ -750,14 +750,14 @@
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
     (add-attributes (empty-DOM row-key (rest condition) inherited)
-                     {:class "table_cell"})
+                     {:class "table-cell"})
     (expr-let [items (order-items items)
                excluded (expr-seq map #(condition-specifiers % condition)
                                   items)]
       (add-attributes
        (components-DOM (map vector items excluded)
                        row-key (rest condition) inherited)
-       {:class "table_cell"}))))
+       {:class "table-cell"}))))
 
 (defn table-row-DOM
   "Generate the dom for one row of a table."
@@ -779,7 +779,7 @@
                              items condition row-item parent-key inherited))
                       cell-items column-parent-keys column-conditions)]
       (println "computed table row")
-      (into [:div {:class "table_row"}] cells))))
+      (into [:div {:class "table-row"}] cells))))
 
 (defn replace-nones
   "Replace any :none in the seq with nil"

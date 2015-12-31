@@ -14,22 +14,22 @@
                                          request compute]] 
              [expression-manager-test :refer [check-propagation]]
              entity-impl
-             [store :refer [new-element-store]]
+             [store :refer [new-element-store id->content id->subject
+                            current-store]]
              store-impl
              [store-utils :refer [add-entity]]
              mutable-store-impl
+             [dom-utils :refer [dom-attributes]]
              [test-utils :refer [check any as-set]])
             (cosheet.server
              [key :refer [item-referent comment-referent
                           content-location-referent query-referent
                           key-referent content-referent
-                          canonicalize-list prepend-to-key]]
+                          canonicalize-list prepend-to-key
+                          item-referent? parallel-referent?]]
              [render :refer :all])
                                         ; :reload
             ))
-
-;;; TODO: Write a key checker that walks a DOM, finds all the keys,
-;;; and makes sure that item ids follow up the subject/containment hierarchy.
 
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
@@ -51,6 +51,51 @@
                    ("doubtful" "confidence"))
                (45 (~o4 :order)
                    ("age" ~'tag))))
+
+(defn get-dom-keys
+  "Return all keys in the dom"
+  [dom]
+  (when (sequential? dom)
+    (concat (vals (select-keys (dom-attributes dom)
+                               [:key :add-ajacent :row-sibling]))
+            (when (= (first dom) :div)
+              (mapcat get-dom-keys (rest dom))))))
+
+(defn validate-key
+  "Check that a key is well formed,
+  in particular that its items follow the subject/content chain."
+  [key expected-item-id immutable-store]
+  (when (not (empty? key))
+    (let [[first-ref & remainder] key]
+      (cond
+        (keyword? first-ref)
+        (validate-key remainder expected-item-id immutable-store)
+        (item-referent? first-ref)
+        (do (when expected-item-id
+              (if (= (first expected-item-id) :container)
+                (is (= (id->content immutable-store first-ref)
+                       (second expected-item-id)))
+                (is (= first-ref expected-item-id))))
+            (validate-key remainder
+                          (or (id->subject immutable-store first-ref)
+                              [:container first-ref])
+                          immutable-store))
+        (parallel-referent? first-ref)
+        (do (is (not expected-item-id))
+            (let [[tag exemplar item-ids] first-ref]
+              (validate-key exemplar expected-item-id immutable-store)
+              (validate-key remainder nil immutable-store)))
+        true
+        (validate-key remainder expected-item-id immutable-store)))))
+
+(defn validate-keys
+  "Check that all the keys in the dom are well formed.
+    The item must have a store where the ids in the keys can be looked up."
+  [dom item]
+  (let [store (current-store (:store item))
+        keys (get-dom-keys dom)]
+    (doseq [key keys]
+      (validate-key key nil store))))
 
 (deftest condition-specifiers-test
   (is (check (map canonicalize-list
@@ -267,7 +312,7 @@
 
 (def t1 (add-entity (new-element-store) nil 'joe))
 (def store (first t1))
-(def rid (second t1))
+(def rid :foo)
 (def root (description->entity rid store))
 
 (deftest row-header-elements-DOM-test
@@ -287,6 +332,7 @@
                                                   {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
+    (validate-keys dom fred)
     (is (check
          dom
          [:div {:class "column tags"}
@@ -310,6 +356,7 @@
                           {:depth 1 :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
+    (validate-keys dom fred)
     (is (check
          dom
          [:div
@@ -343,6 +390,7 @@
           (expr-let [dom (item-DOM fred [] #{}
                                    {:depth 0 :do-not-merge #{}})]
             [dom fred]))]
+    (validate-keys dom fred)
     (is (check dom
                [:div {:class "item content-text editable"
                       :key [(:item-id fred)]} "Fred"])))
@@ -359,6 +407,7 @@
         confidence-tag (first (current-value (entity/elements confidence)))
         item-key [(item-referent age) :age]
         tag-key (into [[:comment [nil 'tag]] (:item-id doubtful)] item-key)]
+    (validate-keys dom age)
     (is (check
          dom
          [:div {:class "item with-elements" :key [(item-referent age) :age]}
@@ -395,6 +444,7 @@
             [dom age]))
         doubtful (first (current-value (entity/label->elements age o1)))
         item-key [(item-referent age) :age]]
+    (validate-keys dom age)
     (is (check dom
            [:div {:class "item with-elements" :key item-key}
             (any vector?)
@@ -440,6 +490,7 @@
       (request dom-reporter md)
       (compute md)
       (check-propagation dom-reporter)
+      (validate-keys (reporter/value dom-reporter) joe)
       (is (check
            (reporter/value dom-reporter)
            [:div {:class "item with-elements" :key item-key}
@@ -471,6 +522,7 @@
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
       (compute md)
       (check-propagation dom-reporter)
+      (validate-keys (reporter/value dom-reporter) joe)
       (is (check
            (reporter/value dom-reporter)
            [:div {:class "item with-elements" :key item-key}
@@ -535,6 +587,7 @@
       (request dom-reporter md)
       (compute md))
     (check-propagation dom-reporter)
+    (validate-keys (reporter/value dom-reporter) joe)
     (is (check
          (reporter/value dom-reporter)
          (let [item-key [(item-referent joe) :joe]
@@ -639,6 +692,7 @@
       (request dom-reporter md)
       (compute md))
     (check-propagation dom-reporter)
+    (validate-keys (reporter/value dom-reporter) joe)
     (is (check
          (reporter/value dom-reporter)
          (let [item-key [(item-referent joe) rid]
@@ -731,6 +785,7 @@
         joe-age (first (remove #{joe-bogus-age}
                                (current-value
                                 (entity/label->elements joe "age"))))]
+    (validate-keys dom joe)
     (is (check
          dom
          (let [item-key [(item-referent table) :foo]

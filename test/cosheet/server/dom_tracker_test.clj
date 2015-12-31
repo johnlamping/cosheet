@@ -5,16 +5,19 @@
             [clojure.data.priority-map :as priority-map]
             (cosheet
              [utils :refer [dissoc-in]]
+             [test-utils :refer [check]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value envs-to-list]]
+             [debug :refer [current-value envs-to-list let-mutated]]
              entity-impl
+             [store :refer [update-content!]]
              store-impl
              mutable-store-impl)
             (cosheet.server
              [dom-tracker :refer :all]
-             [render :refer [item-DOM]])
+             [render :refer [item-DOM]]
+             [key :refer [item-referent]])
             ; :reload
             ))
 
@@ -233,41 +236,44 @@
 (deftest update-set-component-test
   (let [md (new-expression-manager-data)
         tracker (new-dom-tracker md)
-        reporter (new-reporter :value "hi")
-        c-map {:key [:k]
-               :definition [item-DOM reporter [:k] #{} {:depth 0}]
+        [joe jane jill] (let-mutated [joe "Joe", jane "Jane", jill "Jill"]
+                          [joe jane jill])
+        joe-key [(item-referent joe) :k]
+        reporter (new-reporter :value jane) ;; Will change to jill.
+        c-map {:key joe-key
+               :definition [item-DOM joe [:k] #{} {:depth 0 :do-not-merge #{}}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
                     :definition
-                    [(fn [value]
-                       (into [:div {:key [:d]}
-                              [:component
-                               {:key ["s" :d] :width 1}
-                               [item-DOM reporter ["s" :d] #{} {:depth 1}]]]
-                             (map
-                              (fn [c]
-                                [:component
-                                 {:key [(str c) :d]}
-                                 [item-DOM
-                                  (str c) [(str c) :d] #{} {:depth 1}]])
-                              value)))
+                    [(fn [item]
+                       [:div {:key [:d]}
+                        [:component
+                         {:key [(item-referent joe) :d] :width 1}
+                         [item-DOM joe [:d]
+                          #{} {:depth 1 :do-not-merge #{}}]]
+                        [:component
+                         {:key [(item-referent item) :d]}
+                         [item-DOM item [:d]
+                          #{} {:depth 1 :do-not-merge #{}}]]])
                      reporter]}]
-    (swap-and-act tracker #(-> %
-                               (update-associate-key-to-id [:k] "root")
-                               (update-set-component c-map)))
+    (swap-and-act
+     tracker #(-> %
+                  (update-associate-key-to-id joe-key "root")
+                  (update-set-component c-map)))
     (compute md)
     (let [data @tracker
-          component (get-in data [:components [:k]])]
+          component (get-in data [:components joe-key])]
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
-      (is (= (:components @tracker) {[:k] component}))
-      (is (= (:id->key data) {"root" [:k]}))
-      (is (= (:key->dom data) {[:k] [:div {:key [:k]
-                                           :class "item content-text editable"}
-                                     "hi"]}))
+      (is (= (:components @tracker) {joe-key component}))
+      (is (= (:id->key data) {"root" joe-key}))
+      (is (= (:key->dom data)
+             {joe-key [:div {:key joe-key
+                             :class "item content-text editable"}
+                       "Joe"]}))
       (is (= (:next-id data) 0))
-      (is (= (set (:out-of-date-keys data)) #{[[:k] 0]}))
+      (is (= (set (:out-of-date-keys data)) #{[joe-key 0]}))
       ;; Try some updates that don't change the definition.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (compute md)
@@ -277,39 +283,42 @@
         (is (= @tracker data))
         (swap-and-act tracker #(update-set-component % alt-c-map))
         (compute md)
-        (is (= (get-in @tracker [:components [:k]])
+        (is (= (get-in @tracker [:components joe-key])
                (assoc component :attributes (:attributes alt-c-map))))
         (is (= (set (:out-of-date-keys @tracker)) #{})))
-      ;; Change the value of the reporter, and make sure the dom updates.
+      ;; Change the value of the store, and make sure the dom updates.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
-      (reporter/set-value! reporter "ho")
+      (let [store (:store joe)]
+        (update-content! store (:item-id joe) "Joe's"))
       (compute md)
-      (is (= (get-in @tracker [:key->dom [:k]])
-             [:div  {:key [:k] :class "item content-text editable"} "ho"]))
-      (is (= (set (:out-of-date-keys @tracker)) #{[[:k] 0]})))
+      (is (= (get-in @tracker [:key->dom joe-key])
+             [:div  {:key joe-key :class "item content-text editable"}
+              "Joe's"]))
+      (is (= (set (:out-of-date-keys @tracker)) #{[joe-key 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:key->dom [:d]])))
     (compute md)
-    (reporter/set-value! reporter "hi")
+    (reporter/set-value! reporter jane)
     (compute md)
-    (is (= (into {} (map (fn [[key component]]
-                           [key (get-in @tracker [:key->dom key])])
-                         (get-in @tracker [:components])))
-           {[:k] [:div  {:key [:k] :class "item content-text editable"} "hi"]
-            [:d] [:div {:key [:d]}
-                  [:component {:key ["s" :d]
-                               :width 1}
-                   [item-DOM reporter ["s" :d] #{} {:depth 1}]]
-                  [:component {:key [(str "h") :d]}
-                   [item-DOM "h" ["h" :d] #{} {:depth 1}]]
-                  [:component {:key [(str "i") :d]}
-                   [item-DOM "i" ["i" :d] #{} {:depth 1}]]]
-            ["s" :d] [:div  {:key ["s" :d]
-                             :class "item content-text editable"} "hi"]
-            ["h" :d] [:div  {:key ["h" :d]
-                             :class "item content-text editable"} "h"]
-            ["i" :d] [:div  {:key ["i" :d]
-                             :class "item content-text editable"} "i"]}))
+    (is (check
+         (into {} (map (fn [[key component]]
+                         [key (get-in @tracker [:key->dom key])])
+                       (get-in @tracker [:components])))
+         {joe-key [:div {:key joe-key
+                         :class "item content-text editable"}
+                   "Joe's"]
+          [:d] [:div {:key [:d]}
+                [:component {:key [(item-referent joe) :d]
+                             :width 1}
+                 [item-DOM joe [:d] #{} {:depth 1 :do-not-merge #{}}]]
+                [:component {:key [(item-referent jane) :d]}
+                 [item-DOM jane [:d] #{} {:depth 1 :do-not-merge #{}}]]]
+          [(item-referent joe) :d] [:div  {:key [(item-referent joe) :d]
+                                           :class "item content-text editable"}
+                                    "Joe's"]
+          [(item-referent jane) :d] [:div  {:key [(item-referent jane) :d]
+                                            :class "item content-text editable"}
+                                     "Jane"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))
     ))
 
@@ -327,8 +336,7 @@
 
 (deftest key->attributes-test
   (let [md (new-expression-manager-data)
-        tracker (new-dom-tracker md)
-        reporter (new-reporter :value "hi")]
+        tracker (new-dom-tracker md)]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]
@@ -340,27 +348,28 @@
 (deftest add-dom-test
   (let [md (new-expression-manager-data)
         tracker (new-dom-tracker md)
-        reporter (new-reporter :value "hi")]
-    (add-dom tracker "root" [:root] [item-DOM reporter [:root] #{} {:depth 0}])
+        joe (let-mutated [joe "Joe"] joe)
+        joe-key [(item-referent joe) :root]]
+    (add-dom tracker "root" joe-key
+             [item-DOM joe [:root] #{} {:depth 0 :do-not-merge #{}}])
     (compute md)
     (let [data @tracker
-          component (get-in data [:components [:root]])]
+          component (get-in data [:components joe-key])]
       (is (= (:version component) 1))
       (is (= (:depth component) 0))
-      (is (= (:components @tracker) {[:root] component}))
-      (is (= (:id->key data) {"root" [:root]}))
-      (is (= (:key->id data  {[:root] "root"})))
+      (is (= (:components @tracker) {joe-key component}))
+      (is (= (:id->key data) {"root" joe-key}))
+      (is (= (:key->id data  {joe-key "root"})))
       (is (= (:key->dom data)
-             {[:root] [:div {:key [:root]
+             {joe-key [:div {:key joe-key
                              :class "item content-text editable"}
-                       "hi"]}))
+                       "Joe"]}))
       (is (= (:next-id data) 0))
-      (is (= (set (:out-of-date-keys data)) #{[[:root] 0]})))))
+      (is (= (set (:out-of-date-keys data)) #{[joe-key 0]})))))
 
 (deftest request-client-refresh-test
   (let [md (new-expression-manager-data)
-        tracker (new-dom-tracker md)
-        reporter (new-reporter :value "hi")]
+        tracker (new-dom-tracker md)]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]

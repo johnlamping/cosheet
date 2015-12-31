@@ -381,17 +381,16 @@
   [element condition parent-key inherited & {:as extra-attributes}]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-specifiers element condition)]
-    (let [key (->> parent-key
-                   ;; We must make this key different from what it
-                   ;; would have been if this element were displayed
-                   ;; under its parent's component.
-                   ;; Because it might have been in that situation.
-                   (prepend-to-key (comment-referent condition))
-                   (prepend-to-key (item-referent element)))]      
+    (let [;; We must make this key different from what it would have
+          ;; been if this element were displayed under its parent's
+          ;; component.  Because it might have been in that situation.
+          condition-key (prepend-to-key (comment-referent condition) parent-key)
+          key (prepend-to-key (item-referent element) condition-key)]      
       (make-component (into {:key key
                              :sibling-elements (rest condition)}
                             extra-attributes)
-                      [item-DOM element key (set condition-specs) inherited]))))
+                      [item-DOM element condition-key
+                       (set condition-specs) inherited]))))
 
 (defn empty-DOM
   "Generate dom for an empty editable cell. A map may be provided so
@@ -414,8 +413,8 @@
                                                      parent-key)]
                              (make-component
                               {:key key :sibling-elements sibling-elements}
-                              [item-DOM
-                               item key (set excluded-elements) inherited])))
+                              [item-DOM item parent-key
+                               (set excluded-elements) inherited])))
                          items-with-excluded)]
       (vertical-stack item-doms :separators true)))
 
@@ -613,30 +612,32 @@
    describing an item and all its elements, except the ones in
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
-  [item key excluded inherited]
-  (println "Generating DOM for" (simplify-for-print key))
+  [item parent-key excluded inherited]
+  (println "Generating DOM for"
+           (simplify-for-print item) (simplify-for-print parent-key))
   (expr-let [content (entity/content item)
              elements (semantic-elements item)]
-    (let [elements (remove excluded elements)
+    (let [item-key (prepend-to-key (item-referent item) parent-key)
+          elements (remove excluded elements)
           inherited-down (update-in inherited [:depth] inc)
           content-dom
           (if (entity/atom? content)
             [:div (if (empty? elements)
                     {:class "item content-text editable"
-                     :key key}
+                     :key item-key}
                     {:class "content-text editable"
-                     :key  (prepend-to-key (content-location-referent) key)})
+                     :key (prepend-to-key (content-location-referent)
+                                          item-key)})
              (if (= content :none) "" (str content))]
-            (let [child-key (prepend-to-key (item-referent content) key)]
-              (make-component
-               {:key child-key}
-               [item-DOM child-key content #{} inherited-down])))]
+            (make-component
+               {:key (prepend-to-key (item-referent content) item-key)}
+               [item-DOM content item-key #{} inherited-down]))]
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-table-DOM
-                                 elements key inherited-down)]
+                                 elements item-key inherited-down)]
           (add-attributes (vertical-stack [content-dom elements-dom])
-                          {:class "item with-elements" :key key}))))))
+                          {:class "item with-elements" :key item-key}))))))
 
 ;;; Tables
 

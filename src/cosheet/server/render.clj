@@ -666,19 +666,26 @@
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "tags"})))))
 
-(defn table-header-member-referents
-  "Generate referents for a table header, given the info-maps of
-   the header requests it applies to, and the item that specifies the table."
-  [info-maps table-item]
-  (map 
-   #(key-referent [(content-referent) (:item-container %) table-item])
-   info-maps))
+(defn table-header-key
+  "Generate the key for a table header, given the info-maps of all the
+  header requests it applies to, as well as the table item, the parent
+  key of the table and the scope referent of the table."
+  [info-maps table-item table-parent-key scope-referent]
+  (prepend-to-key
+    (parallel-referent
+     []
+     (vec (cons scope-referent
+                (map #(key-referent [(content-referent)
+                                     (:item-container %)
+                                     table-item])
+                     info-maps))))
+    table-parent-key))
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy.
   The scope-referent should specify all the items from which
   this header selects elements."
-  [table-item node header-condition parent-key scope-referent inherited]
+  [table-item node header-condition table-parent-key scope-referent inherited]
   (let [{:keys [info members children]} node
         width (count (hierarchy-node-descendants node))
         descendants (hierarchy-node-descendants node)
@@ -687,26 +694,16 @@
                           info 
                           (:info-elements example) (:info-canonicals example))
         affected-header-items (map :item descendants)
-        downward-key (prepend-to-key
-                      (parallel-referent
-                       []
-                       (vec (cons scope-referent
-                                  (table-header-member-referents
-                                   descendants table-item))))
-                      parent-key)
+        downward-key (table-header-key
+                      descendants table-item table-parent-key scope-referent)
         node-dom (expr table-header-node-DOM
                    (order-items example-elements) ; Why we need the expr
                    header-condition downward-key inherited)]
     (if (empty? children)
       node-dom
       (let [inherited (update-in inherited [:level] inc)
-            downward-key (prepend-to-key
-                          (parallel-referent
-                           []
-                           (vec (cons scope-referent
-                                      (table-header-member-referents
-                                       members table-item))))
-                          parent-key)]
+            downward-key (table-header-key
+                          members table-item table-parent-key scope-referent)]
         [:div node-dom [:div {:class "column-header-sequence"}
                         (cons
                          (map #(table-header-node-DOM
@@ -714,7 +711,7 @@
                                header-condition downward-key inherited)
                               members))
                          (map #(table-header-subtree-DOM
-                                % parent-key scope-referent inherited)
+                                % table-parent-key scope-referent inherited)
                               children)]]))))
 
 (defn table-header-DOM
@@ -724,7 +721,7 @@
   ;; use the item that contains the condition, so the key won't change
   ;; if the header value changes.
   [table-item column-items column-templates header-condition
-   parent-key row-referent inherited]
+   table-parent-key row-referent inherited]
   (let [inherited (assoc inherited :level 0)]
     ;; Unlike row headers for tags, where the header information is
     ;; computed from the items of the rows, here the header information
@@ -736,7 +733,7 @@
                           (zipmap column-templates column-items))
                columns (expr-seq
                         map #(table-header-subtree-DOM
-                              table-item % header-condition parent-key
+                              table-item % header-condition table-parent-key
                               row-referent inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
@@ -764,8 +761,8 @@
   ;; TODO: Find the items of a row with knowledge of the column
   ;; hierarchy, so that an item won't show up at the general level if
   ;; it also shows up at a more specific level.
-  [row-item column-definitions column-conditions parent-key inherited]
-  (let [row-key (prepend-to-key (item-referent row-item) parent-key)
+  [row-item column-definitions column-conditions table-parent-key inherited]
+  (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)
         column-parent-keys (map #(prepend-to-key (-> %
                                                      item-referent
                                                      comment-referent)
@@ -774,9 +771,10 @@
     (expr-let [cell-items (expr-seq map #(do (println "running cell query: " row-item " " %) (matching-elements % row-item))
                                     column-conditions)
                cells (expr-seq
-                      map (fn [items parent-key condition]
+                      map (fn [items table-parent-key condition]
                             (table-cell-DOM
-                             items condition row-item parent-key inherited))
+                             items condition row-item
+                             table-parent-key inherited))
                       cell-items column-parent-keys column-conditions)]
       (println "computed table row")
       (into [:div {:class "table-row"}] cells))))
@@ -812,12 +810,12 @@
   [table-item parent-key inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))
-  (let [store (:store table-item) 
-        table-key (prepend-to-key (item-referent table-item) parent-key)]
+  (let [store (:store table-item)]
     (expr-let [row-query-item (entity/label->content table-item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
-        (println "row-query-item" (current-value (entity/to-list row-query-item)))
+        (println "row-query-item"
+                 (current-value (entity/to-list row-query-item)))
         (expr-let [basic-row-query (semantic-to-list row-query-item)
                    row-query (add-element-to-entity-list
                               (replace-nones basic-row-query)
@@ -832,7 +830,7 @@
                    row-items (expr order-items
                                (matching-items row-query store))
                    headers (table-header-DOM table-item columns column-templates
-                                             '(nil tag) table-key
+                                             '(nil tag) parent-key
                                              (query-referent row-query-item)
                                              inherited)
                    rows (expr-seq
@@ -842,4 +840,7 @@
           (println "column conditions"
                    (current-value
                     (expr-seq map entity/to-list column-conditions)))
-          (into [:div {:class "table" :key table-key} headers] rows))))))
+          (into [:div {:class "table"
+                       :key (prepend-to-key (item-referent table-item)
+                                            parent-key)} headers]
+                rows))))))

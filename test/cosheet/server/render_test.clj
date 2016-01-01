@@ -1,5 +1,5 @@
 (ns cosheet.server.render-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is assert-expr do-report]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
@@ -27,7 +27,7 @@
                           content-location-referent query-referent
                           key-referent content-referent
                           canonicalize-list prepend-to-key
-                          item-referent? parallel-referent?]]
+                          item-referent? parallel-referent? key-referent?]]
              [render :refer :all])
                                         ; :reload
             ))
@@ -62,41 +62,65 @@
             (when (= (first dom) :div)
               (mapcat get-dom-keys (rest dom))))))
 
-(defn validate-key
-  "Check that a key is well formed,
+(defn valid-key?
+  "Return true if the key is well formed,
   in particular that its items follow the subject/content chain."
   [key expected-item-id immutable-store]
-  (when (not (empty? key))
-    (let [[first-ref & remainder] key]
+  (or
+   (empty? key)
+   (let [[first-ref & remainder] key]
       (cond
         (keyword? first-ref)
-        (validate-key remainder expected-item-id immutable-store)
+        (valid-key? remainder expected-item-id immutable-store)
         (item-referent? first-ref)
-        (do (when expected-item-id
-              (if (= (first expected-item-id) :container)
-                (is (= (id->content immutable-store first-ref)
-                       (second expected-item-id)))
-                (is (= first-ref expected-item-id))))
-            (validate-key remainder
-                          (or (id->subject immutable-store first-ref)
-                              [:container first-ref])
-                          immutable-store))
+        (and (or (not expected-item-id)
+                 (if (= (first expected-item-id) :container)
+                   (= (id->content immutable-store first-ref)
+                      (second expected-item-id))
+                   (= first-ref expected-item-id)))
+             (valid-key? remainder
+                           (or (id->subject immutable-store first-ref)
+                               [:container first-ref])
+                           immutable-store))
+        (key-referent? first-ref)
+        (let [[tag key] first-ref]
+          (valid-key?
+           (vec (concat key remainder)) expected-item-id immutable-store))
         (parallel-referent? first-ref)
-        (do (is (not expected-item-id))
-            (let [[tag exemplar item-ids] first-ref]
-              (validate-key exemplar expected-item-id immutable-store)
-              (validate-key remainder nil immutable-store)))
+        (and (not expected-item-id)
+             (let [[tag exemplar item-ids] first-ref]
+               (and (valid-key? exemplar expected-item-id immutable-store)
+                    (every? 
+                     #(valid-key? (into [%] remainder) nil immutable-store)
+                     item-ids))))
         true
-        (validate-key remainder expected-item-id immutable-store)))))
+        (valid-key? remainder expected-item-id immutable-store)))))
 
-(defn validate-keys
-  "Check that all the keys in the dom are well formed.
-    The item must have a store where the ids in the keys can be looked up."
+(defn invalid-keys
+  "Return all the keys in the dom that are not well formed.
+  The item must have a store where the ids in the keys can be looked up."
   [dom item]
-  (let [store (current-store (:store item))
-        keys (get-dom-keys dom)]
-    (doseq [key keys]
-      (validate-key key nil store))))
+  (let [store (current-store (:store item)) ]
+    (remove #(valid-key? % nil store)
+            (get-dom-keys dom))))
+
+;;; Used in (is (check <value> <pattern>))
+;;; Handled by the method on assert-expr.
+(def check-keys) 
+
+(defmethod assert-expr 'check-keys [msg form]
+  (let [[pred dom item] form]
+    `(let [dom-value# ~dom
+           item-value# ~item
+           result# (invalid-keys dom-value# item-value#)]
+       (if (empty? result#)
+         (do-report {:type :pass, :message ~msg,
+                     :expected '~form,
+                     :actual (list ~pred dom-value# item-value#)})
+         ;; A non-empty result indicates a failure, and describes it.
+         (do-report {:type :fail, :message ~msg,
+                     :expected '~form, :actual result#}))
+       result#)))
 
 (deftest condition-specifiers-test
   (is (check (map canonicalize-list
@@ -333,7 +357,7 @@
                                                   {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
-    (validate-keys dom fred)
+    (is (check-keys dom fred))
     (is (check
          dom
          [:div {:class "column tags"}
@@ -357,7 +381,7 @@
                           {:depth 1 :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
-    (validate-keys dom fred)
+    (is (check-keys dom fred))
     (is (check
          dom
          [:div
@@ -391,7 +415,7 @@
           (expr-let [dom (item-DOM fred [] #{}
                                    {:depth 0 :do-not-merge #{}})]
             [dom fred]))]
-    (validate-keys dom fred)
+    (is (check-keys dom fred))
     (is (check dom
                [:div {:class "item content-text editable"
                       :key [(:item-id fred)]} "Fred"])))
@@ -408,7 +432,7 @@
         confidence-tag (first (current-value (entity/elements confidence)))
         item-key [(item-referent age) :age]
         tag-key (into [[:comment [nil 'tag]] (:item-id doubtful)] item-key)]
-    (validate-keys dom age)
+    (is (check-keys dom age))
     (is (check
          dom
          [:div {:class "item with-elements" :key [(item-referent age) :age]}
@@ -445,7 +469,7 @@
             [dom age]))
         doubtful (first (current-value (label->elements age o1)))
         item-key [(item-referent age) :age]]
-    (validate-keys dom age)
+    (is (check-keys dom age))
     (is (check dom
            [:div {:class "item with-elements" :key item-key}
             (any vector?)
@@ -491,7 +515,7 @@
       (request dom-reporter md)
       (compute md)
       (check-propagation dom-reporter)
-      (validate-keys (reporter/value dom-reporter) joe)
+      (is (check-keys (reporter/value dom-reporter) joe))
       (is (check
            (reporter/value dom-reporter)
            [:div {:class "item with-elements" :key item-key}
@@ -523,7 +547,7 @@
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
       (compute md)
       (check-propagation dom-reporter)
-      (validate-keys (reporter/value dom-reporter) joe)
+      (is (check-keys (reporter/value dom-reporter) joe))
       (is (check
            (reporter/value dom-reporter)
            [:div {:class "item with-elements" :key item-key}
@@ -588,7 +612,7 @@
       (request dom-reporter md)
       (compute md))
     (check-propagation dom-reporter)
-    (validate-keys (reporter/value dom-reporter) joe)
+    (is (check-keys (reporter/value dom-reporter) joe))
     (is (check
          (reporter/value dom-reporter)
          (let [item-key [(item-referent joe) :joe]
@@ -693,7 +717,7 @@
       (request dom-reporter md)
       (compute md))
     (check-propagation dom-reporter)
-    (validate-keys (reporter/value dom-reporter) joe)
+    (is (check-keys (reporter/value dom-reporter) joe))
     (is (check
          (reporter/value dom-reporter)
          (let [item-key [(item-referent joe) rid]
@@ -786,19 +810,18 @@
         joe-age (first (remove #{joe-bogus-age}
                                (current-value
                                 (label->elements joe "age"))))]
-    (validate-keys dom joe)
+    (is (check-keys dom joe))
     (is (check
          dom
-         (let [item-key [(item-referent table) :foo]
-               joe-key [(item-referent joe) :foo]
-               age-header-key (into [[:parallel
-                                      [[:comment '(nil tag)]]
-                                      [(query-referent (:item-id query))
-                                       (key-referent [(content-referent)
-                                                      (item-referent age)
-                                                      (item-referent table)])]]]
-                                    item-key)]
-           [:div {:class "table" :key item-key}
+         (let [joe-key [(item-referent joe) :foo]
+               age-header-key [[:parallel
+                                [[:comment '(nil tag)]]
+                                [(query-referent (:item-id query))
+                                 (key-referent [(content-referent)
+                                                (item-referent age)
+                                                (item-referent table)])]]
+                               :foo]]
+           [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags"}
               [:component {:key (prepend-to-key (item-referent age-tag)
@@ -870,19 +893,18 @@
                          (label->elements joe "name")))
         joe-name-tags (current-value
                        (label->elements joe-name 'tag))]
-    (validate-keys dom joe)
+    (is (check-keys dom joe))
     (is (check
          dom
-         (let [item-key [(item-referent table) :foo]
-               joe-key [(item-referent joe) :foo]
-               name-header-key (into [[:parallel
-                                      [[:comment '(nil tag)]]
-                                      [(query-referent (:item-id query))
-                                       (key-referent [(content-referent)
-                                                      (item-referent name-id)
-                                                      (item-referent table)])]]]
-                                    item-key)]
-           [:div {:class "table" :key item-key}
+         (let [joe-key [(item-referent joe) :foo]
+               name-header-key [[:parallel
+                                 [[:comment '(nil tag)]]
+                                 [(query-referent (:item-id query))
+                                  (key-referent [(content-referent)
+                                                 (item-referent name-id)
+                                                 (item-referent table)])]]
+                                :foo]]
+           [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags"}
               [:div {:class "stack column-header"}

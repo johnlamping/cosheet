@@ -38,7 +38,7 @@
         ms (new-mutable-store s)
         i (make-id "i")
         ci (cosheet.store-impl/->ImplicitContentId i)
-        r (new-reporter :expression [+ 1 (new-reporter :fetch [+ 2 3])])
+        r (new-reporter :expression [+ 1 (new-reporter :application [+ 2 3])])
         m (mm/new-mutable-map)]
     (is (= (simplify-for-print 1) 1))
     (is (= (simplify-for-print s) 'Store))

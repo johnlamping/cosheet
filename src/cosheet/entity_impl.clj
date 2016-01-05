@@ -42,8 +42,8 @@
     ^{:doc "An item whose elements are described by a mutable store."}
     MutableStoredItem
 
-  [store     ; The mutable store that holds the information for this item.
-   item-id]  ; The ItemDescription of the item in the store.
+    [store     ; The mutable store that holds the information for this item.
+     item-id]  ; The ItemDescription of the item in the store.
 
   StoredEntity
   Entity

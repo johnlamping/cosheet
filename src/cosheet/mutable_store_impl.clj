@@ -1,5 +1,6 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
+                     store-impl
                      [mutable-manager
                       :refer [new-mutable-manager-data
                               get-or-make-reporter
@@ -30,6 +31,13 @@
           #{nil} ; We have to always inform reporters keyed by nil.
           modified-ids))
 
+(defn non-implicit-id
+  "Traverse through ImplicitContentIds to get to the non-implicit id."
+  [id]
+  (if (instance? cosheet.store_impl.ImplicitContentId id)
+    (non-implicit-id (:containing-item-id id))
+    id))
+
 (defrecord MutableStoreImpl
     ^{:doc
       "A store that contains an immutable store,
@@ -52,7 +60,8 @@
     (get-or-make-reporter [id] id->element-ids (:manager-data this) id))
 
   (id->content [this id]
-    (get-or-make-reporter [id] id->content (:manager-data this) id))
+    (let [base-id (non-implicit-id id)]
+      (get-or-make-reporter [base-id] id->content (:manager-data this) id)))
 
   (id->content-reference [this id]
     (get-or-make-reporter [id] id->content-reference (:manager-data this) id))

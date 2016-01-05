@@ -39,7 +39,7 @@
   [expr]
   (if (reporter? expr)
     (let [data (data expr)
-          computation (or (:expression data) (:fetch data))]
+          computation (or (:expression data) (:application data))]
       (if computation
         (map reporter-computation computation)
         "Reporter"))
@@ -114,10 +114,19 @@
                 simplified-parts (map unpack-if-trivial-nested parts)
                 values (map first parts)
                 result ((fn [[f & args]] (apply f args)) values)
-                trace (trace-current result)]
-            (conj (if (= (first trace) (second trace)) (vec (rest trace)) trace)
-                  (cons :expr simplified-parts)))
-          [(:value data)]))      
+                trace (trace-current result)
+                simplified-trace (if (= (first trace) (second trace))
+                                   (vec (rest trace))
+                                   trace)]
+            (vec (cons (first simplified-trace) 
+                       (cons (cons :expr simplified-parts)
+                             (rest simplified-trace)))))
+          (let [application (:application data)]
+            (if application
+              (let [parts (map trace-current application)
+                    simplified-parts (map unpack-if-trivial-nested parts)]
+                (vec (cons (:value data) (cons :application simplified-parts))))
+              [(:value data)]))))      
       [expr]))
 
 (defn pst [item]

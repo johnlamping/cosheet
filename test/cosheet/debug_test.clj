@@ -5,6 +5,8 @@
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
                      [reporters :refer [new-reporter set-value!]]
+                     [expression-manager :refer [new-expression-manager-data
+                                                 request compute]]
                      [expression :refer [expr expr-let cache]]
                      [store :refer :all]
                      [entity :refer :all]
@@ -16,22 +18,60 @@
 
 (defn fib [n s]
   (if (<= n 1)
-    s
-    (expr + (expr fib (- n 1) s) (expr fib (- n 2) s))))
+    s   
+    (expr + (fib (- n 1) s) (fib (- n 2) s))))
 
-(deftest current-value-fib-test
+(deftest current-value-test
   (let [state (new-reporter :value 0)
         fib6 (fib 6 state)]
     (is (= (current-value fib6) 0))
     (set-value! state 1)
     (is (= (current-value fib6) 13))))
 
-(deftest trace-current-fib-test
+(defn count-ones [x]
+  (cond (= x 1)
+        1
+        (sequential? x)
+        (apply + (map count-ones x))
+        true
+        0))
+
+(deftest trace-current-test
   (let [state (new-reporter :value 0)
-        fib6 (fib 6 state)]
+        fib6 (fib 6 state)
+        md (new-expression-manager-data)]
     (is (= (first (trace-current fib6)) 0))
     (set-value! state 1)
-    (is (= (first (trace-current fib6)) 13))))
+    (is (= (first (trace-current fib6)) 13))
+    (is (= (count-ones (trace-current fib6)) 13))
+    ;; Now try it after it had been computed.
+    (request fib6 md)
+    (compute md)
+    (is (= (first (trace-current fib6)) 13))
+    (is (= (count-ones (trace-current fib6)) 13))))
+
+(defn deep-node [reporter]
+  (let [data (cosheet.reporters/data reporter)
+        source (:value-source data)
+        required (distinct (concat (:needed-values data)
+                                   (keys (:subordinate-values data))
+                                   (when source [source])))]
+    (if (empty? required)
+      reporter
+      (deep-node (first (sort-by hash required))))))
+
+(deftest generate-backtrace-test
+  (let [state (new-reporter :value 0)
+        fib6 (fib 6 state)
+        md (new-expression-manager-data)]
+    (request fib6 md)
+    (set-value! state 1)
+    (compute md)
+    (is (= (map #(map cosheet.reporters/value %)
+                (generate-backtrace (deep-node fib6))))
+        [[+ 1 1]
+         [+ 3 2]
+         [+ 8 5]])))
 
 (deftest simplify-for-print-test
   (let [s (new-element-store)

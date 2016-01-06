@@ -5,7 +5,7 @@
                      [store :as store]
                      [entity :as entity]
                      [reporters :refer [reporter? attended? data value
-                                        set-attendee!]]
+                                        valid? set-attendee!]]
                      [expression-manager :as expression-manager]
                      [entity-impl :as entity-impl]
                      store-utils
@@ -96,11 +96,15 @@
     expr))
 
 (defn- unpack-if-trivial-nested [item]
-  (if (and (sequential? item)
+  (cond (and (sequential? item)
+             (= (count item) 1))
+        (first item)
+        (and (sequential? item)
            (= (count item) 2)
            (= (first item) (second item)))
-    (first item)
-    item))
+        (unpack-if-trivial-nested (first item))
+        true             
+        item))
 
 (defn trace-current
   "Run computation on the reporter, returning a trace of the item
@@ -113,7 +117,9 @@
           (let [parts (map trace-current expression)
                 simplified-parts (map unpack-if-trivial-nested parts)
                 values (map first parts)
-                result ((fn [[f & args]] (apply f args)) values)
+                result (or (:value-source data)
+                           (let [v (:value data)] (when (valid? v) v))
+                           ((fn [[f & args]] (apply f args)) values))
                 trace (trace-current result)
                 simplified-trace (if (= (first trace) (second trace))
                                    (vec (rest trace))
@@ -125,12 +131,34 @@
             (if application
               (let [parts (map trace-current application)
                     simplified-parts (map unpack-if-trivial-nested parts)]
-                (vec (cons (:value data) (cons :application simplified-parts))))
+                (vec (cons (:value data)
+                           [(cons :application simplified-parts)])))
               [(:value data)]))))      
       [expr]))
 
 (defn pst [item]
   (pprint (simplify-for-print (trace-current item))))
+
+(defn generate-backtrace
+  "Print a stack of requestors of the given reporter."
+  [reporter]
+  (when (reporter? reporter)
+    (let [data (data reporter)
+          expr (or (:expression data) (:application data))
+          attendees (:attendees data)
+          requestor (when attendees
+                      (first (mapcat (fn [key]
+                                       (cond (reporter? key)
+                                             [key]
+                                             (sequential? key)
+                                             (filter reporter? key)))
+                                     (keys attendees))))
+          rest (if requestor (generate-backtrace requestor) [])]
+      (if expr (cons expr rest) rest))))
+
+(defn print-backtrace [reporter]
+  (doseq [r (generate-backtrace reporter)]
+    (println r)))
 
 ;;; Code to walk reporters and generate a profile.
 ;;; See doc for reporters-profile for a description of the output.

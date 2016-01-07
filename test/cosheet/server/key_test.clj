@@ -92,16 +92,19 @@
           [[:parallel
             [(content-location-referent)
              (comment-referent :foo)
-             1]
-            [(key-referent [1 (comment-referent :bar)]) 3]]
+             :a
+             (query-referent 1)]
+            [(key-referent [(query-referent 1) (comment-referent :bar)]) :c]]
            (comment-referent :baz)])
          [[:parallel
-            [1]
-            [(key-referent [1]) 3]]])))
+            [(query-referent 1)]
+            [(key-referent [(query-referent 1)])]]])))
 
 (deftest item-ids-referred-to-test
-  (is (= (set (item-ids-referred-to [[:parallel [0 1] [2 3]] 4]))
-         #{0 1 4})))
+  (is (check (item-ids-referred-to [[:parallel [(->ItemId 0) (->ItemId 1)]
+                                     [(->ItemId 2) (->ItemId 3)]]
+                                    (->ItemId 4)])
+             (as-set [(->ItemId 0) (->ItemId 1) (->ItemId 4)]))))
 
 (deftest semantic-test
   (let [semantic (let-mutated [him joe-list]
@@ -126,178 +129,203 @@
                               [45 {["age" {'tag 1}] 1}] 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
 
+(deftest bind-referents-test
+  (is (check (bind-referents [(item-referent joe)
+                              (comment-referent :foo)
+                              (content-referent)
+                              (key-referent
+                               [(query-referent joe)
+                                (elements-referent joe)])
+                              (parallel-referent
+                               [(item-referent joe)]
+                               [(item-referent jane)
+                                (key-referent [(item-referent joe)
+                                               (item-referent jane)])])]
+                             store false)
+             [[:bound-item joe]
+              (content-referent)
+              [:key [[:query (semantic-to-list joe)]
+                     [:elements (semantic-to-list joe)]]]
+              [:parallel
+               [[:template (semantic-to-list joe)]]
+               [[:bound-item jane]
+                [:key [[:bound-item joe] [:bound-item jane]]]]]])))
+
 (deftest instantiate-exemplar-test
-  (let [make-instantiator
-        (fn [item] #(instantiate-exemplar-item-id store % item))]
-    (is (= (instantiate-exemplar store false
-                                 [(item-referent joe-male)]
-                                 joe (make-instantiator joe))
+  (let [bind #(vec (bind-referents % store false))
+        bind-e #(vec (bind-referents % store true))
+        make-instantiator inc]
+    (is (= (instantiate-bound-key store false
+                                  (bind [(item-referent joe-male)])
+                                  joe)
            [joe-male]))
-    (is (= (instantiate-exemplar store false
-                                 [(comment-referent :c)
-                                  (item-referent joe-male)
-                                  (comment-referent :d)]
-                                 joe (make-instantiator joe))
+    (is (= (instantiate-bound-key store false
+                                  (bind [(comment-referent :c)
+                                         (item-referent joe-male)
+                                         (comment-referent :d)])
+                                 joe)
            [joe-male]))
-    (is (= (instantiate-exemplar store false
-                                 [(content-referent)
-                                  (item-referent joe-male)]
-                                 joe (make-instantiator joe))
+    (is (= (instantiate-bound-key store false
+                                  (bind [(content-referent)
+                                         (item-referent joe-male)])
+                                 joe)
            ["male"]))
-    (is (empty? (instantiate-exemplar store false
-                                      [(item-referent joe-male)]
-                                      jane (make-instantiator jane))))
-    (is (= (instantiate-exemplar store false [(item-referent jane-age)]
-                                 jane (make-instantiator jane))
+    (is (= (instantiate-bound-key store false (bind [(item-referent jane-age)])
+                                  jane)
            [jane-age]))
-    (is (= (instantiate-exemplar store false [(item-referent jane-age)]
-                                 joe (make-instantiator joe))
+    (is (= (instantiate-bound-key store false
+                                  (bind-e [(item-referent jane-age)])
+                                  joe)
            [joe-age]))
-    (is (= (instantiate-exemplar store false
-                                 [(item-referent joe-age-tag)
-                                              (item-referent joe-age)]
-                                 jane (make-instantiator jane))
+    (is (= (instantiate-bound-key store false
+                                  (bind-e [(item-referent joe-age-tag)
+                                           (item-referent joe-age)])
+                                  jane)
            [jane-age-tag]))
-    (is (= (instantiate-exemplar store false
-                                 [(key-referent [joe-age-tag joe-age])]
-                                 jane (make-instantiator jane))
+    (is (= (instantiate-bound-key store false
+                                  (bind-e [(key-referent
+                                            [joe-age-tag joe-age])])
+                                  jane)
            [jane-age-tag]))
-    (is (= (instantiate-exemplar store false
-                                 [(parallel-referent [] [joe-male joe-age])]
-                                 joe (make-instantiator joe))
+    (is (= (instantiate-bound-key store false
+                                  (bind [(parallel-referent
+                                          [] [joe-male joe-age])])
+                                 joe)
            [joe-male joe-age]))
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store false
-            [(parallel-referent [joe-age-tag] [joe-male joe-age])]
-            joe (make-instantiator joe))
+            (bind [(parallel-referent [joe-age-tag] [joe-male joe-age])])
+            joe)
            [joe-age-tag]))
     ;; Try key referents in a parallel
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store false
-            [(parallel-referent
-              []
-              [(key-referent [joe-age-tag joe-age])])]
-            joe (make-instantiator joe))
+            (bind [(parallel-referent
+                    []
+                    [(key-referent [joe-age-tag joe-age])])])
+            joe)
            [joe-age-tag]))
     ;; Try nested parallel.
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store false
-            [(parallel-referent
-              [(parallel-referent [] [joe-age-tag])]
-              [joe-male joe-age])]
-            joe (make-instantiator joe))
+            (bind [(parallel-referent
+                    [(parallel-referent [] [joe-age-tag])]
+                    [joe-male joe-age])])
+            joe)
            [joe-age-tag]))
     ;; Now try the same things, but grouped.
-    (is (= (instantiate-exemplar
-            store true [(item-referent joe-male)] joe (make-instantiator joe))
+    (is (= (instantiate-bound-key
+            store true (bind [(item-referent joe-male)]) joe)
            [[joe-male]]))
-    (is (empty? (instantiate-exemplar
-                 store true [(item-referent joe-male)]
-                 jane (make-instantiator jane))))
-    (is (= (instantiate-exemplar
-            store true [(item-referent jane-age)] jane (make-instantiator jane))
+    (is (empty? (instantiate-bound-key
+                 store true (bind-e [(item-referent joe-male)])
+                 jane)))
+    (is (= (instantiate-bound-key
+            store true (bind-e [(item-referent jane-age)]) jane)
            [[jane-age]]))
-    (is (= (instantiate-exemplar
-            store true [(item-referent jane-age)] joe (make-instantiator joe))
+    (is (= (instantiate-bound-key
+            store true (bind-e [(item-referent jane-age)]) joe)
            [[joe-age]]))
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store true
-            [(item-referent joe-age-tag) (item-referent joe-age)]
-            jane (make-instantiator jane))
+            (bind-e [(item-referent joe-age-tag) (item-referent joe-age)])
+            jane)
            [[jane-age-tag]]))
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store true
-            [[:parallel [] [(item-referent joe-male)
-                            (item-referent joe-age)]]]
-            joe (make-instantiator joe))
+            (bind [[:parallel [] [(item-referent joe-male)
+                                  (item-referent joe-age)]]])
+            joe)
            [[joe-male joe-age]]))
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store true
-            [[:parallel
-              [(item-referent joe-age-tag)]
-              [(item-referent joe-male) (item-referent joe-age)]]]
-            joe (make-instantiator joe))
+            (bind [[:parallel
+                    [(item-referent joe-age-tag)]
+                    [(item-referent joe-male) (item-referent joe-age)]]])
+            joe)
            [[joe-age-tag]]))
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
             store true
-            [[:parallel
-              [(parallel-referent [] [joe-age-tag])]
-              [(item-referent joe-male) (item-referent joe-age)]]]
-            joe (make-instantiator joe))
+            (bind [[:parallel
+                    [(parallel-referent [] [joe-age-tag])]
+                    [(item-referent joe-male) (item-referent joe-age)]]])
+            joe)
            [[joe-age-tag]]))
     ;; Try a query referent
-    (is (check (instantiate-exemplar
+    (is (check (instantiate-bound-key
                 store false
-                [(query-referent '(nil (nil "age")))]
-                nil #(description->entity % store))
+                (bind [(query-referent '(nil (nil "age")))])
+                nil)
                (as-set [joe jane])))
     ;; With an item as the condition
-    (is (check (instantiate-exemplar
+    (is (check (instantiate-bound-key
                 store false
-                [(query-referent joe-age)]
-                nil #(description->entity % store))
+                (bind [(query-referent joe-age)])
+                nil)
                (as-set [joe-age jane-age])))
     ;; Try an element referent
-    (is (check (instantiate-exemplar
+    (is (check (instantiate-bound-key
                 store false
-                [(elements-referent '(nil "age")) (item-referent joe)]
-                nil #(description->entity % store))
+                (bind [(elements-referent '(nil "age")) (item-referent joe)])
+                nil)
                (as-set [joe-age joe-bogus-age])))
     ;; With an item as the condition
-    (is (= (instantiate-exemplar
+    (is (= (instantiate-bound-key
                 store false
-                [(elements-referent jane-age) (item-referent joe)]
-                nil #(description->entity % store))
+                (bind [(elements-referent jane-age) (item-referent joe)])
+                nil)
            [joe-age]))
     ;; Try a parallel referent with an elements referent as its referents
-    (is (check (instantiate-exemplar
+    (is (check (instantiate-bound-key
                 store true
-                [(parallel-referent
-                  []
-                  [(elements-referent '(nil "age"))])
-                 (item-referent joe)]
-                nil #(description->entity % store))
+                (bind [(parallel-referent
+                        []
+                        [(elements-referent '(nil "age"))])
+                       (item-referent joe)])
+                nil)
                [(as-set [joe-age joe-bogus-age])]))
     ;; Try a parallel referent with another parallel referent as its referents.
-    (is (check (instantiate-exemplar
+    (is (check (instantiate-bound-key
                 store false
-                [(parallel-referent
-                  [(elements-referent '(nil "age"))]
-                  [(parallel-referent
-                    []
-                    [(query-referent '(nil (nil "age")))])])]
-                nil #(description->entity % store))
+                (bind [(parallel-referent
+                        [(elements-referent '(nil "age"))]
+                        [(parallel-referent
+                          []
+                          [(query-referent '(nil (nil "age")))])])])
+                nil)
                (as-set [joe-age joe-bogus-age jane-age])))
     ))
 
 (deftest key->items-test
   (is (= (key->items store [joe-id]) [joe]))
   (is (= (key->items store [joe-id jane-id]) [joe]))
-  (is (= (key->items store [[:parallel [] [joe-id jane-id]]])
-         [joe jane]))
-  (is (= (key->items store
-                     [[:parallel [(item-referent joe-age)] [joe-id jane-id]]])
-         [joe-age jane-age]))
-  (is (= (key->items store
-                     [[:parallel
-                       [[:parallel
-                         []
-                         [(item-referent joe-male) (item-referent joe-age)]]]
-                       [joe-id jane-id]]])
-         [joe-male joe-age jane-age])))
+  (is (check (key->items store [[:parallel [] [joe-id jane-id]]])
+             (as-set [joe jane])))
+  (is (check (key->items
+              store
+              [[:parallel [(item-referent joe-age)] [joe-id jane-id]]])
+             (as-set [joe-age jane-age])))
+  (is (check (key->items
+              store
+              [[:parallel
+                [[:parallel
+                  []
+                  [(item-referent joe-male) (item-referent joe-age)]]]
+                [joe-id jane-id]]])
+             (as-set [joe-male joe-age jane-age]))))
 
 (deftest key->item-groups-test
   (is (= (key->item-groups store [joe-id]) [[joe]]))
   (is (= (key->item-groups store [joe-id jane-id]) [[joe]]))
-  (is (= (key->item-groups store [[:parallel [] [joe-id jane-id]]])
-         [[joe jane]]))
-  (is (= (key->item-groups store
+  (is (check (key->item-groups store [[:parallel [] [joe-id jane-id]]])
+             [(as-set [joe jane])]))
+  (is (check (key->item-groups store
                      [[:parallel [(item-referent joe-age)] [joe-id jane-id]]])
-         [[joe-age] [jane-age]]))
-  (is (= (key->item-groups store
+             (as-set [[joe-age] [jane-age]])))
+  (is (check (key->item-groups store
                      [[:parallel
                        [[:parallel
                          []
                          [(item-referent joe-male) (item-referent joe-age)]]]
                        [joe-id jane-id]]])
-         [[joe-male joe-age] [jane-age]])))
+             (as-set [(as-set [joe-male joe-age]) [jane-age]]))))

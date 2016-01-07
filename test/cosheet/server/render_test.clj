@@ -25,7 +25,7 @@
             (cosheet.server
              [key :refer [item-referent comment-referent
                           content-location-referent query-referent
-                          key-referent content-referent
+                          key-referent content-referent elements-referent
                           canonicalize-list prepend-to-key
                           item-referent? parallel-referent? key-referent?]]
              [render :refer :all])
@@ -814,9 +814,13 @@
     (is (check
          dom
          (let [joe-key [(item-referent joe) :foo]
+               query-list '(nil (nil ("age" tag)) (:top-level :non-semantic))
                age-header-key [[:parallel
                                 [[:comment '(nil tag)]]
-                                [(query-referent (:item-id query))
+                                [[:parallel
+                                   [(elements-referent
+                                     (item-referent age-content))]
+                                   [(query-referent query-list)]]
                                  (key-referent [(content-referent)
                                                 (item-referent age)
                                                 (item-referent table)])]]
@@ -862,7 +866,7 @@
   ;; Test a header with two labels.
   (let [[dom table joe jane]
         (let-mutated [table `("table"
-                              ((:none (:none)) :row-query)
+                              (:none :row-query)
                               ((:none ("name" ~'tag (~o1 :order))
                                       ("id" ~'tag (~o2 :order))
                                       (~o1 :order))
@@ -897,9 +901,13 @@
     (is (check
          dom
          (let [joe-key [(item-referent joe) :foo]
+               query-list '(nil (:top-level :non-semantic))
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
-                                 [(query-referent (:item-id query))
+                                 [[:parallel
+                                   [(elements-referent
+                                     (item-referent name-id-content))]
+                                   [(query-referent query-list)]]
                                   (key-referent [(content-referent)
                                                  (item-referent name-id)
                                                  (item-referent table)])]]

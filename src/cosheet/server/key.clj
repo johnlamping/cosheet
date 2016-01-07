@@ -28,7 +28,7 @@
 
 ;;; There are several kinds of referents
 ;;;        item: <an item-id>
-;;;     comment: [:comment <information>
+;;;     comment: [:comment <information>] or string or keyword
 ;;;     content: [:content]
 ;;;       group: [:group <An item-id of the group, typically the first>]
 ;;;       query: [:query <condition>]
@@ -36,6 +36,10 @@
 ;;;         key: [:key <key>]
 ;;;    parallel: [:parallel <list of exemplar referents>
 ;;;                         <list of item, query, or elements referents>]
+
+;;; Only used as temporaries during key instantiation:
+;;;    template: [:template <list form of semantic information>]
+;;;  bound-item: [:bound-item <item>]
 
 ;;; Query, elements, and parallel reverents inherently indicate
 ;;; multiple items. A key can have at most one of them, which must be
@@ -110,17 +114,26 @@
 ;;; item is deleted. For now, we use items, because it provides a
 ;;; natural way to handle nested parallels and to provide uniqueness.
 
+;;; During instantiation of a key, item referents are turned into
+;;; template referents or bound-item referents. The former is used for
+;;; items that occur in exemplars, and gives the pattern that the
+;;; exemplar must match. The latter is for items that occur outside of
+;;; exemplars, and is just the item id connected to the store.
+
 (defn item-referent? [referent]
-  (and referent (not (sequential? referent))))
+  (satisfies? StoredItemDescription referent))
 
 (defn comment-referent? [referent]
-  (and (sequential? referent) (= ( first referent) :comment)))
+  (or (string? referent)
+      (keyword? referent)
+      (and (sequential? referent) (= ( first referent) :comment))))
 
 ;;; A content location referent refers to the location of a content,
 ;;; not its current value, so it leaves the item to still be the item
 ;;; that holds the content. Thus, it is just a comment.
 (defn content-location-referent? [referent]
-  (and (comment-referent? referent)
+  (and (sequential? referent)
+       (comment-referent? referent)
        (= (second referent) 'content-location)))
 
 (defn content-referent? [referent]
@@ -140,12 +153,17 @@
 
 (defn referent? [referent]
   (or (item-referent? referent)
+      (comment-referent? referent)
       (and (sequential? referent)
-           (#{:comment :content :query :elements :key :parallel}
+           (#{:comment :content :query :elements :key :parallel
+              :template :bound-item}
             (first referent)))))
 
 (defn referent-type [referent]
-  (if (sequential? referent) (first referent) :item))
+  (assert (referent? referent))
+  (cond (sequential? referent) (first referent)
+        (comment-referent? referent) :comment
+        true :item))
 
 (defn item-referent
   "Create an item referent from an item."
@@ -334,13 +352,13 @@
   (filtered-elements entity semantic-entity?))
 
 (defn semantic-to-list
-  "Given an entity, make a list representation of the semantic information
-  of the item."
-  [entity]
-  (if (entity/atom? entity)
-    (entity/content entity)
-    (expr-let [content (entity/content entity)
-               elements (semantic-elements entity)
+  "Given an immutable item, make a list representation of the
+  semantic information of the item."
+  [item]
+  (if (entity/atom? item)
+    (entity/content item)
+    (expr-let [content (entity/content item)
+               elements (semantic-elements item)
                content-semantic (semantic-to-list content)
                element-semantics (expr-seq map semantic-to-list elements)]
       (if (empty? element-semantics)
@@ -372,115 +390,148 @@
   Only works on immutable items."
   [semantic-info item]
   (let [canonical-semantic (canonicalize-list semantic-info)]
-    (->> (matching-elements semantic-info item)
-         ;; Get rid of the ones with extra semantic info.
-         (filter #(= (item->canonical-semantic %) canonical-semantic))
-         first)))
+    (let [matches (matching-elements semantic-info item)]
+      (when (not (empty? matches))
+        (first (if (> (count matches) 1)
+                 ;; Prefer one with no extra semantic info.
+                 (let [perfect-matches
+                       (filter #(= (item->canonical-semantic %)
+                                   canonical-semantic))]
+                   (if (empty? perfect-matches)
+                     matches
+                     perfect-matches))
+                 matches))))))
 
-(defn instantiate-exemplar-item-id
-  "Given the id of an exemplar item and a regular item, find an element
-   of the item that matches the semantic information of the exemplar.
-   Return nil if there is no matching element.
-   The store and item must be immutable."
-  [immutable-store exemplar-id item]
-  (when (id-valid? immutable-store exemplar-id)
-    (semantic-matching-element
-     (semantic-to-list (description->entity exemplar-id immutable-store))
+(defn replace-nones
+  "Replace any :none in the seq with nil"
+  [x]
+  (cond (sequential? x) (map replace-nones x)
+        (= x :none) nil
+        true x))
+
+(defn semantics-as-list
+  "If the item is an item id, return the list form of its semantics,
+   otherwise, return the item, assuming it is already in semantic list form."
+  [item immutable-store]
+  (replace-nones
+   (if (satisfies? StoredItemDescription item)
+     (semantic-to-list (when (id-valid? immutable-store item)
+                         (description->entity item immutable-store)))
      item)))
 
-(def instantiate-exemplar)
-(def instantiate-referent)
+;;; The binding step does all the context independent access to the
+;;; store, so it needs to be done only once, not for every
+;;; instantiation of an exemplar.
 
-(defn instantiate-parallel-referent
-  [immutable-store group referent parent item-id-instantiator]
+(def bind-referents)
+
+(defn bind-referent
+  "Return a possibly empty list of bound referents for the referent."
+  [referent immutable-store in-exemplar]
+  (case (referent-type referent)
+    :item (if in-exemplar
+            [[:template (semantics-as-list referent immutable-store)]]
+            (when (id-valid? immutable-store referent)
+              [[:bound-item (description->entity referent immutable-store)]]))
+    :comment nil
+    :content [referent]
+    :query [[:query (semantics-as-list (second referent) immutable-store)]] 
+    :elements [[:elements (semantics-as-list (second referent)
+                                             immutable-store)]]
+    :key [[:key (vec (bind-referents
+                      (second referent) immutable-store in-exemplar))]]
+    :parallel (let [[_ exemplar cases] referent]
+                [[:parallel
+                  (vec (bind-referents exemplar immutable-store true))
+                  (mapcat (fn [referent]
+                            (let [bound (bind-referent
+                                         referent immutable-store in-exemplar)]
+                              (when (not (empty? bound))
+                                (if (= (count bound) 1)
+                                  bound
+                                  [[:key (vec bound)]]))))
+                          cases)]])))
+
+(defn bind-referents
+  "Bind the key to the store, in preparation for instantiation. Most
+  significantly, replace item referents with either bound-item
+  referents that have the item, if we are in an exemplar, replace them
+  with template references specifying their contents. Template
+  references are used only during instantiation.
+  Return a lazy seq of the bound referents in the key."
+  [key immutable-store in-exemplar]
+  (mapcat #(bind-referent % immutable-store in-exemplar) key))
+
+(def instantiate-bound-key)
+(def instantiate-bound-referent)
+
+(defn instantiate-bound-parallel-referent
+  [immutable-store group referent parent]
   (let [[type exemplar parallel-referents] referent]
     (assert (= type :parallel))
     (let [instantiated-items
-          (mapcat #(instantiate-referent
-                    immutable-store false % parent item-id-instantiator)
-                  parallel-referents)]
+          (seq (set (mapcat
+                     #(instantiate-bound-referent
+                       immutable-store false % parent)
+                     parallel-referents)))]
       (if (empty? exemplar)
         (if group
           (if (empty? instantiated-items) nil [instantiated-items])
           instantiated-items)
-        (mapcat (partial instantiate-exemplar
+        (mapcat (partial instantiate-bound-key
                          immutable-store group exemplar)
-                instantiated-items
-                (map (fn [item]
-                       #(instantiate-exemplar-item-id immutable-store % item))
-                     instantiated-items))))))
+                instantiated-items)))))
 
-(defn condition-as-list
-  "If the condition is an item id, return its semantic list form, otherwise,
-  assume it is already in semantic list form."
-  [condition item-id-instantiator]
-  (if (satisfies? StoredItemDescription condition)
-    (semantic-to-list (item-id-instantiator condition))
-    condition))
-
-(defn instantiate-referent
-  [immutable-store group referent parent item-id-instantiator]
+(defn instantiate-bound-referent
+  [immutable-store group referent parent]
   (if (parallel-referent? referent)
-    (instantiate-parallel-referent
-     immutable-store group referent parent item-id-instantiator)
+    (instantiate-bound-parallel-referent
+     immutable-store group referent parent)
     (let [items
           (case (referent-type referent)
-            :item (when-let [item (item-id-instantiator referent)] [item])
-            :comment [parent]
-            :content [(entity/content parent)]
+            :bound-item [(second referent)]
+            :template (when parent
+                        (when-let [match (semantic-matching-element
+                                          (second referent) parent)]
+                          [match]))
+            :content (when parent [(entity/content parent)])
             :query (let [[_ condition] referent]
-                     (matching-items
-                      (condition-as-list condition item-id-instantiator)
-                      immutable-store))
-            :elements (let [[_ condition] referent]
-                        (matching-elements
-                           (condition-as-list condition item-id-instantiator)
-                           parent))
-            :key (instantiate-exemplar
-                  immutable-store group (second referent) parent
-                  item-id-instantiator))]
+                     (matching-items condition  immutable-store))
+            :elements (when parent
+                        (let [[_ condition] referent]
+                          (matching-elements condition parent)))
+            :key (instantiate-bound-key
+                  immutable-store group (second referent) parent))]
       (if group (when items [items]) items))))
 
-(defn instantiate-exemplar
-  "Given a store, an exemplar, a parent item, and a function from
-  item-id to immutable entity, instantiate the exemplar with respect
-  to the function, returning the sequence of items matched, or a
-  sequence of groups of items if group is true. The exemplar must have
-  been pruned to only referents that refer to items. (The groups are
-  all the items returned by the ultimate first referent.)"
-  [immutable-store group exemplar parent item-id-instantiator]
+(defn instantiate-bound-key
+  "Given a store, whether to group, a bound key, and a parent item,
+  instantiate the key relative to the parent, returning the sequence
+  of items matched, or a sequence of groups of items if group is
+  true. (The groups are all the items returned by the ultimate first
+  referent.)"
+  [immutable-store group exemplar parent]
   (assert (vector? exemplar))  ; So peek and pop take from end.
   (let [last-referent (peek exemplar)
-        remainder (pop exemplar) ]
+        remainder (pop exemplar)]
     (if (empty? remainder)
-      (instantiate-referent
-       immutable-store group last-referent parent item-id-instantiator)
-      (when-let [items (instantiate-referent
-                        immutable-store false last-referent
-                        parent item-id-instantiator)]
+      (instantiate-bound-referent
+       immutable-store group last-referent parent)
+      (when-let [items (instantiate-bound-referent
+                        immutable-store false last-referent parent)]
         (assert (= (count items) 1))
-        (let [item (first items)]
-          (instantiate-exemplar
-           immutable-store group remainder
-           item #(instantiate-exemplar-item-id immutable-store % item)))))))
+        (instantiate-bound-key
+         immutable-store group remainder (first items))))))
 
 (defn key->items-or-item-groups
   "Return the list of items or groups of items that a key describes.
   The store must be immutable."
   [immutable-store key group]
-  (let [first-item-referent-index
-        (first (keep-indexed
-                (fn [index referent] (when (item-referent? referent) index))
-                key))
-        ;; We include at least one item referent, to make sure we have
-        ;; a parent item for the first referent to make use of.
-        sufficient-key (if first-item-referent-index
-                         (vec (take (inc first-item-referent-index) key))
-                         key)]
-    (instantiate-exemplar
-     immutable-store group sufficient-key nil
-     #(when (id-valid? immutable-store %)
-        (description->entity % immutable-store)))))
+  (let [bound-referents (bind-referents key immutable-store false)
+        ;; The first two referents will be enough to include an item referent.
+        sufficient-key (vec (take 2 bound-referents))]
+    (instantiate-bound-key
+     immutable-store group sufficient-key nil)))
 
 (defn key->items
   "Return the list of items that a key describes.

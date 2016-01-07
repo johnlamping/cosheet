@@ -57,7 +57,7 @@
         [store id] (add-entity (new-element-store) nil starting-item)
         starting-table `("table"
                          (:root :invisible)
-                         ((:none (:none ("age" ~'tag))) :row-query)
+                         (:none :row-query)
                          ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
                          ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
         [store id] (add-entity store nil starting-table)
@@ -76,7 +76,7 @@
 
 (defonce root-key (prepend-to-key (item-referent root-item) root-parent-key))
 
-(defonce manager-data (new-expression-manager-data 1))
+(defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
 (defn create-tracker
   [do-not-merge]

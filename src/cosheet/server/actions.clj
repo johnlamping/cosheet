@@ -261,10 +261,11 @@
         to (parse-string-as-number to)]
     (println "set id:" id " with key:" (simplify-for-print key))
     (println "from:" from " to:" to)
-    (cond ((some-fn nil? item-referent? content-location-referent?)
-           first-primitive)
-          (reduce (partial update-set-content from to)
-                  store (key->items store basic-key))
+    (cond ((some-fn nil? item-referent?) first-primitive)
+          (let [items (key->items store basic-key)]
+            (println "updating " (count items) " items")
+            (reduce (partial update-set-content from to)
+                    store items))
           (and (elements-referent? first-primitive) (not= to ""))
           (let [items (key->items store (remove-first-primitive-referent
                                          basic-key))

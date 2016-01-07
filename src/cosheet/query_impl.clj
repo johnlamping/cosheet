@@ -262,7 +262,6 @@
                                      (query-matches-m first env store)))]
     (seq (distinct matches))))
 
-;;; TODO: 
 (defn item-matches-in-store [item env store]
   ;;; We don't handle mutable items, because we pass them to
   ;;; store/candidate-matching-ids, which can't handle them.

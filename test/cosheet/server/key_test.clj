@@ -10,8 +10,7 @@
                      [store-impl :refer [->ItemId]]
                      [store-utils :refer [add-entity]]
                      [expression :refer [expr expr-let expr-seq]]
-                     [debug :refer [let-mutated]]
-                     [test-utils :refer [check any as-set]])
+                     [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server [key :refer :all])
             ; :reload
             ))

@@ -5,11 +5,11 @@
             [clojure.data.priority-map :as priority-map]
             (cosheet
              [utils :refer [dissoc-in]]
-             [test-utils :refer [check]]
+             [test-utils :refer [check let-mutated]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value envs-to-list let-mutated]]
+             [debug :refer [current-value envs-to-list]]
              entity-impl
              [store :refer [update-content!]]
              store-impl

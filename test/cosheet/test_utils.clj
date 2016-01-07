@@ -1,5 +1,8 @@
 (ns cosheet.test-utils
-  (require [clojure.test :refer [assert-expr do-report]]))
+  (require [clojure.test :refer [assert-expr do-report]]
+           (cosheet [store :as store]
+                    [expression-manager :as expression-manager]
+                    [reporters :refer [value]])))
 
 (def differences)
 
@@ -115,4 +118,57 @@
          (do-report {:type :pass, :message ~msg,
                   :expected '~form, :actual (cons ~pred values#)}))
        result#)))
+
+(defn set-and-propagate
+  "Support function for let-mutated. Given a function of n items
+  and a list of n entities in list form, create an empty mutable
+  store, determine the ids the entities will get in the new store,
+  call the function with entities correspondin to those ids, evaluate
+  the resulting reporter, then add the entities to the store, and
+  recompute the reporter, returning its value."
+  [fun entities]
+  (let [s (store/new-element-store)
+        ms (store/new-mutable-store s)
+        md (expression-manager/new-expression-manager-data)
+        [_ ids] (reduce
+                 (fn [[store ids] entity]
+                   (let [[new-store new-id] (cosheet.store-utils/add-entity
+                                             store nil entity)]
+                     [new-store (conj ids new-id)]))
+                 [s []] entities)
+        mutable-entities (map #(cosheet.entity/description->entity % ms) ids)
+        result (apply fun mutable-entities)]
+    (expression-manager/request result md)
+    (expression-manager/compute md)
+    (doseq [entity entities]
+      (cosheet.store-utils/add-entity! ms nil entity))
+    (expression-manager/compute md)
+    (value result)))
+
+;;; A macro to test propagation of changes of an entity through an
+;;; expression. Set up the values of the bindings to be entities that
+;;; are currently empty, but that will equal the specified entity.
+;;; Evaluate exp with a current value of that entity being empty, then
+;;; set the entity in the mutable store, recompute, and return the new
+;;; current value of the expression.
+(defmacro let-mutated [bindings exp]
+  (let [binding-pairs (partition 2 bindings)
+        vars (vec (map first binding-pairs))
+        entities (vec (map second binding-pairs))]
+    `(set-and-propagate (fn ~vars ~exp) ~entities)))
+
+;;; A macro to test propagation of changes through a store. Set up var
+;;; to a mutable store, initialized from the initial immutable store.
+;;; Evaluate exp with the store in that state. Then call the mutator
+;;; with the mutable store as an argument, and return the new current
+;;; value of the expression.
+(defmacro let-mutated-store [[var initial mutator] exp]
+  `(let [~var (store/new-mutable-store ~initial)
+         md# (expression-manager/new-expression-manager-data)
+         exp-val# ~exp]
+     (expression-manager/request exp-val# md#)
+     (expression-manager/compute md#)    
+     (~mutator ~var)
+     (expression-manager/compute md#)
+     (value exp-val#)))
 

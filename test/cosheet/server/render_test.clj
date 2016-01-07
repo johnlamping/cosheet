@@ -10,7 +10,7 @@
                                          label->elements]]
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value let-mutated envs-to-list]]
+             [debug :refer [current-value envs-to-list]]
              [expression-manager :refer [new-expression-manager-data
                                          request compute]] 
              [expression-manager-test :refer [check-propagation]]
@@ -21,7 +21,7 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl
              [dom-utils :refer [dom-attributes]]
-             [test-utils :refer [check any as-set]])
+             [test-utils :refer [check any as-set let-mutated ]])
             (cosheet.server
              [key :refer [item-referent comment-referent
                           content-location-referent query-referent

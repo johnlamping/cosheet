@@ -96,7 +96,9 @@
   ([pred] [::test test-pred pred]))
 
 (defn- differences-as-sets [value pattern]
-  (differences (set value) (set pattern)))
+  (if (and (sequential? value) (sequential? pattern))
+    (differences (set value) (set pattern))
+    (differences value pattern)))
 
 (defn as-set [pattern] [::test differences-as-sets pattern])
 

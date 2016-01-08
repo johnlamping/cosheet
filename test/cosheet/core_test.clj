@@ -1,7 +1,7 @@
 (ns cosheet.core-test
   (require (cosheet
             core
-            debug-test
+            debug-test test-utils-test
             client-utils-test dom-utils-test
             utils-test orderable-test
             reporters-test expression-test

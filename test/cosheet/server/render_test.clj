@@ -10,7 +10,7 @@
                                          label->elements]]
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value envs-to-list]]
+             [debug :refer [current-value envs-to-list simplify-for-print]]
              [expression-manager :refer [new-expression-manager-data
                                          request compute]] 
              [expression-manager-test :refer [check-propagation]]
@@ -21,7 +21,7 @@
              [store-utils :refer [add-entity]]
              mutable-store-impl
              [dom-utils :refer [dom-attributes]]
-             [test-utils :refer [check any as-set let-mutated ]])
+             [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server
              [key :refer [item-referent comment-referent
                           content-location-referent query-referent
@@ -946,9 +946,112 @@
             [:div {:class "table-row"}
              [:div {:key [[:elements (as-set
                                       '(nil ("name" tag) ("id" tag)))]
-                                (comment-referent (item-referent name-id))
-                                (item-referent jane)
-                                :foo],
+                          (comment-referent (item-referent name-id))
+                          (item-referent jane)
+                          :foo],
                     :class "editable table-cell"}]
              ;; Jane's age
-             (any)]])))))
+             (any)]]))))
+  ;; Test a hierarchical header.
+  (let [[dom table joe jane]
+        (let-mutated [table `("table"
+                              (:none :row-query)
+                              ((:none ("name" ~'tag (~o1 :order))
+                                      (~o1 :order))
+                               :column :c1)
+                              ((:none ("name" ~'tag (~o1 :order))
+                                      ("id" ~'tag (~o2 :order))
+                                      (~o2 :order))
+                               :column :c2))
+                      joe `("Joe"
+                            (~o1 :order)
+                            (:top-level :non-semantic)
+                            ("Josephe"
+                             ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+                            ("Joe"
+                             ("name" ~'tag) ("nickname" ~'tag) (~o2 :order))
+                            (45 ("age" ~'tag) (~o2 :order)))
+                      jane `("Jane"
+                             (~o2 :order)
+                             (:top-level :non-semantic)
+                             ("Jane" ("name" ~'tag) ("id ~'tag") (~o1 :order))
+                             (44 ("age" ~'tag) (~o2 :order)))]
+          (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
+            [dom table joe jane]))
+        query (current-value (entity/label->content table :row-query))
+        name (first (current-value (label->elements table :c1)))
+        name-content (current-value (entity/content name))
+        name-tag (first (current-value (label->elements name-content o1)))
+        name-tag-order (first (current-value (label->elements name-tag :order)))
+        name-tag-spec (first
+                       (remove #{name-tag-order}
+                               (current-value (entity/elements name-tag))))
+        name-id (first (current-value (label->elements table :c2)))
+        name-id-content (current-value (entity/content name-id))
+        id-tag (first (current-value (label->elements name-id-content o2)))
+        id-tag-order (first (current-value (label->elements id-tag :order)))
+        id-tag-spec (first
+                     (remove #{id-tag-order}
+                             (current-value (entity/elements id-tag))))
+        joe-id (first (current-value
+                         (label->elements joe "id")))
+        joe-id-tags (current-value
+                       (label->elements joe-id 'tag))]
+    (is (check-keys dom joe))
+    (is (check
+         dom
+         (let [joe-key [(item-referent joe) :foo]
+               query-list '(nil (:top-level :non-semantic))
+               just-name-referents [[:parallel
+                                     [(elements-referent
+                                       (item-referent name-content))]
+                                     [(query-referent query-list)]]
+                                    (key-referent [(content-referent)
+                                                   (item-referent name)
+                                                   (item-referent table)])]
+               name-id-referents [[:parallel
+                                    [(elements-referent
+                                      (item-referent name-id-content))]
+                                   [(query-referent query-list)]]
+                                  (key-referent [(content-referent)
+                                                 (item-referent name-id)
+                                                 (item-referent table)])]
+               name-header-key [[:parallel
+                                 [[:comment '(nil tag)]]
+                                 (concat just-name-referents name-id-referents)]
+                                :foo]
+               name-id-header-key [[:parallel
+                                    [[:comment '(nil tag)]]
+                                    name-id-referents]
+                                   :foo]]
+           [:div {:class "table" :key [(item-referent table) :foo]}
+            [:div {:class "column-header-sequence"}
+             [:div {:class "column-header-stack"}
+              [:div {:class "column-header-container tags"}
+               [:component {:key (prepend-to-key (item-referent name-tag)
+                                                 name-header-key)
+                            :sibling-elements ['tag]
+                            :class "column-header"}
+                 [item-DOM
+                  name-tag name-header-key #{name-tag-spec}
+                  {:level 0, :depth 0, :do-not-merge #{}}]]]
+              [:div {:class "column-header-sequence"}
+               [:div  {:class "column-header-container tags"}
+                [:div  {:class "column-header"
+                        :key [[:parallel
+                               [[:elements '(nil tag)]]
+                               just-name-referents]
+                              :foo]}]]
+               [:div {:class "column-header-container tags"}
+                 [:component {:key (prepend-to-key (item-referent id-tag)
+                                                   name-id-header-key)
+                              :sibling-elements ['tag]
+                              :class "column-header"}
+                  [item-DOM
+                   id-tag name-id-header-key #{id-tag-spec}
+                   {:level 1, :depth 0, :do-not-merge #{}}]]]]]]
+            ;; Joe
+            ;; TODO: Implement not showing redundant items, and check it here.
+            (any)
+            ;; Jane
+            (any)])))))

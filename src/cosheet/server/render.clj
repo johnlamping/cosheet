@@ -657,7 +657,9 @@
           (add-attributes dom {:class "stack"})
           dom)
         (if (empty? elements)
-          (add-attributes dom {:key parent-key})
+          (add-attributes dom {:key (prepend-to-key
+                                     (elements-referent sibling-condition)
+                                     parent-key)})
           dom)
         (add-attributes dom {:class "column-header"})
         [:div {:class "column-header-container"} dom]
@@ -696,29 +698,41 @@
                           (:info-elements example) (:info-canonicals example))
         affected-header-items (map :item descendants)
         header-key (table-header-key
-                      descendants table-item table-parent-key scope-referent)
+                    descendants table-item table-parent-key scope-referent)
         node-dom (expr table-header-node-DOM
-                   (order-items example-elements) ; Why we need the expr
+                   (order-items example-elements) ; Why we need the expr.
                    sibling-condition header-key inherited)]
     (if (empty? children)
       node-dom
       (let [inherited (update-in inherited [:level] inc)
             header-key (table-header-key
-                          members table-item table-parent-key scope-referent)]
-        [:div node-dom [:div {:class "column-header-sequence"}
-                        (cons
-                         (map #(table-header-node-DOM
-                               nil
-                               sibling-condition header-key inherited)
-                              members))
-                         (map #(table-header-subtree-DOM
-                                % table-parent-key scope-referent inherited)
-                              children)]]))))
+                        members table-item table-parent-key scope-referent)]
+        (expr-let [node-dom node-dom
+                   ;; TODO: Need to incorporate the member into the tag
+                   ;; to make the columns unique if there is more than
+                   ;; one member.
+                   member-doms (expr-seq
+                                 map
+                                 (fn [_]
+                                   (table-header-node-DOM
+                                    nil
+                                    sibling-condition header-key inherited))
+                                 members)
+                   child-doms (expr-seq
+                               map
+                               #(table-header-subtree-DOM
+                                 table-item % sibling-condition
+                                 table-parent-key scope-referent inherited)
+                               children)]
+          [:div {:class "column-header-stack"}
+           node-dom
+           (into [:div {:class "column-header-sequence"}]
+                 (concat member-doms child-doms))])))))
 
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
-  ;; TODO: Currrently, the elements-referent used the condition. It should
+  ;; TODO: Currrently, the elements-referent uses the condition. It should
   ;; use the item that contains the condition, so the key won't change
   ;; if the header value changes.
   [table-item column-items column-templates header-condition

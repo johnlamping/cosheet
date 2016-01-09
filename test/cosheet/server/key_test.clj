@@ -58,33 +58,40 @@
         b (item-referent (description->entity (->ItemId :b) store))
         c (item-referent (description->entity (->ItemId :c) store))
         p (parallel-referent [] [b])
-        pp (parallel-referent [p a] [b])]
+        pp (parallel-referent [p a] [b] [b c])]
     (is (= (prepend-to-key a [b]) [a b]))
     (is (= (prepend-to-key c [p a])
            [(parallel-referent [c] [b]) a]))
     (is (= (prepend-to-key c [pp a])
            [(parallel-referent [(parallel-referent [c] [b]) a]
-                               [b])
+                               [b]
+                               [b c])
             a]))))
 
 (deftest remove-first-primitive-referent-test
-  (is (= (remove-first-primitive-referent [3 4])
-         [4]))
-  (is (= (remove-first-primitive-referent [[:parallel [] [2 3]] 4])
-         [4]))
-  (is (= (remove-first-primitive-referent [[:parallel [0 1] [2 3]] 4])
-          [[:parallel [1] [2 3]] 4])))
+  (let [a (item-referent (description->entity (->ItemId :a) store))
+        b (item-referent (description->entity (->ItemId :b) store))
+        c (item-referent (description->entity (->ItemId :c) store))]
+    (is (= (remove-first-primitive-referent [a b])
+           [b]))
+    (is (= (remove-first-primitive-referent [[:parallel [] [a b]] c])
+           [c]))
+    (is (= (remove-first-primitive-referent [[:parallel [a b] [b c] [c a]] b])
+           [[:parallel [b] [b c] [c a]] b]))))
 
 (deftest remove-content-location-referent-test
-  (is (= (remove-content-location-referent [])
-         []))
-  (is (= (remove-content-location-referent [(content-location-referent) 3 4])
-         [3 4]))
-  (is (= (remove-content-location-referent
-          [[:parallel [(content-location-referent) 1] [2 3]] 4])
-         [[:parallel [1] [2 3]] 4]))
-  (is (= (remove-content-location-referent [[:parallel [0 1] [2 3]] 4])
-         [[:parallel [0 1] [2 3]] 4])))
+  (let [a (item-referent (description->entity (->ItemId :a) store))
+        b (item-referent (description->entity (->ItemId :b) store))
+        c (item-referent (description->entity (->ItemId :c) store))]
+    (is (= (remove-content-location-referent [])
+           []))
+    (is (= (remove-content-location-referent [(content-location-referent) a b])
+           [a b]))
+    (is (= (remove-content-location-referent
+            [[:parallel [(content-location-referent) a] [b c] [c a]] c])
+           [[:parallel [a] [b c] [c a]] c]))
+    (is (= (remove-content-location-referent [[:parallel [a b] [b c]] b])
+           [[:parallel [a b] [b c]] b]))))
 
 (deftest remove-comments-test
   (is (= (remove-comments
@@ -97,7 +104,20 @@
            (comment-referent :baz)])
          [[:parallel
             [(query-referent 1)]
-            [(key-referent [(query-referent 1)])]]])))
+           [(key-referent [(query-referent 1)])]]]))
+   (is (= (remove-comments
+          [[:parallel
+            [(content-location-referent)
+             (comment-referent :foo)
+             :a
+             (query-referent 1)]
+            [(key-referent [(query-referent 1) (comment-referent :bar)]) :c]
+            [(key-referent [(elements-referent 1) (comment-referent :bar)]) :c]]
+           (comment-referent :baz)])
+         [[:parallel
+            [(query-referent 1)]
+           [(key-referent [(query-referent 1)])]
+           [(key-referent [(elements-referent 1)])]]])))
 
 (deftest item-ids-referred-to-test
   (is (check (item-ids-referred-to [[:parallel [(->ItemId 0) (->ItemId 1)]
@@ -136,19 +156,34 @@
                                [(query-referent joe)
                                 (elements-referent joe)])
                               (parallel-referent
-                               [(item-referent joe)]
+                               [(parallel-referent
+                                 [(item-referent joe)]
+                                 [(item-referent jane)
+                                  (key-referent [(item-referent joe)
+                                                 (item-referent jane)])])
+                                (item-referent joe)]
                                [(item-referent jane)
                                 (key-referent [(item-referent joe)
-                                               (item-referent jane)])])]
+                                               (item-referent jane)])]
+                               [(item-referent joe)
+                                (key-referent [(item-referent jane)
+                                               (item-referent joe)])])]
                              store false)
              [[:bound-item joe]
               (content-referent)
               [:key [[:query (semantic-to-list joe)]
                      [:elements (semantic-to-list joe)]]]
               [:parallel
-               [[:template (semantic-to-list joe)]]
+               [[:parallel
+                 [[:template (semantic-to-list joe)]]
+                 [[:template (semantic-to-list jane)]
+                  [:key [[:template (semantic-to-list joe)]
+                         [:template (semantic-to-list jane)]]]]]
+                [:template (semantic-to-list joe)]]
                [[:bound-item jane]
-                [:key [[:bound-item joe] [:bound-item jane]]]]]])))
+                [:key [[:bound-item joe] [:bound-item jane]]]]
+               [[:bound-item joe]
+                [:key [[:bound-item jane] [:bound-item joe]]]]]])))
 
 (deftest instantiate-exemplar-test
   (let [bind #(vec (bind-referents % store false))
@@ -191,11 +226,22 @@
                                           [] [joe-male joe-age])])
                                  joe)
            [joe-male joe-age]))
+    (is (= (instantiate-bound-key store false
+                                  (bind [(parallel-referent
+                                          [] [joe-male joe-age] [joe-age])])
+                                  joe)
+           [joe-male]))
     (is (= (instantiate-bound-key
             store false
             (bind [(parallel-referent [joe-age-tag] [joe-male joe-age])])
             joe)
            [joe-age-tag]))
+    (is (= (instantiate-bound-key
+            store false
+            (bind [(parallel-referent
+                    [joe-age-tag] [joe-male joe-age]  [joe-age])])
+            joe)
+           []))
     ;; Try key referents in a parallel
     (is (= (instantiate-bound-key
             store false
@@ -283,6 +329,15 @@
                        (item-referent joe)])
                 nil)
                [(as-set [joe-age joe-bogus-age])]))
+    (is (check (instantiate-bound-key
+                store true
+                (bind [(parallel-referent
+                        []
+                        [(elements-referent '(nil "age"))]
+                        [joe-age])
+                       (item-referent joe)])
+                nil)
+               [[joe-bogus-age]]))
     ;; Try a parallel referent with another parallel referent as its referents.
     (is (check (instantiate-bound-key
                 store false

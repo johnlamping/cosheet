@@ -34,8 +34,9 @@
 ;;;       query: [:query <condition>]
 ;;;    elements: [:elements <condition>]
 ;;;         key: [:key <key>]
-;;;    parallel: [:parallel <list of exemplar referents>
-;;;                         <list of item, query, or elements referents>]
+;;;    parallel: [:parallel <exemplar key>
+;;;                         <list of branch referents>
+;;;                         (optional)<list of negative referents]
 
 ;;; Only used as temporaries during key instantiation:
 ;;;    template: [:template <list form of semantic information>]
@@ -92,20 +93,21 @@
 ;;; parallel referent's job is to indicate the set of items
 ;;; corresponding to those parallel tags.
 
-;;; A parallel referent consists of an exemplar key, and a list of
-;;; item, query, or elements referents. In the simplest case, the
-;;; exemplar key is empty, in which case the parallel reference refers
-;;; to each of items referred to any of the referents. A non-empty
-;;; exemplar describes a navigation path to be traced through each of
-;;; those items. Starting with each item, the navigation finds an
-;;; element whose semantic information matches the semantic information
-;;; of the last item in the exemplar. That becomes the new item in the
-;;; navigation, which continues moving foward in the exemplar. If the
-;;; first referent of the exemplar is an item, then the parallel
-;;; referent refers to what that item ended up matching at the end of
-;;; each of the navigations. If the first referent is another
-;;; parallel, each item of the nested parallel is matched, and the
-;;; navigation recurses.
+;;; A parallel referent consists of an exemplar key, a list of branch
+;;; referents, and an optional list of negative referents. In the
+;;; simplest case, the exemplar key is empty, in which case the
+;;; parallel reference refers to all items that are referred to any of
+;;; the branch referents and not referred to by any of the negative
+;;; referents. A non-empty exemplar describes a navigation path to be
+;;; traced through each of those items. Starting with each item, the
+;;; navigation finds an element whose semantic information matches the
+;;; semantic information of the last item in the exemplar. That
+;;; becomes the new item in the navigation, which continues moving
+;;; foward in the exemplar. If the first referent of the exemplar is
+;;; an item, then the parallel referent refers to what that item ended
+;;; up matching at the end of each of the navigations. If the first
+;;; referent is another parallel, each item of the nested parallel is
+;;; matched, and the navigation recurses.
 
 ;;; Note: The exemplar of a parallel could use list forms of elements,
 ;;; rather than items. The advantage of items is that if the content
@@ -220,11 +222,15 @@
 
 (defn parallel-referent
   "Create a parallel referent."
-  [exemplar parallel-referents]
-  (assert (vector? exemplar))
-  [:parallel
-   (convert-items-to-referents exemplar)
-   (convert-items-to-referents parallel-referents)])
+  ([exemplar branch-referents]
+   (parallel-referent exemplar branch-referents nil))
+  ([exemplar branch-referents negative-referents]
+   (assert (vector? exemplar))
+   (into [:parallel
+          (convert-items-to-referents exemplar)
+          (convert-items-to-referents branch-referents)]
+         (when (not (empty? negative-referents))
+           [(convert-items-to-referents negative-referents)]))))
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant
@@ -234,8 +240,9 @@
     (vec
      (if (and (sequential? initial)
               (= :parallel (first initial)))
-       (let [[_ exemplar item-ids] initial]
-         (cons [:parallel (prepend-to-key referent exemplar) item-ids]
+       (let [[_ exemplar branch-referents negative-referents] initial]
+         (cons (parallel-referent (prepend-to-key referent exemplar)
+                                  branch-referents negative-referents)
                (rest key)))
        (cons referent key)))))
 
@@ -245,7 +252,7 @@
   [key]
   (let [referent (first key)]
     (if (parallel-referent? referent)
-      (let [[type exemplar items] referent]
+      (let [[type exemplar _] referent]
         (first-primitive-referent exemplar))
       referent)))
 
@@ -253,12 +260,12 @@
   "Remove the first referent from the key, going into exemplars."
   [[first & rest]]
   (if (parallel-referent? first)
-    (let [[type exemplar items] first]
+    (let [[type exemplar branch-referents negative-referents] first]
       (if (empty? exemplar)
         rest
-        (vec (cons [type
+        (vec (cons (parallel-referent
                     (vec (remove-first-primitive-referent exemplar))
-                    items]
+                    branch-referents negative-referents)
                    rest))))
     rest))
 
@@ -277,9 +284,10 @@
   [referent]
   (when (not (comment-referent? referent))
     (cond (parallel-referent? referent)
-          (let [[tag exemplar items] referent]
-            (parallel-referent
-             (remove-comments exemplar) (remove-comments items)))
+          (let [[tag exemplar branch-referents negative-referents] referent]
+            (parallel-referent (remove-comments exemplar)
+                               (remove-comments branch-referents)
+                               (remove-comments negative-referents)))
           (key-referent? referent)
           (let [[tag key] referent]
             (key-referent (remove-comments key)))
@@ -301,7 +309,7 @@
     (let [[first & rest] key
           rest-items (item-ids-referred-to rest)]
       (cond (parallel-referent? first)
-            (let [[type exemplar items] first]
+            (let [[type exemplar _ _] first]
               (concat (item-ids-referred-to exemplar) rest-items))
             (item-referent? first)
             (cons first rest-items)
@@ -424,6 +432,18 @@
 ;;; instantiation of an exemplar.
 
 (def bind-referents)
+(def bind-referent)
+
+(defn bind-and-combine-referent
+  "Bind the referent, and if more than one bound referent comes back,
+  turn them into a key referent, so we always return a list of
+  one referent or none."
+  [referent immutable-store in-exemplar]
+  (let [bound (bind-referent referent immutable-store in-exemplar)]
+    (when (not (empty? bound))
+      (if (= (count bound) 1)
+        bound
+        [[:key (vec bound)]]))))
 
 (defn bind-referent
   "Return a possibly empty list of bound referents for the referent."
@@ -440,17 +460,17 @@
                                              immutable-store)]]
     :key [[:key (vec (bind-referents
                       (second referent) immutable-store in-exemplar))]]
-    :parallel (let [[_ exemplar cases] referent]
-                [[:parallel
-                  (vec (bind-referents exemplar immutable-store true))
-                  (mapcat (fn [referent]
-                            (let [bound (bind-referent
-                                         referent immutable-store in-exemplar)]
-                              (when (not (empty? bound))
-                                (if (= (count bound) 1)
-                                  bound
-                                  [[:key (vec bound)]]))))
-                          cases)]])))
+    :parallel (let [[_ exemplar branch-referents negative-referents] referent]
+                [(into
+                  [:parallel
+                   (vec (bind-referents exemplar immutable-store true))
+                   (mapcat #(bind-and-combine-referent
+                             % immutable-store in-exemplar)
+                           branch-referents)]
+                  (when (not (empty? negative-referents))
+                    [(mapcat #(bind-and-combine-referent
+                                % immutable-store in-exemplar)
+                              negative-referents)]))])))
 
 (defn bind-referents
   "Bind the key to the store, in preparation for instantiation. Most
@@ -467,13 +487,18 @@
 
 (defn instantiate-bound-parallel-referent
   [immutable-store group referent parent]
-  (let [[type exemplar parallel-referents] referent]
+  (let [[type exemplar branch-referents negative-referents] referent]
     (assert (= type :parallel))
-    (let [instantiated-items
-          (seq (set (mapcat
-                     #(instantiate-bound-referent
-                       immutable-store false % parent)
-                     parallel-referents)))]
+    (let [positive-items (set (mapcat
+                               #(instantiate-bound-referent
+                                 immutable-store false % parent)
+                               branch-referents))
+          negative-items (set (mapcat
+                               #(instantiate-bound-referent
+                                 immutable-store false % parent)
+                               negative-referents))
+          instantiated-items (seq (clojure.set/difference positive-items
+                                                               negative-items))]
       (if (empty? exemplar)
         (if group
           (if (empty? instantiated-items) nil [instantiated-items])

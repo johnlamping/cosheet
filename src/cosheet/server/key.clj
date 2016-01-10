@@ -162,7 +162,7 @@
             (first referent)))))
 
 (defn referent-type [referent]
-  (assert (referent? referent))
+  (assert (referent? referent) referent)
   (cond (sequential? referent) (first referent)
         (comment-referent? referent) :comment
         true :item))
@@ -178,7 +178,7 @@
   [x]
   (if (satisfies? StoredEntity x)
     (item-referent x)
-    (do (assert (referent? x))
+    (do (assert (referent? x) x)
         x)))
 
 (defn convert-items-to-referents
@@ -226,11 +226,11 @@
    (parallel-referent exemplar branch-referents nil))
   ([exemplar branch-referents negative-referents]
    (assert (vector? exemplar))
-   (into [:parallel
-          (convert-items-to-referents exemplar)
-          (convert-items-to-referents branch-referents)]
-         (when (not (empty? negative-referents))
-           [(convert-items-to-referents negative-referents)]))))
+   (cond-> [:parallel
+            (convert-items-to-referents exemplar)
+            (convert-items-to-referents branch-referents)]
+         (not (empty? negative-referents))
+         (conj (convert-items-to-referents negative-referents)))))
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant

@@ -19,6 +19,10 @@
                                          canonicalize-list semantic-to-list
                                          replace-nones]])))
 
+;;; TODO: Are members of hierarchy getting ordered?
+;;; TODO: hierarchy-nodes-extent should be aware of refiments of conditions,
+;;;       not just added conditions.
+
 ;;; Code to create hiccup style dom for a database entity.
 
 ;;; For a basic entity, we show its contents and its user semantic
@@ -313,7 +317,7 @@
 
 (defn flatten-hierarchy-node
   "Given a hierarchy node, a depth, and the combined info for all
-  ancestors, return a flattened version in of its hierarchy in
+  ancestors, return a flattened version of its hierarchy in
   pre-order. Add :cumulative-info and :depth to the node and all its
   descendants."
   [node depth ancestor-info]
@@ -330,8 +334,25 @@
   (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
 (defn hierarchy-node-descendants
+  "Return all members at or below the node."
   [node]
   (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
+
+(def hierarchy-nodes-extent)
+
+(defn hierarchy-node-extent
+  "Return a seq of members at or below the node
+  that subsumes all its descendants and nothing more."
+  [node]
+  (if (empty? (:members node))
+    (hierarchy-nodes-extent (:children node))
+    [(first (:members node))]))
+
+(defn hierarchy-nodes-extent
+  "Return a seq of members at or below the nodes
+  that subsume all their descendants and nothing more."
+  [nodes]
+  (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
@@ -667,18 +688,29 @@
         (add-attributes dom {:class "tags"})))))
 
 (defn table-header-key
-  "Generate the key for a table header, given the info-maps of all the
-  header requests it applies to, as well as the table item, the parent
-  key of the table and the scope referent of the table."
-  [info-maps table-item table-parent-key scope-referent]
+  "Generate the key for the cell that holds a table header, given the
+  info-maps of all the header requests it applies to and the ones it
+  must not apply to, as well as the table item, the parent key of the
+  table the scope referent of the table."
+  [info-maps negative-info-maps table-item table-parent-key scope-referent]
   (prepend-to-key
     (parallel-referent
      []
      (vec (mapcat (fn [info-map]
-                    [(parallel-referent
-                      [(elements-referent (:item info-map))]
+                    [;; All row elements the header applies to.
+                     (parallel-referent
+                      [(if (empty? negative-info-maps)
+                          (elements-referent (:item info-map))
+                          (parallel-referent
+                           []
+                           [(elements-referent (:item info-map))]
+                           (map #(elements-referent (item-referent (:item %)))
+                                negative-info-maps)))]
                       [scope-referent])
+                     ;; The header definition.
                      (key-referent [(content-referent)
+                                    ;; This also makes the key for
+                                    ;; each column be unique.
                                     (:item-container info-map)
                                     table-item])])
                   info-maps)))
@@ -696,34 +728,32 @@
         example-elements (canonical-info-to-generating-items
                           info 
                           (:info-elements example) (:info-canonicals example))
-        affected-header-items (map :item descendants)
-        header-key (table-header-key
-                    descendants table-item table-parent-key scope-referent)
-        node-dom (expr table-header-node-DOM
-                   (order-items example-elements) ; Why we need the expr.
-                   sibling-condition header-key inherited)]
+        node-dom (let [key (table-header-key
+                            (hierarchy-node-extent node) nil table-item
+                            table-parent-key scope-referent)]
+                   (expr table-header-node-DOM
+                     (order-items example-elements) ; Why we need the expr.
+                     sibling-condition key inherited))]
     (if (empty? children)
       node-dom
-      (let [inherited (update-in inherited [:level] inc)
-            header-key (table-header-key
-                        members table-item table-parent-key scope-referent)]
-        (expr-let [node-dom node-dom
-                   ;; TODO: Need to incorporate the member into the tag
-                   ;; to make the columns unique if there is more than
-                   ;; one member.
-                   member-doms (expr-seq
-                                 map
-                                 (fn [_]
-                                   (table-header-node-DOM
-                                    nil
-                                    sibling-condition header-key inherited))
-                                 members)
-                   child-doms (expr-seq
-                               map
-                               #(table-header-subtree-DOM
-                                 table-item % sibling-condition
-                                 table-parent-key scope-referent inherited)
-                               children)]
+      (let [inherited (update-in inherited [:level] inc)]
+        (expr-let
+            [node-dom node-dom
+             member-doms (expr-seq
+                          map
+                          #(let [exclude (hierarchy-nodes-extent children)
+                                 key (table-header-key
+                                      [%] exclude table-item
+                                      table-parent-key scope-referent)]
+                             (table-header-node-DOM
+                               nil sibling-condition key inherited))
+                          members)
+             child-doms (expr-seq
+                         map
+                         #(table-header-subtree-DOM
+                           table-item % sibling-condition
+                           table-parent-key scope-referent inherited)
+                         children)]
           [:div {:class "column-header-stack"}
            node-dom
            (into [:div {:class "column-header-sequence"}]

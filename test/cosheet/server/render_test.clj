@@ -1002,9 +1002,20 @@
          dom
          (let [joe-key [(item-referent joe) :foo]
                query-list '(nil (:top-level :non-semantic))
-               just-name-referents [[:parallel
+               name-referents [[:parallel
                                      [(elements-referent
                                        (item-referent name-content))]
+                                     [(query-referent query-list)]]
+                                    (key-referent [(content-referent)
+                                                   (item-referent name)
+                                                   (item-referent table)])]
+               just-name-referents [[:parallel
+                                     [[:parallel
+                                       []
+                                       [(elements-referent
+                                         (item-referent name-content))]
+                                       [(elements-referent
+                                         (item-referent name-id-content))]]]
                                      [(query-referent query-list)]]
                                     (key-referent [(content-referent)
                                                    (item-referent name)
@@ -1018,7 +1029,7 @@
                                                  (item-referent table)])]
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
-                                 (concat just-name-referents name-id-referents)]
+                                 (concat name-referents)]
                                 :foo]
                name-id-header-key [[:parallel
                                     [[:comment '(nil tag)]]

@@ -221,8 +221,8 @@
                            :children [{:info {:c 1} :members [:j]}]}
                           {:info {:c 1} :members [:k]}]}])))
 
-(deftest split-by-subset-test
-  (is (check (split-by-subset
+(deftest split-by-do-not-merge-subset-test
+  (is (check (split-by-do-not-merge-subset
               (map (fn [x] {:item x}) [:i :j :k :l :m :n :o])
               #{:i :l :m :o})
              [[{:item :i}]
@@ -235,16 +235,18 @@
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:info-canonicals [:a] :item :i}
-         {:info-canonicals [:a :b] :info :j}
-         {:info-canonicals [:a :c] :info :k}]
+        [{:info-canonicals [:a] :item `(:i (~o1 :order))}
+         {:info-canonicals [:a :b] :item `(:j (~o2 :order))}
+         {:info-canonicals [:a :c] :item `(:k (~o3 :order))}]
         #{})
        [{:info {:a 1}
-         :members [{:info-canonicals [:a] :item :i}]
+         :members [{:info-canonicals [:a] :item `(:i (~o1 :order))}]
          :children [{:info {:b 1}
-                     :members [{:info-canonicals [:a :b] :info :j}]}
+                     :members [{:info-canonicals [:a :b]
+                                :item `(:j (~o2 :order))}]}
                     {:info {:c 1}
-                     :members [{:info-canonicals [:a :c] :info :k}]}]}])))
+                     :members [{:info-canonicals [:a :c]
+                                :item `(:k (~o3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
@@ -994,9 +996,13 @@
                      (remove #{id-tag-order}
                              (current-value (entity/elements id-tag))))
         joe-id (first (current-value
-                         (label->elements joe "id")))
+                       (label->elements joe "id")))
         joe-id-tags (current-value
-                       (label->elements joe-id 'tag))]
+                     (label->elements joe-id 'tag))
+        joe-nickname (first (current-value
+                             (label->elements joe "nickname")))
+        joe-nickname-tags (current-value
+                     (label->elements joe-nickname 'tag))]
     (is (check-keys dom joe))
     (is (check
          dom
@@ -1062,7 +1068,20 @@
                    id-tag name-id-header-key #{id-tag-spec}
                    {:level 1, :depth 0, :do-not-merge #{}}]]]]]]
             ;; Joe
-            ;; TODO: Implement not showing redundant items, and check it here.
-            (any)
+            [:div {:class "table-row"}
+             [:component {:key (into [(:item-id joe-nickname)
+                                      (comment-referent
+                                       (item-referent name-id))]
+                                      joe-key)
+                           :class "table-cell"
+                          :sibling-elements (as-set [["name" 'tag]])}
+               [item-DOM
+                joe-nickname (into [(comment-referent (item-referent name-id))]
+                               joe-key)
+                (set joe-nickname-tags)
+                {:depth 0, :do-not-merge #{}}]]
+             ;; Joe's id
+             ;; TODO: Check it.
+             (any)]
             ;; Jane
             (any)])))))

@@ -360,7 +360,7 @@
   (filtered-elements entity semantic-entity?))
 
 (defn semantic-to-list
-  "Given an immutable item, make a list representation of the
+  "Given an item, make a list representation of the
   semantic information of the item."
   [item]
   (if (entity/atom? item)

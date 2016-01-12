@@ -222,7 +222,7 @@
 ;;;   :info-canonicals  A list canonical-info-sets for each element in
 ;;;                     :info-elements.
 ;;; For a flattened node, the :cumulative-info for each member will be
-;;; the same as :info-canonicals. But a node might not have any
+;;; the aggregation of :info-canonicals. But a node might not have any
 ;;; members, so we still need :info-canonicals.
 
 ;;; TODO: Change hierarchy creation to assume that the member
@@ -255,7 +255,7 @@
                                }))
                info item))))))))
 
-(defn split-by-subset
+(defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
   return a list of lists, broken so that any item-info-map whose item
   is in the set gets its own list."
@@ -273,16 +273,22 @@
     item-info-maps)))
 
 (defn hierarchy-by-canonical-info
-  "Given a list of item maps, and a subset of items in the maps not to
+  "Given a list of item info maps, and a subset of items in the maps not to
   merge, return a hierarchy."
-  [item-info-maps do-not-merge-subset]
-  (mapcat
-   #(reduce (fn [hierarchy item-info-map]
-              (append-to-hierarchy
-               hierarchy (multiset (:info-canonicals item-info-map))
-               item-info-map))
-           [] %)
-   (split-by-subset item-info-maps do-not-merge-subset)))
+  [item-info-maps do-not-merge]
+  (let [items (map :item item-info-maps)
+        item-to-item-info-maps (zipmap items item-info-maps)]
+    (expr-let
+        [do-not-merge-subset (mutable-set-intersection do-not-merge items)
+         ordered-items (order-items items)]
+      (let [ordered-maps (map item-to-item-info-maps ordered-items)]
+        (mapcat
+         #(reduce (fn [hierarchy item-info-map]
+                    (append-to-hierarchy
+                     hierarchy (multiset (:info-canonicals item-info-map))
+                     item-info-map))
+                  [] %)
+         (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
 
 (defn items-hierarchy-by-condition
   "Given items, organize them into a hierarchy by their value on
@@ -291,27 +297,21 @@
   label to map from item to data for that item. The data will be
   stored with the item-map for that item, under the key used in the
   extra data map."
-  [items do-not-merge condition & {:as extra-data-map}]
-  (expr-let [do-not-merge-subset (mutable-set-intersection do-not-merge items)
-             item-info-maps
-             (expr-seq
-              map
-              (fn [item]
-                (expr-let [info-elements (matching-elements condition item)
-                           semantic-info-elements (filtered-items
-                                                   semantic-entity?
-                                                   info-elements)
-                           info-canonicals (expr-seq map canonical-info
-                                                     semantic-info-elements)]
-                  (cond-> {:item item
-                           :info-elements semantic-info-elements
-                           :info-canonicals info-canonicals}
-                    extra-data-map
-                    (into (let [keys (keys extra-data-map)]
-                            (zipmap keys
-                                    (map #((extra-data-map %) item) keys)))))))
-              (order-items items))]
-    (hierarchy-by-canonical-info item-info-maps do-not-merge-subset)))
+  [items do-not-merge condition]
+  (expr-let
+      [item-maps (expr-seq
+                  map
+                  (fn [item]
+                    (expr-let [elements (matching-elements condition item)
+                               filtered (filtered-items semantic-entity?
+                                                        elements)
+                               canonicals (expr-seq
+                                           map canonical-info filtered)]
+                      {:item item
+                       :info-elements filtered
+                       :info-canonicals canonicals}))
+                  items)]
+    (hierarchy-by-canonical-info item-maps do-not-merge)))
 
 (def flatten-hierarchy)
 
@@ -765,18 +765,14 @@
   ;; TODO: Currrently, the elements-referent uses the condition. It should
   ;; use the item that contains the condition, so the key won't change
   ;; if the header value changes.
-  [table-item column-items column-templates header-condition
+  [table-item hierarchy header-condition
    table-parent-key row-referent inherited]
-  (let [inherited (assoc inherited :level 0)]
+  (let [inherited (update-in inherited [:level] (fnil inc -1))]
     ;; Unlike row headers for tags, where the header information is
     ;; computed from the items of the rows, here the header information
     ;; explicitly provided by the table definition, so the "items" for
     ;; the hierarchy are the column definitions.
-    (expr-let [hierarchy (items-hierarchy-by-condition
-                          column-templates #{} '(nil)
-                          :item-container
-                          (zipmap column-templates column-items))
-               columns (expr-seq
+    (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM
                               table-item % header-condition table-parent-key
                               row-referent inherited)
@@ -815,8 +811,7 @@
                                                      comment-referent)
                                                  row-key)
                                 column-definitions)]
-    (expr-let [cell-items (expr-seq map #(do (println "running cell query: " row-item " " (pr-str %))
-                                             (matching-elements % row-item))
+    (expr-let [cell-items (expr-seq map #(matching-elements % row-item)
                                     column-conditions)
                cells (expr-seq
                       map (fn [items table-parent-key condition]
@@ -847,7 +842,7 @@
   ;;              everything not shown in any other column.
   ;; TODO: Make there there be an element on a column descriptor that
   ;;       says how the column is described, rather than the current '(nil tag)
-  ;; TODO: Add the "other" column to all tables.
+  ;; TODO: Add the "other" column it a table requests it.
   [table-item parent-key inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))
@@ -863,14 +858,30 @@
                               ['(:top-level :non-semantic)])
                    columns (expr order-items
                              (entity/label->elements table-item :column))
-                   column-templates (expr-seq map entity/content columns) 
-                   column-conditions (expr-seq map
-                                               #(expr replace-nones
-                                                  (expr semantic-to-list %))
-                                               column-templates)
+                   column-templates (expr-seq map entity/content columns)
+                   column-templates-elements (expr-seq map semantic-elements
+                                                      column-templates)
+                   column-templates-lists (expr-seq map
+                                                    #(expr-seq
+                                                      map semantic-to-list %)
+                                                    column-templates-elements)
+                   column-conditions (map #(list* (into '[nil]
+                                                        (map replace-nones %)))
+                                          column-templates-lists)
                    row-items (expr order-items
                                (matching-items row-query store))
-                   headers (table-header-DOM table-item columns column-templates
+                   hierarchy (hierarchy-by-canonical-info
+                              (map (fn [column template elements lists]
+                                     {:item template
+                                      :info-elements elements
+                                      :info-canonicals (map multiset lists)
+                                      :item-container column})
+                                   columns
+                                   column-templates
+                                   column-templates-elements
+                                   column-templates-lists)
+                              #{})
+                   headers (table-header-DOM table-item hierarchy
                                              '(nil tag) parent-key
                                              (query-referent row-query)
                                              inherited)

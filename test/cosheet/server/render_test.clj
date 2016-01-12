@@ -176,50 +176,50 @@
 
 (deftest append-to-hierarchy-test
   (is (check (append-to-hierarchy [] {:a 1} :i)
-             [{:info {:a 1} :members [:i]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:a 1} :j)
-             [{:info {:a 1} :members [:i :j]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:b 1} :j)
-             [{:info {:a 1} :members [:i]} {:info {:b 1} :members [:j]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1} :members [:i]}] {:a 1 :b 1} :j)
-             [{:info {:a 1} :members [:i]
-               :children [{:info {:b 1} :members [:j]}]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1 :b 1} :members [:i]}]
+             [{:groups {:a 1} :members [:i]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:a 1} :j)
+             [{:groups {:a 1} :members [:i :j]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:b 1} :j)
+             [{:groups {:a 1} :members [:i]} {:groups {:b 1} :members [:j]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:a 1 :b 1} :j)
+             [{:groups {:a 1} :members [:i]
+               :children [{:groups {:b 1} :members [:j]}]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
                                   {:a 1} :j)
-             [{:info {:a 1} :members [] :children [{:info {:b 1} :members [:i]}
-                                                   {:info {} :members [:j]}]}]))
+             [{:groups {:a 1} :members [] :children [{:groups {:b 1} :members [:i]}
+                                                   {:groups {} :members [:j]}]}]))
   (is (check
-       (append-to-hierarchy [{:info {:a 1 :b 1} :members [:i]}]
+       (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
                             {:a 1 :c 1} :j)
-       [{:info {:a 1} :members [] :children [{:info {:b 1} :members [:i]}
-                                             {:info {:c 1} :members [:j]}]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1}
+       [{:groups {:a 1} :members [] :children [{:groups {:b 1} :members [:i]}
+                                             {:groups {:c 1} :members [:j]}]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1}
                                     :members [:i]
-                                    :children [{:info {:b 1} :members [:j]}]}]
+                                    :children [{:groups {:b 1} :members [:j]}]}]
                                   {:a 1 :b 1 :c 1} :k)
-             [{:info {:a 1}
+             [{:groups {:a 1}
                :members [:i]
-               :children [{:info {:b 1}
+               :children [{:groups {:b 1}
                            :members [:j]
-                           :children [{:info {:c 1} :members [:k]}]}]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1}
+                           :children [{:groups {:c 1} :members [:k]}]}]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1}
                                     :members [:i]
-                                    :children [{:info {:b 1} :members [:j]}]}]
+                                    :children [{:groups {:b 1} :members [:j]}]}]
                                   {:a 1} :k)
-             [{:info {:a 1}
+             [{:groups {:a 1}
                :members [:i]
-               :children [{:info {:b 1} :members [:j]}
-                          {:info {} :members [:k]}]}]))
-  (is (check (append-to-hierarchy [{:info {:a 1 :b 1}
+               :children [{:groups {:b 1} :members [:j]}
+                          {:groups {} :members [:k]}]}]))
+  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:info {:c 1} :members [:j]}]}]
+                                    :children [{:groups {:c 1} :members [:j]}]}]
                                   {:a 1 :c 1} :k)
-             [{:info {:a 1}
+             [{:groups {:a 1}
                :members []
-               :children [{:info {:b 1}
+               :children [{:groups {:b 1}
                            :members [:i]
-                           :children [{:info {:c 1} :members [:j]}]}
-                          {:info {:c 1} :members [:k]}]}])))
+                           :children [{:groups {:c 1} :members [:j]}]}
+                          {:groups {:c 1} :members [:k]}]}])))
 
 (deftest split-by-do-not-merge-subset-test
   (is (check (split-by-do-not-merge-subset
@@ -235,55 +235,55 @@
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:info-canonicals [:a] :item `(:i (~o1 :order))}
-         {:info-canonicals [:a :b] :item `(:j (~o2 :order))}
-         {:info-canonicals [:a :c] :item `(:k (~o3 :order))}]
+        [{:groups-canonicals [:a] :item `(:i (~o1 :order))}
+         {:groups-canonicals [:a :b] :item `(:j (~o2 :order))}
+         {:groups-canonicals [:a :c] :item `(:k (~o3 :order))}]
         #{})
-       [{:info {:a 1}
-         :members [{:info-canonicals [:a] :item `(:i (~o1 :order))}]
-         :children [{:info {:b 1}
-                     :members [{:info-canonicals [:a :b]
+       [{:groups {:a 1}
+         :members [{:groups-canonicals [:a] :item `(:i (~o1 :order))}]
+         :children [{:groups {:b 1}
+                     :members [{:groups-canonicals [:a :b]
                                 :item `(:j (~o2 :order))}]}
-                    {:info {:c 1}
-                     :members [{:info-canonicals [:a :c]
+                    {:groups {:c 1}
+                     :members [{:groups-canonicals [:a :c]
                                 :item `(:k (~o3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
-                   {:info {:a 1}
+                   {:groups {:a 1}
                     :members [:i]
-                    :children [{:info {:b 1} :members [:j]}]}))
+                    :children [{:groups {:b 1} :members [:j]}]}))
              #{:i :j})))
 
 (deftest flatten-hierarchy-test
   (is (check (flatten-hierarchy
-              [{:info {:a 1}
+              [{:groups {:a 1}
                 :members [:i]
-                :children [{:info {:b 1}
+                :children [{:groups {:b 1}
                             :members [:j]
-                            :children [{:info {:c 1} :members [:l]}]}
-                           {:info {:c 1}
+                            :children [{:groups {:c 1} :members [:l]}]}
+                           {:groups {:c 1}
                             :members [:k]}]}]
               0 {})
-             [{:info {:a 1}
-               :cumulative-info {:a 1}
+             [{:groups {:a 1}
+               :cumulative-groups {:a 1}
                :depth 0
                :members [:i]
-               :children [{:info {:b 1}
+               :children [{:groups {:b 1}
                            :members [:j]
-                           :children [{:info {:c 1} :members [:l]}]}
-                          {:info {:c 1}
+                           :children [{:groups {:c 1} :members [:l]}]}
+                          {:groups {:c 1}
                            :members [:k]}]}
-              {:info {:b 1}
-               :cumulative-info {:a 1 :b 1}
+              {:groups {:b 1}
+               :cumulative-groups {:a 1 :b 1}
                :depth 1
                :members [:j]
-               :children [{:info {:c 1} :members [:l]}]}
-              {:info {:c 1}
-               :cumulative-info {:a 1 :b 1 :c 1}
+               :children [{:groups {:c 1} :members [:l]}]}
+              {:groups {:c 1}
+               :cumulative-groups {:a 1 :b 1 :c 1}
                :depth 2 :members [:l]}
-              {:info {:c 1}
-               :cumulative-info {:a 1 :c 1}
+              {:groups {:c 1}
+               :cumulative-groups {:a 1 :c 1}
                :depth 1
                :members [:k]}])))
 
@@ -324,18 +324,18 @@
            (println "got hierarchy")
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
-           :info {}
-           :cumulative-info {}
-           :members [{:item gender, :info-elements '() :info-canonicals nil}]}
+           :groups {}
+           :cumulative-groups {}
+           :members [{:item gender, :groups-elements '() :groups-canonicals nil}]}
           {:depth 0 :for-multiple true :top-border :full :bottom-border :full
-           :info {["age" {'tag 1}] 1}
-           :cumulative-info {["age" {'tag 1}] 1}
+           :groups {["age" {'tag 1}] 1}
+           :cumulative-groups {["age" {'tag 1}] 1}
            :members [{:item bogus-age
-                      :info-elements [bogus-age-tag]
-                      :info-canonicals [["age" {'tag 1}]]}
+                      :groups-elements [bogus-age-tag]
+                      :groups-canonicals [["age" {'tag 1}]]}
                      {:item age
-                      :info-elements [age-tag]
-                      :info-canonicals [["age" {'tag 1}]]}]}]))))
+                      :groups-elements [age-tag]
+                      :groups-canonicals [["age" {'tag 1}]]}]}]))))
 
 (def t1 (add-entity (new-element-store) nil 'joe))
 (def store (first t1))

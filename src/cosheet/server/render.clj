@@ -196,47 +196,49 @@
             [] canonical-info)))
 
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
-;;; into a hierarchy based on common "information". The information for
-;;; each member is recorded as a canonical-info-set. The hierarchy
+;;; into a hierarchy based on common "groups". The information for
+;;; each member is recorded as a canonical-info-set of groups. The hierarchy
 ;;; consists of vector of nodes. All members at or below a hierarchy
-;;; node have information that subsumes the information for that node.
+;;; node have groups that include the groups for that node.
 ;;; The data for each node consists of
-;;;           :info  A canonical-info-set of the info added by this node.
-;;; :cumulatve-info  A canonical-info-set all info for this node.
-;;;        :members  A vector of members exactly matching the cumulative-info
-;;;                  for this node.
-;;;       :children  An optional vector of child nodes.
-;;; The :info of a child node only includes the information not
+;;;           :groups  A canonical-info-set of the groups added by this node.
+;;; :cumulatve-groups  A canonical-info-set all grouops for this node.
+;;;          :members  A vector of members exactly matching the
+;;;                    cumulative-groups for this node.
+;;;         :children  An optional vector of child nodes.
+;;; The :groups of a child node only includes the information not
 ;;; reflected in any of its parents. When a hierarchy is flattened,
 ;;; the cumulative information down through all parents is stored in
-;;; :cumulative-info.
-;;; For example, if a node has :info {:b 1}, and has a parent with
-;;; :info {:a 1}, and has no other ancestors, the :cumulative-info is
+;;; :cumulative-groups.
+;;; For example, if a node has :groups {:b 1}, and has a parent with
+;;; :groups {:a 1}, and has no other ancestors, the :cumulative-groups is
 ;;; {:a 1 :b 1}
 ;;; There are no requirements on members but some of the hierarchy
 ;;; building functions assume each member is itself a map, containing
-;;;              :item  The item that is the member
-;;; Other information may be present, such as
-;;;     :info-elements  The elements of the item that contribute
-;;;                     to the :cumulative-info of this node in the hierarchy
-;;;   :info-canonicals  A list canonical-info-sets for each element in
-;;;                     :info-elements.
-;;; For a flattened node, the :cumulative-info for each member will be
-;;; the aggregation of :info-canonicals. But a node might not have any
-;;; members, so we still need :info-canonicals.
+;;;                :item  The item that is the member
+;;; Other information may be present, including
+;;;     :groups-elements  The elements of the item that contribute
+;;;                       to the :cumulative-groups of this node
+;;;                       in the hierarchy
+;;;   :groups-canonicals  A list of canonical-info-sets for each element in
+;;;                       :groups-elements.
+;;; For a flattened node, the :cumulative-groups for each member will be
+;;; the aggregation of :groups-canonicals. But we need them split out for
+;;; each :groups-elements
 
 ;;; TODO: Change hierarchy creation to assume that the member
-;;; has :info-canonicals present.
+;;; has :groups-canonicals present.
 
 (defn append-to-hierarchy
-  "Given an info and corresponding item, add them to the hierarchy."
-  [hierarchy info item]
+  "Given groups and the corresponding item, add them to the hierarchy."
+  [hierarchy groups item]
   (if (empty? hierarchy)
-    [{:info info :members [item]}]
+    [{:groups groups :members [item]}]
     (let [last-entry (last hierarchy)]
-      (if (or (empty? (:info last-entry)) (empty? info))
-        (conj hierarchy {:info info :members [item]})
-        (let [[old-only new-only both] (multiset-diff (:info last-entry) info)]
+      (if (or (empty? (:groups last-entry)) (empty? groups))
+        (conj hierarchy {:groups groups :members [item]})
+        (let [[old-only new-only both] (multiset-diff (:groups last-entry)
+                                                      groups)]
           (if (empty? old-only)
             (update-last
              hierarchy
@@ -245,15 +247,15 @@
                (fn [last] (update-in last [:children]
                                      #(append-to-hierarchy % new-only item)))))
             (if (empty? both)
-              (conj hierarchy {:info info :members [item]})
+              (conj hierarchy {:groups groups :members [item]})
               (append-to-hierarchy
                (update-last hierarchy
                             (fn [last]
-                              {:info both
+                              {:groups both
                                :members []
-                               :children [(assoc last :info old-only)]
+                               :children [(assoc last :groups old-only)]
                                }))
-               info item))))))))
+               groups item))))))))
 
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
@@ -285,7 +287,7 @@
         (mapcat
          #(reduce (fn [hierarchy item-info-map]
                     (append-to-hierarchy
-                     hierarchy (multiset (:info-canonicals item-info-map))
+                     hierarchy (multiset (:groups-canonicals item-info-map))
                      item-info-map))
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
@@ -308,8 +310,8 @@
                                canonicals (expr-seq
                                            map canonical-info filtered)]
                       {:item item
-                       :info-elements filtered
-                       :info-canonicals canonicals}))
+                       :groups-elements filtered
+                       :groups-canonicals canonicals}))
                   items)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
 
@@ -318,13 +320,13 @@
 (defn flatten-hierarchy-node
   "Given a hierarchy node, a depth, and the combined info for all
   ancestors, return a flattened version of its hierarchy in
-  pre-order. Add :cumulative-info and :depth to the node and all its
+  pre-order. Add :cumulative-groups and :depth to the node and all its
   descendants."
   [node depth ancestor-info]
-  (let [cumulative-info (multiset-union (:info node) ancestor-info)]
+  (let [cumulative-info (multiset-union (:groups node) ancestor-info)]
     (cons (-> node
               (assoc :depth depth)
-              (assoc :cumulative-info cumulative-info))
+              (assoc :cumulative-groups cumulative-info))
           (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
 
 (defn flatten-hierarchy
@@ -552,8 +554,8 @@
                                      [:depth :for-multiple :with-children
                                       :top-border :bottom-border])
         example-elements (canonical-info-to-generating-items
-                          (:info hierarchy-node)
-                          (:info-elements example) (:info-canonicals example))
+                          (:groups hierarchy-node)
+                          (:groups-elements example) (:groups-canonicals example))
         affected-items (map :item descendants)
         items-referent (if (= (count affected-items) 1)
                          (item-referent (first affected-items))
@@ -570,10 +572,10 @@
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for the elements."
   [hierarchy-node parent-key inherited]
-  (let [items-with-excluded (map #((juxt :item :info-elements) %)
+  (let [items-with-excluded (map #((juxt :item :groups-elements) %)
                                  (:members hierarchy-node))
         sibling-elements (canonical-set-to-list
-                          (:cumulative-info hierarchy-node))]
+                          (:cumulative-groups hierarchy-node))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
                            (first (hierarchy-node-descendants hierarchy-node)))]
@@ -621,7 +623,7 @@
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [:members 0 :info-elements]))
+            (if (every? #(empty? (get-in % [:members 0 :groups-elements]))
                         flattened-hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
@@ -721,13 +723,13 @@
   The scope-referent should specify all the items from which
   this header selects elements."
   [table-item node sibling-condition table-parent-key scope-referent inherited]
-  (let [{:keys [info members children]} node
+  (let [{:keys [groups members children]} node
         descendants (hierarchy-node-descendants node)
         width (count descendants)
         example (first descendants)
         example-elements (canonical-info-to-generating-items
-                          info 
-                          (:info-elements example) (:info-canonicals example))
+                          groups 
+                          (:groups-elements example) (:groups-canonicals example))
         node-dom (let [key (table-header-key
                             (hierarchy-node-extent node) nil table-item
                             table-parent-key scope-referent)]
@@ -873,8 +875,8 @@
                    hierarchy (hierarchy-by-canonical-info
                               (map (fn [column template elements lists]
                                      {:item template
-                                      :info-elements elements
-                                      :info-canonicals (map multiset lists)
+                                      :groups-elements elements
+                                      :groups-canonicals (map multiset lists)
                                       :item-container column})
                                    columns
                                    column-templates

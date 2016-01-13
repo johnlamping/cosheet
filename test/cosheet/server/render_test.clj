@@ -235,17 +235,17 @@
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:groups-canonicals [:a] :item `(:i (~o1 :order))}
-         {:groups-canonicals [:a :b] :item `(:j (~o2 :order))}
-         {:groups-canonicals [:a :c] :item `(:k (~o3 :order))}]
+        [{:group-canonicals [:a] :item `(:i (~o1 :order))}
+         {:group-canonicals [:a :b] :item `(:j (~o2 :order))}
+         {:group-canonicals [:a :c] :item `(:k (~o3 :order))}]
         #{})
        [{:groups {:a 1}
-         :members [{:groups-canonicals [:a] :item `(:i (~o1 :order))}]
+         :members [{:group-canonicals [:a] :item `(:i (~o1 :order))}]
          :children [{:groups {:b 1}
-                     :members [{:groups-canonicals [:a :b]
+                     :members [{:group-canonicals [:a :b]
                                 :item `(:j (~o2 :order))}]}
                     {:groups {:c 1}
-                     :members [{:groups-canonicals [:a :c]
+                     :members [{:group-canonicals [:a :c]
                                 :item `(:k (~o3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendants-test
@@ -326,16 +326,16 @@
          [{:depth 0 :top-border :full :bottom-border :corner
            :groups {}
            :cumulative-groups {}
-           :members [{:item gender, :groups-elements '() :groups-canonicals nil}]}
+           :members [{:item gender, :group-elements '() :group-canonicals nil}]}
           {:depth 0 :for-multiple true :top-border :full :bottom-border :full
            :groups {["age" {'tag 1}] 1}
            :cumulative-groups {["age" {'tag 1}] 1}
            :members [{:item bogus-age
-                      :groups-elements [bogus-age-tag]
-                      :groups-canonicals [["age" {'tag 1}]]}
+                      :group-elements [bogus-age-tag]
+                      :group-canonicals [["age" {'tag 1}]]}
                      {:item age
-                      :groups-elements [age-tag]
-                      :groups-canonicals [["age" {'tag 1}]]}]}]))))
+                      :group-elements [age-tag]
+                      :group-canonicals [["age" {'tag 1}]]}]}]))))
 
 (def t1 (add-entity (new-element-store) nil 'joe))
 (def store (first t1))
@@ -968,10 +968,10 @@
                       joe `("Joe"
                             (~o1 :order)
                             (:top-level :non-semantic)
-                            ("Josephe"
+                            ("Joseph"
                              ("name" ~'tag) ("id" ~'tag) (~o1 :order))
                             ("Joe"
-                             ("name" ~'tag) ("nickname" ~'tag) (~o2 :order))
+                             ("name" ~'tag) (~o2 :order))
                             (45 ("age" ~'tag) (~o2 :order)))
                       jane `("Jane"
                              (~o2 :order)
@@ -1000,7 +1000,7 @@
         joe-id-tags (current-value
                      (label->elements joe-id 'tag))
         joe-nickname (first (current-value
-                             (label->elements joe "nickname")))
+                             (label->elements joe o2)))
         joe-nickname-tags (current-value
                      (label->elements joe-nickname 'tag))]
     (is (check-keys dom joe))
@@ -1071,12 +1071,12 @@
             [:div {:class "table-row"}
              [:component {:key (into [(:item-id joe-nickname)
                                       (comment-referent
-                                       (item-referent name-id))]
+                                       (item-referent name))]
                                       joe-key)
                            :class "table-cell"
                           :sibling-elements (as-set [["name" 'tag]])}
                [item-DOM
-                joe-nickname (into [(comment-referent (item-referent name-id))]
+                joe-nickname (into [(comment-referent (item-referent name))]
                                joe-key)
                 (set joe-nickname-tags)
                 {:depth 0, :do-not-merge #{}}]]

@@ -215,19 +215,19 @@
 ;;; {:a 1 :b 1}
 ;;; There are no requirements on members but some of the hierarchy
 ;;; building functions assume each member is itself a map, containing
-;;;                :item  The item that is the member
+;;;               :item  The item that is the member
 ;;; Other information may be present, including
-;;;     :groups-elements  The elements of the item that contribute
-;;;                       to the :cumulative-groups of this node
-;;;                       in the hierarchy
-;;;   :groups-canonicals  A list of canonical-info-sets for each element in
-;;;                       :groups-elements.
+;;;     :group-elements  The elements of the item that contribute
+;;;                      to the :cumulative-groups of this node
+;;;                      in the hierarchy
+;;;   :group-canonicals  A list of canonical-info-sets for each element in
+;;;                      :group-elements.
 ;;; For a flattened node, the :cumulative-groups for each member will be
-;;; the aggregation of :groups-canonicals. But we need them split out for
-;;; each :groups-elements
+;;; the aggregation of :group-canonicals. But we need them split out for
+;;; each :group-elements
 
 ;;; TODO: Change hierarchy creation to assume that the member
-;;; has :groups-canonicals present.
+;;; has :group-canonicals present.
 
 (defn append-to-hierarchy
   "Given groups and the corresponding item, add them to the hierarchy."
@@ -287,7 +287,7 @@
         (mapcat
          #(reduce (fn [hierarchy item-info-map]
                     (append-to-hierarchy
-                     hierarchy (multiset (:groups-canonicals item-info-map))
+                     hierarchy (multiset (:group-canonicals item-info-map))
                      item-info-map))
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
@@ -310,8 +310,8 @@
                                canonicals (expr-seq
                                            map canonical-info filtered)]
                       {:item item
-                       :groups-elements filtered
-                       :groups-canonicals canonicals}))
+                       :group-elements filtered
+                       :group-canonicals canonicals}))
                   items)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
 
@@ -555,7 +555,7 @@
                                       :top-border :bottom-border])
         example-elements (canonical-info-to-generating-items
                           (:groups hierarchy-node)
-                          (:groups-elements example) (:groups-canonicals example))
+                          (:group-elements example) (:group-canonicals example))
         affected-items (map :item descendants)
         items-referent (if (= (count affected-items) 1)
                          (item-referent (first affected-items))
@@ -572,7 +572,7 @@
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for the elements."
   [hierarchy-node parent-key inherited]
-  (let [items-with-excluded (map #((juxt :item :groups-elements) %)
+  (let [items-with-excluded (map #((juxt :item :group-elements) %)
                                  (:members hierarchy-node))
         sibling-elements (canonical-set-to-list
                           (:cumulative-groups hierarchy-node))]
@@ -623,7 +623,7 @@
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [:members 0 :groups-elements]))
+            (if (every? #(empty? (get-in % [:members 0 :group-elements]))
                         flattened-hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
@@ -713,7 +713,7 @@
                      (key-referent [(content-referent)
                                     ;; This also makes the key for
                                     ;; each column be unique.
-                                    (:item-container info-map)
+                                    (:column-referent info-map)
                                     table-item])])
                   info-maps)))
     table-parent-key))
@@ -729,7 +729,7 @@
         example (first descendants)
         example-elements (canonical-info-to-generating-items
                           groups 
-                          (:groups-elements example) (:groups-canonicals example))
+                          (:group-elements example) (:group-canonicals example))
         node-dom (let [key (table-header-key
                             (hierarchy-node-extent node) nil table-item
                             table-parent-key scope-referent)]
@@ -787,6 +787,8 @@
   [items condition row-item cell-key inherited]
   (println "Computing table cell for " (count items)
            "items, cell key " cell-key)
+  (println "items" (simplify-for-print items))
+  (println "condition" condition)
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
@@ -800,29 +802,51 @@
                        cell-key (rest condition) inherited)
        {:class "table-cell"}))))
 
+(defn table-row-column-group-DOM
+  "Generate the dom for the cells of a row under one hierarchy group."
+  [row-item row-key node table-parent-key inherited]
+  (let [{:keys [groups members children]} node
+        excluded-conditions (map :condition (hierarchy-nodes-extent children))]
+    (println "row-column-group" (simplify-for-print node))
+    (expr-let
+        [do-not-show
+         (when excluded-conditions
+           (expr-seq map #(matching-elements % row-item)
+                     excluded-conditions))
+         member-cells
+         (let [exclusions (apply clojure.set/union (map set do-not-show))]
+           (expr-seq
+            map
+            (fn [member]
+              (let [{:keys [condition column-referent]} member]
+                (expr-let [matches (matching-elements condition row-item)]
+                  (let [items (seq (clojure.set/difference (set matches)
+                                                           exclusions))
+                        cell-key (prepend-to-key
+                                  (comment-referent column-referent)
+                                  row-key)]
+                    (table-cell-DOM items condition row-item
+                                    cell-key inherited)))))
+            members))
+         children-cells
+         (expr-seq map #(table-row-column-group-DOM
+                         row-item row-key % table-parent-key inherited)
+                   children)]
+      (apply concat member-cells children-cells))))
+
 (defn table-row-DOM
-  "Generate the dom for one row of a table."
-  ;; TODO: Find the items of a row with knowledge of the column
-  ;; hierarchy, so that an item won't show up at the general level if
-  ;; it also shows up at a more specific level.
-  [row-item column-definitions column-conditions table-parent-key inherited]
-  (println "Generating row for" (pr-str (current-value (entity/to-list row-item))))
-  (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)
-        column-parent-keys (map #(prepend-to-key (-> %
-                                                     item-referent
-                                                     comment-referent)
-                                                 row-key)
-                                column-definitions)]
-    (expr-let [cell-items (expr-seq map #(matching-elements % row-item)
-                                    column-conditions)
-               cells (expr-seq
-                      map (fn [items table-parent-key condition]
-                            (table-cell-DOM
-                             items condition row-item
-                             table-parent-key inherited))
-                      cell-items column-parent-keys column-conditions)]
+  "Generate the dom for one row of a possibly hierarchical table."
+  [row-item hierarchy table-parent-key inherited]
+  (println "Generating row for"
+           (pr-str (current-value (entity/to-list row-item))))
+  (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)]
+    (expr-let [cell-groups (expr-seq
+                            map #(table-row-column-group-DOM
+                                  row-item row-key %
+                                  table-parent-key inherited)
+                            hierarchy)]
       (println "computed table row")
-      (into [:div {:class "table-row"}] cells))))
+      (into [:div {:class "table-row"}] (apply concat cell-groups)))))
 
 (defn add-element-to-entity-list
   [entity element]
@@ -875,9 +899,11 @@
                    hierarchy (hierarchy-by-canonical-info
                               (map (fn [column template elements lists]
                                      {:item template
-                                      :groups-elements elements
-                                      :groups-canonicals (map multiset lists)
-                                      :item-container column})
+                                      :group-elements elements
+                                      :group-canonicals (map multiset lists)
+                                      :condition (replace-nones
+                                                  (list* (into '[nil] lists)))
+                                      :column-referent (item-referent column)})
                                    columns
                                    column-templates
                                    column-templates-elements
@@ -888,7 +914,7 @@
                                              (query-referent row-query)
                                              inherited)
                    rows (expr-seq
-                         map #(table-row-DOM % columns column-conditions
+                         map #(table-row-DOM % hierarchy ;columns column-conditions
                                              parent-key inherited)
                          row-items)]
           (println "column conditions"

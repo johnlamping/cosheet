@@ -785,10 +785,6 @@
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
   [items condition row-item cell-key inherited]
-  (println "Computing table cell for " (count items)
-           "items, cell key " cell-key)
-  (println "items" (simplify-for-print items))
-  (println "condition" condition)
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
@@ -807,7 +803,6 @@
   [row-item row-key node table-parent-key inherited]
   (let [{:keys [groups members children]} node
         excluded-conditions (map :condition (hierarchy-nodes-extent children))]
-    (println "row-column-group" (simplify-for-print node))
     (expr-let
         [do-not-show
          (when excluded-conditions
@@ -837,15 +832,12 @@
 (defn table-row-DOM
   "Generate the dom for one row of a possibly hierarchical table."
   [row-item hierarchy table-parent-key inherited]
-  (println "Generating row for"
-           (pr-str (current-value (entity/to-list row-item))))
   (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)]
     (expr-let [cell-groups (expr-seq
                             map #(table-row-column-group-DOM
                                   row-item row-key %
                                   table-parent-key inherited)
                             hierarchy)]
-      (println "computed table row")
       (into [:div {:class "table-row"}] (apply concat cell-groups)))))
 
 (defn add-element-to-entity-list
@@ -876,8 +868,6 @@
     (expr-let [row-query-item (entity/label->content table-item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
-        (println "row-query-item"
-                 (current-value (entity/to-list row-query-item)))
         (expr-let [basic-row-query (semantic-to-list row-query-item)
                    row-query (add-element-to-entity-list
                               (replace-nones basic-row-query)
@@ -914,12 +904,9 @@
                                              (query-referent row-query)
                                              inherited)
                    rows (expr-seq
-                         map #(table-row-DOM % hierarchy ;columns column-conditions
+                         map #(table-row-DOM % hierarchy
                                              parent-key inherited)
                          row-items)]
-          (println "column conditions"
-                   (current-value
-                    (expr-seq map entity/to-list column-conditions)))
           (into [:div {:class "table"
                        :key (prepend-to-key (item-referent table-item)
                                             parent-key)} headers]

@@ -1007,6 +1007,7 @@
     (is (check
          dom
          (let [joe-key [(item-referent joe) :foo]
+               jane-key [(item-referent jane) :foo]
                query-list '(nil (:top-level :non-semantic))
                name-referents [[:parallel
                                      [(elements-referent
@@ -1074,14 +1075,31 @@
                                        (item-referent name))]
                                       joe-key)
                            :class "table-cell"
-                          :sibling-elements (as-set [["name" 'tag]])}
+                          :sibling-elements [["name" 'tag]]}
                [item-DOM
                 joe-nickname (into [(comment-referent (item-referent name))]
                                joe-key)
                 (set joe-nickname-tags)
                 {:depth 0, :do-not-merge #{}}]]
              ;; Joe's id
-             ;; TODO: Check it.
-             (any)]
+             [:component {:key (into [(:item-id joe-id)
+                                      (comment-referent
+                                       (item-referent name-id))]
+                                      joe-key)
+                           :class "table-cell"
+                          :sibling-elements (as-set [["id" 'tag]
+                                                     ["name" 'tag]])}
+               [item-DOM
+                joe-id (into [(comment-referent (item-referent name-id))]
+                               joe-key)
+                (set joe-id-tags)
+                {:depth 0, :do-not-merge #{}}]]]
             ;; Jane
-            (any)])))))
+            [:div {:class "table-row"}
+             [:component (any) (any)]
+             ;; No name-id value.
+             [:div {:class "editable table-cell"
+                    :key (into [(elements-referent '(nil ("id" tag)
+                                                         ("name" tag)))
+                                (comment-referent (item-referent name-id))]
+                               jane-key)}]]])))))

@@ -1086,7 +1086,7 @@
                                       (comment-referent
                                        (item-referent name-id))]
                                       joe-key)
-                           :class "table-cell"
+                          :class "table-cell"
                           :sibling-elements (as-set [["id" 'tag]
                                                      ["name" 'tag]])}
                [item-DOM

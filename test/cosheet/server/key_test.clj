@@ -148,6 +148,14 @@
                               [45 {["age" {'tag 1}] 1}] 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
 
+
+(deftest semantic-matching-element-test
+  (let [joe `("x"
+              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+              ("Joe" ("name" ~'tag) (~o2 :order)))
+        matching (semantic-matching-element '("Joe" ("name" tag)) joe)]
+    (is (= matching (nth joe 2)))))
+
 (deftest bind-referents-test
   (is (check (bind-referents [(item-referent joe)
                               (comment-referent :foo)

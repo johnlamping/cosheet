@@ -33,7 +33,7 @@
 ;;;                      were cached, they will be available for
 ;;;                      reuse by the subcomputations of the current
 ;;;                      value source.
-;;; :arguments-unchanged Present, and equal to true, is we have not
+;;; :arguments-unchanged Present, and equal to true, if we have not
 ;;;                      seen a valid value different from the ones
 ;;;                      used to compute old-value-source.
 ;;;       :needed-values A set of reporters whose values this reporter needs
@@ -63,7 +63,7 @@
 ;;; swap! to the copy reads its current value as A, then the function
 ;;; provided to the swap! reads the intermediate source value B and
 ;;; returns it. But before the swap! finishes, another thread sets the
-;;; copie's value back to the final A. Now, when the original swap!
+;;; copy's value back to the final A. Now, when the original swap!
 ;;; goes to finish, it will see that the copy's value is still A, like
 ;;; it initially read, so the swap! succeeds, and sets the copy to the
 ;;; stale B.

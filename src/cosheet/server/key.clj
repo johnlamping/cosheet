@@ -404,7 +404,8 @@
                  ;; Prefer one with no extra semantic info.
                  (let [perfect-matches
                        (filter #(= (item->canonical-semantic %)
-                                   canonical-semantic))]
+                                   canonical-semantic)
+                               matches)]
                    (if (empty? perfect-matches)
                      matches
                      perfect-matches))

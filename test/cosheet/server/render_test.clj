@@ -819,13 +819,13 @@
                query-list '(nil (nil ("age" tag)) (:top-level :non-semantic))
                age-header-key [[:parallel
                                 [[:comment '(nil tag)]]
-                                [[:parallel
+                                [(key-referent [(content-referent)
+                                                (item-referent age)
+                                                (item-referent table)])
+                                 [:parallel
                                    [(elements-referent
                                      (item-referent age-content))]
-                                   [(query-referent query-list)]]
-                                 (key-referent [(content-referent)
-                                                (item-referent age)
-                                                (item-referent table)])]]
+                                   [(query-referent query-list)]]]]
                                :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
@@ -906,13 +906,13 @@
                query-list '(nil (:top-level :non-semantic))
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
-                                 [[:parallel
+                                 [(key-referent [(content-referent)
+                                                 (item-referent name-id)
+                                                 (item-referent table)])
+                                  [:parallel
                                    [(elements-referent
                                      (item-referent name-id-content))]
-                                   [(query-referent query-list)]]
-                                  (key-referent [(content-referent)
-                                                 (item-referent name-id)
-                                                 (item-referent table)])]]
+                                   [(query-referent query-list)]]]]
                                 :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
@@ -1009,34 +1009,37 @@
          (let [joe-key [(item-referent joe) :foo]
                jane-key [(item-referent jane) :foo]
                query-list '(nil (:top-level :non-semantic))
-               name-referents [[:parallel
-                                     [(elements-referent
-                                       (item-referent name-content))]
-                                     [(query-referent query-list)]]
-                                    (key-referent [(content-referent)
+               name-referents [(key-referent [(content-referent)
+                                              (item-referent name)
+                                              (item-referent table)])
+                               (key-referent [(content-referent)
+                                              (item-referent name-id)
+                                              (item-referent table)])
+                               [:parallel
+                                [(elements-referent
+                                  (item-referent name-content))]
+                                [(query-referent query-list)]]]
+               just-name-referents [(key-referent [(content-referent)
                                                    (item-referent name)
-                                                   (item-referent table)])]
-               just-name-referents [[:parallel
+                                                   (item-referent table)])
+                                    [:parallel
                                      [[:parallel
                                        []
                                        [(elements-referent
                                          (item-referent name-content))]
                                        [(elements-referent
                                          (item-referent name-id-content))]]]
-                                     [(query-referent query-list)]]
-                                    (key-referent [(content-referent)
-                                                   (item-referent name)
-                                                   (item-referent table)])]
-               name-id-referents [[:parallel
+                                     [(query-referent query-list)]]]
+               name-id-referents [(key-referent [(content-referent)
+                                                 (item-referent name-id)
+                                                 (item-referent table)])
+                                  [:parallel
                                     [(elements-referent
                                       (item-referent name-id-content))]
-                                   [(query-referent query-list)]]
-                                  (key-referent [(content-referent)
-                                                 (item-referent name-id)
-                                                 (item-referent table)])]
+                                   [(query-referent query-list)]]]
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
-                                 (concat name-referents)]
+                                 name-referents]
                                 :foo]
                name-id-header-key [[:parallel
                                     [[:comment '(nil tag)]]

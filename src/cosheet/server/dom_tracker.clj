@@ -10,6 +10,8 @@
             
             (cosheet.server [render :refer [server-specific-attributes]])))
 
+(def verbose false)
+
 ;;; TODO: add a check when the dom of a component comes back that its
 ;;; key matches the key the component is stored under.
 
@@ -241,7 +243,8 @@
   (if (get-in data [:key->id key])
     data
     (let [id (str "id" (:next-id data))]
-      (println "added id" id "for key" (simplify-for-print key))
+      (when verbose
+        (println "added id" id "for key" (simplify-for-print key)))
       (-> data
           (update-associate-key-to-id key id)
           (update-in [:next-id] inc)))))
@@ -307,16 +310,19 @@
   (call-with-latest-value
    #(reporter/value reporter)
    (fn [dom]
-     (println "got dom value for key" (simplify-for-print key))
+     (when verbose
+       (println "got dom value for key" (simplify-for-print key)))
      ;;; TODO: When not valid, but we have a previous dom,
      ;;; set a style for the dom to indicate invalidity.
      (when (reporter/valid? dom)
-       (println "value is valid")
+       (when verbose
+         (println "value is valid"))
        (swap-and-act
         data-atom
         (fn [data]
           (when (= reporter (get-in data [:components key :reporter]))
-            (println "reporter is current"))
+            (when verbose
+              (println "reporter is current")))
           (cond-> data
             (= reporter (get-in data [:components key :reporter]))
             (update-dom key dom))))))))
@@ -381,7 +387,8 @@
       (assoc-in data [:components key] new-component-map)
       (let [reporter (new-expression definition)
             final-map (assoc new-component-map :reporter reporter)]
-        (println "created component map for" (simplify-for-print key))
+        (when verbose
+          (println "created component map for" (simplify-for-print key)))
         (-> data
             (update-request-set-attending original-component-map)
             (assoc-in [:components key] final-map)

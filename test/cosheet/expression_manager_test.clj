@@ -440,7 +440,7 @@
   ;; right.
   (let [width 37
         depth 11
-        trials 10; 0000
+        trials 10 ;0000
         changes-per-trial 1000
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]

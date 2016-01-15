@@ -691,31 +691,35 @@
 
 (defn table-header-key
   "Generate the key for the cell that holds a table header, given the
-  info-maps of all the header requests it applies to and the ones it
+  info-maps of all the header requests it applies to, info maps that
+  are sufficient to cover the elements it applies to, and the ones it
   must not apply to, as well as the table item, the parent key of the
   table the scope referent of the table."
-  [info-maps negative-info-maps table-item table-parent-key scope-referent]
+  [info-maps extent-info-maps negative-info-maps
+   table-item table-parent-key scope-referent]
   (prepend-to-key
     (parallel-referent
      []
-     (vec (mapcat (fn [info-map]
-                    [;; All row elements the header applies to.
-                     (parallel-referent
-                      [(if (empty? negative-info-maps)
-                          (elements-referent (:item info-map))
-                          (parallel-referent
-                           []
-                           [(elements-referent (:item info-map))]
-                           (map #(elements-referent (item-referent (:item %)))
-                                negative-info-maps)))]
-                      [scope-referent])
-                     ;; The header definition.
-                     (key-referent [(content-referent)
-                                    ;; This also makes the key for
-                                    ;; each column be unique.
-                                    (:column-referent info-map)
-                                    table-item])])
-                  info-maps)))
+     (vec (concat
+           (map (fn [info-map]
+                  (key-referent [(content-referent)
+                                 ;; This also makes the key for each
+                                 ;; column be unique.
+                                 (:column-referent info-map)
+                                 table-item]))
+                   info-maps)
+           ;; All row elements the header applies to.
+           (map (fn [info-map]
+                  (parallel-referent
+                   [(if (empty? negative-info-maps)
+                      (elements-referent (:item info-map))
+                      (parallel-referent
+                       []
+                       [(elements-referent (:item info-map))]
+                       (map #(elements-referent (item-referent (:item %)))
+                            negative-info-maps)))]
+                   [scope-referent]))
+                extent-info-maps))))
     table-parent-key))
 
 (defn table-header-subtree-DOM
@@ -731,8 +735,8 @@
                           groups 
                           (:group-elements example) (:group-canonicals example))
         node-dom (let [key (table-header-key
-                            (hierarchy-node-extent node) nil table-item
-                            table-parent-key scope-referent)]
+                            descendants (hierarchy-node-extent node) nil
+                            table-item table-parent-key scope-referent)]
                    (expr table-header-node-DOM
                      (order-items example-elements) ; Why we need the expr.
                      sibling-condition key inherited))]
@@ -745,7 +749,7 @@
                           map
                           #(let [exclude (hierarchy-nodes-extent children)
                                  key (table-header-key
-                                      [%] exclude table-item
+                                      [%] [%] exclude table-item
                                       table-parent-key scope-referent)]
                              (table-header-node-DOM
                                nil sibling-condition key inherited))

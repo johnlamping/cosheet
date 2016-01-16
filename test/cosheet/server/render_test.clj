@@ -833,7 +833,8 @@
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
                            :sibling-elements ['tag]
-                           :class "column-header"}
+                           :class "column-header"                     
+                           :style {:width "100px"}}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
                 {:level 0, :depth 0, :do-not-merge #{}}]]]
@@ -917,7 +918,8 @@
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags"}
-              [:div {:class "stack column-header"}
+              [:div {:class "stack column-header"
+                            :style {:width "100px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-elements ['tag]
@@ -1052,13 +1054,15 @@
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-elements ['tag]
-                            :class "column-header"}
+                            :class "column-header"
+                            :style {:width "200px"}}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
                   {:level 0, :depth 0, :do-not-merge #{}}]]]
               [:div {:class "column-header-sequence"}
                [:div  {:class "column-header-container tags"}
                 [:div  {:class "column-header"
+                        :style {:width "100px"}
                         :key [[:parallel
                                [[:elements '(nil tag)]]
                                just-name-referents]
@@ -1067,7 +1071,8 @@
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
                               :sibling-elements ['tag]
-                              :class "column-header"}
+                              :class "column-header"
+                            :style {:width "100px"}}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
                    {:level 1, :depth 0, :do-not-merge #{}}]]]]]]

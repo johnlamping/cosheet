@@ -211,7 +211,8 @@
 }
 
 .column-header {
-    width: 100px;
+    align-items: flex-stretch;
+    text-align: center;
     padding: 3px;
     box-sizing: content-box;
 }

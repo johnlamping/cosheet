@@ -667,7 +667,7 @@
 
 (defn table-header-node-DOM
   "Generate the dom for one node of a table header hierarchy."
-  [elements sibling-condition parent-key inherited]
+  [elements width sibling-condition parent-key inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
@@ -684,7 +684,8 @@
                                      (elements-referent sibling-condition)
                                      parent-key)})
           dom)
-        (add-attributes dom {:class "column-header"})
+        (add-attributes dom {:class "column-header"
+                             :style {:width (str width "px")}})
         [:div {:class "column-header-container"} dom]
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "tags"})))))
@@ -722,6 +723,8 @@
                 extent-info-maps))))
     table-parent-key))
 
+(def base-table-header-width 100)
+
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy.
   The scope-referent should specify all the items from which
@@ -739,6 +742,7 @@
                             table-item table-parent-key scope-referent)]
                    (expr table-header-node-DOM
                      (order-items example-elements) ; Why we need the expr.
+                     (* (count descendants) base-table-header-width )
                      sibling-condition key inherited))]
     (if (empty? children)
       node-dom
@@ -752,7 +756,8 @@
                                       [%] [%] exclude table-item
                                       table-parent-key scope-referent)]
                              (table-header-node-DOM
-                               nil sibling-condition key inherited))
+                              nil base-table-header-width
+                              sibling-condition key inherited))
                           members)
              child-doms (expr-seq
                          map

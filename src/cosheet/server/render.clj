@@ -682,11 +682,12 @@
         (if (empty? elements)
           (add-attributes dom {:key (prepend-to-key
                                      (elements-referent sibling-condition)
-                                     parent-key)})
+                                     parent-key)
+                               :class "editable"})
           dom)
-        (add-attributes dom {:class "column-header"
-                             :style {:width (str width "px")}})
-        [:div {:class "column-header-container"} dom]
+        (add-attributes dom {:class "column-header"})
+        [:div {:class "column-header-container" 
+               :style {:width (str width "px")}} dom]
         ;; TODO: add more appearance info.
         (add-attributes dom {:class "tags"})))))
 

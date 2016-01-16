@@ -199,7 +199,7 @@
     flex-direction: column;
     justify-content: flex-end;
     border-width: 0px 0px 2px 2px;
-    box-sizing: content-box;
+    box-sizing: border-box;
 }
 
 .tags.column-header-container {
@@ -212,9 +212,13 @@
 
 .column-header {
     align-items: flex-stretch;
+    flex-grow: 1;
     text-align: center;
     padding: 3px;
-    box-sizing: content-box;
+}
+
+.column-header.editable {
+    min-height: 20px;
 }
 
 .column-header-sequence {
@@ -227,7 +231,7 @@
     width: 100px;
     padding: 3px;
     border-width: 0px 0px 2px 2px;
-    box-sizing: content-box;
+    box-sizing: border-box;
 }
 
 .table-cell:last-child {

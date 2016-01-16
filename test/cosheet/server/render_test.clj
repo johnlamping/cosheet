@@ -829,12 +829,12 @@
                                :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-container tags"}
+             [:div {:class "column-header-container tags"                     
+                    :style {:width "100px"}}
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
                            :sibling-elements ['tag]
-                           :class "column-header"                     
-                           :style {:width "100px"}}
+                           :class "column-header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
                 {:level 0, :depth 0, :do-not-merge #{}}]]]
@@ -917,9 +917,9 @@
                                 :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-container tags"}
-              [:div {:class "stack column-header"
-                            :style {:width "100px"}}
+             [:div {:class "column-header-container tags"
+                    :style {:width "100px"}}
+              [:div {:class "stack column-header"}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-elements ['tag]
@@ -1050,29 +1050,29 @@
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack"}
-              [:div {:class "column-header-container tags"}
+              [:div {:class "column-header-container tags"
+                     :style {:width "200px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-elements ['tag]
-                            :class "column-header"
-                            :style {:width "200px"}}
+                            :class "column-header"}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
                   {:level 0, :depth 0, :do-not-merge #{}}]]]
               [:div {:class "column-header-sequence"}
-               [:div  {:class "column-header-container tags"}
-                [:div  {:class "column-header"
-                        :style {:width "100px"}
+               [:div  {:class "column-header-container tags"
+                       :style {:width "100px"}}
+                [:div  {:class "editable column-header"
                         :key [[:parallel
                                [[:elements '(nil tag)]]
                                just-name-referents]
                               :foo]}]]
-               [:div {:class "column-header-container tags"}
+               [:div {:class "column-header-container tags"
+                      :style {:width "100px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
                               :sibling-elements ['tag]
-                              :class "column-header"
-                            :style {:width "100px"}}
+                              :class "column-header"}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
                    {:level 1, :depth 0, :do-not-merge #{}}]]]]]]

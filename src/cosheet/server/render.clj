@@ -201,6 +201,7 @@
 ;;; consists of vector of nodes. The groups for each member at or below
 ;;; a hierarchy node include the groups for that node.
 ;;; The data for each node consists of
+;;;   :hierarchy-node  true
 ;;;           :groups  A canonical-info-set of the groups added by this node.
 ;;; :cumulatve-groups  A canonical-info-set the groups for members of this node.
 ;;;          :members  A vector of members exactly matching the
@@ -231,14 +232,18 @@
 ;;; the aggregation of :group-canonicals. But we need them split out for
 ;;; each :group-elements
 
+(defn hierarchy-node?
+  [node]
+  (contains? node :hierarchy-node))
+
 (defn append-to-hierarchy
   "Given groups and the corresponding item, add them to the hierarchy."
   [hierarchy groups item]
   (if (empty? hierarchy)
-    [{:groups groups :members [item]}]
+    [{:hierarchy-node true :groups groups :members [item]}]
     (let [last-entry (last hierarchy)]
       (if (or (empty? (:groups last-entry)) (empty? groups))
-        (conj hierarchy {:groups groups :members [item]})
+        (conj hierarchy {:hierarchy-node true :groups groups :members [item]})
         (let [[old-only new-only both] (multiset-diff (:groups last-entry)
                                                       groups)]
           (if (empty? old-only)
@@ -249,11 +254,14 @@
                (fn [last] (update-in last [:children]
                                      #(append-to-hierarchy % new-only item)))))
             (if (empty? both)
-              (conj hierarchy {:groups groups :members [item]})
+              (conj hierarchy {:hierarchy-node true
+                               :groups groups
+                               :members [item]})
               (append-to-hierarchy
                (update-last hierarchy
                             (fn [last]
-                              {:groups both
+                              {:hierarchy-node true
+                               :groups both
                                :members []
                                :children [(assoc last :groups old-only)]}))
                groups item))))))))
@@ -340,6 +348,17 @@
   "Return all members at or below the node."
   [node]
   (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
+
+(defn hierarchy-node-next-level
+  "Return the concatenation of the members and children of the node.
+  If any children have empty :groups, splice in their members."
+  [node]
+  (concat (:members node)
+          (mapcat #(if (empty? (:groups %))
+                     (do (assert (empty? (:children %)))
+                         (:members %))
+                     [%])
+                  (:children node))))
 
 (def hierarchy-nodes-extent)
 
@@ -737,12 +756,11 @@
   The scope-referent should specify all the items from which
   this header selects elements."
   [table-item node sibling-condition table-parent-key scope-referent inherited]
-  (let [{:keys [groups members children]} node
-        descendants (hierarchy-node-descendants node)
+  (let [descendants (hierarchy-node-descendants node)
         width (count descendants)
         example (first descendants)
         example-elements (canonical-info-to-generating-items
-                          groups 
+                          (:groups node) 
                           (:group-elements example) (:group-canonicals example))
         node-dom-r (let [key (table-header-key
                               descendants (hierarchy-node-extent node) nil
@@ -750,11 +768,12 @@
                      (expr table-header-node-DOM
                        (order-items example-elements) ; Why we need the expr.
                        (* (count descendants) base-table-header-width )
-                       sibling-condition key inherited))]
-    (if (and (empty? children) (= (count members) 1))
+                       sibling-condition key inherited))
+        next-level (hierarchy-node-next-level node)
+        non-trivial-children (filter hierarchy-node? next-level)]
+    (if (and (= (count next-level) 1) (empty? non-trivial-children))
       node-dom-r
       (let [inherited (update-in inherited [:level] inc)
-            non-trivial-children (filter #(not (empty? (:groups %))) children)
             exclude-from-members (hierarchy-nodes-extent non-trivial-children)
             make-member-DOM #(let [key (table-header-key
                                         [%] [%] exclude-from-members table-item
@@ -764,20 +783,16 @@
                                 sibling-condition key inherited))]
         (expr-let
             [node-dom node-dom-r
-             member-doms (expr-seq map make-member-DOM members)
-             child-doms (expr-seq
-                         mapcat
-                         #(if (empty? (:groups %))
-                            (do (assert (empty? (:children %)))
-                                (map make-member-DOM (:members %)))
-                            [(table-header-subtree-DOM
-                               table-item % sibling-condition
-                               table-parent-key scope-referent inherited)])
-                         children)]
+             dom-seqs (expr-seq map
+                                #(if (hierarchy-node? %)
+                                   (table-header-subtree-DOM
+                                    table-item % sibling-condition
+                                    table-parent-key scope-referent inherited)
+                                   (make-member-DOM %))
+                                next-level)]
           [:div {:class "column-header-stack"}
            node-dom
-           (into [:div {:class "column-header-sequence"}]
-                 (concat member-doms child-doms))])))))
+           (into [:div {:class "column-header-sequence"}] dom-seqs)])))))
 
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
@@ -819,8 +834,8 @@
 (defn table-row-column-group-DOM
   "Generate the dom for the cells of a row under one hierarchy group."
   [row-item row-key node table-parent-key inherited]
-  (let [{:keys [groups members children]} node
-        non-trivial-children (filter #(not (empty? (:groups %))) children)
+  (let [next-level (hierarchy-node-next-level node)
+        non-trivial-children (filter hierarchy-node? next-level)
         excluded-conditions (map :condition
                                  (hierarchy-nodes-extent non-trivial-children))]
     (expr-let
@@ -840,16 +855,15 @@
                                  row-key)]
                    (table-cell-DOM items condition row-item
                                    cell-key inherited))))))
-         member-cells
-         (expr-seq map make-member-cell-DOM members)
-         children-cells
+         cell-lists
          (expr-seq map
-                   #(if (empty? (:groups %))
-                      (expr-seq map make-member-cell-DOM (:members %))
+                   #(if (hierarchy-node? %)
                       (table-row-column-group-DOM
-                       row-item row-key % table-parent-key inherited))
-                   children)]
-      (apply concat member-cells children-cells))))
+                       row-item row-key % table-parent-key inherited)
+                      (expr-let [dom (make-member-cell-DOM %)]
+                        [dom]))
+                   next-level)]
+      (apply concat cell-lists))))
 
 (defn table-row-DOM
   "Generate the dom for one row of a possibly hierarchical table."

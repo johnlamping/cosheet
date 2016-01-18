@@ -177,86 +177,132 @@
 (deftest append-to-hierarchy-test
   ;; Append to empty.
   (is (check (append-to-hierarchy [] {:a 1} :i)
-             [{:groups {:a 1} :members [:i]}]))
+             [{:hierarchy-node true :groups {:a 1} :members [:i]}]))
   ;; Identical groups.
-  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:a 1} :j)
-             [{:groups {:a 1} :members [:i :j]}]))
-  ;; Completely different groups.
-  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:b 1} :j)
-             [{:groups {:a 1} :members [:i]} {:groups {:b 1} :members [:j]}]))
-  ;; New element has added group.
-  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}]
-                                  {:a 1 :b 1} :j)
-             [{:groups {:a 1}
-               :members [:i]
-               :children [{:groups {:b 1} :members [:j]}]}]))
-  ;; New element has fewer groups.
-  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1}
+                                    :members [:i]}]
                                   {:a 1} :j)
-             [{:groups {:a 1}
+             [{:hierarchy-node true :groups {:a 1} :members [:i :j]}]))
+  ;; Completely different groups.
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1}
+                                    :members [:i]}]
+                                  {:b 1} :j)
+             [{:hierarchy-node true :groups {:a 1} :members [:i]}
+              {:hierarchy-node true :groups {:b 1} :members [:j]}]))
+  ;; New element has added group.
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1}
+                                    :members [:i]}]
+                                  {:a 1 :b 1} :j)
+             [{:hierarchy-node true
+               :groups {:a 1}
+               :members [:i]
+               :children [{:hierarchy-node true
+                           :groups {:b 1}
+                           :members [:j]}]}]))
+  ;; New element has fewer groups.
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1 :b 1}
+                                    :members [:i]}]
+                                  {:a 1} :j)
+             [{:hierarchy-node true :groups {:a 1}
                :members []
-               :children [{:groups {:b 1} :members [:i]}
-                          {:groups {}, :members [:j]}]}]))
+               :children [{:hierarchy-node true :groups {:b 1} :members [:i]}
+                          {:hierarchy-node true :groups {}, :members [:j]}]}]))
   ;; Old and new have some in common.
   (is (check
-       (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
+       (append-to-hierarchy [{:hierarchy-node true
+                              :groups {:a 1 :b 1}
+                              :members [:i]}]
                             {:a 1 :c 1} :j)
-       [{:groups {:a 1}
+       [{:hierarchy-node true
+         :groups {:a 1}
          :members []
-         :children [{:groups {:b 1} :members [:i]}
-                    {:groups {:c 1} :members [:j]}]}]))
+         :children [{:hierarchy-node true :groups {:b 1} :members [:i]}
+                    {:hierarchy-node true :groups {:c 1} :members [:j]}]}]))
   ;; Must add to child of last element.
-  (is (check (append-to-hierarchy [{:groups {:a 1}
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1}
                                     :members [:i]
-                                    :children [{:groups {:b 1} :members [:j]}]}]
+                                    :children [{:hierarchy-node true
+                                                :groups {:b 1}
+                                                :members [:j]}]}]
                                   {:a 1 :b 1 :c 1} :k)
-             [{:groups {:a 1}
+             [{:hierarchy-node true
+               :groups {:a 1}
                :members [:i]
-               :children [{:groups {:b 1}
+               :children [{:hierarchy-node true
+                           :groups {:b 1}
                            :members [:j]
-                           :children [{:groups {:c 1} :members [:k]}]}]}]))
+                           :children [{:hierarchy-node true
+                                       :groups {:c 1}
+                                       :members [:k]}]}]}]))
   ;; Must close off child of last element.
-  (is (check (append-to-hierarchy [{:groups {:a 1}
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1}
                                     :members [:i]
-                                    :children [{:groups {:b 1} :members [:j]}]}]
+                                    :children [{:hierarchy-node true
+                                                :groups {:b 1}
+                                                :members [:j]}]}]
                                   {:a 1} :k)
-             [{:groups {:a 1}
+             [{:hierarchy-node true
+               :groups {:a 1}
                :members [:i]
-               :children [{:groups {:b 1} :members [:j]}
-                          {:groups {} :members [:k]}]}]))
+               :children [{:hierarchy-node true :groups {:b 1} :members [:j]}
+                          {:hierarchy-node true :groups {} :members [:k]}]}]))
   ;; Partial sharing with last element that has children.
-  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1 :b 1}
                                     :members [:i]
                                     :children [{:groups {:c 1} :members [:j]}]}]
                                   {:a 1 :c 1} :k)
-             [{:groups {:a 1}
+             [{:hierarchy-node true
+               :groups {:a 1}
                :members []
-               :children [{:groups {:b 1}
+               :children [{:hierarchy-node true
+                           :groups {:b 1}
                            :members [:i]
                            :children [{:groups {:c 1} :members [:j]}]}
-                          {:groups {:c 1} :members [:k]}]}]))
+                          {:hierarchy-node true
+                           :groups {:c 1}
+                           :members [:k]}]}]))
   ;; Append empty group after empty group.
-  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:groups {:c 1} :members [:j]}
-                                               {:groups {} :members [:k]}]}]
+                                    :children [{:hierarchy-node true
+                                                :groups {:c 1}
+                                                :members [:j]}
+                                               {:hierarchy-node true
+                                                :groups {}
+                                                :members [:k]}]}]
                                   {:a 1 :b 1} :l)
-             [{:groups {:a 1 :b 1}
+             [{:hierarchy-node true
+               :groups {:a 1 :b 1}
                :members [:i]
-               :children [{:groups {:c 1} :members [:j]}
-                          {:groups {} :members [:k]}
-                          {:groups {} :members [:l]}]}]))
+               :children [{:hierarchy-node true :groups {:c 1} :members [:j]}
+                          {:hierarchy-node true :groups {} :members [:k]}
+                          {:hierarchy-node true :groups {} :members [:l]}]}]))
   ;; Append non-empty group after empty group.
-  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
+  (is (check (append-to-hierarchy [{:hierarchy-node true
+                                    :groups {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:groups {:c 1} :members [:j]}
-                                               {:groups {} :members [:k]}]}]
+                                    :children [{:hierarchy-node true
+                                                :groups {:c 1}
+                                                :members [:j]}
+                                               {:hierarchy-node true
+                                                :groups {}
+                                                :members [:k]}]}]
                                   {:a 1 :b 1 :c 1} :l)
-             [{:groups {:a 1 :b 1}
+             [{:hierarchy-node true
+               :groups {:a 1 :b 1}
                :members [:i]
-               :children [{:groups {:c 1} :members [:j]}
-                          {:groups {} :members [:k]}
-                          {:groups {:c 1} :members [:l]}]}])))
+               :children [{:hierarchy-node true :groups {:c 1} :members [:j]}
+                          {:hierarchy-node true :groups {} :members [:k]}
+                          {:hierarchy-node true :groups {:c 1} :members [:l]}]
+               }])))
 
 (deftest split-by-do-not-merge-subset-test
   (is (check (split-by-do-not-merge-subset
@@ -276,50 +322,80 @@
          {:group-canonicals [:a :b] :item `(:j (~o2 :order))}
          {:group-canonicals [:a :c] :item `(:k (~o3 :order))}]
         #{})
-       [{:groups {:a 1}
+       [{:hierarchy-node true
+         :groups {:a 1}
          :members [{:group-canonicals [:a] :item `(:i (~o1 :order))}]
-         :children [{:groups {:b 1}
+         :children [{:hierarchy-node true
+                     :groups {:b 1}
                      :members [{:group-canonicals [:a :b]
                                 :item `(:j (~o2 :order))}]}
-                    {:groups {:c 1}
+                    {:hierarchy-node true
+                     :groups {:c 1}
                      :members [{:group-canonicals [:a :c]
                                 :item `(:k (~o3 :order))}]}]}])))
 
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
-                   {:groups {:a 1}
+                   {:hierarchy-node true
+                    :groups {:a 1}
                     :members [:i]
                     :children [{:groups {:b 1} :members [:j]}]}))
              #{:i :j})))
 
+(deftest hierarchy-node-next-level-test
+  (is (check (hierarchy-node-next-level
+              {:hierarchy-node true
+               :groups {:a 1 :b 1}
+               :members [:i]
+               :children [{:hierarchy-node true :groups {:c 1} :members [:j :k]}
+                          {:hierarchy-node true :groups {} :members [:l :m ]}]})
+             [:i
+              {:hierarchy-node true :groups {:c 1} :members [:j :k]}
+              :l :m])))
+
 (deftest flatten-hierarchy-test
   (is (check (flatten-hierarchy
-              [{:groups {:a 1}
+              [{:hierarchy-node true
+                :groups {:a 1}
                 :members [:i]
-                :children [{:groups {:b 1}
+                :children [{:hierarchy-node true
+                            :groups {:b 1}
                             :members [:j]
-                            :children [{:groups {:c 1} :members [:l]}]}
-                           {:groups {:c 1}
+                            :children [{:hierarchy-node true
+                                        :groups {:c 1}
+                                        :members [:l]}]}
+                           {:hierarchy-node true
+                            :groups {:c 1}
                             :members [:k]}]}]
               0 {})
-             [{:groups {:a 1}
+             [{:hierarchy-node true
+               :groups {:a 1}
                :cumulative-groups {:a 1}
                :depth 0
                :members [:i]
-               :children [{:groups {:b 1}
+               :children [{:hierarchy-node true
+                           :groups {:b 1}
                            :members [:j]
-                           :children [{:groups {:c 1} :members [:l]}]}
-                          {:groups {:c 1}
+                           :children [{:hierarchy-node true
+                                       :groups {:c 1}
+                                       :members [:l]}]}
+                          {:hierarchy-node true
+                           :groups {:c 1}
                            :members [:k]}]}
-              {:groups {:b 1}
+              {:hierarchy-node true
+               :groups {:b 1}
                :cumulative-groups {:a 1 :b 1}
                :depth 1
                :members [:j]
-               :children [{:groups {:c 1} :members [:l]}]}
-              {:groups {:c 1}
+               :children [{:hierarchy-node true
+                           :groups {:c 1}
+                           :members [:l]}]}
+              {:hierarchy-node true
+               :groups {:c 1}
                :cumulative-groups {:a 1 :b 1 :c 1}
                :depth 2 :members [:l]}
-              {:groups {:c 1}
+              {:hierarchy-node true
+               :groups {:c 1}
                :cumulative-groups {:a 1 :c 1}
                :depth 1
                :members [:k]}])))
@@ -359,10 +435,12 @@
                            [gender age bogus-age] #{} '(nil tag)))]
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
+           :hierarchy-node true
            :groups {}
            :cumulative-groups {}
            :members [{:item gender, :group-elements '() :group-canonicals nil}]}
           {:depth 0 :for-multiple true :top-border :full :bottom-border :full
+           :hierarchy-node true
            :groups {["age" {'tag 1}] 1}
            :cumulative-groups {["age" {'tag 1}] 1}
            :members [{:item bogus-age

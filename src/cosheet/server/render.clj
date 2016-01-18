@@ -198,8 +198,8 @@
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
 ;;; into a hierarchy based on common "groups". The information for
 ;;; each member is recorded as a canonical-info-set of groups. The hierarchy
-;;; consists of vector of nodes. All members at or below a hierarchy
-;;; node have groups that include the groups for that node.
+;;; consists of vector of nodes. The groups for each member at or below
+;;; a hierarchy node include the groups for that node.
 ;;; The data for each node consists of
 ;;;           :groups  A canonical-info-set of the groups added by this node.
 ;;; :cumulatve-groups  A canonical-info-set the groups for members of this node.
@@ -231,7 +231,6 @@
 ;;; the aggregation of :group-canonicals. But we need them split out for
 ;;; each :group-elements
 
-;;; TODO!!!: Don't add to last child if it has empty :groups.
 (defn append-to-hierarchy
   "Given groups and the corresponding item, add them to the hierarchy."
   [hierarchy groups item]
@@ -256,8 +255,7 @@
                             (fn [last]
                               {:groups both
                                :members []
-                               :children [(assoc last :groups old-only)]
-                               }))
+                               :children [(assoc last :groups old-only)]}))
                groups item))))))))
 
 (defn split-by-do-not-merge-subset

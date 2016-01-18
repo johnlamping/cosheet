@@ -234,7 +234,29 @@
                :children [{:groups {:b 1}
                            :members [:i]
                            :children [{:groups {:c 1} :members [:j]}]}
-                          {:groups {:c 1} :members [:k]}]}])))
+                          {:groups {:c 1} :members [:k]}]}]))
+  ;; Append empty group after empty group.
+  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
+                                    :members [:i]
+                                    :children [{:groups {:c 1} :members [:j]}
+                                               {:groups {} :members [:k]}]}]
+                                  {:a 1 :b 1} :l)
+             [{:groups {:a 1 :b 1}
+               :members [:i]
+               :children [{:groups {:c 1} :members [:j]}
+                          {:groups {} :members [:k]}
+                          {:groups {} :members [:l]}]}]))
+  ;; Append non-empty group after empty group.
+  (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
+                                    :members [:i]
+                                    :children [{:groups {:c 1} :members [:j]}
+                                               {:groups {} :members [:k]}]}]
+                                  {:a 1 :b 1 :c 1} :l)
+             [{:groups {:a 1 :b 1}
+               :members [:i]
+               :children [{:groups {:c 1} :members [:j]}
+                          {:groups {} :members [:k]}
+                          {:groups {:c 1} :members [:l]}]}])))
 
 (deftest split-by-do-not-merge-subset-test
   (is (check (split-by-do-not-merge-subset

@@ -175,24 +175,37 @@
          [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
 
 (deftest append-to-hierarchy-test
+  ;; Append to empty.
   (is (check (append-to-hierarchy [] {:a 1} :i)
              [{:groups {:a 1} :members [:i]}]))
+  ;; Identical groups.
   (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:a 1} :j)
              [{:groups {:a 1} :members [:i :j]}]))
+  ;; Completely different groups.
   (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:b 1} :j)
              [{:groups {:a 1} :members [:i]} {:groups {:b 1} :members [:j]}]))
-  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}] {:a 1 :b 1} :j)
-             [{:groups {:a 1} :members [:i]
+  ;; New element has added group.
+  (is (check (append-to-hierarchy [{:groups {:a 1} :members [:i]}]
+                                  {:a 1 :b 1} :j)
+             [{:groups {:a 1}
+               :members [:i]
                :children [{:groups {:b 1} :members [:j]}]}]))
+  ;; New element has fewer groups.
   (is (check (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
                                   {:a 1} :j)
-             [{:groups {:a 1} :members [] :children [{:groups {:b 1} :members [:i]}
-                                                   {:groups {} :members [:j]}]}]))
+             [{:groups {:a 1}
+               :members []
+               :children [{:groups {:b 1} :members [:i]}
+                          {:groups {}, :members [:j]}]}]))
+  ;; Old and new have some in common.
   (is (check
        (append-to-hierarchy [{:groups {:a 1 :b 1} :members [:i]}]
                             {:a 1 :c 1} :j)
-       [{:groups {:a 1} :members [] :children [{:groups {:b 1} :members [:i]}
-                                             {:groups {:c 1} :members [:j]}]}]))
+       [{:groups {:a 1}
+         :members []
+         :children [{:groups {:b 1} :members [:i]}
+                    {:groups {:c 1} :members [:j]}]}]))
+  ;; Must add to child of last element.
   (is (check (append-to-hierarchy [{:groups {:a 1}
                                     :members [:i]
                                     :children [{:groups {:b 1} :members [:j]}]}]
@@ -202,6 +215,7 @@
                :children [{:groups {:b 1}
                            :members [:j]
                            :children [{:groups {:c 1} :members [:k]}]}]}]))
+  ;; Must close off child of last element.
   (is (check (append-to-hierarchy [{:groups {:a 1}
                                     :members [:i]
                                     :children [{:groups {:b 1} :members [:j]}]}]
@@ -210,6 +224,7 @@
                :members [:i]
                :children [{:groups {:b 1} :members [:j]}
                           {:groups {} :members [:k]}]}]))
+  ;; Partial sharing with last element that has children.
   (is (check (append-to-hierarchy [{:groups {:a 1 :b 1}
                                     :members [:i]
                                     :children [{:groups {:c 1} :members [:j]}]}]
@@ -316,12 +331,10 @@
         bogus-age-tag (first (current-value
                               (label->elements bogus-age 'tag)))
         age-tag (first (current-value (label->elements age 'tag)))]
-    (println "starting check")
     (is (check
          (let [hierarchy (current-value
                           (items-hierarchy-by-condition
                            [gender age bogus-age] #{} '(nil tag)))]
-           (println "got hierarchy")
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
            :groups {}
@@ -1110,4 +1123,158 @@
                     :key (into [(elements-referent '(nil ("id" tag)
                                                          ("name" tag)))
                                 (comment-referent (item-referent name-id))]
-                               jane-key)}]]])))))
+                               jane-key)}]]]))))
+  (let [[dom table joe jane]
+        (let-mutated [table `("table"
+                              (:none :row-query)
+                              ((:none ("name" ~'tag (~o1 :order))
+                                      ("id" ~'tag (~o2 :order))
+                                      (~o1 :order))
+                               :column :c1)
+                              ((:none ("name" ~'tag (~o1 :order))
+                                      (~o2 :order))
+                               :column :c2))
+                      joe `("Joe"
+                            (~o1 :order)
+                            (:top-level :non-semantic)
+                            ("Joseph"
+                             ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+                            ("Joe"
+                             ("name" ~'tag) (~o2 :order))
+                            (45 ("age" ~'tag) (~o2 :order)))
+                      jane `("Jane"
+                             (~o2 :order)
+                             (:top-level :non-semantic)
+                             ("Jane" ("name" ~'tag) ("id ~'tag") (~o1 :order))
+                             (44 ("age" ~'tag) (~o2 :order)))]
+          (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
+            [dom table joe jane]))
+        query (current-value (entity/label->content table :row-query))
+        name (first (current-value (label->elements table :c2)))
+        name-content (current-value (entity/content name))
+        name-id (first (current-value (label->elements table :c1)))
+        name-id-content (current-value (entity/content name-id))
+        name-tag (first (current-value (label->elements name-id-content o1)))
+        name-tag-order (first (current-value (label->elements name-tag :order)))
+        name-tag-spec (first
+                       (remove #{name-tag-order}
+                               (current-value (entity/elements name-tag))))
+        id-tag (first (current-value (label->elements name-id-content o2)))
+        id-tag-order (first (current-value (label->elements id-tag :order)))
+        id-tag-spec (first
+                     (remove #{id-tag-order}
+                             (current-value (entity/elements id-tag))))
+        joe-id (first (current-value
+                       (label->elements joe "id")))
+        joe-id-tags (current-value
+                     (label->elements joe-id 'tag))
+        joe-nickname (first (current-value
+                             (label->elements joe o2)))
+        joe-nickname-tags (current-value
+                           (label->elements joe-nickname 'tag))]
+    (is (check-keys dom joe))
+    (is (check
+         dom
+         (let [joe-key [(item-referent joe) :foo]
+               jane-key [(item-referent jane) :foo]
+               query-list '(nil (:top-level :non-semantic))
+               name-referents [(key-referent [(content-referent)
+                                              (item-referent name-id)
+                                              (item-referent table)])
+                               (key-referent [(content-referent)
+                                              (item-referent name)
+                                              (item-referent table)])
+                               [:parallel
+                                [(elements-referent
+                                  (item-referent name-content))]
+                                [(query-referent query-list)]]]
+               just-name-referents [(key-referent [(content-referent)
+                                                   (item-referent name)
+                                                   (item-referent table)])
+                                    [:parallel
+                                     [[:parallel
+                                       []
+                                       [(elements-referent
+                                         (item-referent name-content))]
+                                       [(elements-referent
+                                         (item-referent name-id-content))]]]
+                                     [(query-referent query-list)]]]
+               name-id-referents [(key-referent [(content-referent)
+                                                 (item-referent name-id)
+                                                 (item-referent table)])
+                                  [:parallel
+                                   [(elements-referent
+                                     (item-referent name-id-content))]
+                                   [(query-referent query-list)]]]
+               name-header-key [[:parallel
+                                 [[:comment '(nil tag)]]
+                                 name-referents]
+                                :foo]
+               name-id-header-key [[:parallel
+                                    [[:comment '(nil tag)]]
+                                    name-id-referents]
+                                   :foo]]
+           [:div {:class "table" :key [(item-referent table) :foo]}
+            [:div {:class "column-header-sequence"}
+             [:div {:class "column-header-stack"}
+              [:div {:class "column-header-container tags"
+                     :style {:width "200px"}}
+               [:component {:key (prepend-to-key (item-referent name-tag)
+                                                 name-header-key)
+                            :sibling-elements ['tag]
+                            :class "column-header"}
+                [item-DOM
+                 name-tag name-header-key #{name-tag-spec}
+                 {:level 0, :depth 0, :do-not-merge #{}}]]]
+              [:div {:class "column-header-sequence"}
+               [:div {:class "column-header-container tags"
+                      :style {:width "100px"}}
+                [:component {:key (prepend-to-key (item-referent id-tag)
+                                                  name-id-header-key)
+                             :sibling-elements ['tag]
+                             :class "column-header"}
+                 [item-DOM
+                  id-tag name-id-header-key #{id-tag-spec}
+                  {:level 1, :depth 0, :do-not-merge #{}}]]]
+               [:div  {:class "column-header-container tags"
+                       :style {:width "100px"}}
+                [:div  {:class "editable column-header"
+                        :key [[:parallel
+                               [[:elements '(nil tag)]]
+                               just-name-referents]
+                              :foo]}]]]]]
+            ;; Joe
+            [:div {:class "table-row"}
+             [:component {:key (into [(:item-id joe-id)
+                                      (comment-referent
+                                       (item-referent name-id))]
+                                     joe-key)
+                          :class "table-cell"
+                          :sibling-elements (as-set [["id" 'tag]
+                                                     ["name" 'tag]])}
+              [item-DOM
+               joe-id (into [(comment-referent (item-referent name-id))]
+                            joe-key)
+               (set joe-id-tags)
+               {:depth 0, :do-not-merge #{}}]]
+             ;; Joe's id
+             [:component {:key (into [(:item-id joe-nickname)
+                                      (comment-referent
+                                       (item-referent name))]
+                                     joe-key)
+                          :class "table-cell"
+                          :sibling-elements [["name" 'tag]]}
+              [item-DOM
+               joe-nickname (into [(comment-referent (item-referent name))]
+                                  joe-key)
+               (set joe-nickname-tags)
+               {:depth 0, :do-not-merge #{}}]]]
+            ;; Jane
+            [:div {:class "table-row"}
+             [:div {:class "editable table-cell"
+                    :key (into [(elements-referent '(nil ("id" tag)
+                                                         ("name" tag)))
+                                (comment-referent (item-referent name-id))]
+                               jane-key)}]
+             ;; No name-id value.
+             [:component (any) (any)]]])))))

@@ -176,26 +176,26 @@
 
 (deftest append-to-hierarchy-test
   ;; Append to empty.
-  (is (check (append-to-hierarchy [] {:a 1} :i)
+  (is (check (append-to-hierarchy [] {:a 1} :i true)
              [{:hierarchy-node true :groups {:a 1} :members [:i]}]))
   ;; Identical groups.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :groups {:a 1}
                                     :members [:i]}]
-                                  {:a 1} :j)
+                                  {:a 1} :j true)
              [{:hierarchy-node true :groups {:a 1} :members [:i :j]}]))
   ;; Completely different groups.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :groups {:a 1}
                                     :members [:i]}]
-                                  {:b 1} :j)
+                                  {:b 1} :j true)
              [{:hierarchy-node true :groups {:a 1} :members [:i]}
               {:hierarchy-node true :groups {:b 1} :members [:j]}]))
   ;; New element has added group.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :groups {:a 1}
                                     :members [:i]}]
-                                  {:a 1 :b 1} :j)
+                                  {:a 1 :b 1} :j true)
              [{:hierarchy-node true
                :groups {:a 1}
                :members [:i]
@@ -206,7 +206,7 @@
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :groups {:a 1 :b 1}
                                     :members [:i]}]
-                                  {:a 1} :j)
+                                  {:a 1} :j true)
              [{:hierarchy-node true :groups {:a 1}
                :members []
                :children [{:hierarchy-node true :groups {:b 1} :members [:i]}
@@ -216,7 +216,7 @@
        (append-to-hierarchy [{:hierarchy-node true
                               :groups {:a 1 :b 1}
                               :members [:i]}]
-                            {:a 1 :c 1} :j)
+                            {:a 1 :c 1} :j true)
        [{:hierarchy-node true
          :groups {:a 1}
          :members []
@@ -229,7 +229,7 @@
                                     :children [{:hierarchy-node true
                                                 :groups {:b 1}
                                                 :members [:j]}]}]
-                                  {:a 1 :b 1 :c 1} :k)
+                                  {:a 1 :b 1 :c 1} :k true)
              [{:hierarchy-node true
                :groups {:a 1}
                :members [:i]
@@ -246,7 +246,7 @@
                                     :children [{:hierarchy-node true
                                                 :groups {:b 1}
                                                 :members [:j]}]}]
-                                  {:a 1} :k)
+                                  {:a 1} :k true)
              [{:hierarchy-node true
                :groups {:a 1}
                :members [:i]
@@ -257,7 +257,7 @@
                                     :groups {:a 1 :b 1}
                                     :members [:i]
                                     :children [{:groups {:c 1} :members [:j]}]}]
-                                  {:a 1 :c 1} :k)
+                                  {:a 1 :c 1} :k true)
              [{:hierarchy-node true
                :groups {:a 1}
                :members []
@@ -268,23 +268,29 @@
                           {:hierarchy-node true
                            :groups {:c 1}
                            :members [:k]}]}]))
-  ;; Append empty group after empty group.
-  (is (check (append-to-hierarchy [{:hierarchy-node true
-                                    :groups {:a 1 :b 1}
-                                    :members [:i]
-                                    :children [{:hierarchy-node true
-                                                :groups {:c 1}
-                                                :members [:j]}
-                                               {:hierarchy-node true
-                                                :groups {}
-                                                :members [:k]}]}]
-                                  {:a 1 :b 1} :l)
-             [{:hierarchy-node true
-               :groups {:a 1 :b 1}
-               :members [:i]
-               :children [{:hierarchy-node true :groups {:c 1} :members [:j]}
-                          {:hierarchy-node true :groups {} :members [:k]}
-                          {:hierarchy-node true :groups {} :members [:l]}]}]))
+  ;; Append two empty groups
+  (is (check
+       (append-to-hierarchy [{:hierarchy-node true :groups {} :members [:i]}]
+                            {} :j true)
+       [{:hierarchy-node true :groups {} :members [:i]}
+        {:hierarchy-node true  :groups {} :members [:j]}]))
+  ;; Append empty group after empty group while nested.
+  (is (check
+       (append-to-hierarchy [{:hierarchy-node true
+                              :groups {:a 1 :b 1}
+                              :members [:i]
+                              :children [{:hierarchy-node true
+                                          :groups {:c 1}
+                                          :members [:j]}
+                                         {:hierarchy-node true
+                                          :groups {}
+                                          :members [:k]}]}]
+                            {:a 1 :b 1} :l true)
+       [{:hierarchy-node true
+         :groups {:a 1 :b 1}
+         :members [:i]
+         :children [{:hierarchy-node true :groups {:c 1} :members [:j]}
+                    {:hierarchy-node true :groups {} :members [:k :l]}]}]))
   ;; Append non-empty group after empty group.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :groups {:a 1 :b 1}
@@ -295,7 +301,7 @@
                                                {:hierarchy-node true
                                                 :groups {}
                                                 :members [:k]}]}]
-                                  {:a 1 :b 1 :c 1} :l)
+                                  {:a 1 :b 1 :c 1} :l true)
              [{:hierarchy-node true
                :groups {:a 1 :b 1}
                :members [:i]

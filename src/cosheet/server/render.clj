@@ -237,12 +237,19 @@
   (contains? node :hierarchy-node))
 
 (defn append-to-hierarchy
-  "Given groups and the corresponding item, add them to the hierarchy."
-  [hierarchy groups item]
+  "Given groups and the corresponding item, add them to the hierarchy.
+  If top-level is true, we are at the top level of a hierarchy, in which
+  case we don't merge items with empty groups."
+  [hierarchy groups item top-level]
   (if (empty? hierarchy)
     [{:hierarchy-node true :groups groups :members [item]}]
     (let [last-entry (last hierarchy)]
-      (if (or (empty? (:groups last-entry)) (empty? groups))
+      (if (and ;; Don't merge an empty group.
+           (or (empty? (:groups last-entry)) (empty? groups))
+           (or top-level
+               ;; Unless we are below top level and both are empty
+               (not (empty? (:groups last-entry)))
+               (not (empty? groups))))
         (conj hierarchy {:hierarchy-node true :groups groups :members [item]})
         (let [[old-only new-only both] (multiset-diff (:groups last-entry)
                                                       groups)]
@@ -251,8 +258,9 @@
              hierarchy
              (if (and (empty? new-only) (not (contains? last-entry :children)))
                (fn [last] (update-in last [:members] #((fnil conj []) % item)))
-               (fn [last] (update-in last [:children]
-                                     #(append-to-hierarchy % new-only item)))))
+               (fn [last] (update-in
+                           last [:children]
+                           #(append-to-hierarchy % new-only item false)))))
             (if (empty? both)
               (conj hierarchy {:hierarchy-node true
                                :groups groups
@@ -264,7 +272,7 @@
                                :groups both
                                :members []
                                :children [(assoc last :groups old-only)]}))
-               groups item))))))))
+               groups item top-level))))))))
 
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
@@ -297,7 +305,7 @@
          #(reduce (fn [hierarchy item-info-map]
                     (append-to-hierarchy
                      hierarchy (multiset (:group-canonicals item-info-map))
-                     item-info-map))
+                     item-info-map true))
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
 

@@ -322,3 +322,9 @@
   ;;Integers are reserved for the store
   (assert (not (integer? id)))
   (->ItemId id))
+
+(defn get-unique-id-number
+  "Return an id number and an updated store
+  that will never return that number again."
+  [store]
+  [(:next-id store) (update-in store [:next-id] inc)])

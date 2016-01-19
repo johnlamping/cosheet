@@ -220,5 +220,13 @@
   (let [store (new-element-store)]
     (is (= (candidate-matching-ids store nil) nil))))
 
+(deftest get-unique-id-number-test
+  (let [s0 (new-element-store)
+        [id1 s1] (get-unique-id-number s0)
+        [id2 s2] (get-unique-id-number s1)]
+    (is (number? id1))
+    (is (number? id2))
+    (is (not (= id1 id2)))))
+
 
 

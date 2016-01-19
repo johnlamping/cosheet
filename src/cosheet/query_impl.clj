@@ -23,6 +23,20 @@
 
 (def ^:dynamic verbose false)
 
+;;; There are three levels of matching:
+;;;        extended-by?:  Takes two entities.
+;;;                       Says whether one is an extension of the other.
+;;;    template-matches:  Takes an entity, a template, which may have
+;;;                       variables, and an environment.
+;;;                       Returns a set of extensions of the environment
+;;;                       that cause the entity to be an extension
+;;;                       of the template.
+;;;       query-matches:  Takes a database, a template, which may have
+;;;                       variables, and an environment.
+;;;                       Returns a set of extensions of the environment
+;;;                       that cause some entity in the database to be
+;;;                       an extension of the template.
+
 (def extended-by?)
 
 (defn has-element-satisfying? [element target]

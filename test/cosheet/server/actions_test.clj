@@ -214,7 +214,8 @@
         age-dom (first (filter #(= (first (:key (second %)))
                                    (item-referent jane-age))
                                (dom->subcomponents jane-dom)))
-        [s id] (update-add-sibling (:sibling-elements (second age-dom)) :after
+        [s id] (update-add-sibling (:sibling-condition (second age-dom))
+                                   :after
                               store jane-age)
         new-jane (description->entity jane-id s)
         new-element (first (filter #(= (content %) "")

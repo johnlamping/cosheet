@@ -48,7 +48,7 @@
 ;;; There are removed by the dom manager before dom is sent to the client.
 (def server-specific-attributes
   [               :key  ; A unique client side key further described below.
-     :sibling-elements  ; Elements that a sibling of this item must have.
+    :sibling-condition  ; Condition that a sibling of this item must satisfy.
          :add-adjacent  ; A key that a new item for this empty dom
                         ; should be adjacent to in the ordering.
         :add-direction  ; Whether a new item for this empty dom
@@ -58,7 +58,7 @@
                         ; is a sibling of the last, or, if there are
                         ; multiple groups of items, the last of each
                         ; group.
-         :row-elements  ; Elements that a new adjacent row must have.
+        :row-condition  ; Condition that a new adjacent row must satisfy.
     ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -231,6 +231,12 @@
 ;;; For a flattened node, the :cumulative-groups for each member will be
 ;;; the aggregation of :group-canonicals. But we need them split out for
 ;;; each :group-elements
+
+;;; TODO: Get rid of the distinction between :members and :children,
+;;; having just children that can be either hierarchy nodes or leaf
+;;; items. This is the information currently returned by
+;;; hierarchy-next-level. To get there, make all the clients use the
+;;; output of hierarchy-next-level, then switch the underlying data.
 
 (defn hierarchy-node?
   [node]
@@ -444,7 +450,8 @@
           condition-key (prepend-to-key (comment-referent condition) parent-key)
           key (prepend-to-key (item-referent element) condition-key)]      
       (make-component (into {:key key
-                             :sibling-elements (rest condition)}
+                             ;; TODO: Use original condition?
+                             :sibling-condition (cons "" (rest condition))}
                             extra-attributes)
                       [item-DOM element condition-key
                        (set condition-specs) inherited]))))
@@ -469,7 +476,8 @@
                            (let [key (prepend-to-key (item-referent item)
                                                      parent-key)]
                              (make-component
-                              {:key key :sibling-elements sibling-elements}
+                              {:key key
+                               :sibling-condition (cons "" sibling-elements)}
                               [item-DOM item parent-key
                                (set excluded-elements) inherited])))
                          items-with-excluded)]

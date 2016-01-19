@@ -66,7 +66,7 @@
 ;;;          :id->key  The inverse of the key->id map
 ;;;         :key->dom  A map from key to server version of the dom
 ;;;                    for that key. This provides access to extra
-;;;                    information, like :sibling-elements, needed to
+;;;                    information, like :sibling-condition, needed to
 ;;;                    interpret actions on a key.
 ;;;                    The dom is in hiccup format, as returned by the
 ;;;                    definition or the reporter it returns.

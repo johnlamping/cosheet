@@ -157,9 +157,9 @@
   "Given an item and elements that its siblings must have, add a sibling
   in the given direction (:before or :after). Also return the id of the
   new element"
-  [sibling-elements direction store item]
+  [sibling-condition direction store item]
   (update-add-entity-with-order-item
-   store (id->subject store (:item-id item)) (cons "" sibling-elements)
+   store (id->subject store (:item-id item)) sibling-condition
    item direction true))
 
 (defn add-sibling-handler
@@ -168,19 +168,19 @@
   (let [key (id->key dom-tracker id)
         items (key->items store key)
         first-primitive (first-primitive-referent (remove-comments key))
-        sibling-elements (:sibling-elements
-                          (key->attributes
-                           dom-tracker
-                           (remove-content-location-referent key)))]
+        sibling-condition (:sibling-condition
+                           (key->attributes
+                            dom-tracker
+                            (remove-content-location-referent key)))]
     (println "sibling for id:" id " with key:" (simplify-for-print key))
     (println "total items:" (count items))
     (println "with content" (map content items))
     (println "in direction" direction)
-    (println "sibling elements" sibling-elements)
+    (println "sibling condition" sibling-condition)
     (when (item-referent? first-primitive)
       (let [[store element-id]
             (reduce-update-add (partial update-add-sibling
-                                        sibling-elements direction)
+                                        sibling-condition direction)
                                store items)]
         (if element-id
           {:store store
@@ -210,7 +210,7 @@
           attributes (key->attributes
                       dom-tracker (remove-content-location-referent key))
           row-sibling (:row-sibling attributes)
-          row-elements (:row-elements attributes)
+          row-condition (:row-condition attributes)
           item-groups (if row-sibling
                         (key->item-groups store row-sibling)
                         (map vector (key->items store key)))
@@ -225,7 +225,7 @@
              first-primitive)
         (let [[store element-id]
               (reduce-update-add
-               (partial update-add-sibling row-elements direction)
+               (partial update-add-sibling row-condition direction)
                store (map #(furthest-item % direction) item-groups))]
           (if element-id
             {:store store

@@ -9,7 +9,7 @@
     [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
                    id->subject id-valid?]]
-    store-impl
+    [store-impl :refer [get-unique-id-number]]
     [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
@@ -153,14 +153,38 @@
                     [key]]}
           store)))))
 
+(defn adjust-condition
+  "Adjust a condition to make it ready for adding as an
+  element. Specifically, replace nil with \"\", and replace :??? with
+  a new unique keyword.  This may require updating the store.
+  Return the new condition and new store."
+  [condition store]
+  (cond (sequential? condition)
+        (let [[accum store]
+              (reduce
+               (fn [[accum store] part]
+                 (let [[adjusted store] (adjust-condition part store)]
+                   [(conj accum adjusted) store]))
+               [[] store]
+               condition)]
+          [(list* accum) store])
+        (= condition nil)
+        ["" store]
+        (= condition :???)
+        (let [[id store] (get-unique-id-number store)]
+          [(keyword (str "???-" id)) store])
+        true
+        [condition store]))
+
 (defn update-add-sibling
-  "Given an item and elements that its siblings must have, add a sibling
-  in the given direction (:before or :after). Also return the id of the
-  new element"
+  "Given an item and a condition, add a sibling in the given direction
+  (:before or :after) satisfying the condition. Also return the id of
+  the new element."
   [sibling-condition direction store item]
-  (update-add-entity-with-order-item
-   store (id->subject store (:item-id item)) sibling-condition
-   item direction true))
+  (let [[adjusted store] (adjust-condition sibling-condition store)]
+    (update-add-entity-with-order-item
+     store (id->subject store (:item-id item)) adjusted
+     item direction true)))
 
 (defn add-sibling-handler
   "Add a sibling to the item with the given client id."

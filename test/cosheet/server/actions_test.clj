@@ -203,7 +203,15 @@
         (is (= select [(prepend-to-key (item-referent new-element) key)
                        [key]])))
       (is (= (item->canonical-semantic new-joe-age)
-             [45 {["age" {'tag 1}] 1, "" 1}])) )))
+             [45 {["age" {'tag 1}] 1, "" 1}])))))
+
+(deftest adjust-condition-test
+  (let [[c1 s1] (adjust-condition '(nil (:??? :a) (:??? 22))
+                                  (new-element-store))
+        [c2 s2] (adjust-condition '(nil (:??? nil) (:??? "22"))
+                                  s1)]
+    (is (= c1  '("" (:???-0 :a) (:???-1 22))))
+    (is (= c2  '("" (:???-2 "") (:???-3 "22"))))))
 
 (deftest update-add-sibling-test
   (let [jane-dom (current-value

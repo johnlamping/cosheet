@@ -484,7 +484,7 @@
          [:div {:class "column tags"}
           [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
            [:component {:key [(:item-id fred) [:comment [nil 'tag]] rid]
-                        :sibling-condition ["" 'tag]
+                        :sibling-condition [nil 'tag]
                         :row-sibling [rid]}
             [item-DOM
              fred [[:comment [nil 'tag]] rid]
@@ -514,7 +514,7 @@
                         :style {:display "block"
                                 :width "100%"}
                         :class "vertical-separated"
-                        :sibling-condition ["" 'tag]
+                        :sibling-condition [nil 'tag]
                         :row-sibling [rid]}
             [item-DOM
              fred [[:comment [nil 'tag]] rid]
@@ -523,7 +523,7 @@
                         :style  {:display "block"
                                  :width "100%"}
                         :class "vertical-separated"
-                        :sibling-condition ["" 'tag]
+                        :sibling-condition [nil 'tag]
                         :row-sibling [rid]}
             [item-DOM
              fran [[:comment [nil 'tag]] rid]
@@ -571,7 +571,7 @@
             [:component {:key (into [(item-referent confidence)] tag-key)
                          :style {:display "table-cell"}
                          :class "full-row column tags top-border bottom-border"
-                         :sibling-condition ["" 'tag]
+                         :sibling-condition [nil 'tag]
                          :row-sibling (into [(:item-id doubtful)] item-key)}
              [item-DOM
               confidence tag-key
@@ -579,7 +579,7 @@
             [:component {:key (into [(:item-id doubtful)] item-key)
                          :class "column"
                          :style {:display "table-cell"}
-                         :sibling-condition ["" ["confidence" 'tag]]}
+                         :sibling-condition [nil ["confidence" 'tag]]}
              [item-DOM
               doubtful item-key
               #{confidence} {:depth 1 :do-not-merge #{}}]]]]])))
@@ -605,7 +605,7 @@
               [:component {:key (into [(:item-id doubtful)] item-key)
                            :class "column"
                            :style {:display "table-cell"}
-                           :sibling-condition [""]}
+                           :sibling-condition [nil]}
                [item-DOM
                 doubtful item-key
                 #{} {:depth 1 :do-not-merge #{}}]]]]])))
@@ -652,7 +652,7 @@
                 {:key  (->> both-ages-key
                             (prepend-to-key (comment-referent '(nil tag)))
                             (prepend-to-key (item-referent bogus-age-tag)))
-                 :sibling-condition ["" 'tag]
+                 :sibling-condition [nil 'tag]
                  :row-sibling both-ages-key}
                 [item-DOM
                  bogus-age-tag
@@ -751,7 +751,7 @@
                             (prepend-to-key (item-referent L1)))
                   :style {:display "table-cell"}
                   :class "full-row with-children column tags top-border"
-                  :sibling-condition ["" 'tag]
+                  :sibling-condition [nil 'tag]
                   :row-sibling [[:parallel []
                                  (as-set [(:item-id v1)
                                           (:item-id v12)
@@ -764,7 +764,7 @@
                 [:component {:key (into [(:item-id v1)] item-key)
                              :style {:display "table-cell"}
                              :class "column"
-                             :sibling-condition ["" ["L1" 'tag]]}
+                             :sibling-condition [nil ["L1" 'tag]]}
                  [item-DOM v1 item-key #{L1} (any map?)]]]
                [:div {:style {:display "table-row"}}
                 [:div {:class "column tags" :style {:display "table-cell"}}
@@ -774,7 +774,7 @@
                                (:item-id v12)]
                               item-key)
                    :class "full-row top-border indent-1"
-                   :sibling-condition ["" 'tag]
+                   :sibling-condition [nil 'tag]
                    :row-sibling (into [(:item-id v12)] item-key)}
                   [item-DOM
                    L2 (into [[:comment [nil 'tag]] (:item-id v12)]
@@ -783,7 +783,7 @@
                 [:component {:key (into [(:item-id v12)] item-key)
                              :style {:display "table-cell"}
                              :class "column"
-                             :sibling-condition (as-set [""
+                             :sibling-condition (as-set [nil
                                                          ["L1" 'tag]
                                                          ["L2" 'tag]])}
                  [item-DOM v12 item-key #{L121 L2} (any map?)]]]
@@ -796,7 +796,7 @@
                                (:item-id v13)]
                               item-key)
                    :class "full-row top-border indent-1"
-                   :sibling-condition ["" 'tag]
+                   :sibling-condition [nil 'tag]
                    :row-sibling (into [(:item-id v13)] item-key)}
                   [item-DOM
                    L3 (into [[:comment [nil 'tag]] (:item-id v13)]
@@ -805,7 +805,7 @@
                 [:component {:key (into [(:item-id v13)] item-key)
                              :style {:display "table-cell"}
                              :class "column"
-                             :sibling-condition (as-set [""
+                             :sibling-condition (as-set [nil
                                                          ["L3" 'tag]
                                                          ["L1" 'tag]])}
                  [item-DOM
@@ -859,7 +859,7 @@
                           (prepend-to-key (:item-id La1)))
                 :style {:display "table-cell"}
                 :class "full-row with-children column tags top-border"
-                :sibling-condition ["" 'tag]
+                :sibling-condition [nil 'tag]
                 :row-sibling both-L1s-key}
                [item-DOM La1 (prepend-to-key [:comment [nil 'tag]] both-L1s-key)
                 #{La1-spec} (any map?)]]
@@ -876,7 +876,7 @@
                              (:item-id va)]
                             item-key)
                  :class "full-row top-border indent-1"
-                 :sibling-condition ["" 'tag]
+                 :sibling-condition [nil 'tag]
                  :row-sibling (into [(:item-id va)] item-key)}
                 [item-DOM
                  La2 (into [[:comment [nil 'tag]]
@@ -886,7 +886,7 @@
               [:component {:key (into [(:item-id va)] item-key)
                            :style {:display "table-cell"}
                            :class "column"
-                           :sibling-condition (as-set [""
+                           :sibling-condition (as-set [nil
                                                        ["L2" 'tag]
                                                        ["L1" 'tag]])}
                [item-DOM va item-key #{La1 La2} (any map?)]]]
@@ -901,7 +901,7 @@
               [:component {:key (into [(:item-id vb)] item-key)
                            :style {:display "table-cell"}
                            :class "column"
-                           :sibling-condition ["" ["L1" 'tag]]}
+                           :sibling-condition [nil ["L1" 'tag]]}
                [item-DOM
                 vb item-key
                 #{Lb1} {:depth 1 :do-not-merge #{}}]]]]])))))
@@ -955,7 +955,7 @@
                     :style {:width "100px"}}
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
-                           :sibling-condition ["" 'tag]
+                           :sibling-condition [nil 'tag]
                            :class "column-header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
@@ -970,7 +970,7 @@
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
-                           :sibling-condition ["" ["age" 'tag]]}
+                           :sibling-condition [nil ["age" 'tag]]}
                [item-DOM
                 joe-bogus-age (into [(comment-referent (item-referent age))]
                                     joe-key)
@@ -982,7 +982,7 @@
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
-                           :sibling-condition ["" ["age" 'tag]]}
+                           :sibling-condition [nil ["age" 'tag]]}
                (any)]]
              [:div {:key (into [[:elements '(nil ("size" tag))]
                                 (comment-referent (item-referent size))]
@@ -1044,7 +1044,7 @@
               [:div {:class "stack column-header"}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
-                            :sibling-condition ["" 'tag]
+                            :sibling-condition [nil 'tag]
                             :style {:width "100%", :display "block"}
                             :class "vertical-separated"}
                 [item-DOM
@@ -1060,7 +1060,7 @@
                                        (item-referent name-id))]
                                       joe-key)
                            :class "table-cell"
-                          :sibling-condition (as-set [""
+                          :sibling-condition (as-set [nil
                                                       ["name" 'tag]
                                                       ["id" 'tag]])}
                [item-DOM
@@ -1177,7 +1177,7 @@
                      :style {:width "200px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
-                            :sibling-condition ["" 'tag]
+                            :sibling-condition [nil 'tag]
                             :class "column-header"}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
@@ -1194,7 +1194,7 @@
                       :style {:width "100px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
-                              :sibling-condition ["" 'tag]
+                              :sibling-condition [nil 'tag]
                               :class "column-header"}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
@@ -1206,7 +1206,7 @@
                                        (item-referent name))]
                                       joe-key)
                            :class "table-cell"
-                          :sibling-condition ["" ["name" 'tag]]}
+                          :sibling-condition [nil ["name" 'tag]]}
                [item-DOM
                 joe-nickname (into [(comment-referent (item-referent name))]
                                joe-key)
@@ -1218,7 +1218,7 @@
                                        (item-referent name-id))]
                                       joe-key)
                           :class "table-cell"
-                          :sibling-condition (as-set [""
+                          :sibling-condition (as-set [nil
                                                       ["id" 'tag]
                                                       ["name" 'tag]])}
                [item-DOM
@@ -1332,7 +1332,7 @@
                      :style {:width "200px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
-                            :sibling-condition ["" 'tag]
+                            :sibling-condition [nil 'tag]
                             :class "column-header"}
                 [item-DOM
                  name-tag name-header-key #{name-tag-spec}
@@ -1342,7 +1342,7 @@
                       :style {:width "100px"}}
                 [:component {:key (prepend-to-key (item-referent id-tag)
                                                   name-id-header-key)
-                             :sibling-condition ["" 'tag]
+                             :sibling-condition [nil 'tag]
                              :class "column-header"}
                  [item-DOM
                   id-tag name-id-header-key #{id-tag-spec}
@@ -1361,7 +1361,7 @@
                                        (item-referent name-id))]
                                      joe-key)
                           :class "table-cell"
-                          :sibling-condition (as-set [""
+                          :sibling-condition (as-set [nil
                                                       ["id" 'tag]
                                                       ["name" 'tag]])}
               [item-DOM
@@ -1375,7 +1375,7 @@
                                        (item-referent name))]
                                      joe-key)
                           :class "table-cell"
-                          :sibling-condition ["" ["name" 'tag]]}
+                          :sibling-condition [nil ["name" 'tag]]}
               [item-DOM
                joe-nickname (into [(comment-referent (item-referent name))]
                                   joe-key)

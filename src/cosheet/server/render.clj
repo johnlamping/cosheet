@@ -59,6 +59,8 @@
                         ; multiple groups of items, the last of each
                         ; group.
         :row-condition  ; Condition that a new adjacent row must satisfy.
+       :column-sibling  ; Analog of :row-sibling
+     :column-condition  ; Analog of :column-sibling
     ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -451,7 +453,7 @@
           key (prepend-to-key (item-referent element) condition-key)]      
       (make-component (into {:key key
                              ;; TODO: Use original condition?
-                             :sibling-condition (cons "" (rest condition))}
+                             :sibling-condition (cons nil (rest condition))}
                             extra-attributes)
                       [item-DOM element condition-key
                        (set condition-specs) inherited]))))
@@ -477,7 +479,7 @@
                                                      parent-key)]
                              (make-component
                               {:key key
-                               :sibling-condition (cons "" sibling-elements)}
+                               :sibling-condition (cons nil sibling-elements)}
                               [item-DOM item parent-key
                                (set excluded-elements) inherited])))
                          items-with-excluded)]

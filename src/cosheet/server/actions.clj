@@ -227,30 +227,33 @@
                :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
              (map (fn [item] [(label->content item :order) item]) items)))))
 
-(defn add-row-handler
-  "Add a row to the item with the given client id."
-    [store dom-tracker id direction]
+(defn add-row-or-column
+  "Add a row/column parallel to the item with the given client id.
+  The last two arguments are either :row-sibling :row-condition or
+  :column-sibling :column-condition."
+    [store dom-tracker id direction order-key condition-key]
     (let [key (id->key dom-tracker id)
           attributes (key->attributes
                       dom-tracker (remove-content-location-referent key))
-          row-sibling (:row-sibling attributes)
-          row-condition (:row-condition attributes)
-          item-groups (if row-sibling
-                        (key->item-groups store row-sibling)
+          order-sibling (order-key attributes)
+          new-condition (condition-key attributes)
+          order-groups (if order-sibling
+                        (key->item-groups store order-sibling)
                         (map vector (key->items store key)))
-          sibling-key (or row-sibling key)
+          sibling-key (or order-sibling key)
           first-primitive (first-primitive-referent sibling-key)]
-      (println "new row for id:" id " with key:" (simplify-for-print key))
-      (println "row sibling" (simplify-for-print row-sibling))
-      (println "total groups:" (count item-groups))
-      (println "with content" (map #(map content %) item-groups))
+      (println "new row/column for id:" id
+               " with key:" (simplify-for-print key))
+      (println "order sibling" (simplify-for-print order-sibling))
+      (println "total groups:" (count order-groups))
+      (println "with content" (map #(map content %) order-groups))
       (println "in direction" direction)
       (when ((some-fn nil? item-referent? content-location-referent?)
              first-primitive)
         (let [[store element-id]
               (reduce-update-add
-               (partial update-add-sibling row-condition direction)
-               store (map #(furthest-item % direction) item-groups))]
+               (partial update-add-sibling new-condition direction)
+               store (map #(furthest-item % direction) order-groups))]
           (if element-id
             {:store store
              :select [(prepend-to-key
@@ -259,6 +262,18 @@
                         (remove-content-location-referent sibling-key)))
                       [key]]}
             store)))))
+
+(defn add-row-handler
+  "Add a row to the item with the given client id."
+  [store dom-tracker id direction]
+  (add-row-or-column store dom-tracker id direction
+                     :row-sibling :row-condition))
+
+(defn add-column-handler
+  "Add a row to the item with the given client id."
+  [store dom-tracker id direction]
+  (add-row-or-column store dom-tracker id direction
+                     :column-sibling :column-condition))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"

@@ -58,8 +58,12 @@
         starting-table `("table"
                          (:root :invisible)
                          (:none :row-query)
-                         ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
-                         ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
+                         (:none ("age" ~'tag)
+                                (~o1 :order)
+                                (:column :non-semantic))
+                         (:none ("size" ~'tag)
+                                (~o2 :order)
+                                (:column :non-semantic)))
         [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]

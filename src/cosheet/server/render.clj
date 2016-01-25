@@ -752,10 +752,7 @@
      (vec (concat
            ;; All header requests the header applies to.
            (map (fn [info-map]
-                  (key-referent [(content-referent)
-                                 ;; This also makes the key for each
-                                 ;; column be unique.
-                                 (item-referent (:item info-map))
+                  (key-referent [(item-referent (:item info-map))
                                  table-item]))
                    info-maps)
            ;; All row elements the header applies to.
@@ -919,10 +916,10 @@
   describing a table."
   ;; The following elements of item describe the table:
   ;;  :row-query  The content is an item whose list form gives the
-  ;;              requirements for an item to appear as a row
-  ;;              An extra [:top-level :non-semantic] element is added to this,
-  ;;              to keep the query, which is also in the database,
-  ;;              from matching itself.
+  ;;              requirements for an item to appear as a row When the
+  ;;              query is created, an extra [:top-level
+  ;;              :non-semantic] element is added, to keep the query,
+  ;;              which is also in the database, from matching itself.
   ;;     :column  The semantics gives the requirements for an element
   ;;              of a row to appear in this column. The :column
   ;;              element has, itself, a :non-semantic element, to

@@ -942,8 +942,7 @@
                query-list '(nil (nil ("age" tag)) (:top-level :non-semantic))
                age-header-key [[:parallel
                                 [[:comment '(nil tag)]]
-                                [(key-referent [(content-referent)
-                                                (item-referent age)
+                                [(key-referent [(item-referent age)
                                                 (item-referent table)])
                                  [:parallel
                                    [(elements-referent
@@ -1031,8 +1030,7 @@
                query-list '(nil (:top-level :non-semantic))
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
-                                 [(key-referent [(content-referent)
-                                                 (item-referent name-id)
+                                 [(key-referent [(item-referent name-id)
                                                  (item-referent table)])
                                   [:parallel
                                    [(elements-referent
@@ -1134,18 +1132,15 @@
          (let [joe-key [(item-referent joe) :foo]
                jane-key [(item-referent jane) :foo]
                query-list '(nil (:top-level :non-semantic))
-               name-referents [(key-referent [(content-referent)
-                                              (item-referent name)
+               name-referents [(key-referent [(item-referent name)
                                               (item-referent table)])
-                               (key-referent [(content-referent)
-                                              (item-referent name-id)
+                               (key-referent [(item-referent name-id)
                                               (item-referent table)])
                                [:parallel
                                 [(elements-referent
                                   (item-referent name))]
                                 [(query-referent query-list)]]]
-               just-name-referents [(key-referent [(content-referent)
-                                                   (item-referent name)
+               just-name-referents [(key-referent [(item-referent name)
                                                    (item-referent table)])
                                     [:parallel
                                      [[:parallel
@@ -1155,8 +1150,7 @@
                                        [(elements-referent
                                          (item-referent name-id))]]]
                                      [(query-referent query-list)]]]
-               name-id-referents [(key-referent [(content-referent)
-                                                 (item-referent name-id)
+               name-id-referents [(key-referent [(item-referent name-id)
                                                  (item-referent table)])
                                   [:parallel
                                     [(elements-referent
@@ -1287,18 +1281,15 @@
          (let [joe-key [(item-referent joe) :foo]
                jane-key [(item-referent jane) :foo]
                query-list '(nil (:top-level :non-semantic))
-               name-referents [(key-referent [(content-referent)
-                                              (item-referent name-id)
+               name-referents [(key-referent [(item-referent name-id)
                                               (item-referent table)])
-                               (key-referent [(content-referent)
-                                              (item-referent name)
+                               (key-referent [(item-referent name)
                                               (item-referent table)])
                                [:parallel
                                 [(elements-referent
                                   (item-referent name))]
                                 [(query-referent query-list)]]]
-               just-name-referents [(key-referent [(content-referent)
-                                                   (item-referent name)
+               just-name-referents [(key-referent [(item-referent name)
                                                    (item-referent table)])
                                     [:parallel
                                      [[:parallel
@@ -1308,8 +1299,7 @@
                                        [(elements-referent
                                          (item-referent name-id))]]]
                                      [(query-referent query-list)]]]
-               name-id-referents [(key-referent [(content-referent)
-                                                 (item-referent name-id)
+               name-id-referents [(key-referent [(item-referent name-id)
                                                  (item-referent table)])
                                   [:parallel
                                    [(elements-referent

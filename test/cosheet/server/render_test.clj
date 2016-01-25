@@ -910,8 +910,10 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               ((:none (:none ("age" ~'tag))) :row-query)
-                              ((:none ("age" ~'tag) (~o1 :order)) :column :c1)
-                              ((:none ("size" ~'tag) (~o2 :order)) :column :c2))
+                              (:none ("age" ~'tag) (~o1 :order)
+                                     (:column :non-semantic))
+                              (:none ("size" ~'tag) (~o2 :order)
+                                     (:column :non-semantic)))
                       joe (list* (concat joe-list
                                          ['(:top-level :non-semantic)]))
                       jane (list* (concat jane-list
@@ -919,12 +921,11 @@
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
-        age (first (current-value (label->elements table :c1)))
-        age-content (current-value (entity/content age))
+        age (first (current-value (label->elements table o1)))
         age-tag (first
-                 (current-value (label->elements age-content 'tag)))
+                 (current-value (label->elements age 'tag)))
         age-tag-spec (first (current-value (entity/elements age-tag)))
-        size (first (current-value (label->elements table :c2)))
+        size (first (current-value (label->elements table o2)))
         joe-bogus-age (first (current-value
                               (label->elements joe "doubtful")))
         joe-bogus-age-tag (first (current-value
@@ -946,13 +947,13 @@
                                                 (item-referent table)])
                                  [:parallel
                                    [(elements-referent
-                                     (item-referent age-content))]
+                                     (item-referent age))]
                                    [(query-referent query-list)]]]]
                                :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags"                     
-                    :style {:width "100px"}}
+                    :style {:width "150px"}}
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
                            :sibling-condition [nil 'tag]
@@ -992,11 +993,13 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              ((:none ("name" ~'tag (~o1 :order))
-                                      ("id" ~'tag (~o2 :order))
-                                      (~o1 :order))
-                               :column :c1)
-                              ((:none ("age" ~'tag) (~o2 :order)) :column :c2))
+                              (:none ("name" ~'tag (~o1 :order))
+                                     ("id" ~'tag (~o2 :order))
+                                     (~o1 :order)
+                                     (:column :non-semantic))
+                              (:none ("age" ~'tag)
+                                     (~o2 :order)
+                                     (:column :non-semantic)))
                       joe `("Joe"
                             (~o1 :order)
                             (:top-level :non-semantic)
@@ -1010,10 +1013,9 @@
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
-        name-id (first (current-value (label->elements table :c1)))
-        name-id-content (current-value (entity/content name-id))
+        name-id (first (current-value (label->elements table o1)))
         name-tag (first
-                  (current-value (label->elements name-id-content o1)))
+                  (current-value (label->elements name-id o1)))
         name-tag-order (first (current-value (label->elements name-tag :order)))
         name-tag-spec (first
                        (remove #{name-tag-order}
@@ -1034,13 +1036,13 @@
                                                  (item-referent table)])
                                   [:parallel
                                    [(elements-referent
-                                     (item-referent name-id-content))]
+                                     (item-referent name-id))]
                                    [(query-referent query-list)]]]]
                                 :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags"
-                    :style {:width "100px"}}
+                    :style {:width "150px"}}
               [:div {:class "stack column-header"}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
@@ -1083,13 +1085,13 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              ((:none ("name" ~'tag (~o1 :order))
-                                      (~o1 :order))
-                               :column :c1)
-                              ((:none ("name" ~'tag (~o1 :order))
-                                      ("id" ~'tag (~o2 :order))
-                                      (~o2 :order))
-                               :column :c2))
+                              (:none ("name" ~'tag (~o1 :order))
+                                     (~o1 :order)
+                                     (:column :non-semantic))
+                              (:none ("name" ~'tag (~o1 :order))
+                                     ("id" ~'tag (~o2 :order))
+                                     (~o2 :order)
+                                     (:column :non-semantic)))
                       joe `("Joe"
                             (~o1 :order)
                             (:top-level :non-semantic)
@@ -1106,16 +1108,14 @@
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
-        name (first (current-value (label->elements table :c1)))
-        name-content (current-value (entity/content name))
-        name-tag (first (current-value (label->elements name-content o1)))
+        name (first (current-value (label->elements table o1)))
+        name-tag (first (current-value (label->elements name o1)))
         name-tag-order (first (current-value (label->elements name-tag :order)))
         name-tag-spec (first
                        (remove #{name-tag-order}
                                (current-value (entity/elements name-tag))))
-        name-id (first (current-value (label->elements table :c2)))
-        name-id-content (current-value (entity/content name-id))
-        id-tag (first (current-value (label->elements name-id-content o2)))
+        name-id (first (current-value (label->elements table o2)))
+        id-tag (first (current-value (label->elements name-id o2)))
         id-tag-order (first (current-value (label->elements id-tag :order)))
         id-tag-spec (first
                      (remove #{id-tag-order}
@@ -1142,7 +1142,7 @@
                                               (item-referent table)])
                                [:parallel
                                 [(elements-referent
-                                  (item-referent name-content))]
+                                  (item-referent name))]
                                 [(query-referent query-list)]]]
                just-name-referents [(key-referent [(content-referent)
                                                    (item-referent name)
@@ -1151,16 +1151,16 @@
                                      [[:parallel
                                        []
                                        [(elements-referent
-                                         (item-referent name-content))]
+                                         (item-referent name))]
                                        [(elements-referent
-                                         (item-referent name-id-content))]]]
+                                         (item-referent name-id))]]]
                                      [(query-referent query-list)]]]
                name-id-referents [(key-referent [(content-referent)
                                                  (item-referent name-id)
                                                  (item-referent table)])
                                   [:parallel
                                     [(elements-referent
-                                      (item-referent name-id-content))]
+                                      (item-referent name-id))]
                                    [(query-referent query-list)]]]
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
@@ -1174,7 +1174,7 @@
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack"}
               [:div {:class "column-header-container tags"
-                     :style {:width "200px"}}
+                     :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-condition [nil 'tag]
@@ -1184,14 +1184,14 @@
                   {:level 0, :depth 0, :do-not-merge #{}}]]]
               [:div {:class "column-header-sequence"}
                [:div  {:class "column-header-container tags"
-                       :style {:width "100px"}}
+                       :style {:width "150px"}}
                 [:div  {:class "editable column-header"
                         :key [[:parallel
                                [[:elements '(nil tag)]]
                                just-name-referents]
                               :foo]}]]
                [:div {:class "column-header-container tags"
-                      :style {:width "100px"}}
+                      :style {:width "150px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
                               :sibling-condition [nil 'tag]
@@ -1238,13 +1238,13 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              ((:none ("name" ~'tag (~o1 :order))
-                                      ("id" ~'tag (~o2 :order))
-                                      (~o1 :order))
-                               :column :c1)
-                              ((:none ("name" ~'tag (~o1 :order))
-                                      (~o2 :order))
-                               :column :c2))
+                              (:none ("name" ~'tag (~o1 :order))
+                                     ("id" ~'tag (~o2 :order))
+                                     (~o1 :order)
+                                     (:column :non-semantic))
+                              (:none ("name" ~'tag (~o1 :order))
+                                     (~o2 :order)
+                                     (:column :non-semantic)))
                       joe `("Joe"
                             (~o1 :order)
                             (:top-level :non-semantic)
@@ -1261,16 +1261,14 @@
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
-        name (first (current-value (label->elements table :c2)))
-        name-content (current-value (entity/content name))
-        name-id (first (current-value (label->elements table :c1)))
-        name-id-content (current-value (entity/content name-id))
-        name-tag (first (current-value (label->elements name-id-content o1)))
+        name-id (first (current-value (label->elements table o1)))
+        name (first (current-value (label->elements table o2)))
+        name-tag (first (current-value (label->elements name-id o1)))
         name-tag-order (first (current-value (label->elements name-tag :order)))
         name-tag-spec (first
                        (remove #{name-tag-order}
                                (current-value (entity/elements name-tag))))
-        id-tag (first (current-value (label->elements name-id-content o2)))
+        id-tag (first (current-value (label->elements name-id o2)))
         id-tag-order (first (current-value (label->elements id-tag :order)))
         id-tag-spec (first
                      (remove #{id-tag-order}
@@ -1297,7 +1295,7 @@
                                               (item-referent table)])
                                [:parallel
                                 [(elements-referent
-                                  (item-referent name-content))]
+                                  (item-referent name))]
                                 [(query-referent query-list)]]]
                just-name-referents [(key-referent [(content-referent)
                                                    (item-referent name)
@@ -1306,16 +1304,16 @@
                                      [[:parallel
                                        []
                                        [(elements-referent
-                                         (item-referent name-content))]
+                                         (item-referent name))]
                                        [(elements-referent
-                                         (item-referent name-id-content))]]]
+                                         (item-referent name-id))]]]
                                      [(query-referent query-list)]]]
                name-id-referents [(key-referent [(content-referent)
                                                  (item-referent name-id)
                                                  (item-referent table)])
                                   [:parallel
                                    [(elements-referent
-                                     (item-referent name-id-content))]
+                                     (item-referent name-id))]
                                    [(query-referent query-list)]]]
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
@@ -1329,7 +1327,7 @@
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack"}
               [:div {:class "column-header-container tags"
-                     :style {:width "200px"}}
+                     :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-condition [nil 'tag]
@@ -1339,7 +1337,7 @@
                  {:level 0, :depth 0, :do-not-merge #{}}]]]
               [:div {:class "column-header-sequence"}
                [:div {:class "column-header-container tags"
-                      :style {:width "100px"}}
+                      :style {:width "150px"}}
                 [:component {:key (prepend-to-key (item-referent id-tag)
                                                   name-id-header-key)
                              :sibling-condition [nil 'tag]
@@ -1348,7 +1346,7 @@
                   id-tag name-id-header-key #{id-tag-spec}
                   {:level 1, :depth 0, :do-not-merge #{}}]]]
                [:div  {:class "column-header-container tags"
-                       :style {:width "100px"}}
+                       :style {:width "150px"}}
                 [:div  {:class "editable column-header"
                         :key [[:parallel
                                [[:elements '(nil tag)]]

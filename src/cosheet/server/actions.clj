@@ -170,9 +170,9 @@
           [(list* accum) store])
         (= condition nil)
         ["" store]
-        (= condition :???)
+        (= condition '???)
         (let [[id store] (get-unique-id-number store)]
-          [(keyword (str "???-" id)) store])
+          [(symbol (str "???-" id)) store])
         true
         [condition store]))
 
@@ -240,8 +240,7 @@
           order-groups (if order-sibling
                         (key->item-groups store order-sibling)
                         (map vector (key->items store key)))
-          sibling-key (or order-sibling key)
-          first-primitive (first-primitive-referent sibling-key)]
+          sibling-key (or order-sibling key)]
       (println "new row/column for id:" id
                " with key:" (simplify-for-print key))
       (println "order sibling" (simplify-for-print order-sibling))
@@ -249,7 +248,7 @@
       (println "with content" (map #(map content %) order-groups))
       (println "in direction" direction)
       (when ((some-fn nil? item-referent? content-location-referent?)
-             first-primitive)
+             (first-primitive-referent sibling-key))
         (let [[store element-id]
               (reduce-update-add
                (partial update-add-sibling new-condition direction)
@@ -382,6 +381,7 @@
                      :add-element add-element-handler
                      :add-sibling add-sibling-handler
                      :add-row add-row-handler
+                     :add-column add-column-handler
                      :delete delete-handler                  
                      nil)]
     (do-storage-update-action

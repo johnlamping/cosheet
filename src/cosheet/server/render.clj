@@ -129,16 +129,20 @@
 (def canonical-to-list)
 
 (defn canonical-set-to-list
-  "Given a set of canonicalized lists, with the set also in canonical form,
-  return a list of the items"
+  "Given a set of canonicalized lists or sets,
+   with the set also in canonical form, return a list of the items."
   [set]
   (when (not (empty? set))
     (reduce (fn [result [key count]]
-              (concat result (repeat count (canonical-to-list key))))
+              (concat result
+                      (repeat count (if (map? key)
+                                      (canonical-set-to-list key)
+                                      (canonical-to-list key)))))
             [] (seq set))))
 
 (defn canonical-to-list
-  "Given a canonicalized list form of an item, return a list form for it."
+  "Given a canonicalized list form of an item or set of items,
+  return a list form for it."
   [item]
   (if (sequential? item)
     (do (assert (= (count item) 2))
@@ -751,7 +755,7 @@
                   (key-referent [(content-referent)
                                  ;; This also makes the key for each
                                  ;; column be unique.
-                                 (:column-referent info-map)
+                                 (item-referent (:item info-map))
                                  table-item]))
                    info-maps)
            ;; All row elements the header applies to.
@@ -767,16 +771,19 @@
                   extent-info-maps)))))
     table-parent-key))
 
-(def base-table-header-width 100)
+(def base-table-header-width 150)
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy.
   The scope-referent should specify all the items from which
   this header selects elements."
-  [table-item node sibling-condition table-parent-key scope-referent inherited]
+  [table-item node sibling-condition column-condition
+   table-parent-key scope-referent inherited]
+  (println "column-condition " column-condition)
   (let [descendants (hierarchy-node-descendants node)
         width (count descendants)
         example (first descendants)
+        _ (println "header item" (current-value (expr entity/to-list (:item example))))
         example-elements (canonical-info-to-generating-items
                           (:groups node) 
                           (:group-elements example) (:group-canonicals example))
@@ -798,13 +805,21 @@
                                         table-parent-key scope-referent)]
                                (table-header-node-DOM
                                 nil base-table-header-width
-                                sibling-condition key inherited))]
+                                sibling-condition key inherited))
+            _ (println "groups" (:groups node))
+            child-column-condition (list*
+                                    (update-in
+                                     (vec column-condition) [0]
+                                     #(concat % (canonical-set-to-list
+                                                 (:groups node)))))
+            _ (println "child condition" child-column-condition)]
         (expr-let
             [node-dom node-dom-r
              dom-seqs (expr-seq map
                                 #(if (hierarchy-node? %)
                                    (table-header-subtree-DOM
                                     table-item % sibling-condition
+                                    child-column-condition
                                     table-parent-key scope-referent inherited)
                                    (make-member-DOM %))
                                 next-level)]
@@ -815,9 +830,6 @@
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
-  ;; TODO: Currrently, the elements-referent uses the condition. It should
-  ;; use the item that contains the condition, so the key won't change
-  ;; if the header value changes.
   [table-item hierarchy header-condition
    table-parent-key row-referent inherited]
   (let [inherited (update-in inherited [:level] (fnil inc -1))]
@@ -827,7 +839,10 @@
     ;; the hierarchy are the column definitions.
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM
-                              table-item % header-condition table-parent-key
+                              table-item % header-condition
+                              `((:none ~(cons '??? (rest header-condition)))
+                                :column)
+                              table-parent-key
                               row-referent inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
@@ -864,12 +879,12 @@
          make-member-cell-DOM
          (let [exclusions (apply clojure.set/union (map set do-not-show))]
            (fn [member]
-             (let [{:keys [condition column-referent]} member]
+             (let [{:keys [item condition]} member]
                (expr-let [matches (matching-elements condition row-item)]
                  (let [items (seq (clojure.set/difference (set matches)
                                                           exclusions))
                        cell-key (prepend-to-key
-                                 (comment-referent column-referent)
+                                 (comment-referent (item-referent item))
                                  row-key)]
                    (table-cell-DOM items condition row-item
                                    cell-key inherited))))))
@@ -908,13 +923,23 @@
   ;;              An extra [:top-level :non-semantic] element is added to this,
   ;;              to keep the query, which is also in the database,
   ;;              from matching itself.
-  ;;     :column  The content is an item whose list form gives the
-  ;;              requirements for an element of a row to appear in
-  ;;              this column. The special contens :other means to show
-  ;;              everything not shown in any other column.
-  ;; TODO: Make there there be an element on a column descriptor that
-  ;;       says how the column is described, rather than the current '(nil tag)
+  ;;     :column  The semantics gives the requirements for an element
+  ;;              of a row to appear in this column. The :column
+  ;;              element has, itself, a :non-semantic element, to
+  ;;              make it not part of the semantics of the column
+  ;;              specifier. Generally, the content of the content
+  ;;              will be the keyword :none, to indicate no constraint
+  ;;              on the content of an element in the row, without
+  ;;              breaking the rule that the database doesn't contain
+  ;;              nil. The exception is the special content :other,
+  ;;              which means to show everything not shown in any
+  ;;              other column.
+  ;; TODO: Make there there be an element on a table descriptor that
+  ;;       says what new columns must have, rather than the current '(nil tag)
   ;; TODO: Add the "other" column it a table requests it.
+  ;; TODO: Check that the elements-referent for cells uses the header item
+  ;;       that contains the condition, so the key won't change
+  ;;       if the header value changes.
   [table-item parent-key inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))
@@ -928,30 +953,22 @@
                               ['(:top-level :non-semantic)])
                    columns (expr order-items
                              (entity/label->elements table-item :column))
-                   column-templates (expr-seq map entity/content columns)
-                   column-templates-elements (expr-seq map semantic-elements
-                                                      column-templates)
-                   column-templates-lists (expr-seq map
-                                                    #(expr-seq
-                                                      map semantic-to-list %)
-                                                    column-templates-elements)
-                   column-conditions (map #(list* (into '[nil]
-                                                        (map replace-nones %)))
-                                          column-templates-lists)
+                   columns-elements (expr-seq map semantic-elements columns)
+                   columns-lists (expr-seq map
+                                           #(expr-seq map semantic-to-list %)
+                                           columns-elements)
                    row-items (expr order-items
                                (matching-items row-query store))
                    hierarchy (hierarchy-by-canonical-info
-                              (map (fn [column template elements lists]
-                                     {:item template
+                              (map (fn [column elements lists]
+                                     {:item column
                                       :group-elements elements
                                       :group-canonicals (map multiset lists)
                                       :condition (replace-nones
-                                                  (list* (into '[nil] lists)))
-                                      :column-referent (item-referent column)})
+                                                  (list* (into '[nil] lists)))})
                                    columns
-                                   column-templates
-                                   column-templates-elements
-                                   column-templates-lists)
+                                   columns-elements
+                                   columns-lists)
                               #{})
                    headers (table-header-DOM table-item hierarchy
                                              '(nil tag) parent-key

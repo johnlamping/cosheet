@@ -243,7 +243,10 @@
           sibling-key (or order-sibling key)]
       (println "new row/column for id:" id
                " with key:" (simplify-for-print key))
+      (println "keys" order-key condition-key)
+      (println "attributes" (simplify-for-print attributes))
       (println "order sibling" (simplify-for-print order-sibling))
+      (println "new-condition" (simplify-for-print new-condition))
       (println "total groups:" (count order-groups))
       (println "with content" (map #(map content %) order-groups))
       (println "in direction" direction)

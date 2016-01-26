@@ -23,7 +23,7 @@
              [dom-utils :refer [dom-attributes]]
              [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server
-             [key :refer [item-referent comment-referent
+             [key :refer [item-referent comment-referent parallel-referent
                           content-location-referent query-referent
                           key-referent content-referent elements-referent
                           canonicalize-list prepend-to-key
@@ -956,6 +956,11 @@
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
                            :sibling-condition [nil 'tag]
+                           :column-sibling [(item-referent age)
+                                            (item-referent table)
+                                            :foo]
+                           :column-condition '(:none (??? tag)
+                                                     (:column :non-semantic))
                            :class "column-header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
@@ -1045,6 +1050,11 @@
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-condition [nil 'tag]
+                            :column-sibling [(item-referent name-id)
+                                             (item-referent table)
+                                             :foo]
+                            :column-condition '(:none (??? tag)
+                                                      (:column :non-semantic))
                             :style {:width "100%", :display "block"}
                             :class "vertical-separated"}
                 [item-DOM
@@ -1172,6 +1182,14 @@
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-condition [nil 'tag]
+                            :column-sibling [(parallel-referent
+                                              []
+                                              [(item-referent name)
+                                               (item-referent name-id)])
+                                              (item-referent table)
+                                             :foo]
+                            :column-condition '(:none (??? tag)
+                                                      (:column :non-semantic))
                             :class "column-header"}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
@@ -1189,6 +1207,12 @@
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
                               :sibling-condition [nil 'tag]
+                              :column-sibling [(item-referent name-id)
+                                               (item-referent table)
+                                               :foo]
+                              :column-condition '(:none (??? tag)
+                                                        (:column :non-semantic)
+                                                        ("name" tag))
                               :class "column-header"}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
@@ -1321,6 +1345,14 @@
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
                             :sibling-condition [nil 'tag]
+                            :column-sibling [(parallel-referent
+                                              []
+                                              [(item-referent name-id)
+                                               (item-referent name)])
+                                              (item-referent table)
+                                              :foo]
+                            :column-condition '(:none (??? tag)
+                                                      (:column :non-semantic))
                             :class "column-header"}
                 [item-DOM
                  name-tag name-header-key #{name-tag-spec}
@@ -1330,6 +1362,12 @@
                       :style {:width "150px"}}
                 [:component {:key (prepend-to-key (item-referent id-tag)
                                                   name-id-header-key)
+                             :column-sibling [(item-referent name-id)
+                                              (item-referent table)
+                                              :foo]
+                             :column-condition '(:none (??? tag)
+                                                       (:column :non-semantic)
+                                                       ("name" tag))
                              :sibling-condition [nil 'tag]
                              :class "column-header"}
                  [item-DOM

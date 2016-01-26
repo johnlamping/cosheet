@@ -136,7 +136,9 @@
                           (= key-codes/NUM_PLUS key-code) [:add-sibling :after] 
                           (= key-codes/PERIOD key-code) [:add-element]
                           (= key-codes/DASH key-code) [:add-row :after]
-                          (= key-codes/R key-code) [:add-row :after])]
+                          (= key-codes/R key-code) [:add-row :after]
+                          (= key-codes/BACKSLASH key-code) [:add-column :after]
+                          (= key-codes/C key-code) [:add-column :after])]
         (when (and command @selected (not @edit-field-open-on))
           (.log js/console (str command))
           (request-action

@@ -713,22 +713,32 @@
 ;;; Tables
 
 (defn table-header-node-DOM
-  "Generate the dom for one node of a table header hierarchy."
-  [elements width sibling-condition parent-key inherited]
+  "Generate the dom for one node of a table header hierarchy.
+  parent-key gives the parent scope the header applies to, and
+  elements-condition the condition that all the elements
+  satisfy. column-key gives the key for just the header definition(s)
+  of this column, and not the rest of its scope, and column-condition
+  gives the condition that new parallel columns must satisfy."
+  [elements width parent-key elements-condition
+   column-key column-condition inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
                        #(condition-component
-                         % sibling-condition parent-key inherited)
+                         % elements-condition parent-key inherited)
                        elements)]
-    (let [num-elements (count elements)]
+    (let [num-elements (count elements)
+          components (map #(add-attributes %
+                            {:column-sibling column-key
+                             :column-condition column-condition})
+                          components)]
       (as-> (vertical-stack components :separators true) dom
         (if (> num-elements 1)
           (add-attributes dom {:class "stack"})
           dom)
         (if (empty? elements)
           (add-attributes dom {:key (prepend-to-key
-                                     (elements-referent sibling-condition)
+                                     (elements-referent elements-condition)
                                      parent-key)
                                :class "editable"})
           dom)
@@ -745,7 +755,7 @@
   must not apply to, as well as the table item, the parent key of the
   table the scope referent of the table."
   [info-maps extent-info-maps negative-info-maps
-   table-item table-parent-key scope-referent]
+   table-item table-parent-key row-scope-referent]
   (prepend-to-key
     (parallel-referent
      []
@@ -764,21 +774,34 @@
                        [(if (empty? excluded-elements)
                           elements
                           (parallel-referent [] [elements] excluded-elements))]
-                       [scope-referent])))
+                       [row-scope-referent])))
                   extent-info-maps)))))
     table-parent-key))
 
 (def base-table-header-width 150)
 
 (defn table-header-subtree-DOM
-  "Generate the dom for a subtree of a table header hierarchy.
-  The scope-referent should specify all the items from which
-  this header selects elements."
-  [table-item node sibling-condition column-condition
-   table-parent-key scope-referent inherited]
-  (println "column-condition " column-condition)
+  "Generate the dom for a subtree of a table header hierarchy.  The
+  parent-column-condition gives the condition that all headers under
+  the parent must satisfy. The row-scope-referent should specify all
+  the row items from which this header selects elements."
+  [table-item node elements-condition table-parent-key
+   parent-column-condition row-scope-referent inherited]
+  (println "parent-column-condition " parent-column-condition)
+  (println "node" (simplify-for-print node))
   (let [descendants (hierarchy-node-descendants node)
         width (count descendants)
+        column-condition (list* (concat parent-column-condition
+                                              (canonical-set-to-list
+                                               (:groups node))))        
+        _ (println "column condition" column-condition)
+        column-referent (if (= (count descendants) 1)
+                          (item-referent (:item (first descendants)))
+                          (parallel-referent [] (map :item descendants)))
+        column-key (prepend-to-key column-referent
+                                   (prepend-to-key (item-referent table-item)
+                                                   table-parent-key))
+        _ (println "column-key" (simplify-for-print column-key))
         example (first descendants)
         _ (println "header item" (current-value (expr entity/to-list (:item example))))
         example-elements (canonical-info-to-generating-items
@@ -786,11 +809,12 @@
                           (:group-elements example) (:group-canonicals example))
         node-dom-r (let [key (table-header-key
                               descendants (hierarchy-node-extent node) nil
-                              table-item table-parent-key scope-referent)]
+                              table-item table-parent-key row-scope-referent)]
                      (expr table-header-node-DOM
                        (order-items example-elements) ; Why we need the expr.
-                       (* (count descendants) base-table-header-width )
-                       sibling-condition key inherited))
+                       (* (count descendants) base-table-header-width)
+                       key elements-condition
+                       column-key parent-column-condition inherited))
         next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)]
     (if (and (= (count next-level) 1) (empty? non-trivial-children))
@@ -799,25 +823,21 @@
             exclude-from-members (hierarchy-nodes-extent non-trivial-children)
             make-member-DOM #(let [key (table-header-key
                                         [%] [%] exclude-from-members table-item
-                                        table-parent-key scope-referent)]
+                                        table-parent-key row-scope-referent)]
                                (table-header-node-DOM
                                 nil base-table-header-width
-                                sibling-condition key inherited))
-            _ (println "groups" (:groups node))
-            child-column-condition (list*
-                                    (update-in
-                                     (vec column-condition) [0]
-                                     #(concat % (canonical-set-to-list
-                                                 (:groups node)))))
-            _ (println "child condition" child-column-condition)]
+                                key elements-condition
+                                column-key parent-column-condition inherited))
+            _ (println "groups" (:groups node))]
         (expr-let
             [node-dom node-dom-r
              dom-seqs (expr-seq map
                                 #(if (hierarchy-node? %)
                                    (table-header-subtree-DOM
-                                    table-item % sibling-condition
-                                    child-column-condition
-                                    table-parent-key scope-referent inherited)
+                                    table-item % elements-condition
+                                    table-parent-key
+                                    column-condition
+                                    row-scope-referent inherited)
                                    (make-member-DOM %))
                                 next-level)]
           [:div {:class "column-header-stack"}
@@ -837,9 +857,9 @@
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM
                               table-item % header-condition
-                              `((:none ~(cons '??? (rest header-condition)))
-                                :column)
                               table-parent-key
+                              `(:none ~(cons '??? (rest header-condition))
+                                      (:column :non-semantic))
                               row-referent inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
@@ -960,7 +980,8 @@
                               (map (fn [column elements lists]
                                      {:item column
                                       :group-elements elements
-                                      :group-canonicals (map multiset lists)
+                                      :group-canonicals (map canonicalize-list
+                                                             lists)
                                       :condition (replace-nones
                                                   (list* (into '[nil] lists)))})
                                    columns

@@ -717,10 +717,10 @@
   parent-key gives the parent scope the header applies to, and
   elements-condition the condition that all the elements
   satisfy. column-key gives the key for just the header definition(s)
-  of this column, and not the rest of its scope, and column-condition
+  of this column, and not the rest of its scope, and new-column-condition
   gives the condition that new parallel columns must satisfy."
   [elements width parent-key elements-condition
-   column-key column-condition inherited]
+   column-key new-column-condition inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
@@ -730,7 +730,7 @@
     (let [num-elements (count elements)
           components (map #(add-attributes %
                             {:column-sibling column-key
-                             :column-condition column-condition})
+                             :column-condition new-column-condition})
                           components)]
       (as-> (vertical-stack components :separators true) dom
         (if (> num-elements 1)
@@ -782,19 +782,19 @@
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy.  The
-  parent-column-condition gives the condition that all headers under
+  new-column-condition gives the condition that all headers under
   the parent must satisfy. The row-scope-referent should specify all
   the row items from which this header selects elements."
   [table-item node elements-condition table-parent-key
-   parent-column-condition row-scope-referent inherited]
-  (println "parent-column-condition " parent-column-condition)
+   new-column-condition row-scope-referent inherited]
+  (println "new-column-condition " new-column-condition)
   (println "node" (simplify-for-print node))
   (let [descendants (hierarchy-node-descendants node)
         width (count descendants)
-        column-condition (list* (concat parent-column-condition
-                                              (canonical-set-to-list
-                                               (:groups node))))        
-        _ (println "column condition" column-condition)
+        new-subcolumn-condition (list* (concat new-column-condition
+                                               (canonical-set-to-list
+                                                (:groups node))))        
+        _ (println "new subcolumn condition" new-subcolumn-condition)
         column-referent (if (= (count descendants) 1)
                           (item-referent (:item (first descendants)))
                           (parallel-referent [] (map :item descendants)))
@@ -814,7 +814,7 @@
                        (order-items example-elements) ; Why we need the expr.
                        (* (count descendants) base-table-header-width)
                        key elements-condition
-                       column-key parent-column-condition inherited))
+                       column-key new-column-condition inherited))
         next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)]
     (if (and (= (count next-level) 1) (empty? non-trivial-children))
@@ -827,7 +827,7 @@
                                (table-header-node-DOM
                                 nil base-table-header-width
                                 key elements-condition
-                                column-key parent-column-condition inherited))
+                                column-key new-column-condition inherited))
             _ (println "groups" (:groups node))]
         (expr-let
             [node-dom node-dom-r
@@ -836,7 +836,7 @@
                                    (table-header-subtree-DOM
                                     table-item % elements-condition
                                     table-parent-key
-                                    column-condition
+                                    new-subcolumn-condition
                                     row-scope-referent inherited)
                                    (make-member-DOM %))
                                 next-level)]
@@ -848,7 +848,7 @@
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
   [table-item hierarchy header-condition
-   table-parent-key row-referent inherited]
+   table-parent-key rows-referent inherited]
   (let [inherited (update-in inherited [:level] (fnil inc -1))]
     ;; Unlike row headers for tags, where the header information is
     ;; computed from the items of the rows, here the header information
@@ -860,7 +860,7 @@
                               table-parent-key
                               `(:none ~(cons '??? (rest header-condition))
                                       (:column :non-semantic))
-                              row-referent inherited)
+                              rows-referent inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
             columns))))

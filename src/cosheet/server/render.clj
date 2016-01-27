@@ -693,16 +693,21 @@
           inherited-down (update-in inherited [:depth] inc)
           content-dom
           (if (entity/atom? content)
-            [:div (if (empty? elements)
-                    {:class "item content-text editable"
-                     :key item-key}
-                    {:class "content-text editable"
-                     :key (prepend-to-key (content-location-referent)
-                                          item-key)})
-             (if (= content :none) "" (str content))]
+            (let [is-placeholder (and (symbol? content)
+                                      (= (subs (str content) 0 3) "???"))]
+              [:div {:class (cond-> "content-text editable"
+                              (empty? elements) (str " item")
+                              is-placeholder (str " placeholder"))
+                     :key (if (empty? elements)
+                            item-key
+                            (prepend-to-key (content-location-referent)
+                                            item-key))}
+               (cond (= content :none) ""
+                     is-placeholder "???"                     
+                     true (str content))])
             (make-component
-               {:key (prepend-to-key (item-referent content) item-key)}
-               [item-DOM content item-key #{} inherited-down]))]
+             {:key (prepend-to-key (item-referent content) item-key)}
+             [item-DOM content item-key #{} inherited-down]))]
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-table-DOM

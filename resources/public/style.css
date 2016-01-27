@@ -264,6 +264,12 @@
     margin-left: 3px;
 }
 
+.placeholder {
+    font-size: smaller;
+    font-style: oblique;
+    color: rgba(0, 0, 0, 0.4);
+}
+
 .item.with-elements {
     /* Make room for the element-table, which will be offset 3 px,
        but 100% size */

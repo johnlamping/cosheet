@@ -538,7 +538,7 @@
             [dom fred]))]
     (is (check-keys dom fred))
     (is (check dom
-               [:div {:class "item content-text editable"
+               [:div {:class "content-text editable item"
                       :key [(:item-id fred)]} "Fred"])))
   ;; Check generation of a single tag for a single item.
   (let [[dom age]

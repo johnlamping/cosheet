@@ -229,6 +229,7 @@
 
 .table-cell {
     width: 150px;
+    min-height: 20px;
     padding: 3px;
     border-width: 0px 0px 2px 2px;
     box-sizing: border-box;

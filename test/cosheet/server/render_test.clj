@@ -975,7 +975,9 @@
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
-                           :sibling-condition [nil ["age" 'tag]]}
+                           :sibling-condition [nil ["age" 'tag]]
+                           :row-sibling joe-key
+                           :row-condition query-list}
                [item-DOM
                 joe-bogus-age (into [(comment-referent (item-referent age))]
                                     joe-key)
@@ -987,12 +989,16 @@
                            :class "vertical-separated"
                            :style {:width "100%"
                                    :display "block"}
-                           :sibling-condition [nil ["age" 'tag]]}
+                           :sibling-condition [nil ["age" 'tag]]
+                           :row-sibling joe-key
+                           :row-condition query-list}
                (any)]]
              [:div {:key (into [[:elements '(nil ("size" tag))]
                                 (comment-referent (item-referent size))]
                                joe-key),
-                    :class "editable table-cell"}]]]))))
+                    :class "editable table-cell"
+                    :row-sibling joe-key
+                    :row-condition query-list}]]]))))
   ;; Test a header with two labels.
   (let [[dom table joe jane]
         (let-mutated [table `("table"
@@ -1069,10 +1075,12 @@
                                       (comment-referent
                                        (item-referent name-id))]
                                       joe-key)
-                           :class "table-cell"
+                          :class "table-cell"
                           :sibling-condition (as-set [nil
                                                       ["name" 'tag]
-                                                      ["id" 'tag]])}
+                                                      ["id" 'tag]])
+                          :row-sibling joe-key
+                          :row-condition '(nil (:top-level :non-semantic))}
                [item-DOM
                 joe-name (into [(comment-referent (item-referent name-id))]
                                joe-key)
@@ -1080,13 +1088,16 @@
                 {:depth 0, :do-not-merge #{}}]]
              ;; Joe's age
              (any)]
+            ;; Jane
             [:div {:class "table-row"}
              [:div {:key [[:elements (as-set
                                       '(nil ("name" tag) ("id" tag)))]
                           (comment-referent (item-referent name-id))
                           (item-referent jane)
                           :foo],
-                    :class "editable table-cell"}]
+                    :class "editable table-cell"
+                    :row-sibling [(item-referent jane) :foo]
+                    :row-condition '(nil (:top-level :non-semantic))}]
              ;; Jane's age
              (any)]]))))
   ;; Test a hierarchical header.
@@ -1230,7 +1241,9 @@
                                        (item-referent name))]
                                       joe-key)
                            :class "table-cell"
-                          :sibling-condition [nil ["name" 'tag]]}
+                          :sibling-condition [nil ["name" 'tag]]
+                          :row-sibling joe-key
+                          :row-condition '(nil (:top-level :non-semantic))}
                [item-DOM
                 joe-nickname (into [(comment-referent (item-referent name))]
                                joe-key)
@@ -1244,7 +1257,9 @@
                           :class "table-cell"
                           :sibling-condition (as-set [nil
                                                       ["id" 'tag]
-                                                      ["name" 'tag]])}
+                                                      ["name" 'tag]])
+                          :row-sibling joe-key
+                          :row-condition '(nil (:top-level :non-semantic))}
                [item-DOM
                 joe-id (into [(comment-referent (item-referent name-id))]
                                joe-key)
@@ -1258,7 +1273,9 @@
                     :key (into [(elements-referent '(nil ("id" tag)
                                                          ("name" tag)))
                                 (comment-referent (item-referent name-id))]
-                               jane-key)}]]]))))
+                               jane-key)
+                    :row-sibling jane-key
+                    :row-condition '(nil (:top-level :non-semantic))}]]]))))
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
@@ -1401,7 +1418,9 @@
                           :class "table-cell"
                           :sibling-condition (as-set [nil
                                                       ["id" 'tag]
-                                                      ["name" 'tag]])}
+                                                      ["name" 'tag]])
+                          :row-sibling joe-key
+                          :row-condition '(nil (:top-level :non-semantic))}
               [item-DOM
                joe-id (into [(comment-referent (item-referent name-id))]
                             joe-key)
@@ -1412,6 +1431,8 @@
                                       (comment-referent
                                        (item-referent name))]
                                      joe-key)
+                          :row-sibling joe-key
+                          :row-condition '(nil (:top-level :non-semantic))
                           :class "table-cell"
                           :sibling-condition [nil ["name" 'tag]]}
               [item-DOM
@@ -1425,6 +1446,8 @@
                     :key (into [(elements-referent '(nil ("id" tag)
                                                          ("name" tag)))
                                 (comment-referent (item-referent name-id))]
-                               jane-key)}]
+                               jane-key)
+                    :row-sibling jane-key
+                    :row-condition '(nil (:top-level :non-semantic))}]
              ;; No name-id value.
              [:component (any) (any)]]])))))

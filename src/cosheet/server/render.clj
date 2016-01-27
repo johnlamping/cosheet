@@ -476,14 +476,16 @@
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item."
-  [items-with-excluded parent-key sibling-elements inherited]
+  [items-with-excluded parent-key sibling-elements added-attributes inherited]
   (assert (not (empty? items-with-excluded)))
   (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
                                                      parent-key)]
                              (make-component
-                              {:key key
-                               :sibling-condition (cons nil sibling-elements)}
+                              (into
+                               {:key key
+                                :sibling-condition (cons nil sibling-elements)}
+                               added-attributes)
                               [item-DOM item parent-key
                                (set excluded-elements) inherited])))
                          items-with-excluded)]
@@ -634,7 +636,7 @@
           :class "column"}))
       (add-attributes
        (components-DOM items-with-excluded
-                       parent-key sibling-elements inherited)
+                       parent-key sibling-elements {} inherited)
        {:class "column"}))))
 
 (defn tag-items-pair-DOM
@@ -839,6 +841,7 @@
                            table-parent-key
                            new-subcolumn-condition
                            row-scope-referent inherited)
+                          ;; We need a header DOM with no elements.
                           (let [key (table-header-key
                                      [%] [%] exclude-from-members table-item
                                      table-parent-key row-scope-referent)]
@@ -878,23 +881,28 @@
 
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
-  [items condition row-item cell-key inherited]
+  [items condition row-item row-key new-row-condition cell-key inherited]
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
     (add-attributes (empty-DOM cell-key (rest condition) inherited)
-                     {:class "table-cell"})
+                    {:class "table-cell"
+                     :row-sibling row-key
+                     :row-condition new-row-condition})
     (expr-let [items (order-items items)
                excluded (expr-seq map #(condition-specifiers % condition)
                                   items)]
       (add-attributes
        (components-DOM (map vector items excluded)
-                       cell-key (rest condition) inherited)
+                       cell-key (rest condition)
+                       {:row-sibling row-key
+                        :row-condition new-row-condition}
+                       inherited)
        {:class "table-cell"}))))
 
 (defn table-row-column-group-DOM
   "Generate the dom for the cells of a row under one hierarchy group."
-  [row-item row-key node table-parent-key inherited]
+  [row-item row-key new-row-condition node table-parent-key inherited]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
         excluded-conditions (map :condition
@@ -913,14 +921,15 @@
                                                           exclusions))
                        cell-key (prepend-to-key
                                  (comment-referent (item-referent item))
-                                 row-key)]
-                   (table-cell-DOM items condition row-item
-                                   cell-key inherited))))))
+                  row-key)]
+                   (table-cell-DOM items condition row-item row-key
+                                   new-row-condition cell-key inherited))))))
          cell-lists
          (expr-seq map
                    #(if (hierarchy-node? %)
                       (table-row-column-group-DOM
-                       row-item row-key % table-parent-key inherited)
+                       row-item row-key new-row-condition
+                       % table-parent-key inherited)
                       (expr-let [dom (make-member-cell-DOM %)]
                         [dom]))
                    next-level)]
@@ -928,11 +937,11 @@
 
 (defn table-row-DOM
   "Generate the dom for one row of a possibly hierarchical table."
-  [row-item hierarchy table-parent-key inherited]
+  [row-item new-row-condition hierarchy table-parent-key inherited]
   (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)]
     (expr-let [cell-groups (expr-seq
                             map #(table-row-column-group-DOM
-                                  row-item row-key %
+                                  row-item row-key new-row-condition %
                                   table-parent-key inherited)
                             hierarchy)]
       (into [:div {:class "table-row"}] (apply concat cell-groups)))))
@@ -947,7 +956,7 @@
   describing a table."
   ;; The following elements of item describe the table:
   ;;  :row-query  The content is an item whose list form gives the
-  ;;              requirements for an item to appear as a row When the
+  ;;              requirements for an item to appear as a row. When the
   ;;              query is created, an extra [:top-level
   ;;              :non-semantic] element is added, to keep the query,
   ;;              which is also in the database, from matching itself.
@@ -1004,7 +1013,7 @@
                                              (query-referent row-query)
                                              inherited)
                    rows (expr-seq
-                         map #(table-row-DOM % hierarchy
+                         map #(table-row-DOM % row-query hierarchy
                                              parent-key inherited)
                          row-items)]
           (into [:div {:class "table"

@@ -34,7 +34,11 @@
   "Set the content of the item in the store provided the current content
    matches 'from'."
   [from to store item]
-  (if (= (content item) (parse-string-as-number from))
+  (if (= (let [content (content item)]
+           (if (and (symbol? content) (= (subs (str content) 0 3) "???"))
+             "???"
+             content))
+         (parse-string-as-number from))
     (update-content store (:item-id item) to)
     (do (println "content doesn't match" (content item) from)
         store)))

@@ -1201,7 +1201,13 @@
                         :key [[:parallel
                                [[:elements '(nil tag)]]
                                just-name-referents]
-                              :foo]}]]
+                              :foo]
+                        :column-sibling [(item-referent name)
+                                         (item-referent table)
+                                         :foo]
+                        :column-condition '(:none (??? tag)
+                                                  (:column :non-semantic)
+                                                  ("name" tag))}]]
                [:div {:class "column-header-container tags"
                       :style {:width "150px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
@@ -1379,7 +1385,13 @@
                         :key [[:parallel
                                [[:elements '(nil tag)]]
                                just-name-referents]
-                              :foo]}]]]]]
+                              :foo]
+                        :column-sibling [(item-referent name)
+                                         (item-referent table)
+                                         :foo]
+                        :column-condition '(:none (??? tag)
+                                                  (:column :non-semantic)
+                                                  ("name" tag))}]]]]]
             ;; Joe
             [:div {:class "table-row"}
              [:component {:key (into [(:item-id joe-id)

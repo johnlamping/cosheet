@@ -745,7 +745,9 @@
           (add-attributes dom {:key (prepend-to-key
                                      (elements-referent elements-condition)
                                      parent-key)
-                               :class "editable"})
+                               :class "editable"
+                               :column-sibling column-key
+                               :column-condition new-column-condition})
           dom)
         (add-attributes dom {:class "column-header"})
         [:div {:class "column-header-container" 
@@ -826,25 +828,29 @@
       node-dom-r
       (let [inherited (update-in inherited [:level] inc)
             exclude-from-members (hierarchy-nodes-extent non-trivial-children)
-            make-member-DOM #(let [key (table-header-key
-                                        [%] [%] exclude-from-members table-item
-                                        table-parent-key row-scope-referent)]
-                               (table-header-node-DOM
-                                nil base-table-header-width
-                                key elements-condition
-                                column-key new-column-condition inherited))
             _ (println "groups" (:groups node))]
         (expr-let
             [node-dom node-dom-r
-             dom-seqs (expr-seq map
-                                #(if (hierarchy-node? %)
-                                   (table-header-subtree-DOM
-                                    table-item % elements-condition
-                                    table-parent-key
-                                    new-subcolumn-condition
-                                    row-scope-referent inherited)
-                                   (make-member-DOM %))
-                                next-level)]
+             dom-seqs (expr-seq
+                       map
+                       #(if (hierarchy-node? %)
+                          (table-header-subtree-DOM
+                           table-item % elements-condition
+                           table-parent-key
+                           new-subcolumn-condition
+                           row-scope-referent inherited)
+                          (let [key (table-header-key
+                                     [%] [%] exclude-from-members table-item
+                                     table-parent-key row-scope-referent)]
+                            (table-header-node-DOM
+                             nil base-table-header-width
+                             key elements-condition
+                             (prepend-to-key
+                              (item-referent (:item %))
+                              (prepend-to-key (item-referent table-item)
+                                              table-parent-key))
+                             new-subcolumn-condition inherited)))
+                       next-level)]
           [:div {:class "column-header-stack"}
            node-dom
            (into [:div {:class "column-header-sequence"}] dom-seqs)])))))

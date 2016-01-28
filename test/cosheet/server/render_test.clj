@@ -951,7 +951,7 @@
                                :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-container tags"                     
+             [:div {:class "column-header-container tags top-level"                     
                     :style {:width "150px"}}
               [:component {:key (prepend-to-key (item-referent age-tag)
                                                 age-header-key)
@@ -1050,7 +1050,7 @@
                                 :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-container tags"
+             [:div {:class "column-header-container tags top-level"
                     :style {:width "150px"}}
               [:div {:class "stack column-header"}
                [:component {:key (prepend-to-key (item-referent name-tag)
@@ -1187,7 +1187,7 @@
                                    :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack"}
+             [:div {:class "column-header-stack top-level"}
               [:div {:class "column-header-container tags"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
@@ -1362,7 +1362,7 @@
                                    :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack"}
+             [:div {:class "column-header-stack top-level"}
               [:div {:class "column-header-container tags"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)

@@ -795,68 +795,66 @@
   the parent must satisfy. The row-scope-referent should specify all
   the row items from which this header selects elements."
   [table-item node elements-condition table-parent-key
-   new-column-condition row-scope-referent inherited]
-  (println "new-column-condition " new-column-condition)
-  (println "node" (simplify-for-print node))
+   new-column-condition row-scope-referent top-level inherited]
   (let [descendants (hierarchy-node-descendants node)
         width (count descendants)
         new-subcolumn-condition (list* (concat new-column-condition
                                                (canonical-set-to-list
-                                                (:groups node))))        
-        _ (println "new subcolumn condition" new-subcolumn-condition)
+                                                (:groups node))))   
         column-referent (if (= (count descendants) 1)
                           (item-referent (:item (first descendants)))
                           (parallel-referent [] (map :item descendants)))
         column-key (prepend-to-key column-referent
                                    (prepend-to-key (item-referent table-item)
                                                    table-parent-key))
-        _ (println "column-key" (simplify-for-print column-key))
         example (first descendants)
-        _ (println "header item" (current-value (expr entity/to-list (:item example))))
         example-elements (canonical-info-to-generating-items
                           (:groups node) 
                           (:group-elements example) (:group-canonicals example))
-        node-dom-r (let [key (table-header-key
-                              descendants (hierarchy-node-extent node) nil
-                              table-item table-parent-key row-scope-referent)]
-                     (expr table-header-node-DOM
-                       (order-items example-elements) ; Why we need the expr.
-                       (* (count descendants) base-table-header-width)
-                       key elements-condition
-                       column-key new-column-condition inherited))
         next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)]
-    (if (and (= (count next-level) 1) (empty? non-trivial-children))
-      node-dom-r
-      (let [inherited (update-in inherited [:level] inc)
-            exclude-from-members (hierarchy-nodes-extent non-trivial-children)
-            _ (println "groups" (:groups node))]
-        (expr-let
-            [node-dom node-dom-r
-             dom-seqs (expr-seq
-                       map
-                       #(if (hierarchy-node? %)
-                          (table-header-subtree-DOM
-                           table-item % elements-condition
-                           table-parent-key
-                           new-subcolumn-condition
-                           row-scope-referent inherited)
-                          ;; We need a header DOM with no elements.
-                          (let [key (table-header-key
-                                     [%] [%] exclude-from-members table-item
-                                     table-parent-key row-scope-referent)]
-                            (table-header-node-DOM
-                             nil base-table-header-width
-                             key elements-condition
-                             (prepend-to-key
-                              (item-referent (:item %))
-                              (prepend-to-key (item-referent table-item)
-                                              table-parent-key))
-                             new-subcolumn-condition inherited)))
-                       next-level)]
-          [:div {:class "column-header-stack"}
-           node-dom
-           (into [:div {:class "column-header-sequence"}] dom-seqs)])))))
+    (expr-let
+        [node-dom (let [key (table-header-key
+                             descendants (hierarchy-node-extent node) nil
+                             table-item table-parent-key row-scope-referent)]
+                    (expr table-header-node-DOM
+                      (order-items example-elements) ; Why we need the expr.
+                      (* (count descendants) base-table-header-width)
+                      key elements-condition
+                      column-key new-column-condition inherited))]
+      (if (and (= (count next-level) 1) (empty? non-trivial-children))
+        (cond-> node-dom
+          top-level (add-attributes {:class "top-level"}))
+        (let [inherited (update-in inherited [:level] inc)
+              exclude-from-members (hierarchy-nodes-extent
+                                    non-trivial-children)]
+          (expr-let
+              [dom-seqs (expr-seq
+                         map
+                         #(if (hierarchy-node? %)
+                            (table-header-subtree-DOM
+                             table-item % elements-condition
+                             table-parent-key
+                             new-subcolumn-condition
+                             row-scope-referent false inherited)
+                            ;; We need a header DOM with no elements.
+                            (let [key (table-header-key
+                                       [%] [%] exclude-from-members table-item
+                                       table-parent-key row-scope-referent)]
+                              (table-header-node-DOM
+                               nil base-table-header-width
+                               key elements-condition
+                               (prepend-to-key
+                                (item-referent (:item %))
+                                (prepend-to-key (item-referent table-item)
+                                                table-parent-key))
+                               new-subcolumn-condition inherited)))
+                         next-level)]
+            (cond->
+                [:div {:class "column-header-stack"}
+                 node-dom
+                 (into [:div {:class "column-header-sequence"}] dom-seqs)]
+              top-level (add-attributes {:class "top-level"}))))))))
 
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.
@@ -874,7 +872,7 @@
                               table-parent-key
                               `(:none ~(cons '??? (rest header-condition))
                                       (:column :non-semantic))
-                              rows-referent inherited)
+                              rows-referent true inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
             columns))))

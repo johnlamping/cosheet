@@ -1187,8 +1187,9 @@
                                    :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack top-level"}
-              [:div {:class "column-header-container tags"
+             [:div {:class "column-header-stack"}
+              [:div {:class
+                     "column-header-container rightmost tags with-children top-level"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
@@ -1206,7 +1207,7 @@
                   name-tag name-header-key #{name-tag-spec}
                   {:level 0, :depth 0, :do-not-merge #{}}]]]
               [:div {:class "column-header-sequence"}
-               [:div  {:class "column-header-container tags"
+               [:div  {:class "column-header-container empty tags"
                        :style {:width "150px"}}
                 [:div  {:class "editable column-header"
                         :key [[:parallel
@@ -1219,7 +1220,7 @@
                         :column-condition '(:none (??? tag)
                                                   (:column :non-semantic)
                                                   ("name" tag))}]]
-               [:div {:class "column-header-container tags"
+               [:div {:class "column-header-container rightmost tags"
                       :style {:width "150px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
                                                    name-id-header-key)
@@ -1362,8 +1363,9 @@
                                    :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack top-level"}
-              [:div {:class "column-header-container tags"
+             [:div {:class "column-header-stack"}
+              [:div {:class
+                     "column-header-container rightmost tags with-children top-level"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
@@ -1396,7 +1398,7 @@
                  [item-DOM
                   id-tag name-id-header-key #{id-tag-spec}
                   {:level 1, :depth 0, :do-not-merge #{}}]]]
-               [:div  {:class "column-header-container tags"
+               [:div  {:class "column-header-container rightmost empty tags"
                        :style {:width "150px"}}
                 [:div  {:class "editable column-header"
                         :key [[:parallel

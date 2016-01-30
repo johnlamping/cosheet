@@ -2,7 +2,8 @@
   (require [clojure.test :refer [assert-expr do-report]]
            (cosheet [store :as store]
                     [expression-manager :as expression-manager]
-                    [reporters :refer [value]])))
+                    [reporters :refer [value reporter?]]
+                    [debug :refer [current-value]])))
 
 (def differences)
 
@@ -101,6 +102,15 @@
     (differences value pattern)))
 
 (defn as-set [pattern] [::test differences-as-sets pattern])
+
+(defn- differences-from-eval [value pattern]
+  (let [evaled-value (cond (sequential? value)
+                           (current-value (apply (first value) (rest value)))
+                           (reporter? value) (current-value value)
+                           true value)]
+    (differences evaled-value pattern)))
+
+(defn evals-to [pattern] [::test differences-from-eval pattern])
 
 ;;; Define check as a macro for the is test.
 

@@ -1,6 +1,7 @@
 (ns cosheet.test-utils-test
   (:require [clojure.test :refer [deftest is assert-expr do-report]]
-            [cosheet.test-utils :refer [differences any as-set]]
+            [cosheet.test-utils :refer [differences any as-set evals-to]]
+            [cosheet.expression :refer [expr]]
             ; :reload
             ))
 
@@ -43,5 +44,7 @@
          {3 [nil nil [:!= #{} #{9}]]}))
   (is (= (differences [{:info {:a 1} :members [:i]}]
                       [{:info {:a 2} :members [:i]}])
-         [{:info {:a [:!= 1 2]}}])))
+         [{:info {:a [:!= 1 2]}}]))
+  (is (= (differences (expr inc 1) (evals-to 2)) nil))
+  (is (= (differences [#(expr inc %) 1]  (evals-to 3)) [:!= 2 3])))
 

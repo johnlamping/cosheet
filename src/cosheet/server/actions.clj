@@ -13,7 +13,7 @@
     [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
-                    content elements label->elements label->content]]
+                    content elements label->elements label->content to-list]]
     [dom-utils :refer [dom-attributes]]
     [query :refer [query-matches]]
     query-impl)
@@ -296,9 +296,11 @@
     (when (not= delete-key key)
       (println "delete-key" (simplify-for-print delete-key)))
     (println "total items:" (count items))
-    (println "with content" (map content items))
-    (when (item-referent? first-primitive)
-      (reduce update-delete store items))))
+    (println "items" (map to-list items))
+    (if (item-referent? first-primitive)
+      (reduce update-delete store items)
+      (do (println "NOT DELETING: first primitive not an item.")
+          nil))))
 
 (defn set-content-handler
   [store dom-tracker id from to]

@@ -841,11 +841,14 @@
                       (when (= (count example-elements) 1)
                         (if (empty? non-trivial-children)
                           column-key
-                          (table-header-key
-                           (mapcat hierarchy-node-descendants
-                                   non-trivial-children)
-                           (hierarchy-nodes-extent non-trivial-children)
-                           nil table-item table-parent-key row-scope-referent)))
+                          (prepend-to-key
+                           (item-referent (first example-elements))
+                           (table-header-key
+                            (mapcat hierarchy-node-descendants
+                                    non-trivial-children)
+                            (hierarchy-nodes-extent non-trivial-children)
+                            nil
+                            table-item table-parent-key row-scope-referent))))
                       rightmost inherited))]
       (if (and (= (count next-level) 1) (empty? non-trivial-children))
         (cond-> node-dom

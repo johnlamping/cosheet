@@ -1206,7 +1206,9 @@
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
                             
-                            :delete-key [[:parallel [] name-id-referents]
+                            :delete-key [[:parallel
+                                          [(item-referent name-tag)]
+                                          name-id-referents]
                                          :foo]
                             :class "column-header"}
                  [item-DOM
@@ -1390,7 +1392,9 @@
                                               :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
-                            :delete-key [[:parallel [] name-id-referents]
+                            :delete-key [[:parallel
+                                          [(item-referent name-tag)]
+                                          name-id-referents]
                                          :foo]
                             :class "column-header"}
                 [item-DOM

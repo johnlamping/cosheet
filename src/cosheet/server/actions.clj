@@ -289,9 +289,12 @@
 (defn delete-handler
   [store dom-tracker id]
   (let [key (id->key dom-tracker id)
-        first-primitive (first-primitive-referent (remove-comments key))
-        items (key->items store key)]
+        delete-key (or (:delete-key (key->attributes dom-tracker key)) key)
+        first-primitive (first-primitive-referent (remove-comments delete-key))
+        items (key->items store delete-key)]
     (println "delete id:" id " with key:" (simplify-for-print key))
+    (when (not= delete-key key)
+      (println "delete-key" (simplify-for-print delete-key)))
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when (item-referent? first-primitive)

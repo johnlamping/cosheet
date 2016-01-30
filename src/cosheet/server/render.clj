@@ -15,6 +15,7 @@
                                          elements-referent query-referent
                                          parallel-referent semantic-entity?
                                          prepend-to-key elements-referent?
+                                         item-referent? first-primitive-referent
                                          semantic-elements filtered-items
                                          canonicalize-list semantic-to-list
                                          replace-nones]])))
@@ -61,6 +62,8 @@
         :row-condition  ; Condition that a new adjacent row must satisfy.
        :column-sibling  ; Analog of :row-sibling
      :column-condition  ; Analog of :column-sibling
+           :delete-key  ; The key to identity items for a delete,
+                        ; if different from the usual key.
     ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -719,55 +722,14 @@
 
 ;;; Tables
 
-(defn table-header-node-DOM
-  "Generate the dom for one node of a table header hierarchy.
-  parent-key gives the parent scope the header applies to, and
-  elements-condition the condition that all the elements
-  satisfy. column-key gives the key for just the header definition(s)
-  of this column, and not the rest of its scope, and new-column-condition
-  gives the condition that new parallel columns must satisfy."
-  [elements width parent-key elements-condition
-   column-key new-column-condition rightmost inherited]
-  (assert (not (elements-referent? (first parent-key))))
-  (expr-let [components
-             (expr-seq map
-                       #(condition-component
-                         % elements-condition parent-key inherited)
-                       elements)]
-    (let [num-elements (count elements)
-          components (map #(add-attributes %
-                            {:column-sibling column-key
-                             :column-condition new-column-condition})
-                          components)]
-      (as-> (vertical-stack components :separators true) dom
-        (if (> num-elements 1)
-          (add-attributes dom {:class "stack"})
-          dom)
-        (if (empty? elements)
-          (add-attributes dom {:key (prepend-to-key
-                                     (elements-referent elements-condition)
-                                     parent-key)
-                               :class "editable"
-                               :column-sibling column-key
-                               :column-condition new-column-condition})
-          dom)
-        (add-attributes dom {:class "column-header"})
-        [:div {:class "column-header-container" 
-               :style {:width (str width "px")}} dom]
-        (if rightmost
-          (add-attributes dom {:class "rightmost"})
-          dom)
-        (if (zero? num-elements)
-          (add-attributes dom {:class "empty"})
-          dom)
-        (add-attributes dom {:class "tags"})))))
+(def base-table-column-width 150)
 
 (defn table-header-key
   "Generate the key for the cell that holds a table header, given the
   info-maps of all the header requests it applies to, info maps that
   are sufficient to cover the elements it applies to, and the ones it
   must not apply to, as well as the table item, the parent key of the
-  table the scope referent of the table."
+  table, and the scope referent of the table."
   [info-maps extent-info-maps negative-info-maps
    table-item table-parent-key row-scope-referent]
   (prepend-to-key
@@ -792,7 +754,50 @@
                   extent-info-maps)))))
     table-parent-key))
 
-(def base-table-column-width 150)
+(defn table-header-node-DOM
+  "Generate the dom for one node of a table header hierarchy.
+  parent-key gives the parent scope the header applies to, and
+  elements-condition the condition that all the elements
+  satisfy. column-key gives the key for just the header definition(s)
+  of this column, and not the elements in rows, and new-column-condition
+  gives the condition that new parallel columns must satisfy."
+  [elements width parent-key elements-condition
+   column-key new-column-condition delete-key rightmost inherited]
+  (assert (not (elements-referent? (first parent-key))))
+  (expr-let [components
+             (expr-seq map
+                       #(condition-component
+                         % elements-condition parent-key inherited)
+                       elements)]
+    (let [num-elements (count elements)
+          components (map #(add-attributes %
+                            {:column-sibling column-key
+                             :column-condition new-column-condition})
+                          components)]
+      (as-> (vertical-stack components :separators true) dom
+        (cond (> num-elements 1)
+              (add-attributes dom {:class "stack"})
+              delete-key (add-attributes dom {:delete-key delete-key})
+              true
+              dom)
+        (if (empty? elements)
+          (add-attributes dom {:key (prepend-to-key
+                                     (elements-referent elements-condition)
+                                     parent-key)
+                               :class "editable"
+                               :column-sibling column-key
+                               :column-condition new-column-condition})
+          dom)
+        (add-attributes dom {:class "column-header"})
+        [:div {:class "column-header-container" 
+               :style {:width (str width "px")}} dom]
+        (if rightmost
+          (add-attributes dom {:class "rightmost"})
+          dom)
+        (if (zero? num-elements)
+          (add-attributes dom {:class "empty"})
+          dom)
+        (add-attributes dom {:class "tags"})))))
 
 (defn last-special
   "Return a sequence with the same length as the incoming sequence,
@@ -832,7 +837,16 @@
                       (order-items example-elements) ; Why we need the expr.
                       (* (count descendants) base-table-column-width)
                       key elements-condition
-                      column-key new-column-condition rightmost inherited))]
+                      column-key new-column-condition
+                      (when (= (count example-elements) 1)
+                        (if (empty? non-trivial-children)
+                          column-key
+                          (table-header-key
+                           (mapcat hierarchy-node-descendants
+                                   non-trivial-children)
+                           (hierarchy-nodes-extent non-trivial-children)
+                           nil table-item table-parent-key row-scope-referent)))
+                      rightmost inherited))]
       (if (and (= (count next-level) 1) (empty? non-trivial-children))
         (cond-> node-dom
           top-level (add-attributes {:class "top-level"}))
@@ -853,15 +867,17 @@
                              (let [key (table-header-key
                                         [node] [node]
                                         exclude-from-members table-item
-                                        table-parent-key row-scope-referent)]
+                                        table-parent-key row-scope-referent)
+                                   column-key (prepend-to-key
+                                               (item-referent (:item node))
+                                               (prepend-to-key
+                                                (item-referent table-item)
+                                                 table-parent-key))]
                                (table-header-node-DOM
                                 nil base-table-column-width
                                 key elements-condition
-                                (prepend-to-key
-                                 (item-referent (:item node))
-                                 (prepend-to-key (item-referent table-item)
-                                                 table-parent-key))
-                                new-subcolumn-condition rightmost inherited))))
+                                column-key new-subcolumn-condition
+                                column-key rightmost inherited))))
                          next-level (last-special next-level rightmost))]
             [:div {:class "column-header-stack"}
              (cond-> (add-attributes node-dom {:class "with-children"})

@@ -961,6 +961,9 @@
                                             :foo]
                            :column-condition '(:none (??? tag)
                                                      (:column :non-semantic))
+                           :delete-key [(item-referent age)
+                                        (item-referent table)
+                                        :foo]
                            :class "column-header"}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
@@ -1202,6 +1205,9 @@
                                              :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
+                            
+                            :delete-key [[:parallel [] name-id-referents]
+                                         :foo]
                             :class "column-header"}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
@@ -1219,7 +1225,10 @@
                                          :foo]
                         :column-condition '(:none (??? tag)
                                                   (:column :non-semantic)
-                                                  ("name" tag))}]]
+                                                  ("name" tag))
+                        :delete-key [(item-referent name)
+                                     (item-referent table)
+                                     :foo]}]]
                [:div {:class "column-header-container rightmost tags"
                       :style {:width "150px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
@@ -1231,6 +1240,9 @@
                               :column-condition '(:none (??? tag)
                                                         (:column :non-semantic)
                                                         ("name" tag))
+                              :delete-key [(item-referent name-id)
+                                           (item-referent table)
+                                           :foo]
                               :class "column-header"}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
@@ -1378,6 +1390,8 @@
                                               :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
+                            :delete-key [[:parallel [] name-id-referents]
+                                         :foo]
                             :class "column-header"}
                 [item-DOM
                  name-tag name-header-key #{name-tag-spec}
@@ -1394,6 +1408,9 @@
                                                        (:column :non-semantic)
                                                        ("name" tag))
                              :sibling-condition [nil 'tag]
+                             :delete-key [(item-referent name-id)
+                                          (item-referent table)
+                                          :foo]
                              :class "column-header"}
                  [item-DOM
                   id-tag name-id-header-key #{id-tag-spec}
@@ -1410,7 +1427,10 @@
                                          :foo]
                         :column-condition '(:none (??? tag)
                                                   (:column :non-semantic)
-                                                  ("name" tag))}]]]]]
+                                                  ("name" tag))
+                        :delete-key  [(item-referent name)
+                                      (item-referent table)
+                                      :foo]}]]]]]
             ;; Joe
             [:div {:class "table-row"}
              [:component {:key (into [(:item-id joe-id)

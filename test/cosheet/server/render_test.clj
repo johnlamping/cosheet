@@ -961,6 +961,7 @@
                                             :foo]
                            :column-condition '(:none (??? tag)
                                                      (:column :non-semantic))
+                           :row-condition '(nil tag)
                            :delete-key [(item-referent age)
                                         (item-referent table)
                                         :foo]
@@ -1064,6 +1065,7 @@
                                              :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
+                            :row-condition '(nil tag)
                             :style {:width "100%", :display "block"}
                             :class "vertical-separated"}
                 [item-DOM
@@ -1205,6 +1207,7 @@
                                              :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
+                            :row-condition '(nil tag)
                             
                             :delete-key [[:parallel
                                           [(item-referent name-tag)]
@@ -1242,6 +1245,7 @@
                               :column-condition '(:none (??? tag)
                                                         (:column :non-semantic)
                                                         ("name" tag))
+                              :row-condition '(nil tag)
                               :delete-key [(item-referent name-id)
                                            (item-referent table)
                                            :foo]
@@ -1392,6 +1396,7 @@
                                               :foo]
                             :column-condition '(:none (??? tag)
                                                       (:column :non-semantic))
+                            :row-condition '(nil tag)
                             :delete-key [[:parallel
                                           [(item-referent name-tag)]
                                           name-id-referents]
@@ -1411,6 +1416,7 @@
                              :column-condition '(:none (??? tag)
                                                        (:column :non-semantic)
                                                        ("name" tag))
+                             :row-condition '(nil tag)
                              :sibling-condition [nil 'tag]
                              :delete-key [(item-referent name-id)
                                           (item-referent table)

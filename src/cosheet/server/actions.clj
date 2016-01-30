@@ -240,11 +240,11 @@
           attributes (key->attributes
                       dom-tracker (remove-content-location-referent key))
           order-sibling (order-key attributes)
-          new-condition (condition-key attributes)
           order-groups (if order-sibling
                         (key->item-groups store order-sibling)
                         (map vector (key->items store key)))
-          sibling-key (or order-sibling key)]
+          sibling-key (or order-sibling key)
+          new-condition (condition-key attributes)]
       (println "new row/column for id:" id
                " with key:" (simplify-for-print key))
       (println "keys" order-key condition-key)

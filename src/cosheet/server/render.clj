@@ -772,7 +772,8 @@
     (let [num-elements (count elements)
           components (map #(add-attributes %
                             {:column-sibling column-key
-                             :column-condition new-column-condition})
+                             :column-condition new-column-condition
+                             :row-condition elements-condition})
                           components)]
       (as-> (vertical-stack components :separators true) dom
         (cond (> num-elements 1)

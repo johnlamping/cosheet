@@ -980,9 +980,12 @@
 
 (defn table-row-DOM-component
   "Generate dom for one row of a possibly hierarchical table."
-  [row-item new-row-condition hierarchy table-parent-key inherited]
-  ;; TODO: Add the table as a comment to the row key, for uniqueness.
-  (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)]
+  [row-item table-item new-row-condition hierarchy table-parent-key inherited]
+  (let [row-key (prepend-to-key
+                 (item-referent row-item)
+                 (prepend-to-key
+                  (comment-referent (item-referent table-item))
+                  table-parent-key))]
     (make-component
      {:key row-key :class "table-row"}
      [table-row-DOM-contents
@@ -1056,7 +1059,8 @@
                                              inherited)
                    rows (expr-seq map
                                   #(table-row-DOM-component
-                                    % row-query hierarchy parent-key inherited)
+                                    % table-item row-query hierarchy
+                                    parent-key inherited)
                                   row-items)]
           (into [:div {:class "table"
                        :key (prepend-to-key (item-referent table-item)

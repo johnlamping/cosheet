@@ -938,7 +938,9 @@
     (is (check-keys dom joe))
     (is (check
          dom
-         (let [joe-key [(item-referent joe) :foo]
+         (let [joe-row-key [(item-referent joe)
+                            (comment-referent (item-referent table))
+                            :foo]
                query-list '(nil (nil ("age" tag)) (:top-level :non-semantic))
                age-header-key [[:parallel
                                 [[:comment '(nil tag)]]
@@ -972,39 +974,39 @@
              ;; Size column.
              (any)]
             [:component {:class "table-row"
-                         :key joe-key}
+                         :key joe-row-key}
              (evals-to
-              [:div {:key joe-key}
+              [:div {:key joe-row-key}
                [:div {:class "table-cell"}
                 [:component {:key (into [(:item-id joe-bogus-age)
                                          (comment-referent (item-referent age))]
-                                        joe-key)
+                                        joe-row-key)
                              :class "vertical-separated"
                              :style {:width "100%"
                                      :display "block"}
                              :sibling-condition [nil ["age" 'tag]]
-                             :row-sibling joe-key
+                             :row-sibling joe-row-key
                              :row-condition query-list}
                  [item-DOM
                   joe-bogus-age (into [(comment-referent (item-referent age))]
-                                      joe-key)
+                                      joe-row-key)
                   #{joe-bogus-age-tag}
                   {:depth 0, :do-not-merge #{}}]]
                 [:component {:key (into [(:item-id joe-age)
                                          (comment-referent (item-referent age))]
-                                        joe-key),
+                                        joe-row-key),
                              :class "vertical-separated"
                              :style {:width "100%"
                                      :display "block"}
                              :sibling-condition [nil ["age" 'tag]]
-                             :row-sibling joe-key
+                             :row-sibling joe-row-key
                              :row-condition query-list}
                  (any)]]
                [:div {:key (into [[:elements '(nil ("size" tag))]
                                   (comment-referent (item-referent size))]
-                                 joe-key),
+                                 joe-row-key),
                       :class "editable table-cell"
-                      :row-sibling joe-key
+                      :row-sibling joe-row-key
                       :row-condition query-list}]])]]))))
   ;; Test a header with two labels.
   (let [[dom table joe jane]
@@ -1044,8 +1046,12 @@
     (is (check-keys dom joe))
     (is (check
          dom
-         (let [joe-key [(item-referent joe) :foo]
-               jane-key [(item-referent jane) :foo]
+         (let [joe-row-key [(item-referent joe)
+                        (comment-referent (item-referent table))
+                        :foo]
+               jane-row-key [(item-referent jane)
+                             (comment-referent (item-referent table))
+                             :foo]
                query-list '(nil (:top-level :non-semantic))
                name-header-key [[:parallel
                                  [[:comment '(nil tag)]]
@@ -1081,38 +1087,37 @@
              (any)]
             ;; Joe
             [:component {:class "table-row"
-                         :key joe-key}
+                         :key joe-row-key}
              (evals-to
-              [:div {:key joe-key}
+              [:div {:key joe-row-key}
                [:component {:key (into [(:item-id joe-name)
                                         (comment-referent
                                          (item-referent name-id))]
-                                       joe-key)
+                                       joe-row-key)
                             :class "table-cell"
                             :sibling-condition (as-set [nil
                                                         ["name" 'tag]
                                                         ["id" 'tag]])
-                            :row-sibling joe-key
+                            :row-sibling joe-row-key
                             :row-condition '(nil (:top-level :non-semantic))}
                 [item-DOM
                  joe-name (into [(comment-referent (item-referent name-id))]
-                                joe-key)
+                                joe-row-key)
                  (set joe-name-tags)
                  {:depth 0, :do-not-merge #{}}]]
                ;; Joe's age
                (any)])]
             ;; Jane
             [:component {:class "table-row"
-                         :key jane-key}
+                         :key jane-row-key}
              (evals-to
-              [:div {:key jane-key}
-               [:div {:key [[:elements (as-set
-                                        '(nil ("name" tag) ("id" tag)))]
-                            (comment-referent (item-referent name-id))
-                            (item-referent jane)
-                            :foo],
+              [:div {:key jane-row-key}
+               [:div {:key (into [[:elements (as-set
+                                              '(nil ("name" tag) ("id" tag)))]
+                                  (comment-referent (item-referent name-id))]
+                                 jane-row-key),
                       :class "editable table-cell"
-                      :row-sibling [(item-referent jane) :foo]
+                      :row-sibling jane-row-key
                       :row-condition '(nil (:top-level :non-semantic))}]
                ;; Jane's age
                (any)])]]))))
@@ -1166,8 +1171,12 @@
     (is (check-keys dom joe))
     (is (check
          dom
-         (let [joe-key [(item-referent joe) :foo]
-               jane-key [(item-referent jane) :foo]
+         (let [joe-row-key [(item-referent joe)
+                            (comment-referent (item-referent table))
+                            :foo]
+               jane-row-key [(item-referent jane)
+                             (comment-referent (item-referent table))
+                             :foo]
                query-list '(nil (:top-level :non-semantic))
                name-referents [(key-referent [(item-referent name)
                                               (item-referent table)])
@@ -1266,51 +1275,51 @@
                    {:level 1, :depth 0, :do-not-merge #{}}]]]]]]
             ;; Joe
             [:component {:class "table-row"
-                         :key joe-key}
+                         :key joe-row-key}
              (evals-to
-              [:div {:key joe-key}
+              [:div {:key joe-row-key}
                [:component {:key (into [(:item-id joe-nickname)
                                         (comment-referent
                                          (item-referent name))]
-                                       joe-key)
+                                       joe-row-key)
                             :class "table-cell"
                             :sibling-condition [nil ["name" 'tag]]
-                            :row-sibling joe-key
+                            :row-sibling joe-row-key
                             :row-condition '(nil (:top-level :non-semantic))}
                 [item-DOM
                  joe-nickname (into [(comment-referent (item-referent name))]
-                                    joe-key)
+                                    joe-row-key)
                  (set joe-nickname-tags)
                  {:depth 0, :do-not-merge #{}}]]
                ;; Joe's id
                [:component {:key (into [(:item-id joe-id)
                                         (comment-referent
                                          (item-referent name-id))]
-                                       joe-key)
+                                       joe-row-key)
                             :class "table-cell"
                             :sibling-condition (as-set [nil
                                                         ["id" 'tag]
                                                         ["name" 'tag]])
-                            :row-sibling joe-key
+                            :row-sibling joe-row-key
                             :row-condition '(nil (:top-level :non-semantic))}
                 [item-DOM
                  joe-id (into [(comment-referent (item-referent name-id))]
-                              joe-key)
+                              joe-row-key)
                  (set joe-id-tags)
                  {:depth 0, :do-not-merge #{}}]]])]
             ;; Jane
             [:component {:class "table-row"
-                         :key jane-key}
+                         :key jane-row-key}
              (evals-to
-              [:div {:key jane-key}
+              [:div {:key jane-row-key}
                [:component (any) (any)]
                ;; No name-id value.
                [:div {:class "editable table-cell"
                       :key (into [(elements-referent '(nil ("id" tag)
                                                            ("name" tag)))
                                   (comment-referent (item-referent name-id))]
-                                 jane-key)
-                      :row-sibling jane-key
+                                 jane-row-key)
+                      :row-sibling jane-row-key
                       :row-condition '(nil (:top-level :non-semantic))}]])]]))))
   (let [[dom table joe jane]
         (let-mutated [table `("table"
@@ -1361,8 +1370,12 @@
     (is (check-keys dom joe))
     (is (check
          dom
-         (let [joe-key [(item-referent joe) :foo]
-               jane-key [(item-referent jane) :foo]
+         (let [joe-row-key [(item-referent joe)
+                            (comment-referent (item-referent table))
+                            :foo]
+               jane-row-key [(item-referent jane)
+                             (comment-referent (item-referent table))
+                             :foo]
                query-list '(nil (:top-level :non-semantic))
                name-referents [(key-referent [(item-referent name-id)
                                               (item-referent table)])
@@ -1460,49 +1473,49 @@
                                       :foo]}]]]]]
             ;; Joe
             [:component {:class "table-row"
-                         :key joe-key}
+                         :key joe-row-key}
              (evals-to
-              [:div {:key joe-key}
+              [:div {:key joe-row-key}
                [:component {:key (into [(:item-id joe-id)
                                         (comment-referent
                                          (item-referent name-id))]
-                                       joe-key)
+                                       joe-row-key)
                             :class "table-cell"
                             :sibling-condition (as-set [nil
                                                         ["id" 'tag]
                                                         ["name" 'tag]])
-                            :row-sibling joe-key
+                            :row-sibling joe-row-key
                             :row-condition '(nil (:top-level :non-semantic))}
                 [item-DOM
                  joe-id (into [(comment-referent (item-referent name-id))]
-                              joe-key)
+                              joe-row-key)
                  (set joe-id-tags)
                  {:depth 0, :do-not-merge #{}}]]
                ;; Joe's id
                [:component {:key (into [(:item-id joe-nickname)
                                         (comment-referent
                                          (item-referent name))]
-                                       joe-key)
-                            :row-sibling joe-key
+                                       joe-row-key)
+                            :row-sibling joe-row-key
                             :row-condition '(nil (:top-level :non-semantic))
                             :class "table-cell"
                             :sibling-condition [nil ["name" 'tag]]}
                 [item-DOM
                  joe-nickname (into [(comment-referent (item-referent name))]
-                                    joe-key)
+                                    joe-row-key)
                  (set joe-nickname-tags)
                  {:depth 0, :do-not-merge #{}}]]])]
             ;; Jane
             [:component {:class "table-row"
-                         :key jane-key}
+                         :key jane-row-key}
              (evals-to              
-              [:div {:key jane-key}
+              [:div {:key jane-row-key}
                [:div {:class "editable table-cell"
                       :key (into [(elements-referent '(nil ("id" tag)
                                                            ("name" tag)))
                                   (comment-referent (item-referent name-id))]
-                                 jane-key)
-                      :row-sibling jane-key
+                                 jane-row-key)
+                      :row-sibling jane-row-key
                       :row-condition '(nil (:top-level :non-semantic))}]
                ;; No name-id value.
                [:component (any) (any)]])]])))))

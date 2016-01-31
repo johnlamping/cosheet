@@ -934,8 +934,7 @@
 
 (defn table-row-column-group-DOM
   "Generate the dom for the cells of a row under one hierarchy group."
-  ;; TODO: remove table-parent-key, which is never used.
-  [row-item row-key new-row-condition node table-parent-key inherited]
+  [row-item row-key new-row-condition node inherited]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
         excluded-conditions (map :condition
@@ -962,7 +961,7 @@
                    #(if (hierarchy-node? %)
                       (table-row-column-group-DOM
                        row-item row-key new-row-condition
-                       % table-parent-key inherited)
+                       % inherited)
                       (expr-let [dom (make-member-cell-DOM %)]
                         [dom]))
                    next-level)]
@@ -970,11 +969,11 @@
 
 (defn table-row-DOM
   "Generate the dom for one row of a possibly hierarchical table."
-  [row-item new-row-condition hierarchy row-key table-parent-key inherited]
+  [row-item new-row-condition hierarchy row-key inherited]
   (expr-let [cell-groups (expr-seq
                           map #(table-row-column-group-DOM
                                 row-item row-key new-row-condition %
-                                table-parent-key inherited)
+                                inherited)
                           hierarchy)]
     ;; TODO: remove the class?
     (into [:div {:class "table-row"
@@ -1057,7 +1056,7 @@
                               {:key row-key
                                :class "table-row"}
                               [table-row-DOM row-item row-query hierarchy
-                               row-key parent-key inherited])))
+                               row-key inherited])))
                          row-items)]
           (into [:div {:class "table"
                        :key (prepend-to-key (item-referent table-item)

@@ -194,6 +194,10 @@
     box-sizing: content-box to let us put the borders at a div that
     might wrap the div that sizes the cells. */
 
+.table {
+    width: fit-content;
+}
+
 .column-header-container {
     display: flex;
     flex-direction: column;
@@ -279,7 +283,7 @@
 }
 
 .column-header-sequence {
-    display: inline-flex;
+    display: flex;
     align-items: stretch;
     box-sizing: content-box;
 }

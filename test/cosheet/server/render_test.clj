@@ -974,8 +974,7 @@
             [:component {:class "table-row"
                          :key joe-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key joe-key}
+              [:div {:key joe-key}
                [:div {:class "table-cell"}
                 [:component {:key (into [(:item-id joe-bogus-age)
                                          (comment-referent (item-referent age))]
@@ -1084,8 +1083,7 @@
             [:component {:class "table-row"
                          :key joe-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key joe-key}
+              [:div {:key joe-key}
                [:component {:key (into [(:item-id joe-name)
                                         (comment-referent
                                          (item-referent name-id))]
@@ -1107,8 +1105,7 @@
             [:component {:class "table-row"
                          :key jane-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key jane-key}
+              [:div {:key jane-key}
                [:div {:key [[:elements (as-set
                                         '(nil ("name" tag) ("id" tag)))]
                             (comment-referent (item-referent name-id))
@@ -1271,8 +1268,7 @@
             [:component {:class "table-row"
                          :key joe-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key joe-key}
+              [:div {:key joe-key}
                [:component {:key (into [(:item-id joe-nickname)
                                         (comment-referent
                                          (item-referent name))]
@@ -1306,8 +1302,7 @@
             [:component {:class "table-row"
                          :key jane-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key jane-key}
+              [:div {:key jane-key}
                [:component (any) (any)]
                ;; No name-id value.
                [:div {:class "editable table-cell"
@@ -1467,8 +1462,7 @@
             [:component {:class "table-row"
                          :key joe-key}
              (evals-to
-              [:div {:class "table-row"
-                     :key joe-key}
+              [:div {:key joe-key}
                [:component {:key (into [(:item-id joe-id)
                                         (comment-referent
                                          (item-referent name-id))]
@@ -1502,8 +1496,7 @@
             [:component {:class "table-row"
                          :key jane-key}
              (evals-to              
-              [:div {:class "table-row"
-                     :key jane-key}
+              [:div {:key jane-key}
                [:div {:class "editable table-cell"
                       :key (into [(elements-referent '(nil ("id" tag)
                                                            ("name" tag)))

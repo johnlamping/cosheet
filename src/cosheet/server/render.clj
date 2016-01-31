@@ -967,18 +967,26 @@
                    next-level)]
       (apply concat cell-lists))))
 
-(defn table-row-DOM
-  "Generate the dom for one row of a possibly hierarchical table."
+(defn table-row-DOM-contents
+  "Generate the contents for a component corresponding to a table row."
   [row-item new-row-condition hierarchy row-key inherited]
   (expr-let [cell-groups (expr-seq
                           map #(table-row-column-group-DOM
                                 row-item row-key new-row-condition %
                                 inherited)
                           hierarchy)]
-    ;; TODO: remove the class?
-    (into [:div {:class "table-row"
-                 :key row-key}]
+    (into [:div {:key row-key}]
           (apply concat cell-groups))))
+
+(defn table-row-DOM-component
+  "Generate dom for one row of a possibly hierarchical table."
+  [row-item new-row-condition hierarchy table-parent-key inherited]
+  ;; TODO: Add the table as a comment to the row key, for uniqueness.
+  (let [row-key (prepend-to-key (item-referent row-item) table-parent-key)]
+    (make-component
+     {:key row-key :class "table-row"}
+     [table-row-DOM-contents
+      row-item new-row-condition hierarchy row-key inherited])))
 
 (defn add-element-to-entity-list
   [entity element]
@@ -1046,18 +1054,10 @@
                                              '(nil tag) parent-key
                                              (query-referent row-query)
                                              inherited)
-                   rows (expr-seq
-                         map
-                         (fn [row-item]
-                           ;; Add the table as a comment to the row key, for uniqueness.
-                           (let [row-key (prepend-to-key
-                                          (item-referent row-item) parent-key)]
-                             (make-component
-                              {:key row-key
-                               :class "table-row"}
-                              [table-row-DOM row-item row-query hierarchy
-                               row-key inherited])))
-                         row-items)]
+                   rows (expr-seq map
+                                  #(table-row-DOM-component
+                                    % row-query hierarchy parent-key inherited)
+                                  row-items)]
           (into [:div {:class "table"
                        :key (prepend-to-key (item-referent table-item)
                                             parent-key)} headers]

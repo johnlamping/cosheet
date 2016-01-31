@@ -341,9 +341,10 @@
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]
                                      :other :foo}
-                         [identity [:div]]]]])
+                         [identity [:div {:key [:foo :root]}]]]]])
     (is (= (key->attributes tracker [:root]) {:key [:root] :other :bar}))
-    (is (= (key->attributes tracker [:foo :root]) {:other :foo}))))
+    (is (= (key->attributes tracker [:foo :root]) {:key [:foo :root]
+                                                   :other :foo}))))
 
 (deftest add-dom-test
   (let [md (new-expression-manager-data)
@@ -374,7 +375,7 @@
              [identity [:div {:key [:root] :other :bar}
                         [:component {:key [:foo :root]
                                      :other :foo}
-                         [identity [:div]]]]])
+                         [identity [:div {:key [:foo :root]}]]]]])
     (compute md)
     (let [old-out-of-date (:out-of-date-keys @tracker)]
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))

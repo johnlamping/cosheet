@@ -79,13 +79,13 @@
              [joe-id :bob]
              [item-DOM
               (description->entity joe-id mutable-store)
-              [joe-id :bob] #{} {:depth 1 :do-not-merge #{}}])
+              [:bob] #{} {:depth 1 :do-not-merge #{}}])
     (add-dom tracker
              "jane-root"
              [jane-id :bob]
              [item-DOM
               (description->entity jane-id mutable-store)
-              [jane-id :bob] #{} {:depth 1  :do-not-merge #{}}])
+              [:bob] #{} {:depth 1  :do-not-merge #{}}])
     (compute md)
     tracker))
 

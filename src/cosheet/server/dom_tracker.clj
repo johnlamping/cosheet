@@ -286,6 +286,8 @@
   (let [component-map (get-in data [:components key])
         old-dom (get-in data [:key->dom key])
         depth (:depth component-map)]
+    (let [attributes (second dom)]
+      (assert (= key (:key attributes))))
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
           (let [subcomponent-maps (dom->subcomponent-maps dom depth)

@@ -768,12 +768,22 @@
              (expr-seq map
                        #(condition-component
                          % elements-condition parent-key inherited)
-                       elements)]
+                       elements)
+             element-lists
+             (expr-seq map semantic-to-list elements)]
     (let [num-elements (count elements)
-          components (map #(add-attributes %
-                            {:column-sibling column-key
-                             :column-condition new-column-condition
-                             :row-condition elements-condition})
+          components (map-indexed
+                      (fn [position component]
+                        ;; Make the new column condition also require the
+                        ;; elements above this one in the list for this node.
+                        (let [column-condition
+                              (list* (concat new-column-condition
+                                             (take position element-lists)))]
+                          (add-attributes
+                           component
+                           {:column-sibling column-key
+                            :column-condition column-condition
+                            :row-condition elements-condition})))
                           components)]
       (as-> (vertical-stack components :separators true) dom
         (cond (> num-elements 1)

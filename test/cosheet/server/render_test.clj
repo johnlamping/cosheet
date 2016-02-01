@@ -1039,6 +1039,12 @@
         name-tag-spec (first
                        (remove #{name-tag-order}
                                (current-value (entity/elements name-tag))))
+        id-tag (first
+                (current-value (label->elements name-id o2)))
+        id-tag-order (first (current-value (label->elements id-tag :order)))
+        id-tag-spec (first
+                       (remove #{id-tag-order}
+                               (current-value (entity/elements id-tag))))
         joe-name (first (current-value
                          (label->elements joe "name")))
         joe-name-tags (current-value
@@ -1053,22 +1059,24 @@
                              (comment-referent (item-referent table))
                              :foo]
                query-list '(nil (:top-level :non-semantic))
-               name-header-key [[:parallel
-                                 [[:comment '(nil tag)]]
-                                 [(key-referent [(item-referent name-id)
-                                                 (item-referent table)])
-                                  [:parallel
-                                   [(elements-referent
-                                     (item-referent name-id))]
-                                   [(query-referent query-list)]]]]
-                                :foo]]
+               name-id-header-key [[:parallel
+                                    [[:comment '(nil tag)]]
+                                    [(key-referent [(item-referent name-id)
+                                                    (item-referent table)])
+                                     [:parallel
+                                      [(elements-referent
+                                        (item-referent name-id))]
+                                      [(query-referent query-list)]]]]
+                                   :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags top-level"
                     :style {:width "150px"}}
+              ;; name-id header
               [:div {:class "stack column-header"}
+               ;; name part of name-id header
                [:component {:key (prepend-to-key (item-referent name-tag)
-                                                 name-header-key)
+                                                 name-id-header-key)
                             :sibling-condition [nil 'tag]
                             :column-sibling [(item-referent name-id)
                                              (item-referent table)
@@ -1079,10 +1087,24 @@
                             :style {:width "100%", :display "block"}
                             :class "vertical-separated"}
                 [item-DOM
-                 name-tag name-header-key #{name-tag-spec}
+                 name-tag name-id-header-key #{name-tag-spec}
                  {:level 0, :depth 0, :do-not-merge #{}}]]
-               ;; id label
-               (any)]]
+               ;; id part of name-id header
+               [:component {:key (prepend-to-key (item-referent id-tag)
+                                                 name-id-header-key)
+                            :sibling-condition [nil 'tag]
+                            :column-sibling [(item-referent name-id)
+                                             (item-referent table)
+                                             :foo]
+                            :column-condition '(:none (??? tag)
+                                                      (:column :non-semantic)
+                                                      ("name" tag))
+                            :row-condition '(nil tag)
+                            :style {:width "100%", :display "block"}
+                            :class "vertical-separated"}
+                [item-DOM
+                 id-tag name-id-header-key #{id-tag-spec}
+                 {:level 0, :depth 0, :do-not-merge #{}}]]]]
              ;; Age column
              (any)]
             ;; Joe

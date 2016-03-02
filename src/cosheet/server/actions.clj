@@ -101,6 +101,21 @@
   (or (first (label->elements item :order))
       (first (matching-items '(nil :unused-orderable) store))))
 
+(defn add-and-select
+  "Run the specified function on the store and each of the items.
+  The function must return an updated store and the id of a new item.
+  Return a map of the new store and a selection request for the first
+  of the new items."
+  [f store items key-suffix, old-key]
+  (let [[store element-ids] (thread-map f store items)]
+    (if (empty? element-ids)
+      store
+      {:store store
+       :select [(prepend-to-key
+                 (item-referent (description->entity (first element-ids) store))
+                 key-suffix)
+                [old-key]]})))
+
 (defn update-add-entity-adjacent-to
   "Add an entity with the given subject id and contents,
    taking its order from the given item, in the given direction,
@@ -134,17 +149,8 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when (item-referent? first-primitive)
-      (let [[store element-ids] (thread-map
-                                (partial update-add-element "")
-                                store items)]
-        (if (empty? element-ids)
-          store
-          {:store store
-           :select [(prepend-to-key
-                     (item-referent
-                      (description->entity (first element-ids) store))
-                     (remove-content-location-referent key))
-                    [key]]})))))
+      (add-and-select (partial update-add-element "") store items
+                         (remove-content-location-referent key) key))))
 
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
@@ -188,19 +194,11 @@
     (println "in direction" direction)
     (println "sibling condition" sibling-condition)
     (when (item-referent? first-primitive)
-      (let [[store element-ids]
-            (thread-map (partial update-add-sibling
-                                 sibling-condition direction)
-                        store items)]
-        (if (empty? element-ids)
-          store
-          {:store store
-           :select [(prepend-to-key
-                     (item-referent
-                      (description->entity (first element-ids) store))
-                     (remove-first-primitive-referent
-                      (remove-content-location-referent key)))
-                    [key]]})))))
+      (add-and-select (partial update-add-sibling sibling-condition direction)
+                      store items
+                      (remove-first-primitive-referent
+                       (remove-content-location-referent key))
+                      key))))
 
 (defn furthest-item
   "Given a list of items and a direction,
@@ -239,19 +237,11 @@
       (println "in direction" direction)
       (when ((some-fn nil? item-referent? content-location-referent?)
              (first-primitive-referent sibling-key))
-        (let [[store element-ids]
-              (thread-map
-               (partial update-add-sibling new-condition direction)
-               store (map #(furthest-item % direction) order-groups))]
-          (if (empty? element-ids)
-            store
-            {:store store
-             :select [(prepend-to-key
-                       (item-referent
-                        (description->entity (first element-ids) store))
-                       (remove-first-primitive-referent
-                        (remove-content-location-referent sibling-key)))
-                      [key]]})))))
+        (add-and-select (partial update-add-sibling new-condition direction)
+                        store (map #(furthest-item % direction) order-groups)
+                        (remove-first-primitive-referent
+                         (remove-content-location-referent sibling-key))
+                        key))))
 
 (defn add-row-handler
   "Add a row to the item with the given client id."
@@ -307,30 +297,23 @@
                 adjacent-key (:add-adjacent attributes)
                 [_ condition] first-primitive
                 model-entity (cons to (rest condition))
-                [new-store new-ids]
-                (if adjacent-key
-                  (let [adjacents (key->items store adjacent-key)
-                        direction (:add-direction attributes)]
-                    (assert (= (count items) (count adjacents)))
-                    (thread-map
-                     (fn [store [subject adjacent]]
-                       (update-add-entity-adjacent-to
-                        store (:item-id subject) model-entity
-                        adjacent direction false))
-                     store (map vector items adjacents)))
-                  (thread-map
-                   (fn [store item]
-                     (update-add-element model-entity store item))
-                   store items))]
-            {:store new-store
-             :select [(prepend-to-key
-                       (item-referent
-                        (description->entity (first new-ids) store))
-                       ;; Remove the condition, unless it is a tag condition.
-                       (if (= condition [nil 'tag])
-                         key
-                         (remove-first-primitive-referent key)))
-                      [key]]})))) 
+                selection_suffix (if (= condition [nil 'tag])
+                                   key
+                                   (remove-first-primitive-referent key))]
+            (if adjacent-key
+              (let [adjacents (key->items store adjacent-key)
+                    direction (:add-direction attributes)]
+                (assert (= (count items) (count adjacents)))
+                (add-and-select
+                 (fn [store [subject adjacent]]
+                   (update-add-entity-adjacent-to
+                    store (:item-id subject) model-entity
+                    adjacent direction false))
+                 store (map vector items adjacents) selection_suffix key))
+              (add-and-select
+               (fn [store item]
+                 (update-add-element model-entity store item))
+               store items selection_suffix key))))))
 
 (defn selected-handler
   [store session-state id]

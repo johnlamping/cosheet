@@ -71,6 +71,18 @@
       (reset! cell (min (inc current) 5)))
     (is (= @cell 5))))
 
+(deftest thread-map-test
+  (let [[state result] (thread-map (fn [n i] [(conj n i) (* i 2)])
+                                   [] [1 2 3 4])]
+    (is (= state [1 2 3 4]))
+    (is (= result [2 4 6 8]))))
+
+(deftest thread-recursive-map-test
+  (let [[state result] (thread-recursive-map (fn [n i] [(conj n i) (* i 2)])
+                                             [] [[1 2] [3 4]])]
+    (is (= state [1 2 3 4]))
+    (is (= result [[2 4] [6 8]]))))
+
 (deftest parse-string--as-number-test
   (is (= (parse-string-as-number "x") "x"))
   (is (= (parse-string-as-number "1") 1))

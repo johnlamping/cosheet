@@ -4,7 +4,7 @@
    [ring.util.response :refer [response]]
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number]]
+    [utils :refer [parse-string-as-number thread-map thread-recursive-map]]
     [orderable :refer [split earlier?]]
     [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
@@ -15,7 +15,7 @@
     [entity :refer [StoredEntity description->entity
                     content elements label->elements label->content to-list]]
     [dom-utils :refer [dom-attributes]]
-    [query :refer [query-matches]]
+    [query :refer [matching-items]]
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
@@ -34,11 +34,14 @@
   "Set the content of the item in the store provided the current content
    matches 'from'."
   [from to store item]
-  (if (= (let [content (content item)]
+  ;; There are two special cases to match: If we have a number,
+  ;; the user will have a string. If we have an anonymous symbol, the user
+  ;; will have "???".
+  (if (= (parse-string-as-number from)
+         (let [content (content item)]
            (if (and (symbol? content) (= (subs (str content) 0 3) "???"))
              "???"
-             content))
-         (parse-string-as-number from))
+             content)))
     (update-content store (:item-id item) to)
     (do (println "content doesn't match" (content item) from)
         store)))
@@ -96,20 +99,15 @@
    or, if that is not available, for the overall store."
   [item store]
   (or (first (label->elements item :order))
-      (:v (first (query-matches
-                  '(:variable
-                    (:v :name)
-                    ((nil :unused-orderable) :condition)
-                    (true :reference))
-                  store)))))
+      (first (matching-items '(nil :unused-orderable) store))))
 
-(defn update-add-entity-with-order-item
+(defn update-add-entity-adjacent-to
   "Add an entity with the given subject id and contents,
    taking its order from the given item, in the given direction,
    and giving the entity the bigger piece if use-bigger is true.
    Return the updated store and the id of the entity."
-  [store subject-id entity order-item side use-bigger]
-  (let [order-element (order-element-for-item order-item store)
+  [store subject-id entity adjacent-to side use-bigger]
+  (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store id remainder] (update-add-entity-with-order
                               store subject-id entity
@@ -120,19 +118,9 @@
   "Add an entity to the store as a new element of the given subject.
   Return the new store and the id of the new element."
   [entity store subject]
-  (update-add-entity-with-order-item
+  (update-add-entity-adjacent-to
    store (:item-id subject) entity
    subject :after false))
-
-(defn reduce-update-add
-  "Given a function from store and data to store and id, reduce it
-   on the store and each of the datum, returning the final store
-   and the first item that came back." 
-  [f store datums]
-  (reduce (fn [[store id] data]
-            (let [[store new-id] (f store data)]
-              [store (or id new-id)]))
-          [store nil] datums))
 
 (defn add-element-handler
   "Add a element to the item with the given client id.
@@ -146,16 +134,17 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when (item-referent? first-primitive)
-      (let [[store element-id] (reduce-update-add
+      (let [[store element-ids] (thread-map
                                 (partial update-add-element "")
                                 store items)]
-        (if element-id
+        (if (empty? element-ids)
+          store
           {:store store
            :select [(prepend-to-key
-                     (item-referent (description->entity element-id store))
+                     (item-referent
+                      (description->entity (first element-ids) store))
                      (remove-content-location-referent key))
-                    [key]]}
-          store)))))
+                    [key]]})))))
 
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
@@ -163,22 +152,14 @@
   a new unique keyword.  This may require updating the store.
   Return the new condition and new store."
   [condition store]
-  (cond (sequential? condition)
-        (let [[accum store]
-              (reduce
-               (fn [[accum store] part]
-                 (let [[adjusted store] (adjust-condition part store)]
-                   [(conj accum adjusted) store]))
-               [[] store]
-               condition)]
-          [(list* accum) store])
-        (= condition nil)
-        ["" store]
-        (= condition '???)
-        (let [[id store] (get-unique-id-number store)]
-          [(symbol (str "???-" id)) store])
-        true
-        [condition store]))
+  (reverse
+   (thread-recursive-map
+    (fn [store item]
+      (cond  (= item nil) [store ""]
+             (= item '???)  (let [[id store] (get-unique-id-number store)]
+                              [store (symbol (str "???-" id))])
+             true [store item]))
+    store condition)))
 
 (defn update-add-sibling
   "Given an item and a condition, add a sibling in the given direction
@@ -186,7 +167,8 @@
   the new element."
   [sibling-condition direction store item]
   (let [[adjusted store] (adjust-condition sibling-condition store)]
-    (update-add-entity-with-order-item
+    (println "adjusted" adjusted "store" store)
+    (update-add-entity-adjacent-to
      store (id->subject store (:item-id item)) adjusted
      item direction true)))
 
@@ -206,18 +188,19 @@
     (println "in direction" direction)
     (println "sibling condition" sibling-condition)
     (when (item-referent? first-primitive)
-      (let [[store element-id]
-            (reduce-update-add (partial update-add-sibling
-                                        sibling-condition direction)
-                               store items)]
-        (if element-id
+      (let [[store element-ids]
+            (thread-map (partial update-add-sibling
+                                 sibling-condition direction)
+                        store items)]
+        (if (empty? element-ids)
+          store
           {:store store
            :select [(prepend-to-key
-                     (item-referent (description->entity element-id store))
+                     (item-referent
+                      (description->entity (first element-ids) store))
                      (remove-first-primitive-referent
                       (remove-content-location-referent key)))
-                    [key]]}
-          store)))))
+                    [key]]})))))
 
 (defn furthest-item
   "Given a list of items and a direction,
@@ -256,18 +239,19 @@
       (println "in direction" direction)
       (when ((some-fn nil? item-referent? content-location-referent?)
              (first-primitive-referent sibling-key))
-        (let [[store element-id]
-              (reduce-update-add
+        (let [[store element-ids]
+              (thread-map
                (partial update-add-sibling new-condition direction)
                store (map #(furthest-item % direction) order-groups))]
-          (if element-id
+          (if (empty? element-ids)
+            store
             {:store store
              :select [(prepend-to-key
-                       (item-referent (description->entity element-id store))
+                       (item-referent
+                        (description->entity (first element-ids) store))
                        (remove-first-primitive-referent
                         (remove-content-location-referent sibling-key)))
-                      [key]]}
-            store)))))
+                      [key]]})))))
 
 (defn add-row-handler
   "Add a row to the item with the given client id."
@@ -323,24 +307,25 @@
                 adjacent-key (:add-adjacent attributes)
                 [_ condition] first-primitive
                 model-entity (cons to (rest condition))
-                [new-store new-id]
+                [new-store new-ids]
                 (if adjacent-key
                   (let [adjacents (key->items store adjacent-key)
                         direction (:add-direction attributes)]
                     (assert (= (count items) (count adjacents)))
-                    (reduce-update-add
+                    (thread-map
                      (fn [store [subject adjacent]]
-                       (update-add-entity-with-order-item
+                       (update-add-entity-adjacent-to
                         store (:item-id subject) model-entity
                         adjacent direction false))
                      store (map vector items adjacents)))
-                  (reduce-update-add
+                  (thread-map
                    (fn [store item]
                      (update-add-element model-entity store item))
                    store items))]
             {:store new-store
              :select [(prepend-to-key
-                       (item-referent (description->entity new-id store))
+                       (item-referent
+                        (description->entity (first new-ids) store))
                        ;; Remove the condition, unless it is a tag condition.
                        (if (= condition [nil 'tag])
                          key

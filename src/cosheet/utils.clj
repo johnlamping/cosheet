@@ -48,7 +48,7 @@
     [(fun nil)]
     (update-in vec [(dec (count vec))] fun)))
 
-;;; Utilities for making clean maps.
+;;; Utilities for making maps that clean up empty values.
 
 (defn dissoc-in
   "Remove (get-in map keys), and if that creates an empty map one
@@ -114,6 +114,32 @@
   `(call-with-latest-value
     (fn [] ~expression)
     (fn [~var] ~@body)))
+
+;;; Threading state through map style operations
+
+(defn thread-map
+  "Call f on each element of the sequence, passing it the current state
+  as its first argument. f must return a pair of the new state and a value.
+  Return the final state and the sequence of values.
+  If the initial items are a seq, have the returned sequence be a seq."
+  [f state items]
+  (let [[state mapped]
+        (reduce (fn [[state accum] item]
+                  (let [[state value] (f state item)]
+                    [state (conj accum value)]))
+                [state []] items)]
+    [state (if (seq? items) (list* mapped) mapped)]))
+
+(defn thread-recursive-map
+  "Walk the possibly nested sequence, calling f on each element,
+  passing it the current state as its first argument. f must return a
+  pair of the new state and a value.
+  Return the final state and the nested sequence of values."
+  [f state items]
+  (if (sequential? items)
+    (thread-map (fn [state items] (thread-recursive-map f state items))
+                state items)
+    (f state items)))
 
 ;;; Parsing
 

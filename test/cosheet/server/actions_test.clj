@@ -192,16 +192,16 @@
 (deftest add-element-handler-test
   (let [joe-age-id (:item-id joe-age)
         mutable-store (new-mutable-store store)
-        tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (find-dom-id tracker joe-age)
-          {:keys [store select]} (add-element-handler
-                                  store tracker joe-age-dom-id)
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-age-dom-id (find-dom-id tracker joe-age)
+        joe-age-key (get-in @tracker [:id->key joe-age-dom-id])]
+    (let [{:keys [store select]} (add-element-handler
+                                  store tracker joe-age-key)
           new-joe-age (description->entity joe-age-id store)
           new-element (first (filter #(= (content %) "")
                                      (elements new-joe-age)))]
-      (let [key (get-in @tracker [:id->key joe-age-dom-id])]
-        (is (= select [(prepend-to-key (item-referent new-element) key)
-                       [key]])))
+      (is (= select [(prepend-to-key (item-referent new-element) joe-age-key)
+                     [joe-age-key]]))
       (is (= (item->canonical-semantic new-joe-age)
              [45 {["age" {'tag 1}] 1, "" 1}])))))
 
@@ -237,19 +237,20 @@
 
 (deftest add-sibling-handler-test
   (let [mutable-store (new-mutable-store store)
-        tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (find-dom-id tracker joe-age)
-          {:keys [store select]} (add-sibling-handler
-                                  store tracker joe-age-dom-id :after)]
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-age-dom-id (find-dom-id tracker joe-age)
+        joe-age-key (get-in @tracker [:id->key joe-age-dom-id])]
+    (let [{:keys [store select]} (add-sibling-handler
+                                  store tracker joe-age-key :after)]
       (let [joe-age-ids (id-label->element-ids store joe-id "age")
             joe-ages (map #(id->content store %) joe-age-ids)
             new-element-id (first (filter #(= (id->content store %) "")
-                                       joe-age-ids))
-            key (get-in @tracker [:id->key joe-age-dom-id])]
+                                       joe-age-ids))]
         (is (= (set joe-ages) #{"" 39 45}))
-        (is (= select [(prepend-to-key new-element-id
-                                       (remove-first-primitive-referent key))
-                       [key]]))))))
+        (is (= select [(prepend-to-key
+                        new-element-id
+                        (remove-first-primitive-referent joe-age-key))
+                       [joe-age-key]]))))))
 
 (deftest furthest-item-test
   (is (= (furthest-item [joe-married] :before) joe-married))
@@ -258,20 +259,20 @@
 
 (deftest add-row-handler-test
   (let [mutable-store (new-mutable-store store)
-        tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-age-dom-id (find-dom-id tracker joe-age)
-          joe-age-tag-dom-id (first (filter
-                                     #(let [key (get-in @tracker [:id->key %])
-                                            leading (first key)]
-                                        (and (parallel-referent? leading)
-                                             (item-referent?
-                                              (first (second leading)))))
-                                     (keys (:id->key @tracker))))
-          [v-store v-id] (update-add-sibling nil :after store joe-age)
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-age-dom-id (find-dom-id tracker joe-age)
+        joe-age-tag-dom-id (first (filter
+                                   #(let [key (get-in @tracker [:id->key %])
+                                          leading (first key)]
+                                      (and (parallel-referent? leading)
+                                           (item-referent?
+                                            (first (second leading)))))
+                                   (keys (:id->key @tracker))))
+        joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
+        joe-age-tag-key (get-in @tracker [:id->key joe-age-tag-dom-id])]
+    (let [[v-store v-id] (update-add-sibling nil :after store joe-age)
           {:keys [store select]} (add-row-handler
-                                  store tracker joe-age-tag-dom-id :after)
-          joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
-          joe-age-tag-key (get-in @tracker [:id->key joe-age-tag-dom-id])]
+                                  store tracker joe-age-tag-key :after)]
       (is (= store v-store))
       (is (= select [(prepend-to-key v-id (remove-first-primitive-referent
                                            joe-age-key))
@@ -279,9 +280,10 @@
 
 (deftest delete-handler-test
   (let [mutable-store (new-mutable-store store)
-        tracker (new-joe-jane-tracker mutable-store)]
-    (let [joe-bogus-age-dom-id (find-dom-id tracker joe-bogus-age)
-          new-store (delete-handler store tracker joe-bogus-age-dom-id)]
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-bogus-age-dom-id (find-dom-id tracker joe-bogus-age)
+        joe-bogus-age-key (get-in @tracker [:id->key joe-bogus-age-dom-id])]
+    (let [new-store (delete-handler store tracker joe-bogus-age-key)]
       (let [joe-age-ids (id-label->element-ids new-store joe-id "age")
             joe-ages (map #(id->content new-store %) joe-age-ids)]
         (is (= (set joe-ages) #{45}))))))
@@ -301,19 +303,26 @@
                              joe-id]
         tracker (new-joe-jane-tracker mutable-store)]
     (is (= (id->content
-            (set-content-handler store tracker "joe-root" "Joe" "Jim")
+            (set-content-handler store tracker [joe-id :bob] "Joe" "Jim")
             joe-id)
            "Jim"))
     (is (= (id->content
-            (set-content-handler store tracker "joe-root" "Wrong" "Jim")
+            (set-content-handler store tracker [joe-id :bob] "Wrong" "Jim")
             joe-id)
            "Joe"))
     ;; Now, try calling it when there is a parallel referent.
-    (swap! tracker #(-> %
-                        (assoc-in [:id->key "test"]
-                                  [[:parallel
+    (let [modified (set-content-handler
+                    store tracker [[:parallel
                                     [(:item-id joe-age-tag) (:item-id joe-age)]
-                                    [joe-id jane-id]]])
+                                    [joe-id jane-id]]] "age" "oldness")]
+      (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
+      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
+    ;; Try calling it from do-actions.
+    (do-actions mutable-store {:tracker tracker}
+                {1 [:set-content "joe-root" "Joe" "Fred"]})
+    (is (= (current-value (content mutable-joe)) "Fred"))
+    ;; Try when an entry is added, also from do-actions.
+    (swap! tracker #(-> %
                         (assoc-in [:id->key "test2"]
                                   joe-male-tag-key)
                         (assoc-in [:id->key "test3"]
@@ -324,14 +333,6 @@
                         (assoc-in [:components joe-married-tag-key
                                    :attributes :add-direction]
                                   :before)))
-    (let [modified (set-content-handler store tracker "test" "age" "oldness")]
-      (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
-      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
-    ;; Try calling it from do-actions.
-    (do-actions mutable-store {:tracker tracker}
-                {1 [:set-content "joe-root" "Joe" "Fred"]})
-    (is (= (current-value (content mutable-joe)) "Fred"))
-    ;; Try when an entry is added, also from do-actions.
     (do-actions mutable-store {:tracker tracker}
                 {2 [:set-content "test2" nil "gender"]})
     (is (= (current-value (semantic-to-list mutable-joe-male))

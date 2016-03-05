@@ -102,12 +102,12 @@
       (first (matching-items '(nil :unused-orderable) store))))
 
 (defn add-and-select
-  "Run the specified function on the store and each of the items.
+  "Run the specified function on the store and each of the arguments.
   The function must return an updated store and the id of a new item.
   Return a map of the new store and a selection request for the first
   of the new items."
-  [f store items key-suffix, old-key]
-  (let [[store element-ids] (thread-map f store items)]
+  [f store arguments key-suffix, old-key]
+  (let [[store element-ids] (thread-map f store arguments)]
     (if (empty? element-ids)
       store
       {:store store
@@ -230,6 +230,39 @@
                         (remove-first-primitive-referent
                          (remove-content-location-referent sibling-key))
                         key))))
+
+(defn do-add
+  "Add new item(s), in accord with the optional arguments.
+  The default is to add a new element to the target, adjacent to the target." 
+  [store target-key _ ; should be no UI args
+   & {:keys [template subject-key adjacent-key adjacent-group-key
+             all-elements side use-bigger]
+      :or  {template nil           ; template that added item(s) should satisfy
+            subject-key nil        ; subject(s) of the new item(s)
+            adjacent-key nil       ; item(s) adjacent to new item(s)
+            adjacent-group-key nil ; item group(s) adjacent to new item(s)
+            all-elements nil       ; adjacency applies to elements of adjacent
+            side :after            ; :before or :after adjacent
+            use-bigger false       ; use the bigger part of adjacent's order
+            }}]
+  (let [subject-key (or subject-key target-key)
+        subjects (key->items store subject-key)
+        adjacents (cond
+                    adjacent-key (key->items store adjacent-key)
+                    adjacent-group-key (map #(furthest-item % side)
+                                            (key->item-groups
+                                             store adjacent-group-key))
+                   true subjects)
+        [adjusted-template store] (adjust-condition template store)]
+    ;; TODO: handle all-elements argument
+    (println "keys" subject-key target-key)
+    (add-and-select (fn [store [subject adjacent]]
+                      (update-add-entity-adjacent-to
+                       store (:item-id subject) adjusted-template
+                       adjacent side use-bigger))
+                    store
+                    (map vector subjects adjacents)
+                    subject-key target-key)))
 
 (defn add-row-handler
   "Add a row to the item with the given client id."

@@ -257,6 +257,34 @@
   (is (= (furthest-item [joe-married joe-male] :before) joe-male))
   (is (= (furthest-item [joe-married joe-male] :after) joe-married)))
 
+(deftest do-add-test
+  (let [jane-dom (current-value
+                  (item-DOM jane [(item-referent jane)]
+                            #{} {:depth 1 :do-not-merge #{}}))
+        order-entity (first (label->elements jane-age :order))
+        order (content order-entity)
+        age-dom (first (filter #(= (first (:key (second %)))
+                                   (item-referent jane-age))
+                               (dom->subcomponents jane-dom)))
+        jane-age-key [(:item-id jane-age) (:item-id jane)]
+        result (do-add store jane-age-key []
+                       :template '(nil ("age" tag))
+                       :subject-key [(:item-id jane)]
+                       :adjacent-key jane-age-key
+                       :use-bigger true)
+        s (:store result)
+        select (:select result)
+        new-jane (description->entity jane-id s)
+        new-element (first (filter #(= (content %) "")
+                                   (elements new-jane)))
+        [o5 x] (orderable/split order :after)
+        [o6 o7] (orderable/split x :before)]
+    (is (= (canonicalize-list (to-list new-element))
+           (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
+    (is (= (id->content s (:item-id order-entity)) o5))
+    (is (= select [[(:item-id new-element) (:item-id jane)]
+                   [jane-age-key]]))))
+
 (deftest add-row-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)

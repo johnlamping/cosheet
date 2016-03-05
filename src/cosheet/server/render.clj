@@ -49,6 +49,13 @@
 ;;; There are removed by the dom manager before dom is sent to the client.
 (def server-specific-attributes
   [               :key  ; A unique client side key further described below.
+             :commands  ; a map from command symbol to expression
+                        ; to carry out that command. The function
+                        ; of the expression will be called with:
+                        ; the mutable store, the key of the item,
+                        ; a list of the additional arguments passed from
+                        ; the UI, and the rest of the command expression.
+   ;; TODO: The following will be obsoleted by :commands
     :sibling-condition  ; Condition that a sibling of this item must satisfy.
          :add-adjacent  ; A key that a new item for this empty dom
                         ; should be adjacent to in the ordering.
@@ -62,7 +69,7 @@
         :row-condition  ; Condition that a new adjacent row must satisfy.
        :column-sibling  ; Analog of :row-sibling
      :column-condition  ; Analog of :column-sibling
-           :delete-key  ; The key to identity items for a delete,
+           :delete-key  ; The key to identity items to delete,
                         ; if different from the usual key.
     ])
 

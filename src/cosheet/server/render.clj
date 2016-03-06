@@ -53,7 +53,7 @@
                         ; to carry out that command. The function
                         ; of the expression will be called with:
                         ; the mutable store, the key of the item,
-                        ; a list of the additional arguments passed from
+                        ; the additional arguments passed from
                         ; the UI, and the rest of the command expression.
    ;; TODO: The following will be obsoleted by :commands
     :sibling-condition  ; Condition that a sibling of this item must satisfy.

@@ -268,7 +268,7 @@
                                    (item-referent jane-age))
                                (dom->subcomponents jane-dom)))
         jane-age-key [(:item-id jane-age) (:item-id jane)]
-        result1 (do-add store jane-age-key []
+        result1 (do-add store jane-age-key
                         :template '(nil ("age" tag))
                         :subject-key [(:item-id jane)]
                         :adjacent-key jane-age-key
@@ -285,7 +285,7 @@
                             []
                             [(:item-id jane-age) (:item-id jane-female)]]
                            jane-id]
-        result2 (do-add store jane-age-key []
+        result2 (do-add store jane-age-key
                         :template '(nil ("age" tag))
                         :subject-key [(:item-id jane)]
                         :adjacent-group-key jane-elements-key
@@ -328,15 +328,15 @@
             joe-ages (map #(id->content new-store %) joe-age-ids)]
         (is (= (set joe-ages) #{45}))))))
 
-(deftest do-delete--test
+(deftest do-delete-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)
         joe-bogus-age-dom-id (find-dom-id tracker joe-bogus-age)
         joe-age-dom-id (find-dom-id tracker joe-age)
         joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
         joe-bogus-age-key (get-in @tracker [:id->key joe-bogus-age-dom-id])]
-    (let [new-store (do-delete store joe-bogus-age-key nil)
-          alt-store (do-delete store joe-age-key nil
+    (let [new-store (do-delete store joe-bogus-age-key)
+          alt-store (do-delete store joe-age-key
                                :delete-key joe-bogus-age-key)
           joe-age-ids (id-label->element-ids new-store joe-id "age")
           joe-ages (map #(id->content new-store %) joe-age-ids)]

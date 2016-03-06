@@ -235,7 +235,7 @@
 (defn do-add
   "Add new item(s), in accord with the optional arguments.
   The default is to add a new element to the target, adjacent to the target." 
-  [store target-key _ ; should be no UI args
+  [store target-key
    & {:keys [template subject-key adjacent-key adjacent-group-key
              all-elements position use-bigger]
       :or  {template nil           ; template that added item(s) should satisfy
@@ -300,9 +300,8 @@
 (defn do-delete
   "Add new item(s), in accord with the optional arguments.
   The default is to add a new element to the target, adjacent to the target." 
-  [store target-key _ ; should be no UI args
-   & {:keys [delete-key] :or {delete-key nil}}]
- 
+  [store target-key
+   & {:keys [delete-key] :or {delete-key nil}}] 
   (let [delete-key (or delete-key target-key)
         items (key->items store delete-key)]
     (println "total items:" (count items))
@@ -345,8 +344,11 @@
                store items selection-suffix key))))))
 
 (defn do-set-content
-  [store target-key [from to]]
+  [store target-key   
+   & {:keys [from to] :or {from nil to nil}}]
   ;; TODO: Handle deleting.
+  (assert from)
+  (assert to)
   (let [to (parse-string-as-number to)]
     (let [items (key->items store target-key)]
       (println "updating " (count items) " items")
@@ -354,17 +356,18 @@
               store items))))
 
 (defn do-create-content
-  [store target-key [to]
-   & {:keys [adjacent-key adjacent-group-key all-elements position]
-      :or  {adjacent-key nil       ; item(s) adjacent to new item(s)
+  [store target-key
+   & {:keys [to adjacent-key adjacent-group-key all-elements position]
+      :or  {content nil            ; value of content
+            adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
             all-elements false     ; adjacency applies to elements of adjacent
-            position :after       ; :before or :after adjacent
+            position :after        ; :before or :after adjacent
             }}]
   (assert (elements-referent? (first-primitive-referent target-key)))
   (assert (or adjacent-key adjacent-group-key))
-  (let [to (parse-string-as-number to)]
-    (when (not= to "")
+  (let [content (parse-string-as-number content)]
+    (when (not= content "")
       (let [subjects (key->items store (remove-first-primitive-referent
                                         target-key))
             adjacents (cond
@@ -375,7 +378,7 @@
                         true subjects)
             first-primitive (first-primitive-referent target-key)
             [_ condition] first-primitive
-            model-entity (cons to (rest condition))
+            model-entity (cons content (rest condition))
             selection-suffix (if (= condition [nil 'tag])
                                ;; TODO: Should this change the condition
                                ;; to a comment?

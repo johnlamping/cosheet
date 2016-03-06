@@ -406,6 +406,58 @@
         (is (orderable/earlier? marital-status-order new-joe-order))
         (is (not= old-joe-order new-joe-order))))))
 
+(deftest do-set-content-test
+  (let [ joe-male-tag-key [(elements-referent [nil 'tag])
+                          (:item-id joe-male)
+                          joe-id]
+        joe-married-tag-key [(elements-referent [nil 'tag])
+                             (:item-id joe-married)
+                             joe-id]]
+    (is (= (id->content
+            (do-set-content store [joe-id :bob] :from "Joe" :to "Jim")
+            joe-id)
+           "Jim"))
+    (is (= (id->content
+            (do-set-content store [joe-id :bob] :from "Wrong" :to "Jim")
+            joe-id)
+           "Joe"))
+    ;; Now, try calling it when there is a parallel referent.
+    (let [modified (do-set-content
+                    store [[:parallel
+                            [(:item-id joe-age-tag) (:item-id joe-age)]
+                            [joe-id jane-id]]]
+                    :from "age" :to "oldness")]
+      (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
+      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))))
+
+(deftest do-create-content-test
+  (let  [joe-male-key [(:item-id joe-male) joe-id]
+         joe-male-tag-key (prepend-to-key (elements-referent [nil 'tag])
+                                          joe-male-key)
+         joe-married-tag-key [(elements-referent [nil 'tag])
+                              (:item-id joe-married)
+                              joe-id]]
+    (let [result (do-create-content store joe-male-tag-key :content "gender")
+          s1 (:store result)]
+      (is (= (semantic-to-list (description->entity (:item-id joe-male) s1))
+           ["male" ["gender" 'tag]])))
+    (let [old-joe-order (current-value (label->content joe :order))
+          result (do-create-content store joe-married-tag-key
+                                    :content "marital status"
+                                    :adjacent-key [joe-id]
+                                    :position :before)
+          s2 (:store result)]
+      (let [new-joe (description->entity joe-id s2)
+            new-joe-married (description->entity (:item-id joe-married) s2)
+            new-joe-order (current-value (label->content new-joe :order))
+            marital-status (first (label->elements new-joe-married 'tag))
+            marital-status-order (current-value
+                                  (label->content marital-status :order))]
+        (is (= (semantic-to-list new-joe-married)
+             ["married" ["marital status" 'tag]]))
+        (is (orderable/earlier? marital-status-order new-joe-order))
+        (is (not= old-joe-order new-joe-order))))))
+
 (deftest selected-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)

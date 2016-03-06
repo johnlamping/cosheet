@@ -357,7 +357,7 @@
 
 (defn do-create-content
   [store target-key
-   & {:keys [to adjacent-key adjacent-group-key all-elements position]
+   & {:keys [content adjacent-key adjacent-group-key all-elements position]
       :or  {content nil            ; value of content
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
@@ -365,7 +365,6 @@
             position :after        ; :before or :after adjacent
             }}]
   (assert (elements-referent? (first-primitive-referent target-key)))
-  (assert (or adjacent-key adjacent-group-key))
   (let [content (parse-string-as-number content)]
     (when (not= content "")
       (let [subjects (key->items store (remove-first-primitive-referent

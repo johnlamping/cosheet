@@ -255,7 +255,6 @@
                    true subjects)
         [adjusted-template store] (adjust-condition template store)]
     ;; TODO: handle all-elements argument
-    (println "keys" subject-key target-key)
     (add-and-select (fn [store [subject adjacent]]
                       (update-add-entity-adjacent-to
                        store (:item-id subject) adjusted-template

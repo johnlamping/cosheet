@@ -68,6 +68,7 @@
 (def joe-married (first (filter #(= (content %) "married")
                                 (elements joe))))
 (def jane (description->entity jane-id store))
+(def jane-female (first (filter #(= (content %) "female") (elements jane))))
 (def jane-age (first (label->elements jane "age")))
 (def jane-age-tag (first (elements jane-age)))
 
@@ -267,21 +268,32 @@
                                    (item-referent jane-age))
                                (dom->subcomponents jane-dom)))
         jane-age-key [(:item-id jane-age) (:item-id jane)]
-        result (do-add store jane-age-key []
-                       :template '(nil ("age" tag))
-                       :subject-key [(:item-id jane)]
-                       :adjacent-key jane-age-key
-                       :use-bigger true)
-        s (:store result)
-        select (:select result)
-        new-jane (description->entity jane-id s)
+        result1 (do-add store jane-age-key []
+                        :template '(nil ("age" tag))
+                        :subject-key [(:item-id jane)]
+                        :adjacent-key jane-age-key
+                        :use-bigger true)
+        s1 (:store result1)
+        select (:select result1)
+        new-jane (description->entity jane-id s1)
         new-element (first (filter #(= (content %) "")
                                    (elements new-jane)))
         [o5 x] (orderable/split order :after)
-        [o6 o7] (orderable/split x :before)]
+        [o6 o7] (orderable/split x :before)
+        ;; Try with adjacent-group-key
+        jane-elements-key [[:parallel
+                            []
+                            [(:item-id jane-age) (:item-id jane-female)]]
+                           jane-id]
+        result2 (do-add store jane-age-key []
+                        :template '(nil ("age" tag))
+                        :subject-key [(:item-id jane)]
+                        :adjacent-group-key jane-elements-key
+                        :use-bigger true)]
+    (is (= result2 result1))
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
-    (is (= (id->content s (:item-id order-entity)) o5))
+    (is (= (id->content s1 (:item-id order-entity)) o5))
     (is (= select [[(:item-id new-element) (:item-id jane)]
                    [jane-age-key]]))))
 

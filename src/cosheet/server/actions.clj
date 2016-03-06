@@ -51,11 +51,11 @@
    Add ordering information to each part of the entity,
    except for tag specifiers, splitting the provided order for the orders,
    and returning an unused piece of it.
-   Put the new entity in the specified direction (:before or :after) of
+   Put the new entity in the specified position (:before or :after) of
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
    Return the new store, the id of the item, and the remaining order."
-  [store subject-id entity order direction use-bigger]
+  [store subject-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
     (if (and (= entity-content 'tag) (empty? entity-elements))
@@ -69,14 +69,14 @@
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
             ;; bigger and a smaller part, putting the bigger part in
-            ;; correct direction. Then, when we recursively add the
-            ;; elements, we take their order from the bigger direction,
-            ;; leaving most of the space on the bigger direction. Finally,
-            ;; we use the appropriate direction for the entity and the
+            ;; correct position. Then, when we recursively add the
+            ;; elements, we take their order from the bigger position,
+            ;; leaving most of the space on the bigger position. Finally,
+            ;; we use the appropriate position for the entity and the
             ;; return value.
-            entity-order-index (case direction :before 0 :after 1)
-            other-direction ([:after :before] entity-order-index)
-            split-order (split order (if use-bigger direction other-direction))
+            entity-order-index (case position :before 0 :after 1)
+            other-position ([:after :before] entity-order-index)
+            split-order (split order (if use-bigger position other-position))
             bigger-index (if use-bigger
                            entity-order-index
                            (- 1 entity-order-index))
@@ -85,9 +85,9 @@
             [s2 _ bigger-order] (reduce (fn [[store _ order] element]
                                           (update-add-entity-with-order
                                            store id element
-                                           order direction false))
+                                           order position false))
                                         [s1 nil bigger-order]
-                                        (case direction ;; Make the order match
+                                        (case position ;; Make the order match
                                           :before entity-elements
                                           :after (reverse entity-elements)))
             [s3 order-id] (add-simple-element
@@ -119,15 +119,15 @@
 
 (defn update-add-entity-adjacent-to
   "Add an entity with the given subject id and contents,
-   taking its order from the given item, in the given direction,
+   taking its order from the given item, in the given position,
    and giving the entity the bigger piece if use-bigger is true.
    Return the updated store and the id of the entity."
-  [store subject-id entity adjacent-to direction use-bigger]
+  [store subject-id entity adjacent-to position use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store id remainder] (update-add-entity-with-order
                               store subject-id entity
-                              order direction use-bigger)]
+                              order position use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))
 
 (defn update-add-element
@@ -166,18 +166,18 @@
     store condition)))
 
 (defn update-add-sibling
-  "Given an item and a condition, add a sibling in the given direction
+  "Given an item and a condition, add a sibling in the given position
   (:before or :after) satisfying the condition. Also return the id of
   the new element."
-  [sibling-condition direction store item]
+  [sibling-condition position store item]
   (let [[adjusted store] (adjust-condition sibling-condition store)]
     (update-add-entity-adjacent-to
      store (id->subject store (:item-id item)) adjusted
-     item direction true)))
+     item position true)))
 
 (defn add-sibling-handler
   "Add a sibling to the item with the given client id."
-  [store dom-tracker key direction]
+  [store dom-tracker key position]
   (let [items (key->items store key)
         first-primitive (first-primitive-referent (remove-comments key))
         sibling-condition (:sibling-condition
@@ -187,20 +187,20 @@
     (println "total items:" (count items))
     (println "with content" (map content items))
     (when (item-referent? first-primitive)
-      (add-and-select (partial update-add-sibling sibling-condition direction)
+      (add-and-select (partial update-add-sibling sibling-condition position)
                       store items
                       (remove-first-primitive-referent
                        (remove-content-location-referent key))
                       key))))
 
 (defn furthest-item
-  "Given a list of items and a direction,
-  return the furthest item in that direction."
-  [items direction]
+  "Given a list of items and a position,
+  return the furthest item in that position."
+  [items position]
   (if (= (count items) 1)
     (first items)
     (second
-     (reduce (case direction
+     (reduce (case position
                :before (fn [a b] (if (earlier? (first a) (first b)) a b))
                :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
              (map (fn [item] [(label->content item :order) item]) items)))))
@@ -209,7 +209,7 @@
   "Add a row/column parallel to the item with the given client id.
   The last two arguments are either :row-sibling :row-condition or
   :column-sibling :column-condition."
-    [store dom-tracker key direction order-key condition-key]
+    [store dom-tracker key position order-key condition-key]
     (let [attributes (key->attributes
                       dom-tracker (remove-content-location-referent key))
           order-sibling (order-key attributes)
@@ -226,8 +226,8 @@
       (println "with content" (map #(map content %) order-groups))
       (when ((some-fn nil? item-referent? content-location-referent?)
              (first-primitive-referent sibling-key))
-        (add-and-select (partial update-add-sibling new-condition direction)
-                        store (map #(furthest-item % direction) order-groups)
+        (add-and-select (partial update-add-sibling new-condition position)
+                        store (map #(furthest-item % position) order-groups)
                         (remove-first-primitive-referent
                          (remove-content-location-referent sibling-key))
                         key))))
@@ -237,20 +237,20 @@
   The default is to add a new element to the target, adjacent to the target." 
   [store target-key _ ; should be no UI args
    & {:keys [template subject-key adjacent-key adjacent-group-key
-             all-elements direction use-bigger]
+             all-elements position use-bigger]
       :or  {template nil           ; template that added item(s) should satisfy
             subject-key nil        ; subject(s) of the new item(s)
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
             all-elements false     ; adjacency applies to elements of adjacent
-            direction :after       ; :before or :after adjacent
+            position :after       ; :before or :after adjacent
             use-bigger false       ; use the bigger part of adjacent's order
             }}]
   (let [subject-key (or subject-key target-key)
         subjects (key->items store subject-key)
         adjacents (cond
                     adjacent-key (key->items store adjacent-key)
-                    adjacent-group-key (map #(furthest-item % direction)
+                    adjacent-group-key (map #(furthest-item % position)
                                             (key->item-groups
                                              store adjacent-group-key))
                    true subjects)
@@ -261,21 +261,21 @@
     (add-and-select (fn [store [subject adjacent]]
                       (update-add-entity-adjacent-to
                        store (:item-id subject) adjusted-template
-                       adjacent direction use-bigger))
+                       adjacent position use-bigger))
                     store
                     (map vector subjects adjacents)
                     subject-key target-key)))
 
 (defn add-row-handler
   "Add a row to the item with the given client id."
-  [store dom-tracker key direction]
-  (add-row-or-column store dom-tracker key direction
+  [store dom-tracker key position]
+  (add-row-or-column store dom-tracker key position
                      :row-sibling :row-condition))
 
 (defn add-column-handler
   "Add a row to the item with the given client id."
-  [store dom-tracker key direction]
-  (add-row-or-column store dom-tracker key direction
+  [store dom-tracker key position]
+  (add-row-or-column store dom-tracker key position
                      :column-sibling :column-condition))
 
 (defn update-delete
@@ -331,13 +331,13 @@
                                    (remove-first-primitive-referent key))]
             (if adjacent-key
               (let [adjacents (key->items store adjacent-key)
-                    direction (:add-direction attributes)]
+                    position (:add-direction attributes)]
                 (assert (= (count items) (count adjacents)))
                 (add-and-select
                  (fn [store [subject adjacent]]
                    (update-add-entity-adjacent-to
                     store (:item-id subject) model-entity
-                    adjacent direction false))
+                    adjacent position false))
                  store (map vector items adjacents) selection-suffix key))
               (add-and-select
                (fn [store item]
@@ -355,11 +355,11 @@
 
 (defn do-create-content
   [store target-key [to]
-   & {:keys [adjacent-key adjacent-group-key all-elements direction]
+   & {:keys [adjacent-key adjacent-group-key all-elements position]
       :or  {adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
             all-elements false     ; adjacency applies to elements of adjacent
-            direction :after       ; :before or :after adjacent
+            position :after       ; :before or :after adjacent
             }}]
   (assert (elements-referent? (first-primitive-referent target-key)))
   (assert (or adjacent-key adjacent-group-key))
@@ -369,7 +369,7 @@
                                         target-key))
             adjacents (cond
                         adjacent-key (key->items store adjacent-key)
-                        adjacent-group-key (map #(furthest-item % direction)
+                        adjacent-group-key (map #(furthest-item % position)
                                                 (key->item-groups
                                                  store adjacent-group-key))
                         true subjects)
@@ -387,7 +387,7 @@
          (fn [store [subject adjacent]]
            (update-add-entity-adjacent-to
             store (:item-id subject) model-entity
-            adjacent direction false))
+            adjacent position false))
          store (map vector subjects adjacents) selection-suffix target-key)))))
 
 (defn selected-handler

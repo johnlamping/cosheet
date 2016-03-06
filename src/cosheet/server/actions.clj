@@ -51,11 +51,11 @@
    Add ordering information to each part of the entity,
    except for tag specifiers, splitting the provided order for the orders,
    and returning an unused piece of it.
-   Put the new entity on the specified side (:before or :after) of
+   Put the new entity in the specified direction (:before or :after) of
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
    Return the new store, the id of the item, and the remaining order."
-  [store subject-id entity order side use-bigger]
+  [store subject-id entity order direction use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
     (if (and (= entity-content 'tag) (empty? entity-elements))
@@ -68,15 +68,15 @@
                                      entity-content))
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
-            ;; bigger and a smaller part, putting the bigger part on
-            ;; correct side. Then, when we recursively add the
-            ;; elements, we take their order from the bigger side,
-            ;; leaving most of the space on the bigger side. Finally,
-            ;; we use the appropriate side for the entity and the
+            ;; bigger and a smaller part, putting the bigger part in
+            ;; correct direction. Then, when we recursively add the
+            ;; elements, we take their order from the bigger direction,
+            ;; leaving most of the space on the bigger direction. Finally,
+            ;; we use the appropriate direction for the entity and the
             ;; return value.
-            entity-order-index (case side :before 0 :after 1)
-            other-side ([:after :before] entity-order-index)
-            split-order (split order (if use-bigger side other-side))
+            entity-order-index (case direction :before 0 :after 1)
+            other-direction ([:after :before] entity-order-index)
+            split-order (split order (if use-bigger direction other-direction))
             bigger-index (if use-bigger
                            entity-order-index
                            (- 1 entity-order-index))
@@ -84,9 +84,10 @@
             smaller-order (split-order (- 1 bigger-index))
             [s2 _ bigger-order] (reduce (fn [[store _ order] element]
                                           (update-add-entity-with-order
-                                           store id element order side false))
+                                           store id element
+                                           order direction false))
                                         [s1 nil bigger-order]
-                                        (case side ;; Make the order match
+                                        (case direction ;; Make the order match
                                           :before entity-elements
                                           :after (reverse entity-elements)))
             [s3 order-id] (add-simple-element
@@ -121,12 +122,12 @@
    taking its order from the given item, in the given direction,
    and giving the entity the bigger piece if use-bigger is true.
    Return the updated store and the id of the entity."
-  [store subject-id entity adjacent-to side use-bigger]
+  [store subject-id entity adjacent-to direction use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
         [store id remainder] (update-add-entity-with-order
                               store subject-id entity
-                              order side use-bigger)]
+                              order direction use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))
 
 (defn update-add-element
@@ -236,20 +237,20 @@
   The default is to add a new element to the target, adjacent to the target." 
   [store target-key _ ; should be no UI args
    & {:keys [template subject-key adjacent-key adjacent-group-key
-             all-elements side use-bigger]
+             all-elements direction use-bigger]
       :or  {template nil           ; template that added item(s) should satisfy
             subject-key nil        ; subject(s) of the new item(s)
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
-            all-elements nil       ; adjacency applies to elements of adjacent
-            side :after            ; :before or :after adjacent
+            all-elements false     ; adjacency applies to elements of adjacent
+            direction :after       ; :before or :after adjacent
             use-bigger false       ; use the bigger part of adjacent's order
             }}]
   (let [subject-key (or subject-key target-key)
         subjects (key->items store subject-key)
         adjacents (cond
                     adjacent-key (key->items store adjacent-key)
-                    adjacent-group-key (map #(furthest-item % side)
+                    adjacent-group-key (map #(furthest-item % direction)
                                             (key->item-groups
                                              store adjacent-group-key))
                    true subjects)
@@ -260,7 +261,7 @@
     (add-and-select (fn [store [subject adjacent]]
                       (update-add-entity-adjacent-to
                        store (:item-id subject) adjusted-template
-                       adjacent side use-bigger))
+                       adjacent direction use-bigger))
                     store
                     (map vector subjects adjacents)
                     subject-key target-key)))
@@ -342,6 +343,52 @@
                (fn [store item]
                  (update-add-element model-entity store item))
                store items selection-suffix key))))))
+
+(defn do-set-content
+  [store target-key [from to]]
+  ;; TODO: Handle deleting.
+  (let [to (parse-string-as-number to)]
+    (let [items (key->items store target-key)]
+      (println "updating " (count items) " items")
+      (reduce (partial update-set-content from to)
+              store items))))
+
+(defn do-create-content
+  [store target-key [to]
+   & {:keys [adjacent-key adjacent-group-key all-elements direction]
+      :or  {adjacent-key nil       ; item(s) adjacent to new item(s)
+            adjacent-group-key nil ; item group(s) adjacent to new item(s)
+            all-elements false     ; adjacency applies to elements of adjacent
+            direction :after       ; :before or :after adjacent
+            }}]
+  (assert (elements-referent? (first-primitive-referent target-key)))
+  (assert (or adjacent-key adjacent-group-key))
+  (let [to (parse-string-as-number to)]
+    (when (not= to "")
+      (let [subjects (key->items store (remove-first-primitive-referent
+                                        target-key))
+            adjacents (cond
+                        adjacent-key (key->items store adjacent-key)
+                        adjacent-group-key (map #(furthest-item % direction)
+                                                (key->item-groups
+                                                 store adjacent-group-key))
+                        true subjects)
+            first-primitive (first-primitive-referent target-key)
+            [_ condition] first-primitive
+            model-entity (cons to (rest condition))
+            selection-suffix (if (= condition [nil 'tag])
+                               ;; TODO: Should this change the condition
+                               ;; to a comment?
+                               target-key
+                               (remove-first-primitive-referent target-key))]
+        ;; TODO: handle all-elements argument
+        (assert (= (count subjects) (count adjacents)))
+        (add-and-select
+         (fn [store [subject adjacent]]
+           (update-add-entity-adjacent-to
+            store (:item-id subject) model-entity
+            adjacent direction false))
+         store (map vector subjects adjacents) selection-suffix target-key)))))
 
 (defn selected-handler
   [store session-state client-id]

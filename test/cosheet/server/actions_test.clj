@@ -328,6 +328,21 @@
             joe-ages (map #(id->content new-store %) joe-age-ids)]
         (is (= (set joe-ages) #{45}))))))
 
+(deftest do-delete--test
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-joe-jane-tracker mutable-store)
+        joe-bogus-age-dom-id (find-dom-id tracker joe-bogus-age)
+        joe-age-dom-id (find-dom-id tracker joe-age)
+        joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
+        joe-bogus-age-key (get-in @tracker [:id->key joe-bogus-age-dom-id])]
+    (let [new-store (do-delete store joe-bogus-age-key nil)
+          alt-store (do-delete store joe-age-key nil
+                               :delete-key joe-bogus-age-key)
+          joe-age-ids (id-label->element-ids new-store joe-id "age")
+          joe-ages (map #(id->content new-store %) joe-age-ids)]
+      (is (= new-store alt-store))
+      (is (= (set joe-ages) #{45})))))
+
 (deftest set-content-handler-test
   (let [mutable-store (new-mutable-store store)
         mutable-joe (description->entity joe-id mutable-store)

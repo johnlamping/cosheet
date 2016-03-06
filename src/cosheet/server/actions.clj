@@ -255,6 +255,8 @@
                    true subjects)
         [adjusted-template store] (adjust-condition template store)]
     ;; TODO: handle all-elements argument
+    (println "total items added: " (count subjects))
+    (assert (= (count subjects) (count adjacents)))
     (add-and-select (fn [store [subject adjacent]]
                       (update-add-entity-adjacent-to
                        store (:item-id subject) adjusted-template
@@ -293,6 +295,17 @@
       (reduce update-delete store items)
       (do (println "NOT DELETING: first primitive not an item.")
           nil))))
+
+(defn do-delete
+  "Add new item(s), in accord with the optional arguments.
+  The default is to add a new element to the target, adjacent to the target." 
+  [store target-key _ ; should be no UI args
+   & {:keys [delete-key] :or {delete-key nil}}]
+ 
+  (let [delete-key (or delete-key target-key)
+        items (key->items store delete-key)]
+    (println "total items:" (count items))
+    (reduce update-delete store items)))
 
 (defn set-content-handler
   [store dom-tracker key from to]

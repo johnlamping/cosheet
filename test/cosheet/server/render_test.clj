@@ -122,36 +122,36 @@
                      :expected '~form, :actual result#}))
        result#)))
 
-(deftest condition-specifiers-test
+(deftest condition-satisfiers-test
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a)))))
+                              (condition-satisfiers test '(nil :a)))))
              [:a]))
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a :c)))))
+                              (condition-satisfiers test '(nil :a :c)))))
              (as-set [:a :c])))
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a :b)))))
+                              (condition-satisfiers test '(nil :a :b)))))
              [:a]))
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a :b)))))
+                              (condition-satisfiers test '(nil :a :b)))))
              [:a]))
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a :a :b)))))
+                              (condition-satisfiers test '(nil :a :a :b)))))
              [:a :a]))
   (is (check (map canonicalize-list
                   (let-mutated [test '("age" :a (:b 1) :c)]
                     (expr-seq map to-list
-                              (condition-specifiers test '(nil :a :a :b)))))
+                              (condition-satisfiers test '(nil :a :a :b)))))
              [:a])))
 
 (deftest canonical-info-set-test

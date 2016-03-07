@@ -17,9 +17,12 @@
              (into-attributes {:class "baz"
                                :style {:color "red"}})
              (into-attributes {:class ""})
-             (into-attributes {:class nil}))
+             (into-attributes {:class nil})
+             (into-attributes {:commands {:one 1 :two 2}})
+             (into-attributes {:commands {:three 3}}))
          {:class "foo bar baz"
           :style {:font "bold" :text "large" :color "red"}
+          :commands {:one 1 :two 2 :three 3}
           :other "abc"
           :misc "junk"})))
 

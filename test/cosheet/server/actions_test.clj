@@ -435,9 +435,9 @@
     (let [tracker (new-joe-jane-tracker mutable-store)]
       (swap! tracker assoc-in
              [:components [joe-id :bob] :attributes :commands]
-             {:set-content [:do-set-content]})
+             {:test-command [:do-set-content]})
       (do-actions mutable-store {:tracker tracker}
-                  {1 [:set-content "joe-root" :from "Joe" :to "Fred"]})
+                  {1 [:test-command "joe-root" :from "Joe" :to "Fred"]})
       (is (= (current-value (content mutable-joe)) "Fred")))))
 
 (deftest do-create-content-test

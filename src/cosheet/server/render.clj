@@ -172,7 +172,7 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-(defn condition-specifiers
+(defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it
   satisfy the condition and nothing extra. The condition must be in list form.
   and have a nil content.
@@ -214,12 +214,13 @@
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
 ;;; into a hierarchy based on common "groups". The information for
 ;;; each member is recorded as a canonical-info-set of groups. The hierarchy
-;;; consists of vector of nodes. The groups for each member at or below
-;;; a hierarchy node include the groups for that node.
+;;; consists of a vector of nodes. The groups for each member at or below
+;;; a hierarchy node are a superset of the groups for that node.
 ;;; The data for each node consists of
 ;;;   :hierarchy-node  true
 ;;;           :groups  A canonical-info-set of the groups added by this node.
-;;; :cumulatve-groups  A canonical-info-set the groups for members of this node.
+;;; :cumulatve-groups  A canonical-info-set of the groups for members
+;;;                    of this node.
 ;;;          :members  A vector of members exactly matching the
 ;;;                    cumulative-groups for this node.
 ;;;                    All members must come before all children in the order
@@ -393,8 +394,9 @@
 (def hierarchy-nodes-extent)
 
 (defn hierarchy-node-extent
-  "Return a seq of members at or below the node
-  that subsumes all its descendants and nothing more."
+  "Return a seq of members below the node that is just big enough that
+  for every member descendant of the node, its groups are a superset
+  of those of some member of the extent."
   [node]
   (if (seq (:members node))
     [(first (:members node))]
@@ -410,6 +412,11 @@
   that subsume all their descendants and nothing more."
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
+
+(defn add-command
+  "Add a command to the dom."
+  [dom command-name & handler]
+  (add-attributes dom {:command {command-name (vec handler)}}))
 
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
@@ -459,7 +466,7 @@
   may be displayed under the condition, rather than under its parent."
   [element condition parent-key inherited & {:as extra-attributes}]
   (assert (not (elements-referent? (first parent-key))))
-  (expr-let [condition-specs (condition-specifiers element condition)]
+  (expr-let [condition-specs (condition-satisfiers element condition)]
     (let [;; We must make this key different from what it would have
           ;; been if this element were displayed under its parent's
           ;; component.  Because it might have been in that situation.
@@ -473,20 +480,17 @@
                        (set condition-specs) inherited]))))
 
 (defn empty-DOM
-  "Generate dom for an empty editable cell. A map may be provided so
-  that when content is added it will be put adjacent to the specified
-  item in the specified direction."
-  [parent-key sibling-elements inherited]
+  "Generate dom for an empty editable cell."
+  [parent-key condition inherited]
   (add-attributes (vertical-stack nil)
                   {:class "editable"
-                   :key (prepend-to-key
-                         (elements-referent (cons nil sibling-elements))
+                   :key (prepend-to-key (elements-referent condition)
                          parent-key)}))
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item."
-  [items-with-excluded parent-key sibling-elements added-attributes inherited]
+  [items-with-excluded parent-key condition added-attributes inherited]
   (assert (not (empty? items-with-excluded)))
   (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
@@ -494,7 +498,7 @@
                              (make-component
                               (into
                                {:key key
-                                :sibling-condition (cons nil sibling-elements)}
+                                :sibling-condition condition}
                                added-attributes)
                               [item-DOM item parent-key
                                (set excluded-elements) inherited])))
@@ -633,20 +637,20 @@
   [hierarchy-node parent-key inherited]
   (let [items-with-excluded (map #((juxt :item :group-elements) %)
                                  (:members hierarchy-node))
-        sibling-elements (canonical-set-to-list
-                          (:cumulative-groups hierarchy-node))]
+        condition (cons nil (canonical-set-to-list
+                             (:cumulative-groups hierarchy-node)))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
                            (first (hierarchy-node-descendants hierarchy-node)))]
         (add-attributes
-         (empty-DOM parent-key sibling-elements inherited)
+         (empty-DOM parent-key condition inherited)
          {:add-adjacent (prepend-to-key (item-referent adjacent-item)
                                         parent-key)
           :add-direction :before
           :class "column"}))
       (add-attributes
        (components-DOM items-with-excluded
-                       parent-key sibling-elements {} inherited)
+                       parent-key condition {} inherited)
        {:class "column"}))))
 
 (defn tag-items-pair-DOM
@@ -934,16 +938,16 @@
   (if (empty? items)
     ;; TODO: Get our left neighbor as an arg, and pass it in
     ;; as adjacent information.
-    (add-attributes (empty-DOM cell-key (rest condition) inherited)
+    (add-attributes (empty-DOM cell-key condition inherited)
                     {:class "table-cell"
                      :row-sibling row-key
                      :row-condition new-row-condition})
     (expr-let [items (order-items items)
-               excluded (expr-seq map #(condition-specifiers % condition)
+               excluded (expr-seq map #(condition-satisfiers % condition)
                                   items)]
       (add-attributes
        (components-DOM (map vector items excluded)
-                       cell-key (rest condition)
+                       cell-key condition
                        {:row-sibling row-key
                         :row-condition new-row-condition}
                        inherited)

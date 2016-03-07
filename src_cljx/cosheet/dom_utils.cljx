@@ -2,7 +2,7 @@
 
 (defn into-attributes
   "Add attributes to an attribute map,
-   correctly handling multiple classes or styles."
+   correctly handling multiple classes or styles, or commands."
   [accumulator attributes]
   (reduce (fn [accumulator [key value]]
             (update-in accumulator [key]
@@ -13,7 +13,8 @@
                                       current
                                       (str current " "
                                            (clojure.string/trim value)))
-                             :style (into current value))
+                             :style (into current value)
+                             :commands (into current value))
                            value))))
           accumulator attributes))
 

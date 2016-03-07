@@ -407,12 +407,14 @@
         (is (not= old-joe-order new-joe-order))))))
 
 (deftest do-set-content-test
-  (let [ joe-male-tag-key [(elements-referent [nil 'tag])
+  (let [joe-male-tag-key [(elements-referent [nil 'tag])
                           (:item-id joe-male)
                           joe-id]
         joe-married-tag-key [(elements-referent [nil 'tag])
                              (:item-id joe-married)
-                             joe-id]]
+                             joe-id]
+        mutable-store (new-mutable-store store)
+        mutable-joe (description->entity joe-id mutable-store)]
     (is (= (id->content
             (do-set-content store [joe-id :bob] :from "Joe" :to "Jim")
             joe-id)
@@ -428,7 +430,15 @@
                             [joe-id jane-id]]]
                     :from "age" :to "oldness")]
       (is (= (id->content modified (:item-id joe-age-tag)) "oldness"))
-      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))))
+      (is (= (id->content modified (:item-id jane-age-tag)) "oldness")))
+    ;; Try calling it from do-actions.
+    (let [tracker (new-joe-jane-tracker mutable-store)]
+      (swap! tracker assoc-in
+             [:components [joe-id :bob] :attributes :commands]
+             {:set-content [:do-set-content]})
+      (do-actions mutable-store {:tracker tracker}
+                  {1 [:set-content "joe-root" :from "Joe" :to "Fred"]})
+      (is (= (current-value (content mutable-joe)) "Fred")))))
 
 (deftest do-create-content-test
   (let  [joe-male-key [(:item-id joe-male) joe-id]

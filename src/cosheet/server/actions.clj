@@ -435,34 +435,36 @@
   [mutable-store session-state [action-type client-id & additional-args]]
   (println "doing action " action-type)
   (let [tracker (:tracker session-state)
-        target-key (id->key tracker client-id)
-        command (get-in (key->attributes tracker target-key)
-                        [:commands action-type])]
+        target-key (id->key tracker client-id)]
     (println "id: " client-id " with key: " (simplify-for-print target-key))
     (when (not (empty? additional-args))
       (println "additional arguments: " additional-args))
-    (if command
-      (let [[action-name & args] command
-            handler (case action-name
-                      :do-add do-add
-                      :do-delete do-delete
-                      :do-set-content do-set-content
-                      :do-create-content do-create-content)
-            ])
-      (if-let [handler (case action-type
-                         :set-content set-content-handler
-                         :add-element add-element-handler
-                         :add-sibling add-sibling-handler
-                         :add-row add-row-handler
-                         :add-column add-column-handler
-                         :delete delete-handler                  
-                         nil)]
-        (apply do-storage-update-action
-               handler mutable-store tracker target-key additional-args)
-        (if-let [handler (case action-type
+    (if-let [handler (case action-type
                            :selected selected-handler
                            nil)]
-          (apply handler mutable-store session-state target-key additional-args)
+      (apply handler mutable-store session-state target-key additional-args)
+      (if-let [command (get-in (key->attributes tracker target-key)
+                               [:commands action-type])]
+        (let [[action-name & args] command
+              handler (case action-name
+                        :do-add do-add
+                        :do-delete do-delete
+                        :do-set-content do-set-content
+                        :do-create-content do-create-content
+                        nil)]
+          (when handler
+            (apply do-storage-update-action
+                   handler mutable-store target-key additional-args)))
+        (if-let [handler (case action-type
+                           :set-content set-content-handler
+                           :add-element add-element-handler
+                           :add-sibling add-sibling-handler
+                           :add-row add-row-handler
+                           :add-column add-column-handler
+                           :delete delete-handler                  
+                           nil)]
+          (apply do-storage-update-action
+                 handler mutable-store tracker target-key additional-args)
           (println "unknown action type:" action-type))))))
 
 (defn do-actions

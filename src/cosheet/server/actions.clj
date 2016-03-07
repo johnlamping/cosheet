@@ -27,7 +27,7 @@
                  item-ids-referred-to
                  key->items key->item-groups]])))
 
-;;; TODO: validate the data coming in, so nothing can cause us to
+;;; TODO: validate the data coming in, so mistakes won't cause us to
 ;;; crash.
 
 (defn update-set-content
@@ -393,15 +393,15 @@
          store (map vector subjects adjacents) selection-suffix target-key)))))
 
 (defn selected-handler
-  [store session-state client-id]
-  (let [key (id->key (:tracker session-state) client-id)
-        ids (item-ids-referred-to key)
+  [store session-state target-key]
+  (let [ids (item-ids-referred-to target-key)
         items (map #(description->entity % store) ids)]
-    (println "Selected key" key)
+    (println "Selected key" target-key)
     (mutable-set-swap!
          (:do-not-merge session-state)
          (fn [old]
-           (if (item-referent? (first-primitive-referent (remove-comments key)))
+           (if (item-referent?
+                (first-primitive-referent (remove-comments target-key)))
                (set (cons (first items)
                           (clojure.set/intersection (set (rest items)) old)))
                (clojure.set/intersection (set items) old))))))
@@ -411,47 +411,59 @@
 ;;; Support could even be incorporated into immutable stores.
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
-  store, the dom-tracker, and any additional arguments, and can either
+  store, and the other arguments passed to this function. It can either
   return nil, meaning no change, a new store, or a map with a :store
   value and any additional commands it wants to request of the
   client (currently, only :select, whose value is the key of the dom
-  it wants to be selected)."
-  [handler mutable-store tracker client-id & action-args]
-  (let [key (id->key tracker client-id)]
-    (println "id: " client-id " with key: " (simplify-for-print key))
-    (when (not (empty? action-args))
-      (println "additional arguments: " action-args))
-    (do-update-control-return!
-     mutable-store
-     (fn [store]
-       (let [result (apply handler store tracker key action-args)]
-         (if result
-           (if (satisfies? cosheet.store/Store result)
-             [result nil]
-             (do
-               (assert (map? result))
-               (assert (:store result))
-               [(:store result) (dissoc result store)]))
-           [store nil]))))))
+  it wants to be selected and a list of keys, one of which should already
+  be selected)."
+  [handler mutable-store & action-args]
+  (do-update-control-return!
+   mutable-store
+   (fn [store]
+     (let [result (apply handler store action-args)]
+       (if result
+         (if (satisfies? cosheet.store/Store result)
+           [result nil]
+           (do
+             (assert (map? result))
+             (assert (:store result))
+             [(:store result) (dissoc result store)]))
+         [store nil])))))
 
 (defn do-action
-  [mutable-store session-state [action-type & action-args]]
+  [mutable-store session-state [action-type client-id & additional-args]]
   (println "doing action " action-type)
-  (if-let [handler (case action-type
-                     :set-content set-content-handler
-                     :add-element add-element-handler
-                     :add-sibling add-sibling-handler
-                     :add-row add-row-handler
-                     :add-column add-column-handler
-                     :delete delete-handler                  
-                     nil)]
-    (apply do-storage-update-action
-           handler mutable-store (:tracker session-state) action-args)
-    (if-let [handler (case action-type
-                       :selected selected-handler
-                       nil)]
-      (apply handler mutable-store session-state action-args)
-      (println "unknown action type:" action-type))))
+  (let [tracker (:tracker session-state)
+        target-key (id->key tracker client-id)
+        command (get-in (key->attributes tracker target-key)
+                        [:commands action-type])]
+    (println "id: " client-id " with key: " (simplify-for-print target-key))
+    (when (not (empty? additional-args))
+      (println "additional arguments: " additional-args))
+    (if command
+      (let [[action-name & args] command
+            handler (case action-name
+                      :do-add do-add
+                      :do-delete do-delete
+                      :do-set-content do-set-content
+                      :do-create-content do-create-content)
+            ])
+      (if-let [handler (case action-type
+                         :set-content set-content-handler
+                         :add-element add-element-handler
+                         :add-sibling add-sibling-handler
+                         :add-row add-row-handler
+                         :add-column add-column-handler
+                         :delete delete-handler                  
+                         nil)]
+        (apply do-storage-update-action
+               handler mutable-store tracker target-key additional-args)
+        (if-let [handler (case action-type
+                           :selected selected-handler
+                           nil)]
+          (apply handler mutable-store session-state target-key additional-args)
+          (println "unknown action type:" action-type))))))
 
 (defn do-actions
   "Run the actions, and return any additional information to be returned

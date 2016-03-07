@@ -447,13 +447,13 @@
          joe-married-tag-key [(elements-referent [nil 'tag])
                               (:item-id joe-married)
                               joe-id]]
-    (let [result (do-create-content store joe-male-tag-key :content "gender")
+    (let [result (do-create-content store joe-male-tag-key :to "gender")
           s1 (:store result)]
       (is (= (semantic-to-list (description->entity (:item-id joe-male) s1))
            ["male" ["gender" 'tag]])))
     (let [old-joe-order (current-value (label->content joe :order))
           result (do-create-content store joe-married-tag-key
-                                    :content "marital status"
+                                    :to "marital status"
                                     :adjacent-key [joe-id]
                                     :position :before)
           s2 (:store result)]

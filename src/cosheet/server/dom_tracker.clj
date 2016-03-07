@@ -5,7 +5,8 @@
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
                      [debug :refer [simplify-for-print]]
-                     [dom-utils :refer [dom-attributes add-attributes]]
+                     [dom-utils :refer [dom-attributes add-attributes
+                                        into-attributes]]
                      [expression-manager :refer [manage]])
             
             (cosheet.server [render :refer [server-specific-attributes]])))
@@ -424,8 +425,8 @@
   [tracker key]
   (let [data @tracker
         dom (get-in data [:key->dom key])]
-    (into (or (and dom (dom-attributes dom)) {})
-          (get-in data [:components key :attributes]))))
+    (into-attributes (or (and dom (dom-attributes dom)) {})
+                     (get-in data [:components key :attributes]))))
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."

@@ -485,7 +485,8 @@
   (add-attributes (vertical-stack nil)
                   {:class "editable"
                    :key (prepend-to-key (elements-referent condition)
-                         parent-key)}))
+                                        parent-key)
+                   :commands {:set-content [:do-create-content]}}))
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
@@ -498,6 +499,8 @@
                              (make-component
                               (into
                                {:key key
+                                :commands {:add-element
+                                           [:do-add :template condition]}
                                 :sibling-condition condition}
                                added-attributes)
                               [item-DOM item parent-key
@@ -578,7 +581,8 @@
           (add-attributes dom {:class "stack"})
           dom)
         (if (empty? elements)
-          (add-attributes dom {:key elements-key})
+          (add-attributes dom {:key elements-key
+                               :commands {:set-content [:do-create-content]}})
           dom)
         (if (or for-multiple (> num-elements 1))
           [:div dom [:div {:class "spacer"}]]
@@ -717,7 +721,8 @@
                      :key (if (empty? elements)
                             item-key
                             (prepend-to-key (content-location-referent)
-                                            item-key))}
+                                            item-key))
+                     :commands {:set-content [:do-set-content]}}
                (cond (= content :none) ""
                      is-placeholder "???"                     
                      true (str content))])

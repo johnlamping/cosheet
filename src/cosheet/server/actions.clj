@@ -357,15 +357,15 @@
 
 (defn do-create-content
   [store target-key
-   & {:keys [content adjacent-key adjacent-group-key all-elements position]
-      :or  {content nil            ; value of content
+   & {:keys [to adjacent-key adjacent-group-key all-elements position]
+      :or  {to nil                 ; value of content
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
             all-elements false     ; adjacency applies to elements of adjacent
             position :after        ; :before or :after adjacent
             }}]
   (assert (elements-referent? (first-primitive-referent target-key)))
-  (let [content (parse-string-as-number content)]
+  (let [content (parse-string-as-number to)]
     (when (not= content "")
       (let [subjects (key->items store (remove-first-primitive-referent
                                         target-key))
@@ -437,6 +437,8 @@
   (let [tracker (:tracker session-state)
         target-key (id->key tracker client-id)]
     (println "id: " client-id " with key: " (simplify-for-print target-key))
+    (println "commands" (get-in (key->attributes tracker target-key)
+                                [:commands]))
     (when (not (empty? additional-args))
       (println "additional arguments: " additional-args))
     (if-let [handler (case action-type
@@ -445,13 +447,14 @@
       (apply handler mutable-store session-state target-key additional-args)
       (if-let [command (get-in (key->attributes tracker target-key)
                                [:commands action-type])]
-        (let [[action-name & args] command
-              handler (case action-name
+        (let [[handler-name & args] command
+              handler (case handler-name
                         :do-add do-add
                         :do-delete do-delete
                         :do-set-content do-set-content
                         :do-create-content do-create-content
                         nil)]
+          (println "xxx new command" action-type handler-name)
           (when handler
             (apply do-storage-update-action
                    handler mutable-store target-key additional-args)))

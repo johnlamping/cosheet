@@ -76,7 +76,7 @@
           (.log js/console (str "storing " value
                                 " into " (.-id target)))
           (request-action
-           [:set-content (.-id target) old-value value]))))))
+           [:set-content (.-id target) :from old-value :to value]))))))
 
 (defn target-being-edited? [target]
   (#{@edit-field-open-on

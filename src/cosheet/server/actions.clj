@@ -234,7 +234,7 @@
 
 (defn do-add
   "Add new item(s), in accord with the optional arguments.
-  The default is to add a new element to the target, adjacent to the target." 
+  The default is to add a sibling of the target, adjacent to the target." 
   [store target-key
    & {:keys [template subject-key adjacent-key adjacent-group-key
              all-elements position use-bigger]
@@ -243,28 +243,33 @@
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
             all-elements false     ; adjacency applies to elements of adjacent
-            position :after       ; :before or :after adjacent
+            position :after        ; :before or :after adjacent
             use-bigger false       ; use the bigger part of adjacent's order
             }}]
-  (let [subject-key (or subject-key target-key)
-        subjects (key->items store subject-key)
-        adjacents (cond
+  (let [adjacents (cond
                     adjacent-key (key->items store adjacent-key)
                     adjacent-group-key (map #(furthest-item % position)
                                             (key->item-groups
                                              store adjacent-group-key))
-                   true subjects)
+                    true (key->items store target-key))
+        subject-ids (if subject-key
+                      (let [cleaned (remove-comments subject-key)]
+                        (if (empty? cleaned)
+                          (map (constantly nil) adjacents)
+                          (map :item-id (key->items store cleaned))))
+                      (map #(id->subject store (:item-id %))
+                           (key->items store target-key)))
         [adjusted-template store] (adjust-condition template store)]
     ;; TODO: handle all-elements argument
-    (println "total items added: " (count subjects))
-    (assert (= (count subjects) (count adjacents)))
-    (add-and-select (fn [store [subject adjacent]]
+    (println "total items added: " (count subject-ids))
+    (assert (= (count subject-ids) (count adjacents)))
+    (add-and-select (fn [store [subject-id adjacent]]
                       (update-add-entity-adjacent-to
-                       store (:item-id subject) adjusted-template
+                       store subject-id adjusted-template
                        adjacent position use-bigger))
                     store
-                    (map vector subjects adjacents)
-                    subject-key target-key)))
+                    (map vector subject-ids adjacents)
+                    (or subject-key target-key) target-key)))
 
 (defn add-row-handler
   "Add a row to the item with the given client id."
@@ -454,10 +459,11 @@
                         :do-set-content do-set-content
                         :do-create-content do-create-content
                         nil)]
-          (println "xxx new command" action-type handler-name)
+          (println "xxx new command" action-type handler-name args)
           (when handler
             (apply do-storage-update-action
-                   handler mutable-store target-key additional-args)))
+                   handler mutable-store target-key
+                   (concat additional-args args))))
         (if-let [handler (case action-type
                            :set-content set-content-handler
                            :add-element add-element-handler

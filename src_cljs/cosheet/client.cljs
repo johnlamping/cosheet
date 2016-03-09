@@ -132,13 +132,13 @@
         (= key-code key-codes/Z)
         (when @edit-field-open-on (close-edit-field))))
     (when (and alt (not ctrl))
-      (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling :after]
-                          (= key-codes/NUM_PLUS key-code) [:add-sibling :after] 
+      (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling]
+                          (= key-codes/NUM_PLUS key-code) [:add-sibling] 
                           (= key-codes/PERIOD key-code) [:add-element]
-                          (= key-codes/DASH key-code) [:add-row :after]
-                          (= key-codes/R key-code) [:add-row :after]
-                          (= key-codes/BACKSLASH key-code) [:add-column :after]
-                          (= key-codes/C key-code) [:add-column :after])]
+                          (= key-codes/DASH key-code) [:add-row]
+                          (= key-codes/R key-code) [:add-row]
+                          (= key-codes/BACKSLASH key-code) [:add-column]
+                          (= key-codes/C key-code) [:add-column])]
         (when (and command @selected (not @edit-field-open-on))
           (.log js/console (str command))
           (request-action

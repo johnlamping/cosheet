@@ -16,6 +16,7 @@
                                          parallel-referent semantic-entity?
                                          prepend-to-key elements-referent?
                                          item-referent? first-primitive-referent
+                                         remove-first-primitive-referent
                                          semantic-elements filtered-items
                                          canonicalize-list semantic-to-list
                                          replace-nones]])))
@@ -413,11 +414,6 @@
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-(defn add-command
-  "Add a command to the dom."
-  [dom command-name & handler]
-  (add-attributes dom {:command {command-name (vec handler)}}))
-
 (defn stack-vertical
   "Make a dom stack vertically with its siblings."
   [dom]
@@ -472,12 +468,15 @@
           ;; component.  Because it might have been in that situation.
           condition-key (prepend-to-key (comment-referent condition) parent-key)
           key (prepend-to-key (item-referent element) condition-key)]      
-      (make-component (into {:key key
-                             ;; TODO: Use original condition?
-                             :sibling-condition (cons nil (rest condition))}
-                            extra-attributes)
+      (make-component (into-attributes
+                       {:key key
+                        :sibling-condition condition}
+                       extra-attributes)
                       [item-DOM element condition-key
-                       (set condition-specs) inherited]))))
+                       (set condition-specs)
+                       {:commands {:add-sibling [:do-add
+                                                 :template condition]}}
+                       inherited]))))
 
 (defn empty-DOM
   "Generate dom for an empty editable cell."
@@ -499,12 +498,14 @@
                              (make-component
                               (into
                                {:key key
-                                :commands {:add-element
-                                           [:do-add :template condition]}
                                 :sibling-condition condition}
                                added-attributes)
                               [item-DOM item parent-key
-                               (set excluded-elements) inherited])))
+                               (set excluded-elements)
+                               {:commands {:add-sibling
+                                           [:do-add
+                                            :template condition]}}
+                               inherited])))
                          items-with-excluded)]
       (vertical-stack item-doms :separators true)))
 
@@ -567,10 +568,17 @@
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
   (expr-let [components
-             (expr-seq map #(condition-component
-                             % condition row-key inherited
-                             :row-sibling row-key)
-                       elements)]
+             (expr-seq
+              map
+              #(condition-component
+                % condition row-key inherited
+                :row-sibling row-key
+                :commands {:add-row
+                           [:do-add
+                            :subject-key (remove-first-primitive-referent
+                                          row-key)
+                            :adjacent-key row-key]})
+              elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key
                         (elements-referent condition) row-key)
@@ -609,7 +617,12 @@
                (> num-elements 1)
                (into {:key elements-key})
                (not= num-elements 1)
-               (into {:row-sibling row-key})))))))
+               (into {:row-sibling row-key
+                      :commands {:add-row
+                                 [:do-add
+                                  :subject-key (remove-first-primitive-referent
+                                                row-key)
+                                  :adjacent-key row-key]}})))))))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
@@ -645,16 +658,32 @@
                              (:cumulative-groups hierarchy-node)))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
-                           (first (hierarchy-node-descendants hierarchy-node)))]
+                           (first (hierarchy-node-descendants hierarchy-node)))
+            adjacent-key (prepend-to-key (item-referent adjacent-item)
+                                         parent-key)]
         (add-attributes
-         (empty-DOM parent-key condition inherited)
-         {:add-adjacent (prepend-to-key (item-referent adjacent-item)
-                                        parent-key)
+         (vertical-stack nil)
+         {:class "editable column"
+          :key (prepend-to-key (elements-referent condition) parent-key)
+          :add-adjacent adjacent-key
           :add-direction :before
-          :class "column"}))
+          :commands {:set-content
+                     [:do-create-content]
+                     :add-row
+                     [:do-add
+                      :subject-key parent-key
+                      :position :before
+                      :adjacent-key adjacent-key]}}))
       (add-attributes
        (components-DOM items-with-excluded
-                       parent-key condition {} inherited)
+                       parent-key condition
+                       {:commands {:add-row
+                                   [:do-add
+                                    ;; TODO: see if we can get rid of
+                                    ;; subject-key here.
+                                    :subject-key parent-key
+                                    ]}}
+                       inherited)
        {:class "column"}))))
 
 (defn tag-items-pair-DOM
@@ -703,7 +732,7 @@
    describing an item and all its elements, except the ones in
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
-  [item parent-key excluded inherited]
+  [item parent-key excluded added-attributes inherited]
   (println "Generating DOM for"
            (simplify-for-print item) (simplify-for-print parent-key))
   (expr-let [content (entity/content item)
@@ -715,20 +744,25 @@
           (if (entity/atom? content)
             (let [is-placeholder (and (symbol? content)
                                       (= (subs (str content) 0 3) "???"))]
-              [:div {:class (cond-> "content-text editable"
-                              (empty? elements) (str " item")
-                              is-placeholder (str " placeholder"))
-                     :key (if (empty? elements)
-                            item-key
-                            (prepend-to-key (content-location-referent)
-                                            item-key))
-                     :commands {:set-content [:do-set-content]}}
+              [:div (into-attributes
+                     {:class (cond-> "content-text editable"
+                               (empty? elements) (str " item")
+                               is-placeholder (str " placeholder"))
+                      :key (if (empty? elements)
+                             item-key
+                             (prepend-to-key (content-location-referent)
+                                             item-key))
+                      :commands {:set-content [:do-set-content]
+                                 :delete [:do-delete]
+                                 :add-element [:do-add]}}
+                     added-attributes)
                (cond (= content :none) ""
                      is-placeholder "???"                     
                      true (str content))])
+            ;; TODO: This doesn't support add-sibling.
             (make-component
              {:key (prepend-to-key (item-referent content) item-key)}
-             [item-DOM content item-key #{} inherited-down]))]
+             [item-DOM content item-key #{} {}  inherited-down]))]
       (if (empty? elements)
         content-dom
         (expr-let [elements-dom (tagged-items-table-DOM
@@ -799,12 +833,23 @@
                            component
                            {:column-sibling column-key
                             :column-condition column-condition
-                            :row-condition elements-condition})))
+                            :row-condition elements-condition
+                            :commands {:add-column
+                                       [:do-add
+                                        :subject-key
+                                        (remove-first-primitive-referent
+                                         column-key)
+                                        :adjacent-group-key column-key
+                                        :template column-condition]}})))
                           components)]
       (as-> (vertical-stack components :separators true) dom
         (cond (> num-elements 1)
               (add-attributes dom {:class "stack"})
-              delete-key (add-attributes dom {:delete-key delete-key})
+              delete-key (add-attributes
+                          dom
+                          {:delete-key delete-key
+                           :commands {:delete
+                                      [:do-delete :delete-key delete-key]}})
               true
               dom)
         (if (empty? elements)
@@ -813,7 +858,16 @@
                                      parent-key)
                                :class "editable"
                                :column-sibling column-key
-                               :column-condition new-column-condition})
+                               :column-condition new-column-condition
+                               :commands {:set-content
+                                          [:do-create-content]
+                                          :add-column
+                                          [:do-add
+                                           :subject-key
+                                           (remove-first-primitive-referent
+                                         column-key)
+                                           :adjacent-group-key column-key
+                                           :template new-column-condition]}})
           dom)
         (add-attributes dom {:class "column-header"})
         [:div {:class "column-header-container" 
@@ -940,23 +994,30 @@
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
   [items condition row-item row-key new-row-condition cell-key inherited]
-  (if (empty? items)
-    ;; TODO: Get our left neighbor as an arg, and pass it in
-    ;; as adjacent information.
-    (add-attributes (empty-DOM cell-key condition inherited)
-                    {:class "table-cell"
-                     :row-sibling row-key
-                     :row-condition new-row-condition})
-    (expr-let [items (order-items items)
-               excluded (expr-seq map #(condition-satisfiers % condition)
-                                  items)]
-      (add-attributes
-       (components-DOM (map vector items excluded)
-                       cell-key condition
-                       {:row-sibling row-key
-                        :row-condition new-row-condition}
-                       inherited)
-       {:class "table-cell"}))))
+  (let [commands {:add-row
+                  [:do-add
+                   :subject-key (remove-first-primitive-referent row-key)
+                   :adjacent-key row-key
+                   :template new-row-condition]}]
+    (if (empty? items)
+      ;; TODO: Get our left neighbor as an arg, and pass it in
+      ;; as adjacent information for new-sibling?.
+      (add-attributes (empty-DOM cell-key condition inherited)
+                      {:class "table-cell"
+                       :commands commands
+                       :row-sibling row-key
+                       :row-condition new-row-condition})
+      (expr-let [items (order-items items)
+                 excluded (expr-seq map #(condition-satisfiers % condition)
+                                    items)]
+        (add-attributes
+         (components-DOM (map vector items excluded)
+                         cell-key condition
+                         {:commands commands
+                          :row-sibling row-key
+                          :row-condition new-row-condition}
+                         inherited)
+         {:class "table-cell"})))))
 
 (defn table-row-column-group-DOM
   "Generate the dom for the cells of a row under one hierarchy group."

@@ -241,7 +241,8 @@
         joe-key [(item-referent joe) :k]
         reporter (new-reporter :value jane) ;; Will change to jill.
         c-map {:key joe-key
-               :definition [item-DOM joe [:k] #{} {:depth 0 :do-not-merge #{}}]
+               :definition [item-DOM
+                            joe [:k] #{} {} {:depth 0 :do-not-merge #{}}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
@@ -251,11 +252,11 @@
                         [:component
                          {:key [(item-referent joe) :d] :width 1}
                          [item-DOM joe [:d]
-                          #{} {:depth 1 :do-not-merge #{}}]]
+                          #{} {}  {:depth 1 :do-not-merge #{}}]]
                         [:component
                          {:key [(item-referent item) :d]}
                          [item-DOM item [:d]
-                          #{} {:depth 1 :do-not-merge #{}}]]])
+                          #{} {} {:depth 1 :do-not-merge #{}}]]])
                      reporter]}]
     (swap-and-act
      tracker #(-> %
@@ -271,7 +272,9 @@
       (is (= (:key->dom data)
              {joe-key [:div {:key joe-key
                              :class "content-text editable item"
-                             :commands {:set-content [:do-set-content]}}
+                             :commands {:set-content [:do-set-content]
+                                        :add-element [:do-add]
+                                        :delete [:do-delete]}}
                        "Joe"]}))
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]}))
@@ -294,7 +297,9 @@
       (compute md)
       (is (= (get-in @tracker [:key->dom joe-key])
              [:div  {:key joe-key :class "content-text editable item"
-                     :commands {:set-content [:do-set-content]}}
+                     :commands {:set-content [:do-set-content]
+                                :add-element [:do-add]
+                                :delete [:do-delete]}}
               "Joe's"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[joe-key 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
@@ -308,23 +313,29 @@
                        (get-in @tracker [:components])))
          {joe-key [:div {:key joe-key
                          :class "content-text editable item"
-                         :commands {:set-content [:do-set-content]}}
+                         :commands {:set-content [:do-set-content]
+                                    :add-element [:do-add]
+                                    :delete [:do-delete]}}
                    "Joe's"]
           [:d] [:div {:key [:d]}
                 [:component {:key [(item-referent joe) :d]
                              :width 1}
-                 [item-DOM joe [:d] #{} {:depth 1 :do-not-merge #{}}]]
+                 [item-DOM joe [:d] #{} {} {:depth 1 :do-not-merge #{}}]]
                 [:component {:key [(item-referent jane) :d]}
-                 [item-DOM jane [:d] #{} {:depth 1 :do-not-merge #{}}]]]
+                 [item-DOM jane [:d] #{} {} {:depth 1 :do-not-merge #{}}]]]
           [(item-referent joe) :d] [:div  {:key [(item-referent joe) :d]
                                            :class "content-text editable item"
                                            :commands {:set-content
-                                                      [:do-set-content]}}
+                                                      [:do-set-content]
+                                                      :add-element [:do-add]
+                                                      :delete [:do-delete]}}
                                     "Joe's"]
           [(item-referent jane) :d] [:div  {:key [(item-referent jane) :d]
                                             :class "content-text editable item"
                                             :commands {:set-content
-                                                       [:do-set-content]}}
+                                                       [:do-set-content]
+                                                       :add-element [:do-add]
+                                                       :delete [:do-delete]}}
                                      "Jane"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))))
 
@@ -358,7 +369,7 @@
         joe (let-mutated [joe "Joe"] joe)
         joe-key [(item-referent joe) :root]]
     (add-dom tracker "root" joe-key
-             [item-DOM joe [:root] #{} {:depth 0 :do-not-merge #{}}])
+             [item-DOM joe [:root] #{} {} {:depth 0 :do-not-merge #{}}])
     (compute md)
     (let [data @tracker
           component (get-in data [:components joe-key])]
@@ -370,7 +381,9 @@
       (is (= (:key->dom data)
              {joe-key [:div {:key joe-key
                              :class "content-text editable item"
-                             :commands {:set-content [:do-set-content]}}
+                             :commands {:set-content [:do-set-content]
+                                        :add-element [:do-add]
+                                        :delete [:do-delete]}}
                        "Joe"]}))
       (is (= (:next-id data) 0))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]})))))

@@ -577,7 +577,7 @@
                            [:do-add
                             :subject-key (remove-first-primitive-referent
                                           row-key)
-                            :adjacent-key row-key]})
+                            :adjacent-group-key row-key]})
               elements)]
     (let [num-elements (count elements)
           elements-key (prepend-to-key

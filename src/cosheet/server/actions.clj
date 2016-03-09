@@ -130,26 +130,6 @@
                               order position use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))
 
-(defn update-add-element
-  "Add an entity to the store as a new element of the given subject.
-  Return the new store and the id of the new element."
-  [entity store subject]
-  (update-add-entity-adjacent-to
-   store (:item-id subject) entity
-   subject :after false))
-
-(defn add-element-handler
-  "Add a element to the item with the given client id.
-  Indicate that the new element should be selected."
-  [store dom-tracker key]
-  (let [items (key->items store key)
-        first-primitive (first-primitive-referent (remove-comments key))]
-    (println "total items:" (count items))
-    (println "with content" (map content items))
-    (when (item-referent? first-primitive)
-      (add-and-select (partial update-add-element "") store items
-                         (remove-content-location-referent key) key))))
-
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
   element. Specifically, replace nil with \"\", and replace :??? with
@@ -165,34 +145,6 @@
              true [store item]))
     store condition)))
 
-(defn update-add-sibling
-  "Given an item and a condition, add a sibling in the given position
-  (:before or :after) satisfying the condition. Also return the id of
-  the new element."
-  [sibling-condition position store item]
-  (let [[adjusted store] (adjust-condition sibling-condition store)]
-    (update-add-entity-adjacent-to
-     store (id->subject store (:item-id item)) adjusted
-     item position true)))
-
-(defn add-sibling-handler
-  "Add a sibling to the item with the given client id."
-  [store dom-tracker key position]
-  (let [items (key->items store key)
-        first-primitive (first-primitive-referent (remove-comments key))
-        sibling-condition (:sibling-condition
-                           (key->attributes
-                            dom-tracker
-                            (remove-content-location-referent key)))]
-    (println "total items:" (count items))
-    (println "with content" (map content items))
-    (when (item-referent? first-primitive)
-      (add-and-select (partial update-add-sibling sibling-condition position)
-                      store items
-                      (remove-first-primitive-referent
-                       (remove-content-location-referent key))
-                      key))))
-
 (defn furthest-item
   "Given a list of items and a position,
   return the furthest item in that position."
@@ -204,33 +156,6 @@
                :before (fn [a b] (if (earlier? (first a) (first b)) a b))
                :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
              (map (fn [item] [(label->content item :order) item]) items)))))
-
-(defn add-row-or-column
-  "Add a row/column parallel to the item with the given client id.
-  The last two arguments are either :row-sibling :row-condition or
-  :column-sibling :column-condition."
-    [store dom-tracker key position order-key condition-key]
-    (let [attributes (key->attributes
-                      dom-tracker (remove-content-location-referent key))
-          order-sibling (order-key attributes)
-          order-groups (if order-sibling
-                        (key->item-groups store order-sibling)
-                        (map vector (key->items store key)))
-          sibling-key (or order-sibling key)
-          new-condition (condition-key attributes)]
-      (println "keys" order-key condition-key)
-      (println "attributes" (simplify-for-print attributes))
-      (println "order sibling" (simplify-for-print order-sibling))
-      (println "new-condition" (simplify-for-print new-condition))
-      (println "total groups:" (count order-groups))
-      (println "with content" (map #(map content %) order-groups))
-      (when ((some-fn nil? item-referent? content-location-referent?)
-             (first-primitive-referent sibling-key))
-        (add-and-select (partial update-add-sibling new-condition position)
-                        store (map #(furthest-item % position) order-groups)
-                        (remove-first-primitive-referent
-                         (remove-content-location-referent sibling-key))
-                        key))))
 
 (defn do-add
   "Add new item(s), in accord with the optional arguments.
@@ -271,36 +196,10 @@
                     (map vector subject-ids adjacents)
                     (or subject-key target-key) target-key)))
 
-(defn add-row-handler
-  "Add a row to the item with the given client id."
-  [store dom-tracker key position]
-  (add-row-or-column store dom-tracker key position
-                     :row-sibling :row-condition))
-
-(defn add-column-handler
-  "Add a row to the item with the given client id."
-  [store dom-tracker key position]
-  (add-row-or-column store dom-tracker key position
-                     :column-sibling :column-condition))
-
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
   [store item]
   (remove-entity-by-id store (:item-id item)))
-
-(defn delete-handler
-  [store dom-tracker key]
-  (let [delete-key (or (:delete-key (key->attributes dom-tracker key)) key)
-        first-primitive (first-primitive-referent (remove-comments delete-key))
-        items (key->items store delete-key)]
-    (when (not= delete-key key)
-      (println "delete-key" (simplify-for-print delete-key)))
-    (println "total items:" (count items))
-    (println "items" (map to-list items))
-    (if (item-referent? first-primitive)
-      (reduce update-delete store items)
-      (do (println "NOT DELETING: first primitive not an item.")
-          nil))))
 
 (defn do-delete
   "Add new item(s), in accord with the optional arguments.
@@ -311,42 +210,6 @@
         items (key->items store delete-key)]
     (println "total items:" (count items))
     (reduce update-delete store items)))
-
-(defn set-content-handler
-  [store dom-tracker key from to]
-  ;; TODO: Handle deleting.
-  (let [basic-key (remove-comments key)
-        first-primitive (first-primitive-referent basic-key) 
-        to (parse-string-as-number to)]
-    (cond ((some-fn nil? item-referent?) first-primitive)
-          (let [items (key->items store basic-key)]
-            (println "updating " (count items) " items")
-            (reduce (partial update-set-content from to)
-                    store items))
-          (and (elements-referent? first-primitive) (not= to ""))
-          (let [items (key->items store (remove-first-primitive-referent
-                                         basic-key))
-                attributes (key->attributes dom-tracker key)
-                adjacent-key (:add-adjacent attributes)
-                [_ condition] first-primitive
-                model-entity (cons to (rest condition))
-                selection-suffix (if (= condition [nil 'tag])
-                                   key
-                                   (remove-first-primitive-referent key))]
-            (if adjacent-key
-              (let [adjacents (key->items store adjacent-key)
-                    position (:add-direction attributes)]
-                (assert (= (count items) (count adjacents)))
-                (add-and-select
-                 (fn [store [subject adjacent]]
-                   (update-add-entity-adjacent-to
-                    store (:item-id subject) model-entity
-                    adjacent position false))
-                 store (map vector items adjacents) selection-suffix key))
-              (add-and-select
-               (fn [store item]
-                 (update-add-element model-entity store item))
-               store items selection-suffix key))))))
 
 (defn do-set-content
   [store target-key   
@@ -459,22 +322,12 @@
                         :do-set-content do-set-content
                         :do-create-content do-create-content
                         nil)]
-          (println "xxx new command" action-type handler-name args)
+          (println "command: " action-type handler-name args)
           (when handler
             (apply do-storage-update-action
                    handler mutable-store target-key
                    (concat additional-args args))))
-        (if-let [handler (case action-type
-                           :set-content set-content-handler
-                           :add-element add-element-handler
-                           :add-sibling add-sibling-handler
-                           :add-row add-row-handler
-                           :add-column add-column-handler
-                           :delete delete-handler                  
-                           nil)]
-          (apply do-storage-update-action
-                 handler mutable-store tracker target-key additional-args)
-          (println "unknown action type:" action-type))))))
+        (println "unhandled action type:" action-type)))))
 
 (defn do-actions
   "Run the actions, and return any additional information to be returned

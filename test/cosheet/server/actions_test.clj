@@ -297,27 +297,6 @@
     (is (= select [[(:item-id new-element) (:item-id jane)]
                    [jane-age-key]]))))
 
-(deftest add-row-handler-test
-  (let [mutable-store (new-mutable-store store)
-        tracker (new-joe-jane-tracker mutable-store)
-        joe-age-dom-id (find-dom-id tracker joe-age)
-        joe-age-tag-dom-id (first (filter
-                                   #(let [key (get-in @tracker [:id->key %])
-                                          leading (first key)]
-                                      (and (parallel-referent? leading)
-                                           (item-referent?
-                                            (first (second leading)))))
-                                   (keys (:id->key @tracker))))
-        joe-age-key (get-in @tracker [:id->key joe-age-dom-id])
-        joe-age-tag-key (get-in @tracker [:id->key joe-age-tag-dom-id])]
-    (let [[v-store v-id] (update-add-sibling nil :after store joe-age)
-          {:keys [store select]} (add-row-handler
-                                  store tracker joe-age-tag-key :after)]
-      (is (= store v-store))
-      (is (= select [(prepend-to-key v-id (remove-first-primitive-referent
-                                           joe-age-key))
-                     [joe-age-tag-key]])))))
-
 (deftest delete-handler-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-joe-jane-tracker mutable-store)

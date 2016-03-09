@@ -62,12 +62,6 @@
                         ; should be adjacent to in the ordering.
         :add-direction  ; Whether a new item for this empty dom
                         ; should come before or after :add-adjacent
-          :row-sibling  ; A key that a new adjacent row should be a sibling
-                        ; of. If the key indicates multiple items, the row
-                        ; is a sibling of the last, or, if there are
-                        ; multiple groups of items, the last of each
-                        ; group.
-        :row-condition  ; Condition that a new adjacent row must satisfy.
        :column-sibling  ; Analog of :row-sibling
      :column-condition  ; Analog of :column-sibling
            :delete-key  ; The key to identity items to delete,
@@ -489,22 +483,23 @@
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
-  generate DOM for a vertical list of a component for each item."
+  generate DOM for a vertical list of a component for each item.
+  Add the added attributes to the content of each item dom."
   [items-with-excluded parent-key condition added-attributes inherited]
   (assert (not (empty? items-with-excluded)))
   (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
                                                      parent-key)]
                              (make-component
-                              (into
-                               {:key key
+                              {:key key
                                 :sibling-condition condition}
-                               added-attributes)
                               [item-DOM item parent-key
                                (set excluded-elements)
-                               {:commands {:add-sibling
-                                           [:do-add
-                                            :template condition]}}
+                               (into-attributes
+                                {:commands {:add-sibling
+                                            [:do-add
+                                             :template condition]}}
+                                added-attributes)
                                inherited])))
                          items-with-excluded)]
       (vertical-stack item-doms :separators true)))
@@ -572,7 +567,6 @@
               map
               #(condition-component
                 % condition row-key inherited
-                :row-sibling row-key
                 :commands {:add-row
                            [:do-add
                             :subject-key (remove-first-primitive-referent
@@ -617,8 +611,7 @@
                (> num-elements 1)
                (into {:key elements-key})
                (not= num-elements 1)
-               (into {:row-sibling row-key
-                      :commands {:add-row
+               (into {:commands {:add-row
                                  [:do-add
                                   :subject-key (remove-first-primitive-referent
                                                 row-key)
@@ -833,7 +826,6 @@
                            component
                            {:column-sibling column-key
                             :column-condition column-condition
-                            :row-condition elements-condition
                             :commands {:add-column
                                        [:do-add
                                         :subject-key
@@ -1004,18 +996,14 @@
       ;; as adjacent information for new-sibling?.
       (add-attributes (empty-DOM cell-key condition inherited)
                       {:class "table-cell"
-                       :commands commands
-                       :row-sibling row-key
-                       :row-condition new-row-condition})
+                       :commands commands})
       (expr-let [items (order-items items)
                  excluded (expr-seq map #(condition-satisfiers % condition)
                                     items)]
         (add-attributes
          (components-DOM (map vector items excluded)
                          cell-key condition
-                         {:commands commands
-                          :row-sibling row-key
-                          :row-condition new-row-condition}
+                         {:commands commands}
                          inherited)
          {:class "table-cell"})))))
 

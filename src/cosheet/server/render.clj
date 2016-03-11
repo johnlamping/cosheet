@@ -57,14 +57,7 @@
                         ; the additional arguments passed from
                         ; the UI, and the rest of the command expression.
    ;; TODO: The following will be obsoleted by :commands
-    :sibling-condition  ; Condition that a sibling of this item must satisfy.
-         :add-adjacent  ; A key that a new item for this empty dom
-                        ; should be adjacent to in the ordering.
-        :add-direction  ; Whether a new item for this empty dom
-                        ; should come before or after :add-adjacent
-       :column-sibling  ; Analog of :row-sibling
-     :column-condition  ; Analog of :column-sibling
-           :delete-key  ; The key to identity items to delete,
+   :delete-key  ; The key to identity items to delete,
                         ; if different from the usual key.
     ])
 
@@ -463,8 +456,7 @@
           condition-key (prepend-to-key (comment-referent condition) parent-key)
           key (prepend-to-key (item-referent element) condition-key)]      
       (make-component (into-attributes
-                       {:key key
-                        :sibling-condition condition}
+                       {:key key}
                        extra-attributes)
                       [item-DOM element condition-key
                        (set condition-specs)
@@ -491,8 +483,7 @@
                            (let [key (prepend-to-key (item-referent item)
                                                      parent-key)]
                              (make-component
-                              {:key key
-                                :sibling-condition condition}
+                              {:key key}
                               [item-DOM item parent-key
                                (set excluded-elements)
                                (into-attributes
@@ -658,8 +649,6 @@
          (vertical-stack nil)
          {:class "editable column"
           :key (prepend-to-key (elements-referent condition) parent-key)
-          :add-adjacent adjacent-key
-          :add-direction :before
           :commands {:set-content
                      [:do-create-content]
                      :add-row
@@ -824,9 +813,7 @@
                                              (take position element-lists)))]
                           (add-attributes
                            component
-                           {:column-sibling column-key
-                            :column-condition column-condition
-                            :commands {:add-column
+                           {:commands {:add-column
                                        [:do-add
                                         :subject-key
                                         (remove-first-primitive-referent
@@ -839,8 +826,7 @@
               (add-attributes dom {:class "stack"})
               delete-key (add-attributes
                           dom
-                          {:delete-key delete-key
-                           :commands {:delete
+                          {:commands {:delete
                                       [:do-delete :delete-key delete-key]}})
               true
               dom)
@@ -849,8 +835,6 @@
                                      (elements-referent elements-condition)
                                      parent-key)
                                :class "editable"
-                               :column-sibling column-key
-                               :column-condition new-column-condition
                                :commands {:set-content
                                           [:do-create-content]
                                           :add-column

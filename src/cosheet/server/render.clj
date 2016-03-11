@@ -447,7 +447,7 @@
 (defn condition-component
   "Return the component for an element that satisfies a condition and
   may be displayed under the condition, rather than under its parent."
-  [element condition parent-key inherited & {:as extra-attributes}]
+  [element condition parent-key inherited & {:as content-attributes}]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-satisfiers element condition)]
     (let [;; We must make this key different from what it would have
@@ -455,13 +455,13 @@
           ;; component.  Because it might have been in that situation.
           condition-key (prepend-to-key (comment-referent condition) parent-key)
           key (prepend-to-key (item-referent element) condition-key)]      
-      (make-component (into-attributes
-                       {:key key}
-                       extra-attributes)
+      (make-component {:key key}
                       [item-DOM element condition-key
                        (set condition-specs)
-                       {:commands {:add-sibling [:do-add
-                                                 :template condition]}}
+                       (into-attributes 
+                        content-attributes
+                        {:commands {:add-sibling [:do-add
+                                                  :template condition]}})
                        inherited]))))
 
 (defn empty-DOM
@@ -477,7 +477,7 @@
   "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item.
   Add the added attributes to the content of each item dom."
-  [items-with-excluded parent-key condition added-attributes inherited]
+  [items-with-excluded parent-key condition content-attributes inherited]
   (assert (not (empty? items-with-excluded)))
   (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
@@ -490,7 +490,7 @@
                                 {:commands {:add-sibling
                                             [:do-add
                                              :template condition]}}
-                                added-attributes)
+                                content-attributes)
                                inherited])))
                          items-with-excluded)]
       (vertical-stack item-doms :separators true)))
@@ -714,7 +714,7 @@
    describing an item and all its elements, except the ones in
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
-  [item parent-key excluded added-attributes inherited]
+  [item parent-key excluded content-attributes inherited]
   (println "Generating DOM for"
            (simplify-for-print item) (simplify-for-print parent-key))
   (expr-let [content (entity/content item)
@@ -737,7 +737,7 @@
                       :commands {:set-content [:do-set-content]
                                  :delete [:do-delete]
                                  :add-element [:do-add :subject-key item-key]}}
-                     added-attributes)
+                     content-attributes)
                (cond (= content :none) ""
                      is-placeholder "???"                     
                      true (str content))])

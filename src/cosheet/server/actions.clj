@@ -301,18 +301,17 @@
 
 (defn do-action
   [mutable-store session-state [action-type client-id & additional-args]]
-  (println "doing action " action-type)
+  (println "doing action " action-type " on id " client-id)
   (let [tracker (:tracker session-state)
         target-key (id->key tracker client-id)]
-    (println "id: " client-id " with key: " (simplify-for-print target-key))
-    (println "commands" (get-in (key->attributes tracker target-key)
-                                [:commands]))
-    (when (not (empty? additional-args))
-      (println "additional arguments: " additional-args))
     (if-let [handler (case action-type
                            :selected selected-handler
                            nil)]
-      (apply handler mutable-store session-state target-key additional-args)
+      (do (println "command: "
+                   (map simplify-for-print
+                        (list* action-type target-key additional-args)))
+          (apply handler
+                 mutable-store session-state target-key additional-args))
       (if-let [command (get-in (key->attributes tracker target-key)
                                [:commands action-type])]
         (let [[handler-name & args] command
@@ -322,7 +321,9 @@
                         :do-set-content do-set-content
                         :do-create-content do-create-content
                         nil)]
-          (println "command: " action-type handler-name args)
+          (println "command: " (map simplify-for-print
+                                    (list* handler-name target-key
+                                           (concat additional-args args))))
           (when handler
             (apply do-storage-update-action
                    handler mutable-store target-key

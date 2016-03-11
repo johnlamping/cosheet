@@ -273,7 +273,8 @@
              {joe-key [:div {:key joe-key
                              :class "content-text editable item"
                              :commands {:set-content [:do-set-content]
-                                        :add-element [:do-add]
+                                        :add-element [:do-add
+                                                      :subject-key joe-key]
                                         :delete [:do-delete]}}
                        "Joe"]}))
       (is (= (:next-id data) 0))
@@ -298,7 +299,7 @@
       (is (= (get-in @tracker [:key->dom joe-key])
              [:div  {:key joe-key :class "content-text editable item"
                      :commands {:set-content [:do-set-content]
-                                :add-element [:do-add]
+                                :add-element [:do-add :subject-key joe-key]
                                 :delete [:do-delete]}}
               "Joe's"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[joe-key 0]})))
@@ -314,7 +315,7 @@
          {joe-key [:div {:key joe-key
                          :class "content-text editable item"
                          :commands {:set-content [:do-set-content]
-                                    :add-element [:do-add]
+                                    :add-element [:do-add :subject-key joe-key]
                                     :delete [:do-delete]}}
                    "Joe's"]
           [:d] [:div {:key [:d]}
@@ -327,14 +328,21 @@
                                            :class "content-text editable item"
                                            :commands {:set-content
                                                       [:do-set-content]
-                                                      :add-element [:do-add]
+                                                      :add-element
+                                                      [:do-add
+                                                       :subject-key
+                                                       [(item-referent joe) :d]]
                                                       :delete [:do-delete]}}
                                     "Joe's"]
           [(item-referent jane) :d] [:div  {:key [(item-referent jane) :d]
                                             :class "content-text editable item"
                                             :commands {:set-content
                                                        [:do-set-content]
-                                                       :add-element [:do-add]
+                                                       :add-element
+                                                       [:do-add
+                                                        :subject-key
+                                                        [(item-referent jane)
+                                                         :d]]
                                                        :delete [:do-delete]}}
                                      "Jane"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))))
@@ -382,7 +390,8 @@
              {joe-key [:div {:key joe-key
                              :class "content-text editable item"
                              :commands {:set-content [:do-set-content]
-                                        :add-element [:do-add]
+                                        :add-element [:do-add
+                                                      :subject-key joe-key]
                                         :delete [:do-delete]}}
                        "Joe"]}))
       (is (= (:next-id data) 0))

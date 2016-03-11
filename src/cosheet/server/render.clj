@@ -736,7 +736,7 @@
                                              item-key))
                       :commands {:set-content [:do-set-content]
                                  :delete [:do-delete]
-                                 :add-element [:do-add]}}
+                                 :add-element [:do-add :subject-key item-key]}}
                      added-attributes)
                (cond (= content :none) ""
                      is-placeholder "???"                     

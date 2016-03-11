@@ -551,7 +551,8 @@
                [:div {:class "content-text editable item"
                       :key [(:item-id fred)]
                       :commands {:set-content [:do-set-content]
-                                 :add-element [:do-add]
+                                 :add-element [:do-add
+                                               :subject-key [(:item-id fred)]]
                                  :delete [:do-delete]}} "Fred"])))
   ;; Check generation of a single tag for a single item.
   (let [[dom age]
@@ -576,7 +577,9 @@
                  :key [(content-location-referent) (item-referent age) :age]
                  :commands {:set-content [:do-set-content]
                             :delete [:do-delete]
-                            :add-element [:do-add]}}
+                            :add-element [:do-add
+                                          :subject-key
+                                          [(item-referent age) :age]]}}
            "39"]
           [:div {:style {:height "1px"
                          :display "table"

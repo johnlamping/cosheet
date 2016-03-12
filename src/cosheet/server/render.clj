@@ -650,7 +650,9 @@
          {:class "editable column"
           :key (prepend-to-key (elements-referent condition) parent-key)
           :commands {:set-content
-                     [:do-create-content]
+                     [:do-create-content
+                      :position :before
+                      :adjacent-group-key adjacent-key]
                      :add-row
                      [:do-add
                       :subject-key parent-key

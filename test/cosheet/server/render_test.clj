@@ -464,12 +464,12 @@
 
 (deftest row-header-elements-DOM-test
   (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
-                                      nil '(nil tag) root [rid] {})
+                                      nil '(nil tag) [rid] {})
              [:div {:class "full-row editable column tags"
                     :key [[:elements [nil 'tag]] rid]
                     :commands {:set-content [:do-create-content]
                                :add-row [:do-add :subject-key nil
-                                         :adjacent-key [rid]]}}]))
+                                         :adjacent-group-key [rid]]}}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" tag)]
           (expr-let [dom (row-header-elements-DOM {:depth 1
@@ -477,7 +477,7 @@
                                                    :bottom-border :indented
                                                    :for-multiple true
                                                    :with-children true}
-                                                  [fred] '(nil tag) root [rid]
+                                                  [fred] '(nil tag) [rid]
                                                   {:depth 0})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
@@ -503,7 +503,7 @@
                            :is-tags true
                            :top-border :full
                            :bottom-border :corner}
-                          [fred fran] '(nil tag) root [rid]
+                          [fred fran] '(nil tag) [rid]
                           {:depth 1 :do-not-merge #{}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
@@ -514,7 +514,7 @@
           {:class "full-row column tags top-border ll-corner"
            :key [[:elements [nil 'tag]] rid]
            :commands {:add-row [:do-add :subject-key nil
-                                :adjacent-key [rid]]}}
+                                :adjacent-group-key [rid]]}}
           [:div {:class "stack"}
            [:component {:key [(:item-id fred) [:comment [nil 'tag]] rid]
                         :style {:display "block"
@@ -633,7 +633,7 @@
                      :commands {:set-content [:do-create-content]
                                 :add-row [:do-add
                                           :subject-key item-key
-                                          :adjacent-key
+                                          :adjacent-group-key
                                           (into [(:item-id doubtful)]
                                                 item-key)]}}]
               [:component {:key (into [(:item-id doubtful)] item-key)
@@ -998,7 +998,7 @@
                      :style {:display "table-cell"}
                      :commands {:add-row [:do-add
                                           :subject-key item-key
-                                          :adjacent-key
+                                          :adjacent-group-key
                                           (into [(:item-id vb)] item-key)]}}
                [:div {:class "full-row top-border editable indent-1"
                       :key (into [[:elements [nil 'tag]]

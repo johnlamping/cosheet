@@ -549,7 +549,7 @@
   node for a row header, and a sequence of elements in it, return a DOM
   containing components for each of them, wrapped as necessary to give
   the right appearance."
-  [appearance-info elements condition row-item row-key inherited]
+  [appearance-info elements condition row-key inherited]
   (assert (not (elements-referent? (first row-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
@@ -625,7 +625,6 @@
       (assoc appearance-info :is-tags true)
       (order-items example-elements) ; Why we need the expr
       '(nil tag)
-      (:item example)
       (prepend-to-key items-referent parent-key)
       inherited)))
 

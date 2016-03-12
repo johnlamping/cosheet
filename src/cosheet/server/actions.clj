@@ -194,7 +194,11 @@
                        adjacent position use-bigger))
                     store
                     (map vector subject-ids adjacents)
-                    (or subject-key target-key) target-key)))
+                    (if subject-key
+                     (remove-content-location-referent subject-key)
+                     (remove-first-primitive-referent
+                      (remove-content-location-referent target-key)))
+                    target-key)))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -266,13 +270,13 @@
         items (map #(description->entity % store) ids)]
     (println "Selected key" target-key)
     (mutable-set-swap!
-         (:do-not-merge session-state)
-         (fn [old]
-           (if (item-referent?
-                (first-primitive-referent (remove-comments target-key)))
-               (set (cons (first items)
-                          (clojure.set/intersection (set (rest items)) old)))
-               (clojure.set/intersection (set items) old))))))
+     (:do-not-merge session-state)
+     (fn [old]
+       (if (item-referent?
+            (first-primitive-referent (remove-comments target-key)))
+         (set (cons (first items)
+                    (clojure.set/intersection (set (rest items)) old)))
+         (clojure.set/intersection (set items) old))))))
 
 ;;; TODO: Undo functionality should be added here. It shouldn't be
 ;;; hard, because the updated store already has a list of changed ids.
@@ -296,7 +300,7 @@
            (do
              (assert (map? result))
              (assert (:store result))
-             [(:store result) (dissoc result store)]))
+             [(:store result) (dissoc result :store)]))
          [store nil])))))
 
 (defn do-action
@@ -337,6 +341,7 @@
   (let [keys (sort (keys actions))]
     (reduce (fn [client-info key]
               (let [action (actions key)
-                    remaining (do-action mutable-store session-state action)]
-                (into client-info (select-keys remaining [:select]))))
+                    for-client (do-action mutable-store session-state action)]
+                (println "for client " for-client)
+                (into client-info (select-keys for-client [:select]))))
             {} keys)))

@@ -553,60 +553,57 @@
   (assert (not (elements-referent? (first row-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
-  (expr-let [components
-             (expr-seq
-              map
-              #(condition-component
-                % condition row-key inherited
-                :commands {:add-row
-                           [:do-add
-                            :subject-key (remove-first-primitive-referent
-                                          row-key)
-                            :adjacent-group-key row-key]})
-              elements)]
-    (let [num-elements (count elements)
-          elements-key (prepend-to-key
-                        (elements-referent condition) row-key)
-          {:keys [is-tags top-border bottom-border
-                  for-multiple with-children depth]} appearance-info]
-      (as-> (vertical-stack components :separators true) dom
-        (if (> num-elements 1)
-          (add-attributes dom {:class "stack"})
-          dom)
-        (if (empty? elements)
-          (add-attributes dom {:key elements-key
-                               :commands {:set-content [:do-create-content]}})
-          dom)
-        (if (or for-multiple (> num-elements 1))
-          [:div dom [:div {:class "spacer"}]]
-          dom)
-        (add-attributes
-         dom
-         {:class (str "full-row"
-                      (when (= top-border :indented) " top-border")
-                      (when (= bottom-border :indented) " bottom-border")
-                      (when (empty? elements) " editable")
-                      (when with-children " with-children")
-                      (when for-multiple " for-multiple"))})
-        (let [depth (:depth appearance-info)]
-          (if (> depth 0)
-            [:div (add-attributes dom {:class (str "indent-" depth)})]
-            dom))
-        (add-attributes
-         dom (cond-> {:class
-                      (str "column"
-                           (when is-tags " tags")
-                           (when (= top-border :full) " top-border")
-                           (when (= bottom-border :full) " bottom-border")
-                           (when (= bottom-border :corner) " ll-corner"))}
-               (> num-elements 1)
-               (into {:key elements-key})
-               (not= num-elements 1)
-               (into {:commands {:add-row
-                                 [:do-add
-                                  :subject-key (remove-first-primitive-referent
-                                                row-key)
-                                  :adjacent-key row-key]}})))))))
+  (let [add-row-command [:do-add
+                         :subject-key (remove-first-primitive-referent
+                                       row-key)
+                         :adjacent-group-key row-key]]
+    (expr-let [components
+               (expr-seq
+                map
+                #(condition-component
+                  % condition row-key inherited
+                  :commands {:add-row add-row-command})
+                elements)]
+      (let [num-elements (count elements)
+            elements-key (prepend-to-key
+                          (elements-referent condition) row-key)
+            {:keys [is-tags top-border bottom-border
+                    for-multiple with-children depth]} appearance-info]
+        (as-> (vertical-stack components :separators true) dom
+          (if (> num-elements 1)
+            (add-attributes dom {:class "stack"})
+            dom)
+          (if (empty? elements)
+            (add-attributes dom {:key elements-key
+                                 :commands {:set-content [:do-create-content]
+                                            :add-row add-row-command}})
+            dom)
+          (if (or for-multiple (> num-elements 1))
+            [:div dom [:div {:class "spacer"}]]
+            dom)
+          (add-attributes
+           dom
+           {:class (str "full-row"
+                        (when (= top-border :indented) " top-border")
+                        (when (= bottom-border :indented) " bottom-border")
+                        (when (empty? elements) " editable")
+                        (when with-children " with-children")
+                        (when for-multiple " for-multiple"))})
+          (let [depth (:depth appearance-info)]
+            (if (> depth 0)
+              [:div (add-attributes dom {:class (str "indent-" depth)})]
+              dom))
+          (add-attributes
+           dom (cond-> {:class
+                        (str "column"
+                             (when is-tags " tags")
+                             (when (= top-border :full) " top-border")
+                             (when (= bottom-border :full) " bottom-border")
+                             (when (= bottom-border :corner) " ll-corner"))}
+                 (> num-elements 1)
+                 (into {:key elements-key})
+                 (not= num-elements 1)
+                 (into {:commands {:add-row add-row-command}}))))))))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,

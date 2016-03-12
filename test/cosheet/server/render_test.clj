@@ -957,7 +957,10 @@
               [:div {:key (into [[:elements [nil ["L1" 'tag]]]] item-key)
                      :style {:display "table-cell"}
                      :class "editable column"
-                     :commands {:set-content [:do-create-content]
+                     :commands {:set-content [:do-create-content
+                                              :position :before
+                                              :adjacent-group-key
+                                              (into [(:item-id va)] item-key)]
                                 :add-row [:do-add :subject-key item-key
                                           :position :before
                                           :adjacent-key
@@ -1001,7 +1004,11 @@
                       :key (into [[:elements [nil 'tag]]
                                   (:item-id vb)]
                                  item-key)
-                      :commands {:set-content [:do-create-content]}}]]
+                      :commands {:set-content [:do-create-content]
+                                 :add-row [:do-add
+                                          :subject-key item-key
+                                          :adjacent-group-key
+                                          (into [(:item-id vb)] item-key)]}}]]
               [:component {:key (into [(:item-id vb)] item-key)
                            :style {:display "table-cell"}
                            :class "column"}

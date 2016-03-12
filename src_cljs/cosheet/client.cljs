@@ -22,18 +22,18 @@
   (and dom (.. dom -classList (contains "editable"))))
 
 (defn descendant-with-editable
-  "Given a dom, if it has editable children, return it.
-  If not, but exactly one of its children has descendant-with-editable,
-  then return that child's descendant-with-editable."
-  [dom]
+  "Given a dom, if it has editable children, return it. If a unique
+  descendant  does, return it. If none do, return nil, while if more
+  than one does, return false."
+  [dom prefix]
   (let [children (array-seq (.-childNodes dom))]
     (if (some is-editable? children)
       dom
-      (let [candidates (filter identity
-                               (map descendant-with-editable children))]
-        (when (and (not (empty? candidates))   ;; We don't use count, so we
-                   (empty (rest candidates)))  ;; stay lazy.
-          (first candidates))))))
+      (let [candidates (filter #(not (nil? %))
+                              descendant-with-editable)]
+        (cond (empty? candidates) nil
+              (empty? (rest candidates)) (first candidates)
+              true false)))))
 
 (defn find-editable
   "Given a target and click event, return the target if it is editable,

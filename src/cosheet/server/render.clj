@@ -196,7 +196,7 @@
 ;;;                        all all its ancestors.
 ;;;              :members  A vector of members whose properties exactly
 ;;;                        match the cumulative-properties of this node.
- ;;                        All members must come before all children in the
+;;;                        All members must come before all children in the
 ;;;                        order from which the hierarchy was built. This means 
 ;;;                        that some children may contain members that would
 ;;;                        have qualified to be members of the node,
@@ -325,9 +325,8 @@
 
 (defn flatten-hierarchy-node
   "Given a hierarchy node, a depth, and the combined info for all
-  ancestors, return a flattened version of its hierarchy in
-  pre-order. Add :cumulative-properties and :depth to the node and all its
-  descendants."
+  ancestors, return the sequence of all descendant nodes in
+  pre-order. Add :cumulative-properties and :depth to the returned nodes."
   [node depth ancestor-info]
   (let [cumulative-info (multiset-union (:properties node) ancestor-info)]
     (cons (-> node
@@ -336,8 +335,8 @@
           (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
 
 (defn flatten-hierarchy
-  "Given a hierarchy and a depth, return a flattened version in pre-order,
-  for each node of the hierarchy, also giving its depth."
+  "Given a hierarchy and a depth, return the sequence of all descendant nodes
+  in pre-order. Add :cumulative-properties and :depth to the returned nodes."
   [hierarchy depth ancestor-info]
   (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
@@ -357,12 +356,18 @@
                      [%])
                   (:children node))))
 
+(defn hierarchy-node-members
+  "Return the members at the level of the hierarchy node
+  (not the descendants below)."
+  [node]
+  (:members node))
+
 (def hierarchy-nodes-extent)
 
 (defn hierarchy-node-extent
-  "Return a seq of members below the node that is just big enough that
-  for every member descendant of the node, its properties are a superset
-  of those of some member of the extent."
+  "Return a seq of descendants the node that is just big enough that
+  the properties of each descendant of the node are a superset
+  of the properties of some member of the extent."
   [node]
   (if (seq (:members node))
     [(first (:members node))]
@@ -374,8 +379,9 @@
       (hierarchy-nodes-extent (:children node)))))
 
 (defn hierarchy-nodes-extent
-  "Return a seq of members at or below the nodes
-  that subsume all their descendants and nothing more."
+  "Return a seq of descendants the nodes that is just big enough that
+  the properties of each descendant of the nodes are a superset
+  of the properties of some member of the extent."
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
@@ -509,7 +515,7 @@
           (if (< (:depth node) (:depth (nodes (+ i 1))))
             (assoc node :with-children true)
             node))
-        (if (> (count (:members node)) 1)
+        (if (> (count (hierarchy-node-members node)) 1)
           (assoc node :for-multiple true)
           node)))))
 
@@ -608,11 +614,11 @@
       inherited)))
 
 (defn tag-items-DOM
-  "Given a flattened hierarchy node with tags as the info,
+  "Given a flattened hierarchy node with tags as the properties,
   generate DOM for the elements."
   [hierarchy-node parent-key inherited]
   (let [items-with-excluded (map #((juxt :item :property-elements) %)
-                                 (:members hierarchy-node))
+                                 (hierarchy-node-members hierarchy-node))
         condition (cons nil (canonical-set-to-list
                              (:cumulative-properties hierarchy-node)))]
     (if (empty? items-with-excluded)
@@ -678,7 +684,8 @@
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [:members 0 :property-elements]))
+            (if (every? #(empty? (:property-elements
+                                  (first (hierarchy-node-members %))))
                         flattened-hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)

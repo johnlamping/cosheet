@@ -213,12 +213,6 @@
 ;;; :property-canonicals  A list of canonical-info-sets for each element in
 ;;;                       :property-elements.
 
-;;; TODO: Get rid of the distinction between :members and :children,
-;;; having just children that can be either hierarchy nodes or leaf
-;;; items. This is the information currently returned by
-;;; hierarchy-next-level. To get there, make all the clients use the
-;;; output of hierarchy-next-level, then switch the underlying data.
-
 (defn hierarchy-node?
   [node]
   (contains? node :hierarchy-node))
@@ -938,7 +932,7 @@
   (let [inherited (update-in inherited [:level] (fnil inc -1))]
     ;; Unlike row headers for tags, where the header information is
     ;; computed from the items of the rows, here the header information
-    ;; explicitly provided by the table definition, so the "items" for
+    ;; is explicitly provided by the table definition, so the members of
     ;; the hierarchy are the column definitions.
     (expr-let [columns (expr-seq
                         map (fn [node rightmost]

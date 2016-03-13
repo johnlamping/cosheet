@@ -421,10 +421,10 @@
   [attributes definition]
   (assert (map? attributes))
   (assert (:key attributes))
-  [:component attributes  definition])
+  [:component attributes definition])
 
 (defn condition-component
-  "Return the component for an element that satisfies a condition and
+  "Return a component for an element that satisfies a condition and
   may be displayed under the condition, rather than under its parent."
   [element condition parent-key inherited & {:as content-attributes}]
   (assert (not (elements-referent? (first parent-key))))
@@ -479,7 +479,7 @@
   header, add the information about what borders each node in the
   expansion should be responsible for."
   ;; Hierarchies make this a bit tricky. We use a separate table row
-  ;; for each node of the hierarchy, so we can align the header and
+  ;; for each node of the hierarchy, letting us align the header and
   ;; items for each node. This means that all but the deepest nodes of
   ;; a hierarchy will be displayed as several rows of the table. A row
   ;; thus needs to be responsible not only for borders of its node,

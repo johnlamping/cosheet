@@ -186,42 +186,32 @@
      elements canonical-elements)))
 
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
-;;; into a hierarchy based on common "groups". The information for
-;;; each member is recorded as a canonical-info-set of groups. The hierarchy
-;;; consists of a vector of nodes. The groups for each member at or below
-;;; a hierarchy node are a superset of the groups for that node.
-;;; The data for each node consists of
-;;;   :hierarchy-node  true
-;;;           :groups  A canonical-info-set of the groups added by this node.
-;;; :cumulatve-groups  A canonical-info-set of the groups for members
-;;;                    of this node.
-;;;          :members  A vector of members exactly matching the
-;;;                    cumulative-groups for this node.
-;;;                    All members must come before all children in the order
-;;;                    from which the hierarchy was built. This means that
-;;;                    some children may contain members that would
-;;;                    have qualified to be members of the node,
-;;;                    except for coming after other non-members.
-;;;         :children  An optional vector of child nodes.
-;;; The :groups of a child node only includes the information not
-;;; reflected in any of its parents. When a hierarchy is flattened,
-;;; the cumulative information down through all parents is stored in
-;;; :cumulative-groups.
-;;; For example, if a node has :groups {:b 1}, and has a parent with
-;;; :groups {:a 1}, and has no other ancestors, the :cumulative-groups is
-;;; {:a 1 :b 1}
+;;; into a hierarchy based on a multiset of "properties" associated with
+;;; each member.
+;;; The hierarchy consists of a vector of nodes, each of which is a map that
+;;; has:
+;;;       :hierarchy-node  true (Used to flag nodes)
+;;;           :properties  A multiset of the properties added by this node.
+;;; :cumulatve-properties  The multiset union of the properties of this node
+;;;                        all all its ancestors.
+;;;              :members  A vector of members whose properties exactly
+;;;                        match the cumulative-properties of this node.
+ ;;                        All members must come before all children in the
+;;;                        order from which the hierarchy was built. This means 
+;;;                        that some children may contain members that would
+;;;                        have qualified to be members of the node,
+;;;                        except for coming after other non-members.
+;;;             :children  An optional vector of child nodes.
+;;; The :cumulative-properties is not computed when a hierarchy is first
+;;; created, but gets computed when a hierarchy is flattened.
 ;;; There are no requirements on members, but some of the hierarchy
 ;;; building functions assume each member is itself a map, containing
 ;;;               :item  The item that is the member
 ;;; Other information may be present, including
-;;;     :group-elements  The elements of the item that contribute
-;;;                      to the :cumulative-groups of this node
-;;;                      in the hierarchy
-;;;   :group-canonicals  A list of canonical-info-sets for each element in
-;;;                      :group-elements.
-;;; For a flattened node, the :cumulative-groups for each member will be
-;;; the aggregation of :group-canonicals. But we need them split out for
-;;; each :group-elements
+;;;   :property-elements  The elements of the item that contribute
+;;;                       to the properties of this node in the hierarchy
+;;; :property-canonicals  A list of canonical-info-sets for each element in
+;;;                       :property-elements.
 
 ;;; TODO: Get rid of the distinction between :members and :children,
 ;;; having just children that can be either hierarchy nodes or leaf
@@ -234,22 +224,24 @@
   (contains? node :hierarchy-node))
 
 (defn append-to-hierarchy
-  "Given groups and the corresponding item, add them to the hierarchy.
+  "Given properties and the corresponding item, add them to the hierarchy.
   If top-level is true, we are at the top level of a hierarchy, in which
-  case we don't merge items with empty groups."
-  [hierarchy groups item top-level]
+  case we don't merge items with empty properties."
+  [hierarchy properties item top-level]
   (if (empty? hierarchy)
-    [{:hierarchy-node true :groups groups :members [item]}]
+    [{:hierarchy-node true :properties properties :members [item]}]
     (let [last-entry (last hierarchy)]
-      (if (and ;; Don't merge an empty group.
-           (or (empty? (:groups last-entry)) (empty? groups))
+      (if (and ;; Don't merge an empty properties.
+           (or (empty? (:properties last-entry)) (empty? properties))
            (or top-level
                ;; Unless we are below top level and both are empty
-               (not (empty? (:groups last-entry)))
-               (not (empty? groups))))
-        (conj hierarchy {:hierarchy-node true :groups groups :members [item]})
-        (let [[old-only new-only both] (multiset-diff (:groups last-entry)
-                                                      groups)]
+               (not (empty? (:properties last-entry)))
+               (not (empty? properties))))
+        (conj hierarchy {:hierarchy-node true
+                         :properties properties
+                         :members [item]})
+        (let [[old-only new-only both] (multiset-diff (:properties last-entry)
+                                                      properties)]
           (if (empty? old-only)
             (update-last
              hierarchy
@@ -260,16 +252,16 @@
                            #(append-to-hierarchy % new-only item false)))))
             (if (empty? both)
               (conj hierarchy {:hierarchy-node true
-                               :groups groups
+                               :properties properties
                                :members [item]})
               (append-to-hierarchy
                (update-last hierarchy
                             (fn [last]
                               {:hierarchy-node true
-                               :groups both
+                               :properties both
                                :members []
-                               :children [(assoc last :groups old-only)]}))
-               groups item top-level))))))))
+                               :children [(assoc last :properties old-only)]}))
+               properties item top-level))))))))
 
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
@@ -301,7 +293,7 @@
         (mapcat
          #(reduce (fn [hierarchy item-info-map]
                     (append-to-hierarchy
-                     hierarchy (multiset (:group-canonicals item-info-map))
+                     hierarchy (multiset (:property-canonicals item-info-map))
                      item-info-map true))
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
@@ -324,8 +316,8 @@
                                canonicals (expr-seq
                                            map canonical-info filtered)]
                       {:item item
-                       :group-elements filtered
-                       :group-canonicals canonicals}))
+                       :property-elements filtered
+                       :property-canonicals canonicals}))
                   items)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
 
@@ -334,13 +326,13 @@
 (defn flatten-hierarchy-node
   "Given a hierarchy node, a depth, and the combined info for all
   ancestors, return a flattened version of its hierarchy in
-  pre-order. Add :cumulative-groups and :depth to the node and all its
+  pre-order. Add :cumulative-properties and :depth to the node and all its
   descendants."
   [node depth ancestor-info]
-  (let [cumulative-info (multiset-union (:groups node) ancestor-info)]
+  (let [cumulative-info (multiset-union (:properties node) ancestor-info)]
     (cons (-> node
               (assoc :depth depth)
-              (assoc :cumulative-groups cumulative-info))
+              (assoc :cumulative-properties cumulative-info))
           (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
 
 (defn flatten-hierarchy
@@ -356,10 +348,10 @@
 
 (defn hierarchy-node-next-level
   "Return the concatenation of the members and children of the node.
-  If any children have empty :groups, splice in their members."
+  If any children have empty :properties, splice in their members."
   [node]
   (concat (:members node)
-          (mapcat #(if (empty? (:groups %))
+          (mapcat #(if (empty? (:properties %))
                      (do (assert (empty? (:children %)))
                          (:members %))
                      [%])
@@ -369,14 +361,14 @@
 
 (defn hierarchy-node-extent
   "Return a seq of members below the node that is just big enough that
-  for every member descendant of the node, its groups are a superset
+  for every member descendant of the node, its properties are a superset
   of those of some member of the extent."
   [node]
   (if (seq (:members node))
     [(first (:members node))]
-    ;; Check for a child with no groups. Its members work as extents.
+    ;; Check for a child with no properties. Its members work as extents.
     (if-let [child-members (seq (filter #(and (not (empty? (:members %)))
-                                              (empty? (:groups %)))
+                                              (empty? (:properties %)))
                                         (:children node)))]
       [(first (:members (first child-members)))]
       (hierarchy-nodes-extent (:children node)))))
@@ -601,8 +593,9 @@
                                      [:depth :for-multiple :with-children
                                       :top-border :bottom-border])
         example-elements (multiset-to-generating-values
-                          (:groups hierarchy-node)
-                          (:group-elements example) (:group-canonicals example))
+                          (:properties hierarchy-node)
+                          (:property-elements example)
+                          (:property-canonicals example))
         affected-items (map :item descendants)
         items-referent (if (= (count affected-items) 1)
                          (item-referent (first affected-items))
@@ -618,10 +611,10 @@
   "Given a flattened hierarchy node with tags as the info,
   generate DOM for the elements."
   [hierarchy-node parent-key inherited]
-  (let [items-with-excluded (map #((juxt :item :group-elements) %)
+  (let [items-with-excluded (map #((juxt :item :property-elements) %)
                                  (:members hierarchy-node))
         condition (cons nil (canonical-set-to-list
-                             (:cumulative-groups hierarchy-node)))]
+                             (:cumulative-properties hierarchy-node)))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
                            (first (hierarchy-node-descendants hierarchy-node)))
@@ -685,7 +678,7 @@
                  :style {:height "1px" ;; So height:100% in rows will work.
                          :display "table" :table-layout "fixed"}}]
           (as-> row-doms row-doms
-            (if (every? #(empty? (get-in % [:members 0 :group-elements]))
+            (if (every? #(empty? (get-in % [:members 0 :property-elements]))
                         flattened-hierarchy)
               (map #(add-attributes % {:class "no-tags"}) row-doms)
               row-doms)
@@ -857,7 +850,7 @@
         width (count descendants)
         new-subcolumn-condition (list* (concat new-column-condition
                                                (canonical-set-to-list
-                                                (:groups node))))   
+                                                (:properties node))))   
         column-referent (if (= (count descendants) 1)
                           (item-referent (:item (first descendants)))
                           (parallel-referent [] (map :item descendants)))
@@ -866,8 +859,9 @@
                                                    table-parent-key))
         example (first descendants)
         example-elements (multiset-to-generating-values
-                          (:groups node) 
-                          (:group-elements example) (:group-canonicals example))
+                          (:properties node) 
+                          (:property-elements example)
+                          (:property-canonicals example))
         next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)]
     (expr-let
@@ -1087,9 +1081,10 @@
                    hierarchy (hierarchy-by-canonical-info
                               (map (fn [column elements lists]
                                      {:item column
-                                      :group-elements elements
-                                      :group-canonicals (map canonicalize-list
-                                                             lists)
+                                      :property-elements elements
+                                      :property-canonicals (map
+                                                            canonicalize-list
+                                                            lists)
                                       :condition (replace-nones
                                                   (list* (into '[nil] lists)))})
                                    columns

@@ -22,7 +22,7 @@
                                          replace-nones]])))
 
 ;;; TODO: Are members of hierarchy getting ordered?
-;;; TODO: hierarchy-nodes-extent should be aware of refiments of conditions,
+;;; TODO: hierarchy-nodes-extent should be aware of refinements of conditions,
 ;;;       not just added conditions.
 
 ;;; Code to create hiccup style dom for a database entity.
@@ -56,10 +56,7 @@
                         ; the mutable store, the key of the item,
                         ; the additional arguments passed from
                         ; the UI, and the rest of the command expression.
-   ;; TODO: The following will be obsoleted by :commands
-   :delete-key  ; The key to identity items to delete,
-                        ; if different from the usual key.
-    ])
+   ])
 
 ;;; The value of the style attribute is represented with its own map,
 ;;; rather than as a string, so they are easier to adjust. Conviently,
@@ -160,6 +157,19 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
+(defn multiset-to-generating-values
+  "Given a multi-set, a list of values, and corresponding list of
+  keys for those values, return a list of items whose
+  keys add up to the multi-set."
+  [multiset values keys]
+  (let [;; A map from key to a vector of values with that key.
+        key-values-map (reduce (fn [map [value key]]
+                                 (update-in map [key] #(conj % value)))
+                               {} (map vector values keys))]
+    (reduce (fn [result [key count]]
+              (concat result (take count (key-values-map key))))
+            [] multiset)))
+
 (defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it
   satisfy the condition and nothing extra. The condition must be in list form.
@@ -169,35 +179,11 @@
   (assert (and (sequential? condition)
                (not (empty? condition))
                (nil? (first condition))))
-  ;; Both the elements and the condition might have repeated items,
-  ;; so we have to keep track of what has been used.
   (expr-let [elements (entity/elements entity)
              canonical-elements (expr-seq map canonical-info elements)]
-    (let [elements-map (reduce (fn [elements-map [element canonical]]
-                                 (update-in elements-map [canonical]
-                                            #(conj % element)))
-                               {} (map vector elements canonical-elements))]
-      (first (reduce (fn [[result elements-map] sub-condition]
-                       (let [canonical (canonical-info sub-condition)]
-                         (if (empty? (get elements-map canonical))
-                           [result elements-map]
-                           [(conj result (peek (elements-map canonical)))
-                            (update-in elements-map [canonical] pop)])))
-                     [[] elements-map] (rest condition))))))
-
-(defn canonical-info-to-generating-items
-  "Given a canonical-info-set, a list of items, and a list of the
-  canonical-infos of those items, return a list of items whose
-  canonical-infos add up to the canonical-info-set."
-  [canonical-info items item-canonicals]
-  (let [;; A map from canonical-info to a vector of elements
-        ;; with that info.
-        canonicals-map (reduce (fn [map [item canonical]]
-                                 (update-in map [canonical] #(conj % item)))
-                               {} (map vector items item-canonicals))]
-    (reduce (fn [result [info count]]
-              (concat result (take count (canonicals-map info))))
-            [] canonical-info)))
+    (multiset-to-generating-values
+     (multiset (map canonical-info (rest condition)))
+     elements canonical-elements)))
 
 ;;; A hierarchy, for our purposes here, organizes a bunch of "members"
 ;;; into a hierarchy based on common "groups". The information for
@@ -614,7 +600,7 @@
         appearance-info (select-keys hierarchy-node
                                      [:depth :for-multiple :with-children
                                       :top-border :bottom-border])
-        example-elements (canonical-info-to-generating-items
+        example-elements (multiset-to-generating-values
                           (:groups hierarchy-node)
                           (:group-elements example) (:group-canonicals example))
         affected-items (map :item descendants)
@@ -879,7 +865,7 @@
                                    (prepend-to-key (item-referent table-item)
                                                    table-parent-key))
         example (first descendants)
-        example-elements (canonical-info-to-generating-items
+        example-elements (multiset-to-generating-values
                           (:groups node) 
                           (:group-elements example) (:group-canonicals example))
         next-level (hierarchy-node-next-level node)

@@ -407,8 +407,8 @@
                :depth 1
                :members [:k]}])))
 
-(deftest canonical-info-to-generating-items-test
-  (is (check (canonical-info-to-generating-items
+(deftest multiset-to-generating-values-test
+  (is (check (multiset-to-generating-values
                {:a 1 :b 2} [:a1 :a2 :a3 :b1 :b2 :b3] [:a :a :a :b :b :b])
              (as-set [:a3 :b2 :b3]))))
 

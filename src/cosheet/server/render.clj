@@ -185,12 +185,12 @@
      (multiset (map canonical-info (rest condition)))
      elements canonical-elements)))
 
-;;; A hierarchy, for our purposes here, organizes a bunch of "members"
-;;; into a hierarchy based on a multiset of "properties" associated with
+;;; A hierarchy organizes a sequence of "members"
+;;; into a hierarchy, based on a multiset of "properties" associated with
 ;;; each member.
 ;;; The hierarchy consists of a vector of nodes, each of which is a map that
 ;;; has:
-;;;       :hierarchy-node  true (Used to flag nodes)
+;;;       :hierarchy-node  true (used to identify hierarchy nodes)
 ;;;           :properties  A multiset of the properties added by this node.
 ;;; :cumulatve-properties  The multiset union of the properties of this node
 ;;;                        all all its ancestors.
@@ -218,12 +218,12 @@
   (contains? node :hierarchy-node))
 
 (defn append-to-hierarchy
-  "Given properties and the corresponding item, add them to the hierarchy.
+  "Given properties and the corresponding member, add them to the hierarchy.
   If top-level is true, we are at the top level of a hierarchy, in which
-  case we don't merge items with empty properties."
-  [hierarchy properties item top-level]
+  case we don't merge members with empty properties."
+  [hierarchy properties member top-level]
   (if (empty? hierarchy)
-    [{:hierarchy-node true :properties properties :members [item]}]
+    [{:hierarchy-node true :properties properties :members [member]}]
     (let [last-entry (last hierarchy)]
       (if (and ;; Don't merge an empty properties.
            (or (empty? (:properties last-entry)) (empty? properties))
@@ -233,21 +233,22 @@
                (not (empty? properties))))
         (conj hierarchy {:hierarchy-node true
                          :properties properties
-                         :members [item]})
+                         :members [member]})
         (let [[old-only new-only both] (multiset-diff (:properties last-entry)
                                                       properties)]
           (if (empty? old-only)
             (update-last
              hierarchy
              (if (and (empty? new-only) (not (contains? last-entry :children)))
-               (fn [last] (update-in last [:members] #((fnil conj []) % item)))
+               (fn [last] (update-in last [:members]
+                                     #((fnil conj []) % member)))
                (fn [last] (update-in
                            last [:children]
-                           #(append-to-hierarchy % new-only item false)))))
+                           #(append-to-hierarchy % new-only member false)))))
             (if (empty? both)
               (conj hierarchy {:hierarchy-node true
                                :properties properties
-                               :members [item]})
+                               :members [member]})
               (append-to-hierarchy
                (update-last hierarchy
                             (fn [last]
@@ -255,7 +256,26 @@
                                :properties both
                                :members []
                                :children [(assoc last :properties old-only)]}))
-               properties item top-level))))))))
+               properties member top-level))))))))
+
+(def flatten-hierarchy)
+
+(defn flatten-hierarchy-node
+  "Given a hierarchy node, a depth, and the combined properties for all
+  ancestors, return the sequence of all descendant nodes in
+  pre-order. Add :cumulative-properties and :depth to the returned nodes."
+  [node depth ancestor-info]
+  (let [cumulative-info (multiset-union (:properties node) ancestor-info)]
+    (cons (-> node
+              (assoc :depth depth)
+              (assoc :cumulative-properties cumulative-info))
+          (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
+
+(defn flatten-hierarchy
+  "Given a hierarchy and a depth, return the sequence of all descendant nodes
+  in pre-order. Add :cumulative-properties and :depth to the returned nodes."
+  [hierarchy depth ancestor-info]
+  (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
@@ -314,25 +334,6 @@
                        :property-canonicals canonicals}))
                   items)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
-
-(def flatten-hierarchy)
-
-(defn flatten-hierarchy-node
-  "Given a hierarchy node, a depth, and the combined info for all
-  ancestors, return the sequence of all descendant nodes in
-  pre-order. Add :cumulative-properties and :depth to the returned nodes."
-  [node depth ancestor-info]
-  (let [cumulative-info (multiset-union (:properties node) ancestor-info)]
-    (cons (-> node
-              (assoc :depth depth)
-              (assoc :cumulative-properties cumulative-info))
-          (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
-
-(defn flatten-hierarchy
-  "Given a hierarchy and a depth, return the sequence of all descendant nodes
-  in pre-order. Add :cumulative-properties and :depth to the returned nodes."
-  [hierarchy depth ancestor-info]
-  (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
 
 (defn hierarchy-node-descendants
   "Return all members at or below the node."

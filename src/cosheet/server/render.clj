@@ -772,21 +772,20 @@
   satisfy. column-key gives the key for just the header definition(s)
   of this column, and not the elements in rows, and new-column-condition
   gives the condition that new parallel columns must satisfy."
-  [elements width parent-key elements-condition
+  [example-elements width parent-key elements-condition
    column-key new-column-condition delete-key rightmost inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
                        #(condition-component
                          % elements-condition parent-key inherited)
-                       elements)
+                       example-elements)
              element-lists
-             (expr-seq map semantic-to-list elements)]
-    (let [num-elements (count elements)
-          components (map-indexed
+             (expr-seq map semantic-to-list example-elements)]
+    (let [components (map-indexed
                       (fn [position component]
                         ;; Make the new column condition also require the
-                        ;; elements above this one in the list for this node.
+                        ;; elements above this one in the stack for this node.
                         (let [column-condition
                               (list* (concat new-column-condition
                                              (take position element-lists)))]
@@ -801,7 +800,7 @@
                                         :template column-condition]}})))
                           components)]
       (as-> (vertical-stack components :separators true) dom
-        (cond (> num-elements 1)
+        (cond (not (empty? (rest example-elements)))
               (add-attributes dom {:class "stack"})
               delete-key (add-attributes
                           dom
@@ -809,7 +808,7 @@
                                       [:do-delete :delete-key delete-key]}})
               true
               dom)
-        (if (empty? elements)
+        (if (empty? example-elements)
           (add-attributes dom {:key (prepend-to-key
                                      (elements-referent elements-condition)
                                      parent-key)
@@ -830,7 +829,7 @@
         (if rightmost
           (add-attributes dom {:class "rightmost"})
           dom)
-        (if (zero? num-elements)
+        (if (empty? example-elements)
           (add-attributes dom {:class "empty"})
           dom)
         (add-attributes dom {:class "tags"})))))

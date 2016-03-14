@@ -325,19 +325,12 @@
                               items)]
     (filter identity passed)))
 
-(defn filtered-elements
-  "Return a seq of all elements of the entity that satisfy the condition."
-  [entity condition]
-  (expr-let [elements (entity/elements entity)]
-    (filtered-items condition elements)))
-
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information
 ;;; about how to display the eements is considered irrelevant for
 ;;; coalescing entities. We call the elements that matter the semantic
 ;;; elements. Non-semantic elements will always themselves have an
-;;; element with a keyword as content. For example, order information
-;;; has :order as an element's value, and so is not semantic.
+;;; element with :non-semantic as content.
 
 ;;; Note, however that being non-semantic is a relationship between an
 ;;; element and its subject, not an intrinsic property of the
@@ -346,18 +339,20 @@
 ;;; possible to find a non-semantic element of one item that matches a
 ;;; non-semantic element of an exemplar item.
 
-(defn semantic-entity?
-  "Return true if an entity counts as semantic information
-  (Doesn't have a keyword element.)"
+(defn semantic-element?
+  "Return true if an element counts as semantic information for its subject.
+  (Doesn't have a :non-semantic element.)"
   [entity]
   (expr-let [elements (entity/elements entity)
              element-contents (expr-seq map entity/content elements)]
-    (not-any? keyword? element-contents)))
+    (not-any? #(= % :non-semantic) element-contents)))
 
 (defn semantic-elements
   "Return the elements of an entity that are semantic to it."
   [entity]
-  (filtered-elements entity semantic-entity?))
+  (expr-let [elements (entity/elements entity)
+             non-semantic (entity/label->elements entity :non-semantic)]
+    (remove (set non-semantic) elements)))
 
 (defn semantic-to-list
   "Given an item, make a list representation of the

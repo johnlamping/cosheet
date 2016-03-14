@@ -13,7 +13,7 @@
                                          comment-referent key-referent
                                          content-location-referent
                                          elements-referent query-referent
-                                         parallel-referent semantic-entity?
+                                         parallel-referent semantic-element?
                                          prepend-to-key elements-referent?
                                          item-referent? first-primitive-referent
                                          remove-first-primitive-referent
@@ -325,7 +325,7 @@
                   map
                   (fn [item]
                     (expr-let [elements (matching-elements condition item)
-                               filtered (filtered-items semantic-entity?
+                               filtered (filtered-items semantic-element?
                                                         elements)
                                canonicals (expr-seq
                                            map canonical-info filtered)]

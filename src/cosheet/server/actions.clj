@@ -10,7 +10,7 @@
     [store :refer [update-content add-simple-element do-update-control-return!
                    id->subject id-valid?]]
     [store-impl :refer [get-unique-id-number]]
-    [store-utils :refer [remove-entity-by-id]]
+    [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity
                     content elements label->elements label->content to-list]]
@@ -90,10 +90,10 @@
                                         (case position ;; Make the order match
                                           :before entity-elements
                                           :after (reverse entity-elements)))
-            [s3 order-id] (add-simple-element
-                           s2 id (if use-bigger bigger-order smaller-order))
-            [s4 _] (add-simple-element s3 order-id :order)]
-        [s4 id (if use-bigger smaller-order bigger-order)]))))
+            [s3 _] (add-entity
+                    s2 id `(~(if use-bigger bigger-order smaller-order)
+                            :order :non-semantic))]
+        [s3 id (if use-bigger smaller-order bigger-order)]))))
 
 (defn order-element-for-item
   "Return an element with the order information for item,

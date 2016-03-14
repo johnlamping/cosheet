@@ -25,17 +25,17 @@
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def joe-list `("Joe"
-                (~o2 :order)
-                ("male" (~o1 :order))
-                (39 (~o3 :order)
+                (~o2 :order :non-semantic)
+                ("male" (~o1 :order :non-semantic))
+                (39 (~o3 :order :non-semantic)
                     ("age" ~'tag)
                     ("doubtful" "confidence"))
-                ("married" (~o2 :order))
-                (45 (~o4 :order)
+                ("married" (~o2 :order :non-semantic))
+                (45 (~o4 :order :non-semantic)
                     ("age" ~'tag))))
-(def jane-list `("Jane" (~o1 :order)
-                 ("female" (~o2 :order))
-                 (45 (~o3 :order)
+(def jane-list `("Jane" (~o1 :order :non-semantic)
+                 ("female" (~o2 :order :non-semantic))
+                 (45 (~o3 :order :non-semantic)
                      ("age" ~'tag))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
@@ -151,8 +151,8 @@
 
 (deftest semantic-matching-element-test
   (let [joe `("x"
-              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order))
-              ("Joe" ("name" ~'tag) (~o2 :order)))
+              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order :non-semantic))
+              ("Joe" ("name" ~'tag) (~o2 :order :non-semantic)))
         matching (semantic-matching-element '("Joe" ("name" tag)) joe)]
     (is (= matching (nth joe 2)))))
 
@@ -229,11 +229,11 @@
                                             [joe-age-tag joe-age])])
                                   jane)
            [jane-age-tag]))
-    (is (= (instantiate-bound-key store false
-                                  (bind [(parallel-referent
-                                          [] [joe-male joe-age])])
-                                 joe)
-           [joe-male joe-age]))
+    (is (check (instantiate-bound-key store false
+                                      (bind [(parallel-referent
+                                              [] [joe-male joe-age])])
+                                      joe)
+               (as-set [joe-male joe-age])))
     (is (= (instantiate-bound-key store false
                                   (bind [(parallel-referent
                                           [] [joe-male joe-age] [joe-age])])
@@ -284,12 +284,12 @@
             (bind-e [(item-referent joe-age-tag) (item-referent joe-age)])
             jane)
            [[jane-age-tag]]))
-    (is (= (instantiate-bound-key
-            store true
-            (bind [[:parallel [] [(item-referent joe-male)
-                                  (item-referent joe-age)]]])
-            joe)
-           [[joe-male joe-age]]))
+    (is (check (instantiate-bound-key
+                store true
+                (bind [[:parallel [] [(item-referent joe-male)
+                                      (item-referent joe-age)]]])
+                joe)
+               [(as-set [joe-male joe-age])]))
     (is (= (instantiate-bound-key
             store true
             (bind [[:parallel

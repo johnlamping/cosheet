@@ -42,15 +42,15 @@
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
-(def jane-list `("Jane" (~o1 :order) "plain" "plain"))
+(def jane-list `("Jane" (~o1 :order :non-semantic) "plain" "plain"))
 (def joe-list `("Joe"
-               (~o2 :order)
-               ("male" (~o1 :order))
-               ("married" (~o2 :order))
-               (39 (~o3 :order)
+               (~o2 :order :non-semantic)
+               ("male" (~o1 :order :non-semantic))
+               ("married" (~o2 :order :non-semantic))
+               (39 (~o3 :order :non-semantic)
                    ("age" ~'tag)
                    ("doubtful" "confidence"))
-               (45 (~o4 :order)
+               (45 (~o4 :order :non-semantic)
                    ("age" ~'tag))))
 
 (defn get-dom-keys
@@ -210,8 +210,12 @@
                                   {:a 1} :j true)
              [{:hierarchy-node true :properties {:a 1}
                :members []
-               :children [{:hierarchy-node true :properties {:b 1} :members [:i]}
-                          {:hierarchy-node true :properties {}, :members [:j]}]}]))
+               :children [{:hierarchy-node true
+                           :properties {:b 1}
+                           :members [:i]}
+                          {:hierarchy-node true
+                           :properties {},
+                           :members [:j]}]}]))
   ;; Old and new have some in common.
   (is (check
        (append-to-hierarchy [{:hierarchy-node true
@@ -251,13 +255,18 @@
              [{:hierarchy-node true
                :properties {:a 1}
                :members [:i]
-               :children [{:hierarchy-node true :properties {:b 1} :members [:j]}
-                          {:hierarchy-node true :properties {} :members [:k]}]}]))
+               :children [{:hierarchy-node true
+                           :properties {:b 1}
+                           :members [:j]}
+                          {:hierarchy-node true
+                           :properties {}
+                           :members [:k]}]}]))
   ;; Partial sharing with last element that has children.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:properties {:c 1} :members [:j]}]}]
+                                    :children [{:properties {:c 1}
+                                                :members [:j]}]}]
                                   {:a 1 :c 1} :k true)
              [{:hierarchy-node true
                :properties {:a 1}
@@ -271,7 +280,9 @@
                            :members [:k]}]}]))
   ;; Append two empty properties
   (is (check
-       (append-to-hierarchy [{:hierarchy-node true :properties {} :members [:i]}]
+       (append-to-hierarchy [{:hierarchy-node true
+                              :properties {}
+                              :members [:i]}]
                             {} :j true)
        [{:hierarchy-node true :properties {} :members [:i]}
         {:hierarchy-node true  :properties {} :members [:j]}]))
@@ -325,21 +336,22 @@
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:property-canonicals [:a] :item `(:i (~o1 :order))}
-         {:property-canonicals [:a :b] :item `(:j (~o2 :order))}
-         {:property-canonicals [:a :c] :item `(:k (~o3 :order))}]
+        [{:property-canonicals [:a] :item `(:i (~o1 :order :non-semantic))}
+         {:property-canonicals [:a :b] :item `(:j (~o2 :order :non-semantic))}
+         {:property-canonicals [:a :c] :item `(:k (~o3 :order :non-semantic))}]
         #{})
        [{:hierarchy-node true
          :properties {:a 1}
-         :members [{:property-canonicals [:a] :item `(:i (~o1 :order))}]
+         :members [{:property-canonicals [:a]
+                    :item `(:i (~o1 :order :non-semantic))}]
          :children [{:hierarchy-node true
                      :properties {:b 1}
                      :members [{:property-canonicals [:a :b]
-                                :item `(:j (~o2 :order))}]}
+                                :item `(:j (~o2 :order :non-semantic))}]}
                     {:hierarchy-node true
                      :properties {:c 1}
                      :members [{:property-canonicals [:a :c]
-                                :item `(:k (~o3 :order))}]}]}])))
+                                :item `(:k (~o3 :order :non-semantic))}]}]}])))
 
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
@@ -558,7 +570,7 @@
   (let [[dom age]
         (let-mutated [age `(39 ("doubtful"
                                 ("confidence" ~'tag)
-                                (~o1 :order)))]
+                                (~o1 :order :non-semantic)))]
           (expr-let [dom (item-DOM
                           age [:age] #{} {} {:depth 0 :do-not-merge #{}})]
             [dom age]))
@@ -613,7 +625,7 @@
               {:depth 1 :do-not-merge #{}}]]]]])))
   ;; Check that we generate no-tags.
   (let [[dom age]
-        (let-mutated [age `(39 ("doubtful" (~o1 :order)))]
+        (let-mutated [age `(39 ("doubtful" (~o1 :order :non-semantic)))]
           (expr-let [dom (item-DOM
                           age [:age] #{} {} {:depth 0 :do-not-merge #{}})]
             [dom age]))
@@ -771,15 +783,15 @@
   ;; Test a hierarchy.
   (let [[dom-reporter joe]
         (let-mutated [joe `("Joe"
-                            (~o2 :order)
-                            ("1" (~o1 :order)
+                            (~o2 :order :non-semantic)
+                            ("1" (~o1 :order :non-semantic)
                                  ("L1" ~'tag))
-                            (12 (~o2 :order)
-                                ("L1" ~'tag (~o1 :order))
-                                ("L2" ~'tag (~o2 :order)))
-                            (13 (~o3 :order)
-                                ("L1" ~'tag (~o1 :order))
-                                ("L3" ~'tag (~o2 :order))))]
+                            (12 (~o2 :order :non-semantic)
+                                ("L1" ~'tag (~o1 :order :non-semantic))
+                                ("L2" ~'tag (~o2 :order :non-semantic)))
+                            (13 (~o3 :order :non-semantic)
+                                ("L1" ~'tag (~o1 :order :non-semantic))
+                                ("L3" ~'tag (~o2 :order :non-semantic))))]
           (expr identity
             [(item-DOM joe [:joe] #{} {}  {:depth 0 :do-not-merge #{}}) joe]))
         v1 (first (current-value (label->elements joe o1)))
@@ -903,12 +915,12 @@
   ;; tag in another.
   (let [[dom-reporter joe]
         (let-mutated [joe `("Joe"
-                            (~o2 :order)
-                            ("a" (~o2 :order)
-                             ("L1" ~'tag (~o1 :order))
-                             ("L2" ~'tag (~o2 :order)))
-                            ("b" (~o3 :order)
-                             ("L1" ~'tag (~o1 :order))))]
+                            (~o2 :order :non-semantic)
+                            ("a" (~o2 :order :non-semantic)
+                             ("L1" ~'tag (~o1 :order :non-semantic))
+                             ("L2" ~'tag (~o2 :order :non-semantic)))
+                            ("b" (~o3 :order :non-semantic)
+                             ("L1" ~'tag (~o1 :order :non-semantic))))]
           (expr identity
             [(item-DOM joe [rid] #{} {} {:depth 0 :do-not-merge #{}}) joe]))
         va (first (current-value (label->elements joe o2)))
@@ -1023,9 +1035,9 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               ((:none (:none ("age" ~'tag))) :row-query)
-                              (:none ("age" ~'tag) (~o1 :order)
+                              (:none ("age" ~'tag) (~o1 :order :non-semantic)
                                      (:column :non-semantic))
-                              (:none ("size" ~'tag) (~o2 :order)
+                              (:none ("size" ~'tag) (~o2 :order :non-semantic)
                                      (:column :non-semantic)))
                       joe (list* (concat joe-list
                                          ['(:top-level :non-semantic)]))
@@ -1141,23 +1153,24 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              (:none ("name" ~'tag (~o1 :order))
-                                     ("id" ~'tag (~o2 :order))
-                                     (~o1 :order)
+                              (:none ("name" ~'tag (~o1 :order :non-semantic))
+                                     ("id" ~'tag (~o2 :order :non-semantic))
+                                     (~o1 :order :non-semantic)
                                      (:column :non-semantic))
                               (:none ("age" ~'tag)
-                                     (~o2 :order)
+                                     (~o2 :order :non-semantic)
                                      (:column :non-semantic)))
                       joe `("Joe"
-                            (~o1 :order)
+                            (~o1 :order :non-semantic)
                             (:top-level :non-semantic)
-                            ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order))
-                            (45 ("age" ~'tag) (~o2 :order)))
+                            ("Joe" ("name" ~'tag) ("id" ~'tag)
+                             (~o1 :order :non-semantic))
+                            (45 ("age" ~'tag) (~o2 :order :non-semantic)))
                       jane `("Jane"
-                             (~o2 :order)
+                             (~o2 :order :non-semantic)
                              (:top-level :non-semantic)
-                             ("Jane" ("name" ~'tag) (~o1 :order))
-                             (44 ("age" ~'tag) (~o2 :order)))]
+                             ("Jane" ("name" ~'tag) (~o1 :order :non-semantic))
+                             (44 ("age" ~'tag) (~o2 :order :non-semantic)))]
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
@@ -1293,26 +1306,28 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              (:none ("name" ~'tag (~o1 :order))
-                                     (~o1 :order)
+                              (:none ("name" ~'tag (~o1 :order :non-semantic))
+                                     (~o1 :order :non-semantic)
                                      (:column :non-semantic))
-                              (:none ("name" ~'tag (~o1 :order))
-                                     ("id" ~'tag (~o2 :order))
-                                     (~o2 :order)
+                              (:none ("name" ~'tag (~o1 :order :non-semantic))
+                                     ("id" ~'tag (~o2 :order :non-semantic))
+                                     (~o2 :order :non-semantic)
                                      (:column :non-semantic)))
                       joe `("Joe"
-                            (~o1 :order)
+                            (~o1 :order :non-semantic)
                             (:top-level :non-semantic)
                             ("Joseph"
-                             ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+                             ("name" ~'tag) ("id" ~'tag)
+                             (~o1 :order :non-semantic))
                             ("Joe"
-                             ("name" ~'tag) (~o2 :order))
-                            (45 ("age" ~'tag) (~o2 :order)))
+                             ("name" ~'tag) (~o2 :order :non-semantic))
+                            (45 ("age" ~'tag) (~o2 :order :non-semantic)))
                       jane `("Jane"
-                             (~o2 :order)
+                             (~o2 :order :non-semantic)
                              (:top-level :non-semantic)
-                             ("Jane" ("name" ~'tag) ("id ~'tag") (~o1 :order))
-                             (44 ("age" ~'tag) (~o2 :order)))]
+                             ("Jane" ("name" ~'tag) ("id ~'tag")
+                              (~o1 :order :non-semantic))
+                             (44 ("age" ~'tag) (~o2 :order :non-semantic)))]
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))
@@ -1524,26 +1539,28 @@
   (let [[dom table joe jane]
         (let-mutated [table `("table"
                               (:none :row-query)
-                              (:none ("name" ~'tag (~o1 :order))
-                                     ("id" ~'tag (~o2 :order))
-                                     (~o1 :order)
+                              (:none ("name" ~'tag (~o1 :order :non-semantic))
+                                     ("id" ~'tag (~o2 :order :non-semantic))
+                                     (~o1 :order :non-semantic)
                                      (:column :non-semantic))
-                              (:none ("name" ~'tag (~o1 :order))
-                                     (~o2 :order)
+                              (:none ("name" ~'tag (~o1 :order :non-semantic))
+                                     (~o2 :order :non-semantic)
                                      (:column :non-semantic)))
                       joe `("Joe"
-                            (~o1 :order)
+                            (~o1 :order :non-semantic)
                             (:top-level :non-semantic)
                             ("Joseph"
-                             ("name" ~'tag) ("id" ~'tag) (~o1 :order))
+                             ("name" ~'tag) ("id" ~'tag)
+                             (~o1 :order :non-semantic))
                             ("Joe"
-                             ("name" ~'tag) (~o2 :order))
-                            (45 ("age" ~'tag) (~o2 :order)))
+                             ("name" ~'tag) (~o2 :order :non-semantic))
+                            (45 ("age" ~'tag) (~o2 :order :non-semantic)))
                       jane `("Jane"
-                             (~o2 :order)
+                             (~o2 :order :non-semantic)
                              (:top-level :non-semantic)
-                             ("Jane" ("name" ~'tag) ("id ~'tag") (~o1 :order))
-                             (44 ("age" ~'tag) (~o2 :order)))]
+                             ("Jane" ("name" ~'tag) ("id ~'tag")
+                              (~o1 :order :non-semantic))
+                             (44 ("age" ~'tag) (~o2 :order :non-semantic)))]
           (expr-let [dom (table-DOM table [:foo] {:depth 0 :do-not-merge #{}})]
             [dom table joe jane]))
         query (current-value (entity/label->content table :row-query))

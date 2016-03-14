@@ -43,17 +43,17 @@
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
-                (~o2 :order)
-                ("male" (~o1 :order))
-                (39 (~o3 :order)
+                (~o2 :order :non-semantic)
+                ("male" (~o1 :order :non-semantic))
+                (39 (~o3 :order :non-semantic)
                     ("age" ~'tag)
                     ("doubtful" "confidence"))
-                ("married" (~o2 :order))
-                (45 (~o4 :order)
+                ("married" (~o2 :order :non-semantic))
+                (45 (~o4 :order :non-semantic)
                     ("age" ~'tag))))
-(def jane-list `("Jane" (~o1 :order)
-                 ("female" (~o2 :order))
-                 (45 (~o3 :order)
+(def jane-list `("Jane" (~o1 :order :non-semantic)
+                 ("female" (~o2 :order :non-semantic))
+                 (45 (~o3 :order :non-semantic)
                      ("age" ~'tag))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
@@ -106,7 +106,7 @@
         new-entity (first (filter #(= (content %) 6) (elements joe)))
         [o5 o6] (orderable/split unused-orderable :before)]
     (is (= (to-list new-entity)
-           `(6 (~o5 :order))))
+           `(6 (~o5 :order :non-semantic))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-entity-with-order
@@ -117,7 +117,7 @@
                                   (elements joe)))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
-           `(6 (~o5 :order))))
+           `(6 (~o5 :order :non-semantic))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))    
   (let [[s id order] (update-add-entity-with-order
@@ -128,7 +128,7 @@
                                   (elements joe)))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
-           `(6 (~o6 :order))))
+           `(6 (~o6 :order :non-semantic))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-entity-with-order
@@ -139,8 +139,9 @@
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
     (is (= (canonicalize-list (to-list new-entity))
-           (canonicalize-list `(6 (~o7 :order)
-                                  ("height" ~'tag (~o6 :order))))))
+           (canonicalize-list `(6 (~o7 :order :non-semantic)
+                                  ("height" ~'tag
+                                   (~o6 :order :non-semantic))))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   ;; Check that order in the list style entity is preserved in the
@@ -154,9 +155,10 @@
         [x o6] (orderable/split x :before)
         [o8 o7] (orderable/split x :before)]
     (is (= (canonicalize-list (to-list new-entity))
-           (canonicalize-list `(6 (~o5 :order)
-                                  ("height" ~'tag (~o7 :order))
-                                  ("weight" ~'tag (~o6 :order))))))
+           (canonicalize-list
+            `(6 (~o5 :order :non-semantic)
+                ("height" ~'tag (~o7 :order :non-semantic))
+                ("weight" ~'tag (~o6 :order :non-semantic))))))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
 
@@ -207,7 +209,9 @@
                         :use-bigger true)]
     (is (= result2 result1))
     (is (= (canonicalize-list (to-list new-element))
-           (canonicalize-list `("" (~o6 :order) ("age" ~'tag (~o7 :order))))))
+           (canonicalize-list `(""
+                                (~o6 :order :non-semantic)
+                                ("age" ~'tag (~o7 :order :non-semantic))))))
     (is (= (id->content s1 (:item-id order-entity)) o5))
     (is (= select [[(:item-id new-element) (:item-id jane)]
                    [jane-age-key]]))))

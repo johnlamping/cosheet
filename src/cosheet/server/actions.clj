@@ -250,15 +250,7 @@
             first-primitive (first-primitive-referent target-key)
             [_ condition] first-primitive
             model-entity (cons content (rest condition))
-            selection-suffix (let [suffix
-                                   (remove-first-primitive-referent target-key)]
-                               (if (= condition [nil 'tag])
-                                 ;; TODO: This is a hack that recognizes tags
-                                 ;; as special. The right thing is to add
-                                 ;; the comment to the empty tag key.
-                                 (prepend-to-key (comment-referent '(nil tag))
-                                                 suffix)
-                                 suffix))]
+            selection-suffix (remove-first-primitive-referent target-key)]
         ;; TODO: handle all-elements argument
         (assert (= (count subjects) (count adjacents)))
         (add-and-select

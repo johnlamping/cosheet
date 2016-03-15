@@ -478,7 +478,7 @@
   (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
                                       nil '(nil tag) [rid] {})
              [:div {:class "full-row editable column tags"
-                    :key [[:elements [nil 'tag]] rid]
+                    :key [[:elements [nil 'tag]] [:comment [nil 'tag]] rid]
                     :commands {:set-content [:do-create-content]
                                :add-row [:do-add :subject-key nil
                                          :adjacent-group-key [rid]]}}]))
@@ -524,7 +524,7 @@
          dom
          [:div
           {:class "full-row column tags top-border ll-corner"
-           :key [[:elements [nil 'tag]] rid]
+           :key [[:elements [nil 'tag]] [:comment [nil 'tag]] rid]
            :commands {:add-row [:do-add :subject-key nil
                                 :adjacent-group-key [rid]]}}
           [:div {:class "stack"}
@@ -641,6 +641,7 @@
               [:div {:style {:display "table-cell"}
                      :class "full-row editable column tags top-border bottom-border"
                      :key (into [[:elements [nil 'tag]]
+                                 [:comment [nil 'tag]]
                                  (:item-id doubtful)] item-key)
                      :commands {:set-content [:do-create-content]
                                 :add-row [:do-add
@@ -1013,7 +1014,8 @@
                                           :adjacent-group-key
                                           (into [(:item-id vb)] item-key)]}}
                [:div {:class "full-row top-border editable indent-1"
-                      :key (into [[:elements [nil 'tag]]
+                      :key (into[[:elements [nil 'tag]]
+                                 [:comment [nil 'tag]]
                                   (:item-id vb)]
                                  item-key)
                       :commands {:set-content [:do-create-content]

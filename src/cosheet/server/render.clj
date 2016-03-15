@@ -545,7 +545,13 @@
                 elements)]
       (let [num-elements (count elements)
             elements-key (prepend-to-key
-                          (elements-referent condition) row-key)
+                          (elements-referent condition)
+                          ;; If a value gets put in here, it will have
+                          ;; the following comment. Adding it now lets
+                          ;; the action that will create the value know
+                          ;; how to select it.
+                          (prepend-to-key (comment-referent condition)
+                                          row-key))
             {:keys [is-tags top-border bottom-border
                     for-multiple with-children depth]} appearance-info]
         (as-> (vertical-stack components :separators true) dom

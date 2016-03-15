@@ -380,21 +380,6 @@
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-(defn stack-vertical
-  "Make a dom stack vertically with its siblings."
-  [dom]
-  (let [style (:style (dom-attributes dom))
-        display (:display style)
-        width (:width style)]
-    (add-attributes (if width dom (add-attributes dom
-                                                  ;; TODO: Make this a
-                                                  ;; CSS class.
-                                                  {:style {:width "100%"}}))
-                    {:style {:display
-                             (case display
-                               (nil "block" "inline-block") "block"
-                               ("table" "inline-table") "table")}})))
-
 (defn vertical-separated
   "Make a dom have separators between its siblings."
   [dom]
@@ -409,11 +394,10 @@
   (case (count doms)
     (if (= (count doms) 1)
       (first doms)
-      (into [:div]
-            (map (if separators
-                   (comp vertical-separated stack-vertical)
-                   stack-vertical)
-                 doms)))))
+      (into [:div {:class "vertical-stack"}]
+            (if separators
+              (map #(add-attributes % {:class "vertical-separated"}) doms)
+              doms)))))
 
 (defn make-component
   "Make a component dom descriptor, with the given attributes and definition.

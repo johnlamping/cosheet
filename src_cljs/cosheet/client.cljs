@@ -30,7 +30,7 @@
     (if (some is-editable? children)
       dom
       (let [candidates (filter #(not (nil? %))
-                              descendant-with-editable)]
+                               (map descendant-with-editable children))]
         (cond (empty? candidates) nil
               (empty? (rest candidates)) (first candidates)
               true false)))))

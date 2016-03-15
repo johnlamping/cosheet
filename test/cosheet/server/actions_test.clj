@@ -46,15 +46,15 @@
                 (~o2 :order :non-semantic)
                 ("male" (~o1 :order :non-semantic))
                 (39 (~o3 :order :non-semantic)
-                    ("age" ~'tag)
+                    ("age" :tag)
                     ("doubtful" "confidence"))
                 ("married" (~o2 :order :non-semantic))
                 (45 (~o4 :order :non-semantic)
-                    ("age" ~'tag))))
+                    ("age" :tag))))
 (def jane-list `("Jane" (~o1 :order :non-semantic)
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
-                     ("age" ~'tag))))
+                     ("age" :tag))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
@@ -132,7 +132,7 @@
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-entity-with-order
-                      store joe-id '(6 ("height" tag))
+                      store joe-id '(6 ("height" :tag))
                       unused-orderable :before true)
         joe (description->entity joe-id s)
         new-entity (first (label->elements joe "height"))
@@ -140,14 +140,14 @@
         [o6 o7] (orderable/split x :after)]
     (is (= (canonicalize-list (to-list new-entity))
            (canonicalize-list `(6 (~o7 :order :non-semantic)
-                                  ("height" ~'tag
+                                  ("height" :tag
                                    (~o6 :order :non-semantic))))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.
   (let [[s id order] (update-add-entity-with-order
-                      store joe-id '(6 ("height" tag) ("weight" tag))
+                      store joe-id '(6 ("height" :tag) ("weight" :tag))
                       unused-orderable :after false)
         joe (description->entity joe-id s)
         new-entity (first (label->elements joe "height"))
@@ -157,8 +157,8 @@
     (is (= (canonicalize-list (to-list new-entity))
            (canonicalize-list
             `(6 (~o5 :order :non-semantic)
-                ("height" ~'tag (~o7 :order :non-semantic))
-                ("weight" ~'tag (~o6 :order :non-semantic))))))
+                ("height" :tag (~o7 :order :non-semantic))
+                ("weight" :tag (~o6 :order :non-semantic))))))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
 
@@ -186,7 +186,7 @@
                                (dom->subcomponents jane-dom)))
         jane-age-key [(:item-id jane-age) (:item-id jane)]
         result1 (do-add store jane-age-key
-                        :template '(nil ("age" tag))
+                        :template '(nil ("age" :tag))
                         :subject-key [(:item-id jane)]
                         :adjacent-key jane-age-key
                         :use-bigger true)
@@ -203,7 +203,7 @@
                             [(:item-id jane-age) (:item-id jane-female)]]
                            jane-id]
         result2 (do-add store jane-age-key
-                        :template '(nil ("age" tag))
+                        :template '(nil ("age" :tag))
                         :subject-key [(:item-id jane)]
                         :adjacent-group-key jane-elements-key
                         :use-bigger true)]
@@ -211,7 +211,7 @@
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `(""
                                 (~o6 :order :non-semantic)
-                                ("age" ~'tag (~o7 :order :non-semantic))))))
+                                ("age" :tag (~o7 :order :non-semantic))))))
     (is (= (id->content s1 (:item-id order-entity)) o5))
     (is (= select [[(:item-id new-element) (:item-id jane)]
                    [jane-age-key]]))))
@@ -232,10 +232,10 @@
       (is (= (set joe-ages) #{45})))))
 
 (deftest do-set-content-test
-  (let [joe-male-tag-key [(elements-referent [nil 'tag])
+  (let [joe-male-tag-key [(elements-referent [nil :tag])
                           (:item-id joe-male)
                           joe-id]
-        joe-married-tag-key [(elements-referent [nil 'tag])
+        joe-married-tag-key [(elements-referent [nil :tag])
                              (:item-id joe-married)
                              joe-id]
         mutable-store (new-mutable-store store)
@@ -267,15 +267,15 @@
 
 (deftest do-create-content-test
   (let  [joe-male-key [(:item-id joe-male) joe-id]
-         joe-male-tag-key (prepend-to-key (elements-referent [nil 'tag])
+         joe-male-tag-key (prepend-to-key (elements-referent [nil :tag])
                                           joe-male-key)
-         joe-married-tag-key [(elements-referent [nil 'tag])
+         joe-married-tag-key [(elements-referent [nil :tag])
                               (:item-id joe-married)
                               joe-id]]
     (let [result (do-create-content store joe-male-tag-key :to "gender")
           s1 (:store result)]
       (is (= (semantic-to-list (description->entity (:item-id joe-male) s1))
-           ["male" ["gender" 'tag]])))
+           ["male" ["gender" :tag]])))
     (let [old-joe-order (current-value (label->content joe :order))
           result (do-create-content store joe-married-tag-key
                                     :to "marital status"
@@ -285,11 +285,11 @@
       (let [new-joe (description->entity joe-id s2)
             new-joe-married (description->entity (:item-id joe-married) s2)
             new-joe-order (current-value (label->content new-joe :order))
-            marital-status (first (label->elements new-joe-married 'tag))
+            marital-status (first (label->elements new-joe-married :tag))
             marital-status-order (current-value
                                   (label->content marital-status :order))]
         (is (= (semantic-to-list new-joe-married)
-             ["married" ["marital status" 'tag]]))
+             ["married" ["marital status" :tag]]))
         (is (orderable/earlier? marital-status-order new-joe-order))
         (is (not= old-joe-order new-joe-order))))))
 

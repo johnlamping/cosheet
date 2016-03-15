@@ -31,13 +31,13 @@
 ;;; elements, but not its non-semantic elements. The latter are
 ;;; identified by, themselves, having elements with keyword contents.
 ;;; in addition, an entity may be marked as a tag, by having
-;;; an element whose content is 'tag. The 'tag mark is considered
+;;; an element whose content is :tag. The :tag mark is considered
 ;;; semantic.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
 ;;;        ("married" (1 :order)
 ;;;        (39 (2: order)
-;;;            ("age" 'tag)
+;;;            ("age" :tag)
 ;;;            "doubtful"))
 ;;; would be rendered to dom that lays out like:
 ;;;   Joe
@@ -610,7 +610,7 @@
     (expr row-header-elements-DOM
       (assoc appearance-info :is-tags true)
       (order-items example-elements) ; Why we need the expr
-      '(nil tag)
+      '(nil :tag)
       (prepend-to-key items-referent parent-key)
       inherited)))
 
@@ -674,7 +674,7 @@
   ;; be the same height.
   [items parent-key inherited]
   (expr-let [hierarchy (items-hierarchy-by-condition
-                        items (:do-not-merge inherited) '(nil tag))
+                        items (:do-not-merge inherited) '(nil :tag))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
@@ -1061,7 +1061,7 @@
   ;;              which means to show everything not shown in any
   ;;              other column.
   ;; TODO: Make there there be an element on a table descriptor that
-  ;;       says what new columns must have, rather than the current '(nil tag)
+  ;;       says what new columns must have, rather than the current '(nil :tag)
   ;; TODO: Add the "other" column it a table requests it.
   ;; TODO: Check that the elements-referent for cells uses the header item
   ;;       that contains the condition, so the key won't change
@@ -1099,7 +1099,7 @@
                                    columns-lists)
                               #{})
                    headers (table-header-DOM table-item hierarchy
-                                             '(nil tag) parent-key
+                                             '(nil :tag) parent-key
                                              (query-referent row-query)
                                              inherited)
                    rows (expr-seq map

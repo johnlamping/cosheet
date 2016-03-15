@@ -58,9 +58,9 @@
   [store subject-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
-    (if (and (= entity-content 'tag) (empty? entity-elements))
+    (if (and (= entity-content :tag) (empty? entity-elements))
       ;; Tags markers don't get an ordering.
-      (let [[s id] (add-simple-element store subject-id 'tag)]
+      (let [[s id] (add-simple-element store subject-id :tag)]
         [s id order])
       (let [[s1 id] (add-simple-element
                      store subject-id (if (nil? entity-content)

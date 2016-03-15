@@ -21,7 +21,7 @@
     [dom-tracker :refer [id->key key->attributes]]
     [key :refer [item-referent elements-referent prepend-to-key
                  item-referent? content-location-referent?
-                 elements-referent?
+                 elements-referent? comment-referent
                  first-primitive-referent remove-first-primitive-referent
                  remove-content-location-referent remove-comments
                  item-ids-referred-to
@@ -250,11 +250,15 @@
             first-primitive (first-primitive-referent target-key)
             [_ condition] first-primitive
             model-entity (cons content (rest condition))
-            selection-suffix (if (= condition [nil 'tag])
-                               ;; TODO: Should this change the condition
-                               ;; to a comment?
-                               target-key
-                               (remove-first-primitive-referent target-key))]
+            selection-suffix (let [suffix
+                                   (remove-first-primitive-referent target-key)]
+                               (if (= condition [nil 'tag])
+                                 ;; TODO: This is a hack that recognizes tags
+                                 ;; as special. The right thing is to add
+                                 ;; the comment to the empty tag key.
+                                 (prepend-to-key (comment-referent '(nil tag))
+                                                 suffix)
+                                 suffix))]
         ;; TODO: handle all-elements argument
         (assert (= (count subjects) (count adjacents)))
         (add-and-select

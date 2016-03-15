@@ -25,7 +25,7 @@
   "Given a dom, if it has editable children, return it. If a unique
   descendant  does, return it. If none do, return nil, while if more
   than one does, return false."
-  [dom prefix]
+  [dom]
   (let [children (array-seq (.-childNodes dom))]
     (if (some is-editable? children)
       dom

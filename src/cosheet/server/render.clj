@@ -380,11 +380,6 @@
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-(defn vertical-separated
-  "Make a dom have separators between its siblings."
-  [dom]
-  (add-attributes dom {:class "vertical-separated"}))
-
 (def item-DOM)
 
 (defn vertical-stack
@@ -394,7 +389,7 @@
   (case (count doms)
     (if (= (count doms) 1)
       (first doms)
-      (into [:div {:class "vertical-stack"}]
+      (into [:div (if (empty? doms) {} {:class "stack"})]
             (if separators
               (map #(add-attributes % {:class "vertical-separated"}) doms)
               doms)))))
@@ -430,11 +425,10 @@
 (defn empty-DOM
   "Generate dom for an empty editable cell."
   [parent-key condition inherited]
-  (add-attributes (vertical-stack nil)
-                  {:class "editable"
-                   :key (prepend-to-key (elements-referent condition)
-                                        parent-key)
-                   :commands {:set-content [:do-create-content]}}))
+  [:div {:class "editable"
+         :key (prepend-to-key (elements-referent condition)
+                              parent-key)
+         :commands {:set-content [:do-create-content]}}])
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
@@ -539,9 +533,6 @@
             {:keys [is-tags top-border bottom-border
                     for-multiple with-children depth]} appearance-info]
         (as-> (vertical-stack components :separators true) dom
-          (if (> num-elements 1)
-            (add-attributes dom {:class "stack"})
-            dom)
           (if (empty? elements)
             (add-attributes dom {:key elements-key
                                  :commands {:set-content [:do-create-content]
@@ -564,8 +555,7 @@
               dom))
           (add-attributes
            dom (cond-> {:class
-                        (str "column"
-                             (when is-tags " tags")
+                        (str (if is-tags "tags-column" "elements-column")
                              (when (= top-border :full) " top-border")
                              (when (= bottom-border :full) " bottom-border")
                              (when (= bottom-border :corner) " ll-corner"))}
@@ -611,19 +601,18 @@
                            (first (hierarchy-node-descendants hierarchy-node)))
             adjacent-key (prepend-to-key (item-referent adjacent-item)
                                          parent-key)]
-        (add-attributes
-         (vertical-stack nil)
-         {:class "editable column"
-          :key (prepend-to-key (elements-referent condition) parent-key)
-          :commands {:set-content
-                     [:do-create-content
-                      :position :before
-                      :adjacent-group-key adjacent-key]
-                     :add-row
-                     [:do-add
-                      :subject-key parent-key
-                      :position :before
-                      :adjacent-key adjacent-key]}}))
+        [:div {:class "editable elements-column"
+               :key (prepend-to-key (elements-referent condition) parent-key)
+               :commands {:set-content
+                          [:do-create-content
+                           :position :before
+                           :adjacent-group-key adjacent-key]
+                          :add-row
+                          [:do-add
+                           :subject-key parent-key
+                           :position :before
+                           :adjacent-key adjacent-key]}}]
+        )
       (add-attributes
        (components-DOM items-with-excluded
                        parent-key condition
@@ -634,7 +623,7 @@
                                     :subject-key parent-key
                                     ]}}
                        inherited)
-       {:class "column"}))))
+       {:class "elements-column"}))))
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
@@ -646,9 +635,7 @@
                              hierarchy-node parent-key inherited)
              tags-items-dom (tag-items-DOM
                              hierarchy-node parent-key inherited)]
-    (into [:div {:style {:display "table-row"}}]
-          (map #(add-attributes % {:style {:display "table-cell"}})
-               [tags-label-dom tags-items-dom]))))
+    [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
 ;;; TODO: make this use flex boxes, rather than a table,
 ;;;       to get the full heights.
@@ -665,9 +652,7 @@
                        map #(cache tag-items-pair-DOM
                                    % parent-key inherited)
                        flattened-hierarchy)]
-    (into [:div {:class "element-table"
-                 :style {:height "1px" ;; So height:100% in rows will work.
-                         :display "table" :table-layout "fixed"}}]
+    (into [:div {:class "element-table"}]
           (as-> row-doms row-doms
             (if (every? #(empty? (:property-elements
                                   (first (hierarchy-node-members %))))
@@ -718,8 +703,8 @@
         content-dom
         (expr-let [elements-dom (tagged-items-table-DOM
                                  elements item-key inherited-down)]
-          (add-attributes (vertical-stack [content-dom elements-dom])
-                          {:class "item with-elements" :key item-key}))))))
+          [:div {:class "item with-elements" :key item-key}
+           content-dom elements-dom])))))
 
 ;;; Tables
 
@@ -790,9 +775,7 @@
                                         :template column-condition]}})))
                           components)]
       (as-> (vertical-stack components :separators true) dom
-        (cond (not (empty? (rest example-elements)))
-              (add-attributes dom {:class "stack"})
-              delete-key (add-attributes
+        (cond delete-key (add-attributes
                           dom
                           {:commands {:delete
                                       [:do-delete :delete-key delete-key]}})

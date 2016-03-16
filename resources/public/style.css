@@ -45,11 +45,25 @@
                     hsla(0, 0%, 100%, 0));
 }
 
-.tags.column.selected {
+.element-row {
+    display: flex;
+    width:100%;
+    align-items: stretch;
+}
+
+.element-table {
+    display: flex;
+    flex-direction: column;
+    margin-left: 3px;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.tags-column.selected {
     background-color: hsl(194, 100%, 88%);
 }
 
-.column:not(.tags), .full-row {
+.elements-column, .full-row {
     padding: 3px;
 }
 
@@ -66,13 +80,12 @@
 }
 
 .full-row {
-    box-sizing: content-box;
-    height:100%;
+    box-sizing: border-box;
     text-align: right;
 }
 
 /* Illumination of borders for top level tags */
-.tags.column {
+.tags-column {
     vertical-align: top;
     background-image:
     linear-gradient(to right,
@@ -84,7 +97,7 @@
     width: 30%;
 }
 
-.tags.column.top-border {
+.tags-column.top-border {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -97,7 +110,7 @@
     border-top-left-radius: 7px;
 }
 
-.tags.column.bottom-border, .tags.column.ll-corner {
+.tags-column.bottom-border, .tags-column.ll-corner {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -110,7 +123,7 @@
     border-bottom-left-radius: 7px;
 }
 
-.tags.column.top-border.bottom-border, .tags.column.top-border.ll-corner {
+.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -129,7 +142,7 @@
 }
 
 /* Illumination of borders for indented tags */
-.tags.column > .full-row {
+.tags-column > .full-row {
     background-image:
     linear-gradient(to bottom,
                     hsla(0, 0%, 100%, .7),
@@ -141,9 +154,9 @@
                     hsla(0, 0%, 100%, 0));
 }
 
-.tags.column > .full-row.with-children,
-.tags.column.bottom-row > .full-row,
-.tags.column.ll-corner > .full-row {
+.tags-column > .full-row.with-children,
+.tags-column.bottom-row > .full-row,
+.tags-column.ll-corner > .full-row {
     background-image:
     linear-gradient(to bottom,
                     hsla(0, 0%, 100%, .7),
@@ -157,14 +170,12 @@
     height: 100%;
 }
 
-.for-multiple, .tags.column.for-multiple, .for-multiple > .stack {
+.for-multiple, .tags-column.for-multiple, .for-multiple > .stack {
     vertical-align: middle;
 }
 
 .stack {
     vertical-align: top;
-    display: inline-block;
-    text-align: left;
 }
 
 .with-children, .full-row.with-children,
@@ -172,21 +183,23 @@
     text-align: left;
 }
 
-.no-tags > .tags.column {
+.no-tags > .tags-column {
     width: 10px;
 }
 
-.column {
-    height: 15px; /* Make no-content cells have minimum height */
+.tags-column {
+    min-height: 15px; /* Make no-content cells have minimum height */
 }
 
-.column:not(.tags) {
+.elements-column {
+    min-height: 15px; /* Make no-content cells have minimum height */
     border-width: 2px 2px 0px 2px;
-    width: auto;
+    width: 0px;
+    flex-grow: 1;
     background-color: white;
 }
 
-.last-row > .column:not(.tags) {
+.last-row > .elements-column {
     border-bottom-width: 2px;
 }
 
@@ -311,21 +324,14 @@
     background-color: hsl(0, 0%, 95%);
 }
 
-.editable.tags.column:not(.content-text),
-.tags.column > .editable:not(.content-text) {
+.editable.tags-column:not(.content-text),
+.tags-column > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 
 .content-text {
     min-height: 20px;
     overflow-wrap: break-word;
-}
-
-.element-table {
-    border-spacing: 0;
-    margin-left: 3px;
-    box-sizing: border-box;
-    width: 100%;
 }
 
 .placeholder {
@@ -340,7 +346,7 @@
     padding-right: 3px;
 }
 
-.item.with-elements.column:not(.tags),
+.item.with-elements.elements-column,
 .item.with-elements.full-row {
     /* Same as above, but must also include the padding for a column */
     padding-right: 6px;

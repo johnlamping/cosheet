@@ -477,7 +477,7 @@
 (deftest row-header-elements-DOM-test
   (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
                                       nil '(nil :tag) [rid] {})
-             [:div {:class "full-row editable tags-column"
+             [:div {:class "editable full-row tags-column"
                     :key [[:elements [nil :tag]] [:comment [nil :tag]] rid]
                     :commands {:set-content [:do-create-content]
                                :add-row [:do-add :subject-key nil
@@ -496,8 +496,8 @@
     (is (check-keys dom fred))
     (is (check
          dom
-         [:div {:class "tags-column"}
-          [:div {:class "full-row bottom-border with-children for-multiple indent-1"}
+         [:div {:class "indent-wrapper tags-column"}
+          [:div {:class "vertical-center-wrapper full-row bottom-border with-children for-multiple depth-1"}
            [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]}
             [item-DOM
              fred [[:comment [nil :tag]] rid]
@@ -505,8 +505,7 @@
              {:commands {:add-sibling [:do-add :template '(nil :tag)]
                          :add-row [:do-add :subject-key nil
                                    :adjacent-group-key [rid]]}}
-             {:depth 0}]]
-           [:div {:class "spacer"}]]])))
+             {:depth 0}]]]])))
   (let [[dom fred fran]
         (let-mutated [fred '("Fred" :tag)
                       fran "Fran"]
@@ -523,7 +522,7 @@
     (is (check
          dom
          [:div
-          {:class "full-row tags-column top-border ll-corner"
+          {:class "vertical-center-wrapper full-row tags-column top-border ll-corner"
            :key [[:elements [nil :tag]] [:comment [nil :tag]] rid]
            :commands {:add-row [:do-add :subject-key nil
                                 :adjacent-group-key [rid]]}}
@@ -545,8 +544,7 @@
              {:commands {:add-sibling [:do-add :template '(nil :tag)]
                          :add-row [:do-add :subject-key nil
                                    :adjacent-group-key [rid]]}}
-             {:depth 1 :do-not-merge #{}}]]]
-          [:div {:class "spacer"}]]))))
+             {:depth 1 :do-not-merge #{}}]]]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]
@@ -590,18 +588,18 @@
            "39"]
           [:div {:class "element-table"}
            [:div {:class "element-row last-row"}
-            [:component {:key (into [(item-referent confidence)] tag-key)
-                         :class "full-row tags-column top-border bottom-border"}
-             [item-DOM
-              confidence tag-key
-              #{confidence-tag}
-              {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                          :add-row [:do-add
-                                    :subject-key item-key
-                                    :adjacent-group-key
-                                    (into [(:item-id doubtful)]
-                                          item-key)]}}
-              {:depth 1 :do-not-merge #{}}]]
+            [:div {:class "vertical-center-wrapper full-row tags-column top-border bottom-border"}
+             [:component {:key (into [(item-referent confidence)] tag-key)}
+              [item-DOM
+               confidence tag-key
+               #{confidence-tag}
+               {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                     (into [(:item-id doubtful)]
+                                           item-key)]}}
+               {:depth 1 :do-not-merge #{}}]]]
             [:component {:key (into [(:item-id doubtful)] item-key)
                          :class "elements-column"}
              [item-DOM
@@ -625,7 +623,7 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row no-tags last-row"}
-              [:div {:class "full-row editable tags-column top-border bottom-border"
+              [:div {:class "editable full-row tags-column top-border bottom-border"
                      :key (into [[:elements [nil :tag]]
                                  [:comment [nil :tag]]
                                  (:item-id doubtful)] item-key)
@@ -692,8 +690,7 @@
                              :add-row [:do-add
                                        :subject-key item-key
                                        :adjacent-group-key both-ages-key]}}
-                 (any map?)]]
-               [:div {:class "spacer"}]]
+                 (any map?)]]]
               [:div (any map?)
                [:component (any map?)
                 [item-DOM bogus-age item-key #{bogus-age-tag}
@@ -720,18 +717,19 @@
              (any vector?) ; male
              (any vector?) ; married
              [:div {:class "element-row"}
-              [:component (any map?)
-               [item-DOM
-                bogus-age-tag (into [[:comment [nil :tag]]
-                                     (:item-id bogus-age)]
-                                    item-key)
-                #{bogus-age-tag-spec}
-                {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                            :add-row [:do-add
-                                      :subject-key item-key
-                                      :adjacent-group-key
-                                      (into [(:item-id bogus-age)] item-key)]}}
-                (any map?)]]
+              [:div (any map?)
+               [:component (any map?)
+                [item-DOM
+                 bogus-age-tag (into [[:comment [nil :tag]]
+                                      (:item-id bogus-age)]
+                                     item-key)
+                 #{bogus-age-tag-spec}
+                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                             :add-row [:do-add
+                                       :subject-key item-key
+                                       :adjacent-group-key
+                                       (into [(:item-id bogus-age)] item-key)]}}
+                 (any map?)]]]
               [:component (any map?)
                [item-DOM
                 bogus-age item-key
@@ -741,18 +739,19 @@
                             :add-row [:do-add :subject-key item-key]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:component (any map?)
-               [item-DOM
-                age-tag (into [[:comment [nil :tag]]
-                               (:item-id age)]
-                              item-key)
-                #{age-tag-spec}
-                {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                            :add-row [:do-add
-                                      :subject-key item-key
-                                      :adjacent-group-key
-                                      (into [(:item-id age)] item-key)]}}
-                (any map?)]]
+              [:div (any map?)
+               [:component (any map?)
+                [item-DOM
+                 age-tag (into [[:comment [nil :tag]]
+                                (:item-id age)]
+                               item-key)
+                 #{age-tag-spec}
+                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                             :add-row [:do-add
+                                       :subject-key item-key
+                                       :adjacent-group-key
+                                       (into [(:item-id age)] item-key)]}}
+                 (any map?)]]]
               [:component (any map?)
                [item-DOM
                 age item-key
@@ -808,25 +807,25 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row"}
-              [:component
-               {:key (->> both-ages-key
-                          (prepend-to-key (comment-referent '(nil :tag)))
-                          (prepend-to-key (item-referent L1)))
-                :class "full-row with-children tags-column top-border"}
-               [item-DOM L1
-                (prepend-to-key [:comment [nil :tag]] both-ages-key)
-                #{L1-spec}
-                {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                            :add-row [:do-add
-                                      :subject-key item-key
-                                      :adjacent-group-key
-                                      [[:parallel []
-                                        (as-set [(:item-id v1)
-                                                 (:item-id v12)
-                                                 (:item-id v13)])]
-                                       (item-referent joe)
-                                       :joe]]}}
-                (any map?)]]
+              [:div {:class "vertical-center-wrapper full-row with-children tags-column top-border"}
+               [:component
+                {:key (->> both-ages-key
+                           (prepend-to-key (comment-referent '(nil :tag)))
+                           (prepend-to-key (item-referent L1)))}
+                [item-DOM L1
+                 (prepend-to-key [:comment [nil :tag]] both-ages-key)
+                 #{L1-spec}
+                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                             :add-row [:do-add
+                                       :subject-key item-key
+                                       :adjacent-group-key
+                                       [[:parallel []
+                                         (as-set [(:item-id v1)
+                                                  (:item-id v12)
+                                                  (:item-id v13)])]
+                                        (item-referent joe)
+                                        :joe]]}}
+                 (any map?)]]]
               [:component {:key (into [(:item-id v1)] item-key)
                            :class "elements-column"}
                [item-DOM v1 item-key #{L1}
@@ -834,24 +833,24 @@
                             :add-row [:do-add :subject-key item-key]}}
                 (any map?)]]]
              [:div {:class "element-row"}
-              [:div {:class "tags-column"}
-               [:component
-                {:key (into [(:item-id L2)
-                             [:comment [nil :tag]]
-                             (:item-id v12)]
-                            item-key)
-                 :class "full-row top-border indent-1"}
-                [item-DOM
-                 L2 (into [[:comment [nil :tag]] (:item-id v12)]
-                          item-key)
-                 #{L2-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key
-                                       (into [(:item-id v12)]
-                                             item-key)]}}
-                 (any map?)]]]
+              [:div {:class "indent-wrapper tags-column"}
+               [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
+                [:component
+                 {:key (into [(:item-id L2)
+                              [:comment [nil :tag]]
+                              (:item-id v12)]
+                             item-key)}
+                 [item-DOM
+                  L2 (into [[:comment [nil :tag]] (:item-id v12)]
+                           item-key)
+                  #{L2-spec}
+                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                              :add-row [:do-add
+                                        :subject-key item-key
+                                        :adjacent-group-key
+                                        (into [(:item-id v12)]
+                                              item-key)]}}
+                  (any map?)]]]]
               [:component {:key (into [(:item-id v12)] item-key)
                            :class "elements-column"}
                [item-DOM v12 item-key #{L121 L2}
@@ -862,23 +861,23 @@
                             :add-row [:do-add :subject-key item-key]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:div {:class "tags-column bottom-border"}
-               [:component
-                {:key (into [(:item-id L3)
-                             [:comment [nil :tag]]
-                             (:item-id v13)]
-                            item-key)
-                 :class "full-row top-border indent-1"}
-                [item-DOM
-                 L3 (into [[:comment [nil :tag]] (:item-id v13)]
-                          item-key)
-                 #{L3-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key
-                                       (into [(:item-id v13)] item-key)]}}
-                 (any map?)]]]
+              [:div {:class "indent-wrapper tags-column bottom-border"}
+               [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
+                [:component
+                 {:key (into [(:item-id L3)
+                              [:comment [nil :tag]]
+                              (:item-id v13)]
+                             item-key)}
+                 [item-DOM
+                  L3 (into [[:comment [nil :tag]] (:item-id v13)]
+                           item-key)
+                  #{L3-spec}
+                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                              :add-row [:do-add
+                                        :subject-key item-key
+                                        :adjacent-group-key
+                                        (into [(:item-id v13)] item-key)]}}
+                  (any map?)]]]]
               [:component {:key (into [(:item-id v13)] item-key)
                            :class "elements-column"}
                [item-DOM
@@ -932,17 +931,17 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row"}
-              [:component
-               {:key (->> both-L1s-key
-                          (prepend-to-key [:comment [nil :tag]])
-                          (prepend-to-key (:item-id La1)))
-                :class "full-row with-children tags-column top-border"}
-               [item-DOM La1 (prepend-to-key [:comment [nil :tag]] both-L1s-key)
-                #{La1-spec}
-                {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                            :add-row [:do-add :subject-key item-key
-                                      :adjacent-group-key both-L1s-key]}}
-                (any map?)]]
+              [:div {:class "vertical-center-wrapper full-row with-children tags-column top-border"}
+               [:component
+                {:key (->> both-L1s-key
+                           (prepend-to-key [:comment [nil :tag]])
+                           (prepend-to-key (:item-id La1)))}
+                [item-DOM La1 (prepend-to-key [:comment [nil :tag]] both-L1s-key)
+                 #{La1-spec}
+                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                             :add-row [:do-add :subject-key item-key
+                                       :adjacent-group-key both-L1s-key]}}
+                 (any map?)]]]
               [:div {:key (into [[:elements [nil ["L1" :tag]]]] item-key)
                      :class "editable elements-column"
                      :commands {:set-content [:do-create-content
@@ -954,23 +953,23 @@
                                           :adjacent-key
                                           (into [(:item-id va)] item-key)]}}]]
              [:div {:class "element-row"}
-              [:div {:class "tags-column"}
-               [:component
-                {:key (into [(:item-id La2)
-                             [:comment [nil :tag]]
+              [:div {:class "indent-wrapper tags-column"}
+               [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
+                [:component
+                 {:key (into [(:item-id La2)
+                              [:comment [nil :tag]]
+                              (:item-id va)]
+                             item-key)}
+                 [item-DOM
+                  La2 (into [[:comment [nil :tag]]
                              (:item-id va)]
                             item-key)
-                 :class "full-row top-border indent-1"}
-                [item-DOM
-                 La2 (into [[:comment [nil :tag]]
-                            (:item-id va)]
-                           item-key)
-                 #{La2-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add :subject-key item-key
-                                      :adjacent-group-key
-                                       (into [(:item-id va)] item-key)]}}
-                 (any map?)]]]
+                  #{La2-spec}
+                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                              :add-row [:do-add :subject-key item-key
+                                        :adjacent-group-key
+                                        (into [(:item-id va)] item-key)]}}
+                  (any map?)]]]]
               [:component {:key (into [(:item-id va)] item-key)
                            :class "elements-column"}
                [item-DOM va item-key #{La1 La2}
@@ -981,21 +980,21 @@
                             :add-row [:do-add :subject-key item-key]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:div {:class "tags-column bottom-border"
+              [:div {:class "indent-wrapper tags-column bottom-border"
                      :commands {:add-row [:do-add
-                                          :subject-key item-key
-                                          :adjacent-group-key
-                                          (into [(:item-id vb)] item-key)]}}
-               [:div {:class "full-row top-border editable indent-1"
+                                           :subject-key item-key
+                                           :adjacent-group-key
+                                           (into [(:item-id vb)] item-key)]}}
+               [:div {:class "editable full-row top-border depth-1"
                       :key (into[[:elements [nil :tag]]
-                                 [:comment [nil :tag]]
+                                  [:comment [nil :tag]]
                                   (:item-id vb)]
                                  item-key)
                       :commands {:set-content [:do-create-content]
-                                 :add-row [:do-add
-                                          :subject-key item-key
-                                          :adjacent-group-key
-                                          (into [(:item-id vb)] item-key)]}}]]
+                                  :add-row [:do-add
+                                            :subject-key item-key
+                                            :adjacent-group-key
+                                            (into [(:item-id vb)] item-key)]}}]]
               [:component {:key (into [(:item-id vb)] item-key)
                            :class "elements-column"}
                [item-DOM

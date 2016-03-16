@@ -536,22 +536,20 @@
           (if (empty? elements)
             (add-attributes dom {:key elements-key
                                  :commands {:set-content [:do-create-content]
-                                            :add-row add-row-command}})
-            dom)
-          (if (or for-multiple (> num-elements 1))
-            [:div dom [:div {:class "spacer"}]]
-            dom)
+                                            :add-row add-row-command}
+                                 :class "editable"})
+            [:div {:class "vertical-center-wrapper"} dom])          
           (add-attributes
            dom
            {:class (str "full-row"
                         (when (= top-border :indented) " top-border")
                         (when (= bottom-border :indented) " bottom-border")
-                        (when (empty? elements) " editable")
                         (when with-children " with-children")
                         (when for-multiple " for-multiple"))})
           (let [depth (:depth appearance-info)]
             (if (> depth 0)
-              [:div (add-attributes dom {:class (str "indent-" depth)})]
+              [:div {:class "indent-wrapper"}
+               (add-attributes dom {:class (str "depth-" depth)})]
               dom))
           (add-attributes
            dom (cond-> {:class
@@ -637,8 +635,6 @@
                              hierarchy-node parent-key inherited)]
     [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
-;;; TODO: make this use flex boxes, rather than a table,
-;;;       to get the full heights.
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
   ;; We use a table as a way of making all the cells of a row

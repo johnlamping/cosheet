@@ -426,6 +426,21 @@
                               parent-key)
          :commands {:set-content [:do-create-content]}}])
 
+(defn empty-cell-DOM
+  "Create DOM for an empty cell."
+  [parent-key condition adjacent-key position]
+  [:div {:class "editable"
+         :key (prepend-to-key (elements-referent condition) parent-key)
+         :commands {:set-content
+                    [:do-create-content
+                     :position position
+                     :adjacent-group-key adjacent-key]
+                    :add-row
+                    [:do-add
+                     :subject-key parent-key
+                     :position position
+                     :adjacent-key adjacent-key]}}])
+
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item.
@@ -590,34 +605,18 @@
                                  (hierarchy-node-members hierarchy-node))
         condition (cons nil (canonical-set-to-list
                              (:cumulative-properties hierarchy-node)))]
-    (if (empty? items-with-excluded)
-      (let [adjacent-item (:item
-                           (first (hierarchy-node-descendants hierarchy-node)))
-            adjacent-key (prepend-to-key (item-referent adjacent-item)
-                                         parent-key)]
-        [:div {:class "editable elements-column"
-               :key (prepend-to-key (elements-referent condition) parent-key)
-               :commands {:set-content
-                          [:do-create-content
-                           :position :before
-                           :adjacent-group-key adjacent-key]
-                          :add-row
-                          [:do-add
-                           :subject-key parent-key
-                           :position :before
-                           :adjacent-key adjacent-key]}}]
-        )
-      (add-attributes
+    (add-attributes
+     (if (empty? items-with-excluded)
+       (let [adjacent-item (:item
+                            (first (hierarchy-node-descendants hierarchy-node)))
+             adjacent-key (prepend-to-key (item-referent adjacent-item)
+                                          parent-key)]
+         (empty-cell-DOM parent-key condition adjacent-key :before))
        (components-DOM items-with-excluded
                        parent-key condition
-                       {:commands {:add-row
-                                   [:do-add
-                                    ;; TODO: see if we can get rid of
-                                    ;; subject-key here.
-                                    :subject-key parent-key
-                                    ]}}
-                       inherited)
-       {:class "elements-column"}))))
+                       {:commands {:add-row [:do-add]}}
+                       inherited))
+     {:class "elements-column"})))
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,

@@ -426,8 +426,9 @@
                               parent-key)
          :commands {:set-content [:do-create-content]}}])
 
-(defn empty-cell-DOM
-  "Create DOM for an empty cell."
+(defn empty-DOM-with-position
+  "Create DOM for an empty cell whose content should be
+  in a particular logical positionj."
   [parent-key condition adjacent-key position]
   [:div {:class "editable"
          :key (prepend-to-key (elements-referent condition) parent-key)
@@ -511,6 +512,25 @@
          hierarchy))
    ;; We need to put on a final closing border.
    #(assoc % :bottom-border :full)))
+
+(defn hierarchy-items-DOM
+  "Given a flattened hierarchy node with tags as the properties,
+  generate DOM for the elements."
+  [hierarchy-node parent-key inherited]
+  (let [items-with-excluded (map #((juxt :item :property-elements) %)
+                                 (hierarchy-node-members hierarchy-node))
+        condition (cons nil (canonical-set-to-list
+                             (:cumulative-properties hierarchy-node)))]
+    (if (empty? items-with-excluded)
+      (let [adjacent-item (:item
+                           (first (hierarchy-node-descendants hierarchy-node)))
+            adjacent-key (prepend-to-key (item-referent adjacent-item)
+                                         parent-key)]
+        (empty-DOM-with-position parent-key condition adjacent-key :before))
+      (components-DOM items-with-excluded
+                      parent-key condition
+                      {:commands {:add-row [:do-add]}}
+                      inherited))))
 
 (defn row-header-elements-DOM
   "Given information about the appearance of a flattened hierarchy
@@ -597,27 +617,6 @@
       (prepend-to-key items-referent parent-key)
       inherited)))
 
-(defn tag-items-DOM
-  "Given a flattened hierarchy node with tags as the properties,
-  generate DOM for the elements."
-  [hierarchy-node parent-key inherited]
-  (let [items-with-excluded (map #((juxt :item :property-elements) %)
-                                 (hierarchy-node-members hierarchy-node))
-        condition (cons nil (canonical-set-to-list
-                             (:cumulative-properties hierarchy-node)))]
-    (add-attributes
-     (if (empty? items-with-excluded)
-       (let [adjacent-item (:item
-                            (first (hierarchy-node-descendants hierarchy-node)))
-             adjacent-key (prepend-to-key (item-referent adjacent-item)
-                                          parent-key)]
-         (empty-cell-DOM parent-key condition adjacent-key :before))
-       (components-DOM items-with-excluded
-                       parent-key condition
-                       {:commands {:add-row [:do-add]}}
-                       inherited))
-     {:class "elements-column"})))
-
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
   generate DOM for an element table row for the items."
@@ -626,8 +625,10 @@
   [hierarchy-node parent-key inherited]
   (expr-let [tags-label-dom (tag-label-DOM
                              hierarchy-node parent-key inherited)
-             tags-items-dom (tag-items-DOM
-                             hierarchy-node parent-key inherited)]
+             tags-items-dom (add-attributes
+                             (hierarchy-items-DOM
+                              hierarchy-node parent-key inherited)
+                             {:class "elements-column"})]
     [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
 (defn tagged-items-table-DOM
@@ -785,7 +786,7 @@
                                           [:do-add
                                            :subject-key
                                            (remove-first-primitive-referent
-                                         column-key)
+                                            column-key)
                                            :adjacent-group-key column-key
                                            :template new-column-condition]}})
           dom)

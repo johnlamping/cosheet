@@ -312,27 +312,23 @@
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
 
-(defn items-hierarchy-by-condition
-  "Given items, organize them into a hierarchy by their value on
-  elements matching the condition. Don't merge items that are in
-  do-not-merge. If extra-data-map is provided, it must be a map from
-  label to map from item to data for that item. The data will be
-  stored with the item-map for that item, under the key used in the
-  extra data map."
-  [items do-not-merge condition]
+(defn items-hierarchy-by-elements
+  "Given items, and a list of elements for each, organize the items
+  into a hierarchy by the semantic info of the corresponding
+  elements. Don't merge items that are in do-not-merge."
+  [items elements do-not-merge]
   (expr-let
       [item-maps (expr-seq
                   map
-                  (fn [item]
-                    (expr-let [elements (matching-elements condition item)
-                               filtered (filtered-items semantic-element?
+                  (fn [item elements]
+                    (expr-let [filtered (filtered-items semantic-element?
                                                         elements)
                                canonicals (expr-seq
                                            map canonical-info filtered)]
                       {:item item
                        :property-elements filtered
                        :property-canonicals canonicals}))
-                  items)]
+                  items elements)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
 
 (defn hierarchy-node-descendants
@@ -524,7 +520,7 @@
       (let [num-elements (count elements)
             elements-key (prepend-to-key
                           (elements-referent condition)
-                          ;; If a value gets put in here, it will have
+                          ;; If a value gets put in here, it's key will have
                           ;; the following comment. Adding it now lets
                           ;; the action that will create the value know
                           ;; how to select it.
@@ -640,8 +636,10 @@
   ;; We use a table as a way of making all the cells of a row
   ;; be the same height.
   [items parent-key inherited]
-  (expr-let [hierarchy (items-hierarchy-by-condition
-                        items (:do-not-merge inherited) '(nil :tag))
+  (expr-let [elements (expr-seq map (partial matching-elements '(nil :tag))
+                                items)
+             hierarchy (items-hierarchy-by-elements
+                        items elements (:do-not-merge inherited))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq

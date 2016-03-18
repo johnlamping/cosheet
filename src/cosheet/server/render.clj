@@ -390,34 +390,6 @@
               (map #(add-attributes % {:class "vertical-separated"}) doms)
               doms)))))
 
-(defn make-component
-  "Make a component dom descriptor, with the given attributes and definition.
-   The attributes must include a key."
-  [attributes definition]
-  (assert (map? attributes))
-  (assert (:key attributes))
-  [:component attributes definition])
-
-(defn condition-component
-  "Return a component for an element that satisfies a condition and
-  may be displayed under the condition, rather than under its parent."
-  [element condition parent-key inherited & {:as content-attributes}]
-  (assert (not (elements-referent? (first parent-key))))
-  (expr-let [condition-specs (condition-satisfiers element condition)]
-    (let [;; We must make this key different from what it would have
-          ;; been if this element were displayed under its parent's
-          ;; component.  Because it might have been in that situation.
-          condition-key (prepend-to-key (comment-referent condition) parent-key)
-          key (prepend-to-key (item-referent element) condition-key)]      
-      (make-component {:key key}
-                      [item-DOM element condition-key
-                       (set condition-specs)
-                       (into-attributes 
-                        content-attributes
-                        {:commands {:add-sibling [:do-add
-                                                  :template condition]}})
-                       inherited]))))
-
 (defn empty-DOM
   "Generate dom for an empty editable cell."
   [parent-key condition inherited]
@@ -428,19 +400,27 @@
 
 (defn empty-DOM-with-position
   "Create DOM for an empty cell whose content should be
-  in a particular logical positionj."
+  in a particular logical position."
   [parent-key condition adjacent-key position]
   [:div {:class "editable"
          :key (prepend-to-key (elements-referent condition) parent-key)
          :commands {:set-content
                     [:do-create-content
                      :position position
-                     :adjacent-group-key adjacent-key]
+                     :adjacent-key adjacent-key]
                     :add-row
                     [:do-add
                      :subject-key parent-key
                      :position position
                      :adjacent-key adjacent-key]}}])
+
+(defn make-component
+  "Make a component dom descriptor, with the given attributes and definition.
+   The attributes must include a key."
+  [attributes definition]
+  (assert (map? attributes))
+  (assert (:key attributes))
+  [:component attributes definition])
 
 (defn components-DOM
   "Given a non-empty list of [item, excluded-elements] pairs,
@@ -462,7 +442,59 @@
                                 content-attributes)
                                inherited])))
                          items-with-excluded)]
-      (vertical-stack item-doms :separators true)))
+    (vertical-stack item-doms :separators true)))
+
+(defn displaced-element-component
+  "Return a component for an element that satisfies a condition and
+  may be displayed under the condition, rather than under its parent."
+  [element parent-key condition inherited & {:as content-attributes}]
+  (assert (not (elements-referent? (first parent-key))))
+  (expr-let [condition-specs (condition-satisfiers element condition)]
+    (let [;; We must make this key different from what it would have
+          ;; been if this element were displayed under its parent's
+          ;; component, because it might have been in that situation.
+          condition-key (prepend-to-key (comment-referent condition) parent-key)
+          key (prepend-to-key (item-referent element) condition-key)]      
+      (make-component {:key key}
+                      [item-DOM element condition-key
+                       (set condition-specs)
+                       (into-attributes 
+                        content-attributes
+                        {:commands {:add-sibling [:do-add
+                                                  :template condition]}})
+                       inherited]))))
+
+(defn displaced-elements-in-row-DOM
+  "Given a possibly empty sequence of elements (possibly exemplary),
+  return a DOM containing components for each of them, suitable for
+  putting in a row about their parent(s)."
+  [elements parent-key condition inherited]
+  (let [add-row-command [:do-add
+                         :subject-key (remove-first-primitive-referent
+                                       parent-key)
+                         :adjacent-group-key parent-key]]
+    (expr-let [components
+               (expr-seq
+                map
+                #(displaced-element-component
+                  % parent-key condition inherited
+                  :commands {:add-row add-row-command})
+                elements)]
+      (let [elements-key (prepend-to-key
+                          (elements-referent condition)
+                          ;; If a value gets put in here, it's key will have
+                          ;; the following comment. Adding it now lets
+                          ;; the action that will create the value know
+                          ;; how to select it.
+                          (prepend-to-key (comment-referent condition)
+                                          parent-key))]
+        (let [dom (vertical-stack components :separators true)]
+          (if (empty? elements)
+            (add-attributes dom {:key elements-key
+                                 :commands {:set-content [:do-create-content]
+                                            :add-row add-row-command}
+                                 :class "editable"})
+            dom))))))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of a top level node of a row
@@ -541,57 +573,33 @@
   (assert (not (elements-referent? (first row-key))))
   ;; This code works by wrapping in successively more divs, if
   ;; necessary, and adding the right attributes at each level.
-  (let [add-row-command [:do-add
-                         :subject-key (remove-first-primitive-referent
-                                       row-key)
-                         :adjacent-group-key row-key]]
-    (expr-let [components
-               (expr-seq
-                map
-                #(condition-component
-                  % condition row-key inherited
-                  :commands {:add-row add-row-command})
-                elements)]
-      (let [num-elements (count elements)
-            elements-key (prepend-to-key
-                          (elements-referent condition)
-                          ;; If a value gets put in here, it's key will have
-                          ;; the following comment. Adding it now lets
-                          ;; the action that will create the value know
-                          ;; how to select it.
-                          (prepend-to-key (comment-referent condition)
-                                          row-key))
-            {:keys [is-tags top-border bottom-border
-                    for-multiple with-children depth]} appearance-info]
-        (as-> (vertical-stack components :separators true) dom
-          (if (empty? elements)
-            (add-attributes dom {:key elements-key
-                                 :commands {:set-content [:do-create-content]
-                                            :add-row add-row-command}
-                                 :class "editable"})
-            [:div {:class "vertical-center-wrapper"} dom])          
-          (add-attributes
-           dom
-           {:class (str "full-row"
-                        (when (= top-border :indented) " top-border")
-                        (when (= bottom-border :indented) " bottom-border")
-                        (when with-children " with-children")
-                        (when for-multiple " for-multiple"))})
-          (let [depth (:depth appearance-info)]
-            (if (> depth 0)
-              [:div {:class "indent-wrapper"}
-               (add-attributes dom {:class (str "depth-" depth)})]
-              dom))
-          (add-attributes
-           dom (cond-> {:class
-                        (str (if is-tags "tags-column" "elements-column")
-                             (when (= top-border :full) " top-border")
-                             (when (= bottom-border :full) " bottom-border")
-                             (when (= bottom-border :corner) " ll-corner"))}
-                 (> num-elements 1)
-                 (into {:key elements-key})
-                 (not= num-elements 1)
-                 (into {:commands {:add-row add-row-command}}))))))))
+ (expr-let [dom (displaced-elements-in-row-DOM
+                 elements row-key condition inherited)]
+   (let [{:keys [is-tags top-border bottom-border
+                 for-multiple with-children depth]} appearance-info]
+     (as-> dom dom
+       (if (empty? elements)
+         dom
+         [:div {:class "vertical-center-wrapper"} dom])          
+       (add-attributes
+        dom
+        {:class (str "full-row"
+                     (when (= top-border :indented) " top-border")
+                     (when (= bottom-border :indented) " bottom-border")
+                     (when with-children " with-children")
+                     (when for-multiple " for-multiple"))})
+       (let [depth (:depth appearance-info)]
+         (if (> depth 0)
+           [:div {:class "indent-wrapper"}
+            (add-attributes dom {:class (str "depth-" depth)})]
+           dom))
+       (add-attributes
+        dom
+        {:class
+         (str (if is-tags "tags-column" "elements-column")
+              (when (= top-border :full) " top-border")
+              (when (= bottom-border :full) " bottom-border")
+              (when (= bottom-border :corner) " ll-corner"))})))))
 
 (defn tag-label-DOM
   "Given a flattened hierarchy node with tags as the info,
@@ -746,8 +754,8 @@
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [components
              (expr-seq map
-                       #(condition-component
-                         % elements-condition parent-key inherited)
+                       #(displaced-element-component
+                         % parent-key elements-condition inherited)
                        example-elements)
              element-lists
              (expr-seq map semantic-to-list example-elements)]
@@ -923,7 +931,7 @@
                    :template new-row-condition]}]
     (if (empty? items)
       ;; TODO: Get our left neighbor as an arg, and pass it in
-      ;; as adjacent information for new-sibling?.
+      ;; as adjacent information for new-sibling.
       (add-attributes (empty-DOM cell-key condition inherited)
                       {:class "table-cell"
                        :commands commands})

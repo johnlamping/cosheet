@@ -522,10 +522,8 @@
     (is (check
          dom
          [:div
-          {:class "vertical-center-wrapper full-row tags-column top-border ll-corner"
-           :key [[:elements [nil :tag]] [:comment [nil :tag]] rid]
-           :commands {:add-row [:do-add :subject-key nil
-                                :adjacent-group-key [rid]]}}
+          {:class
+           "vertical-center-wrapper full-row tags-column top-border ll-corner"}
           [:div {:class "stack"}
            [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]
                         :class "vertical-separated"}
@@ -946,7 +944,7 @@
                      :class "editable elements-column"
                      :commands {:set-content [:do-create-content
                                               :position :before
-                                              :adjacent-group-key
+                                              :adjacent-key
                                               (into [(:item-id va)] item-key)]
                                 :add-row [:do-add :subject-key item-key
                                           :position :before
@@ -980,11 +978,7 @@
                             :add-row [:do-add]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:div {:class "indent-wrapper tags-column bottom-border"
-                     :commands {:add-row [:do-add
-                                           :subject-key item-key
-                                           :adjacent-group-key
-                                           (into [(:item-id vb)] item-key)]}}
+              [:div {:class "indent-wrapper tags-column bottom-border"}
                [:div {:class "editable full-row top-border depth-1"
                       :key (into[[:elements [nil :tag]]
                                   [:comment [nil :tag]]

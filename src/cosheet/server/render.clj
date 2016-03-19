@@ -202,8 +202,6 @@
 ;;;                        have qualified to be members of the node,
 ;;;                        except for coming after other non-members.
 ;;;             :children  An optional vector of child nodes.
-;;; The :cumulative-properties is not computed when a hierarchy is first
-;;; created, but gets computed when a hierarchy is flattened.
 ;;; There are no requirements on members, but some of the hierarchy
 ;;; building functions assume each member is itself a map, containing
 ;;;               :item  The item that is the member
@@ -217,65 +215,70 @@
   [node]
   (contains? node :hierarchy-node))
 
+(defn append-into-hierarchy
+  "Do the work of append-to-hierarchy, given the additional information
+  of the ancestor's properties."
+  [hierarchy member properties ancestor-properties]
+  (let [make-node (fn [members properties]
+                    {:hierarchy-node true
+                     :members members
+                     :properties properties
+                     :cumulative-properties (multiset-union
+                                             properties ancestor-properties)})]
+    (if (empty? hierarchy)
+      [(make-node [member] properties)]
+      (let [last-entry (last hierarchy)]
+        (if (and ;; Don't merge an empty properties.
+             (or (empty? (:properties last-entry)) (empty? properties))
+             (or (empty? ancestor-properties)
+                 ;; Unless we are below top level and both are empty
+                 (not (empty? (:properties last-entry)))
+                 (not (empty? properties))))
+          (conj hierarchy (make-node [member] properties))
+          (let [[old-only new-only both] (multiset-diff (:properties last-entry)
+                                                        properties)]
+            (if (empty? old-only)
+              (update-last
+               hierarchy
+               (if (and (empty? new-only)
+                        (not (contains? last-entry :children)))
+                 (fn [last] (update-in last [:members]
+                                       #((fnil conj []) % member)))
+                 (fn [last] (update-in
+                             last [:children]
+                             #(append-into-hierarchy
+                               % member new-only
+                               (multiset-union both ancestor-properties))))))
+              (if (empty? both)
+                (conj hierarchy (make-node [member] properties))
+                (append-into-hierarchy
+                 (update-last hierarchy
+                              (fn [last]
+                                (assoc (make-node [] both)
+                                       :children
+                                       [(assoc last :properties old-only)])))
+                 member properties ancestor-properties)))))))))
+
 (defn append-to-hierarchy
-  "Given properties and the corresponding member, add them to the hierarchy.
-  If top-level is true, we are at the top level of a hierarchy, in which
-  case we don't merge members with empty properties."
-  [hierarchy properties member top-level]
-  (if (empty? hierarchy)
-    [{:hierarchy-node true :properties properties :members [member]}]
-    (let [last-entry (last hierarchy)]
-      (if (and ;; Don't merge an empty properties.
-           (or (empty? (:properties last-entry)) (empty? properties))
-           (or top-level
-               ;; Unless we are below top level and both are empty
-               (not (empty? (:properties last-entry)))
-               (not (empty? properties))))
-        (conj hierarchy {:hierarchy-node true
-                         :properties properties
-                         :members [member]})
-        (let [[old-only new-only both] (multiset-diff (:properties last-entry)
-                                                      properties)]
-          (if (empty? old-only)
-            (update-last
-             hierarchy
-             (if (and (empty? new-only) (not (contains? last-entry :children)))
-               (fn [last] (update-in last [:members]
-                                     #((fnil conj []) % member)))
-               (fn [last] (update-in
-                           last [:children]
-                           #(append-to-hierarchy % new-only member false)))))
-            (if (empty? both)
-              (conj hierarchy {:hierarchy-node true
-                               :properties properties
-                               :members [member]})
-              (append-to-hierarchy
-               (update-last hierarchy
-                            (fn [last]
-                              {:hierarchy-node true
-                               :properties both
-                               :members []
-                               :children [(assoc last :properties old-only)]}))
-               properties member top-level))))))))
+  "Given a member and its properties, add them to the hierarchy."
+  [hierarchy member properties]
+  (append-into-hierarchy hierarchy member properties {}))
 
 (def flatten-hierarchy)
 
 (defn flatten-hierarchy-node
   "Given a hierarchy node, a depth, and the combined properties for all
   ancestors, return the sequence of all descendant nodes in
-  pre-order. Add :cumulative-properties and :depth to the returned nodes."
-  [node depth ancestor-info]
-  (let [cumulative-info (multiset-union (:properties node) ancestor-info)]
-    (cons (-> node
-              (assoc :depth depth)
-              (assoc :cumulative-properties cumulative-info))
-          (flatten-hierarchy (:children node) (inc depth) cumulative-info))))
+  pre-order. Add :depth to the returned nodes."
+  [node depth]
+  (cons (assoc node :depth depth)
+        (flatten-hierarchy (:children node) (inc depth))))
 
 (defn flatten-hierarchy
   "Given a hierarchy and a depth, return the sequence of all descendant nodes
-  in pre-order. Add :cumulative-properties and :depth to the returned nodes."
-  [hierarchy depth ancestor-info]
-  (mapcat #(flatten-hierarchy-node % depth ancestor-info) hierarchy))
+  in pre-order. Add :depth to the returned nodes."
+  [hierarchy depth]
+  (mapcat #(flatten-hierarchy-node % depth) hierarchy))
 
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
@@ -307,8 +310,8 @@
         (mapcat
          #(reduce (fn [hierarchy item-info-map]
                     (append-to-hierarchy
-                     hierarchy (multiset (:property-canonicals item-info-map))
-                     item-info-map true))
+                     hierarchy item-info-map
+                     (multiset (:property-canonicals item-info-map))))
                   [] %)
          (split-by-do-not-merge-subset ordered-maps do-not-merge-subset))))))
 
@@ -540,7 +543,7 @@
   [hierarchy]
   (update-last 
    (vec (mapcat
-         #(add-row-header-border-info (flatten-hierarchy-node % 0 {}))
+         #(add-row-header-border-info (flatten-hierarchy-node % 0))
          hierarchy))
    ;; We need to put on a final closing border.
    #(assoc % :bottom-border :full)))
@@ -641,13 +644,11 @@
 
 (defn tagged-items-table-DOM
   "Return DOM for the given items, as a grid of tags and values."
-  ;; We use a table as a way of making all the cells of a row
-  ;; be the same height.
   [items parent-key inherited]
-  (expr-let [elements (expr-seq map (partial matching-elements '(nil :tag))
+  (expr-let [labels (expr-seq map (partial matching-elements '(nil :tag))
                                 items)
              hierarchy (items-hierarchy-by-elements
-                        items elements (:do-not-merge inherited))
+                        items labels (:do-not-merge inherited))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
@@ -663,6 +664,28 @@
               row-doms)
             (update-in (vec row-doms) [(- (count row-doms) 1)]
                        #(add-attributes % {:class "last-row"}))))))
+
+(defn tagged-items-column-node-DOM
+  "Return DOM for the given hierarchy node, as a single column."
+  [hierarchy-node parent-key top-level inherited])
+
+(defn tagged-items-column-DOM
+  "Return DOM for the given items, each with the given excluded tag elements,
+  as a single column. If there are no tags, just give an ordinary column"
+  [items excluded-tag-elements parent-key inherited]
+  (expr-let [all-labels (expr-seq map (partial matching-elements '(nil :tag))
+                                  items)]
+    (let [labels (map (fn [all-labels excluded]
+                        (seq (clojure.set/difference
+                              (set all-labels) (set excluded))))
+                      all-labels excluded-tag-elements)
+          exclusion-map (zipmap items excluded-tag-elements)]
+      (expr-let [hierarchy (items-hierarchy-by-elements
+                            items labels (:do-not-merge inherited))
+                 flattened-hierarchy (flatten-hierarchy hierarchy 0)]
+        ))))
+
+
 
 ;;; TODO: Make this handle an item that needs to be wrapped in some labels.
 (defn item-DOM

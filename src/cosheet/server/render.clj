@@ -566,11 +566,12 @@
 (defn hierarchy-members-DOM
   "Given a flattened hierarchy node with tags as the properties,
   generate DOM for the elements."
-  [hierarchy-node parent-key inherited]
+  [hierarchy-node parent-key common-condition inherited]
   (let [items-with-excluded (map #((juxt :item :property-elements) %)
                                  (hierarchy-node-members hierarchy-node))
-        condition (cons nil (canonical-set-to-list
-                             (:cumulative-properties hierarchy-node)))]
+        condition (concat common-condition
+                          (canonical-set-to-list
+                                  (:cumulative-properties hierarchy-node)))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
                            (first (hierarchy-node-descendants hierarchy-node)))
@@ -645,7 +646,7 @@
                              hierarchy-node parent-key inherited)
              tags-items-dom (add-attributes
                              (hierarchy-members-DOM
-                              hierarchy-node parent-key inherited)
+                              hierarchy-node parent-key '(nil) inherited)
                              {:class "elements-column"})]
     [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
@@ -674,31 +675,51 @@
 
 (def tagged-items-column-DOM)
 
+(defn tagged-items-column-tags-DOM
+  "Return DOM for the tags of one hierarchy node in a tagged-items columm."
+  [hierarchy-node parent-key inherited]
+  (let [example-elements (hierarchy-node-example-elements hierarchy-node)
+        items-referent (hierarchy-node-items-referent hierarchy-node)]
+    (displaced-elements-in-row-DOM
+     example-elements (prepend-to-key items-referent parent-key)
+     '(nil :tag) inherited)))
+
 (defn tagged-items-column-node-DOM
+  "Return DOM for the items of one hierarchy node in a tagged-items columm."
+  [hierarchy-node parent-key condition top-level inherited]
+  (let [tags-dom (tagged-items-column-tags-DOM
+                  hierarchy-node parent-key inherited)
+        items-dom (hierarchy-members-DOM
+                   hierarchy-node parent-key condition inherited)]))
+
+(defn tagged-items-column-subtree-DOM
   "Return DOM for the given hierarchy node and its descendants,
   as a single column."
   [hierarchy-node parent-key exclusion-map condition top-level inherited]
-  (expr-let [doms (expr-seq map #(displaced-elements-in-row-DOM))]))
+  (expr-let [tags-dom (tagged-items-column-tags-DOM
+                       hierarchy-node parent-key
+                       condition top-level inherited)]
+    ;; TODO: code
+))
 
 (defn tagged-items-column-DOM
-  "Return DOM for the given items, each with the given excluded tag elements,
-  as a single column. If there are no tags, just give an ordinary column"
-  [items excluded-tag-elements parent-key condition inherited]
-  (expr-let [all-labels (expr-seq map (partial matching-elements '(nil :tag))
-                                  items)]
-    (let [labels (map (fn [all-labels excluded]
-                        (seq (clojure.set/difference
-                              (set all-labels) (set excluded))))
-                      all-labels excluded-tag-elements)
-          exclusion-map (zipmap items excluded-tag-elements)]
+  "Return DOM for the given items as a single column. Don't include tags needed
+  to imply condition. If there are no tags, just give an ordinary column."
+  [items parent-key condition inherited]
+  (expr-let
+      [all-labels (expr-seq map (partial matching-elements '(nil :tag)) items)
+       excluded (expr-seq map #(condition-satisfiers % condition) items)]
+    (let [labels (map (fn [all minus]
+                        (seq (clojure.set/difference (set all) (set minus))))
+                      all-labels excluded)]
       (if (every? empty? labels)
-        (components-DOM (map vector items excluded-tag-elements)
+        (components-DOM (map vector items excluded)
                         parent-key condition {}  inherited)
         (expr-let [hierarchy (items-hierarchy-by-elements
                               items labels (:do-not-merge inherited))]
           (into [:div {:class "element-column"}]
-                (map #(tagged-items-column-node-DOM
-                       % parent-key exclusion-map true inherited)
+                (map #(tagged-items-column-subtree-DOM
+                       % parent-key (zipmap items all-labels) true inherited)
                      labels)))))))
 
 ;;; TODO: Make this handle an item that needs to be wrapped in some labels.
@@ -960,7 +981,7 @@
 
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
-  [items condition row-item row-key new-row-condition cell-key inherited]
+  [items condition row-key new-row-condition cell-key inherited]
   (let [commands {:add-row
                   [:do-add
                    :subject-key (remove-first-primitive-referent row-key)
@@ -1004,7 +1025,7 @@
                        cell-key (prepend-to-key
                                  (comment-referent (item-referent item))
                   row-key)]
-                   (table-cell-DOM items condition row-item row-key
+                   (table-cell-DOM items condition row-key
                                    new-row-condition cell-key inherited))))))
          cell-lists
          (expr-seq map

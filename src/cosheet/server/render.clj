@@ -673,8 +673,6 @@
             (update-in (vec row-doms) [(- (count row-doms) 1)]
                        #(add-attributes % {:class "last-row"}))))))
 
-(def tagged-items-column-DOM)
-
 (defn tagged-items-column-tags-DOM
   "Return DOM for the tags of one hierarchy node in a tagged-items columm."
   [hierarchy-node parent-key inherited]
@@ -684,31 +682,35 @@
      example-elements (prepend-to-key items-referent parent-key)
      '(nil :tag) inherited)))
 
-(defn tagged-items-column-node-DOM
-  "Return DOM for the items of one hierarchy node in a tagged-items columm."
-  [hierarchy-node parent-key condition top-level inherited]
-  (let [tags-dom (tagged-items-column-tags-DOM
-                  hierarchy-node parent-key inherited)
-        items-dom (hierarchy-members-DOM
-                   hierarchy-node parent-key condition inherited)]))
-
 (defn tagged-items-column-subtree-DOM
   "Return DOM for the given hierarchy node and its descendants,
   as a single column."
-  [hierarchy-node parent-key exclusion-map condition top-level inherited]
+  [hierarchy-node parent-key extra-condition top-level inherited]
   (expr-let [tags-dom (tagged-items-column-tags-DOM
-                       hierarchy-node parent-key
-                       condition top-level inherited)]
-    ;; TODO: code
-))
+                       hierarchy-node parent-key inherited)
+             items-dom (hierarchy-members-DOM
+                        hierarchy-node parent-key extra-condition inherited)
+             child-doms (when (:children hierarchy-node)
+                          (expr-seq map #(tagged-items-column-subtree-DOM
+                                          % parent-key extra-condition
+                                          false inherited)
+                                    (:children hierarchy-node)))]
+    ;; TODO: Check for no tags, in which case, do horizontal format.
+    [:div {:class "wrapped-element tags"}
+     tags-dom
+     [:div {:class "indent-wrapper"}
+      (add-attributes
+       (vertical-stack (cons items-dom child-doms) :separators true)
+       {:class "depth-1"})]]))
 
-(defn tagged-items-column-DOM
+(defn possibly-tagged-items-column-DOM
   "Return DOM for the given items as a single column. Don't include tags needed
   to imply condition. If there are no tags, just give an ordinary column."
   [items parent-key condition inherited]
   (expr-let
-      [all-labels (expr-seq map (partial matching-elements '(nil :tag)) items)
-       excluded (expr-seq map #(condition-satisfiers % condition) items)]
+      [all-labels (expr-seq map #(matching-elements '(nil :tag) %) items)
+       excluded (expr-seq map #(condition-satisfiers % condition) items)
+       test (expr-seq map entity/elements items)]
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
                       all-labels excluded)]
@@ -716,11 +718,12 @@
         (components-DOM (map vector items excluded)
                         parent-key condition {}  inherited)
         (expr-let [hierarchy (items-hierarchy-by-elements
-                              items labels (:do-not-merge inherited))]
+                              items labels (:do-not-merge inherited))
+                   doms (expr-seq map #(tagged-items-column-subtree-DOM
+                                        % parent-key condition true inherited)
+                                  hierarchy)]
           (into [:div {:class "element-column"}]
-                (map #(tagged-items-column-subtree-DOM
-                       % parent-key (zipmap items all-labels) true inherited)
-                     labels)))))))
+                doms))))))
 
 ;;; TODO: Make this handle an item that needs to be wrapped in some labels.
 (defn item-DOM

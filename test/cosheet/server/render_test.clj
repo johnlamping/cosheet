@@ -8,6 +8,7 @@
              [mutable-set :refer [new-mutable-set mutable-set-swap!]]
              [entity :as entity  :refer [to-list description->entity
                                          label->elements]]
+             [query :refer [matching-elements matching-items]]
              [reporters :as reporter]
              [expression :refer [expr expr-let expr-seq]]
              [debug :refer [current-value envs-to-list simplify-for-print]]
@@ -639,6 +640,37 @@
                          :add-row [:do-add :subject-key nil
                                    :adjacent-group-key [rid]]}}
              {:depth 1 :do-not-merge #{}}]]]]))))
+
+(deftest possibly-tagged-items-column-DOM-test
+  (let [[dom age]
+        (let-mutated [age `(39 ("age" :tag (~o1 :order :non-semantic)))]
+          (expr-let [dom (possibly-tagged-items-column-DOM
+                          [age] [:age] '(nil) {:depth 0 :do-not-merge #{}})]
+            [dom age]))
+        age-label (first (current-value (label->elements age o1)))
+        age-label-tag (first (current-value (matching-elements :tag age-label)))
+        age-key [(item-referent age) :age]
+        tags-key (into [[:comment [nil :tag]]] age-key)
+        age-label-key (into [(item-referent age-label)] tags-key)]
+    (is (check-keys dom age))
+    (is (check
+         dom
+         [:div {:class "element-column"}
+          [:div {:class "wrapped-element tags"}
+           [:component {:key age-label-key}
+            [item-DOM age-label tags-key #{age-label-tag}
+             {:commands {:add-row [:do-add
+                                   :subject-key [:age]
+                                   :adjacent-group-key age-key],
+                         :add-sibling [:do-add :template '(nil :tag)]}}
+             {:depth 0, :do-not-merge #{}}]]
+           [:div {:class "indent-wrapper"}
+            [:component {:class "depth-1"
+                         :key age-key}
+             [item-DOM age [:age] #{age-label}
+              {:commands {:add-sibling [:do-add :template '(nil ("age" :tag))]
+                          :add-row [:do-add]}}
+              {:depth 0, :do-not-merge #{}}]]]]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]

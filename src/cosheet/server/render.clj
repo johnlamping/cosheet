@@ -803,6 +803,14 @@
                   extent-info-maps)))))
     table-parent-key))
 
+(defn add-column-command
+  "Return instructions to add a new column."
+  [column-header-key column-condition]
+  {:add-column [:do-add
+                :subject-key (remove-first-primitive-referent column-header-key)
+                :adjacent-group-key column-header-key
+                :template column-condition]})
+
 (defn table-header-node-elements-DOM
   "Generate the dom for one node of a table header hierarchy given its elements.
   parent-key gives the parent scope the header applies to, and
@@ -829,13 +837,8 @@
                                              (take position element-lists)))]
                           (add-attributes
                            component
-                           {:commands {:add-column
-                                       [:do-add
-                                        :subject-key
-                                        (remove-first-primitive-referent
-                                         column-key)
-                                        :adjacent-group-key column-key
-                                        :template column-condition]}})))
+                           {:commands (add-column-command
+                                       column-key column-condition)})))
                           components)]
       (as-> (vertical-stack components :separators true) dom
         (cond delete-key (add-attributes
@@ -849,15 +852,10 @@
                                      (elements-referent elements-condition)
                                      parent-key)
                                :class "editable"
-                               :commands {:set-content
-                                          [:do-create-content]
-                                          :add-column
-                                          [:do-add
-                                           :subject-key
-                                           (remove-first-primitive-referent
-                                            column-key)
-                                           :adjacent-group-key column-key
-                                           :template new-column-condition]}})
+                               :commands (into (add-column-command
+                                                column-key new-column-condition)
+                                               {:set-content
+                                                [:do-create-content]})})
           dom)
         (add-attributes dom {:class "column-header"})
         [:div {:class "column-header-container" 
@@ -870,13 +868,25 @@
           dom)
         (add-attributes dom {:class "tags"})))))
 
+(defn make-column-header-key
+  "Return a key that refers to all descendants of a column header,
+  but not any of the rows it affects."
+  [descendants table-item table-parent-key]
+  (let [descendant-items (map :item descendants)
+        column-referent (if (= (count descendants) 1)
+                          (item-referent (first descendant-items))
+                          (parallel-referent [] descendant-items))]
+    (prepend-to-key column-referent
+                    (prepend-to-key (item-referent table-item)
+                                    table-parent-key))))
+
 (defn table-header-node-DOM
   "Generate the dom for a node of a table header hierarchy.  The
   new-column-condition gives the condition that all headers under
   the parent must satisfy. The row-scope-referent should specify all
   the row items from which this header selects elements."
   [table-item node elements-condition table-parent-key
-   new-column-condition row-scope-referent top-level rightmost inherited]
+   new-column-condition row-scope-referent rightmost inherited]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
         descendants (hierarchy-node-descendants node)
@@ -888,16 +898,13 @@
         key (table-header-key
              descendants (hierarchy-node-extent node) nil
              table-item table-parent-key row-scope-referent)
-        column-referent (if (= (count descendants) 1)
-                          (item-referent (:item example))
-                          (parallel-referent [] (map :item descendants)))
-        column-key (prepend-to-key
-                    column-referent
-                    (prepend-to-key (item-referent table-item)
-                                    table-parent-key))
+        column-header-key (make-column-header-key
+                           descendants table-item table-parent-key)
         delete-key (when (= (count example-elements) 1)
+                     ;; If we have children, then deletion affects the rows,
+                     ;; while if we don't, then it just removes the column.
                      (if (empty? non-trivial-children)
-                       column-key
+                       column-header-key
                        (prepend-to-key
                         (item-referent (first example-elements))
                         (table-header-key
@@ -911,7 +918,7 @@
      example-elements
      (* (count descendants) base-table-column-width)
      key elements-condition
-     column-key new-column-condition delete-key rightmost inherited)))
+     column-header-key new-column-condition delete-key rightmost inherited)))
 
 (defn last-special
   "Return a sequence with the given length as the incoming sequene,
@@ -926,19 +933,19 @@
   the row items from which this header selects elements."
   [table-item node elements-condition table-parent-key
    new-column-condition row-scope-referent top-level rightmost inherited]
-  (let [next-level (hierarchy-node-next-level node)
-        non-trivial-children (filter hierarchy-node? next-level)]
-    (expr-let
-        [node-dom (table-header-node-DOM
-                   table-item node elements-condition table-parent-key
-                   new-column-condition row-scope-referent top-level
-                   rightmost inherited)]
+  (expr-let
+      [node-dom (table-header-node-DOM
+                 table-item node elements-condition table-parent-key
+                 new-column-condition row-scope-referent
+                 rightmost inherited)]
+    (let [node-dom (cond-> node-dom
+                     top-level (add-attributes {:class "top-level"}))
+          next-level (hierarchy-node-next-level node)
+          non-trivial-children (filter hierarchy-node? next-level)]
       (if (and (= (count next-level) 1) (empty? non-trivial-children))
-        (cond-> node-dom
-          top-level (add-attributes {:class "top-level"}))
+        node-dom
         (let [inherited (update-in inherited [:level] inc)
-              exclude-from-members (hierarchy-nodes-extent
-                                    non-trivial-children)
+              exclude-from-members (hierarchy-nodes-extent non-trivial-children)
               new-subcolumn-condition (list* (concat new-column-condition
                                                      (canonical-set-to-list
                                                       (:properties node))))]
@@ -949,31 +956,26 @@
                            (if (hierarchy-node? node)
                              (table-header-subtree-DOM
                               table-item node elements-condition
-                              table-parent-key
-                              new-subcolumn-condition
+                              table-parent-key new-subcolumn-condition
                               row-scope-referent false rightmost inherited)
                              ;; We need a header DOM with no elements.
                              (let [key (table-header-key
                                         [node] [node]
                                         exclude-from-members table-item
                                         table-parent-key row-scope-referent)
-                                   column-key (prepend-to-key
-                                               (item-referent (:item node))
-                                               (prepend-to-key
-                                                (item-referent table-item)
-                                                 table-parent-key))]
+                                   column-header-key (make-column-header-key
+                                                      [node] table-item
+                                                      table-parent-key)]
                                (table-header-node-elements-DOM
                                 nil base-table-column-width
                                 key elements-condition
-                                column-key new-subcolumn-condition
-                                column-key rightmost inherited))))
+                                column-header-key new-subcolumn-condition
+                                column-header-key rightmost inherited))))
                          next-level
                          (last-special (count next-level) rightmost))]
             [:div {:class "column-header-stack"}
-             (cond-> (add-attributes node-dom {:class "with-children"})
-               top-level (add-attributes {:class "top-level"}))
-             (into [:div {:class "column-header-sequence"}] dom-seqs)
-             ]))))))
+             (add-attributes node-dom {:class "with-children"})
+             (into [:div {:class "column-header-sequence"}] dom-seqs)]))))))
 
 (defn table-header-DOM
   "Generate DOM for column headers for the specified templates.

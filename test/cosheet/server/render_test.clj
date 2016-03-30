@@ -1489,7 +1489,7 @@
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack"}
               [:div {:class
-                     "column-header-container rightmost tags with-children top-level"
+                     "column-header-container rightmost tags top-level with-children"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)
@@ -1722,7 +1722,7 @@
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack"}
               [:div {:class
-                     "column-header-container rightmost tags with-children top-level"
+                     "column-header-container rightmost tags top-level with-children"
                      :style {:width "300px"}}
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-header-key)

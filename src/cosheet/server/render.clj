@@ -803,8 +803,8 @@
                   extent-info-maps)))))
     table-parent-key))
 
-(defn table-header-node-DOM
-  "Generate the dom for one node of a table header hierarchy.
+(defn table-header-node-elements-DOM
+  "Generate the dom for one node of a table header hierarchy given its elements.
   parent-key gives the parent scope the header applies to, and
   elements-condition the condition that all the elements
   satisfy. column-key gives the key for just the header definition(s)
@@ -813,13 +813,13 @@
   [example-elements width parent-key elements-condition
    column-key new-column-condition delete-key rightmost inherited]
   (assert (not (elements-referent? (first parent-key))))
-  (expr-let [components
-             (expr-seq map
-                       #(displaced-element-component
-                         % parent-key elements-condition inherited)
-                       example-elements)
-             element-lists
-             (expr-seq map semantic-to-list example-elements)]
+  (expr-let
+      [ordered-elements (order-items example-elements)
+       components (expr-seq map
+                            #(displaced-element-component
+                              % parent-key elements-condition inherited)
+                            ordered-elements)
+       element-lists (expr-seq map semantic-to-list ordered-elements)]
     (let [components (map-indexed
                       (fn [position component]
                         ;; Make the new column condition also require the
@@ -844,7 +844,7 @@
                                       [:do-delete :delete-key delete-key]}})
               true
               dom)
-        (if (empty? example-elements)
+        (if (empty? ordered-elements)
           (add-attributes dom {:key (prepend-to-key
                                      (elements-referent elements-condition)
                                      parent-key)
@@ -865,10 +865,53 @@
         (if rightmost
           (add-attributes dom {:class "rightmost"})
           dom)
-        (if (empty? example-elements)
+        (if (empty? ordered-elements)
           (add-attributes dom {:class "empty"})
           dom)
         (add-attributes dom {:class "tags"})))))
+
+(defn table-header-node-DOM
+  "Generate the dom for a node of a table header hierarchy.  The
+  new-column-condition gives the condition that all headers under
+  the parent must satisfy. The row-scope-referent should specify all
+  the row items from which this header selects elements."
+  [table-item node elements-condition table-parent-key
+   new-column-condition row-scope-referent top-level rightmost inherited]
+  (let [next-level (hierarchy-node-next-level node)
+        non-trivial-children (filter hierarchy-node? next-level)
+        descendants (hierarchy-node-descendants node)
+        example (first descendants)
+        example-elements (multiset-to-generating-values
+                          (:properties node) 
+                          (:property-elements example)
+                          (:property-canonicals example))
+        key (table-header-key
+             descendants (hierarchy-node-extent node) nil
+             table-item table-parent-key row-scope-referent)
+        column-referent (if (= (count descendants) 1)
+                          (item-referent (:item example))
+                          (parallel-referent [] (map :item descendants)))
+        column-key (prepend-to-key
+                    column-referent
+                    (prepend-to-key (item-referent table-item)
+                                    table-parent-key))
+        delete-key (when (= (count example-elements) 1)
+                     (if (empty? non-trivial-children)
+                       column-key
+                       (prepend-to-key
+                        (item-referent (first example-elements))
+                        (table-header-key
+                         (mapcat hierarchy-node-descendants
+                                 non-trivial-children)
+                         (hierarchy-nodes-extent non-trivial-children)
+                         nil
+                         table-item table-parent-key
+                         row-scope-referent))))]
+    (table-header-node-elements-DOM
+     example-elements
+     (* (count descendants) base-table-column-width)
+     key elements-condition
+     column-key new-column-condition delete-key rightmost inherited)))
 
 (defn last-special
   "Return a sequence with the given length as the incoming sequene,
@@ -883,43 +926,13 @@
   the row items from which this header selects elements."
   [table-item node elements-condition table-parent-key
    new-column-condition row-scope-referent top-level rightmost inherited]
-  (let [descendants (hierarchy-node-descendants node)
-        next-level (hierarchy-node-next-level node)
+  (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)]
     (expr-let
-        [node-dom
-         (let [example (first descendants)
-               example-elements (multiset-to-generating-values
-                                 (:properties node) 
-                                 (:property-elements example)
-                                 (:property-canonicals example))
-               key (table-header-key
-                    descendants (hierarchy-node-extent node) nil
-                    table-item table-parent-key row-scope-referent)
-               column-referent (if (= (count descendants) 1)
-                                 (item-referent (:item (first descendants)))
-                                 (parallel-referent [] (map :item descendants)))
-               column-key (prepend-to-key
-                           column-referent
-                           (prepend-to-key (item-referent table-item)
-                                           table-parent-key))
-               delete-key (when (= (count example-elements) 1)
-                            (if (empty? non-trivial-children)
-                              column-key
-                              (prepend-to-key
-                               (item-referent (first example-elements))
-                               (table-header-key
-                                (mapcat hierarchy-node-descendants
-                                        non-trivial-children)
-                                (hierarchy-nodes-extent non-trivial-children)
-                                nil
-                                table-item table-parent-key
-                                row-scope-referent))))]
-           (expr table-header-node-DOM
-             (order-items example-elements) ; Why we need the expr.
-             (* (count descendants) base-table-column-width)
-             key elements-condition
-             column-key new-column-condition delete-key rightmost inherited))]
+        [node-dom (table-header-node-DOM
+                   table-item node elements-condition table-parent-key
+                   new-column-condition row-scope-referent top-level
+                   rightmost inherited)]
       (if (and (= (count next-level) 1) (empty? non-trivial-children))
         (cond-> node-dom
           top-level (add-attributes {:class "top-level"}))
@@ -949,7 +962,7 @@
                                                (prepend-to-key
                                                 (item-referent table-item)
                                                  table-parent-key))]
-                               (table-header-node-DOM
+                               (table-header-node-elements-DOM
                                 nil base-table-column-width
                                 key elements-condition
                                 column-key new-subcolumn-condition

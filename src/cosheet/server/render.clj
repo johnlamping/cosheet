@@ -1006,6 +1006,18 @@
                          inherited)
          {:class "table-cell"})))))
 
+(defn table-row-column-group-member-DOM
+  "Generate the dom for one member of a row under one hierarchy group."
+  [row-item row-key new-row-condition member do-not-show inherited]
+  (let [{:keys [item condition]} member
+        exclusions (apply clojure.set/union (map set do-not-show))
+        cell-key (prepend-to-key (comment-referent (item-referent item))
+                                 row-key)]
+    (expr-let [matches (matching-elements condition row-item)]
+      (let [elements (seq (clojure.set/difference (set matches) exclusions))]
+        (table-cell-DOM elements condition row-key
+                        new-row-condition cell-key inherited)))))
+
 (defn table-row-column-group-DOM
   "Generate the dom for the cells of a row under one hierarchy group."
   [row-item row-key new-row-condition node inherited]
@@ -1018,25 +1030,15 @@
          (when excluded-conditions
            (expr-seq map #(matching-elements % row-item)
                      excluded-conditions))
-         make-member-cell-DOM
-         (let [exclusions (apply clojure.set/union (map set do-not-show))]
-           (fn [member]
-             (let [{:keys [item condition]} member]
-               (expr-let [matches (matching-elements condition row-item)]
-                 (let [items (seq (clojure.set/difference (set matches)
-                                                          exclusions))
-                       cell-key (prepend-to-key
-                                 (comment-referent (item-referent item))
-                  row-key)]
-                   (table-cell-DOM items condition row-key
-                                   new-row-condition cell-key inherited))))))
          cell-lists
          (expr-seq map
                    #(if (hierarchy-node? %)
                       (table-row-column-group-DOM
                        row-item row-key new-row-condition
                        % inherited)
-                      (expr-let [dom (make-member-cell-DOM %)]
+                      (expr-let [dom (table-row-column-group-member-DOM
+                                      row-item row-key new-row-condition %
+                                      do-not-show inherited)]
                         [dom]))
                    next-level)]
       (apply concat cell-lists))))

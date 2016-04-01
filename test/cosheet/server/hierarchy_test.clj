@@ -3,8 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [multiset-diff]]
-                     [test-utils :refer [check let-mutated]]
-                     [orderable :as orderable])
+                     [test-utils :refer [check let-mutated]])
             (cosheet.server
              [hierarchy :refer :all]
              [key :refer [canonicalize-list]])
@@ -316,24 +315,15 @@
                :depth 1
                :members [:k]}])))
 
-(def orderables (reduce (fn [os _]
-                          (vec (concat (pop os)
-                                       (orderable/split (peek os) :after))))
-                        [orderable/initial]
-                        (range 4)))
-(def o1 (nth orderables 0))
-(def o2 (nth orderables 1))
-(def o3 (nth orderables 2))
-(def o4 (nth orderables 3))
-(def jane-list `("Jane" (~o1 :order :non-semantic) "plain" "plain"))
+(def jane-list `("Jane" (1 :order :non-semantic) "plain" "plain"))
 (def joe-list `("Joe"
-               (~o2 :order :non-semantic)
-               ("male" (~o1 :order :non-semantic))
-               ("married" (~o2 :order :non-semantic))
-               (39 (~o3 :order :non-semantic)
+               (2 :order :non-semantic)
+               ("male" (1 :order :non-semantic))
+               ("married" (2 :order :non-semantic))
+               (39 (3 :order :non-semantic)
                    ("age" :tag)
                    ("doubtful" "confidence"))
-               (45 (~o4 :order :non-semantic)
+               (45 (4 :order :non-semantic)
                    ("age" :tag))))
 
 (deftest canonical-info-set-test
@@ -370,24 +360,24 @@
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
-        [{:property-canonicals [:a] :item `(:i (~o1 :order :non-semantic))}
-         {:property-canonicals [:a :b] :item `(:j (~o2 :order :non-semantic))}
-         {:property-canonicals [:a :c] :item `(:k (~o3 :order :non-semantic))}]
+        [{:property-canonicals [:a] :item `(:i (1 :order :non-semantic))}
+         {:property-canonicals [:a :b] :item `(:j (2 :order :non-semantic))}
+         {:property-canonicals [:a :c] :item `(:k (3 :order :non-semantic))}]
         #{})
        [{:hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1}
          :members [{:property-canonicals [:a]
-                    :item `(:i (~o1 :order :non-semantic))}]
+                    :item `(:i (1 :order :non-semantic))}]
          :children [{:hierarchy-node true
                      :properties {:b 1}
                      :cumulative-properties {:b 1 :a 1}
                      :members [{:property-canonicals [:a :b]
-                                :item `(:j (~o2 :order :non-semantic))}]}
+                                :item `(:j (2 :order :non-semantic))}]}
                     {:hierarchy-node true
                      :properties {:c 1}
                      :cumulative-properties {:c 1 :a 1}
                      :members [{:property-canonicals [:a :c]
-                                :item `(:k (~o3 :order :non-semantic))}]}]}])))
+                                :item `(:k (3 :order :non-semantic))}]}]}])))
 
 

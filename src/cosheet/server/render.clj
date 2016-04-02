@@ -28,6 +28,7 @@
                                 hierarchy-nodes-extent
                                 hierarchy-node-items-referent
                                 hierarchy-by-canonical-info
+                                item-maps-by-elements
                                 items-hierarchy-by-elements]])))
 
 ;;; TODO: hierarchy-nodes-extent should be aware of refinements of conditions,
@@ -338,13 +339,20 @@
 
 (defn hierarchy-members-DOM
   "Given a flattened hierarchy node with tags as the properties,
-  generate DOM for the elements."
+  generate DOM for the elements. common-condition is an additional
+  condition that all members of the hierarchy satisfy.  The members 
+  of the node may contain an additional :exclude-elements field that gives
+  more of their elements not to show, typically the ones that satisfy
+  common-condition."
   [hierarchy-node parent-key common-condition inherited]
-  (let [items-with-excluded (map #((juxt :item :property-elements) %)
+  (let [items-with-excluded (map (fn [item]
+                                   [(:item item)
+                                    (concat (:property-elements item)
+                                            (:exclude-elements item))])
                                  (hierarchy-node-members hierarchy-node))
         condition (concat common-condition
                           (canonical-set-to-list
-                                  (:cumulative-properties hierarchy-node)))]
+                           (:cumulative-properties hierarchy-node)))]
     (if (empty? items-with-excluded)
       (let [adjacent-item (:item
                            (first (hierarchy-node-descendants hierarchy-node)))
@@ -478,23 +486,28 @@
        {:class "depth-1"})]]))
 
 (defn possibly-tagged-items-column-DOM
-  "Return DOM for the given items as a single column. Don't include tags needed
-  to imply condition. If there are no tags, just give an ordinary column."
-  [items parent-key condition inherited]
+  "Return DOM for the given items in order as a single column.
+  Don't include tags needed to imply condition. If there are no tags,
+  just give an ordinary column."
+  [items parent-key condition content-attributes inherited]
   (expr-let
-      [ordered-items (order-items items)
-       all-labels (expr-seq
-                   map #(matching-elements '(nil :tag) %) ordered-items)
+      [all-labels (expr-seq
+                   map #(matching-elements '(nil :tag) %) items)
        excluded (expr-seq
-                 map #(condition-satisfiers % condition) ordered-items)]
+                 map #(condition-satisfiers % condition) items)]
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
                       all-labels excluded)]
       (if (every? empty? labels)
-        (components-DOM (map vector ordered-items excluded)
-                        parent-key condition {}  inherited)
-        (expr-let [hierarchy (items-hierarchy-by-elements
-                              ordered-items labels (:do-not-merge inherited))
+        (components-DOM (map vector items excluded)
+                        parent-key condition content-attributes  inherited)
+        (expr-let [item-maps (item-maps-by-elements items labels)
+                   augmented (map (fn [item-map excluded]
+                                    (assoc item-map :exclude-elements excluded))
+                                  item-maps excluded)
+                   hierarchy (hierarchy-by-canonical-info
+                              augmented (:do-not-merge inherited))
+                   ;; TODO: Pipe content-attributes down through here.
                    doms (expr-seq map #(tagged-items-column-subtree-DOM
                                         % parent-key condition true inherited)
                                   hierarchy)]
@@ -790,14 +803,10 @@
                       {:class "table-cell"
                        :commands commands})
       (expr-let [items (order-items items)
-                 excluded (expr-seq map #(condition-satisfiers % condition)
-                                    items)]
-        (add-attributes
-         (components-DOM (map vector items excluded)
-                         cell-key condition
-                         {:commands commands}
-                         inherited)
-         {:class "table-cell"})))))
+                 dom (possibly-tagged-items-column-DOM
+                      items cell-key condition
+                      {:commands commands} inherited)]
+        (add-attributes dom {:class "table-cell"})))))
 
 (defn table-row-column-group-member-DOM
   "Generate the dom for one member of a row under one hierarchy group."

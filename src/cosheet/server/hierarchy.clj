@@ -138,7 +138,8 @@
 ;;; containing
 ;;;               :item  The item that is the member
 ;;;   :property-elements  The elements of the item that contribute
-;;;                       to the properties of this node in the hierarchy
+;;;                       to the cumulative properties of this node
+;;;                       in the hierarchy
 ;;; :property-canonicals  A list of canonical-info-sets for each element in
 ;;;                       :property-elements.
 
@@ -210,23 +211,29 @@
                 [] %)
        (split-by-do-not-merge-subset item-info-maps do-not-merge-subset)))))
 
+(defn item-maps-by-elements
+  "Given items in order, and a list of elements for characterize the hierarchy,
+  return item maps for each item."
+  [items elements]
+  (expr-seq
+   map
+   (fn [item elements]
+     (expr-let [filtered (filtered-items semantic-element?
+                                         elements)
+                canonicals (expr-seq
+                            map canonical-info filtered)]
+       {:item item
+        :property-elements filtered
+        :property-canonicals canonicals}))
+   items elements)  )
+
 (defn items-hierarchy-by-elements
   "Given items in order, and a list of elements for each, organize the items
   into a hierarchy by the semantic info of the corresponding
   elements. Don't merge items that are in do-not-merge."
   [items elements do-not-merge]
   (expr-let
-      [item-maps (expr-seq
-                  map
-                  (fn [item elements]
-                    (expr-let [filtered (filtered-items semantic-element?
-                                                        elements)
-                               canonicals (expr-seq
-                                           map canonical-info filtered)]
-                      {:item item
-                       :property-elements filtered
-                       :property-canonicals canonicals}))
-                  items elements)]
+      [item-maps (item-maps-by-elements items elements)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
 
 (defn hierarchy-node-items-referent

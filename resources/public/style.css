@@ -135,7 +135,8 @@
     border-bottom-left-radius: 7px;
 }
 
-.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner {
+.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner,
+.wrapped-element.tags{
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -275,8 +276,7 @@
     border-right-width: 2px;
 }
 
-
-.tags.column-header-container {
+.tags.column-header-container, .wrapped-element.tags {
     background-color: hsl(194, 100%, 88%);
 }
 
@@ -300,11 +300,26 @@
     align-items: stretch;
 }
 
+.wrapped-element {
+    border-width: 2px;
+    margin: -2px;
+}
+
+.wrapped-element > .indent-wrapper > * {
+    border-top-width: 2px;
+    border-left-width: 2px;
+    background-color: white;
+    padding: 3px;
+}
+
 .table-cell {
     width: 150px;
     min-height: 20px;
-    padding: 3px;
     border-width: 0px 0px 2px 2px;
+}
+
+.table-cell.item, .table-cell.stack { 
+    padding: 3px;
 }
 
 .table-cell:last-child {
@@ -322,7 +337,7 @@
 }
 
 .editable.tags-column:not(.content-text),
-.tags-column > .editable:not(.content-text) {
+.tags-column > .editable:not(.content-text){
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -341,6 +356,7 @@
     /* Make room for the element-table, which will be offset 3 px,
        but 100% size */
     padding-right: 6px;
+    background-color: white;
 }
 
 .item.with-elements.vertical-separated {

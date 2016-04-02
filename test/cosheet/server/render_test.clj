@@ -287,15 +287,18 @@
 
 (deftest possibly-tagged-items-column-DOM-test
   (let [[dom age]
-        (let-mutated [age `(39 ("age" :tag (~o1 :order :non-semantic)))]
+        (let-mutated [age `(39 ("age" :tag (~o1 :order :non-semantic))
+                               ("other" :tag (~o2 :order :non-semantic)))]
           (expr-let [dom (possibly-tagged-items-column-DOM
-                          [age] [:age] '(nil) {:depth 0 :do-not-merge #{}})]
+                          [age] [:age] '(nil ("other" :tag))
+                          {} {:depth 0 :do-not-merge #{}})]
             [dom age]))
         age-label (first (current-value (label->elements age o1)))
         age-label-tag (first (current-value (matching-elements :tag age-label)))
         age-key [(item-referent age) :age]
         tags-key (into [[:comment [nil :tag]]] age-key)
-        age-label-key (into [(item-referent age-label)] tags-key)]
+        age-label-key (into [(item-referent age-label)] tags-key)
+        other-label (first (current-value (matching-elements '("other") age)))]
     (is (check-keys dom age))
     (is (check
          dom
@@ -311,8 +314,9 @@
            [:div {:class "indent-wrapper"}
             [:component {:class "depth-1"
                          :key age-key}
-             [item-DOM age [:age] #{age-label}
-              {:commands {:add-sibling [:do-add :template '(nil ("age" :tag))]
+             [item-DOM age [:age] #{age-label other-label}
+              {:commands {:add-sibling [:do-add :template
+                                        '(nil ("other" :tag) ("age" :tag))]
                           :add-row [:do-add]}}
               {:depth 0, :do-not-merge #{}}]]]]]))))
 

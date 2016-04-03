@@ -135,8 +135,7 @@
     border-bottom-left-radius: 7px;
 }
 
-.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner,
-.wrapped-element.tags{
+.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -151,6 +150,29 @@
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));
     border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+}
+
+.wrapped-element.tags{
+    background-image:
+    linear-gradient(to left,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to top,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
     border-bottom-left-radius: 7px;
 }
 

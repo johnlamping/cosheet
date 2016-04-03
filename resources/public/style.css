@@ -312,6 +312,10 @@
     padding: 3px;
 }
 
+.wrapped-element > .content-text {
+    padding: 3px;
+}
+
 .table-cell {
     width: 150px;
     min-height: 20px;
@@ -337,8 +341,14 @@
 }
 
 .editable.tags-column:not(.content-text),
-.tags-column > .editable:not(.content-text){
+.tags-column > .editable:not(.content-text),
+.editable.tags.indent-wrapper {
     background-color: hsl(194, 50%, 88%);
+}
+
+.editable.tags.indent-wrapper > * {
+    background-color: white;
+    padding: 3px;
 }
 
 .content-text {

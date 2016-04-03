@@ -348,7 +348,14 @@
 
 .editable.tags.indent-wrapper > * {
     background-color: white;
+    border-left-width: 2px;
     padding: 3px;
+}
+
+.editable.tags.indent-wrapper > .item.with-elements {
+    /* Make room for the element-table, which will be offset 3 px,
+       but 100% size */
+    padding-right: 6px;
 }
 
 .content-text {

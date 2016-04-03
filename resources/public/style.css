@@ -27,15 +27,15 @@
 }
 
 .indent-wrapper > .depth-1 {
-    margin-left: 10px;
+    margin-left: 8px;
 }
 
 .indent-wrapper > .depth-2 {
-    margin-left: 20px;
+    margin-left: 16px;
 }
 
 .indent-wrapper > .depth-3 {
-    margin-left: 30px;
+    margin-left: 24px;
 }
 
 /* Repeat selector to give this rule highest specificity */

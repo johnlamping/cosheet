@@ -256,37 +256,44 @@
                                                   :template condition]}})
                        inherited]))))
 
+(defn add-adjacent-command
+  "Return a command for adding an item adjacent to a key."
+  [key]
+  [:do-add
+   :subject-key (remove-first-primitive-referent key)
+   :adjacent-group-key key])
+
+(defn empty-displaced-in-row-DOM
+  "Return DOM for an empty set of displaced elements satisfying a condition,
+  suitable for putting in a row about its parent."
+  [parent-key condition]
+  [:div {:key (prepend-to-key
+               (elements-referent condition)
+               ;; If a value gets put in here, it's key will have
+               ;; the following comment. Adding it now lets
+               ;; the action that will create the value know
+               ;; how to select it.
+               (prepend-to-key (comment-referent condition)
+                               parent-key))
+         :commands {:set-content [:do-create-content]
+                    :add-row (add-adjacent-command parent-key)}
+         :class "editable"}])
+
 (defn displaced-elements-in-row-DOM
   "Given a possibly empty sequence of elements (possibly exemplary),
   return a DOM containing components for each of them, suitable for
   putting in a row about their parent(s)."
   [elements parent-key condition inherited]
-  (let [add-row-command [:do-add
-                         :subject-key (remove-first-primitive-referent
-                                       parent-key)
-                         :adjacent-group-key parent-key]]
+  (if (empty? elements)
+    (empty-displaced-in-row-DOM parent-key condition)
     (expr-let [components
                (expr-seq
                 map
                 #(displaced-element-component
                   % parent-key condition inherited
-                  :commands {:add-row add-row-command})
+                  :commands {:add-row (add-adjacent-command parent-key)})
                 elements)]
-      (let [elements-key (prepend-to-key
-                          (elements-referent condition)
-                          ;; If a value gets put in here, it's key will have
-                          ;; the following comment. Adding it now lets
-                          ;; the action that will create the value know
-                          ;; how to select it.
-                          (prepend-to-key (comment-referent condition)
-                                          parent-key))]
-        (let [dom (vertical-stack components :separators true)]
-          (if (empty? elements)
-            (add-attributes dom {:key elements-key
-                                 :commands {:set-content [:do-create-content]
-                                            :add-row add-row-command}
-                                 :class "editable"})
-            dom))))))
+      (vertical-stack components :separators true))))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of a top level node of a row
@@ -477,13 +484,20 @@
                                           % parent-key extra-condition
                                           false inherited)
                                     (:children hierarchy-node)))]
-    ;; TODO: Check for no tags, in which case, do horizontal format.
-    [:div {:class "wrapped-element tags"}
-     tags-dom
-     [:div {:class "indent-wrapper"}
-      (add-attributes
-       (vertical-stack (cons items-dom child-doms) :separators true)
-       {:class "depth-1"})]]))
+    (let [content(add-attributes
+                  (vertical-stack (cons items-dom child-doms) :separators true)
+                  {:class "depth-1"})]
+      (if (empty? (:properties hierarchy-node))
+        (conj (add-attributes (empty-displaced-in-row-DOM
+                               (prepend-to-key
+                                (hierarchy-node-items-referent hierarchy-node)
+                                parent-key)
+                               '(nil :tag))
+                              {:class "wrapped-element tags indent-wrapper"})
+              content)
+        [:div {:class "wrapped-element tags"}
+         tags-dom
+         [:div {:class "indent-wrapper"} content]]))))
 
 (defn possibly-tagged-items-column-DOM
   "Return DOM for the given items in order as a single column.

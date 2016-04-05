@@ -159,7 +159,7 @@
     border-bottom-left-radius: 7px;
 }
 
-.wrapped-element.tags{
+.wrapped-element.tags {
     background-image:
     linear-gradient(to left,
                     hsla(0, 0%, 100%, .7),
@@ -180,6 +180,10 @@
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
     border-bottom-left-radius: 7px;
+}
+
+.editable.wrapped-element.tags {
+    border-top-right-radius: 0px;
 }
 
 /* Illumination of borders for indented tags */
@@ -408,11 +412,6 @@
     /* Make room for the element-table, which will be offset 3 px,
        but 100% size */
     background-color: white;
-}
-
-.item.with-elements.vertical-separated {
-    /* Same as above, but must also include the padding for a column */
-    padding-right: 0px;
 }
 
 .vertical-separated {

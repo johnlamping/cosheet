@@ -507,7 +507,7 @@
   "Return DOM for the given items in order as a single column.
   Don't include tags needed to imply condition. If there are no tags,
   just give an ordinary column."
-  [items parent-key condition content-attributes inherited]
+  [items parent-key condition must-show-labels content-attributes inherited]
   (expr-let
       [all-labels (expr-seq
                    map #(matching-elements '(nil :tag) %) items)
@@ -516,7 +516,7 @@
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
                       all-labels excluded)]
-      (if (every? empty? labels)
+      (if (and (every? empty? labels) (not must-show-labels))
         (components-DOM (map vector items excluded)
                         parent-key condition content-attributes  inherited)
         (expr-let [item-maps (item-maps-by-elements items labels)
@@ -571,8 +571,11 @@
              [item-DOM content item-key #{} {}  inherited-down]))]
       (if (empty? elements)
         content-dom
-        (expr-let [elements-dom (tagged-items-table-DOM
-                                 elements item-key inherited-down)]
+        ;; TODO: Check nesting to see whether to use
+        ;; possibly-tagged-items-column-DOM or tagged-items-table-DOM
+        (expr-let [elements-dom (possibly-tagged-items-column-DOM
+                                 elements item-key '(nil)
+                                 true {} inherited-down)]
           [:div {:class "item with-elements" :key item-key}
            content-dom elements-dom])))))
 
@@ -822,7 +825,7 @@
                        :commands commands})
       (expr-let [items (order-items items)
                  dom (possibly-tagged-items-column-DOM
-                      items cell-key condition
+                      items cell-key condition false
                       {:commands commands} inherited)]
         (add-attributes dom {:class "table-cell"})))))
 

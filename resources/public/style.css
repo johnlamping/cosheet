@@ -80,6 +80,12 @@
     padding: 3px;
 }
 
+.with-elements > .element-column {
+    margin-top: 2px;
+    margin-bottom: 2px;
+    margin-left: 3px;
+}
+
 .top-border {
     border-top-width: 2px;
 }
@@ -324,7 +330,13 @@
 
 .wrapped-element {
     border-width: 2px;
-    margin: -2px;
+    margin-top: -2px;
+    margin-bottom: -2px;
+}
+
+.table-cell > .wrapped-element {
+    margin-left: -2px;
+    margin-right: -2px;
 }
 
 .wrapped-element > .indent-wrapper > * {
@@ -395,13 +407,12 @@
 .item.with-elements {
     /* Make room for the element-table, which will be offset 3 px,
        but 100% size */
-    padding-right: 6px;
     background-color: white;
 }
 
 .item.with-elements.vertical-separated {
     /* Same as above, but must also include the padding for a column */
-    padding-right: 3px;
+    padding-right: 0px;
 }
 
 .vertical-separated {

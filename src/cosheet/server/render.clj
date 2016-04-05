@@ -477,15 +477,19 @@
   [hierarchy-node parent-key extra-condition top-level inherited]
   (expr-let [tags-dom (tagged-items-column-tags-DOM
                        hierarchy-node parent-key inherited)
-             items-dom (hierarchy-members-DOM
-                        hierarchy-node parent-key extra-condition inherited)
+             items-dom (when (not (empty? (hierarchy-node-members
+                                           hierarchy-node)))
+                         (hierarchy-members-DOM
+                          hierarchy-node parent-key extra-condition inherited))
              child-doms (when (:children hierarchy-node)
                           (expr-seq map #(tagged-items-column-subtree-DOM
                                           % parent-key extra-condition
                                           false inherited)
                                     (:children hierarchy-node)))]
-    (let [content(add-attributes
-                  (vertical-stack (cons items-dom child-doms) :separators true)
+    (let [content (add-attributes
+                   (vertical-stack
+                    (if items-dom (cons items-dom child-doms) child-doms)
+                    :separators true)
                   {:class "depth-1"})]
       (if (empty? (:properties hierarchy-node))
         (conj (add-attributes (empty-displaced-in-row-DOM

@@ -334,7 +334,8 @@
     padding: 3px;
 }
 
-.wrapped-element > .content-text {
+.wrapped-element > .content-text,
+.wrapped-element > .stack {
     padding: 3px;
 }
 

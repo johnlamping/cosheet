@@ -1,6 +1,6 @@
 (ns cosheet.server.hierarchy
   (:require (cosheet [utils :refer [multiset multiset-diff multiset-union
-                                    update-last]]
+                                    multiset-to-generating-values update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print current-value]]
                      [expression :refer [expr-let expr-seq]])
@@ -225,7 +225,7 @@
        {:item item
         :property-elements filtered
         :property-canonicals canonicals}))
-   items elements)  )
+   items elements))
 
 (defn items-hierarchy-by-elements
   "Given items in order, and a list of elements for each, organize the items
@@ -235,6 +235,16 @@
   (expr-let
       [item-maps (item-maps-by-elements items elements)]
     (hierarchy-by-canonical-info item-maps do-not-merge)))
+
+(defn hierarchy-node-example-elements
+  "Given a hierarchy node, return a list of example elements
+  for its properties."
+  [hierarchy-node]
+  (let [example (first (hierarchy-node-descendants hierarchy-node))]
+    (multiset-to-generating-values
+     (:properties hierarchy-node)
+     (:property-canonicals example)
+     (:property-elements example))))
 
 (defn hierarchy-node-items-referent
   "Given a hierarchy node, return an item referent to all its descendants."

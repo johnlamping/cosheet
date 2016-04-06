@@ -2,7 +2,7 @@
   (:require (cosheet [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [utils :refer [multiset multiset-diff multiset-union
-                                    update-last]]
+                                    multiset-to-generating-values update-last]]
                      [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
@@ -29,7 +29,8 @@
                                 hierarchy-node-items-referent
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
-                                items-hierarchy-by-elements]])))
+                                items-hierarchy-by-elements
+                                hierarchy-node-example-elements]])))
 
 ;;; TODO: hierarchy-nodes-extent should be aware of refinements of conditions,
 ;;;       not just added conditions.
@@ -130,29 +131,6 @@
                              (vector (or order orderable/initial) item))
                            order-info items)))))
 
-(defn multiset-to-generating-values
-  "Given a multi-set, a list of values, and corresponding list of
-  keys for those values, return a list of items whose
-  keys add up to the multi-set."
-  [multiset values keys]
-  (let [;; A map from key to a vector of values with that key.
-        key-values-map (reduce (fn [map [value key]]
-                                 (update-in map [key] #(conj % value)))
-                               {} (map vector values keys))]
-    (reduce (fn [result [key count]]
-              (concat result (take count (key-values-map key))))
-            [] multiset)))
-
-(defn hierarchy-node-example-elements
-  "Given a hierarchy node, return a list of example elements
-  for its properties."
-  [hierarchy-node]
-  (let [example (first (hierarchy-node-descendants hierarchy-node))]
-    (multiset-to-generating-values
-     (:properties hierarchy-node)
-     (:property-elements example)
-     (:property-canonicals example))))
-
 (defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it
   satisfy the condition and nothing extra. The condition must be in list form.
@@ -166,7 +144,7 @@
              canonical-elements (expr-seq map canonical-info elements)]
     (multiset-to-generating-values
      (multiset (map canonical-info (rest condition)))
-     elements canonical-elements)))
+     canonical-elements elements)))
 
 (def item-DOM)
 

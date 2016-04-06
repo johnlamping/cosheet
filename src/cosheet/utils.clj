@@ -41,6 +41,19 @@
             (map (fn [key] (+ (get first key 0) (get second key 0)))
                  keys))))
 
+(defn multiset-to-generating-values
+  "Given a multi-set, a list of keys, and corresponding list of
+  values for those keys, return a list of values whose
+  keys add up to the multi-set."
+  [multiset keys values]
+  (let [;; A map from key to a vector of values with that key.
+        key-values-map (reduce (fn [map [value key]]
+                                 (update-in map [key] #(conj % value)))
+                               {} (map vector values keys))]
+    (reduce (fn [result [key count]]
+              (concat result (take count (key-values-map key))))
+            [] multiset)))
+
 (defn update-last
   "Update the last element of a vector."
   [vec fun]

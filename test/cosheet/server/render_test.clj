@@ -156,11 +156,6 @@
                               (condition-satisfiers test '(nil :a :a :b)))))
              [:a])))
 
-(deftest multiset-to-generating-values-test
-  (is (check (multiset-to-generating-values
-               {:a 1 :b 2} [:a1 :a2 :a3 :b1 :b2 :b3] [:a :a :a :b :b :b])
-             (as-set [:a3 :b2 :b3]))))
-
 (deftest add-row-header-border-info-test
   (is (check (add-row-header-border-info
               [{:depth 0}

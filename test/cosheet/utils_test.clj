@@ -16,6 +16,11 @@
   (is (= (multiset-union {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          {:a 1 :b 4 :c 6 :d 4})))
 
+(deftest multiset-to-generating-values-test
+  (is (= (set (multiset-to-generating-values
+               {:a 1 :b 2} [:a :a :a :b :b :b] [:a1 :a2 :a3 :b1 :b2 :b3]))
+         (set [:a3 :b2 :b3]))))
+
 (deftest update-last-test
   (is (= (update-last [1 2 3] inc) [1 2 4]))
   (is (= (update-last [] #(conj % 1)) [[1]])))

@@ -292,7 +292,7 @@
                       other `("x" ("other" :tag (~o1 :order :non-semantic)))]
           (expr-let [dom (possibly-tagged-items-column-DOM
                           [age other] [:parent] '(nil ("other" :tag))
-                          {} {:depth 0 :do-not-merge #{}})]
+                          true {} {:depth 0 :do-not-merge #{}})]
             [dom age other]))
         age-label (first (current-value (label->elements age o1)))
         age-label-tag (first (current-value (matching-elements :tag age-label)))
@@ -867,7 +867,7 @@
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
                 {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                {:level 0, :depth 0, :do-not-merge #{}}]]]
+                {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]]
              ;; Size column.
              (any)]
             [:component {:class "table-row"
@@ -891,7 +891,7 @@
                                         :template
                                         '(nil (nil ("age" :tag))
                                               (:top-level :non-semantic))]}}
-                  {:depth 0, :do-not-merge #{}}]]
+                  {:depth 0, :do-not-merge #{} :narrow true}]]
                 [:component {:key (into [(:item-id joe-age)
                                          (comment-referent (item-referent age))]
                                         joe-row-key),
@@ -994,7 +994,7 @@
                 [item-DOM
                  name-tag name-id-header-key #{name-tag-spec}
                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{}}]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]
                ;; id part of name-id header
                [:component {:key (prepend-to-key (item-referent id-tag)
                                                  name-id-header-key)
@@ -1012,7 +1012,7 @@
                 [item-DOM
                  id-tag name-id-header-key #{id-tag-spec}
                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{}}]]]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]]]
              ;; Age column
              (any)]
             ;; Joe
@@ -1037,7 +1037,7 @@
                                        :adjacent-key joe-row-key
                                        :template
                                        '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{}}]]
+                 {:depth 0, :do-not-merge #{} :narrow true}]]
                ;; Joe's age
                (any)])]
             ;; Jane
@@ -1184,7 +1184,7 @@
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
                   {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                  {:level 0, :depth 0, :do-not-merge #{}}]]]
+                  {:level 0, :depth 0, :do-not-merge #{} :narrow false}]]]
               [:div {:class "column-header-sequence"}
                [:div  {:class "column-header-container empty tags"
                        :style {:width "150px"}}
@@ -1232,7 +1232,7 @@
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
                    {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                   {:level 1, :depth 0, :do-not-merge #{}}]]]]]]
+                   {:level 1, :depth 0, :do-not-merge #{} :narrow true}]]]]]]
             ;; Joe
             [:component {:class "table-row"
                          :key joe-row-key}
@@ -1254,7 +1254,7 @@
                                        :adjacent-key joe-row-key
                                        :template
                                        '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{}}]]
+                 {:depth 0, :do-not-merge #{} :narrow true}]]
                ;; Joe's id
                [:component {:key (into [(:item-id joe-id)
                                         (comment-referent
@@ -1273,7 +1273,7 @@
                                        :adjacent-key joe-row-key
                                        :template
                                        '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{}}]]])]
+                 {:depth 0, :do-not-merge #{} :narrow true}]]])]
             ;; Jane
             [:component {:class "table-row"
                          :key jane-row-key}
@@ -1417,7 +1417,7 @@
                 [item-DOM
                  name-tag name-header-key #{name-tag-spec}
                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{}}]]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow false}]]]
               [:div {:class "column-header-sequence"}
                [:div {:class "column-header-container tags"
                       :style {:width "150px"}}
@@ -1443,7 +1443,7 @@
                  [item-DOM
                   id-tag name-id-header-key #{id-tag-spec}
                   {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                  {:level 1, :depth 0, :do-not-merge #{}}]]]
+                  {:level 1, :depth 0, :do-not-merge #{} :narrow true}]]]
                [:div  {:class "column-header-container rightmost empty tags"
                        :style {:width "150px"}}
                 [:div  {:class "editable column-header"
@@ -1490,7 +1490,7 @@
                                        :adjacent-key joe-row-key
                                        :template
                                        '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{}}]]
+                 {:depth 0, :do-not-merge #{} :narrow true}]]
                ;; Joe's id
               [:component {:key (into [(:item-id joe-nickname)
                                         (comment-referent
@@ -1508,7 +1508,7 @@
                                        :adjacent-key joe-row-key
                                        :template '(nil
                                                    (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{}}]]])]
+                 {:depth 0, :do-not-merge #{} :narrow true}]]])]
             ;; Jane
             [:component {:class "table-row"
                          :key jane-row-key}

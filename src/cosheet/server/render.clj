@@ -571,11 +571,11 @@
              [item-DOM content item-key #{} {}  inherited-down]))]
       (if (empty? elements)
         content-dom
-        ;; TODO: Check nesting to see whether to use
-        ;; possibly-tagged-items-column-DOM or tagged-items-table-DOM
-        (expr-let [elements-dom (possibly-tagged-items-column-DOM
-                                 elements item-key '(nil)
-                                 true {} inherited-down)]
+        (expr-let [elements-dom
+                   (if (:narrow inherited)
+                     (possibly-tagged-items-column-DOM
+                      elements item-key '(nil) true {} inherited-down)
+                     (tagged-items-table-DOM elements item-key inherited-down))]
           [:div {:class "item with-elements" :key item-key}
            content-dom elements-dom])))))
 
@@ -700,11 +700,8 @@
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
         descendants (hierarchy-node-descendants node)
-        example (first descendants)
-        example-elements (multiset-to-generating-values
-                          (:properties node) 
-                          (:property-elements example)
-                          (:property-canonicals example))
+        num-descendants (count descendants)
+        example-elements (hierarchy-node-example-elements node)
         key (table-header-key
              descendants (hierarchy-node-extent node) nil
              table-item table-parent-key row-scope-referent)
@@ -726,9 +723,10 @@
                          row-scope-referent))))]
     (table-header-node-elements-DOM
      example-elements
-     (* (count descendants) base-table-column-width)
+     (* num-descendants base-table-column-width)
      key elements-condition
-     column-header-key new-column-condition delete-key rightmost inherited)))
+     column-header-key new-column-condition delete-key rightmost
+     (assoc inherited :narrow (<= num-descendants 1)))))
 
 (defn last-special
   "Return a sequence with the given length as the incoming sequene,
@@ -826,7 +824,8 @@
       (expr-let [items (order-items items)
                  dom (possibly-tagged-items-column-DOM
                       items cell-key condition false
-                      {:commands commands} inherited)]
+                      {:commands commands}
+                      (assoc inherited :narrow true))]
         (add-attributes dom {:class "table-cell"})))))
 
 (defn table-row-column-group-member-DOM

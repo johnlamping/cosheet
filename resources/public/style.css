@@ -72,11 +72,11 @@
     width: 100%;
 }
 
-.tags-column.selected {
+.row-header.tags.selected {
     background-color: hsl(194, 100%, 88%);
 }
 
-.elements-column, .full-row {
+.element-row > .element, .full-row {
     padding: 3px;
 }
 
@@ -84,6 +84,14 @@
     margin-top: 2px;
     margin-bottom: 2px;
     margin-left: 3px;
+}
+
+.element-column > .item {
+    padding: 3px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    margin-top: -2px;
+    margin-bottom: -2px;
 }
 
 .top-border {
@@ -103,7 +111,7 @@
 }
 
 /* Illumination of borders for top level tags */
-.tags-column {
+.row-header.tags {
     vertical-align: top;
     background-image:
     linear-gradient(to right,
@@ -115,7 +123,7 @@
     width: 30%;
 }
 
-.tags-column.top-border {
+.row-header.tags.top-border {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -128,7 +136,7 @@
     border-top-left-radius: 7px;
 }
 
-.tags-column.bottom-border, .tags-column.ll-corner {
+.row-header.tags.bottom-border, .row-header.tags.ll-corner {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -141,7 +149,7 @@
     border-bottom-left-radius: 7px;
 }
 
-.tags-column.top-border.bottom-border, .tags-column.top-border.ll-corner {
+.row-header.tags.top-border.bottom-border, .row-header.tags.top-border.ll-corner {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -187,7 +195,7 @@
 }
 
 /* Illumination of borders for indented tags */
-.tags-column > .full-row {
+.row-header.tags > .full-row {
     background-image:
     linear-gradient(to bottom,
                     hsla(0, 0%, 100%, .7),
@@ -199,9 +207,9 @@
                     hsla(0, 0%, 100%, 0));
 }
 
-.tags-column > .full-row.with-children,
-.tags-column.bottom-row > .full-row,
-.tags-column.ll-corner > .full-row {
+.row-header.tags > .full-row.with-children,
+.row-header.tags.bottom-row > .full-row,
+.row-header.tags.ll-corner > .full-row {
     background-image:
     linear-gradient(to bottom,
                     hsla(0, 0%, 100%, .7),
@@ -209,7 +217,7 @@
                     hsla(0, 0%, 100%, 0));
 }
 
-.for-multiple, .tags-column.for-multiple, .for-multiple > .stack {
+.for-multiple, .row-header.tags.for-multiple, .for-multiple > .stack {
     vertical-align: middle;
 }
 
@@ -222,11 +230,11 @@
     text-align: left;
 }
 
-.no-tags > .tags-column {
+.no-tags > .row-header.tags {
     width: 10px;
 }
 
-.tags-column {
+.row-header.tags {
     min-height: 15px; /* Make no-content cells have minimum height */
 }
 
@@ -379,8 +387,8 @@
     background-color: hsl(0, 0%, 95%);
 }
 
-.editable.tags-column:not(.content-text),
-.tags-column > .editable:not(.content-text),
+.editable.row-header.tags:not(.content-text),
+.row-header.tags > .editable:not(.content-text),
 .editable.tags.indent-wrapper {
     background-color: hsl(194, 50%, 88%);
 }

@@ -323,7 +323,7 @@
    #(assoc % :bottom-border :full)))
 
 (defn hierarchy-members-DOM
-  "Given a flattened hierarchy node with tags as the properties,
+  "Given a hierarchy node with tags as the properties,
   generate DOM for the elements. common-condition is an additional
   condition that all members of the hierarchy satisfy.  The members 
   of the node may contain an additional :exclude-elements field that gives
@@ -381,7 +381,8 @@
        (add-attributes
         dom
         {:class
-         (str (if is-tags "tags-column" "elements-column")
+         (str "row-header"
+              (when is-tags " tags")
               (when (= top-border :full) " top-border")
               (when (= bottom-border :full) " bottom-border")
               (when (= bottom-border :corner) " ll-corner"))})))))
@@ -413,7 +414,7 @@
              tags-items-dom (add-attributes
                              (hierarchy-members-DOM
                               hierarchy-node parent-key '(nil) inherited)
-                             {:class "elements-column"})]
+                             {:class "element"})]
     [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
 (defn tagged-items-table-DOM
@@ -452,34 +453,39 @@
 (defn tagged-items-column-subtree-DOM
   "Return DOM for the given hierarchy node and its descendants,
   as a single column."
-  [hierarchy-node parent-key extra-condition top-level inherited]
-  (expr-let [tags-dom (tagged-items-column-tags-DOM
-                       hierarchy-node parent-key inherited)
-             items-dom (when (not (empty? (hierarchy-node-members
-                                           hierarchy-node)))
-                         (hierarchy-members-DOM
-                          hierarchy-node parent-key extra-condition inherited))
-             child-doms (when (:children hierarchy-node)
-                          (expr-seq map #(tagged-items-column-subtree-DOM
-                                          % parent-key extra-condition
-                                          false inherited)
-                                    (:children hierarchy-node)))]
-    (let [content (add-attributes
-                   (vertical-stack
-                    (if items-dom (cons items-dom child-doms) child-doms)
-                    :separators true)
-                  {:class "depth-1"})]
-      (if (empty? (:properties hierarchy-node))
-        (conj (add-attributes (empty-displaced-in-row-DOM
-                               (prepend-to-key
-                                (hierarchy-node-items-referent hierarchy-node)
-                                parent-key)
-                               '(nil :tag))
-                              {:class "wrapped-element tags indent-wrapper"})
-              content)
-        [:div {:class "wrapped-element tags"}
-         tags-dom
-         [:div {:class "indent-wrapper"} content]]))))
+  [hierarchy-node parent-key extra-condition
+   top-level must-show-labels inherited]
+  (let [num-members (count (hierarchy-node-members hierarchy-node))]
+    (expr-let [items-dom (when (not= num-members 0)
+                           (hierarchy-members-DOM hierarchy-node parent-key
+                                                  extra-condition inherited))
+               child-doms (when (:children hierarchy-node)
+                            (expr-seq map #(tagged-items-column-subtree-DOM
+                                            % parent-key extra-condition
+                                            false inherited)
+                                      (:children hierarchy-node)))]
+      (let [content (if (> num-members 1)
+                       (conj items-dom child-doms)
+                       (vertical-stack
+                        (if items-dom (cons items-dom child-doms) child-doms)
+                        :separators true))]
+        (if (empty? (:properties hierarchy-node))
+          (if must-show-labels
+            (conj (add-attributes
+                   (empty-displaced-in-row-DOM
+                    (prepend-to-key
+                     (hierarchy-node-items-referent hierarchy-node)
+                     parent-key)
+                    '(nil :tag))
+                   {:class "wrapped-element tags indent-wrapper"})
+                  (add-attributes content {:class "depth-1"}))
+            content)
+          (expr-let [tags-dom (tagged-items-column-tags-DOM
+                               hierarchy-node parent-key inherited)]
+            [:div {:class "wrapped-element tags"}
+             tags-dom
+             [:div {:class "indent-wrapper"}
+              (add-attributes content {:class "depth-1"})]]))))))
 
 (defn possibly-tagged-items-column-DOM
   "Return DOM for the given items in order as a single column.
@@ -505,7 +511,8 @@
                               augmented (:do-not-merge inherited))
                    ;; TODO: Pipe content-attributes down through here.
                    doms (expr-seq map #(tagged-items-column-subtree-DOM
-                                        % parent-key condition true inherited)
+                                        % parent-key condition true
+                                        must-show-labels inherited)
                                   hierarchy)]
           (into [:div {:class "element-column"}]
                 doms))))))

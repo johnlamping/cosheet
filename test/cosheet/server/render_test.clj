@@ -213,7 +213,7 @@
 (deftest row-header-elements-DOM-test
   (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
                                       nil '(nil :tag) [rid] {})
-             [:div {:class "editable full-row tags-column"
+             [:div {:class "editable full-row row-header tags"
                     :key [[:elements [nil :tag]] [:comment [nil :tag]] rid]
                     :commands {:set-content [:do-create-content]
                                :add-row [:do-add :subject-key nil
@@ -232,7 +232,7 @@
     (is (check-keys dom fred))
     (is (check
          dom
-         [:div {:class "indent-wrapper tags-column"}
+         [:div {:class "indent-wrapper row-header tags"}
           [:div {:class "vertical-center-wrapper full-row bottom-border with-children for-multiple depth-1"}
            [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]}
             [item-DOM
@@ -259,7 +259,7 @@
          dom
          [:div
           {:class
-           "vertical-center-wrapper full-row tags-column top-border ll-corner"}
+           "vertical-center-wrapper full-row row-header tags top-border ll-corner"}
           [:div {:class "stack"}
            [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]
                         :class "vertical-separated"}
@@ -377,7 +377,7 @@
            "39"]
           [:div {:class "element-table"}
            [:div {:class "element-row last-row"}
-            [:div {:class "vertical-center-wrapper full-row tags-column top-border bottom-border"}
+            [:div {:class "vertical-center-wrapper full-row row-header tags top-border bottom-border"}
              [:component {:key (into [(item-referent confidence)] tag-key)}
               [item-DOM
                confidence tag-key
@@ -390,7 +390,7 @@
                                            item-key)]}}
                {:depth 1 :do-not-merge #{}}]]]
             [:component {:key (into [(:item-id doubtful)] item-key)
-                         :class "elements-column"}
+                         :class "element"}
              [item-DOM
               doubtful item-key
               #{confidence}
@@ -412,7 +412,7 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row no-tags last-row"}
-              [:div {:class "editable full-row tags-column top-border bottom-border"
+              [:div {:class "editable full-row row-header tags top-border bottom-border"
                      :key (into [[:elements [nil :tag]]
                                  [:comment [nil :tag]]
                                  (:item-id doubtful)] item-key)
@@ -423,7 +423,7 @@
                                           (into [(:item-id doubtful)]
                                                 item-key)]}}]
               [:component {:key (into [(:item-id doubtful)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM
                 doubtful item-key
                 #{}
@@ -596,7 +596,7 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row"}
-              [:div {:class "vertical-center-wrapper full-row with-children tags-column top-border"}
+              [:div {:class "vertical-center-wrapper full-row with-children row-header tags top-border"}
                [:component
                 {:key (->> both-ages-key
                            (prepend-to-key (comment-referent '(nil :tag)))
@@ -616,13 +616,13 @@
                                         :joe]]}}
                  (any map?)]]]
               [:component {:key (into [(:item-id v1)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM v1 item-key #{L1}
                 {:commands {:add-sibling [:do-add :template [nil ["L1" :tag]]]
                             :add-row [:do-add]}}
                 (any map?)]]]
              [:div {:class "element-row"}
-              [:div {:class "indent-wrapper tags-column"}
+              [:div {:class "indent-wrapper row-header tags"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
                 [:component
                  {:key (into [(:item-id L2)
@@ -641,7 +641,7 @@
                                               item-key)]}}
                   (any map?)]]]]
               [:component {:key (into [(:item-id v12)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM v12 item-key #{L121 L2}
                 {:commands {:add-sibling [:do-add
                                           :template (as-set [nil
@@ -650,7 +650,7 @@
                             :add-row [:do-add]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:div {:class "indent-wrapper tags-column bottom-border"}
+              [:div {:class "indent-wrapper row-header tags bottom-border"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
                 [:component
                  {:key (into [(:item-id L3)
@@ -668,7 +668,7 @@
                                         (into [(:item-id v13)] item-key)]}}
                   (any map?)]]]]
               [:component {:key (into [(:item-id v13)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM
                 v13 item-key #{L131 L3}
                 {:commands {:add-sibling [:do-add
@@ -720,7 +720,7 @@
             (any vector?)
             [:div (any map?)
              [:div {:class "element-row"}
-              [:div {:class "vertical-center-wrapper full-row with-children tags-column top-border"}
+              [:div {:class "vertical-center-wrapper full-row with-children row-header tags top-border"}
                [:component
                 {:key (->> both-L1s-key
                            (prepend-to-key [:comment [nil :tag]])
@@ -732,7 +732,7 @@
                                        :adjacent-group-key both-L1s-key]}}
                  (any map?)]]]
               [:div {:key (into [[:elements [nil ["L1" :tag]]]] item-key)
-                     :class "editable elements-column"
+                     :class "editable element"
                      :commands {:set-content [:do-create-content
                                               :position :before
                                               :adjacent-key
@@ -742,7 +742,7 @@
                                           :adjacent-key
                                           (into [(:item-id va)] item-key)]}}]]
              [:div {:class "element-row"}
-              [:div {:class "indent-wrapper tags-column"}
+              [:div {:class "indent-wrapper row-header tags"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
                 [:component
                  {:key (into [(:item-id La2)
@@ -760,7 +760,7 @@
                                         (into [(:item-id va)] item-key)]}}
                   (any map?)]]]]
               [:component {:key (into [(:item-id va)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM va item-key #{La1 La2}
                 {:commands {:add-sibling
                             [:do-add :template (as-set [nil
@@ -769,7 +769,7 @@
                             :add-row [:do-add]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
-              [:div {:class "indent-wrapper tags-column bottom-border"}
+              [:div {:class "indent-wrapper row-header tags bottom-border"}
                [:div {:class "editable full-row top-border depth-1"
                       :key (into[[:elements [nil :tag]]
                                   [:comment [nil :tag]]
@@ -781,7 +781,7 @@
                                             :adjacent-group-key
                                             (into [(:item-id vb)] item-key)]}}]]
               [:component {:key (into [(:item-id vb)] item-key)
-                           :class "elements-column"}
+                           :class "element"}
                [item-DOM
                 vb item-key
                 #{Lb1}

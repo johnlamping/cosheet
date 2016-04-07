@@ -30,10 +30,13 @@
   (contains? node :hierarchy-node))
 
 (defn append-to-hierarchy
-  "Given a member and its properties, add them to the hierarchy."
+  "Given a member and its properties, add them to the hierarchy.
+  If the node has an parent, its ancestor properties must be provided.
+  If restrict-merges is true, don't merge items with empty properties at
+  the top level."
   ([hierarchy member properties]
-   (append-to-hierarchy hierarchy member properties {}))
-  ([hierarchy member properties ancestor-properties]
+   (append-to-hierarchy hierarchy member properties true {}))
+  ([hierarchy member properties restrict-merges ancestor-properties]
    (let [make-node (fn [members properties]
                      {:hierarchy-node true
                       :members members
@@ -45,13 +48,13 @@
        (let [last-entry (last hierarchy)]
          (if (and ;; Don't merge a member with empty properties.
               (or (empty? (:properties last-entry)) (empty? properties))
-              ;; Unless we are below top level and both are empty
-              (not (and (not (empty? ancestor-properties))
+              ;; Unless both are empty and empty merges are not restricted.
+              (not (and (not restrict-merges)
                         (empty? (:properties last-entry))
                         (empty? properties)))) 
            (conj hierarchy (make-node [member] properties))
-           (let [[old-only new-only both] (multiset-diff (:properties last-entry)
-                                                         properties)]
+           (let [[old-only new-only both] (multiset-diff
+                                           (:properties last-entry) properties)]
              (if (empty? old-only)
                (update-last
                 hierarchy
@@ -62,7 +65,7 @@
                   (fn [last] (update-in
                               last [:children]
                               #(append-to-hierarchy
-                                % member new-only
+                                % member new-only false
                                 (multiset-union both ancestor-properties))))))
                (if (empty? both)
                  (conj hierarchy (make-node [member] properties))
@@ -72,7 +75,8 @@
                                  (assoc (make-node [] both)
                                         :children
                                         [(assoc last :properties old-only)])))
-                  member properties ancestor-properties))))))))))
+                  member properties restrict-merges
+                  ancestor-properties))))))))))
 
 (def flatten-hierarchy)
 
@@ -182,12 +186,13 @@
 (defn split-by-do-not-merge-subset
   "Given a list of item maps, and a subset of items not to merge,
   return a list of lists, broken so that any item-info-map whose item
-  is in the set gets its own list."
+  is in the set gets its own list, if it has non-trivial properties."
   [item-info-maps do-not-merge-subset]
   (first
    (reduce
     (fn [[result do-not-merge-with-prev] item-info-map]
-      (cond (do-not-merge-subset (:item item-info-map))
+      (cond (and (do-not-merge-subset (:item item-info-map))
+                 (not (empty? (:property-canonicals item-info-map))))
             [(conj result [item-info-map]) true]
             do-not-merge-with-prev
             [(conj result [item-info-map]) false]

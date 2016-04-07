@@ -441,6 +441,9 @@
             (update-in (vec row-doms) [(- (count row-doms) 1)]
                        #(add-attributes % {:class "last-row"}))))))
 
+;;; An alternate format for tagged items, using a single column. Wrapper
+;;; divs hold the labels.
+
 (defn tagged-items-column-tags-DOM
   "Return DOM for the tags of one hierarchy node in a tagged-items columm."
   [hierarchy-node parent-key inherited]

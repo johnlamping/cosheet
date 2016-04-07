@@ -80,7 +80,7 @@
                               :properties {:a 1 :b 1}
                               :cumulative-properties {:a 1 :b 1 :d 2}
                               :members [:i]}]
-                            :j {:a 1 :c 1} {:d 2})
+                            :j {:a 1 :c 1} true {:d 2})
        [{:hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1 :d 2}
@@ -348,14 +348,16 @@
 
 (deftest split-by-do-not-merge-subset-test
   (is (check (split-by-do-not-merge-subset
-              (map (fn [x] {:item x}) [:i :j :k :l :m :n :o])
+              (map (fn [x] {:item x :property-canonicals [1]})
+                   [:i :j :k :l :m :n :o])
               #{:i :l :m :o})
-             [[{:item :i}]
-              [{:item :j} {:item :k}]
-              [{:item :l}]
-              [{:item :m}]
-              [{:item :n}]
-              [{:item :o}]])))
+             [[{:item :i :property-canonicals [1]}]
+              [{:item :j :property-canonicals [1]}
+               {:item :k :property-canonicals [1]}]
+              [{:item :l :property-canonicals [1]}]
+              [{:item :m :property-canonicals [1]}]
+              [{:item :n :property-canonicals [1]}]
+              [{:item :o :property-canonicals [1]}]])))
 
 (deftest hierarchy-by-canonical-info-test
   (is (check

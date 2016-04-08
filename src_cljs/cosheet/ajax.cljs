@@ -43,7 +43,8 @@
   []
   (swap! poll-delay #(min (* % 10) 3600000))
   (schedule-poll-task)
-  (ajax-request (take-pending-params)))
+  (when (not @ajax-request-pending)
+    (ajax-request (take-pending-params))))
 
 (defn schedule-poll-task
   "Schedule the ajax poll task to run after the current delay."

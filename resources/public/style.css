@@ -9,6 +9,23 @@
     background-color: transparent;
 }
 
+.item { 
+    padding: 3px;
+}
+
+.stack > .item {
+    margin: 0px 3px 0px 3px;
+    padding: 3px 0px 3px 0px;
+}
+
+.stack > .item + .item {
+    border-width: 2px 0px 0px 0px;
+}
+
+.item.with-elements {
+    background-color: white;
+}
+
 .vertical-center-wrapper {
     display: flex;
     align-items: center;
@@ -20,6 +37,7 @@
 
 .indent-wrapper {
     display: flex;
+    flex-direction:column;
 }
 
 .indent-wrapper > * {
@@ -76,22 +94,9 @@
     background-color: hsl(194, 100%, 88%);
 }
 
-.element-row > .element, .full-row {
-    padding: 3px;
-}
-
-.with-elements > .element-column {
+.with-elements > :last-child {
     margin-top: 2px;
-    margin-bottom: 2px;
     margin-left: 3px;
-}
-
-.element-column > .item {
-    padding: 3px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    margin-top: -2px;
-    margin-bottom: -2px;
 }
 
 .top-border {
@@ -342,35 +347,32 @@
 
 .wrapped-element {
     border-width: 2px;
-    margin-top: -2px;
-    margin-bottom: -2px;
 }
 
-.table-cell > .wrapped-element {
+.has-border > .wrapped-element {
     margin-left: -2px;
     margin-right: -2px;
+}
+
+.stack > .wrapped-element + .wrapped-element,
+.has-border > .wrapped-element:first-child {
+    margin-top: -2px;
+}
+
+.has-border > .wrapped-element:last-child {
+    margin-top: -2px;
 }
 
 .wrapped-element > .indent-wrapper > * {
     border-top-width: 2px;
     border-left-width: 2px;
     background-color: white;
-    padding: 3px;
-}
-
-.wrapped-element > .content-text,
-.wrapped-element > .stack {
-    padding: 3px;
 }
 
 .table-cell {
     width: 150px;
     min-height: 20px;
     border-width: 0px 0px 2px 2px;
-}
-
-.table-cell.item, .table-cell.stack { 
-    padding: 3px;
 }
 
 .table-cell:last-child {
@@ -399,12 +401,6 @@
     padding: 3px;
 }
 
-.editable.tags.indent-wrapper > .item.with-elements {
-    /* Make room for the element-table, which will be offset 3 px,
-       but 100% size */
-    padding-right: 6px;
-}
-
 .content-text {
     min-height: 20px;
     overflow-wrap: break-word;
@@ -414,28 +410,6 @@
     font-size: smaller;
     font-style: oblique;
     color: rgba(0, 0, 0, 0.4);
-}
-
-.item.with-elements {
-    /* Make room for the element-table, which will be offset 3 px,
-       but 100% size */
-    background-color: white;
-}
-
-.vertical-separated {
-    border-width: 2px 0px 0px 0px;
-}
-
-.vertical-separated:first-child {
-    border-width: 0px;
-}
-
-.item.with-elements.vertical-separated { 
-    padding-bottom: 3px;
-}
-
-.item.with-elements.vertical-separated:last-child { 
-    padding-bottom: 0px;
 }
 
 .editable {

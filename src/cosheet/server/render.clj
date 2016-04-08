@@ -151,14 +151,11 @@
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
   a vertical stack of the items. Add a separator between items if specified."
-  [doms & {:keys [separators]}]
+  [doms]
   (case (count doms)
     (if (= (count doms) 1)
       (first doms)
-      (into [:div (if (empty? doms) {} {:class "stack"})]
-            (if separators
-              (map #(add-attributes % {:class "vertical-separated"}) doms)
-              doms)))))
+      (into [:div (if (empty? doms) {} {:class "stack"})] doms))))
 
 (defn empty-DOM
   "Generate dom for an empty editable cell."
@@ -212,7 +209,7 @@
                                 content-attributes)
                                inherited])))
                          items-with-excluded)]
-    (vertical-stack item-doms :separators true)))
+    (vertical-stack item-doms)))
 
 (defn displaced-element-component
   "Return a component for an element that satisfies a condition and
@@ -271,7 +268,7 @@
                   % parent-key condition inherited
                   :commands {:add-row (add-adjacent-command parent-key)})
                 elements)]
-      (vertical-stack components :separators true))))
+      (vertical-stack components))))
 
 (defn add-row-header-border-info
   "Given the flattened hierarchy expansion of a top level node of a row
@@ -424,7 +421,7 @@
              labels (expr-seq map (partial matching-elements '(nil :tag))
                               ordered-items)
              hierarchy (items-hierarchy-by-elements
-                        ordered-items labels (:do-not-merge inherited))
+                        ordered-items labels (:do-not-merge inherited) true)
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
@@ -457,23 +454,23 @@
   "Return DOM for the given hierarchy node and its descendants,
   as a single column."
   [hierarchy-node parent-key extra-condition
-   top-level must-show-labels inherited]
+   top-level must-show-empty-labels inherited]
   (let [num-members (count (hierarchy-node-members hierarchy-node))]
     (expr-let [items-dom (when (not= num-members 0)
                            (hierarchy-members-DOM hierarchy-node parent-key
                                                   extra-condition inherited))
+               ;; TODO: Need unit test for the case where there are children.
                child-doms (when (:children hierarchy-node)
                             (expr-seq map #(tagged-items-column-subtree-DOM
                                             % parent-key extra-condition
-                                            false inherited)
+                                            false false inherited)
                                       (:children hierarchy-node)))]
       (let [content (if (> num-members 1)
                        (conj items-dom child-doms)
                        (vertical-stack
-                        (if items-dom (cons items-dom child-doms) child-doms)
-                        :separators true))]
+                        (if items-dom (cons items-dom child-doms) child-doms)))]
         (if (empty? (:properties hierarchy-node))
-          (if must-show-labels
+          (if must-show-empty-labels
             (conj (add-attributes
                    (empty-displaced-in-row-DOM
                     (prepend-to-key
@@ -488,13 +485,14 @@
             [:div {:class "wrapped-element tags"}
              tags-dom
              [:div {:class "indent-wrapper"}
-              (add-attributes content {:class "depth-1"})]]))))))
+              (add-attributes content {:class "depth-1 has-border"})]]))))))
 
 (defn possibly-tagged-items-column-DOM
   "Return DOM for the given items in order as a single column.
   Don't include tags needed to imply condition. If there are no tags,
   just give an ordinary column."
-  [items parent-key condition must-show-labels content-attributes inherited]
+  [items parent-key condition must-show-empty-labels
+   content-attributes inherited]
   (expr-let
       [all-labels (expr-seq
                    map #(matching-elements '(nil :tag) %) items)
@@ -503,24 +501,22 @@
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
                       all-labels excluded)]
-      (if (and (every? empty? labels) (not must-show-labels))
+      (if (and (every? empty? labels) (not must-show-empty-labels))
         (components-DOM (map vector items excluded)
-                        parent-key condition content-attributes  inherited)
+                        parent-key condition content-attributes inherited)
         (expr-let [item-maps (item-maps-by-elements items labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excluded)
                    hierarchy (hierarchy-by-canonical-info
-                              augmented (:do-not-merge inherited))
+                              augmented (:do-not-merge inherited) true)
                    ;; TODO: Pipe content-attributes down through here.
                    doms (expr-seq map #(tagged-items-column-subtree-DOM
                                         % parent-key condition true
-                                        must-show-labels inherited)
+                                        must-show-empty-labels inherited)
                                   hierarchy)]
-          (into [:div {:class "element-column"}]
-                doms))))))
+          (vertical-stack doms))))))
 
-;;; TODO: Make this handle an item that needs to be wrapped in some labels.
 (defn item-DOM
   "Return a hiccup representation of DOM, with the given internal key,
    describing an item and all its elements, except the ones in
@@ -638,7 +634,7 @@
                            {:commands (add-column-command
                                        column-key column-condition)})))
                           components)]
-      (as-> (vertical-stack components :separators true) dom
+      (as-> (vertical-stack components) dom
         (cond delete-key (add-attributes
                           dom
                           {:commands {:delete
@@ -807,14 +803,14 @@
       ;; TODO: Get our left neighbor as an arg, and pass it in
       ;; as adjacent information for new-sibling.
       (add-attributes (empty-DOM cell-key condition inherited)
-                      {:class "table-cell"
+                      {:class "table-cell has-border"
                        :commands commands})
       (expr-let [items (order-items items)
                  dom (possibly-tagged-items-column-DOM
                       items cell-key condition false
                       {:commands commands}
                       (assoc inherited :narrow true))]
-        (add-attributes dom {:class "table-cell"})))))
+        (add-attributes dom {:class "table-cell has-border"})))))
 
 (defn table-row-column-group-member-DOM
   "Generate the dom for one member of a row under one hierarchy group."
@@ -939,7 +935,7 @@
                                    columns
                                    columns-elements
                                    columns-lists)
-                              #{})
+                              #{} true)
                    headers (table-header-DOM table-item hierarchy
                                              '(nil :tag) parent-key
                                              (query-referent row-query)

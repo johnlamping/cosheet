@@ -187,7 +187,7 @@
                           map #(matching-elements '(nil :tag) %) items))
                hierarchy (current-value
                           (items-hierarchy-by-elements
-                           items elements #{}))]
+                           items elements #{} true))]
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
            :hierarchy-node true
@@ -261,8 +261,7 @@
           {:class
            "vertical-center-wrapper full-row row-header tags top-border ll-corner"}
           [:div {:class "stack"}
-           [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]
-                        :class "vertical-separated"}
+           [:component {:key [(:item-id fred) [:comment [nil :tag]] rid]}
             [item-DOM
              fred [[:comment [nil :tag]] rid]
              #{fred-tag}
@@ -270,8 +269,7 @@
                          :add-row [:do-add :subject-key nil
                                    :adjacent-group-key [rid]]}}
              {:depth 1 :do-not-merge #{}}]]
-           [:component {:key [(:item-id fran) [:comment [nil :tag]] rid]
-                        :class "vertical-separated"}
+           [:component {:key [(:item-id fran) [:comment [nil :tag]] rid]}
             [item-DOM
              fran [[:comment [nil :tag]] rid]
              #{}
@@ -302,7 +300,7 @@
     (is (check-keys dom age))
     (is (check
          dom
-         [:div {:class "element-column"}
+         [:div {:class "stack"}
           [:div {:class "wrapped-element tags"}
            [:component {:key age-label-key}
             [item-DOM age-label tags-key #{age-label-tag}
@@ -312,7 +310,7 @@
                          :add-sibling [:do-add :template '(nil :tag)]}}
              {:depth 0, :do-not-merge #{}}]]
            [:div {:class "indent-wrapper"}
-            [:component {:class "depth-1"
+            [:component {:class "depth-1 has-border"
                          :key age-key}
              [item-DOM age [:parent] #{age-label age-other-label}
               {:commands {:add-sibling [:do-add :template
@@ -869,11 +867,10 @@
                          :key joe-row-key}
              (evals-to
               [:div {:key joe-row-key}
-               [:div {:class "stack table-cell"}
+               [:div {:class "stack table-cell has-border"}
                 [:component {:key (into [(:item-id joe-bogus-age)
                                          (comment-referent (item-referent age))]
-                                        joe-row-key)
-                             :class "vertical-separated"}
+                                        joe-row-key)}
                  [item-DOM
                   joe-bogus-age (into [(comment-referent (item-referent age))]
                                       joe-row-key)
@@ -889,13 +886,12 @@
                   {:depth 0, :do-not-merge #{} :narrow true}]]
                 [:component {:key (into [(:item-id joe-age)
                                          (comment-referent (item-referent age))]
-                                        joe-row-key),
-                             :class "vertical-separated"}
+                                        joe-row-key)}
                  (any)]]
                [:div {:key (into [[:elements '(nil ("size" :tag))]
                                   (comment-referent (item-referent size))]
                                  joe-row-key),
-                      :class "editable table-cell"
+                      :class "editable table-cell has-border"
                       :commands {:set-content [:do-create-content]
                                  :add-row
                                  [:do-add :subject-key table-parent-key
@@ -976,7 +972,6 @@
                ;; name part of name-id header
                [:component {:key (prepend-to-key (item-referent name-tag)
                                                  name-id-header-key)
-                            :class "vertical-separated"
                             :commands {:add-column
                                        [:do-add :subject-key table-key
                                         :adjacent-group-key
@@ -993,7 +988,6 @@
                ;; id part of name-id header
                [:component {:key (prepend-to-key (item-referent id-tag)
                                                  name-id-header-key)
-                            :class "vertical-separated"
                             :commands {:add-column
                                        [:do-add :subject-key table-key
                                         :adjacent-group-key
@@ -1019,7 +1013,7 @@
                                         (comment-referent
                                          (item-referent name-id))]
                                        joe-row-key)
-                            :class "table-cell"}
+                            :class "table-cell has-border"}
                 [item-DOM
                  joe-name (into [(comment-referent (item-referent name-id))]
                                 joe-row-key)
@@ -1044,7 +1038,7 @@
                                               '(nil ("name" :tag) ("id" :tag)))]
                                   (comment-referent (item-referent name-id))]
                                  jane-row-key),
-                      :class "editable table-cell"
+                      :class "editable table-cell has-border"
                       :commands {:set-content [:do-create-content]
                                  :add-row
                                  [:do-add
@@ -1237,7 +1231,7 @@
                                         (comment-referent
                                          (item-referent name))]
                                        joe-row-key)
-                            :class "table-cell"}
+                            :class "table-cell has-border"}
                 [item-DOM
                  joe-nickname (into [(comment-referent (item-referent name))]
                                     joe-row-key)
@@ -1255,7 +1249,7 @@
                                         (comment-referent
                                          (item-referent name-id))]
                                        joe-row-key)
-                            :class "table-cell"}
+                            :class "table-cell has-border"}
                 [item-DOM
                  joe-id (into [(comment-referent (item-referent name-id))]
                               joe-row-key)
@@ -1276,7 +1270,7 @@
               [:div {:key jane-row-key}
                [:component (any) (any)]
                ;; No name-id value.
-               [:div {:class "editable table-cell"
+               [:div {:class "editable table-cell has-border"
                       :key (into [(elements-referent '(nil ("id" :tag)
                                                            ("name" :tag)))
                                   (comment-referent (item-referent name-id))]
@@ -1472,7 +1466,7 @@
                                         (comment-referent
                                          (item-referent name-id))]
                                        joe-row-key)
-                            :class "table-cell"}
+                            :class "table-cell has-border"}
                 [item-DOM
                  joe-id (into [(comment-referent (item-referent name-id))]
                               joe-row-key)
@@ -1491,7 +1485,7 @@
                                         (comment-referent
                                          (item-referent name))]
                                        joe-row-key)
-                            :class "table-cell"}
+                            :class "table-cell has-border"}
                 [item-DOM
                  joe-nickname (into [(comment-referent (item-referent name))]
                                     joe-row-key)
@@ -1509,7 +1503,7 @@
                          :key jane-row-key}
              (evals-to              
               [:div {:key jane-row-key}
-               [:div {:class "editable table-cell"
+               [:div {:class "editable table-cell has-border"
                       :key (into [(elements-referent '(nil ("id" :tag)
                                                            ("name" :tag)))
                                   (comment-referent (item-referent name-id))]

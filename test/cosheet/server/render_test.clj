@@ -187,7 +187,7 @@
                           map #(matching-elements '(nil :tag) %) items))
                hierarchy (current-value
                           (items-hierarchy-by-elements
-                           items elements #{} true))]
+                           items elements #{}))]
            (flatten-hierarchy-add-row-header-border-info hierarchy))
          [{:depth 0 :top-border :full :bottom-border :corner
            :hierarchy-node true

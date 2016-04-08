@@ -80,7 +80,7 @@
                               :properties {:a 1 :b 1}
                               :cumulative-properties {:a 1 :b 1 :d 2}
                               :members [:i]}]
-                            :j {:a 1 :c 1} true {:d 2})
+                            :j {:a 1 :c 1} {:d 2})
        [{:hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1 :d 2}
@@ -365,7 +365,7 @@
         [{:property-canonicals [:a] :item `(:i (1 :order :non-semantic))}
          {:property-canonicals [:a :b] :item `(:j (2 :order :non-semantic))}
          {:property-canonicals [:a :c] :item `(:k (3 :order :non-semantic))}]
-        #{} true)
+        #{})
        [{:hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1}

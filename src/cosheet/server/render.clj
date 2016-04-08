@@ -421,7 +421,7 @@
              labels (expr-seq map (partial matching-elements '(nil :tag))
                               ordered-items)
              hierarchy (items-hierarchy-by-elements
-                        ordered-items labels (:do-not-merge inherited) true)
+                        ordered-items labels (:do-not-merge inherited))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
@@ -509,7 +509,7 @@
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excluded)
                    hierarchy (hierarchy-by-canonical-info
-                              augmented (:do-not-merge inherited) true)
+                              augmented (:do-not-merge inherited))
                    ;; TODO: Pipe content-attributes down through here.
                    doms (expr-seq map #(tagged-items-column-subtree-DOM
                                         % parent-key condition true
@@ -935,7 +935,7 @@
                                    columns
                                    columns-elements
                                    columns-lists)
-                              #{} true)
+                              #{})
                    headers (table-header-DOM table-item hierarchy
                                              '(nil :tag) parent-key
                                              (query-referent row-query)

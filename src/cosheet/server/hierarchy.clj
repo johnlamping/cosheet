@@ -32,11 +32,10 @@
 (defn append-to-hierarchy
   "Given a member and its properties, add them to the hierarchy.
   If the node has an parent, its ancestor properties must be provided.
-  If restrict-empty-merges is true, don't merge items with empty properties at
-  the top level."
+  Don't merge items with empty properties at the top level."
   ([hierarchy member properties]
-   (append-to-hierarchy hierarchy member properties true {}))
-  ([hierarchy member properties restrict-empty-merges ancestor-properties]
+   (append-to-hierarchy hierarchy member properties {}))
+  ([hierarchy member properties ancestor-properties]
    (let [make-node (fn [members properties]
                      {:hierarchy-node true
                       :members members
@@ -48,8 +47,8 @@
        (let [last-entry (last hierarchy)]
          (if (and ;; Don't merge a member with empty properties.
               (or (empty? (:properties last-entry)) (empty? properties))
-              ;; Unless both are empty and empty merges are not restricted.
-              (not (and (not restrict-empty-merges)
+              ;; Unless both are empty and we are not at top level.
+              (not (and (not (empty? ancestor-properties))
                         (empty? (:properties last-entry))
                         (empty? properties)))) 
            (conj hierarchy (make-node [member] properties))
@@ -65,7 +64,7 @@
                   (fn [last] (update-in
                               last [:children]
                               #(append-to-hierarchy
-                                % member new-only false
+                                % member new-only
                                 (multiset-union both ancestor-properties))))))
                (if (empty? both)
                  (conj hierarchy (make-node [member] properties))
@@ -75,8 +74,7 @@
                                  (assoc (make-node [] both)
                                         :children
                                         [(assoc last :properties old-only)])))
-                  member properties restrict-empty-merges
-                  ancestor-properties))))))))))
+                  member properties ancestor-properties))))))))))
 
 (def flatten-hierarchy)
 
@@ -204,7 +202,7 @@
   "Given a sequence of item info maps, and a subset of items in the maps not to
   merge, return a hierarchy. If restrict-empty-merges is true, don't merge
   items at the top level with empty properties."
-  [item-info-maps do-not-merge restrict-empty-merges]
+  [item-info-maps do-not-merge]
   (let [non-empty-items (map :item
                              (filter #(not (empty? (:property-canonicals %)))
                                      item-info-maps))]
@@ -215,8 +213,7 @@
        #(reduce (fn [hierarchy item-info-map]
                   (append-to-hierarchy
                    hierarchy item-info-map
-                   (multiset (:property-canonicals item-info-map))
-                   restrict-empty-merges {}))
+                   (multiset (:property-canonicals item-info-map)) {}))
                 [] %)
        (split-by-do-not-merge-subset item-info-maps do-not-merge-subset)))))
 
@@ -240,10 +237,10 @@
   "Given items in order, and a list of elements for each, organize the items
   into a hierarchy by the semantic info of the corresponding
   elements. Don't merge items that are in do-not-merge."
-  [items elements do-not-merge restrict-empty-merges]
+  [items elements do-not-merge]
   (expr-let
       [item-maps (item-maps-by-elements items elements)]
-    (hierarchy-by-canonical-info item-maps do-not-merge restrict-empty-merges)))
+    (hierarchy-by-canonical-info item-maps do-not-merge)))
 
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements

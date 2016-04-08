@@ -12,7 +12,7 @@
 
 (deftest append-to-hierarchy-test
   ;; Append to empty.
-  (is (check (append-to-hierarchy [] :i {:a 1})
+  (is (check (append-to-hierarchy [] :i {:a 1} {})
              [{:hierarchy-node true
                :members [:i]
                :properties {:a 1}
@@ -22,7 +22,7 @@
                                     :members [:i]
                                     :properties {:a 1}
                                     :cumulative-properties {:a 1}}]
-                                  :j {:a 1})
+                                  :j {:a 1} {})
              [{:hierarchy-node true
                :members [:i :j]
                :properties {:a 1}
@@ -32,7 +32,7 @@
                                     :properties {:a 1}
                                     :cumulative-properties {:a 1}
                                     :members [:i]}]
-                                  :j {:b 1})
+                                  :j {:b 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
@@ -46,7 +46,7 @@
                                     :members [:i]
                                     :properties {:a 1}
                                     :cumulative-properties {:a 1}}]
-                                  :j {:a 1 :b 1})
+                                  :j {:a 1 :b 1} {})
              [{:hierarchy-node true
                :members [:i]
                :properties {:a 1}
@@ -60,7 +60,7 @@
                                     :properties {:a 1 :b 1}
                                     :cumulative-properties {:a 1 :b 1}
                                     :members [:i]}]
-                                  :j {:a 1})
+                                  :j {:a 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
@@ -103,7 +103,7 @@
                                                 :cumulative-properties {:a 1
                                                                         :b 1}
                                                 :members [:j]}]}]
-                                  :k {:a 1 :b 1 :c 1})
+                                  :k {:a 1 :b 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
@@ -126,7 +126,7 @@
                                                 :cumulative-properties {:a 1
                                                                         :b 1}
                                                 :members [:j]}]}]
-                                  :k {:a 1})
+                                  :k {:a 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
@@ -148,7 +148,7 @@
                                                 :cumulative-properties
                                                 {:a 1 :b 1 :c 1}
                                                 :members [:j]}]}]
-                                  :k {:a 1 :c 1})
+                                  :k {:a 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
@@ -170,7 +170,7 @@
                               :properties {}
                               :cumulative-properties {}
                               :members [:i]}]
-                            :j {})
+                            :j {} {})
        [{:hierarchy-node true
          :cumulative-properties {}
          :properties {}
@@ -194,7 +194,7 @@
                                           :properties {}
                                           :cumulative-properties {:a 1 :b 1}
                                           :members [:k]}]}]
-                            :l {:a 1 :b 1})
+                            :l {:a 1 :b 1} {})
        [{:hierarchy-node true
          :properties {:a 1 :b 1}
          :cumulative-properties {:a 1 :b 1}
@@ -222,7 +222,7 @@
                                                 :cumulative-properties
                                                 {:a 1 :b 1}
                                                 :members [:k]}]}]
-                                  :l {:a 1 :b 1 :c 1})
+                                  :l {:a 1 :b 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1 :b 1}
                :cumulative-properties {:a 1 :b 1}

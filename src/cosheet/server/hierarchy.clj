@@ -33,48 +33,46 @@
   "Given a member and its properties, add them to the hierarchy.
   If the node has an parent, its ancestor properties must be provided.
   Don't merge items with empty properties at the top level."
-  ([hierarchy member properties]
-   (append-to-hierarchy hierarchy member properties {}))
-  ([hierarchy member properties ancestor-properties]
-   (let [make-node (fn [members properties]
-                     {:hierarchy-node true
-                      :members members
-                      :properties properties
-                      :cumulative-properties (multiset-union
-                                              properties ancestor-properties)})]
-     (if (empty? hierarchy)
-       [(make-node [member] properties)]
-       (let [last-entry (last hierarchy)]
-         (if (and ;; Don't merge a member with empty properties.
-              (or (empty? (:properties last-entry)) (empty? properties))
-              ;; Unless both are empty and we are not at top level.
-              (not (and (not (empty? ancestor-properties))
-                        (empty? (:properties last-entry))
-                        (empty? properties)))) 
-           (conj hierarchy (make-node [member] properties))
-           (let [[old-only new-only both] (multiset-diff
-                                           (:properties last-entry) properties)]
-             (if (empty? old-only)
-               (update-last
-                hierarchy
-                (if (and (empty? new-only)
-                         (not (contains? last-entry :children)))
-                  (fn [last] (update-in last [:members]
-                                        #((fnil conj []) % member)))
-                  (fn [last] (update-in
-                              last [:children]
-                              #(append-to-hierarchy
-                                % member new-only
-                                (multiset-union both ancestor-properties))))))
-               (if (empty? both)
-                 (conj hierarchy (make-node [member] properties))
-                 (append-to-hierarchy
-                  (update-last hierarchy
-                               (fn [last]
-                                 (assoc (make-node [] both)
-                                        :children
-                                        [(assoc last :properties old-only)])))
-                  member properties ancestor-properties))))))))))
+  [hierarchy member properties ancestor-properties]
+  (let [make-node (fn [members properties]
+                    {:hierarchy-node true
+                     :members members
+                     :properties properties
+                     :cumulative-properties (multiset-union
+                                             properties ancestor-properties)})]
+    (if (empty? hierarchy)
+      [(make-node [member] properties)]
+      (let [last-entry (last hierarchy)]
+        (if (and ;; Don't merge a member with empty properties.
+             (or (empty? (:properties last-entry)) (empty? properties))
+             ;; Unless both are empty and we are not at top level.
+             (not (and (not (empty? ancestor-properties))
+                       (empty? (:properties last-entry))
+                       (empty? properties)))) 
+          (conj hierarchy (make-node [member] properties))
+          (let [[old-only new-only both] (multiset-diff
+                                          (:properties last-entry) properties)]
+            (if (empty? old-only)
+              (update-last
+               hierarchy
+               (if (and (empty? new-only)
+                        (not (contains? last-entry :children)))
+                 (fn [last] (update-in last [:members]
+                                       #((fnil conj []) % member)))
+                 (fn [last] (update-in
+                             last [:children]
+                             #(append-to-hierarchy
+                               % member new-only
+                               (multiset-union both ancestor-properties))))))
+              (if (empty? both)
+                (conj hierarchy (make-node [member] properties))
+                (append-to-hierarchy
+                 (update-last hierarchy
+                              (fn [last]
+                                (assoc (make-node [] both)
+                                       :children
+                                       [(assoc last :properties old-only)])))
+                 member properties ancestor-properties)))))))))
 
 (def flatten-hierarchy)
 

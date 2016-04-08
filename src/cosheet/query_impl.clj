@@ -39,14 +39,21 @@
 
 (def extended-by?)
 
+(defn label-for-element
+  "Given an entity that is an element, find an atom that can serve as
+  a label for that element."
+  [element]
+  (expr-let
+      [annotations (entity/elements element)
+       labels (expr-seq map entity/atomic-value annotations)]
+    (first (filter (partial not= nil) labels))))
+
 (defn has-element-satisfying? [element target]
   "Return true if the target item has an element satisfying
   the given element)."
   (when (not (entity/atom? target))
     (expr-let
-        [annotations (entity/elements element)
-         labels (expr-seq map entity/atomic-value annotations)
-         label (first (filter (partial not= nil) labels))
+        [label (label-for-element element)
          candidates (if (not (nil? label))
                       (entity/label->elements target label)
                       (entity/elements target))
@@ -168,7 +175,9 @@
   (when verbose (println "element-matches" element (entity/to-list target)))
   (expr-let [label (expr-let [is-variable (variable? element)]
                      (if is-variable
-                       nil
+                       (expr-let [condition (entity/label->content element
+                                                                   :condition)]
+                         (label-for-element condition))
                        (expr-let [candidate-elements
                                   (expr-seq map #(expr entity/atomic-value
                                                    (bind-entity % env))

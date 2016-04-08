@@ -37,7 +37,7 @@
   (atom? [this]
     "True if this entity is atomic: either a primitive or a reference to
      a primitive.
-     Note: A reference to the content of an a mutable store can start
+     Note: A reference to the content of a mutable store can start
      out atomic, and then become non-atomic if the content gets
      promoted to a full item. It will still be reported as an atom,
      though, because references are only valid in the context of a

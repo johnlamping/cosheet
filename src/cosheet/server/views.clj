@@ -23,7 +23,7 @@
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
-    [actions :refer [do-actions]])))
+    [actions :refer [confirm-actions do-actions]])))
 
 (defn initial-page []
   (html5
@@ -96,9 +96,13 @@
 ;;; Session state consists of a map
 ;;;        :tracker  The tracker for the session.
 ;;;   :do-not-merge  A set of items that should not be merged.
-(def session-state (atom nil))
+;;;    :last-action  The key of the last action we did.
+;;;                  This keeps us from repeating an action if the
+;;;                  client gets impatient and repeats it while we were
+;;;                  working on it.
+(def session-state-atom (atom nil))
 
-(defn tracker [] (:tracker @session-state))
+(defn tracker [] (:tracker @session-state-atom))
 
 (defn check-propagation-if-quiescent []
   (let [tracker-data @(tracker)
@@ -107,11 +111,12 @@
     (when (finished-all-tasks? task-queue)
       (check-propagation reporter))))
 
-(defn initialize-session-state
+(defn initialize-session-state-atom
   []
-  (reset! session-state (let [do-not-merge (new-mutable-set #{})]
-                          {:tracker (create-tracker do-not-merge)
-                           :do-not-merge do-not-merge}))
+  (reset! session-state-atom (let [do-not-merge (new-mutable-set #{})]
+                               {:tracker (create-tracker do-not-merge)
+                                :do-not-merge do-not-merge
+                                :last-action nil}))
   (println "created tracker")
   (compute manager-data 1000)
   (println "computed some")
@@ -126,7 +131,8 @@
 ;;;                action looks like [action_type arg ...], and the
 ;;;                action types are those implemented in actions.clj.
 ;;;                The action ids should sort in the order in which
-;;;                the actions should be done.
+;;;                the actions should be done. Ids in successive
+;;;                should have successively higher sort orders.
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
 ;;; response:
@@ -148,15 +154,18 @@
   (let [params (:params request)
         {:keys [actions acknowledge initialize]} params]
     (println "request params" params)
-    (if (nil? @session-state)
-      (initialize-session-state)
+    (if (nil? @session-state-atom)
+      (initialize-session-state-atom)
       (when initialize
         (println "requesting client refresh")
-        (request-client-refresh (tracker))))
+        (request-client-refresh (tracker))
+        (swap! session-state-atom #(assoc % :last-action nil))))
     (println "process acknowledgements" acknowledge)
-    (process-acknowledgements (tracker) acknowledge)    
-    (let [client-info (when actions (do-actions store @session-state actions))]
-      (compute manager-data 10000)
+    (process-acknowledgements (tracker) acknowledge)
+    (let [action-sequence (confirm-actions actions session-state-atom)
+          client-info (when (not (empty? action-sequence))
+                        (do-actions store @session-state-atom action-sequence))]
+      (compute manager-data 4000)
       (check-propagation-if-quiescent)
       ;; Note: We must get the doms after doing the actions, so we can
       ;; immediately show the response to the actions. Likewise, we

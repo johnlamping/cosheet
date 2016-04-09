@@ -314,6 +314,18 @@
     (selected-handler store session-state "No such id")
     (is (= (current-mutable-value do-not-merge) #{}))))
 
+(deftest confirm-actions-test
+  (let [state (atom {:last-action nil})]
+    (is (= (confirm-actions {1 :a 2 :b 3 :c} state)
+           [:a :b :c]))
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} state)
+           [:d]))
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} state)
+           []))
+    (is (= (confirm-actions {} state)
+           []))
+    (is (= (:last-action @state) 4))))
+
 ;;; TODO: remove this once profiling is done.
 (defn profile-test
   []

@@ -4,7 +4,8 @@
    [ring.util.response :refer [response]]
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number thread-map thread-recursive-map]]
+    [utils :refer [parse-string-as-number thread-map thread-recursive-map
+                   swap-control-return!]]
     [orderable :refer [split earlier?]]
     [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
@@ -333,11 +334,25 @@
 (defn do-actions
   "Run the actions, and return any additional information to be returned
   to the client"
-  [mutable-store session-state actions]
-  (let [keys (sort (keys actions))]
-    (reduce (fn [client-info key]
-              (let [action (actions key)
-                    for-client (do-action mutable-store session-state action)]
-                (println "for client " for-client)
-                (into client-info (select-keys for-client [:select]))))
-            {} keys)))
+  [mutable-store session-state action-sequence]
+  (reduce (fn [client-info action]
+            (let [for-client (do-action mutable-store session-state action)]
+              (println "for client " for-client)
+              (into client-info (select-keys for-client [:select]))))
+          {} action-sequence))
+
+(defn confirm-actions
+  "Check that the actions have not already been done, update the
+  :last-action of the session state to reflect that these actions have
+  been done, and return the sequence of actions to be done."
+  [actions session-state-atom]
+  (swap-control-return!
+   session-state-atom
+   (fn [session-state]
+     (let [last-action (:last-action session-state)
+           keys (cond->> (sort (keys actions))
+                  last-action (filter #(pos? (compare % last-action))))]
+       [(if (empty? keys)
+          session-state
+          (assoc session-state :last-action (last keys)))
+        (map actions keys)]))))

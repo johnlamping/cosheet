@@ -415,13 +415,12 @@
     [:div {:class "element-row"} tags-label-dom tags-items-dom]))
 
 (defn tagged-items-table-DOM
-  "Return DOM for the given items, as a grid of tags and values."
+  "Return DOM for the given items, in order, as a grid of tags and values."
   [items parent-key inherited]
-  (expr-let [ordered-items (order-items items)
-             labels (expr-seq map (partial matching-elements '(nil :tag))
-                              ordered-items)
+  (expr-let [labels (expr-seq map (partial matching-elements '(nil :tag))
+                              items)
              hierarchy (items-hierarchy-by-elements
-                        ordered-items labels (:do-not-merge inherited))
+                        items labels (:do-not-merge inherited))
              flattened-hierarchy (flatten-hierarchy-add-row-header-border-info
                                   hierarchy)
              row-doms (expr-seq
@@ -555,11 +554,13 @@
              [item-DOM content item-key #{} {}  inherited-down]))]
       (if (empty? elements)
         content-dom
-        (expr-let [elements-dom
+        (expr-let [ordered-elements (order-items elements)
+                   elements-dom
                    (if (:narrow inherited)
                      (possibly-tagged-items-column-DOM
-                      elements item-key '(nil) true {} inherited-down)
-                     (tagged-items-table-DOM elements item-key inherited-down))]
+                      ordered-elements item-key '(nil) true {} inherited-down)
+                     (tagged-items-table-DOM
+                      ordered-elements item-key inherited-down))]
           [:div {:class "item with-elements" :key item-key}
            content-dom elements-dom])))))
 

@@ -1144,7 +1144,7 @@
                                    :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack"}
+             [:div {:class "column-header-stack tags top-level"}
               [:div {:class
                      "column-header-container rightmost tags top-level with-children"
                      :style {:width "300px"}}
@@ -1377,7 +1377,7 @@
                                    :foo]]
            [:div {:class "table" :key table-key}
             [:div {:class "column-header-sequence"}
-             [:div {:class "column-header-stack"}
+             [:div {:class "column-header-stack tags top-level"}
               [:div {:class
                      "column-header-container rightmost tags top-level with-children"
                      :style {:width "300px"}}

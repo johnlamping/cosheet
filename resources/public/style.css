@@ -311,7 +311,7 @@
      border-right-width: 2px;
 }
 
-.column-header-container.top-level {
+.column-header-container:not(.empty) {
     border-top-width: 2px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
@@ -321,8 +321,19 @@
     border-right-width: 2px;
 }
 
-.tags.column-header-container, .wrapped-element.tags {
+.tags.column-header-container, .tags.column-header-stack,
+.tags.wrapped-element {
     background-color: hsl(194, 100%, 88%);
+}
+
+/* Keep the label color from bleeding outside the top radiused corners */
+.tags.column-header-stack.top-level {
+    background-image:
+    linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, 1),
+                    hsla(0, 0%, 100%, 1) 7px,
+                    hsla(0, 0%, 100%, 0) 0px,
+                    hsla(0, 0%, 100%, 0));
 }
 
 .column-header-stack {

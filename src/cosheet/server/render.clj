@@ -662,6 +662,7 @@
         (if (empty? ordered-elements)
           (add-attributes dom {:class "empty"})
           dom)
+        ;; TODO: Handle when not tags.
         (add-attributes dom {:class "tags"})))))
 
 (defn make-column-header-key
@@ -767,7 +768,9 @@
                                 column-header-key rightmost inherited))))
                          next-level
                          (last-special (count next-level) rightmost))]
-            [:div {:class "column-header-stack"}
+            ;; TODO: handle when not tags.
+            [:div (cond-> {:class "column-header-stack tags"}
+                    top-level (into-attributes {:class "top-level"}))
              (add-attributes node-dom {:class "with-children"})
              (into [:div {:class "column-header-sequence"}] dom-seqs)]))))))
 

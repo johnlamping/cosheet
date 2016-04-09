@@ -444,9 +444,10 @@
   "Return DOM for the tags of one hierarchy node in a tagged-items columm."
   [hierarchy-node parent-key inherited]
   (let [example-elements (hierarchy-node-example-elements hierarchy-node)
+        ordered-elements (order-items example-elements)
         items-referent (hierarchy-node-items-referent hierarchy-node)]
     (displaced-elements-in-row-DOM
-     example-elements (prepend-to-key items-referent parent-key)
+     ordered-elements (prepend-to-key items-referent parent-key)
      '(nil :tag) inherited)))
 
 (defn tagged-items-column-subtree-DOM

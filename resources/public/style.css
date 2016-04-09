@@ -360,7 +360,7 @@
 }
 
 .has-border > .wrapped-element:last-child {
-    margin-top: -2px;
+    margin-bottom: -2px;
 }
 
 .wrapped-element > .indent-wrapper > * {

@@ -66,6 +66,9 @@
   (id->content-reference [this id]
     (get-or-make-reporter [id] id->content-reference (:manager-data this) id))
 
+  (id->list [this id]
+    (get-or-make-reporter [id] id->list (:manager-data this) id))
+
   (candidate-matching-ids [this item]
     (get-or-make-reporter
      [nil] candidate-matching-ids (:manager-data this) item))

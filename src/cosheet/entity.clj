@@ -61,7 +61,10 @@
 
   (content-reference [this]
     "Return a reference to the content of the entity if the entity is stored,
-     otherwise just return its content."))
+     otherwise just return its content.")
+
+  (to-list [this]
+  "Return the list representation of the entity."))
 
 ;;; Utility functions that work on entities
 
@@ -84,11 +87,6 @@
 (defmulti label-has-atomic-value?
   "Whether the entity has the given value
    among its atomic values for the given label."
-  mutable?-dispatch)
-
-(defmulti to-list
-  "Return the list representation of the entity,
-   returning an expr if the entity is mutable."
   mutable?-dispatch)
 
 (defmulti stored-entity-id-string

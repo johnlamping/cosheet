@@ -130,7 +130,7 @@
   (is (= (content '((1 7) (2 3) (4 5))) '(1 7)))
   (is (= (content-reference '(1 (2 3) (4 5))) 1))
   (is (= (content-reference '((1 7) (2 3) (4 5))) '(1 7)))
-  (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '((1 1 2) (2 (3 4)))))
+  (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '(((1) 1 2) (2 (3 (4))))))
   (is (= (to-list '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest constant-test

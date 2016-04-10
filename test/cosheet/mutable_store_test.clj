@@ -36,6 +36,8 @@
            (id->content store element)))
     (is (= (get-value (id->content-reference mutable-store element))
            (id->content-reference store element)))
+    (is (= (get-value (id->list mutable-store element))
+           (id->list store element)))
     (is (= (get-value (candidate-matching-ids mutable-store 77))
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))

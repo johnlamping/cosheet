@@ -4,6 +4,7 @@
                                     id->element-ids
                                     id->content
                                     id->content-reference
+                                    id->list
                                     mutable-store?
                                     stored-item-id-string]]
                      [orderable :as orderable]
@@ -36,7 +37,10 @@
     (description->entity (id->content store item-id) store))
 
   (content-reference [this]
-    (description->entity (id->content-reference store item-id) store)))
+    (description->entity (id->content-reference store item-id) store))
+
+  (to-list [this]
+    (id->list store item-id)))
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
@@ -68,7 +72,10 @@
 
   (content-reference [this]
     (expr-let [reference (expr id->content-reference store item-id)]
-      (description->entity reference store))))
+      (description->entity reference store)))
+
+  (to-list [this]
+    (id->list store item-id)))
 
 ;;; Make a list work as an item. The format is (content element
 ;;; element...) We use ISeq, because, for example, while '(1 2) is a
@@ -90,7 +97,9 @@
 
   (content [this] (first this))
 
-  (content-reference [this] (first this)))
+  (content-reference [this] (first this))
+
+  (to-list [this] this))
 
 (extend-protocol Entity
   clojure.lang.Keyword
@@ -100,6 +109,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -107,6 +117,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
   java.lang.String
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -114,6 +125,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
   java.lang.Number
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -121,6 +133,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
   java.lang.Boolean
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -128,6 +141,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
   cosheet.orderable.Orderable
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -135,6 +149,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
@@ -143,6 +158,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
+  (to-list [this] this)
 )
 
 (extend-protocol Description
@@ -208,30 +224,6 @@
 (defmethod label-has-atomic-value? true [entity label value]
   (expr-let [atomics (expr label->atomic-values entity label)]
             (some (partial = value) atomics)))
-
-;;; TODO: move to-list to the store as a way of getting the content of
-;;; an entity. That way, a mutable store can return a simple struct
-;;; with just one dependency.
-(defmethod to-list false [entity]
-  (if (or (nil? entity) (atom? entity))
-    (atomic-value entity)
-    (do
-      (assert (satisfies? cosheet.entity/Entity entity))
-      (let [entity-content (to-list (content entity))
-            entity-elements (seq (map to-list (elements entity)))]
-        (if entity-elements
-          (cons entity-content entity-elements)
-          entity-content)))))
-
-(defmethod to-list true [entity]
-  (if (or (nil? entity) (atom? entity))
-    (atomic-value entity)
-    (expr-let [entity-content (expr to-list (content entity))
-               
-               entity-elements (expr-seq map to-list (elements entity))]
-      (if (seq entity-elements)
-        (cons entity-content entity-elements)
-        entity-content))))
 
 (defmethod stored-entity-id-string  true [entity]
   (assert (satisfies? StoredEntity entity))

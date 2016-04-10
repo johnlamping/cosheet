@@ -262,7 +262,7 @@
              [:components [joe-id :bob] :attributes :commands]
              {:test-command [:do-set-content]})
       (do-actions mutable-store {:tracker tracker}
-                  {1 [:test-command "joe-root" :from "Joe" :to "Fred"]})
+                  [[:test-command "joe-root" :from "Joe" :to "Fred"]])
       (is (= (current-value (content mutable-joe)) "Fred")))))
 
 (deftest do-create-content-test

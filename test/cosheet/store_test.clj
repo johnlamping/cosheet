@@ -74,6 +74,10 @@
   (is (= (id->subject test-store (make-id "2")) (make-id "1")))
   (is (= (id->subject test-store 2) nil)))
 
+(deftest id->list-test
+  (is (= (id->list test-store (make-id "0"))
+         '(nil ((5 "bar") ("foo" :label) "second")))))
+
 (deftest ensure-in-vector-test
   (is (= (ensure-in-vector nil 1) [1]))
   (is (= (ensure-in-vector [1] 2) [1 2]))

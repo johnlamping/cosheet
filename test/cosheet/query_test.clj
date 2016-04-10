@@ -69,6 +69,9 @@
                  (4 ~(variable "bar")))
         partially-bound (bind-entity entity {"foo" 7})
         bound (bind-entity entity {"foo" 7, "bar" 9})]
+    (is (= (entity/content bound) 7))
+    (is (= (entity/mutable-entity? bound) false))
+    (is (= (entity/atom? bound) false))
     (is (= (entity/to-list partially-bound)
            '(7 (4 (:variable ("bar" :name))))))
     (is (= (entity/to-list bound)

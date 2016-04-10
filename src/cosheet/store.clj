@@ -58,7 +58,10 @@
     "Given the id of an element, return a description of its content.")
 
   (id->content-reference [this id]
-    "Given an item, return a reference to its content.")
+    "Given an id, return a reference to its content.")
+
+  (id->list [this id]
+    "Given an id, return the list form of its content and elements.")
 
   ;; Used by queries.
   

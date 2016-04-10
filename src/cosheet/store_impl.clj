@@ -242,6 +242,17 @@
         content
         (->ImplicitContentId id))))
 
+  (id->list [this id]
+    (let [content (id->content this id) 
+          element-ids (id->element-ids this id)
+          content-as-list (if (instance? ItemId content)
+                            (id->list this content)                            
+                            content)]
+      (if (empty? element-ids)
+        content-as-list
+        (cons content-as-list
+              (map (partial id->list this) element-ids)))))
+
   ;;; TODO: make this actually filter based on the item.
   ;;; Notice that as currently passed by
   ;;; query-impl/item-matches-in-store, it could be a mutable entity.

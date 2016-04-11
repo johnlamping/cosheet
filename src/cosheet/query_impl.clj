@@ -125,13 +125,7 @@
   (entity/content [this]
     (expr bind-entity (entity/content wrapped) env))
 
-  (entity/to-list [this]
-    (expr-let [content (entity/content this)
-               content-as-list (entity/to-list content)
-               elements (entity/elements this)]
-      (if (empty? elements)
-        content-as-list
-        (cons content-as-list (map entity/to-list elements))))))
+  (call-with [this fun] (fun this)))
 
 (defn bind-entity [entity env]
   (if (entity/atom? entity)

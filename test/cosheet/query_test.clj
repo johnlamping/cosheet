@@ -110,9 +110,9 @@
   (is (= (let-mutated [x 2]
                       (template-matches (variable "foo") {:a :b} x))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [x '((1 2) 3)]
+  (is (= (let-mutated [x '(1 (2 3))]
                       (template-matches (variable "foo") {:a :b} x))
-         [{:a :b, "foo" '((1 2) 3)}]))
+         [{:a :b, "foo" '(1 (2 3))}]))
   (is (= (let-mutated [v `(1 ~(variable "foo"))
                        x '(1 2)]
                       (template-matches v {:a :b} x))

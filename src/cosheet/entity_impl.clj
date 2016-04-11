@@ -4,7 +4,7 @@
                                     id->element-ids
                                     id->content
                                     id->content-reference
-                                    id->list
+                                    call-dependent-on-id
                                     mutable-store?
                                     stored-item-id-string]]
                      [orderable :as orderable]
@@ -23,7 +23,7 @@
 
   (mutable-entity? [this] false)
 
-  (atom? [this?] (atom-description? item-id))
+  (atom? [this] (atom-description? item-id))
 
   (label->elements [this label]
     (seq (for [element-id (id-label->element-ids store item-id label)]
@@ -39,8 +39,7 @@
   (content-reference [this]
     (description->entity (id->content-reference store item-id) store))
 
-  (to-list [this]
-    (id->list store item-id)))
+  (call-with [this fun] (fun this)))
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
@@ -56,6 +55,7 @@
 
   (atom? [this?] (atom-description? item-id))
 
+  ;; TODO: get rid of the expr's below?
   (label->elements [this label]
     (expr-let [element-ids (expr id-label->element-ids store item-id label)]
       (seq (for [element-id element-ids]
@@ -74,8 +74,9 @@
     (expr-let [reference (expr id->content-reference store item-id)]
       (description->entity reference store)))
 
-  (to-list [this]
-    (id->list store item-id)))
+  (call-with [this fun]
+    (call-dependent-on-id
+     store item-id  #(fun (description->entity item-id %)))))
 
 ;;; Make a list work as an item. The format is (content element
 ;;; element...) We use ISeq, because, for example, while '(1 2) is a
@@ -99,7 +100,7 @@
 
   (content-reference [this] (first this))
 
-  (to-list [this] this))
+  (call-with [this fun] (fun this)))
 
 (extend-protocol Entity
   clojure.lang.Keyword
@@ -109,7 +110,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -117,7 +118,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
   java.lang.String
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -125,7 +126,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
   java.lang.Number
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -133,7 +134,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
   java.lang.Boolean
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -141,7 +142,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
   cosheet.orderable.Orderable
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -149,7 +150,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
@@ -158,7 +159,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (to-list [this] this)
+  (call-with [this fun] (fun this))
 )
 
 (extend-protocol Description
@@ -181,7 +182,7 @@
   (description->entity [this store] this)
   nil
   (description->entity [this store] nil) ;; For convenience in null punning
-  )
+)
 
 ;;; TODO: We don't need two versions of each of these any more,
 ;;; because expr is smart about returning a reporter or not.
@@ -223,7 +224,28 @@
 
 (defmethod label-has-atomic-value? true [entity label value]
   (expr-let [atomics (expr label->atomic-values entity label)]
-            (some (partial = value) atomics)))
+    (some (partial = value) atomics)))
+
+(defmethod to-list true [entity]
+  (if (atom? entity)
+    (atomic-value entity)
+    (expr-let [content (content entity)
+               elements (elements entity)]
+      (if (empty? elements)
+        content
+        (expr-let [element-lists (expr-seq map to-list elements)]
+          (cons content element-lists))))))
+
+(defmethod deep-to-list true [entity]
+  (if (atom? entity)
+    (atomic-value entity)
+    (expr-let [content (content entity)
+               content-as-list (deep-to-list content)
+               elements (elements entity)]
+      (if (empty? elements)
+        content-as-list
+        (expr-let [element-lists (expr-seq map deep-to-list elements)]
+          (cons content-as-list element-lists))))))
 
 (defmethod stored-entity-id-string  true [entity]
   (assert (satisfies? StoredEntity entity))

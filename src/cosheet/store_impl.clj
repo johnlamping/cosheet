@@ -212,7 +212,7 @@
    next-id
 
    ;;; A set of ids that have been updated since the last call to
-   ;;; clear-modified-ids. This is only present if update-track-modified-ids
+   ;;; clear-modified-ids. This is only present if track-modified-ids
    ;;; has been called.
    modified-ids]
 
@@ -241,17 +241,6 @@
       (if (instance? ItemId content)
         content
         (->ImplicitContentId id))))
-
-  (id->list [this id]
-    (let [content (id->content this id) 
-          element-ids (id->element-ids this id)
-          content-as-list (if (instance? ItemId content)
-                            (id->list this content)                            
-                            content)]
-      (if (empty? element-ids)
-        content-as-list
-        (cons content-as-list
-              (map (partial id->list this) element-ids)))))
 
   ;;; TODO: make this actually filter based on the item.
   ;;; Notice that as currently passed by

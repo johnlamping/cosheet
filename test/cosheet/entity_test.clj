@@ -1,8 +1,11 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [orderable :as orderable]
+                     [reporters :refer [set-attendee! value]]
                      [store :refer [add-simple-element make-id
-                                    new-element-store new-mutable-store]]
+                                    new-element-store new-mutable-store
+                                    track-modified-ids
+                                    update-content!]]
                      [entity :refer :all]
                      store-impl
                      mutable-store-impl
@@ -58,68 +61,93 @@
     (is (= (atomic-value (description->entity c s)) 4))
     (is (label-has-atomic-value? item99 "foo" 3))
     (is (not (label-has-atomic-value? item99 "foo" 4)))
-    (is (= (label->atomic-values item99 "bar")) [4])))
+    (is (= (label->atomic-values item99 "bar")) [4])
+    (is (= (to-list item0) nil))))
 
 (deftest mutable-storeditem-test
   (let [id0 (make-id "0")
         id1 (make-id "1")
         id99 (make-id "99")
-        [s a b c d e]
-        (let [[s1 a] (add-simple-element (new-element-store) id99 3)]
-          (let [[s2 b] (add-simple-element s1 a "foo")]
-            (let [[s3 c] (add-simple-element s2 id99 4)]
-              (let [[s4 d] (add-simple-element s3 c "bar")]
-                (let [[s5 e] (add-simple-element
-                              s4
-                              (:item-id
-                               (content-reference
-                                (description->entity c s4))) "baz")]
-                  [s5 a b c d e])))))
+        [s ida idb idc idd ide]
+        (let [[s1 ida] (add-simple-element (new-element-store) id99 3)]
+          (let [[s2 idb] (add-simple-element s1 ida "foo")]
+            (let [[s3 idc] (add-simple-element s2 id99 4)]
+              (let [[s4 idd] (add-simple-element s3 idc "bar")]
+                (let [[s5 ide] (add-simple-element
+                                s4
+                                (:item-id
+                                 (content-reference
+                                  (description->entity idc s4))) "baz")]
+                  [s5 ida idb idc idd ide])))))
         ms (new-mutable-store s)
         item0 (description->entity id0 ms)
         item1 (description->entity id1 ms)
-        item99 (description->entity id99 ms)]
+        item99 (description->entity id99 ms)]    
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (= (stored-entity-id-string item0) "0"))
     (is (not (current-value (atom? item0))))
     (is (= (current-value (label->elements item99 "foo"))
-           [(description->entity a ms)]))
-    (is (= (current-value (label->elements (description->entity a ms) nil)) 
-           [(description->entity b ms)]))
+           [(description->entity ida ms)]))
+    (is (= (current-value (label->elements (description->entity ida ms) nil)) 
+           [(description->entity idb ms)]))
     (is (= (set (current-value (elements item99)))
-           #{(description->entity a ms) (description->entity c ms)}))
-    (is (= (current-value (elements (description->entity e ms)))
+           #{(description->entity ida ms) (description->entity idc ms)}))
+    (is (= (current-value (elements (description->entity ide ms)))
            nil))
     (is (= (current-value (content item99)) nil))
-    (is (= (current-value (content (description->entity a ms))) 3))
+    (is (= (current-value (content (description->entity ida ms))) 3))
     (is (not (current-value
-              (atom? (current-value (content (description->entity c ms)))))))
+              (atom? (current-value (content (description->entity idc ms)))))))
     (is (current-value
-         [content (current-value (content (description->entity c ms)))])
+         [content (current-value (content (description->entity idc ms)))])
         4)
     (is (= (current-value
-            (elements (current-value (content (description->entity c ms)))))
-           [(description->entity e ms)]))
-    (is (= (current-value (content-reference (description->entity c ms)))
-           (current-value (content (description->entity c ms)))))
-    (is (not= (current-value (content-reference (description->entity b ms)))
-              (current-value (content (description->entity b ms)))))
+            (elements (current-value (content (description->entity idc ms)))))
+           [(description->entity ide ms)]))
+    (is (= (current-value (content-reference (description->entity idc ms)))
+           (current-value (content (description->entity idc ms)))))
+    (is (not= (current-value (content-reference (description->entity idb ms)))
+              (current-value (content (description->entity idb ms)))))
     (is (= (current-value
             (content (current-value
-                      (content-reference (description->entity b ms)))))
+                      (content-reference (description->entity idb ms)))))
            "foo"))
     (is (current-value
          [atom? (current-value
-                 (content-reference (description->entity b ms)))]))
+                 (content-reference (description->entity idb ms)))]))
     (is (= (current-value (label->content item99 "foo")) 3))
     (is (= (current-value (label->content item99 "bletch")) nil))
-    (is (= (current-value (atomic-value (description->entity c ms))) 4))
+    (is (= (current-value (atomic-value (description->entity idc ms))) 4))
     (is (current-value (label-has-atomic-value? item99 "foo" 3)))
     (is (not (current-value (label-has-atomic-value? item99 "foo" 4))))
     (is (= (current-value (label->atomic-values item99 "bar"))) [4])
-    (is (= (current-value (to-list item99))
-           (to-list (description->entity id99 s))))))
+    (is (= (current-value (deep-to-list item99))
+           (deep-to-list (description->entity id99 s))))
+    ;; Now  make sure call-with tracks right.
+    (let [record (atom [])
+          fun (fn [current-item]
+                (is (not (mutable-entity? current-item)))
+                (let [value (deep-to-list current-item)]
+                  (swap! record #(conj % value))
+                  value))
+          call-with-result (call-with item99 fun)]
+      (is (= @record []))
+      ;; See if it gets computed when demand is added.
+      (set-attendee! call-with-result :a (fn [id reporter] nil))
+      (is (= (value call-with-result)
+             '(nil ((4 "baz") "bar") (3 "foo"))))
+      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))]))
+      ;; Make sure it is not recomputed when an irrelevant change is made.
+      (update-content! ms id0 44)
+      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))]))
+      ;; Make sure it is recomputed when a deep, but relevant, change is made.
+      (update-content! ms idd "bletch")
+      (println (current-value (to-list item99)))
+      (is (= (value call-with-result)
+             '(nil ((4 "baz") "bletch") (3 "foo"))))
+      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))
+                      '(nil ((4 "baz") "bletch") (3 "foo"))])))))
 
 (deftest list-test
   (is (not (atom? '(1 2))))
@@ -130,7 +158,8 @@
   (is (= (content '((1 7) (2 3) (4 5))) '(1 7)))
   (is (= (content-reference '(1 (2 3) (4 5))) 1))
   (is (= (content-reference '((1 7) (2 3) (4 5))) '(1 7)))
-  (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '(((1) 1 2) (2 (3 (4))))))
+  (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '(((1) 1 2) (2 (3 4)))))
+  (is (= (deep-to-list '(((1) 1 2) (2 (3 (4))))) '((1 1 2) (2 (3 4)))))
   (is (= (to-list '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest constant-test

@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [cosheet.store :refer :all]
             [cosheet.store-utils :refer :all]
-            [cosheet.entity :refer [to-list description->entity]]
+            [cosheet.entity :refer [deep-to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
             ; :reload
@@ -17,8 +17,7 @@
         (add-entity added-store element '("Fred" ("by" :label)))]
     (is (#{'((77 88) ("test" :label) ("Fred" ("by" :label)))
            '((77 88) ("Fred" ("by" :label)) ("test" :label))}
-         (to-list (description->entity element added-store2))
-         ))))
+         (deep-to-list (description->entity element added-store2))))))
 
 (deftest remove-entity-by-id-test
   (let [[added-store e1]

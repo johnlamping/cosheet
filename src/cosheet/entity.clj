@@ -63,8 +63,13 @@
     "Return a reference to the content of the entity if the entity is stored,
      otherwise just return its content.")
 
-  (to-list [this]
-  "Return the list representation of the entity."))
+  (call-with [this fun]
+  "Call the function with the entity. If the entity is mutable,
+  a reporter is returned whose value is the result of calling the function
+  with a possibly immutable version of the entity, getting recalled
+  whenever the entity changes.
+  This is good if you want to do a computation on the entity, and
+  not have to track every sub-dependency."))
 
 ;;; Utility functions that work on entities
 
@@ -88,6 +93,18 @@
   "Whether the entity has the given value
    among its atomic values for the given label."
   mutable?-dispatch)
+
+(defmulti to-list
+  "Return a list form of the entity. If a content is itself an entity,
+  include the entity in the list, rather than its content.
+  That way, the value of to-list will only change if the entity or something
+  that pertains to it changes."
+  (constantly true))
+
+(defmulti deep-to-list
+  "Return a list form of the entity. If a content is itself an entity,
+  include the list form of its content."
+  (constantly true))
 
 (defmulti stored-entity-id-string
   "Return a unique id string for a stored entity"

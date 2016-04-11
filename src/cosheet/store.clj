@@ -60,9 +60,6 @@
   (id->content-reference [this id]
     "Given an id, return a reference to its content.")
 
-  (id->list [this id]
-    "Given an id, return the list form of its content and elements.")
-
   ;; Used by queries.
   
   (candidate-matching-ids [this item]
@@ -110,7 +107,12 @@
   "The basic methods that mutable stores support to change themselves,
   from which higher levels ones are built."
   (current-store [this]
-    "The current state of the mutable store")
+   "The current state of the mutable store")
+
+  (call-dependent-on-id [this id fun]
+   "Returns a reporter with the result of calling the function on
+   the immutable store, which will update whenever anything about the
+   entity with the given id changes.")
 
   (do-update! [this update-fn]
     "Run the update function on the current state of the store.

@@ -66,9 +66,6 @@
   (id->content-reference [this id]
     (get-or-make-reporter [id] id->content-reference (:manager-data this) id))
 
-  (id->list [this id]
-    (get-or-make-reporter [id] id->list (:manager-data this) id))
-
   (candidate-matching-ids [this item]
     (get-or-make-reporter
      [nil] candidate-matching-ids (:manager-data this) item))
@@ -78,6 +75,10 @@
   MutableStore
 
   (current-store [this] (:value @(:manager-data this)))
+
+  (call-dependent-on-id [this id fun]
+    (get-or-make-reporter
+     [id] fun (:manager-data this)))
 
   (do-update! [this update-fn]
     (do-update-control-return! this (fn [store] [(update-fn store) nil])))

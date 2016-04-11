@@ -55,23 +55,22 @@
 
   (atom? [this?] (atom-description? item-id))
 
-  ;; TODO: get rid of the expr's below?
   (label->elements [this label]
-    (expr-let [element-ids (expr id-label->element-ids store item-id label)]
+    (expr-let [element-ids (id-label->element-ids store item-id label)]
       (seq (for [element-id element-ids]
              (description->entity element-id store)))))
 
   (elements [this]
-    (expr-let [element-ids (expr id->element-ids store item-id)]
+    (expr-let [element-ids (id->element-ids store item-id)]
       (seq (for [element-id element-ids]
              (description->entity element-id store)))))
 
   (content [this]
-    (expr-let [content (expr id->content store item-id)]
+    (expr-let [content (id->content store item-id)]
       (description->entity content store)))
 
   (content-reference [this]
-    (expr-let [reference (expr id->content-reference store item-id)]
+    (expr-let [reference (id->content-reference store item-id)]
       (description->entity reference store)))
 
   (call-with [this fun]

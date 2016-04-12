@@ -15,7 +15,6 @@
                  [org.clojure/clojurescript "1.7.170" :exclusions [org.apache.ant/ant]] ; 3211; 1.8.40
                  [reagent "0.5.1" :exclusions [org.clojure/tools.reader]]
                  [cljs-ajax "0.5.4" :exclusions [org.clojure/tools.reader]]
-                 ;[com.keminglabs/cljx "0.6.0"] ;; get rid of this.
                  ]
   :plugins [[lein-cljsbuild "1.0.6"] ; 1.1.3
             [lein-ring "0.9.2"]
@@ -23,18 +22,10 @@
   :profiles {:uberjar {:aot :all}
              ;:dev {:plugins [[com.keminglabs/cljx "0.6.0"]]}
              }
-  ;:cljx
-  ; {:builds [{:source-paths ["src_cljx"]
-  ;           :output-path "target/classes"
-  ;           :rules :clj }
-  ; {:source-paths ["src_cljx"]
-  ; :output-path "target/classes"
-  ; :rules :cljs}]}
-  :prep-tasks ["javac" "compile"] ; ["cljx" "once"]
+  :prep-tasks ["javac" "compile"]
   :source-paths ["src" "src_cljc"]
   :hooks [leiningen.cljsbuild]
-  :cljsbuild {
-              :builds [{:source-paths ["src_cljc" "src_cljs"]
+  :cljsbuild {:builds [{:source-paths ["src_cljc" "src_cljs"]
                         :compiler {:output-to "resources/public/js/main.js"
                                    :optimizations :whitespace
                                    :pretty-print true

@@ -15,8 +15,7 @@
   (route/resources "/")
   (route/not-found "Page not found"))
 
-;;; Note: you may have to first run
-;;;   lein cljx once
+;;; Note: It is probably not necessary, but you may have to first run
 ;;;   lein cljsbuild once
 ;;; This allows the server to be run from lein with
 ;;;    lein ring server-headless 3000

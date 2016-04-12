@@ -21,36 +21,38 @@
         element2 '((3))
         itemx `(nil ~element0 ~element1)
         itemy `(nil ~element2)]
-    (is (current-value (extended-by? 1 1)) true)
-    (is (not (current-value (extended-by? 1 2))))
-    (is (current-value (extended-by? "1" "1")))
-    (is (not (current-value (extended-by? 1 "1"))))
-    (is (current-value (extended-by? :foo :foo)))
-    (is (not (current-value (extended-by? :foo :bar))))
-    (is (current-value (extended-by? element0 element0)))
-    (is (current-value (extended-by? element1 element1)))
-    (is (current-value (extended-by? element0 element1)))
-    (is (not (current-value (extended-by? element1 element0))))
-    (is (current-value (extended-by? itemx itemx)))
-    (is (current-value (extended-by? itemy itemx)))
-    (is (not (current-value (extended-by? itemx itemy))))
+    (is (extended-by? 1 1) true)
+    (is (not (extended-by? 1 2)))
+    (is (extended-by? "1" "1"))
+    (is (not (extended-by? 1 "1")))
+    (is (extended-by? :foo :foo))
+    (is (not (extended-by? :foo :bar)))
+    (is (extended-by? element0 element0))
+    (is (extended-by? element1 element1))
+    (is (extended-by? element0 element1))
+    (is (not (extended-by? '(nil (nil :label)) element0)))
+    (is (extended-by? '(nil (nil :label)) element1))
+    (is (not (extended-by? element1 element0)))
+    (is (extended-by? itemx itemx))
+    (is (extended-by? itemy itemx))
+    (is (not (extended-by? itemx itemy)))
     (is (let-mutated [a '(3 ("foo" false)) b '(3 ("foo" false))]
-                        (extended-by? a b)))
+          (extended-by? a b)))
     (is (let-mutated [b '(3 ("foo" false))]
-                        (extended-by? '(nil ("foo" false)) b)))
+          (extended-by? '(nil ("foo" false)) b)))
     (is (not (let-mutated [a '(4 ("foo" false)) b '(3 ("foo" false))]
-                             (extended-by? a b))))
+               (extended-by? a b))))
     (is (let-mutated [a '(3 "foo") b '(3 ("foo" false))]
-                        (extended-by? a b)))
+          (extended-by? a b)))
     (is (not (let-mutated [a '(3 ("foo" false)) b '(3 ("foo"))]
-                             (extended-by? a b))))
+               (extended-by? a b))))
     (is (let-mutated [a element0] (extended-by? 3 a)))
-    (is (current-value (extended-by? 3 element2)))
-    (is (current-value (extended-by? element2 3)))
-    (is (not (current-value (extended-by? element2 4))))
-    (is (current-value (extended-by? 3 element1)))
-    (is (not (current-value (extended-by? element1 3))))
-    (is (current-value (extended-by? 3 (entity/content-reference element0))))))
+    (is (extended-by? 3 element2))
+    (is (extended-by? element2 3))
+    (is (not (extended-by? element2 4)))
+    (is (extended-by? 3 element1))
+    (is (not (extended-by? element1 3)))
+    (is (extended-by? 3 (entity/content-reference element0)))))
 
 (defn variable
   ([name] (variable name nil nil))
@@ -100,6 +102,13 @@
          nil))
   (is (= (let-mutated [x '(1 (2 3)) y '(1 2 3)]
                       (template-matches x {:a :b} y))
+         nil))
+  ;; The next two test a special case optimization.
+  (is (= (let-mutated [y '(1 (2 3 4))]
+                      (template-matches '(nil (nil 3)) {:a :b} y))
+         [{:a :b}]))
+  (is (= (let-mutated [y '(1 (2 3 4))]
+           (template-matches '(nil (nil 2)) {:a :b} y))
          nil))
   (is (= (let-mutated [x '(1 (4 6))]
                       (template-matches x {:a :b} x))

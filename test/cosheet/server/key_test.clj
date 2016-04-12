@@ -9,7 +9,9 @@
                      [store :refer [new-element-store]]
                      [store-impl :refer [->ItemId]]
                      [store-utils :refer [add-entity]]
+                     [query :refer [matching-elements]]
                      [expression :refer [expr expr-let expr-seq]]
+                     [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server [key :refer :all])
             ; :reload
@@ -43,15 +45,14 @@
 (def store (first t2))
 (def jane-id (second t2))
 (def joe (description->entity joe-id store))
-(def joe-age (first (filter #(= (content %) 45) (elements joe))))
-(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe))))
-(def joe-age-tag (first (elements joe-age)))
-(def joe-male (first (filter #(= (content %) "male") (elements joe))))
-(def joe-married (first (filter #(= (content %) "married")
-                                (elements joe))))
+(def joe-age (first (matching-elements 45 joe)))
+(def joe-bogus-age (first (matching-elements 39 joe)))
+(def joe-age-tag (first (matching-elements "age" joe-age)))
+(def joe-male (first (matching-elements "male" joe)))
+(def joe-married (first (matching-elements "married" joe)))
 (def jane (description->entity jane-id store))
-(def jane-age (first (label->elements jane "age")))
-(def jane-age-tag (first (elements jane-age)))
+(def jane-age (first (matching-elements 45 jane)))
+(def jane-age-tag (first (matching-elements "age" jane-age)))
 
 (deftest prepend-to-key-test
   (let [a (item-referent (description->entity (->ItemId :a) store))

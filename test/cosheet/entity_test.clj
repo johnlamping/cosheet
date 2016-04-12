@@ -10,7 +10,8 @@
                      store-impl
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value]])
+                     [debug :refer [current-value]]
+                     [test-utils :refer [check any as-set]])
             ; :reload
             ))
 
@@ -135,19 +136,19 @@
       (is (= @record []))
       ;; See if it gets computed when demand is added.
       (set-attendee! call-with-immutable-result :a (fn [id reporter] nil))
-      (is (= (value call-with-immutable-result)
-             '(nil ((4 "baz") "bar") (3 "foo"))))
-      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))]))
+      (is (check (value call-with-immutable-result)
+                 (as-set '(nil ((4 "baz") "bar") (3 "foo")))))
+      (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))]))
       ;; Make sure it is not recomputed when an irrelevant change is made.
       (update-content! ms id0 44)
-      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))]))
+      (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))]))
       ;; Make sure it is recomputed when a deep, but relevant, change is made.
       (update-content! ms idd "bletch")
       (println (current-value (to-list item99)))
-      (is (= (value call-with-immutable-result)
-             '(nil ((4 "baz") "bletch") (3 "foo"))))
-      (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))
-                      '(nil ((4 "baz") "bletch") (3 "foo"))])))))
+      (is (check (value call-with-immutable-result)
+                 (as-set '(nil ((4 "baz") "bletch") (3 "foo")))))
+      (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))
+                          (as-set '(nil ((4 "baz") "bletch") (3 "foo")))])))))
 
 (deftest list-test
   (is (not (atom? '(1 2))))

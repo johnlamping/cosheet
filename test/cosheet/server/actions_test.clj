@@ -12,6 +12,7 @@
              [debug :refer [current-value profile-and-print-reporters]]
              [reporters :as reporter]
              entity-impl
+             [query :refer [matching-elements]]
              [store :refer [new-element-store
                             id->content id->element-ids id-label->element-ids
                             new-mutable-store current-store]]
@@ -61,16 +62,15 @@
 (def store (first t2))
 (def jane-id (second t2))
 (def joe (description->entity joe-id store))
-(def joe-age (first (filter #(= (content %) 45) (elements joe))))
-(def joe-bogus-age (first (filter #(= (content %) 39) (elements joe))))
-(def joe-age-tag (first (elements joe-age)))
-(def joe-male (first (filter #(= (content %) "male") (elements joe))))
-(def joe-married (first (filter #(= (content %) "married")
-                                (elements joe))))
+(def joe-age (first (matching-elements 45 joe)))
+(def joe-bogus-age (first (matching-elements 39 joe)))
+(def joe-age-tag (first (matching-elements "age" joe-age)))
+(def joe-male (first (matching-elements "male" joe)))
+(def joe-married (first (matching-elements "married" joe)))
 (def jane (description->entity jane-id store))
-(def jane-female (first (filter #(= (content %) "female") (elements jane))))
-(def jane-age (first (label->elements jane "age")))
-(def jane-age-tag (first (elements jane-age)))
+(def jane-female (first (matching-elements "female" jane)))
+(def jane-age (first (matching-elements 45 jane)))
+(def jane-age-tag (first (matching-elements "age" jane-age)))
 
 (defn new-joe-jane-tracker [mutable-store]
   (let [md (new-expression-manager-data)

@@ -16,7 +16,7 @@
                  [reagent "0.5.1"]
                  [cljs-ajax "0.5.4"]
                  ]
-  :plugins [[lein-cljsbuild "1.1.3"] ; 1.1.3
+  :plugins [[lein-cljsbuild "1.1.3"]
             [lein-ring "0.9.7"]
             [cider/cider-nrepl "0.11.0"]]
   :profiles {:uberjar {:aot :all}}

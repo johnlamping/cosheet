@@ -478,7 +478,7 @@
 (defn bind-referents
   "Bind the key to the store, in preparation for instantiation. Most
   significantly, replace item referents with either bound-item
-  referents that have the item, if we are in an exemplar, replace them
+  referents that have the item, or, if we are in an exemplar, replace them
   with template references specifying their contents. Template
   references are used only during instantiation.
   Return a lazy seq of the bound referents in the key."

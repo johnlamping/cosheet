@@ -4,6 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
+                     [test-utils :refer [check as-set]]
                      [reporters :refer [new-reporter set-value!]]
                      [expression-manager :refer [new-expression-manager-data
                                                  request compute]]
@@ -107,14 +108,14 @@
                         (mutable-set-intersection ms #{:b}))
                   (expr min (mutable-set-intersection ms #{:c})))
         r (expr list rc rc)]
-    (is (= (reporters-profile [r])
-           {'min {'intersection 3},
-            'max {'intersection 3,
-                  'min 2},
-            'clojure.lang.PersistentList {'intersection 3,
-                                          'min 2,
-                                          'max 1},
-            nil {'intersection 3,
-                 'min 2,
-                 'max 1,
-                 'clojure.lang.PersistentList 1}}))))
+    (is (check (reporters-profile [r])
+               {'min {'intersection 3},
+                'max {'intersection 3,
+                      'min 2},
+                'Primordial {'intersection 3,
+                             'min 2,
+                             'max 1},
+                nil {'intersection 3,
+                     'min 2,
+                     'max 1,
+                     'Primordial 1}}))))

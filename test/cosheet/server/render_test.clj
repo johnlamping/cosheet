@@ -1019,8 +1019,9 @@
                                 joe-row-key)
                  (set joe-name-tags)
                  {:commands {:add-sibling [:do-add
-                                           :template '(nil ("id" :tag)
-                                                           ("name" :tag))]
+                                           :template (as-set
+                                                      '(nil ("id" :tag)
+                                                            ("name" :tag)))]
                              :add-row [:do-add
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
@@ -1255,8 +1256,9 @@
                               joe-row-key)
                  (set joe-id-tags)
                  {:commands {:add-sibling [:do-add
-                                           :template '(nil ("id" :tag)
-                                                           ("name" :tag))]
+                                           :template (as-set
+                                                      '(nil ("id" :tag)
+                                                            ("name" :tag)))]
                              :add-row [:do-add
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
@@ -1271,8 +1273,9 @@
                [:component (any) (any)]
                ;; No name-id value.
                [:div {:class "editable table-cell has-border"
-                      :key (into [(elements-referent '(nil ("id" :tag)
-                                                           ("name" :tag)))
+                      :key (into [(elements-referent (as-set
+                                                      '(nil ("id" :tag)
+                                                            ("name" :tag))))
                                   (comment-referent (item-referent name-id))]
                                  jane-row-key)
                       :commands {:set-content [:do-create-content]
@@ -1472,8 +1475,9 @@
                               joe-row-key)
                  (set joe-id-tags)
                  {:commands {:add-sibling [:do-add
-                                           :template '(nil ("id" :tag)
-                                                           ("name" :tag))]
+                                           :template (as-set
+                                                      '(nil ("id" :tag)
+                                                            ("name" :tag)))]
                              :add-row [:do-add
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
@@ -1504,8 +1508,8 @@
              (evals-to              
               [:div {:key jane-row-key}
                [:div {:class "editable table-cell has-border"
-                      :key (into [(elements-referent '(nil ("id" :tag)
-                                                           ("name" :tag)))
+                      :key (into [(elements-referent
+                                   (as-set '(nil ("id" :tag) ("name" :tag))))
                                   (comment-referent (item-referent name-id))]
                                  jane-row-key)
                       :commands {:set-content [:do-create-content]

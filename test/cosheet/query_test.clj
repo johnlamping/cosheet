@@ -10,7 +10,8 @@
                      mutable-store-impl
                      entity-impl
                      [debug :refer [current-value envs-to-list]]
-                     [test-utils :refer [let-mutated let-mutated-store]]
+                     [test-utils :refer [check as-set
+                                         let-mutated let-mutated-store]]
                      )
             ; :reload
             ))
@@ -261,16 +262,16 @@
     (is (= (let-mutated-store [store s0 mutator]
                               (query-matches '(nil (1)) store)) [{}]))
     ;; variables as top level entities
-    (is (= (set (envs-to-list (let-mutated-store [store s0 mutator]
-                                (query-matches (variable "v") store))))
-           #{{"v" '(nil (3 (4 5)) (1 (2 3)))}
-             {"v" '(nil (1 (2 4)))}
-             {"v" '(3 (4 5))}
-             {"v" '(1 (2 3))}
-             {"v" '(1 (2 4))}
-             {"v" '(2 3)}
-             {"v" '(4 5)}
-             {"v" '(2 4)}}))
+    (is (check (set (envs-to-list (let-mutated-store [store s0 mutator]
+                                    (query-matches (variable "v") store))))
+               #{{"v" (as-set '(nil (3 (4 5)) (1 (2 3))))}
+                 {"v" '(nil (1 (2 4)))}
+                 {"v" '(3 (4 5))}
+                 {"v" '(1 (2 3))}
+                 {"v" '(1 (2 4))}
+                 {"v" '(2 3)}
+                 {"v" '(4 5)}
+                 {"v" '(2 4)}}))
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
                    (query-matches `(:and ((1 ~(variable "v")) :first)

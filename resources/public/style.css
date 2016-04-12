@@ -313,10 +313,6 @@
     border-top-right-radius: 7px;
 }
 
-.column-header-stack.top-level:last-child {
-    border-right-width: 2px;
-}
-
 .tags.column-header-container, .tags.column-header-stack,
 .tags.wrapped-element {
     background-color: hsl(194, 100%, 88%);

@@ -12,9 +12,9 @@
                  [compojure "1.3.4"]
                  [hiccup "1.0.5"]
                  ;; Client side
-                 [org.clojure/clojurescript "1.7.170" :exclusions [org.apache.ant/ant]] ; 3211; 1.8.40
-                 [reagent "0.5.1" :exclusions [org.clojure/tools.reader]]
-                 [cljs-ajax "0.5.4" :exclusions [org.clojure/tools.reader]]
+                 [org.clojure/clojurescript "1.7.170"] ; 1.8.40
+                 [reagent "0.5.1"]
+                 [cljs-ajax "0.5.4"]
                  ]
   :plugins [[lein-cljsbuild "1.0.6"] ; 1.1.3
             [lein-ring "0.9.2"]

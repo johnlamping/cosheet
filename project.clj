@@ -6,39 +6,41 @@
   :dependencies [[org.clojure/clojure "1.7.0"] ; 1.8.0
                  [org.clojure/data.priority-map "0.0.5"]
                  ;; Server side
-                 [ring/ring-core "1.3.2"]
+                 [ring/ring-core "1.4.0"]
                  [ring/ring-jetty-adapter "1.3.2"]
-                 [ring-transit "0.1.3"]
+                 [ring-transit "0.1.4"]
                  [compojure "1.3.4"]
                  [hiccup "1.0.5"]
                  ;; Client side
-                 [org.clojure/clojurescript "0.0-2913"] ; 3211; 1.8.40
-                 [reagent "0.5.0-alpha3"]
-                 [cljs-ajax "0.3.10"]
-                 [com.keminglabs/cljx "0.6.0"] ;; get rid of this.
+                 [org.clojure/clojurescript "1.7.170" :exclusions [org.apache.ant/ant]] ; 3211; 1.8.40
+                 [reagent "0.5.1" :exclusions [org.clojure/tools.reader]]
+                 [cljs-ajax "0.5.4" :exclusions [org.clojure/tools.reader]]
+                 ;[com.keminglabs/cljx "0.6.0"] ;; get rid of this.
                  ]
-  :plugins [[lein-cljsbuild "1.0.5"] ; 1.1.3
+  :plugins [[lein-cljsbuild "1.0.6"] ; 1.1.3
             [lein-ring "0.9.2"]
-            [cider/cider-nrepl "0.10.0"]]
+            [cider/cider-nrepl "0.10.0" :exclusions [org.clojure/tools.nrepl]]]
   :profiles {:uberjar {:aot :all}
-             :dev {:plugins [[com.keminglabs/cljx "0.6.0"]]}}
-  :cljx {:builds [{:source-paths ["src_cljx"]
-                   :output-path "target/classes"
-                   :rules :clj}
-                  {:source-paths ["src_cljx"]
-                   :output-path "target/classes"
-                   :rules :cljs}]}
-  :prep-tasks [["cljx" "once"] "javac" "compile"]
-  :source-paths ["src" "target/classes"]
+             ;:dev {:plugins [[com.keminglabs/cljx "0.6.0"]]}
+             }
+  ;:cljx
+  ; {:builds [{:source-paths ["src_cljx"]
+  ;           :output-path "target/classes"
+  ;           :rules :clj }
+  ; {:source-paths ["src_cljx"]
+  ; :output-path "target/classes"
+  ; :rules :cljs}]}
+  :prep-tasks ["javac" "compile"] ; ["cljx" "once"]
+  :source-paths ["src" "src_cljc"]
   :hooks [leiningen.cljsbuild]
   :cljsbuild {
-    :builds [{:source-paths ["src_cljs" "target/classes"]
-              :compiler {:output-to "resources/public/js/main.js"
-                         :optimizations :whitespace
-                         :pretty-print true
-                         :preamble ["reagent/react.js"]}}]}
+              :builds [{:source-paths ["src_cljc" "src_cljs"]
+                        :compiler {:output-to "resources/public/js/main.js"
+                                   :optimizations :whitespace
+                                   :pretty-print true
+                                   :preamble ["reagent/react.js"]}}]}
   :ring {:handler cosheet.server.routes/app
          ;; Keep lein ring from reloading tests.
-         :reload-paths ["src" "target/classes"]}
+         :reload-paths ["src" "src_cljc"]}
   :main ^:skip-aot cosheet.core
   :target-path "target/%s")

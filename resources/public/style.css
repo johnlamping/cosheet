@@ -356,17 +356,17 @@
     border-width: 2px;
 }
 
-.has-border > .wrapped-element {
+.has-border:not(.with-elements) > .wrapped-element {
     margin-left: -2px;
     margin-right: -2px;
 }
 
 .stack > .wrapped-element + .wrapped-element,
-.has-border > .wrapped-element:first-child {
+.has-border:not(.with-elements) > .wrapped-element:first-child {
     margin-top: -2px;
 }
 
-.has-border > .wrapped-element:last-child {
+.has-border:not(.with-elements) > .wrapped-element:last-child {
     margin-bottom: -2px;
 }
 

@@ -3,7 +3,7 @@
   :url ""
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.7.0"] ; 1.8.0
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.priority-map "0.0.5"]
                  ;; Server side
                  [ring/ring-core "1.4.0"]
@@ -12,16 +12,14 @@
                  [compojure "1.3.4"]
                  [hiccup "1.0.5"]
                  ;; Client side
-                 [org.clojure/clojurescript "1.7.170"] ; 1.8.40
+                 [org.clojure/clojurescript "1.8.40"]
                  [reagent "0.5.1"]
                  [cljs-ajax "0.5.4"]
                  ]
-  :plugins [[lein-cljsbuild "1.0.6"] ; 1.1.3
-            [lein-ring "0.9.2"]
-            [cider/cider-nrepl "0.10.0" :exclusions [org.clojure/tools.nrepl]]]
-  :profiles {:uberjar {:aot :all}
-             ;:dev {:plugins [[com.keminglabs/cljx "0.6.0"]]}
-             }
+  :plugins [[lein-cljsbuild "1.1.3"] ; 1.1.3
+            [lein-ring "0.9.7"]
+            [cider/cider-nrepl "0.11.0"]]
+  :profiles {:uberjar {:aot :all}}
   :prep-tasks ["javac" "compile"]
   :source-paths ["src" "src_cljc"]
   :hooks [leiningen.cljsbuild]

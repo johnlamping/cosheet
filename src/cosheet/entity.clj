@@ -63,11 +63,11 @@
     "Return a reference to the content of the entity if the entity is stored,
      otherwise just return its content.")
 
-  (call-with [this fun]
-  "Call the function with the entity. If the entity is mutable,
-  a reporter is returned whose value is the result of calling the function
-  with a possibly immutable version of the entity, getting recalled
-  whenever the entity changes.
+  (call-with-immutable [this fun]
+  "Call the function with an immutable version of the entity.
+  If the entity is mutable, a reporter is returned whose value is the result
+  of calling the function the immutable version of the entity, getting
+  re-called whenever the entity changes.
   This is good if you want to do a computation on the entity, and
   not have to track every sub-dependency."))
 

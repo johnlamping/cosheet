@@ -124,18 +124,18 @@
     (is (= (current-value (label->atomic-values item99 "bar"))) [4])
     (is (= (current-value (deep-to-list item99))
            (deep-to-list (description->entity id99 s))))
-    ;; Now  make sure call-with tracks right.
+    ;; Now  make sure call-with-immutable tracks right.
     (let [record (atom [])
           fun (fn [current-item]
                 (is (not (mutable-entity? current-item)))
                 (let [value (deep-to-list current-item)]
                   (swap! record #(conj % value))
                   value))
-          call-with-result (call-with item99 fun)]
+          call-with-immutable-result (call-with-immutable item99 fun)]
       (is (= @record []))
       ;; See if it gets computed when demand is added.
-      (set-attendee! call-with-result :a (fn [id reporter] nil))
-      (is (= (value call-with-result)
+      (set-attendee! call-with-immutable-result :a (fn [id reporter] nil))
+      (is (= (value call-with-immutable-result)
              '(nil ((4 "baz") "bar") (3 "foo"))))
       (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))]))
       ;; Make sure it is not recomputed when an irrelevant change is made.
@@ -144,7 +144,7 @@
       ;; Make sure it is recomputed when a deep, but relevant, change is made.
       (update-content! ms idd "bletch")
       (println (current-value (to-list item99)))
-      (is (= (value call-with-result)
+      (is (= (value call-with-immutable-result)
              '(nil ((4 "baz") "bletch") (3 "foo"))))
       (is (= @record ['(nil ((4 "baz") "bar") (3 "foo"))
                       '(nil ((4 "baz") "bletch") (3 "foo"))])))))

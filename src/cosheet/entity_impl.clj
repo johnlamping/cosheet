@@ -39,7 +39,7 @@
   (content-reference [this]
     (description->entity (id->content-reference store item-id) store))
 
-  (call-with [this fun] (fun this)))
+  (call-with-immutable [this fun] (fun this)))
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
@@ -73,7 +73,7 @@
     (expr-let [reference (id->content-reference store item-id)]
       (description->entity reference store)))
 
-  (call-with [this fun]
+  (call-with-immutable [this fun]
     (call-dependent-on-id
      store item-id  #(fun (description->entity item-id %)))))
 
@@ -99,7 +99,7 @@
 
   (content-reference [this] (first this))
 
-  (call-with [this fun] (fun this)))
+  (call-with-immutable [this fun] (fun this)))
 
 (extend-protocol Entity
   clojure.lang.Keyword
@@ -109,7 +109,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -117,7 +117,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
   java.lang.String
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -125,7 +125,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
   java.lang.Number
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -133,7 +133,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
   java.lang.Boolean
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -141,7 +141,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
   cosheet.orderable.Orderable
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -149,7 +149,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
@@ -158,7 +158,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with [this fun] (fun this))
+  (call-with-immutable [this fun] (fun this))
 )
 
 (extend-protocol Description

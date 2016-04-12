@@ -125,7 +125,8 @@
   (entity/content [this]
     (expr bind-entity (entity/content wrapped) env))
 
-  (call-with [this fun] (fun this)))
+  (call-with-immutable [this fun]
+    (assert false "call-with-immutable not supported by bound entities")))
 
 (defn bind-entity [entity env]
   (if (entity/atom? entity)

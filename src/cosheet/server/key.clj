@@ -2,6 +2,7 @@
   (:require (cosheet [utils :refer [multiset]]
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :as entity :refer [elements description->entity
+                                                call-with-immutable
                                                 StoredEntity]]
                      [store  :as store :refer [id-valid? StoredItemDescription]]
                      [query :refer [matching-elements matching-items]])))
@@ -354,19 +355,25 @@
              non-semantic (entity/label->elements entity :non-semantic)]
     (remove (set non-semantic) elements)))
 
-(defn semantic-to-list
-  "Given an item, make a list representation of the
+(defn immutable-semantic-to-list
+  "Given an immutable item, make a list representation of the
   semantic information of the item."
   [item]
   (if (entity/atom? item)
     (entity/content item)
-    (expr-let [content (entity/content item)
-               elements (semantic-elements item)
-               content-semantic (semantic-to-list content)
-               element-semantics (expr-seq map semantic-to-list elements)]
+    (let [content (entity/content item)
+          elements (semantic-elements item)
+          content-semantic (immutable-semantic-to-list content)
+          element-semantics (map immutable-semantic-to-list elements)]
       (if (empty? element-semantics)
         content-semantic
         (list* (into [content-semantic] element-semantics))))))
+
+(defn semantic-to-list
+  "Given an item, make a list representation of the
+  semantic information of the item."
+  [item]
+  (call-with-immutable item immutable-semantic-to-list))
 
 (defn canonicalize-list
   "Given the list form of an entity, return a canonical representation of it."

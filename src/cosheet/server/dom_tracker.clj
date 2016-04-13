@@ -66,9 +66,8 @@
 ;;;                    that is allowed as a DOM id.
 ;;;          :id->key  The inverse of the key->id map
 ;;;         :key->dom  A map from key to server version of the dom
-;;;                    for that key. This provides access to extra
-;;;                    information, like :sibling-condition, needed to
-;;;                    interpret actions on a key.
+;;;                    for that key. The dom also provides access to any extra
+;;;                    information needed to interpret actions on a key.
 ;;;                    The dom is in hiccup format, as returned by the
 ;;;                    definition or the reporter it returns.
 ;;;                    Inside this dom, subcomponents are annotated as
@@ -82,6 +81,12 @@
 ;;;                                  the component definition, before
 ;;;                                  the client gets the rest of its dom.>}
 ;;;          :next-id  The next free client id number.
+;;;     :next-version  The next free version number.
+;;;                    We use a global version because we might forget about
+;;;                    a component, and then reconstruct it, all while the
+;;;                    client keeps ahold of it. We need to be sure that its
+;;;                    next version will be larger that whatever the client
+;;;                    has.
 ;;; :out-of-date-keys  A priority queue of ids that the client
 ;;;                    needs to know about, prioritized by their depth.
 ;;;     :manager-data  The expression manager-data for our reporters
@@ -280,6 +285,13 @@
                            "\ndom" (:definition subcomponent)
                            "\nstored" (:definition stored-map))))))))))
 
+(defn update-next-version
+  "Increment the version number of the data, returning the updated data
+  and the next free version number"
+  [data]
+  (let [version (:next-version data)]
+    [(assoc data :next-version (inc version)) version]))
+
 (defn update-dom
   "Given the data, a key, and the latest dom for the key,
    do all necessary updates."
@@ -292,10 +304,11 @@
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
           (let [subcomponent-maps (dom->subcomponent-maps dom depth)
+                [data version] (update-next-version data)
                 new-map (-> component-map
                             (assoc :subcomponents
                                    (set (map :key subcomponent-maps)))
-                            (update-in [:version] inc))]
+                            (assoc :version version))]
             (-> (reduce update-set-component data subcomponent-maps)
                 (update-in [:key->dom]
                            #(into (apply dissoc %
@@ -359,9 +372,10 @@
   [data key]
   (if (get-in data [:components key])
     data
-    (-> data
-        (update-ensure-id-for-key key)
-        (assoc-in [:components key] {:key key :version 0 :depth 0}))))
+    (let [[data version] (update-next-version data)]
+      (-> data
+          (update-ensure-id-for-key key)
+          (assoc-in [:components key] {:key key :version version :depth 0})))))
 
 (defn update-clear-component
   "Remove the component with the given key."
@@ -446,7 +460,8 @@
     :id->key {}
     :key->id {}
     :key->dom {}
-    :next-id 0
+    :next-id 1
+    :next-version 1
     :out-of-date-keys (priority-map/priority-map)
     :manager-data md}))
 

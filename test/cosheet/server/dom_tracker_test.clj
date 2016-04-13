@@ -208,30 +208,32 @@
   (let [tracker @(new-dom-tracker nil)
         id-num (:next-id tracker)
         id (str "id" id-num)]
-    (is (= (update-ensure-component tracker :b)
-           (-> tracker
-               (assoc :components {:b {:key :b
-                                       :version 0
-                                       :depth 0}})
-               (assoc :id->key {id :b})
-               (assoc :key->id {:b id})
-               (assoc :next-id (inc id-num)))))
+    (is (check (update-ensure-component tracker :b)
+               (-> tracker
+                   (assoc :components {:b {:key :b
+                                           :version 1
+                                           :depth 0}})
+                   (assoc :id->key {id :b})
+                   (assoc :key->id {:b id})
+                   (assoc :next-id (inc id-num))
+                   (update-in [:next-version] inc))))
     (let [tracker (-> @(new-dom-tracker nil)
                       (update-associate-key-to-id :b :id))]
-      (is (= (update-ensure-component tracker :b)
-             (-> tracker
-                 (assoc :components {:b {:key :b
-                                         :version 0
-                                         :depth 0}})))))))
+      (is (check (update-ensure-component tracker :b)
+                 (-> tracker
+                     (assoc :components {:b {:key :b
+                                             :version 1
+                                             :depth 0}})
+                     (update-in [:next-version] inc)))))))
 
 (deftest update-clear-component-test
-  (let [tracker @(new-dom-tracker nil)
-        id (:next-id tracker)]
-    (is (= (-> tracker
-               (update-ensure-component :b)
-               (update-clear-component :b))
-           (-> tracker
-               (assoc :next-id (inc id)))))))
+  (let [tracker @(new-dom-tracker nil)]
+    (is (check (-> tracker
+                   (update-ensure-component :b)
+                   (update-clear-component :b))
+               (-> tracker
+                   (assoc :next-id (inc (:next-id tracker))
+                          :next-version (inc (:next-version tracker))))))))
 
 (deftest update-set-component-test
   (let [md (new-expression-manager-data)
@@ -265,7 +267,7 @@
     (compute md)
     (let [data @tracker
           component (get-in data [:components joe-key])]
-      (is (= (:version component) 1))
+      (is (= (:version component) 2))
       (is (= (:depth component) 0))
       (is (= (:components @tracker) {joe-key component}))
       (is (= (:id->key data) {"root" joe-key}))
@@ -277,7 +279,8 @@
                                                       :subject-key joe-key]
                                         :delete [:do-delete]}}
                        "Joe"]}))
-      (is (= (:next-id data) 0))
+      (is (= (:next-id data) 1))
+      (is (= (:next-version data) 3))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]}))
       ;; Try some updates that don't change the definition.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
@@ -381,7 +384,7 @@
     (compute md)
     (let [data @tracker
           component (get-in data [:components joe-key])]
-      (is (= (:version component) 1))
+      (is (= (:version component) 2))
       (is (= (:depth component) 0))
       (is (= (:components @tracker) {joe-key component}))
       (is (= (:id->key data) {"root" joe-key}))
@@ -394,7 +397,8 @@
                                                       :subject-key joe-key]
                                         :delete [:do-delete]}}
                        "Joe"]}))
-      (is (= (:next-id data) 0))
+      (is (= (:next-id data) 1))
+      (is (= (:next-version data) 3))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]})))))
 
 (deftest request-client-refresh-test

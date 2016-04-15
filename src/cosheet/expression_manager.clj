@@ -118,7 +118,7 @@
   (.write w "<ExpressionManagerData>"))
 
 (defn update-new-further-action
-  "Given a map, add an an action to the further actions.
+  "Given a map, add an action to the further actions.
    This is used to request actions that affect state elsewhere than
    in the map. They will be done immediately after the map is stored back,
    in the order in which they were requested."

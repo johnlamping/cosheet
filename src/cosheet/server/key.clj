@@ -492,16 +492,15 @@
   [immutable-store group referent parent]
   (let [[type exemplar branch-referents negative-referents] referent]
     (assert (= type :parallel))
-    (let [positive-items (set (mapcat
-                               #(instantiate-bound-referent
-                                 immutable-store false % parent)
-                               branch-referents))
+    (let [positive-items (mapcat
+                          #(instantiate-bound-referent
+                            immutable-store false % parent)
+                          branch-referents)
           negative-items (set (mapcat
                                #(instantiate-bound-referent
                                  immutable-store false % parent)
                                negative-referents))
-          instantiated-items (seq (clojure.set/difference positive-items
-                                                               negative-items))]
+          instantiated-items (remove negative-items positive-items)]
       (if (empty? exemplar)
         (if group
           (if (empty? instantiated-items) nil [instantiated-items])

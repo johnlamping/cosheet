@@ -46,7 +46,7 @@
         [o3 unused-orderable] (orderable/split unused-orderable :after)
         [o4 unused-orderable] (orderable/split unused-orderable :after)
         starting-item `("Joe"
-                        ; (:root :invisible)
+                        ; (:root :non-semantic)
                         (:top-level :non-semantic)
                         (~o1 :order :non-semantic)
                         ("male" (~o1 :order :non-semantic))
@@ -60,7 +60,7 @@
                             ("age" :tag (~o1 :order :non-semantic))))
         [store id] (add-entity (new-element-store) nil starting-item)
         starting-table `("table"
-                         (:root :invisible)
+                         (:root :non-semantic)
                          (:none :row-query)
                          (:none ("age" :tag)
                                 (~o1 :order :non-semantic)

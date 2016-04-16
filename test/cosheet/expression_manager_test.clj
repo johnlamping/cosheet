@@ -164,9 +164,9 @@
       (let [[reporter & rest] need-to-check]
         (if (contains? already-checked reporter)
           (recur already-checked rest)
-          (recur  (conj already-checked reporter)
-                  (concat rest
-                          (check-propagation-for-one-reporter reporter))))))))
+          (recur (conj already-checked reporter)
+                 (concat rest
+                         (check-propagation-for-one-reporter reporter))))))))
 
 (deftest modify-and-act-test
   (let [r (reporter/new-reporter :test 10)

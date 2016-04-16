@@ -15,7 +15,9 @@
     query-impl
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
-    [task-queue :refer [finished-all-tasks?]])
+    [task-queue :refer [finished-all-tasks?]]
+    [reporters :as reporter]
+    [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [key :refer [item-referent prepend-to-key]]
     ;; TODO: Make item-DOM recognize tables, so we can just call it.
@@ -113,7 +115,12 @@
       ;; 22K times for about 6 changes to a display with about a dozen
       ;; cells. Eventually, we will need to turn it off anyway, but figure
       ;; out why it is so expensive.
-      (comment (check-propagation reporter)))))
+      (comment (check-propagation reporter))
+      ;; This can be uncommented to see what is allocating reporters.
+      (comment
+        (profile-and-print-reporters (->> (vals (:components @(tracker)))
+                                          (map :reporter)
+                                          (filter reporter/reporter?)))))))
 
 (defn initialize-session-state-atom
   []

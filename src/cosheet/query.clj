@@ -1,5 +1,6 @@
 (ns cosheet.query
   (:require [cosheet.entity :as entity]
+            [cosheet.store :as store]
             [cosheet.expression :refer [expr expr-seq expr-let]]))
 
 ;;; Variables are represented as items of the form
@@ -36,17 +37,31 @@
   ([template target] (template-matches-m template {} target))
   ([template env target] (template-matches-m template env target)))
 
+(defn- convert-matches
+  "Given matching environments, get the items for the given variable,
+  then convert them to items with the given store"
+  [matches variable-name store]
+  (map #(-> %
+            variable-name  ;; item that is the value of variable :v
+            :item-id  ;; its item id
+            (entity/description->entity store)) 
+       matches))
+
 (defn matching-elements
   "Return all elements of the target that match the condition (which
   must be immutable.)"
   [condition target]
-  (expr-let [matches (template-matches
-                      `(nil (:variable
-                             (:v :name)
-                             (~condition :condition)
-                             (true :reference)))
-                      target)]
-    (expr-seq map :v matches)))
+  (let [template `(nil (:variable (:v :name)
+                                  (~condition :condition)
+                                  (true :reference)))]
+    (if (and (entity/mutable-entity? target)
+             (satisfies? entity/StoredEntity target))
+      ;; Optimized case to not build reporters for all the subsidiary tests. 
+      (expr-let [matches (entity/call-with-immutable
+                          target #(template-matches template %))]
+        (convert-matches matches :v (:store target)))
+      (expr-let [matches (template-matches template target)]
+        (map :v matches)))))
   
 (defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given
@@ -63,12 +78,15 @@
   "Return all items in the store that match the condition (which
   must be immutable.)"
   [condition store]
-  (expr-let [matches (query-matches
-                      `(:variable
-                        (:v :name)
-                        (~condition :condition)
-                        (true :reference))
-                      store)]
-    (expr-seq map :v matches)))
+  (let [template `(:variable (:v :name)
+                             (~condition :condition)
+                             (true :reference))]
+    (if (satisfies? store/MutableStore store)
+      ;; Optimized case to not build reporters for all the subsidiary tests. 
+      (expr-let [matches (store/call-dependent-on-id
+                          store nil #(query-matches template %))]
+        (convert-matches matches :v store))
+      (expr-let [matches (query-matches template store)]
+        (map :v matches)))))
 
   

@@ -111,11 +111,11 @@
         reporter (get-in tracker-data [:components root-key :reporter])
         task-queue (get-in tracker-data [:manager-data :queue])]
     (when (finished-all-tasks? task-queue)
-      ;; TODO: we turn this off, because it was too expensive. It got called
-      ;; 22K times for about 6 changes to a display with about a dozen
-      ;; cells. Eventually, we will need to turn it off anyway, but figure
-      ;; out why it is so expensive.
-      (comment (check-propagation reporter))
+      ;; TODO: Eventually, this needs to be turned off, both
+      ;; because it is too expensive, visiting all dependencies,
+      ;; and because if a second request comes in while we are checking
+      ;; the checks are likely to fail.
+      (check-propagation reporter)
       ;; This can be uncommented to see what is allocating reporters.
       (comment
         (profile-and-print-reporters (->> (vals (:components @(tracker)))

@@ -120,16 +120,18 @@
 (defn order-items
   "Return the items in the proper sort order."
   [items]
-  (expr-let [order-info
-             (expr-seq map #(entity/label->content % :order) items)]
-    (map second (sort orderable-comparator
-                      (map (fn [order item]
-                             ;; It is possible for an item not to have
-                             ;; order information, especially
-                             ;; temporarily while information is being
-                             ;; propagated. Tolerate that.
-                             (vector (or order orderable/initial) item))
-                           order-info items)))))
+  (if (empty? (rest items))
+    items
+    (expr-let [order-info
+               (expr-seq map #(entity/label->content % :order) items)]
+      (map second (sort orderable-comparator
+                        (map (fn [order item]
+                               ;; It is possible for an item not to have
+                               ;; order information, especially
+                               ;; temporarily while information is being
+                               ;; propagated. Tolerate that.
+                               (vector (or order orderable/initial) item))
+                             order-info items))))))
 
 (defn condition-satisfiers
   "Return a sequence of elements of an entity sufficient to make it

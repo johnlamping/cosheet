@@ -37,16 +37,6 @@
   ([template target] (template-matches-m template {} target))
   ([template env target] (template-matches-m template env target)))
 
-(defn- convert-matches
-  "Given matching environments, get the items for the given variable,
-  then convert them to items with the given store"
-  [matches variable-name store]
-  (map #(-> %
-            variable-name  ;; item that is the value of variable :v
-            :item-id  ;; its item id
-            (entity/description->entity store)) 
-       matches))
-
 (defn matching-elements
   "Return all elements of the target that match the condition (which
   must be immutable.)"
@@ -59,7 +49,7 @@
       ;; Optimized case to not build reporters for all the subsidiary tests. 
       (expr-let [matches (entity/call-with-immutable
                           target #(template-matches template %))]
-        (convert-matches matches :v (:store target)))
+        (map #(entity/in-different-store (:v %) target) matches))
       (expr-let [matches (template-matches template target)]
         (map :v matches)))))
   
@@ -85,7 +75,11 @@
       ;; Optimized case to not build reporters for all the subsidiary tests. 
       (expr-let [matches (store/call-dependent-on-id
                           store nil #(query-matches template %))]
-        (convert-matches matches :v store))
+        (map #(-> %
+                  :v  ;; item that is the value of variable :v
+                  :item-id  ;; its item id
+                  (entity/description->entity store)) 
+             matches))
       (expr-let [matches (query-matches template store)]
         (map :v matches)))))
 

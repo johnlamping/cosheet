@@ -140,11 +140,15 @@
   (assert (and (sequential? condition)
                (not (empty? condition))
                (nil? (first condition))))
-  (expr-let [elements (entity/elements entity)
-             canonical-elements (expr-seq map canonical-info elements)]
-    (multiset-to-generating-values
-     (multiset (map canonical-info (rest condition)))
-     canonical-elements elements)))
+  (expr-let [satisfiers
+             (entity/call-with-immutable
+              entity
+              #(let [elements (entity/elements %)
+                     canonical-elements (expr-seq map canonical-info elements)]
+                 (multiset-to-generating-values
+                  (multiset (map canonical-info (rest condition)))
+                  canonical-elements elements)))]
+    (map #(entity/in-different-store % entity) satisfiers)))
 
 (def item-DOM)
 

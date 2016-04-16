@@ -19,6 +19,10 @@
    item-id]  ; The ItemDescription of the item in the store.
 
   StoredEntity
+
+  (in-different-store [this entity-with-store]
+    (description->entity (:item-id this) (:store entity-with-store)))
+  
   Entity
 
   (mutable-entity? [this] false)
@@ -49,6 +53,10 @@
      item-id]  ; The ItemDescription of the item in the store.
 
   StoredEntity
+
+  (in-different-store [this entity-with-store]
+    (description->entity (:item-id this) (:store entity-with-store)))
+
   Entity
 
   (mutable-entity? [this] true)

@@ -22,7 +22,11 @@
      depends on."))
 
 (defprotocol StoredEntity
-  "A tag for stored entities. They must have unique item-ids.")
+  "A tag for stored entities. They must have unique item-ids."
+
+  (in-different-store [this entity-with-store]
+    "Replace the entity with an entity with the same id,
+    but with the store of the second entity."))
 
 (defprotocol Entity
   "An item or constant. For constants, the entity methods behave as if

@@ -5,7 +5,7 @@
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
                      [test-utils :refer [check as-set]]
-                     [reporters :refer [new-reporter set-value!]]
+                     [reporters :refer [new-reporter set-value! data-atom]]
                      [expression-manager :refer [new-expression-manager-data
                                                  request compute]]
                      [expression :refer [expr expr-let cache]]
@@ -103,19 +103,19 @@
 
 (deftest profile-test
   (let [ms (new-mutable-set #{:a :b})
+        min-r (expr min (mutable-set-intersection ms #{:a})
+                    (mutable-set-intersection ms #{:b}))
         rc (cache max
-                  (expr min (mutable-set-intersection ms #{:a})
-                        (mutable-set-intersection ms #{:b}))
+                  min-r
                   (expr min (mutable-set-intersection ms #{:c})))
         r (expr list rc rc)]
+    (swap! (data-atom min-r)
+           #(assoc % :value-source
+                   (expr assoc (mutable-set-intersection ms #{:a}))))
     (is (check (reporters-profile [r])
-               {'min {'intersection 3},
-                'max {'intersection 3,
-                      'min 2},
-                'Primordial {'intersection 3,
-                             'min 2,
-                             'max 1},
-                nil {'intersection 3,
-                     'min 2,
-                     'max 1,
+               {'min {'intersection 1 'assoc 1}
+                nil {'intersection 4
+                     'min 2
+                     'max 1
+                     'assoc 1
                      'Primordial 1}}))))

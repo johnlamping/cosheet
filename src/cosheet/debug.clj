@@ -183,13 +183,14 @@
         source (:value-source data)
         fun (first expression)
         fun-name (when (instance? clojure.lang.Fn fun) (function-name fun))
-        [acc ancestors] (if fun-name
-                          [(accumulate-invocations acc fun-name ancestors)
-                           (conj ancestors fun-name)]
-                          [acc ancestors])
-        reporters (cond-> (filter reporter? (rest expression))
-                    source (conj source))]
-    (accumulate-profile acc seen reporters ancestors)))
+        args (filter reporter? (rest expression))
+        [acc seen] (accumulate-profile acc seen args ancestors)
+        acc (cond-> acc
+              fun-name (accumulate-invocations fun-name ancestors))]
+    (if source
+      (accumulate-profile acc seen [source]
+                          (cond-> ancestors fun-name (conj fun-name)))
+      [acc seen])))
 
 (defn accumulate-mutable-reporter-profile
   "Accumulate one mutable-manager reporter into the profile
@@ -230,18 +231,15 @@
 (defn reporters-profile
   "Return profile information on reporters. The profile is a map of
   maps of counts: f -> f -> n, from name of function to name of
-  function necessary to evaluate expressions headed by the first
-  funtion to how often that happens. The first  function name can also
-  be nil, in which case the count is just the number of invocations of
-  the second function.
+  function heading expressions called by that function. The first 
+  function name can also be nil, in which case the count is just
+  the number of invocations of the second function.
 
   Notice that unlike a typical profile, which notes the functions
-  called by a function, this notes the function calls necessary to
-  evaluate all applications headed by a function. That is what is
-  recorded in the reporter tree. Since the tree doesn't include
-  intermediate function calls that weren't reporter expressions, its
-  picture of the reporters created by a function call would be quite
-  hard to interpret, as many intermediate causes would be missing."
+  called directly by a function, this notes the function calls
+  anywhere underneath a function. That is what is
+  recorded in the reporter tree. It also only records functions recorded
+  in reporters, not all intermediate functions."
   [reporters]
   (first (accumulate-profile {} #{} reporters #{})))
 

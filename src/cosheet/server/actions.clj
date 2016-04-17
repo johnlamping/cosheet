@@ -22,11 +22,12 @@
     [dom-tracker :refer [id->key key->attributes]]
     [key :refer [item-referent elements-referent prepend-to-key
                  item-referent? content-location-referent?
-                 elements-referent? comment-referent
+                 elements-referent? comment-referent surrogate-referent
                  first-primitive-referent remove-first-primitive-referent
                  remove-content-location-referent remove-comments
                  item-ids-referred-to
-                 key->items key->item-groups]])))
+                 key->items key->item-groups
+                 substitute-in-key]])))
 
 ;;; TODO: validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -107,15 +108,15 @@
   "Run the specified function on the store and each of the arguments.
   The function must return an updated store and the id of a new item.
   Return a map of the new store and a selection request for the first
-  of the new items."
-  [f store arguments key-suffix, old-key]
+  of the new items. key-pattern will be instantited with the first item
+  to generate the key to select."
+  [f store arguments key-pattern old-key]
   (let [[store element-ids] (thread-map f store arguments)]
     (if (empty? element-ids)
       store
       {:store store
-       :select [(prepend-to-key
-                 (item-referent (description->entity (first element-ids) store))
-                 key-suffix)
+       :select [(substitute-in-key
+                 key-pattern (description->entity (first element-ids) store))
                 [old-key]]})))
 
 (defn update-add-entity-adjacent-to
@@ -163,11 +164,12 @@
   The default is to add a sibling of the target, adjacent to the target." 
   [store target-key
    & {:keys [template subject-key adjacent-key adjacent-group-key
-             all-elements position use-bigger]
+             select-key all-elements position use-bigger]
       :or  {template nil           ; template that added item(s) should satisfy
             subject-key nil        ; subject(s) of the new item(s)
             adjacent-key nil       ; item(s) adjacent to new item(s)
             adjacent-group-key nil ; item group(s) adjacent to new item(s)
+            select-key nil         ; instantiate to get key to select
             all-elements false     ; adjacency applies to elements of adjacent
             position :after        ; :before or :after adjacent
             use-bigger false       ; use the bigger part of adjacent's order
@@ -195,10 +197,13 @@
                        adjacent position use-bigger))
                     store
                     (map vector subject-ids adjacents)
-                    (if subject-key
-                     (remove-content-location-referent subject-key)
-                     (remove-first-primitive-referent
-                      (remove-content-location-referent target-key)))
+                    (or select-key
+                        (prepend-to-key
+                         (surrogate-referent)
+                         (if subject-key
+                           (remove-content-location-referent subject-key)
+                           (remove-first-primitive-referent
+                            (remove-content-location-referent target-key)))))
                     target-key)))
 
 (defn update-delete
@@ -259,7 +264,9 @@
            (update-add-entity-adjacent-to
             store (:item-id subject) model-entity
             adjacent position false))
-         store (map vector subjects adjacents) selection-suffix target-key)))))
+         store (map vector subjects adjacents)
+         (prepend-to-key (surrogate-referent) selection-suffix)
+         target-key)))))
 
 (defn selected-handler
   [store session-state target-key]

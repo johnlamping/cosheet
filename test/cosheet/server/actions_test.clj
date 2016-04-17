@@ -23,6 +23,7 @@
              mutable-store-impl)
             (cosheet.server
              [key :refer [item-referent elements-referent prepend-to-key
+                          comment-referent surrogate-referent
                           item-referent? parallel-referent?
                           remove-first-primitive-referent
                           canonicalize-list semantic-to-list
@@ -191,7 +192,7 @@
                         :adjacent-key jane-age-key
                         :use-bigger true)
         s1 (:store result1)
-        select (:select result1)
+        select1 (:select result1)
         new-jane (description->entity jane-id s1)
         new-element (first (filter #(= (content %) "")
                                    (elements new-jane)))
@@ -206,15 +207,29 @@
                         :template '(nil ("age" :tag))
                         :subject-key [(:item-id jane)]
                         :adjacent-group-key jane-elements-key
-                        :use-bigger true)]
+                        :use-bigger true)
+        ;; Try with select-key
+        result3 (do-add store jane-age-key
+                        :template '(nil ("age" :tag))
+                        :subject-key [(:item-id jane)]
+                        :select-key [(comment-referent "test")
+                                     (surrogate-referent)
+                                     (:item-id jane)]
+                        :use-bigger true)
+        select3 (:select result3)]    
     (is (= result2 result1))
     (is (= (canonicalize-list (to-list new-element))
            (canonicalize-list `(""
                                 (~o6 :order :non-semantic)
                                 ("age" :tag (~o7 :order :non-semantic))))))
     (is (= (id->content s1 (:item-id order-entity)) o5))
-    (is (= select [[(:item-id new-element) (:item-id jane)]
-                   [jane-age-key]]))))
+    (is (= select1 [[(:item-id new-element) (:item-id jane)]
+                    [jane-age-key]]))
+    (is (= (:store result1) (:store result3)))
+    (is (= select3 [[(comment-referent "test")
+                     (:item-id new-element)
+                     (:item-id jane)]
+                    [jane-age-key]]))))
 
 (deftest do-delete-test
   (let [mutable-store (new-mutable-store store)

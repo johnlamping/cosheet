@@ -5,7 +5,8 @@
                                                 call-with-immutable
                                                 StoredEntity]]
                      [store  :as store :refer [id-valid? StoredItemDescription]]
-                     [query :refer [matching-elements matching-items]])))
+                     [query :refer [matching-elements matching-items
+                                    template-matches]])))
 
 ;;; Each component is identified with a key, as is any other dom node
 ;;; that the user might interact with. The key both uniquely
@@ -42,6 +43,9 @@
 ;;; Only used as temporaries during key instantiation:
 ;;;    template: [:template <list form of semantic information>]
 ;;;  bound-item: [:bound-item <item>]
+
+;;; Only used in a key pattern:
+;;;   surrogate: [:surrogate <optional condition having variable named :v>]
 
 ;;; Query, elements, and parallel reverents inherently indicate
 ;;; multiple items. A key can have at most one of them, which must be
@@ -123,6 +127,10 @@
 ;;; exemplar must match. The latter is for items that occur outside of
 ;;; exemplars, and is just the item id connected to the store.
 
+;;; A surrogate referent occurs in a key pattern. It will be replaced
+;;; with an item, or, if it has a condition with the part of an item
+;;; that matches the variable in the condition named :v.
+
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
 
@@ -154,12 +162,15 @@
 (defn parallel-referent? [referent]
   (and (sequential? referent) (= ( first referent) :parallel)))
 
+(defn surrogate-referent? [referent]
+  (and (sequential? referent) (= ( first referent) :surrogate)))
+
 (defn referent? [referent]
   (or (item-referent? referent)
       (comment-referent? referent)
       (and (sequential? referent)
            (#{:comment :content :query :elements :key :parallel
-              :template :bound-item}
+              :template :bound-item :surrogate}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -232,6 +243,10 @@
             (convert-items-to-referents branch-referents)]
          (not (empty? negative-referents))
          (conj (convert-items-to-referents negative-referents)))))
+
+(defn surrogate-referent
+  ([] [:surrogate nil])
+  ([condition] [:surrogate condition]))
 
 (defn prepend-to-key
   "Prepend a new referent to the front of a key, maintaining the invariant
@@ -473,7 +488,8 @@
                   (when (not (empty? negative-referents))
                     [(mapcat #(bind-and-combine-referent
                                 % immutable-store in-exemplar)
-                              negative-referents)]))])))
+                             negative-referents)]))])
+    :surrogate [referent]))
 
 (defn bind-referents
   "Bind the key to the store, in preparation for instantiation. Most
@@ -574,3 +590,33 @@
   The store must be immutable."
   [immutable-store key]
   (key->items-or-item-groups immutable-store key true))
+
+(def substitute-in-key)
+
+(defn substitute-in-referent
+  "Substitute into the referent,
+  using the item as the value to instantiate surragates with."
+  [referent item]
+  (cond (surrogate-referent? referent)
+        (let [condition (second referent)]
+          (if condition
+            (let [matches (template-matches condition item)
+                  value (:v (first matches))]
+              (assert (= (count matches) 1))
+              (assert value)
+              (item-referent value))
+            (item-referent item)))
+        (parallel-referent? referent)
+        (let [[_ exemplar branches negatives] referent]
+          (parallel-referent (substitute-in-key exemplar item)
+                             (map #(substitute-in-referent % item) branches)
+                             (map #(substitute-in-referent % item) negatives)))
+        (key-referent? referent)
+        (key-referent (substitute-in-key (second referent) item))
+        true referent))
+
+(defn substitute-in-key
+  "Substitute into the key,
+  using the item as the value to instantiate surragates with."
+  [key item]
+  (vec (map #(substitute-in-referent % item) key)))

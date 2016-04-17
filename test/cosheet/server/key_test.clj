@@ -176,7 +176,8 @@
                                                (item-referent jane)])]
                                [(item-referent joe)
                                 (key-referent [(item-referent jane)
-                                               (item-referent joe)])])]
+                                               (item-referent joe)])])
+                              (surrogate-referent '(nil tag))]
                              store false)
              [[:bound-item joe]
               (content-referent)
@@ -192,7 +193,8 @@
                [[:bound-item jane]
                 [:key [[:bound-item joe] [:bound-item jane]]]]
                [[:bound-item joe]
-                [:key [[:bound-item jane] [:bound-item joe]]]]]])))
+                [:key [[:bound-item jane] [:bound-item joe]]]]]
+              [:surrogate '(nil tag)]])))
 
 (deftest instantiate-exemplar-test
   (let [bind #(vec (bind-referents % store false))
@@ -392,3 +394,24 @@
                          [(item-referent joe-male) (item-referent joe-age)]]]
                        [joe-id jane-id]]])
              (as-set [(as-set [joe-male joe-age]) [jane-age]]))))
+
+(deftest substitute-in-key-test
+  (let [key [(parallel-referent
+               [(surrogate-referent)]
+               [(surrogate-referent
+                 '(nil (:variable (:v :name)
+                                  ((nil "age" "doubtful") :condition)
+                                  (:true :reference))))]
+               [(surrogate-referent
+                 '(nil (:variable (:v :name)
+                                  ("male" :condition)
+                                  (:true :reference))))])
+             (key-referent [(item-referent jane) (surrogate-referent)])
+             (elements-referent '(nil "foo"))]]
+    (is (check  (substitute-in-key key joe)
+                [[:parallel
+                  [(item-referent joe)]
+                  [(item-referent joe-bogus-age)]
+                  [(item-referent joe-male)]]
+                 [:key [(item-referent jane) (item-referent joe)]]
+                 (elements-referent '(nil "foo"))]))))

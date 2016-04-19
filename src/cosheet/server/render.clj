@@ -651,7 +651,7 @@
   "Generate the dom for one node of a table header hierarchy given its elements.
   parent-key gives the scope of the whole column the header applies to, 
   both header and its column through the rows. The
-  elements-condition gives the condition that all the elements in the column
+  elements-condition gives the condition that all the elements in the node
   satisfy. The header-key gives the key for just the header definition(s)
   of this column, and not the elements in rows, and new-column-condition
   gives the condition that new parallel columns must satisfy."
@@ -946,11 +946,9 @@
   ;;              which means to show everything not shown in any
   ;;              other column.
   ;; TODO: Make there there be an element on a table descriptor that
-  ;;       says what new columns must have, rather than the current '(nil :tag)
+  ;;       says what elements of new columns must have, rather than
+  ;;       the current '(nil :tag)
   ;; TODO: Add the "other" column it a table requests it.
-  ;; TODO: Check that the elements-referent for cells uses the header item
-  ;;       that contains the condition, so the key won't change
-  ;;       if the header value changes.
   [table-item parent-key inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))

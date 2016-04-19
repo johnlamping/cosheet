@@ -834,6 +834,20 @@
                                    [(elements-referent
                                      (item-referent age))]
                                    [(query-referent query-list)]]]]
+                               :foo]
+               header-surrogate [:surrogate
+                                 '(nil (:variable (:v :name)
+                                                  ((nil :tag) :condition)
+                                                  (true :reference)))]
+               header-add-key [[:parallel
+                                [header-surrogate [:comment '(nil :tag)]]
+                                [[:key [[:surrogate nil]
+                                        (item-referent table)]]
+                                 [:parallel
+                                  [[:elements [:surrogate nil]]]
+                                  [[:query
+                                    '(nil (nil ("age" :tag))
+                                          (:top-level :non-semantic))]]]]]
                                :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
@@ -851,7 +865,8 @@
                                         :foo]
                                        :template '(:none
                                                    (??? :tag)
-                                                   (:column :non-semantic))]
+                                                   (:column :non-semantic))
+                                       :select-key header-add-key]
                                       :delete [:do-delete
                                                :delete-key
                                                [(item-referent age)
@@ -962,7 +977,20 @@
                                       [(elements-referent
                                         (item-referent name-id))]
                                       [(query-referent query-list)]]]]
-                                   :foo]]
+                                   :foo]
+               header-surrogate [:surrogate
+                                 '(nil (:variable (:v :name)
+                                                  ((nil :tag) :condition)
+                                                  (true :reference)))]
+               header-add-key [[:parallel
+                                [header-surrogate [:comment '(nil :tag)]]
+                                [[:key [[:surrogate nil]
+                                        (item-referent table)]]
+                                 [:parallel
+                                  [[:elements [:surrogate nil]]]
+                                  [[:query
+                                    '(nil (:top-level :non-semantic))]]]]]
+                               :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-container tags top-level"
@@ -980,7 +1008,8 @@
                                          :foo]
                                         :template '(:none
                                                     (??? :tag)
-                                                    (:column :non-semantic))]}}
+                                                    (:column :non-semantic))
+                                        :select-key header-add-key]}}
                 [item-DOM
                  name-tag name-id-header-key #{name-tag-spec}
                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
@@ -997,7 +1026,8 @@
                                         :template '(:none
                                                     (??? :tag)
                                                     (:column :non-semantic)
-                                                    ("name" :tag))]}}
+                                                    ("name" :tag))
+                                        :select-key header-add-key]}}
                 [item-DOM
                  id-tag name-id-header-key #{id-tag-spec}
                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
@@ -1142,7 +1172,32 @@
                name-id-header-key [[:parallel
                                     [[:comment '(nil :tag)]]
                                     name-id-referents]
-                                   :foo]]
+                                   :foo]
+               header-surrogate [:surrogate
+                                 '(nil (:variable (:v :name)
+                                                  ((nil :tag) :condition)
+                                                  (true :reference)))]
+               header-add-key [[:parallel
+                                [header-surrogate [:comment '(nil :tag)]]
+                                [[:key [[:surrogate nil]
+                                        (item-referent table)]]
+                                 [:parallel
+                                  [[:elements [:surrogate nil]]]
+                                  [[:query
+                                    '(nil (:top-level :non-semantic))]]]]]
+                               :foo]
+               deep-header-add-key [[:parallel
+                                     [header-surrogate [:comment '(nil :tag)]]
+                                     [[:key [[:surrogate nil]
+                                             (item-referent table)]]
+                                      [:parallel
+                                       [[:parallel
+                                         []
+                                         [[:elements [:surrogate nil]]]
+                                         [[:elements (item-referent name-id)]]]]
+                                       [[:query
+                                         '(nil (:top-level :non-semantic))]]]]]
+                               :foo]]
            [:div {:class "table" :key [(item-referent table) :foo]}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack tags top-level"}
@@ -1164,7 +1219,8 @@
                                          :foo]
                                         :template
                                         '(:none (??? :tag)
-                                                (:column :non-semantic))]
+                                                (:column :non-semantic))
+                                        :select-key header-add-key]
                                        :delete
                                        [:do-delete
                                         :delete-key [[:parallel
@@ -1197,7 +1253,8 @@
                                                          :foo]
                                     :template '(:none (??? :tag)
                                                       (:column :non-semantic)
-                                                      ("name" :tag))]}}]]
+                                                      ("name" :tag))
+                                    :select-key deep-header-add-key]}}]]
                [:div {:class "column-header-container rightmost tags"
                       :style {:width "150px"}}
                  [:component {:key (prepend-to-key (item-referent id-tag)
@@ -1213,7 +1270,8 @@
                                           :template
                                           '(:none (??? :tag)
                                                   (:column :non-semantic)
-                                                  ("name" :tag))]
+                                                  ("name" :tag))
+                                          :select-key header-add-key]
                                          :delete [:do-delete
                                                   :delete-key
                                                   [(item-referent name-id)
@@ -1377,7 +1435,32 @@
                name-id-header-key [[:parallel
                                     [[:comment '(nil :tag)]]
                                     name-id-referents]
-                                   :foo]]
+                                   :foo]
+               header-surrogate [:surrogate
+                                 '(nil (:variable (:v :name)
+                                                  ((nil :tag) :condition)
+                                                  (true :reference)))]
+               header-add-key [[:parallel
+                                [header-surrogate [:comment '(nil :tag)]]
+                                [[:key [[:surrogate nil]
+                                        (item-referent table)]]
+                                 [:parallel
+                                  [[:elements [:surrogate nil]]]
+                                  [[:query
+                                    '(nil (:top-level :non-semantic))]]]]]
+                               :foo]
+               deep-header-add-key [[:parallel
+                                     [header-surrogate [:comment '(nil :tag)]]
+                                     [[:key [[:surrogate nil]
+                                             (item-referent table)]]
+                                      [:parallel
+                                       [[:parallel
+                                         []
+                                         [[:elements [:surrogate nil]]]
+                                         [[:elements (item-referent name-id)]]]]
+                                       [[:query
+                                         '(nil (:top-level :non-semantic))]]]]]
+                               :foo]]
            [:div {:class "table" :key table-key}
             [:div {:class "column-header-sequence"}
              [:div {:class "column-header-stack tags top-level"}
@@ -1398,7 +1481,8 @@
                                          :foo]
                                         :template
                                         '(:none (??? :tag)
-                                                (:column :non-semantic))]
+                                                (:column :non-semantic))
+                                        :select-key header-add-key]
                                        :delete [:do-delete
                                                 :delete-key
                                                 [[:parallel
@@ -1426,7 +1510,8 @@
                                         :template
                                         '(:none (??? :tag)
                                                 (:column :non-semantic)
-                                                ("name" :tag))]
+                                                ("name" :tag))
+                                        :select-key header-add-key]
                                        :delete [:do-delete
                                                 :delete-key
                                                 [(item-referent name-id)
@@ -1454,7 +1539,8 @@
                                     :template
                                     '(:none (??? :tag)
                                             (:column :non-semantic)
-                                            ("name" :tag))]
+                                            ("name" :tag))
+                                    :select-key deep-header-add-key]
                                    :delete [:do-delete
                                             :delete-key
                                             [(item-referent name)

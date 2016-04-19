@@ -80,6 +80,19 @@
     (is (= (remove-first-primitive-referent [[:parallel [a b] [b c] [c a]] b])
            [[:parallel [b] [b c] [c a]] b]))))
 
+(deftest first-primitive-referents-test
+  (let [a (item-referent (description->entity (->ItemId :a) store))
+        b (item-referent (description->entity (->ItemId :b) store))
+        c (item-referent (description->entity (->ItemId :c) store))]
+     (is (= (first-primitive-referents [a b])
+            [a]))
+     (is (= (first-primitive-referents [[:parallel [a b] [c]] c])
+            [a]))
+     (is (= (first-primitive-referents [[:parallel [] [a b]] c])
+            [a b]))
+     (is (= (first-primitive-referents [[:parallel [] [[:key [a b]] c]]])
+            [a c]))))
+
 (deftest remove-content-location-referent-test
   (let [a (item-referent (description->entity (->ItemId :a) store))
         b (item-referent (description->entity (->ItemId :b) store))

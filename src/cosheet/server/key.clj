@@ -1,5 +1,6 @@
 (ns cosheet.server.key
-  (:require (cosheet [utils :refer [multiset]]
+  (:require [clojure.walk :refer [postwalk]]
+            (cosheet [utils :refer [multiset]]
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :as entity :refer [elements description->entity
                                                 call-with-immutable
@@ -271,6 +272,20 @@
       (let [[type exemplar _] referent]
         (first-primitive-referent exemplar))
       referent)))
+
+(defn first-primitive-referents
+  "Return the first non-parallel, non-key referents of a key, recursing through
+  parallels and keys."
+  [key]
+  (let [referent (first key)]
+    (cond (parallel-referent? referent)
+          (let [[type exemplar branches] referent]
+            (if (empty? exemplar)
+              (mapcat #(first-primitive-referents [%]) branches)
+              (first-primitive-referents exemplar)))
+          (key-referent? referent)
+          (first-primitive-referents (second referent))
+          true [referent])))
 
 (defn remove-first-primitive-referent
   "Remove the first referent from the key, going into exemplars."
@@ -591,32 +606,27 @@
   [immutable-store key]
   (key->items-or-item-groups immutable-store key true))
 
-(def substitute-in-key)
-
-(defn substitute-in-referent
-  "Substitute into the referent,
-  using the item as the value to instantiate surragates with."
-  [referent item]
-  (cond (surrogate-referent? referent)
-        (let [condition (second referent)]
-          (if condition
-            (let [matches (template-matches condition item)
-                  value (:v (first matches))]
-              (assert (= (count matches) 1))
-              (assert value)
-              (item-referent value))
-            (item-referent item)))
-        (parallel-referent? referent)
-        (let [[_ exemplar branches negatives] referent]
-          (parallel-referent (substitute-in-key exemplar item)
-                             (map #(substitute-in-referent % item) branches)
-                             (map #(substitute-in-referent % item) negatives)))
-        (key-referent? referent)
-        (key-referent (substitute-in-key (second referent) item))
-        true referent))
+(defn referent-for-surrogate
+  "Given a surrogate referent and an item to instantiate it with respect to,
+  return the referent the surrogate refers to."
+  [surrogate item]
+  (let [condition (second surrogate)]
+    (if condition
+      (let [matches (template-matches condition item)
+            value (:v (first matches))]
+        ;; TODO: We should really only have one match, but sometimes
+        ;;       we don't have a condition that picks out just one element.
+        ;;       This should be fixed once we split out scopes from keys.
+        (assert (>= (count matches) 1))
+        (assert value)
+        (item-referent value))
+      (item-referent item))))
 
 (defn substitute-in-key
   "Substitute into the key,
   using the item as the value to instantiate surragates with."
   [key item]
-  (vec (map #(substitute-in-referent % item) key)))
+  (postwalk #(if (surrogate-referent? %)
+               (referent-for-surrogate % item)
+               %)
+            key))

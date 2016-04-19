@@ -1,5 +1,6 @@
 (ns cosheet.server.render
-  (:require (cosheet [entity :as entity]
+  (:require [clojure.walk :refer [postwalk]]
+            (cosheet [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [utils :refer [multiset multiset-diff multiset-union
                                     multiset-to-generating-values update-last]]
@@ -14,9 +15,9 @@
                           comment-referent key-referent
                           content-location-referent
                           elements-referent query-referent
-                          parallel-referent
-                          prepend-to-key elements-referent?
-                          item-referent? first-primitive-referent
+                          parallel-referent surrogate-referent
+                          prepend-to-key elements-referent? parallel-referent?
+                          item-referent? first-primitive-referents
                           remove-first-primitive-referent
                           semantic-elements
                           canonicalize-list semantic-to-list
@@ -606,22 +607,56 @@
     table-parent-key))
 
 (defn add-column-command
-  "Return instructions to add a new column."
-  [column-header-key column-condition]
-  {:add-column [:do-add
-                :subject-key (remove-first-primitive-referent column-header-key)
-                :adjacent-group-key column-header-key
-                :template column-condition]})
+  "Return instructions to add a new column. The header-key gives 
+  the key for just the header, while column-key gives the scope of
+  the whole column the header applies to, both header and its column
+  through the rows."
+  [header-key column-key column-condition]
+  (assert (parallel-referent? (first column-key)))
+  (let [[_ exemplar branches exclusions] (first column-key)]
+    ;; TODO: This does not handle column headers that are in tables nested
+    ;; in other column headers. That should be OK while we remove scope
+    ;; from keys.
+    (assert (empty exemplar))
+    (let [;; There is an item for the new column, which has an element
+          ;; satisfying the new item template. We want to select that
+          ;; element.
+          element-template (first (matching-elements '??? column-condition))
+          element-condition (cons nil (rest element-template))
+          element-variable `(:variable
+                             (:v :name)
+                             (~element-condition :condition)
+                             (true :reference))
+          header-ids (set (first-primitive-referents header-key))
+          select-key (vec (cons
+                           (parallel-referent
+                            [(surrogate-referent `(nil ~element-variable))
+                             (comment-referent element-condition)]
+                            (vec (distinct
+                                  (map (fn [referent]
+                                         (postwalk #(if (header-ids %)
+                                                      (surrogate-referent)
+                                                      %)
+                                                   referent))
+                                       branches)))
+                            exclusions)
+                           (rest column-key)))]
+      {:add-column [:do-add
+                    :subject-key (remove-first-primitive-referent header-key)
+                    :adjacent-group-key header-key
+                    :template column-condition
+                    :select-key (when element-template select-key)]})))
 
 (defn table-header-node-elements-DOM
   "Generate the dom for one node of a table header hierarchy given its elements.
-  parent-key gives the parent scope the header applies to, and
-  elements-condition the condition that all the elements
-  satisfy. column-key gives the key for just the header definition(s)
+  parent-key gives the scope of the whole column the header applies to, 
+  both header and its column through the rows. The
+  elements-condition gives the condition that all the elements in the column
+  satisfy. The header-key gives the key for just the header definition(s)
   of this column, and not the elements in rows, and new-column-condition
   gives the condition that new parallel columns must satisfy."
   [example-elements width parent-key elements-condition
-   column-key new-column-condition delete-key rightmost inherited]
+   header-key new-column-condition delete-key rightmost inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let
       [ordered-elements (order-items example-elements)
@@ -639,8 +674,8 @@
                                              (take position element-lists)))]
                           (add-attributes
                            component
-                           {:commands (add-column-command
-                                       column-key column-condition)})))
+                           {:commands (add-column-command header-key parent-key
+                                                          column-condition)})))
                           components)]
       (as-> (vertical-stack components) dom
         (cond delete-key (add-attributes
@@ -655,7 +690,8 @@
                                      parent-key)
                                :class "editable"
                                :commands (into (add-column-command
-                                                column-key new-column-condition)
+                                                header-key parent-key
+                                                new-column-condition)
                                                {:set-content
                                                 [:do-create-content]})})
           dom)

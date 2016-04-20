@@ -623,6 +623,14 @@
           ;; element.
           element-template (first (matching-elements '??? column-condition))
           element-condition (cons nil (rest element-template))
+          ;; TODO: This doesn't handle header items that are below
+          ;; other header items, as there is no query that can pick
+          ;; out the new item as opposed to the items above. The solution
+          ;; is to add a :exclusive option on referent variables, which means
+          ;; that  they can't match the same item as any other exclusive
+          ;; referent. With that, we introduce variables to match each of the
+          ;; above header items, leaving just the new one to match the :v
+          ;; variable.
           element-variable `(:variable
                              (:v :name)
                              (~element-condition :condition)

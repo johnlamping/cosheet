@@ -349,9 +349,7 @@
                                          parent-key)]
         (empty-DOM-with-position parent-key condition adjacent-key :before))
       (components-DOM items-with-excluded
-                      parent-key condition
-                      {:commands {:add-row [:do-add]}}
-                      inherited))))
+                      parent-key condition {} inherited))))
 
 (defn row-header-elements-DOM
   "Given information about the appearance of a flattened hierarchy

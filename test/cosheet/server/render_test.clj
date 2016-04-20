@@ -314,8 +314,7 @@
                          :key age-key}
              [item-DOM age [:parent] #{age-label age-other-label}
               {:commands {:add-sibling [:do-add :template
-                                        '(nil ("other" :tag) ("age" :tag))]
-                          :add-row [:do-add]}}
+                                        '(nil ("other" :tag) ("age" :tag))]}}
               {:depth 0, :do-not-merge #{}}]]]]
           [:div {:key (into [(elements-referent '(nil :tag))
                              (comment-referent '(nil :tag))]
@@ -329,8 +328,7 @@
                          :key other-key}
              [item-DOM other [:parent] #{other-label}
               {:commands {:add-sibling [:do-add :template
-                                        '(nil ("other" :tag))]
-                          :add-row [:do-add]}}
+                                        '(nil ("other" :tag))]}}
               {:depth 0, :do-not-merge #{}}]]]]))))
 
 (deftest item-DOM-test
@@ -393,8 +391,7 @@
               doubtful item-key
               #{confidence}
               {:commands {:add-sibling [:do-add
-                                        :template '(nil ("confidence" :tag))]
-                          :add-row [:do-add]}}
+                                        :template '(nil ("confidence" :tag))]}}
               {:depth 1 :do-not-merge #{}}]]]]])))
   ;; Check that we generate no-tags.
   (let [[dom age]
@@ -425,8 +422,7 @@
                [item-DOM
                 doubtful item-key
                 #{}
-                {:commands {:add-sibling [:do-add :template '(nil)]
-                            :add-row [:do-add]}}
+                {:commands {:add-sibling [:do-add :template '(nil)]}}
                 {:depth 1 :do-not-merge #{}}]]]]])))
   ;; Test added elements, and a mutable set for do-not-merge
   (let [do-not-merge (new-mutable-set #{})
@@ -482,14 +478,12 @@
                [:component (any map?)
                 [item-DOM bogus-age item-key #{bogus-age-tag}
                  {:commands {:add-sibling [:do-add
-                                           :template '(nil ("age" :tag))]
-                             :add-row [:do-add]}}
+                                           :template '(nil ("age" :tag))]}}
                  (any map?)]]
                [:component (any map?)
                 [item-DOM age item-key #{age-tag}
                  {:commands {:add-sibling [:do-add
-                                           :template '(nil ("age" :tag))]
-                             :add-row [:do-add]}}
+                                           :template '(nil ("age" :tag))]}}
                  (any map?)]]]]]]))
       ;; Now, make the do-not-merge be non-trivial
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
@@ -522,8 +516,7 @@
                 bogus-age item-key
                 #{bogus-age-tag}
                 {:commands {:add-sibling [:do-add
-                                          :template '(nil ("age" :tag))]
-                            :add-row [:do-add]}}
+                                          :template '(nil ("age" :tag))]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
               [:div (any map?)
@@ -544,9 +537,7 @@
                 age item-key
                 #{age-tag}
                 {:commands {:add-sibling [:do-add
-                                          :template '(nil ("age" :tag))]
-                            
-                            :add-row [:do-add]}}
+                                          :template '(nil ("age" :tag))]}}
                 (any map?)]]]]]
            ))))
   ;; Test a hierarchy.
@@ -616,8 +607,7 @@
               [:component {:key (into [(:item-id v1)] item-key)
                            :class "element"}
                [item-DOM v1 item-key #{L1}
-                {:commands {:add-sibling [:do-add :template [nil ["L1" :tag]]]
-                            :add-row [:do-add]}}
+                {:commands {:add-sibling [:do-add :template [nil ["L1" :tag]]]}}
                 (any map?)]]]
              [:div {:class "element-row"}
               [:div {:class "indent-wrapper row-header tags"}
@@ -644,8 +634,7 @@
                 {:commands {:add-sibling [:do-add
                                           :template (as-set [nil
                                                              ["L1" :tag]
-                                                             ["L2" :tag]])]
-                            :add-row [:do-add]}}
+                                                             ["L2" :tag]])]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
               [:div {:class "indent-wrapper row-header tags bottom-border"}
@@ -672,8 +661,7 @@
                 {:commands {:add-sibling [:do-add
                                           :template (as-set [nil
                                                              ["L3" :tag]
-                                                             ["L1" :tag]])]
-                            :add-row [:do-add]}}
+                                                             ["L1" :tag]])]}}
                 (any map?)]]]]]))))
   ;; Test a hierarchy with an empty content in one row and an empty
   ;; tag in another.
@@ -763,8 +751,7 @@
                 {:commands {:add-sibling
                             [:do-add :template (as-set [nil
                                                        ["L2" :tag]
-                                                        ["L1" :tag]])]
-                            :add-row [:do-add]}}
+                                                        ["L1" :tag]])]}}
                 (any map?)]]]
              [:div {:class "element-row last-row"}
               [:div {:class "indent-wrapper row-header tags bottom-border"}
@@ -783,8 +770,7 @@
                [item-DOM
                 vb item-key
                 #{Lb1}
-                {:commands {:add-sibling [:do-add :template '(nil ("L1" :tag))]
-                            :add-row [:do-add]}}
+                {:commands {:add-sibling [:do-add :template '(nil ("L1" :tag))]}}
                 {:depth 1 :do-not-merge #{}}]]]]])))))
 
 (deftest table-DOM-test

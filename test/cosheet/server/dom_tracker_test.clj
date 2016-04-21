@@ -244,7 +244,7 @@
         reporter (new-reporter :value jane) ;; Will change to jill.
         c-map {:key joe-key
                :definition [item-DOM
-                            joe [:k] #{} {} {:depth 0 :do-not-merge #{}}]
+                            joe [:k] #{} {:depth 0 :do-not-merge #{}}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
@@ -254,11 +254,11 @@
                         [:component
                          {:key [(item-referent joe) :d] :width 1}
                          [item-DOM joe [:d]
-                          #{} {}  {:depth 1 :do-not-merge #{}}]]
+                          #{} {:depth 1 :do-not-merge #{}}]]
                         [:component
                          {:key [(item-referent item) :d]}
                          [item-DOM item [:d]
-                          #{} {} {:depth 1 :do-not-merge #{}}]]])
+                          #{} {:depth 1 :do-not-merge #{}}]]])
                      reporter]}]
     (swap-and-act
      tracker #(-> %
@@ -324,9 +324,9 @@
           [:d] [:div {:key [:d]}
                 [:component {:key [(item-referent joe) :d]
                              :width 1}
-                 [item-DOM joe [:d] #{} {} {:depth 1 :do-not-merge #{}}]]
+                 [item-DOM joe [:d] #{} {:depth 1 :do-not-merge #{}}]]
                 [:component {:key [(item-referent jane) :d]}
-                 [item-DOM jane [:d] #{} {} {:depth 1 :do-not-merge #{}}]]]
+                 [item-DOM jane [:d] #{} {:depth 1 :do-not-merge #{}}]]]
           [(item-referent joe) :d] [:div  {:key [(item-referent joe) :d]
                                            :class "content-text editable item"
                                            :commands {:set-content
@@ -380,7 +380,7 @@
         joe (let-mutated [joe "Joe"] joe)
         joe-key [(item-referent joe) :root]]
     (add-dom tracker "root" joe-key
-             [item-DOM joe [:root] #{} {} {:depth 0 :do-not-merge #{}}])
+             [item-DOM joe [:root] #{} {:depth 0 :do-not-merge #{}}])
     (compute md)
     (let [data @tracker
           component (get-in data [:components joe-key])]

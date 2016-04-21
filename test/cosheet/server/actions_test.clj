@@ -81,13 +81,13 @@
              [joe-id :bob]
              [item-DOM
               (description->entity joe-id mutable-store)
-              [:bob] #{} {} {:depth 1 :do-not-merge #{}}])
+              [:bob] #{} {:depth 1 :do-not-merge #{}}])
     (add-dom tracker
              "jane-root"
              [jane-id :bob]
              [item-DOM
               (description->entity jane-id mutable-store)
-              [:bob] #{} {} {:depth 1  :do-not-merge #{}}])
+              [:bob] #{} {:depth 1  :do-not-merge #{}}])
     (compute md)
     tracker))
 
@@ -179,7 +179,7 @@
 (deftest do-add-test
   (let [jane-dom (current-value
                   (item-DOM jane [(item-referent jane)]
-                            #{} {} {:depth 1 :do-not-merge #{}}))
+                            #{} {:depth 1 :do-not-merge #{}}))
         order-entity (first (label->elements jane-age :order))
         order (content order-entity)
         age-dom (first (filter #(= (first (:key (second %)))

@@ -158,8 +158,7 @@
             [] (seq set))))
 
 (defn canonical-to-list
-  "Given a canonicalized list form of an item or set of items,
-  return a list form for it."
+  "Given a canonicalized list form of an item, return a list form for it."
   [item]
   (if (sequential? item)
     (do (assert (= (count item) 2))

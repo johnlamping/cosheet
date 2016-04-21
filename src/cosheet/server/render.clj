@@ -200,7 +200,7 @@
   "Given a non-empty list of [item, excluded-elements] pairs,
   generate DOM for a vertical list of a component for each item.
   Add the added attributes to the content of each item dom."
-  [items-with-excluded parent-key condition content-attributes inherited]
+  [items-with-excluded parent-key condition inherited]
   (assert (not (empty? items-with-excluded)))
   (let [item-doms (map (fn [[item excluded-elements]]
                            (let [key (prepend-to-key (item-referent item)
@@ -209,19 +209,15 @@
                               {:key key}
                               [item-DOM item parent-key
                                (set excluded-elements)
-                               (into-attributes
-                                {:commands {:add-sibling
-                                            [:do-add
-                                             :template condition]}}
-                                content-attributes)
-                               inherited])))
+                               (assoc-in inherited [:commands :add-sibling]
+                                         [:do-add :template condition])])))
                          items-with-excluded)]
     (vertical-stack item-doms)))
 
 (defn displaced-element-component
   "Return a component for an element that satisfies a condition and
   may be displayed under the condition, rather than under its parent."
-  [element parent-key condition inherited & {:as content-attributes}]
+  [element parent-key condition inherited]
   (assert (not (elements-referent? (first parent-key))))
   (expr-let [condition-specs (condition-satisfiers element condition)]
     (let [;; We must make this key different from what it would have
@@ -232,23 +228,13 @@
       (make-component {:key key}
                       [item-DOM element condition-key
                        (set condition-specs)
-                       (into-attributes 
-                        content-attributes
-                        {:commands {:add-sibling [:do-add
-                                                  :template condition]}})
-                       inherited]))))
-
-(defn add-adjacent-command
-  "Return a command for adding an item adjacent to a key."
-  [key]
-  [:do-add
-   :subject-key (remove-first-primitive-referent key)
-   :adjacent-group-key key])
+                       (assoc-in inherited [:commands :add-sibling]
+                                 [:do-add :template condition])]))))
 
 (defn empty-displaced-in-row-DOM
   "Return DOM for an empty set of displaced elements satisfying a condition,
   suitable for putting in a row about its parent."
-  [parent-key condition]
+  [parent-key condition inherited]
   [:div {:key (prepend-to-key
                (elements-referent condition)
                ;; If a value gets put in here, it's key will have
@@ -257,8 +243,8 @@
                ;; how to select it.
                (prepend-to-key (comment-referent condition)
                                parent-key))
-         :commands {:set-content [:do-create-content]
-                    :add-row (add-adjacent-command parent-key)}
+         :commands (into (or (:commands inherited) {})
+                         {:set-content [:do-create-content]})
          :class "editable"}])
 
 (defn displaced-elements-in-row-DOM
@@ -267,13 +253,12 @@
   putting in a row about their parent(s)."
   [elements parent-key condition inherited]
   (if (empty? elements)
-    (empty-displaced-in-row-DOM parent-key condition)
+    (empty-displaced-in-row-DOM parent-key condition inherited)
     (expr-let [components
                (expr-seq
                 map
                 #(displaced-element-component
-                  % parent-key condition inherited
-                  :commands {:add-row (add-adjacent-command parent-key)})
+                  % parent-key condition inherited)
                 elements)]
       (vertical-stack components))))
 
@@ -349,7 +334,7 @@
                                          parent-key)]
         (empty-DOM-with-position parent-key condition adjacent-key :before))
       (components-DOM items-with-excluded
-                      parent-key condition {} inherited))))
+                      parent-key condition inherited))))
 
 (defn row-header-elements-DOM
   "Given information about the appearance of a flattened hierarchy
@@ -407,17 +392,34 @@
 
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
-  generate DOM for an element table row for the items."
+  generate DOM for an element table row for its items."
   ;; TODO: for deep items, use a layout with tag above content to conserve
   ;; horizontal space.
   [hierarchy-node parent-key inherited]
-  (expr-let [tags-label-dom (tag-label-DOM
-                             hierarchy-node parent-key inherited)
-             tags-items-dom (add-attributes
-                             (hierarchy-members-DOM
-                              hierarchy-node parent-key '(nil) inherited)
-                             {:class "element"})]
-    [:div {:class "element-row"} tags-label-dom tags-items-dom]))
+  (let [inherited (assoc-in
+                   inherited [:commands :add-row]
+                   (let [ancestor-props
+                         (first (multiset-diff
+                                 (:cumulative-properties hierarchy-node)
+                                 (:properties hierarchy-node)))]
+                     (cond->
+                         [:do-add
+                          :subject-key parent-key
+                          :adjacent-group-key (prepend-to-key
+                                               (hierarchy-node-items-referent
+                                                hierarchy-node)
+                                               parent-key)]
+                       (not (empty? ancestor-props))
+                       (conj :template
+                             (list* nil
+                                    (canonical-set-to-list ancestor-props))))))]
+    (expr-let [tags-label-dom (tag-label-DOM
+                               hierarchy-node parent-key inherited)
+               tags-items-dom (add-attributes
+                               (hierarchy-members-DOM
+                                hierarchy-node parent-key '(nil) inherited)
+                               {:class "element"})]
+      [:div {:class "element-row"} tags-label-dom tags-items-dom])))
 
 (defn tagged-items-table-DOM
   "Return DOM for the given items, in order, as a grid of tags and values."
@@ -481,7 +483,8 @@
                     (prepend-to-key
                      (hierarchy-node-items-referent hierarchy-node)
                      parent-key)
-                    '(nil :tag))
+                    '(nil :tag)
+                    inherited)
                    {:class "wrapped-element tags indent-wrapper"})
                   (add-attributes content {:class "depth-1"}))
             content)
@@ -496,8 +499,7 @@
   "Return DOM for the given items in order as a single column.
   Don't include tags needed to imply condition. If there are no tags,
   just give an ordinary column."
-  [items parent-key condition must-show-empty-labels
-   content-attributes inherited]
+  [items parent-key condition must-show-empty-labels inherited]
   (expr-let
       [all-labels (expr-seq
                    map #(matching-elements '(nil :tag) %) items)
@@ -508,14 +510,13 @@
                       all-labels excluded)]
       (if (and (every? empty? labels) (not must-show-empty-labels))
         (components-DOM (map vector items excluded)
-                        parent-key condition content-attributes inherited)
+                        parent-key condition inherited)
         (expr-let [item-maps (item-maps-by-elements items labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excluded)
                    hierarchy (hierarchy-by-canonical-info
                               augmented (:do-not-merge inherited))
-                   ;; TODO: Pipe content-attributes down through here.
                    doms (expr-seq map #(tagged-items-column-subtree-DOM
                                         % parent-key condition true
                                         must-show-empty-labels inherited)
@@ -527,44 +528,45 @@
    describing an item and all its elements, except the ones in
    excluded. Where appropriate, inherit properties from the map of
    inherited properties."
-  [item parent-key excluded content-attributes inherited]
+  [item parent-key excluded inherited]
   (println "Generating DOM for"
            (simplify-for-print item) (simplify-for-print parent-key))
   (expr-let [content (entity/content item)
              elements (semantic-elements item)]
     (let [item-key (prepend-to-key (item-referent item) parent-key)
           elements (remove excluded elements)
-          inherited-down (update-in inherited [:depth] inc)
+          inherited-down (-> inherited
+                             (update-in [:depth] inc)
+                             (dissoc :commands))
           content-dom
           (if (entity/atom? content)
             (let [is-placeholder (and (symbol? content)
                                       (= (subs (str content) 0 3) "???"))]
-              [:div (into-attributes
-                     {:class (cond-> "content-text editable"
-                               (empty? elements) (str " item")
-                               is-placeholder (str " placeholder"))
-                      :key (if (empty? elements)
-                             item-key
-                             (prepend-to-key (content-location-referent)
-                                             item-key))
-                      :commands {:set-content [:do-set-content]
-                                 :delete [:do-delete]
-                                 :add-element [:do-add :subject-key item-key]}}
-                     content-attributes)
+              [:div {:class (cond-> "content-text editable"
+                              (empty? elements) (str " item")
+                              is-placeholder (str " placeholder"))
+                     :key (if (empty? elements)
+                            item-key
+                            (prepend-to-key (content-location-referent)
+                                            item-key))
+                     :commands (into (or (:commands inherited) {})
+                                     {:set-content [:do-set-content]
+                                      :delete [:do-delete]
+                                      :add-element [:do-add :subject-key item-key]})}
                (cond (= content :none) ""
                      is-placeholder "???"                     
                      true (str content))])
-            ;; TODO: This doesn't support add-sibling.
+            ;; TODO: This doesn't support add-sibling or content attributes
             (make-component
              {:key (prepend-to-key (item-referent content) item-key)}
-             [item-DOM content item-key #{} {}  inherited-down]))]
+             [item-DOM content item-key #{} inherited-down]))]
       (if (empty? elements)
         content-dom
         (expr-let [ordered-elements (order-items elements)
                    elements-dom
                    (if (:narrow inherited)
                      (possibly-tagged-items-column-DOM
-                      ordered-elements item-key '(nil) true {} inherited-down)
+                      ordered-elements item-key '(nil) true inherited-down)
                      (tagged-items-table-DOM
                       ordered-elements item-key inherited-down))]
           [:div {:class "item with-elements" :key item-key}
@@ -861,8 +863,9 @@
       (expr-let [items (order-items items)
                  dom (possibly-tagged-items-column-DOM
                       items cell-key condition false
-                      {:commands commands}
-                      (assoc inherited :narrow true))]
+                      (assoc inherited
+                             :narrow true
+                             :commands commands))]
         (add-attributes dom {:class "table-cell has-border"})))))
 
 (defn table-row-column-group-member-DOM

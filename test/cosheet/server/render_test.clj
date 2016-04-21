@@ -211,8 +211,11 @@
 (def root (description->entity rid store))
 
 (deftest row-header-elements-DOM-test
-  (is (check (row-header-elements-DOM {:depth 0 :is-tags true}
-                                      nil '(nil :tag) [rid] {})
+  (is (check (row-header-elements-DOM
+              {:depth 0 :is-tags true}
+              nil '(nil :tag) [rid]
+              {:commands {:add-row [:do-add :subject-key nil
+                                         :adjacent-group-key [rid]]}})
              [:div {:class "editable full-row row-header tags"
                     :key [[:elements [nil :tag]] [:comment [nil :tag]] rid]
                     :commands {:set-content [:do-create-content]
@@ -220,13 +223,16 @@
                                          :adjacent-group-key [rid]]}}]))
   (let [[dom fred fred-tag]
         (let-mutated [fred '("Fred" :tag)]
-          (expr-let [dom (row-header-elements-DOM {:depth 1
-                                                   :is-tags true
-                                                   :bottom-border :indented
-                                                   :for-multiple true
-                                                   :with-children true}
-                                                  [fred] '(nil :tag) [rid]
-                                                  {:depth 0})
+          (expr-let [dom (row-header-elements-DOM
+                          {:depth 1
+                           :is-tags true
+                           :bottom-border :indented
+                           :for-multiple true
+                           :with-children true}
+                          [fred] '(nil :tag) [rid]
+                          {:depth 0
+                           :commands {:add-row [:do-add :subject-key nil
+                                                :adjacent-group-key [rid]]}})
                      fred-elements (entity/elements fred)]
             [dom fred (first fred-elements)]))]
     (is (check-keys dom fred))
@@ -238,10 +244,10 @@
             [item-DOM
              fred [[:comment [nil :tag]] rid]
              #{fred-tag}
-             {:commands {:add-sibling [:do-add :template '(nil :tag)]
+             {:depth 0
+              :commands {:add-sibling [:do-add :template '(nil :tag)]
                          :add-row [:do-add :subject-key nil
-                                   :adjacent-group-key [rid]]}}
-             {:depth 0}]]]])))
+                                   :adjacent-group-key [rid]]}}]]]])))
   (let [[dom fred fran]
         (let-mutated [fred '("Fred" :tag)
                       fran "Fran"]
@@ -251,7 +257,10 @@
                            :top-border :full
                            :bottom-border :corner}
                           [fred fran] '(nil :tag) [rid]
-                          {:depth 1 :do-not-merge #{}})]
+                          {:depth 1
+                           :do-not-merge #{}
+                           :commands {:add-row [:do-add :subject-key nil
+                                                :adjacent-group-key [rid]]}})]
             [dom fred fran]))
         fred-tag (first (current-value (entity/elements fred)))]
     (is (check-keys dom fred))
@@ -265,18 +274,18 @@
             [item-DOM
              fred [[:comment [nil :tag]] rid]
              #{fred-tag}
-             {:commands {:add-sibling [:do-add :template '(nil :tag)]
+             {:depth 1 :do-not-merge #{}
+              :commands {:add-sibling [:do-add :template '(nil :tag)]
                          :add-row [:do-add :subject-key nil
-                                   :adjacent-group-key [rid]]}}
-             {:depth 1 :do-not-merge #{}}]]
+                                   :adjacent-group-key [rid]]}}]]
            [:component {:key [(:item-id fran) [:comment [nil :tag]] rid]}
             [item-DOM
              fran [[:comment [nil :tag]] rid]
              #{}
-             {:commands {:add-sibling [:do-add :template '(nil :tag)]
+             {:depth 1 :do-not-merge #{}
+              :commands {:add-sibling [:do-add :template '(nil :tag)]
                          :add-row [:do-add :subject-key nil
-                                   :adjacent-group-key [rid]]}}
-             {:depth 1 :do-not-merge #{}}]]]]))))
+                                   :adjacent-group-key [rid]]}}]]]]))))
 
 (deftest possibly-tagged-items-column-DOM-test
   (let [[dom age other]
@@ -285,7 +294,7 @@
                       other `("x" ("other" :tag (~o1 :order :non-semantic)))]
           (expr-let [dom (possibly-tagged-items-column-DOM
                           [age other] [:parent] '(nil ("other" :tag))
-                          true {} {:depth 0 :do-not-merge #{}})]
+                          true {:depth 0 :do-not-merge #{}})]
             [dom age other]))
         age-label (first (current-value (label->elements age o1)))
         age-label-tag (first (current-value (matching-elements :tag age-label)))
@@ -304,37 +313,38 @@
           [:div {:class "wrapped-element tags"}
            [:component {:key age-label-key}
             [item-DOM age-label tags-key #{age-label-tag}
-             {:commands {:add-row [:do-add
-                                   :subject-key [:parent]
-                                   :adjacent-group-key age-key],
-                         :add-sibling [:do-add :template '(nil :tag)]}}
-             {:depth 0, :do-not-merge #{}}]]
+             {:depth 0, :do-not-merge #{}
+              :commands {;; :add-row [:do-add
+                         ;; :subject-key [:parent]
+                         ;; :adjacent-group-key age-key]
+                         :add-sibling [:do-add :template '(nil :tag)]}}]]
            [:div {:class "indent-wrapper"}
             [:component {:class "depth-1 has-border"
                          :key age-key}
              [item-DOM age [:parent] #{age-label age-other-label}
-              {:commands {:add-sibling [:do-add :template
-                                        '(nil ("other" :tag) ("age" :tag))]}}
-              {:depth 0, :do-not-merge #{}}]]]]
+              {:depth 0, :do-not-merge #{}
+               :commands {:add-sibling [:do-add :template
+                                        '(nil ("other" :tag) ("age" :tag))]}}]]]]
           [:div {:key (into [(elements-referent '(nil :tag))
                              (comment-referent '(nil :tag))]
                             other-key)
                  :commands {:set-content [:do-create-content]
-                            :add-row [:do-add
-                                      :subject-key [:parent]
-                                      :adjacent-group-key other-key]}
+                            ;; :add-row [:do-add
+                            ;;           :subject-key [:parent]
+                            ;;           :adjacent-group-key other-key]
+                            }
                  :class "editable wrapped-element tags indent-wrapper"}
            [:component {:class "depth-1"
                          :key other-key}
              [item-DOM other [:parent] #{other-label}
-              {:commands {:add-sibling [:do-add :template
-                                        '(nil ("other" :tag))]}}
-              {:depth 0, :do-not-merge #{}}]]]]))))
+              {:depth 0, :do-not-merge #{}
+               :commands {:add-sibling [:do-add :template
+                                        '(nil ("other" :tag))]}}]]]]))))
 
 (deftest item-DOM-test
   (let [[dom fred]
         (let-mutated [fred "Fred"]
-          (expr-let [dom (item-DOM fred [] #{} {}
+          (expr-let [dom (item-DOM fred [] #{}
                                    {:depth 0 :do-not-merge #{}})]
             [dom fred]))]
     (is (check-keys dom fred))
@@ -351,7 +361,7 @@
                                 ("confidence" :tag)
                                 (~o1 :order :non-semantic)))]
           (expr-let [dom (item-DOM
-                          age [:age] #{} {} {:depth 0 :do-not-merge #{}})]
+                          age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
         doubtful (first (current-value (label->elements age o1)))
         confidence (first (current-value
@@ -378,26 +388,31 @@
               [item-DOM
                confidence tag-key
                #{confidence-tag}
-               {:commands {:add-sibling [:do-add :template '(nil :tag)]
+               {:depth 1 :do-not-merge #{}
+                :commands {:add-sibling [:do-add :template '(nil :tag)]
                            :add-row [:do-add
                                      :subject-key item-key
                                      :adjacent-group-key
                                      (into [(:item-id doubtful)]
-                                           item-key)]}}
-               {:depth 1 :do-not-merge #{}}]]]
+                                           item-key)]}}]]]
             [:component {:key (into [(:item-id doubtful)] item-key)
                          :class "element"}
              [item-DOM
               doubtful item-key
               #{confidence}
-              {:commands {:add-sibling [:do-add
-                                        :template '(nil ("confidence" :tag))]}}
-              {:depth 1 :do-not-merge #{}}]]]]])))
+              {:depth 1 :do-not-merge #{}
+               :commands {:add-row [:do-add
+                                    :subject-key item-key
+                                    :adjacent-group-key (into [(:item-id
+                                                                doubtful)]
+                                                              item-key)]
+                          :add-sibling [:do-add
+                                        :template '(nil ("confidence" :tag))]}}]]]]])))
   ;; Check that we generate no-tags.
   (let [[dom age]
         (let-mutated [age `(39 ("doubtful" (~o1 :order :non-semantic)))]
           (expr-let [dom (item-DOM
-                          age [:age] #{} {} {:depth 0 :do-not-merge #{}})]
+                          age [:age] #{} {:depth 0 :do-not-merge #{}})]
             [dom age]))
         doubtful (first (current-value (label->elements age o1)))
         item-key [(item-referent age) :age]]
@@ -422,14 +437,19 @@
                [item-DOM
                 doubtful item-key
                 #{}
-                {:commands {:add-sibling [:do-add :template '(nil)]}}
-                {:depth 1 :do-not-merge #{}}]]]]])))
+                {:depth 1 :do-not-merge #{}
+                 :commands {:add-row [:do-add
+                                      :subject-key item-key
+                                      :adjacent-group-key (into [(:item-id
+                                                                  doubtful)]
+                                                                item-key)]
+                            :add-sibling [:do-add :template '(nil)]}}]]]]])))
   ;; Test added elements, and a mutable set for do-not-merge
   (let [do-not-merge (new-mutable-set #{})
         [dom-reporter joe]
         (let-mutated [joe joe-list]
           (expr identity
-            [(item-DOM joe [:joe] #{} {}  {:depth 0 :do-not-merge do-not-merge})
+            [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge do-not-merge})
              joe]))
         male (first (current-value (label->elements joe o1)))
         married (first (current-value (label->elements joe o2)))
@@ -469,21 +489,22 @@
                  bogus-age-tag
                  (prepend-to-key [:comment [nil :tag]] both-ages-key)
                  #{bogus-age-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key both-ages-key]}}
-                 (any map?)]]]
+                 (any #(= (:commands %)
+                          {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key both-ages-key]}))]]]
               [:div (any map?)
                [:component (any map?)
                 [item-DOM bogus-age item-key #{bogus-age-tag}
-                 {:commands {:add-sibling [:do-add
-                                           :template '(nil ("age" :tag))]}}
-                 (any map?)]]
+                 (any #(= (:commands %)
+                          {:add-sibling [:do-add
+                                         :template '(nil ("age" :tag))]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key both-ages-key]}))]]
                [:component (any map?)
                 [item-DOM age item-key #{age-tag}
-                 {:commands {:add-sibling [:do-add
-                                           :template '(nil ("age" :tag))]}}
                  (any map?)]]]]]]))
       ;; Now, make the do-not-merge be non-trivial
       (mutable-set-swap! do-not-merge (fn [old] #{age}))
@@ -505,19 +526,25 @@
                                       (:item-id bogus-age)]
                                      item-key)
                  #{bogus-age-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key
-                                       (into [(:item-id bogus-age)] item-key)]}}
-                 (any map?)]]]
+                 (any #(= (:commands %)
+                          {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                     (into [(:item-id bogus-age)]
+                                           item-key)]}))]]]
               [:component (any map?)
                [item-DOM
                 bogus-age item-key
                 #{bogus-age-tag}
-                {:commands {:add-sibling [:do-add
-                                          :template '(nil ("age" :tag))]}}
-                (any map?)]]]
+                (any #(= (:commands %)
+                         {:add-sibling [:do-add
+                                        :template '(nil ("age" :tag))]
+                          :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                    (into [(:item-id bogus-age)]
+                                          item-key)]}))]]]
              [:div {:class "element-row last-row"}
               [:div (any map?)
                [:component (any map?)
@@ -526,19 +553,23 @@
                                 (:item-id age)]
                                item-key)
                  #{age-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key
-                                       (into [(:item-id age)] item-key)]}}
-                 (any map?)]]]
+                 (any #(= (:commands %)
+                          {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                     (into [(:item-id age)] item-key)]}))]]]
               [:component (any map?)
                [item-DOM
                 age item-key
                 #{age-tag}
-                {:commands {:add-sibling [:do-add
-                                          :template '(nil ("age" :tag))]}}
-                (any map?)]]]]]
+                (any #(= (:commands %)
+                         {:add-sibling [:do-add
+                                        :template '(nil ("age" :tag))]
+                          :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                     (into [(:item-id age)] item-key)]}))]]]]]
            ))))
   ;; Test a hierarchy.
   (let [[dom-reporter joe]
@@ -553,7 +584,7 @@
                                 ("L1" :tag (~o1 :order :non-semantic))
                                 ("L3" :tag (~o2 :order :non-semantic))))]
           (expr identity
-            [(item-DOM joe [:joe] #{} {}  {:depth 0 :do-not-merge #{}}) joe]))
+            [(item-DOM joe [:joe] #{} {:depth 0 :do-not-merge #{}}) joe]))
         v1 (first (current-value (label->elements joe o1)))
         v12 (first (current-value (label->elements joe o2)))
         v13 (first (current-value (label->elements joe o3)))
@@ -580,7 +611,7 @@
                both-ages-ref [:parallel
                               []
                               [(:item-id v1) (:item-id v12) (:item-id v13)]]
-               both-ages-key (into [both-ages-ref] item-key) ]
+               both-ages-key (into [both-ages-ref] item-key)]
            [:div {:class "item with-elements" :key item-key}
             (any vector?)
             [:div (any map?)
@@ -593,22 +624,31 @@
                 [item-DOM L1
                  (prepend-to-key [:comment [nil :tag]] both-ages-key)
                  #{L1-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add
-                                       :subject-key item-key
-                                       :adjacent-group-key
-                                       [[:parallel []
-                                         (as-set [(:item-id v1)
-                                                  (:item-id v12)
-                                                  (:item-id v13)])]
-                                        (item-referent joe)
-                                        :joe]]}}
-                 (any map?)]]]
+                 {:depth 1, :do-not-merge #{}
+                  :commands {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add
+                                     :subject-key item-key
+                                     :adjacent-group-key
+                                     [[:parallel []
+                                       (as-set [(:item-id v1)
+                                                (:item-id v12)
+                                                (:item-id v13)])]
+                                      (item-referent joe)
+                                      :joe]]}}]]]
               [:component {:key (into [(:item-id v1)] item-key)
                            :class "element"}
                [item-DOM v1 item-key #{L1}
-                {:commands {:add-sibling [:do-add :template [nil ["L1" :tag]]]}}
-                (any map?)]]]
+                {:depth 1, :do-not-merge #{}
+                 :commands {:add-sibling [:do-add :template [nil ["L1" :tag]]]
+                            :add-row [:do-add
+                                      :subject-key item-key
+                                      :adjacent-group-key
+                                      [[:parallel []
+                                        (as-set [(:item-id v1)
+                                                 (:item-id v12)
+                                                 (:item-id v13)])]
+                                       (item-referent joe)
+                                       :joe]]}}]]]
              [:div {:class "element-row"}
               [:div {:class "indent-wrapper row-header tags"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
@@ -621,21 +661,28 @@
                   L2 (into [[:comment [nil :tag]] (:item-id v12)]
                            item-key)
                   #{L2-spec}
-                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                  {:depth 1, :do-not-merge #{}
+                   :commands {:add-sibling [:do-add :template '(nil :tag)]
                               :add-row [:do-add
                                         :subject-key item-key
                                         :adjacent-group-key
                                         (into [(:item-id v12)]
-                                              item-key)]}}
-                  (any map?)]]]]
+                                              item-key)
+                                        :template [nil ["L1" :tag]]]}}]]]]
               [:component {:key (into [(:item-id v12)] item-key)
                            :class "element"}
                [item-DOM v12 item-key #{L121 L2}
-                {:commands {:add-sibling [:do-add
+                {:depth 1, :do-not-merge #{}
+                 :commands {:add-sibling [:do-add
                                           :template (as-set [nil
                                                              ["L1" :tag]
-                                                             ["L2" :tag]])]}}
-                (any map?)]]]
+                                                             ["L2" :tag]])]
+                            :add-row [:do-add
+                                      :subject-key item-key
+                                      :adjacent-group-key
+                                      (into [(:item-id v12)]
+                                            item-key)
+                                      :template [nil ["L1" :tag]]]}}]]]
              [:div {:class "element-row last-row"}
               [:div {:class "indent-wrapper row-header tags bottom-border"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
@@ -648,21 +695,28 @@
                   L3 (into [[:comment [nil :tag]] (:item-id v13)]
                            item-key)
                   #{L3-spec}
-                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                  {:depth 1, :do-not-merge #{}
+                   :commands {:add-sibling [:do-add :template '(nil :tag)]
                               :add-row [:do-add
                                         :subject-key item-key
                                         :adjacent-group-key
-                                        (into [(:item-id v13)] item-key)]}}
-                  (any map?)]]]]
+                                        (into [(:item-id v13)] item-key)
+                                        :template [nil ["L1" :tag]]]}}]]]]
               [:component {:key (into [(:item-id v13)] item-key)
                            :class "element"}
                [item-DOM
                 v13 item-key #{L131 L3}
-                {:commands {:add-sibling [:do-add
-                                          :template (as-set [nil
-                                                             ["L3" :tag]
-                                                             ["L1" :tag]])]}}
-                (any map?)]]]]]))))
+                {:depth 1, :do-not-merge #{}
+                 :commands {:add-sibling
+                            [:do-add
+                             :template (as-set [nil
+                                                ["L3" :tag]
+                                                ["L1" :tag]])]
+                            :add-row [:do-add
+                                      :subject-key item-key
+                                      :adjacent-group-key
+                                      (into [(:item-id v13)] item-key)
+                                      :template [nil ["L1" :tag]]]}}]]]]]))))
   ;; Test a hierarchy with an empty content in one row and an empty
   ;; tag in another.
   (let [[dom-reporter joe]
@@ -674,7 +728,7 @@
                             ("b" (~o3 :order :non-semantic)
                              ("L1" :tag (~o1 :order :non-semantic))))]
           (expr identity
-            [(item-DOM joe [rid] #{} {} {:depth 0 :do-not-merge #{}}) joe]))
+            [(item-DOM joe [rid] #{} {:depth 0 :do-not-merge #{}}) joe]))
         va (first (current-value (label->elements joe o2)))
         vb (first (current-value (label->elements joe o3)))
         La1 (first (current-value (label->elements va o1)))
@@ -713,10 +767,10 @@
                            (prepend-to-key (:item-id La1)))}
                 [item-DOM La1 (prepend-to-key [:comment [nil :tag]] both-L1s-key)
                  #{La1-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]
-                             :add-row [:do-add :subject-key item-key
-                                       :adjacent-group-key both-L1s-key]}}
-                 (any map?)]]]
+                 (any #(= (:commands %)
+                          {:add-sibling [:do-add :template '(nil :tag)]
+                           :add-row [:do-add :subject-key item-key
+                                     :adjacent-group-key both-L1s-key]}))]]]
               [:div {:key (into [[:elements [nil ["L1" :tag]]]] item-key)
                      :class "editable element"
                      :commands {:set-content [:do-create-content
@@ -740,19 +794,24 @@
                              (:item-id va)]
                             item-key)
                   #{La2-spec}
-                  {:commands {:add-sibling [:do-add :template '(nil :tag)]
+                  {:depth 1 :do-not-merge #{}
+                   :commands {:add-sibling [:do-add :template '(nil :tag)]
                               :add-row [:do-add :subject-key item-key
                                         :adjacent-group-key
-                                        (into [(:item-id va)] item-key)]}}
-                  (any map?)]]]]
+                                        (into [(:item-id va)] item-key)
+                                        :template '(nil ("L1" :tag))]}}]]]]
               [:component {:key (into [(:item-id va)] item-key)
                            :class "element"}
                [item-DOM va item-key #{La1 La2}
-                {:commands {:add-sibling
+                {:depth 1 :do-not-merge #{}
+                 :commands {:add-sibling
                             [:do-add :template (as-set [nil
-                                                       ["L2" :tag]
-                                                        ["L1" :tag]])]}}
-                (any map?)]]]
+                                                        ["L2" :tag]
+                                                        ["L1" :tag]])]
+                            :add-row [:do-add :subject-key item-key
+                                      :adjacent-group-key
+                                      (into [(:item-id va)] item-key)
+                                      :template '(nil ("L1" :tag))]}}]]]
              [:div {:class "element-row last-row"}
               [:div {:class "indent-wrapper row-header tags bottom-border"}
                [:div {:class "editable full-row top-border depth-1"
@@ -764,14 +823,22 @@
                                   :add-row [:do-add
                                             :subject-key item-key
                                             :adjacent-group-key
-                                            (into [(:item-id vb)] item-key)]}}]]
+                                            (into [(:item-id vb)] item-key)
+                                            :template '(nil ("L1" :tag))]}}]]
               [:component {:key (into [(:item-id vb)] item-key)
                            :class "element"}
                [item-DOM
                 vb item-key
                 #{Lb1}
-                {:commands {:add-sibling [:do-add :template '(nil ("L1" :tag))]}}
-                {:depth 1 :do-not-merge #{}}]]]]])))))
+                {:depth 1 :do-not-merge #{}
+                 :commands {:add-sibling
+                            [:do-add :template '(nil ("L1" :tag))]
+                            :add-row
+                            [:do-add
+                             :subject-key item-key
+                             :adjacent-group-key
+                             (into [(:item-id vb)] item-key)
+                             :template '(nil ("L1" :tag))]}}]]]]])))))
 
 (deftest table-DOM-test
   (let [[dom table joe jane]
@@ -860,8 +927,8 @@
                                                 :foo]]}}
                [item-DOM
                 age-tag age-header-key #{age-tag-spec}
-                {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]]
+                {:level 0, :depth 0, :do-not-merge #{} :narrow true
+                 :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]
              ;; Size column.
              (any)]
             [:component {:class "table-row"
@@ -876,15 +943,15 @@
                   joe-bogus-age (into [(comment-referent (item-referent age))]
                                       joe-row-key)
                   #{joe-bogus-age-tag}
-                  {:commands {:add-sibling [:do-add
+                  {:depth 0, :do-not-merge #{} :narrow true
+                   :commands {:add-sibling [:do-add
                                             :template '(nil ("age" :tag))]
                               :add-row [:do-add
                                         :subject-key table-parent-key
                                         :adjacent-key joe-row-key
                                         :template
                                         '(nil (nil ("age" :tag))
-                                              (:top-level :non-semantic))]}}
-                  {:depth 0, :do-not-merge #{} :narrow true}]]
+                                              (:top-level :non-semantic))]}}]]
                 [:component {:key (into [(:item-id joe-age)
                                          (comment-referent (item-referent age))]
                                         joe-row-key)}
@@ -998,8 +1065,8 @@
                                         :select-key header-add-key]}}
                 [item-DOM
                  name-tag name-id-header-key #{name-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]
                ;; id part of name-id header
                [:component {:key (prepend-to-key (item-referent id-tag)
                                                  name-id-header-key)
@@ -1016,8 +1083,8 @@
                                         :select-key header-add-key]}}
                 [item-DOM
                  id-tag name-id-header-key #{id-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{} :narrow true}]]]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]]
              ;; Age column
              (any)]
             ;; Joe
@@ -1034,7 +1101,8 @@
                  joe-name (into [(comment-referent (item-referent name-id))]
                                 joe-row-key)
                  (set joe-name-tags)
-                 {:commands {:add-sibling [:do-add
+                 {:depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add
                                            :template (as-set
                                                       '(nil ("id" :tag)
                                                             ("name" :tag)))]
@@ -1042,8 +1110,7 @@
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
                                        :template
-                                       '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{} :narrow true}]]
+                                       '(nil (:top-level :non-semantic))]}}]]
                ;; Joe's age
                (any)])]
             ;; Jane
@@ -1215,8 +1282,8 @@
                                                      :foo]]}}
                  [item-DOM
                   name-tag name-header-key #{name-tag-spec}
-                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                  {:level 0, :depth 0, :do-not-merge #{} :narrow false}]]]
+                  {:level 0, :depth 0, :do-not-merge #{} :narrow false
+                   :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]
               [:div {:class "column-header-sequence"}
                [:div  {:class "column-header-container empty tags"
                        :style {:width "150px"}}
@@ -1265,8 +1332,8 @@
                                                    :foo]]}}
                   [item-DOM
                    id-tag name-id-header-key #{id-tag-spec}
-                   {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                   {:level 1, :depth 0, :do-not-merge #{} :narrow true}]]]]]]
+                   {:level 1, :depth 0, :do-not-merge #{} :narrow true
+                    :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]]]]
             ;; Joe
             [:component {:class "table-row"
                          :key joe-row-key}
@@ -1281,14 +1348,14 @@
                  joe-nickname (into [(comment-referent (item-referent name))]
                                     joe-row-key)
                  (set joe-nickname-tags)
-                 {:commands {:add-sibling [:do-add
+                 {:depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add
                                            :template '(nil ("name" :tag))]
                              :add-row [:do-add
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
                                        :template
-                                       '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{} :narrow true}]]
+                                       '(nil (:top-level :non-semantic))]}}]]
                ;; Joe's id
                [:component {:key (into [(:item-id joe-id)
                                         (comment-referent
@@ -1299,7 +1366,8 @@
                  joe-id (into [(comment-referent (item-referent name-id))]
                               joe-row-key)
                  (set joe-id-tags)
-                 {:commands {:add-sibling [:do-add
+                 {:depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add
                                            :template (as-set
                                                       '(nil ("id" :tag)
                                                             ("name" :tag)))]
@@ -1307,8 +1375,7 @@
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
                                        :template
-                                       '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{} :narrow true}]]])]
+                                       '(nil (:top-level :non-semantic))]}}]]])]
             ;; Jane
             [:component {:class "table-row"
                          :key jane-row-key}
@@ -1478,8 +1545,8 @@
                             :class "column-header"}
                 [item-DOM
                  name-tag name-header-key #{name-tag-spec}
-                 {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                 {:level 0, :depth 0, :do-not-merge #{} :narrow false}]]]
+                 {:level 0, :depth 0, :do-not-merge #{} :narrow false
+                  :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]
               [:div {:class "column-header-sequence"}
                [:div {:class "column-header-container tags"
                       :style {:width "150px"}}
@@ -1505,8 +1572,8 @@
                                                  :foo]]}}
                  [item-DOM
                   id-tag name-id-header-key #{id-tag-spec}
-                  {:commands {:add-sibling [:do-add :template '(nil :tag)]}}
-                  {:level 1, :depth 0, :do-not-merge #{} :narrow true}]]]
+                  {:level 1, :depth 0, :do-not-merge #{} :narrow true
+                   :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]]
                [:div  {:class "column-header-container rightmost empty tags"
                        :style {:width "150px"}}
                 [:div  {:class "editable column-header"
@@ -1546,7 +1613,8 @@
                  joe-id (into [(comment-referent (item-referent name-id))]
                               joe-row-key)
                  (set joe-id-tags)
-                 {:commands {:add-sibling [:do-add
+                 {:depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add
                                            :template (as-set
                                                       '(nil ("id" :tag)
                                                             ("name" :tag)))]
@@ -1554,8 +1622,7 @@
                                        :subject-key table-parent-key
                                        :adjacent-key joe-row-key
                                        :template
-                                       '(nil (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{} :narrow true}]]
+                                       '(nil (:top-level :non-semantic))]}}]]
                ;; Joe's id
               [:component {:key (into [(:item-id joe-nickname)
                                         (comment-referent
@@ -1566,14 +1633,15 @@
                  joe-nickname (into [(comment-referent (item-referent name))]
                                     joe-row-key)
                  (set joe-nickname-tags)
-                 {:commands {:add-sibling [:do-add
+                 {:depth 0, :do-not-merge #{} :narrow true
+                  :commands {:add-sibling [:do-add
                                            :template '(nil ("name" :tag))]
-                             :add-row [:do-add
-                                       :subject-key table-parent-key
-                                       :adjacent-key joe-row-key
-                                       :template '(nil
-                                                   (:top-level :non-semantic))]}}
-                 {:depth 0, :do-not-merge #{} :narrow true}]]])]
+                             :add-row
+                             [:do-add
+                              :subject-key table-parent-key
+                              :adjacent-key joe-row-key
+                              :template '(nil
+                                          (:top-level :non-semantic))]}}]]])]
             ;; Jane
             [:component {:class "table-row"
                          :key jane-row-key}

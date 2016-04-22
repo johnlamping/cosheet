@@ -314,25 +314,22 @@
            [:component {:key age-label-key}
             [item-DOM age-label tags-key #{age-label-tag}
              {:depth 0, :do-not-merge #{}
-              :commands {;; :add-row [:do-add
-                         ;; :subject-key [:parent]
-                         ;; :adjacent-group-key age-key]
-                         :add-sibling [:do-add :template '(nil :tag)]}}]]
+              :commands {:add-sibling [:do-add :template '(nil :tag)]}}]]
            [:div {:class "indent-wrapper"}
             [:component {:class "depth-1 has-border"
                          :key age-key}
              [item-DOM age [:parent] #{age-label age-other-label}
               {:depth 0, :do-not-merge #{}
                :commands {:add-sibling [:do-add :template
-                                        '(nil ("other" :tag) ("age" :tag))]}}]]]]
+                                        '(nil ("other" :tag) ("age" :tag))]
+                          :add-row [:do-add
+                                    :subject-key [:parent]
+                                    :adjacent-group-key age-key
+                                    :template '(nil ("other" :tag))]}}]]]]
           [:div {:key (into [(elements-referent '(nil :tag))
                              (comment-referent '(nil :tag))]
                             other-key)
-                 :commands {:set-content [:do-create-content]
-                            ;; :add-row [:do-add
-                            ;;           :subject-key [:parent]
-                            ;;           :adjacent-group-key other-key]
-                            }
+                 :commands {:set-content [:do-create-content]}
                  :class "editable wrapped-element tags indent-wrapper"}
            [:component {:class "depth-1"
                          :key other-key}

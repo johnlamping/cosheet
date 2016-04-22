@@ -388,6 +388,24 @@
       (prepend-to-key items-referent parent-key)
       inherited)))
 
+(defn hierarchy-add-adjacent-command
+  "Given a hierarchy node, and any extra conditions, generate a command
+  to add an item that would be adjacent to the hierarchy node."
+  [hierarchy-node parent-key extra-conditions]
+  (let [ancestor-props (first (multiset-diff
+                               (:cumulative-properties hierarchy-node)
+                               (:properties hierarchy-node)))
+        conditions (concat (canonical-set-to-list ancestor-props)
+                           extra-conditions)]
+    (cond->
+        [:do-add
+         :subject-key parent-key
+         :adjacent-group-key (prepend-to-key
+                              (hierarchy-node-items-referent hierarchy-node)
+                              parent-key)]
+      (not (empty? conditions))
+      (conj :template (list* nil conditions)))))
+
 (defn tag-items-pair-DOM
   "Given a flattened hierarchy node,
   generate DOM for an element table row for its items."
@@ -396,21 +414,8 @@
   [hierarchy-node parent-key inherited]
   (let [inherited (assoc-in
                    inherited [:commands :add-row]
-                   (let [ancestor-props
-                         (first (multiset-diff
-                                 (:cumulative-properties hierarchy-node)
-                                 (:properties hierarchy-node)))]
-                     (cond->
-                         [:do-add
-                          :subject-key parent-key
-                          :adjacent-group-key (prepend-to-key
-                                               (hierarchy-node-items-referent
-                                                hierarchy-node)
-                                               parent-key)]
-                       (not (empty? ancestor-props))
-                       (conj :template
-                             (list* nil
-                                    (canonical-set-to-list ancestor-props))))))]
+                   (hierarchy-add-adjacent-command
+                    hierarchy-node parent-key nil))]
     (expr-let [tags-label-dom (tag-label-DOM
                                hierarchy-node parent-key inherited)
                tags-items-dom (add-attributes
@@ -460,16 +465,24 @@
   as a single column."
   [hierarchy-node parent-key extra-condition
    top-level must-show-empty-labels inherited]
-  (let [num-members (count (hierarchy-node-members hierarchy-node))]
-    (expr-let [items-dom (when (not= num-members 0)
-                           (hierarchy-members-DOM hierarchy-node parent-key
-                                                  extra-condition inherited))
-               ;; TODO: Need unit test for the case where there are children.
-               child-doms (when (:children hierarchy-node)
-                            (expr-seq map #(tagged-items-column-subtree-DOM
-                                            % parent-key extra-condition
-                                            false false inherited)
-                                      (:children hierarchy-node)))]
+  (let [num-members (count (hierarchy-node-members hierarchy-node))
+        nested-inherited (if (empty? (:properties hierarchy-node))
+                           inherited
+                           (assoc-in
+                            inherited [:commands :add-row]
+                            (hierarchy-add-adjacent-command
+                             hierarchy-node parent-key
+                             (rest extra-condition))))]
+    (expr-let
+        [items-dom (when (not= num-members 0)
+                     (hierarchy-members-DOM hierarchy-node parent-key
+                                            extra-condition nested-inherited))
+         ;; TODO: Need unit test for the case where there are children.
+         child-doms (when (:children hierarchy-node)
+                      (expr-seq map #(tagged-items-column-subtree-DOM
+                                      % parent-key extra-condition
+                                      false false nested-inherited)
+                                (:children hierarchy-node)))]
       (let [content (if (> num-members 1)
                        (conj items-dom child-doms)
                        (vertical-stack

@@ -170,23 +170,20 @@
   [:div {:class "editable"
          :key (prepend-to-key (elements-referent condition)
                               parent-key)
-         :commands {:set-content [:do-create-content]}}])
+         :commands (into (:commands inherited)
+                         {:set-content [:do-create-content]})}])
 
 (defn empty-DOM-with-position
   "Create DOM for an empty cell whose content should be
   in a particular logical position."
-  [parent-key condition adjacent-key position]
+  [parent-key condition adjacent-key position inherited]
   [:div {:class "editable"
          :key (prepend-to-key (elements-referent condition) parent-key)
-         :commands {:set-content
-                    [:do-create-content
-                     :position position
-                     :adjacent-key adjacent-key]
-                    :add-row
-                    [:do-add
-                     :subject-key parent-key
-                     :position position
-                     :adjacent-key adjacent-key]}}])
+         :commands (into (:commands inherited)
+                         {:set-content
+                          [:do-create-content
+                           :position position
+                           :adjacent-key adjacent-key]})}])
 
 (defn make-component
   "Make a component dom descriptor, with the given attributes and definition.
@@ -332,7 +329,8 @@
                            (first (hierarchy-node-descendants hierarchy-node)))
             adjacent-key (prepend-to-key (item-referent adjacent-item)
                                          parent-key)]
-        (empty-DOM-with-position parent-key condition adjacent-key :before))
+        (empty-DOM-with-position parent-key condition adjacent-key :before
+                                 inherited))
       (components-DOM items-with-excluded
                       parent-key condition inherited))))
 
@@ -849,23 +847,22 @@
 (defn table-cell-DOM
   "Return the dom for one cell of a table. The condition must be in list form."
   [items condition row-key new-row-condition cell-key inherited]
-  (let [commands {:add-row
-                  [:do-add
-                   :subject-key (remove-first-primitive-referent row-key)
-                   :adjacent-key row-key
-                   :template new-row-condition]}]
+  (let [inherited (-> inherited
+                      (assoc :narrow true)
+                      (assoc-in [:commands :add-row]
+                                [:do-add
+                                 :subject-key (remove-first-primitive-referent
+                                               row-key)
+                                 :adjacent-key row-key
+                                 :template new-row-condition]))]
     (if (empty? items)
       ;; TODO: Get our left neighbor as an arg, and pass it in
       ;; as adjacent information for new-sibling.
       (add-attributes (empty-DOM cell-key condition inherited)
-                      {:class "table-cell has-border"
-                       :commands commands})
+                      {:class "table-cell has-border"})
       (expr-let [items (order-items items)
                  dom (possibly-tagged-items-column-DOM
-                      items cell-key condition false
-                      (assoc inherited
-                             :narrow true
-                             :commands commands))]
+                      items cell-key condition false inherited)]
         (add-attributes dom {:class "table-cell has-border"})))))
 
 (defn table-row-column-group-member-DOM

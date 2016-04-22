@@ -778,9 +778,7 @@
                                               :adjacent-key
                                               (into [(:item-id va)] item-key)]
                                 :add-row [:do-add :subject-key item-key
-                                          :position :before
-                                          :adjacent-key
-                                          (into [(:item-id va)] item-key)]}}]]
+                                          :adjacent-group-key both-L1s-key]}}]]
              [:div {:class "element-row"}
               [:div {:class "indent-wrapper row-header tags"}
                [:div {:class "vertical-center-wrapper full-row top-border depth-1"}
@@ -1377,8 +1375,7 @@
                                        :template
                                        '(nil (:top-level :non-semantic))]}}]]])]
             ;; Jane
-            [:component {:class "table-row"
-                         :key jane-row-key}
+            [:component {:class "table-row" :key jane-row-key}
              (evals-to
               [:div {:key jane-row-key}
                [:component (any) (any)]

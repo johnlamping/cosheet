@@ -103,7 +103,8 @@
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)]
          [{:store new-store
-           :history (conj history [modified-ids store])}
+           :history (cons [modified-ids store] history)
+           :future nil}
           (keys-affected-by-ids modified-ids store new-store)
           result]))))
 
@@ -122,16 +123,29 @@
   (undo! [this]
     (describe-and-swap!
      (:manager-data this)
-     (fn [{:keys [store history]}]
+     (fn [{:keys [store history future]}]
        (if (empty? history)
-         [{:store store :history history} []]
+         [{:store store :history history :future future} []]
          (let [[[modified-ids prev-store] & remaining-history] history]
-           [{:store prev-store :history remaining-history}
+           [{:store prev-store
+             :history remaining-history
+             :future (cons [modified-ids store] future)}
             (keys-affected-by-ids modified-ids prev-store store)])))))
 
-  ;; TODO: implement redo.
   (can-redo? [this]
-    false))
+    (not (empty? (:future (:value @(:manager-data this))))))
+
+  (redo! [this]
+    (describe-and-swap!
+     (:manager-data this)
+     (fn [{:keys [store history future]}]
+       (if (empty? future)
+         [{:store store :history history :future future} []]
+         (let [[[modified-ids next-store] & remaining-future] future]
+           [{:store next-store
+             :history (cons [modified-ids store] history)
+             :future remaining-future}
+            (keys-affected-by-ids modified-ids next-store store)]))))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
@@ -145,4 +159,9 @@
                     ;; where store gives a previous state and modified-ids
                     ;; gives the ids that change from that state to the next
                     ;; one.
-                    :history []})}))
+                    :history nil
+                    ;; :future is a list of [modified-ids, store] pairs,
+                    ;; where store gives a next state and modified-ids
+                    ;; gives the ids that change from the current state to
+                    ;; the next one.
+                    :future nil})}))

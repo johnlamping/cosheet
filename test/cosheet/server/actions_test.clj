@@ -320,11 +320,11 @@
         do-not-merge (new-mutable-set #{})
         session-state {:tracker tracker
                        :do-not-merge do-not-merge}]
-    (selected-handler store session-state joe-key)
+    (selected-handler store session-state joe-dom-id)
     (is (= (current-mutable-value do-not-merge) #{joe}))
-    (selected-handler store session-state joe-male-key)
+    (selected-handler store session-state joe-male-dom-id)
     (is (= (current-mutable-value do-not-merge) #{joe joe-male}))
-    (selected-handler store session-state jane-age-key)
+    (selected-handler store session-state jane-age-dom-id)
     (is (= (current-mutable-value do-not-merge) #{jane-age}))
     (selected-handler store session-state "No such id")
     (is (= (current-mutable-value do-not-merge) #{}))))

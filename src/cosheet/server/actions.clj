@@ -9,7 +9,7 @@
     [orderable :refer [split earlier?]]
     [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
-                   id->subject id-valid?]]
+                   id->subject id-valid? undo! redo!]]
     [store-impl :refer [get-unique-id-number]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
@@ -268,23 +268,6 @@
          (prepend-to-key (surrogate-referent) selection-suffix)
          target-key)))))
 
-(defn selected-handler
-  [store session-state target-key]
-  (let [ids (item-ids-referred-to target-key)
-        items (map #(description->entity % store) ids)]
-    (println "Selected key" target-key)
-    (mutable-set-swap!
-     (:do-not-merge session-state)
-     (fn [old]
-       (if (item-referent?
-            (first-primitive-referent (remove-comments target-key)))
-         (set (cons (first items)
-                    (clojure.set/intersection (set (rest items)) old)))
-         (clojure.set/intersection (set items) old))))))
-
-;;; TODO: Undo functionality should be added here. It shouldn't be
-;;; hard, because the updated store already has a list of changed ids.
-;;; Support could even be incorporated into immutable stores.
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
   store, and the other arguments passed to this function. It can either
@@ -307,36 +290,68 @@
              [(:store result) (dissoc result :store)]))
          [store nil])))))
 
+(defn do-contextual-action
+  "Do an action that applies to a DOM cell, and whose interpretation depends
+  on that cell."
+  [mutable-store tracker action-type [client-id & additional-args]]
+  (let [target-key (id->key tracker client-id)
+        command (get-in (key->attributes tracker target-key)
+                        [:commands action-type])]
+    (if command
+      (let [[handler-name & args] command
+            handler (case handler-name
+                      :do-add do-add
+                      :do-delete do-delete
+                      :do-set-content do-set-content
+                      :do-create-content do-create-content
+                      nil)]
+        (println "command: " (map simplify-for-print
+                                  (list* handler-name target-key
+                                         (concat additional-args args))))
+        (when handler
+          (apply do-storage-update-action
+                 handler mutable-store target-key
+                 (concat additional-args args))))
+      (println "unhandled action type:" action-type))))
+
+(defn selected-handler
+  [store session-state client-id]
+  (let [target-key (id->key (:tracker session-state) client-id)
+        ids (item-ids-referred-to target-key)
+        items (map #(description->entity % store) ids)]
+    (println "Selected key" target-key)
+    (mutable-set-swap!
+     (:do-not-merge session-state)
+     (fn [old]
+       (if (item-referent?
+            (first-primitive-referent (remove-comments target-key)))
+         (set (cons (first items)
+                    (clojure.set/intersection (set (rest items)) old)))
+         (clojure.set/intersection (set items) old))))))
+
+;;; TODO: There should be unit tests for undo and redo.
+(defn do-undo
+  [mutable-store session-state]
+  (undo! mutable-store))
+
+(defn do-redo
+  [mutable-store session-state]
+  (redo! mutable-store))
+
 (defn do-action
-  [mutable-store session-state [action-type client-id & additional-args]]
-  (println "doing action " action-type " on id " client-id)
-  (let [tracker (:tracker session-state)
-        target-key (id->key tracker client-id)]
-    (if-let [handler (case action-type
-                           :selected selected-handler
-                           nil)]
-      (do (println "command: "
-                   (map simplify-for-print
-                        (list* action-type target-key additional-args)))
-          (apply handler
-                 mutable-store session-state target-key additional-args))
-      (if-let [command (get-in (key->attributes tracker target-key)
-                               [:commands action-type])]
-        (let [[handler-name & args] command
-              handler (case handler-name
-                        :do-add do-add
-                        :do-delete do-delete
-                        :do-set-content do-set-content
-                        :do-create-content do-create-content
-                        nil)]
-          (println "command: " (map simplify-for-print
-                                    (list* handler-name target-key
-                                           (concat additional-args args))))
-          (when handler
-            (apply do-storage-update-action
-                   handler mutable-store target-key
-                   (concat additional-args args))))
-        (println "unhandled action type:" action-type)))))
+  [mutable-store session-state [action-type & additional-args]]
+  (println "doing action " action-type)
+  (if-let [handler (case action-type
+                     :selected selected-handler
+                     :undo do-undo
+                     :redo do-redo
+                     nil)]
+    (do (println "command: "
+                 (map simplify-for-print (list* action-type additional-args)))
+        (apply handler
+               mutable-store session-state additional-args))
+    (do-contextual-action
+     mutable-store (:tracker session-state) action-type additional-args)))
 
 (defn do-actions
   "Run the actions, and return any additional information to be returned

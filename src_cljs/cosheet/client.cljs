@@ -127,10 +127,15 @@
           (str "keypress " (if ctrl "ctrl " "") (if alt "alt" "") key-code))
     (when (and ctrl (not alt))
       (cond  ; We can't use case, as it doesn't work right with key-codes/
-        ;; TODO: If the edit field is not open, make this
-        ;; undo the last action.
         (= key-code key-codes/Z)
-        (when @edit-field-open-on (close-edit-field))))
+        (if @edit-field-open-on
+          (close-edit-field)
+          (do (.log js/console "undo")
+              (request-action [:undo])))
+         (= key-code key-codes/Y)
+         (when (not @edit-field-open-on)
+          (do (.log js/console "redo")
+              (request-action [:redo])))))
     (when (and alt (not ctrl))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling]
                           (= key-codes/NUM_PLUS key-code) [:add-sibling] 

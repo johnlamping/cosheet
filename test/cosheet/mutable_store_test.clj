@@ -77,9 +77,11 @@
                (track-modified-ids revised-store)))
         ;; Test that unsubscribe removes tracking by unsubscribing one
         ;; of the reporters, and then changing back to the original store.
+        ;; Test undo in the process.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
-        (remove-simple-id! mutable-store me1)
+        (undo! mutable-store)
+        (undo! mutable-store)
         (remove-simple-id! mutable-store me)
         ;; Still tracked, so should be equal to the original store
         (is (= (set (value element-ids))

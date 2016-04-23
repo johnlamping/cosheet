@@ -4,6 +4,7 @@
                      [mutable-manager
                       :refer [new-mutable-manager-data
                               get-or-make-reporter
+                              describe-and-swap!
                               describe-and-swap-control-return!]]
                      [reporters :as reporter
                       :refer [set-value! set-manager!
@@ -97,12 +98,12 @@
   (do-update-control-return! [this update-fn]
     (describe-and-swap-control-return!
      (:manager-data this)
-     (fn [{:keys [store past]}]
+     (fn [{:keys [store history]}]
        (let [[updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)]
          [{:store new-store
-           :past (conj past [modified-ids store])}
+           :history (conj history [modified-ids store])}
           (keys-affected-by-ids modified-ids store new-store)
           result]))))
 
@@ -113,7 +114,24 @@
     (do-update! this #(remove-simple-id % id)))
 
   (update-content! [this id content]
-    (do-update! this #(update-content % id content))))
+    (do-update! this #(update-content % id content)))
+
+  (can-undo? [this]
+    (not (empty? (:history (:value @(:manager-data this))))))
+
+  (undo! [this]
+    (describe-and-swap!
+     (:manager-data this)
+     (fn [{:keys [store history]}]
+       (if (empty? history)
+         [{:store store :history history} []]
+         (let [[[modified-ids prev-store] & remaining-history] history]
+           [{:store prev-store :history remaining-history}
+            (keys-affected-by-ids modified-ids prev-store store)])))))
+
+  ;; TODO: implement redo.
+  (can-redo? [this]
+    false))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
@@ -123,8 +141,8 @@
   (map->MutableStoreImpl
    {:manager-data (new-mutable-manager-data
                    {:store (track-modified-ids immutable-store)
-                    ;; :past is a list of [modified-ids, store] pairs,
+                    ;; :history is a list of [modified-ids, store] pairs,
                     ;; where store gives a previous state and modified-ids
                     ;; gives the ids that change from that state to the next
                     ;; one.
-                    :past []})}))
+                    :history []})}))

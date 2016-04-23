@@ -142,8 +142,14 @@
   (can-undo? [this]
     "Return true if an undo step can be done on the store.")
 
-   (can-redo? [this]
-    "Return true if a redo step can be done on the store."))
+  (undo! [this]
+    "Undo the last operation.")
+
+  (can-redo? [this]
+    "Return true if a redo step can be done on the store.")
+
+  (redo! [this]
+    "Redo the last undone operation."))
 
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store

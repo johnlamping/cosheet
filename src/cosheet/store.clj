@@ -137,7 +137,13 @@
 
   (update-content! [this id content]
     "Change the content of the item with the  given id to be the
-     specified content."))
+     specified content.")
+
+  (can-undo? [this]
+    "Return true if an undo step can be done on the store.")
+
+   (can-redo? [this]
+    "Return true if a redo step can be done on the store."))
 
 ;; Factory that creates an empty ElementStore
 (defmulti new-element-store

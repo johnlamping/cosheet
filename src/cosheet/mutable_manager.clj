@@ -28,8 +28,8 @@
 
          ;; A cache so that requests for the same computation can
          ;; share a reporter. It is a map from application to an
-         ;; a set of attended reporters with that application, if there
-         ;; are any.
+         ;; an attended reporter with that application, if there
+         ;; is any.
          :application->attended-reporter nil}))
 
 (defn current-mutable-value

@@ -38,47 +38,58 @@
     (non-implicit-id (:containing-item-id id))
     id))
 
+(defn apply-to-store
+  "Return a reporter giving the result of the operation on the store
+  of the state. Using this lets callers of this avoid creating thunks as
+  arguments to get-or-make-reporter, which would break caching."
+  [state operation & args]
+  (apply operation (:store state) args))
+
 (defrecord MutableStoreImpl
     ^{:doc
       "A store that contains an immutable store,
-       supports mutation to that store,
+       supports mutation to that store, handles undo,
        and returns reporter objects for queries."}
   [manager-data ;; A mutable-manager manager-data holding the immutable
-                ;; store as its value. 
+                ;; store and a history as its value. 
    ]
 
   Store
 
   (id-valid? [this id]
-    (get-or-make-reporter [id] id-valid? (:manager-data this) id))
+    (get-or-make-reporter
+     [id] apply-to-store (:manager-data this) id-valid? id))
 
   (id-label->element-ids [this id label]
     (get-or-make-reporter
-     [id] id-label->element-ids (:manager-data this) id label))
+     [id] apply-to-store (:manager-data this) id-label->element-ids id label))
 
   (id->element-ids [this id]
-    (get-or-make-reporter [id] id->element-ids (:manager-data this) id))
+    (get-or-make-reporter
+     [id] apply-to-store (:manager-data this) id->element-ids id))
 
   (id->content [this id]
     (let [base-id (non-implicit-id id)]
-      (get-or-make-reporter [base-id] id->content (:manager-data this) id)))
+      (get-or-make-reporter
+       [base-id] apply-to-store (:manager-data this) id->content id)))
 
   (id->content-reference [this id]
-    (get-or-make-reporter [id] id->content-reference (:manager-data this) id))
+    (get-or-make-reporter
+     [id] apply-to-store (:manager-data this) id->content-reference id))
 
   (candidate-matching-ids [this item]
     (get-or-make-reporter
-     [nil] candidate-matching-ids (:manager-data this) item))
+     [nil] apply-to-store (:manager-data this) candidate-matching-ids item))
 
   (mutable-store? [this] true)
   
   MutableStore
 
-  (current-store [this] (:value @(:manager-data this)))
+  (current-store [this] (:store (:value @(:manager-data this))))
 
   (call-dependent-on-id [this id fun]
     (get-or-make-reporter
-     [id] fun (:manager-data this)))
+     [id] apply-to-store (:manager-data this) fun))
 
   (do-update! [this update-fn]
     (do-update-control-return! this (fn [store] [(update-fn store) nil])))
@@ -86,12 +97,13 @@
   (do-update-control-return! [this update-fn]
     (describe-and-swap-control-return!
      (:manager-data this)
-     (fn [old-store]
-       (let [[updated-store result] (update-fn old-store)
+     (fn [{:keys [store past]}]
+       (let [[updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)]
-         [new-store
-          (keys-affected-by-ids modified-ids old-store new-store)
+         [{:store new-store
+           :past (conj past [modified-ids store])}
+          (keys-affected-by-ids modified-ids store new-store)
           result]))))
 
   (add-simple-element! [this subject content]
@@ -110,4 +122,9 @@
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl
    {:manager-data (new-mutable-manager-data
-                   (track-modified-ids immutable-store))}))
+                   {:store (track-modified-ids immutable-store)
+                    ;; :past is a list of [modified-ids, store] pairs,
+                    ;; where store gives a previous state and modified-ids
+                    ;; gives the ids that change from that state to the next
+                    ;; one.
+                    :past []})}))

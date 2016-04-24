@@ -126,16 +126,15 @@
     (.log js/console
           (str "keypress " (if ctrl "ctrl " "") (if alt "alt" "") key-code))
     (when (and ctrl (not alt))
-      (cond  ; We can't use case, as it doesn't work right with key-codes/
-        (= key-code key-codes/Z)
-        (if @edit-field-open-on
-          (close-edit-field)
-          (do (.log js/console "undo")
-              (request-action [:undo])))
-         (= key-code key-codes/Y)
-         (when (not @edit-field-open-on)
-          (do (.log js/console "redo")
-              (request-action [:redo])))))
+      (cond  ; We can't use a case statement,
+             ; as it doesn't work right with key-codes/
+        (= key-codes/Z key-code) (if @edit-field-open-on
+                                   (close-edit-field)
+                                   (do (.log js/console "undo")
+                                       (request-action [:undo])))
+        (= key-codes/Y key-code)  (when (not @edit-field-open-on)
+                                    (do (.log js/console "redo")
+                                        (request-action [:redo])))))
     (when (and alt (not ctrl))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling]
                           (= key-codes/NUM_PLUS key-code) [:add-sibling] 

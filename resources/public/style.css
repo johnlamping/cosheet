@@ -9,6 +9,10 @@
     background-color: transparent;
 }
 
+body { /* override the default of 8px */
+    margin-top: 0px;
+}
+
 .item { 
     padding: 3px;
 }
@@ -453,4 +457,72 @@
     right: 0;
     position: absolute;
     z-index: 1;
+}
+
+.toolbar {
+    background-color: white;
+    width: 100%;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 10px;
+    margin-bottom: 5px;
+    border-color: hsl(0, 0%, 75%);
+    border-width: 0px 0px 1px 0px;
+}
+
+.tool {
+    position: relative;
+    height: 30px;
+    width: 60px;
+    font-size: 20px;
+    text-align: center;
+    vertical-align: top;
+    background-color: hsl(0, 0%, 95%);
+    border-width: 1px;
+    border-radius: 2px;
+    border-color: hsl(0, 0%, 75%);
+    margin: 0px 10px 0px 10px;
+    display: inline-block;
+}
+
+.tooltip {
+    visibility: hidden;
+    background-color: hsl(0, 0%, 40%);
+    font-size: 100%;
+    width: 120px;
+    color: #fff;
+    text-align: center;
+    padding: 2px;
+    border-radius: 6px;
+ 
+    /* Position the tooltip text */
+    position: absolute;
+    top: 35px;
+    left: 50%; 
+    margin-left: -60px; /* Use half of the width (120/2 = 60), to center the tooltip */
+    z-index: 1;
+}
+
+/* Make a triangle for the tooltip by adding one more thing after the text,
+   which will consist of only border with only one side non-transparent. */
+.tool .tooltip::after {
+    content: " ";
+    position: absolute;
+    top: -10px; /* At the top of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent hsl(0, 0%, 40%) transparent;
+}
+
+.tool:hover {
+    background-color: hsl(0, 0%, 97%);
+    border-color: hsl(0, 0%, 60%);
+}
+
+/* Show the tooltip text when you mouse over the tool */
+.tool:hover .tooltip {
+    visibility: visible;
+    transition-delay: 1s;
 }

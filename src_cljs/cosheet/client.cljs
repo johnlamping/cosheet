@@ -84,6 +84,18 @@
      (js/document.getElementById "edit_input")}
    target))
 
+(defn menu-click-handler
+  [event]
+  (let [keyword ({"undo" :undo
+                  "redo" :redo
+                  "add-sibling" :add-sibling
+                  "add-row" :add-row
+                  "add-column" :add-column}
+                 (.-id (.-target event)))
+        selection @selected]
+    (when (and keyword selection)
+      (request-action [keyword (.-id selection)]))))
+
 (defn click-handler
   [event]
   (let [target (.-target event)]
@@ -93,12 +105,14 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (close-edit-field)
-      (let [editable (find-editable target event)]
-        (when (not= editable @selected)
-          (if editable
-            (select editable)
-            (deselect))
-          (request-action [:selected (and editable (.-id editable))]))))))
+      (if (= (.-className target) "tool")
+        (menu-click-handler event)
+        (let [editable (find-editable target event)]
+          (when (not= editable @selected)
+            (if editable
+              (select editable)
+              (deselect))
+            (request-action [:selected (and editable (.-id editable))])))))))
 
 (defn double-click-handler
   [event]
@@ -170,6 +184,7 @@
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
+        toolbar (js/document.getElementById "toolbar")
         edit-input (js/document.getElementById "edit_input")
         ;; The key handler makes events consistent across browsers.
         app-key-handler (gevents/KeyHandler. js/document)]
@@ -177,7 +192,8 @@
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
     (gevents/listen app-key-handler key-handler/EventType.KEY
-                    keypress-handler))
+                    keypress-handler)
+    (gevents/listen toolbar gevents/EventType.CLICK click-handler))
   (ajax-request {:initialize true}))
 
 ;;; TODO: Get rid of this eventually; It's just something cute.

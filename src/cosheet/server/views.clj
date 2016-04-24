@@ -34,7 +34,7 @@
      (include-js "/js/main.js")
      (include-css "style.css")]
     [:body
-     [:div.toolbar
+     [:div#toolbar.toolbar
       [:div#undo.tool "⤺" [:div.tooltip "undo"]]
       [:div#redo.tool "⤼" [:div.tooltip "redo"]]
       [:div#add-sibling.tool "+" [:div.tooltip "add item"]]

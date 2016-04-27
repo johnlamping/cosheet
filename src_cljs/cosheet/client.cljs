@@ -87,14 +87,17 @@
 (defn menu-click-handler
   [event]
   (let [keyword ({"undo" :undo
-                  "redo" :redo
-                  "add-sibling" :add-sibling
-                  "add-row" :add-row
-                  "add-column" :add-column}
+                  "redo" :redo}
                  (.-id (.-target event)))
+        contextual-keyword ({"add-sibling" :add-sibling
+                            "add-row" :add-row
+                            "add-column" :add-column}
+                           (.-id (.-target event)))
         selection @selected]
-    (when (and keyword selection)
-      (request-action [keyword (.-id selection)]))))
+    (cond keyword
+          (request-action [keyword])
+          (and contextual-keyword selection)
+          (request-action [contextual-keyword (.-id selection)]))))
 
 (defn click-handler
   [event]

@@ -489,17 +489,19 @@ body { /* override the default of 8px */
     visibility: hidden;
     background-color: hsl(0, 0%, 40%);
     font-size: 100%;
-    width: 120px;
+    box-sizing: content-box;
+    width: max-content;
+    max-width: 120px;
     color: #fff;
     text-align: center;
-    padding: 2px;
+    padding: 2px 4px;
     border-radius: 6px;
  
     /* Position the tooltip text */
     position: absolute;
-    top: 35px;
-    left: 50%; 
-    margin-left: -60px; /* Use half of the width (120/2 = 60), to center the tooltip */
+    top: 100%;
+    left: 50%; /* 50% here is the container's width */
+    transform: translate(-50%, 5px); /* 50% here is the tip's width */
     z-index: 1;
 }
 
@@ -507,13 +509,13 @@ body { /* override the default of 8px */
    which will consist of only border with only one side non-transparent. */
 .tool .tooltip::after {
     content: " ";
-    position: absolute;
-    top: -10px; /* At the top of the tooltip */
-    left: 50%;
-    margin-left: -5px;
     border-width: 5px;
     border-style: solid;
     border-color: transparent transparent hsl(0, 0%, 40%) transparent;
+    position: absolute;
+    top: -10px; /* Above the top of the tooltip */
+    left: 50%;
+    margin-left: -5px;
 }
 
 .tool:hover {

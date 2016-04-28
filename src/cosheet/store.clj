@@ -101,7 +101,13 @@
 
   (fetch-and-clear-modified-ids [this]
     "Clear the record modified ids.
-     Returns the new store, and the set of modified ids."))
+     Returns the new store, and the set of modified ids.")
+
+  (write-store [this stream]
+    "Write the store to the stream in a format that read-store expects.")
+
+  (read-store [this stream]
+    "Reades a store that was written by write-store."))
 
 (defprotocol MutableStore
   "The basic methods that mutable stores support to change themselves,

@@ -5,12 +5,14 @@
             [cosheet.entity :refer [to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
+            [cosheet.test-utils :refer [check any as-set]]
             ; :reload
             ))
 
 (def test-store
   (->ElementStoreImpl
-   {(make-id "1") {:subject (make-id "0") :content (make-id "4")}
+   {(make-id "0") {:content 0}
+    (make-id "1") {:subject (make-id "0") :content (make-id "4")}
     (make-id "2") {:subject (make-id "1") :content "foo"}
     (make-id "3") {:subject (make-id "2") :content :label}
     (make-id "4") {:containers #{(make-id "1")} :content (make-id "6")}
@@ -51,7 +53,7 @@
   (is (= (id->element-ids test-store (make-id "wrong")) nil)))
 
 (deftest id->content-test
-  (is (= (id->content test-store (make-id "0")) nil))
+  (is (= (id->content test-store (make-id "???")) nil))
   (is (= (id->content test-store (make-id "1")) (make-id "4")))
   (is (= (id->content test-store (make-id "2")) "foo"))
   (is (= (id->content test-store (make-id "6")) 5))
@@ -91,7 +93,7 @@
   (is (not (id-is-content? test-store (make-id "3") nil))))
 
 (deftest atomic-value-test
-  (is (= (atomic-value test-store (make-id "0")) nil))
+  (is (= (atomic-value test-store (make-id "???")) nil))
   (is (= (atomic-value test-store (make-id "6")) 5))
   (is (= (atomic-value test-store (make-id "1")) 5)))
 
@@ -228,5 +230,15 @@
     (is (number? id2))
     (is (not (= id1 id2)))))
 
+(deftest write-read-test
+  (let [serialized (java.io.ByteArrayOutputStream.)]
+    (with-open [outstr (clojure.java.io/writer serialized)]
+      (write-store test-store outstr)
+      (with-open [instr (java.io.PushbackReader.
+                         (java.io.InputStreamReader.
+                          (java.io.ByteArrayInputStream.
+                           (.toByteArray serialized))))]
+        (let [s (read-store (new-element-store) instr)]
+          (is (check (into {} (seq s)) (into {} (seq test-store)))))))))
 
 

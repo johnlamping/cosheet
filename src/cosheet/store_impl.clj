@@ -1,6 +1,7 @@
 (ns cosheet.store-impl
   (:require (cosheet [store :refer :all]
-                     [utils :refer :all])))
+                     [utils :refer :all])
+            clojure.edn))
 
 ;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
@@ -190,6 +191,42 @@
             content-id])))
      [store id]))
 
+(defn add-triple
+  "Add a triple to the store, and do all necessary indexing."
+  [store item-id subject content]
+  (assert (not (nil? content)))
+  (let [data (if (nil? subject)
+               {:content content}
+               {:subject subject :content content})]
+    (-> store
+         (assoc-in [:id->data item-id] data)
+         (index-subject item-id)
+         (index-in-subject item-id)
+         (index-content item-id)
+         (add-modified-id item-id))))
+
+(defn add-or-defer-triple
+  ;; Utility function for read-store.
+  ;; The triples may have been written out in any order, but we cannot
+  ;; add a triple until its subject has been added (and after its
+  ;; content has been added, if the content is an id). When we encounter
+  ;; a triple that can't yet added, we save it in deferred,
+  ;; indexed under what it is waiting for, then add it when we see what
+  ;; it needs.
+  ;; Return the new store and new deferred
+  [store deferred id subject content]
+  (let [needed (first (filter #(and (instance? ItemId %)
+                                    (not ((:id->data store) %)))
+                              [subject content]))]
+    (if needed
+      [store (update-in deferred [needed]
+                        #(conj % [id subject content]))]
+      (reduce (fn [[store deferred] [id subject content]]
+                (add-or-defer-triple store deferred id subject content))
+              [(add-triple store id subject content)
+               (dissoc deferred id)]
+              (deferred id)))))
+
 (defrecord ElementStoreImpl
     ^{:doc
       "An immutable store that has only enough indexing
@@ -267,17 +304,10 @@
     (assert (not (nil? content)))
     (let [[promoted1 revised-subject] (promote-implicit-item this subject)
           [promoted revised-content] (promote-implicit-item promoted1 content)]
-      (let [data (if (nil? revised-subject)
-                   {:content content}
-                   {:subject revised-subject :content content})
-            item-id (->ItemId (:next-id promoted))]
+      (let [item-id (->ItemId (:next-id promoted))]
         [(-> promoted
              (update-in [:next-id] inc)
-             (assoc-in [:id->data item-id] data)
-             (index-subject item-id)
-             (index-in-subject item-id)
-             (index-content item-id)
-             (add-modified-id item-id))
+             (add-triple item-id revised-subject revised-content))
          item-id])))
 
   (remove-simple-id [this id]
@@ -307,7 +337,36 @@
 
   (fetch-and-clear-modified-ids [this]
     [(assoc this :modified-ids #{})
-     (:modified-ids this)]))
+     (:modified-ids this)])
+
+  (write-store [this stream]
+    (binding [*out* stream]
+      (prn [(:next-id this)
+            (for [[id {:keys [subject content] :or {subject nil}}]
+                  (seq (:id->data this))]
+              ;; TODO: handle order content too.
+              [(:id id)
+               (:id subject)
+               (if (instance? ItemId content)
+                 [:id (:id content)]
+                 content)])])))
+
+  (read-store [this stream]
+    (binding [*in* stream]
+      (let [[next-id items] (clojure.edn/read stream)]
+        (let [[store deferred]
+              (reduce (fn [[store deferred] [id subject content]]
+                   (let [id (->ItemId id)
+                         subject (when subject (->ItemId subject))
+                         content (if (and (vector? content)
+                                          (= (first content) :id))
+                                   (->ItemId (second content))
+                                   content)]
+                     (add-or-defer-triple store deferred id subject content)))
+                 [(assoc (new-element-store) :next-id next-id) {}]
+                 items)]
+          (assert (empty? deferred))
+          store)))))
 
 (defmethod print-method ElementStoreImpl [s ^java.io.Writer w]
   (.write w "ElementStore"))

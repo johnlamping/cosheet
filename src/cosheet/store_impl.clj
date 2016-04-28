@@ -1,6 +1,7 @@
 (ns cosheet.store-impl
   (:require (cosheet [store :refer :all]
-                     [utils :refer :all])
+                     [utils :refer :all]
+                     [orderable :refer [->Orderable]])
             clojure.edn))
 
 ;;; Data in a store consists of ItemId objects. All that the system
@@ -344,12 +345,14 @@
       (prn [(:next-id this)
             (for [[id {:keys [subject content] :or {subject nil}}]
                   (seq (:id->data this))]
-              ;; TODO: handle order content too.
               [(:id id)
                (:id subject)
-               (if (instance? ItemId content)
-                 [:id (:id content)]
-                 content)])])))
+               (cond (instance? ItemId content)
+                     [:id (:id content)]
+                     (instance? cosheet.orderable.Orderable content)
+                     [:ord (:left content) (:right content)]
+                     true
+                     content)])])))
 
   (read-store [this stream]
     (binding [*in* stream]
@@ -358,9 +361,11 @@
               (reduce (fn [[store deferred] [id subject content]]
                    (let [id (->ItemId id)
                          subject (when subject (->ItemId subject))
-                         content (if (and (vector? content)
-                                          (= (first content) :id))
-                                   (->ItemId (second content))
+                         content (if (vector? content)
+                                   (apply (case (first content)
+                                            :id ->ItemId
+                                            :ord orderable/->Orderable)
+                                          (rest content))
                                    content)]
                      (add-or-defer-triple store deferred id subject content)))
                  [(assoc (new-element-store) :next-id next-id) {}]

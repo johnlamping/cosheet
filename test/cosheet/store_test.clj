@@ -1,11 +1,13 @@
 (ns cosheet.store-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
-            [cosheet.store :refer :all]
-            [cosheet.entity :refer [to-list description->entity]]
-            cosheet.entity-impl
-            [cosheet.store-impl :refer :all]
-            [cosheet.test-utils :refer [check any as-set]]
+            (cosheet
+             [store :refer :all]
+             [entity :refer [to-list description->entity]]
+             entity-impl
+             [orderable :as orderable]
+             [store-impl :refer :all]
+             [test-utils :refer [check any as-set]])
             ; :reload
             ))
 
@@ -231,14 +233,19 @@
     (is (not (= id1 id2)))))
 
 (deftest write-read-test
-  (let [serialized (java.io.ByteArrayOutputStream.)]
+  (let [store (first
+               ;; Add an Orderable to the store to check its serialization.
+               (add-simple-element test-store
+                                   (make-id "0")
+                                   (first (orderable/split orderable/initial))))
+        serialized (java.io.ByteArrayOutputStream.)]
     (with-open [outstr (clojure.java.io/writer serialized)]
-      (write-store test-store outstr)
+      (write-store store outstr)
       (with-open [instr (java.io.PushbackReader.
                          (java.io.InputStreamReader.
                           (java.io.ByteArrayInputStream.
                            (.toByteArray serialized))))]
         (let [s (read-store (new-element-store) instr)]
-          (is (check (into {} (seq s)) (into {} (seq test-store)))))))))
+          (is (check (into {} (seq s)) (into {} (seq store)))))))))
 
 

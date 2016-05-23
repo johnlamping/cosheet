@@ -3,6 +3,7 @@
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
    (cosheet
+    [utils :refer [swap-control-return!]]
     [orderable :as orderable]
     [mutable-set :refer [new-mutable-set]]
     [store :refer [new-element-store new-mutable-store current-store]]
@@ -44,7 +45,7 @@
      [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
      [:script "cosheet.client.run();"]]))
 
-(defn create-store
+(defn starting-store
   []
   (let [unused-orderable orderable/initial
         [o1 unused-orderable] (orderable/split unused-orderable :after)
@@ -79,65 +80,73 @@
                                               :unused-orderable))]
     (new-mutable-store store)))
 
-(defonce store (create-store))
-
-(defonce root-item
-  (let [immutable-root-item (first (matching-items '(nil :root)
-                                                   (current-store store)))]
-    (description->entity (:item-id immutable-root-item) store)))
-
 (defonce root-parent-key ["root"])
-
-(defonce root-key (prepend-to-key (item-referent root-item) root-parent-key))
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
 (defn create-tracker
-  [do-not-merge]
-  (let [definition [table-DOM root-item root-parent-key
+  [store do-not-merge]
+  (let [immutable-root-item (first (matching-items '(nil :root)
+                                                   (current-store store)))
+        root-item (description->entity (:item-id immutable-root-item) store)
+        root-key (prepend-to-key (item-referent root-item) root-parent-key)
+        definition [table-DOM root-item root-parent-key
                     {:depth 0 :do-not-merge do-not-merge}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
+    (println "created tracker")
     tracker))
 
-;;; TODO: this needs to be separate for each web page.
+;;; A map from page name to session state.
 ;;; Session state consists of a map
+;;;          :store  The store that holds the data
 ;;;        :tracker  The tracker for the session.
 ;;;   :do-not-merge  A set of items that should not be merged.
-;;;    :last-action  The key of the last action we did.
+;;;    :last-action  an atom holding the id of the last action we did.
 ;;;                  This keeps us from repeating an action if the
 ;;;                  client gets impatient and repeats it while we were
 ;;;                  working on it.
-(def session-state-atom (atom nil))
+;;; TODO: The key needs to be page, not page name, because one browser
+;;;       may have several tabs open to thec same page, and each needs
+;;;       their own tracker, so they can all get updates. That will also
+;;;       handle different tabs having different views on the same store. 
+(def session-states (atom {}))
 
-(defn tracker [] (:tracker @session-state-atom))
-
-(defn check-propagation-if-quiescent []
-  (let [tracker-data @(tracker)
-        reporter (get-in tracker-data [:components root-key :reporter])
+(defn check-propagation-if-quiescent [tracker]
+  (let [tracker-data @tracker
         task-queue (get-in tracker-data [:manager-data :queue])]
     (when (finished-all-tasks? task-queue)
-      ;; TODO: Eventually, this needs to be turned off, both
-      ;; because it is too expensive, visiting all dependencies,
-      ;; and because if a second request comes in while we are checking
-      ;; the checks are likely to fail.
-      (check-propagation reporter)
-      ;; This can be uncommented to see what is allocating reporters.
-      (comment
-        (profile-and-print-reporters (->> (vals (:components @(tracker)))
-                                          (map :reporter)
-                                          (filter reporter/reporter?)))))))
+      (let [reporters (->> (vals (:components tracker-data))
+                           (map :reporter)
+                           (filter reporter/reporter?))]
+        ;; TODO: Eventually, this needs to be turned off, both
+        ;; because it is too expensive, visiting all dependencies,
+        ;; and because if a second request comes in while we are checking,
+        ;; the checks are likely to fail.
+        (check-propagation reporters)
+        ;; This can be uncommented to see what is allocating reporters.
+        (comment (profile-and-print-reporters reporters))))))
 
-(defn initialize-session-state-atom
-  []
-  (reset! session-state-atom (let [do-not-merge (new-mutable-set #{})]
-                               {:tracker (create-tracker do-not-merge)
-                                :do-not-merge do-not-merge
-                                :last-action nil}))
-  (println "created tracker")
-  (compute manager-data 1000)
-  (println "computed some")
-  (check-propagation-if-quiescent))
+;;; TODO: Read store if available, and use that.
+(defn ensure-session-state
+  [name]
+  (let [state (swap-control-return!
+               session-states
+               (fn [map]
+                 (let [current (map name)]
+                   (if current
+                     [map current]
+                     (let [store (starting-store)
+                           state (let [do-not-merge (new-mutable-set #{})]
+                                   {:store store
+                                    :tracker (create-tracker store do-not-merge)
+                                    :do-not-merge do-not-merge
+                                    :last-action (atom nil)})]
+                       [(assoc map name state) state])))))]
+    (compute manager-data 1000)
+    (println "computed some")
+    (check-propagation-if-quiescent (:tracker state))
+    state))
 
 ;;; The parameters for the ajax request and response are:
 ;;; request:
@@ -148,7 +157,7 @@
 ;;;                action looks like [action_type arg ...], and the
 ;;;                action types are those implemented in actions.clj.
 ;;;                The action ids should sort in the order in which
-;;;                the actions should be done. Ids in successive
+;;;                the actions should be done. Ids in successive requests
 ;;;                should have successively higher sort orders.
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
@@ -169,32 +178,32 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [actions acknowledge initialize]} params]
-    (println "request params" params)
-    (if (nil? @session-state-atom)
-      (initialize-session-state-atom)
-      (when initialize
-        (println "requesting client refresh")
-        (request-client-refresh (tracker))
-        (swap! session-state-atom #(assoc % :last-action nil))))
+        {:keys [name actions acknowledge initialize]} params
+        session-state (ensure-session-state name)
+        {:keys [tracker store last-action]} session-state]
+    (println "request" params)
+    (when initialize
+      (println "requesting client refresh")
+      (request-client-refresh tracker)
+      (reset! last-action nil))
     (println "process acknowledgements" acknowledge)
-    (process-acknowledgements (tracker) acknowledge)
-    (let [action-sequence (confirm-actions actions session-state-atom)
+    (process-acknowledgements tracker acknowledge)
+    (let [action-sequence (confirm-actions actions last-action)
           client-info (when (not (empty? action-sequence))
-                        (do-actions store @session-state-atom action-sequence))]
+                        (do-actions store session-state action-sequence))]
       (compute manager-data 4000)
-      (check-propagation-if-quiescent)
+      (check-propagation-if-quiescent tracker)
       ;; Note: We must get the doms after doing the actions, so we can
       ;; immediately show the response to the actions. Likewise, we
       ;; have to pass down select requests after the new dom has been
       ;; constructed, so the client has the dom we want it to select.      
-      (let [doms (response-doms @(tracker) 10)
+      (let [doms (response-doms @tracker 10)
             select (let [[select if-selected] (:select client-info)]
                      (when select
-                       (let [select-id (key->id (tracker) select)]
+                       (let [select-id (key->id tracker select)]
                          [select-id
                           (filter identity
-                                  (map (partial key->id (tracker))
+                                  (map (partial key->id tracker)
                                        if-selected))])))
             answer (cond-> {}
                      (> (count doms) 0) (assoc :doms doms)

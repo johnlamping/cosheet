@@ -365,16 +365,13 @@
 
 (defn confirm-actions
   "Check that the actions have not already been done, update the
-  :last-action of the session state to reflect that these actions have
+  last-action atom to reflect that these actions have
   been done, and return the sequence of actions to be done."
-  [actions session-state-atom]
+  [actions last-action-atom]
   (swap-control-return!
-   session-state-atom
-   (fn [session-state]
-     (let [last-action (:last-action session-state)
-           keys (cond->> (sort (keys actions))
+   last-action-atom
+   (fn [last-action]
+     (let [keys (cond->> (sort (keys actions))
                   last-action (filter #(pos? (compare % last-action))))]
-       [(if (empty? keys)
-          session-state
-          (assoc session-state :last-action (last keys)))
+       [(if (empty? keys) last-action (last keys))
         (map actions keys)]))))

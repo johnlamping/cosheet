@@ -330,16 +330,16 @@
     (is (= (current-mutable-value do-not-merge) #{}))))
 
 (deftest confirm-actions-test
-  (let [state (atom {:last-action nil})]
-    (is (= (confirm-actions {1 :a 2 :b 3 :c} state)
+  (let [last (atom nil)]
+    (is (= (confirm-actions {1 :a 2 :b 3 :c} last)
            [:a :b :c]))
-    (is (= (confirm-actions {2 :b 3 :c 4 :d} state)
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} last)
            [:d]))
-    (is (= (confirm-actions {2 :b 3 :c 4 :d} state)
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} last)
            []))
-    (is (= (confirm-actions {} state)
+    (is (= (confirm-actions {} last)
            []))
-    (is (= (:last-action @state) 4))))
+    (is (= @last 4))))
 
 ;;; TODO: remove this once profiling is done.
 (defn profile-test

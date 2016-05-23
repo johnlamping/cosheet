@@ -10,8 +10,8 @@
             [cosheet.server.views :refer [initial-page ajax-response]]))
 
 (defroutes main-routes
-  (GET "/" [] (initial-page))
-  (POST "/ajax-request" request (ajax-response request))
+  (GET "/cosheet/:name" [name] (initial-page name))
+  (POST "/ajax-request/:name" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))
 

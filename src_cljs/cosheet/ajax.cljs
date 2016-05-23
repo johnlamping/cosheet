@@ -16,12 +16,14 @@
 (def ajax-request-pending (atom false))
 
 (defn ajax-request [params]
-  (POST "/ajax-request"
-        {:params params
-         :response-format (transit-response-format)
-         :handler ajax-handler
-         :error-handler ajax-error-handler
-         :timeout 5000})
+  (let [path (.-pathname js/location)
+        name (last (clojure.string/split path #"/"))]
+    (POST (clojure.string/join "/" ["/ajax-request" name])
+          {:params params
+           :response-format (transit-response-format)
+           :handler ajax-handler
+           :error-handler ajax-error-handler
+           :timeout 5000}))
   (reset! ajax-request-pending true))
 
 ;;; A handle to the current pending ajax poll task.

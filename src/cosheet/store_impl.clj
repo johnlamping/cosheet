@@ -364,7 +364,7 @@
                          content (if (vector? content)
                                    (apply (case (first content)
                                             :id ->ItemId
-                                            :ord orderable/->Orderable)
+                                            :ord ->Orderable)
                                           (rest content))
                                    content)]
                      (add-or-defer-triple store deferred id subject content)))

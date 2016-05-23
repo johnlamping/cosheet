@@ -27,12 +27,12 @@
                          key->id]]
     [actions :refer [confirm-actions do-actions]])))
 
-(defn initial-page []
+(defn initial-page [name]
   (html5
     [:head
      [:title "Hello World"]
-     (include-js "/js/main.js")
-     (include-css "style.css")]
+     (include-js "../js/main.js")
+     (include-css "../style.css")]
     [:body
      [:div#toolbar.toolbar
       [:div#undo.tool "⤺" [:div.tooltip "undo"]]

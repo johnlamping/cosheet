@@ -54,13 +54,6 @@
               (concat result (take count (key-values-map key))))
             [] multiset)))
 
-(defn update-last
-  "Update the last element of a vector."
-  [vec fun]
-  (if (empty? vec)
-    [(fun nil)]
-    (update-in vec [(dec (count vec))] fun)))
-
 ;;; Utilities for making maps that clean up empty values.
 
 (defn dissoc-in
@@ -165,3 +158,30 @@
              int-x (int x)]
          (if (== x int-x) int-x x))
        (catch Exception e str)))
+
+;;; Misc
+
+(defn update-last
+  "Update the last element of a vector."
+  [vec fun]
+  (if (empty? vec)
+    [(fun nil)]
+    (update-in vec [(dec (count vec))] fun)))
+
+(defn ensure-in-map
+  "Given a map, if the map has a value for the key, 
+   return the map and that value. If not, call the function with the key,
+   put its result into the map, and return the new map and the result."
+  [map key fun]
+  (if (contains? map key)
+    [map (map key)]
+    (let [val (fun key)]
+      [(assoc map key val) val])))
+
+(defn ensure-in-atom-map!
+  "Given an atom holding a map, if the map has a value for the key, 
+   return that value. If not, call the function with the key,
+   put its result into the map, and the result."
+  [atom-map key fun]
+  (swap-control-return! atom-map
+                        #(ensure-in-map % key fun)))

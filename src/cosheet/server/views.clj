@@ -4,7 +4,7 @@
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
    (cosheet
-    [utils :refer [swap-control-return!]]
+    [utils :refer [swap-control-return! ensure-in-atom-map!]]
     [orderable :as orderable]
     [mutable-set :refer [new-mutable-set]]
     [store :refer [new-element-store new-mutable-store current-store
@@ -86,18 +86,40 @@
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
-(defn create-tracker
-  [store do-not-merge]
-  (let [immutable-root-item (first (matching-items '(nil :root)
-                                                   (current-store store)))
-        root-item (description->entity (:item-id immutable-root-item) store)
-        root-key (prepend-to-key (item-referent root-item) root-parent-key)
-        definition [table-DOM root-item root-parent-key
-                    {:depth 0 :do-not-merge do-not-merge}]
-        tracker (new-dom-tracker manager-data)]
-    (add-dom tracker "root" root-key definition)
-    (println "created tracker")
-    tracker))
+;;; Store management. Stores may be shared across sessions.
+
+;;; A map from name to stores that we have open.
+(def stores (atom {}))
+
+(defn name-to-path [name]
+  (let [homedir (System/getProperty "user.home")]
+    (clojure.string/join "" [homedir  "/cosheet/" name ".cst"])))
+
+(defn path-to-Path [path]
+  (java.nio.file.Paths/get
+   (java.net.URI. (clojure.string/join "" ["file://" path]))))
+
+(defn read-store-file [name]
+  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
+    (read-store (new-element-store) stream)))
+
+(defn write-store-file [immutable-store name]
+  (let [temp-path (name-to-path "_TEMP_")]
+    (clojure.java.io/delete-file temp-path true)
+    (with-open [stream (clojure.java.io/output-stream temp-path)]
+      (write-store immutable-store stream))
+    (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
+                (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
+                                        StandardCopyOption/ATOMIC_MOVE]))))
+
+(defn ensure-store [name]
+  (ensure-in-atom-map!
+   stores name
+   #(new-mutable-store
+     (try (read-store-file %)
+          (catch java.io.FileNotFoundException e (starting-store))))))
+
+;;; Session management. There is a tracker for each session.
 
 ;;; A map from file name to session state.
 ;;; Session state consists of a map
@@ -114,6 +136,19 @@
 ;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
 
+(defn create-tracker
+  [store do-not-merge]
+  (let [immutable-root-item (first (matching-items '(nil :root)
+                                                   (current-store store)))
+        root-item (description->entity (:item-id immutable-root-item) store)
+        root-key (prepend-to-key (item-referent root-item) root-parent-key)
+        definition [table-DOM root-item root-parent-key
+                    {:depth 0 :do-not-merge do-not-merge}]
+        tracker (new-dom-tracker manager-data)]
+    (add-dom tracker "root" root-key definition)
+    (println "created tracker")
+    tracker))
+
 (defn check-propagation-if-quiescent [tracker]
   (let [tracker-data @tracker
         task-queue (get-in tracker-data [:manager-data :queue])]
@@ -129,51 +164,16 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
-(defn name-to-path [name]
-  (let [homedir (System/getProperty "user.home")]
-    (clojure.string/join "" [homedir  "/cosheet/" name ".cst"])))
-
-(defn path-to-Path [path]
-  (java.nio.file.Paths/get
-   (java.net.URI. (clojure.string/join "" ["file://" path]))))
-
-;;; TODO: Move this reader/writer stuff to store_impl.clj,
-;;; so it does take streams.
-(defn read-store-file [name]
-  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
-    (read-store (new-element-store) stream)))
-
-(defn write-store-file [immutable-store name]
-  (let [temp-path (name-to-path "_TEMP_")]
-    (println "temp path" temp-path)
-    (clojure.java.io/delete-file temp-path true)
-    (with-open [stream (clojure.java.io/output-stream temp-path)]
-      (write-store immutable-store stream))
-    (let [x 2]
-      (+ x x))
-    (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
-                (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
-                                        StandardCopyOption/ATOMIC_MOVE]))))
-
-;;; TODO: Read store if available, and use that.
 (defn ensure-session-state
   [name]
-  (let [state (swap-control-return!
-               session-states
-               (fn [map]
-                 (let [current (map name)]
-                   (if current
-                     [map current]
-                     (let [store (new-mutable-store
-                                  (try (read-store-file name)
-                                       (catch java.io.FileNotFoundException e
-                                         (starting-store))))
-                           state (let [do-not-merge (new-mutable-set #{})]
-                                   {:store store
-                                    :tracker (create-tracker store do-not-merge)
-                                    :do-not-merge do-not-merge
-                                    :last-action (atom nil)})]
-                       [(assoc map name state) state])))))]
+  (let [store (ensure-store name)
+        state (ensure-in-atom-map!
+               session-states name
+               (fn [name] (let [do-not-merge (new-mutable-set #{})]
+                            {:store store
+                             :tracker (create-tracker store do-not-merge)
+                             :do-not-merge do-not-merge
+                             :last-action (atom nil)})))]
     (compute manager-data 1000)
     (println "computed some")
     (check-propagation-if-quiescent (:tracker state))

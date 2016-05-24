@@ -139,12 +139,14 @@
   (when (not= response {})
     (.log js/console (str response))
     (reset-poll-delay)
-    (let [previously-selected-id (and @selected (.-id @selected))]
-      (handle-ajax-doms response)
-      (reagent/flush)  ;; Must update the dom before the select is processed.
-      (handle-ajax-select response previously-selected-id))
-    (process-response-for-pending response)
-    (ajax-if-pending))
+    (if (:reload response)
+      (js/location.reload)
+      (let [previously-selected-id (and @selected (.-id @selected))]
+        (handle-ajax-doms response)
+        (reagent/flush)  ;; Must update the dom before the select is processed.
+        (handle-ajax-select response previously-selected-id)
+        (process-response-for-pending response)
+        (ajax-if-pending))))
   (schedule-poll-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]

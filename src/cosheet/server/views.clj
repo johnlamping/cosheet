@@ -213,6 +213,8 @@
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
 ;;; response:
+;;;        :reload The server has no record of the session. The page
+;;;                should request a reload.
 ;;;          :doms A list of hiccup encoded doms of components. Their
 ;;;                attributes will include a unique :id and a :version
 ;;;                number that will increase for each change of the dom
@@ -227,42 +229,41 @@
 (defn ajax-response [request]
   (let [params (:params request)
         {:keys [id actions acknowledge initialize]} params
-        session-state (get-session-state id)
-        {:keys [tracker name store last-action]} session-state
-        original_store (current-store store)]
-    ;; TODO: Check whether the session was newly created, and the request is
-    ;;       not initialize, in which case, we have to tell the client to
-    ;;       ask for a refresh, as it's version numbers will be wrong.
-    (println "request" params)
-    (when initialize
-      (println "requesting client refresh")
-      (request-client-refresh tracker)
-      (reset! last-action nil))
-    (println "process acknowledgements" acknowledge)
-    (process-acknowledgements tracker acknowledge)
-    (let [action-sequence (confirm-actions actions last-action)
-          client-info (when (not (empty? action-sequence))
-                        (do-actions store session-state action-sequence))]
-      (let [new-store (current-store store)]
-        (when (not= new-store store)
-          (write-store-file new-store name)))
-      (compute manager-data 4000)
-      (check-propagation-if-quiescent tracker)
-      ;; Note: We must get the doms after doing the actions, so we can
-      ;; immediately show the response to the actions. Likewise, we
-      ;; have to pass down select requests after the new dom has been
-      ;; constructed, so the client has the dom we want it to select.      
-      (let [doms (response-doms @tracker 10)
-            select (let [[select if-selected] (:select client-info)]
-                     (when select
-                       (let [select-id (key->id tracker select)]
-                         [select-id
-                          (filter identity
-                                  (map (partial key->id tracker)
-                                       if-selected))])))
-            answer (cond-> {}
-                     (> (count doms) 0) (assoc :doms doms)
-                     select (assoc :select select)
-                     actions (assoc :acknowledge (vec (keys actions))))]
-        (println "response" answer)
-        (response answer)))))
+        session-state (get-session-state id)]
+    (if session-state
+      (let [{:keys [tracker name store last-action]} session-state
+            original_store (current-store store)]
+        (println "request" params)
+        (when initialize
+          (println "requesting client refresh")
+          (request-client-refresh tracker)
+          (reset! last-action nil))
+        (println "process acknowledgements" acknowledge)
+        (process-acknowledgements tracker acknowledge)
+        (let [action-sequence (confirm-actions actions last-action)
+              client-info (when (not (empty? action-sequence))
+                            (do-actions store session-state action-sequence))]
+          (let [new-store (current-store store)]
+            (when (not= new-store store)
+              (write-store-file new-store name)))
+          (compute manager-data 4000)
+          (check-propagation-if-quiescent tracker)
+          ;; Note: We must get the doms after doing the actions, so we can
+          ;; immediately show the response to the actions. Likewise, we
+          ;; have to pass down select requests after the new dom has been
+          ;; constructed, so the client has the dom we want it to select.      
+          (let [doms (response-doms @tracker 10)
+                select (let [[select if-selected] (:select client-info)]
+                         (when select
+                           (let [select-id (key->id tracker select)]
+                             [select-id
+                              (filter identity
+                                      (map (partial key->id tracker)
+                                           if-selected))])))
+                answer (cond-> {}
+                         (> (count doms) 0) (assoc :doms doms)
+                         select (assoc :select select)
+                         actions (assoc :acknowledge (vec (keys actions))))]
+            (println "response" answer)
+            (response answer))))
+      (response {:reload true}))))

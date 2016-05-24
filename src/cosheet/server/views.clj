@@ -1,4 +1,5 @@
 (ns cosheet.server.views
+  (:import [java.nio.file Files CopyOption StandardCopyOption])
   (:require
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
@@ -6,7 +7,8 @@
     [utils :refer [swap-control-return!]]
     [orderable :as orderable]
     [mutable-set :refer [new-mutable-set]]
-    [store :refer [new-element-store new-mutable-store current-store]]
+    [store :refer [new-element-store new-mutable-store current-store
+                   read-store write-store]]
     store-impl
     mutable-store-impl
     [entity :refer [description->entity]]
@@ -78,7 +80,7 @@
         [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
-    (new-mutable-store store)))
+    store))
 
 (defonce root-parent-key ["root"])
 
@@ -97,7 +99,7 @@
     (println "created tracker")
     tracker))
 
-;;; A map from page name to session state.
+;;; A map from file name to session state.
 ;;; Session state consists of a map
 ;;;          :store  The store that holds the data
 ;;;        :tracker  The tracker for the session.
@@ -106,8 +108,8 @@
 ;;;                  This keeps us from repeating an action if the
 ;;;                  client gets impatient and repeats it while we were
 ;;;                  working on it.
-;;; TODO: The key needs to be page, not page name, because one browser
-;;;       may have several tabs open to thec same page, and each needs
+;;; TODO: The key needs to be browser page, not file name, because one browser
+;;;       may have several tabs open to the same page, and each needs
 ;;;       their own tracker, so they can all get updates. That will also
 ;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
@@ -127,6 +129,32 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
+(defn name-to-path [name]
+  (let [homedir (System/getProperty "user.home")]
+    (clojure.string/join "" [homedir  "/cosheet/" name ".cst"])))
+
+(defn path-to-Path [path]
+  (java.nio.file.Paths/get
+   (java.net.URI. (clojure.string/join "" ["file://" path]))))
+
+;;; TODO: Move this reader/writer stuff to store_impl.clj,
+;;; so it does take streams.
+(defn read-store-file [name]
+  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
+    (read-store (new-element-store) stream)))
+
+(defn write-store-file [immutable-store name]
+  (let [temp-path (name-to-path "_TEMP_")]
+    (println "temp path" temp-path)
+    (clojure.java.io/delete-file temp-path true)
+    (with-open [stream (clojure.java.io/output-stream temp-path)]
+      (write-store immutable-store stream))
+    (let [x 2]
+      (+ x x))
+    (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
+                (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
+                                        StandardCopyOption/ATOMIC_MOVE]))))
+
 ;;; TODO: Read store if available, and use that.
 (defn ensure-session-state
   [name]
@@ -136,7 +164,10 @@
                  (let [current (map name)]
                    (if current
                      [map current]
-                     (let [store (starting-store)
+                     (let [store (new-mutable-store
+                                  (try (read-store-file name)
+                                       (catch java.io.FileNotFoundException e
+                                         (starting-store))))
                            state (let [do-not-merge (new-mutable-set #{})]
                                    {:store store
                                     :tracker (create-tracker store do-not-merge)
@@ -172,15 +203,16 @@
 ;;;                take efffect.
 ;;;   :acknowledge A vector of action ids of actions that have been
 ;;;                performed.
-;;; TODO: Action ids should be required to be integers, and the server
-;;;       should not perform out of order actions. It should
-;;;       acknowledge just the highest action it has seen.
 
 (defn ajax-response [request]
   (let [params (:params request)
         {:keys [name actions acknowledge initialize]} params
         session-state (ensure-session-state name)
-        {:keys [tracker store last-action]} session-state]
+        {:keys [tracker store last-action]} session-state
+        original_store (current-store store)]
+    ;; TODO: Check whether the session was newly created, and the request is
+    ;;       not initialize, in which case, we have to tell the client to
+    ;;       ask for a refresh, as it's version numbers will be wrong.
     (println "request" params)
     (when initialize
       (println "requesting client refresh")
@@ -191,6 +223,9 @@
     (let [action-sequence (confirm-actions actions last-action)
           client-info (when (not (empty? action-sequence))
                         (do-actions store session-state action-sequence))]
+      (let [new-store (current-store store)]
+        (when (not= new-store store)
+          (write-store-file new-store name)))
       (compute manager-data 4000)
       (check-propagation-if-quiescent tracker)
       ;; Note: We must get the doms after doing the actions, so we can

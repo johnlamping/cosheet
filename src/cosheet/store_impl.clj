@@ -214,7 +214,7 @@
   ;; a triple that can't yet added, we save it in deferred,
   ;; indexed under what it is waiting for, then add it when we see what
   ;; it needs.
-  ;; Return the new store and new deferred
+  ;; Return the new store and new deferred.
   [store deferred id subject content]
   (let [needed (first (filter #(and (instance? ItemId %)
                                     (not ((:id->data store) %)))
@@ -341,37 +341,41 @@
      (:modified-ids this)])
 
   (write-store [this stream]
-    (binding [*out* stream]
-      (prn [(:next-id this)
-            (for [[id {:keys [subject content] :or {subject nil}}]
-                  (seq (:id->data this))]
-              [(:id id)
-               (:id subject)
-               (cond (instance? ItemId content)
-                     [:id (:id content)]
-                     (instance? cosheet.orderable.Orderable content)
-                     [:ord (:left content) (:right content)]
-                     true
-                     content)])])))
+    (with-open [writer (clojure.java.io/writer stream)]
+      (binding [*out* writer]
+        (prn [(:next-id this)
+              (for [[id {:keys [subject content] :or {subject nil}}]
+                    (seq (:id->data this))]
+                [(:id id)
+                 (:id subject)
+                 (cond (instance? ItemId content)
+                       [:id (:id content)]
+                       (instance? cosheet.orderable.Orderable content)
+                       [:ord (:left content) (:right content)]
+                       true
+                       content)])]))))
 
   (read-store [this stream]
-    (binding [*in* stream]
-      (let [[next-id items] (clojure.edn/read stream)]
-        (let [[store deferred]
-              (reduce (fn [[store deferred] [id subject content]]
-                   (let [id (->ItemId id)
-                         subject (when subject (->ItemId subject))
-                         content (if (vector? content)
-                                   (apply (case (first content)
-                                            :id ->ItemId
-                                            :ord ->Orderable)
-                                          (rest content))
-                                   content)]
-                     (add-or-defer-triple store deferred id subject content)))
-                 [(assoc (new-element-store) :next-id next-id) {}]
-                 items)]
-          (assert (empty? deferred))
-          store)))))
+    (with-open [reader (java.io.PushbackReader.
+                        (java.io.InputStreamReader. stream))]
+      (binding [*in* reader]
+        (let [[next-id items] (clojure.edn/read reader)]
+          (let [[store deferred]
+                (reduce (fn [[store deferred] [id subject content]]
+                          (let [id (->ItemId id)
+                                subject (when subject (->ItemId subject))
+                                content (if (vector? content)
+                                          (apply (case (first content)
+                                                   :id ->ItemId
+                                                   :ord ->Orderable)
+                                                 (rest content))
+                                          content)]
+                            (add-or-defer-triple
+                             store deferred id subject content)))
+                        [(assoc (new-element-store) :next-id next-id) {}]
+                        items)]
+            (assert (empty? deferred))
+            store))))))
 
 (defmethod print-method ElementStoreImpl [s ^java.io.Writer w]
   (.write w "ElementStore"))

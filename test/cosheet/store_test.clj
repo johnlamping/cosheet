@@ -238,14 +238,11 @@
                (add-simple-element test-store
                                    (make-id "0")
                                    (first (orderable/split orderable/initial))))
-        serialized (java.io.ByteArrayOutputStream.)]
-    (with-open [outstr (clojure.java.io/writer serialized)]
-      (write-store store outstr)
-      (with-open [instr (java.io.PushbackReader.
-                         (java.io.InputStreamReader.
-                          (java.io.ByteArrayInputStream.
-                           (.toByteArray serialized))))]
-        (let [s (read-store (new-element-store) instr)]
-          (is (check (into {} (seq s)) (into {} (seq store)))))))))
+        outstr (java.io.ByteArrayOutputStream.)]
+    (write-store store outstr)
+    (with-open [instr (java.io.ByteArrayInputStream.
+                       (.toByteArray outstr))]
+      (let [s (read-store (new-element-store) instr)]
+        (is (check (into {} (seq s)) (into {} (seq store))))))))
 
 

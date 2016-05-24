@@ -15,15 +15,19 @@
 
 (def ajax-request-pending (atom false))
 
+(defn session-id []
+  (-> (->> (array-seq (js/document.getElementsByTagName "meta"))
+           (filter #(= (.getAttribute % "itemprop") "session-id")))
+      first
+      (.getAttribute "content")))
+
 (defn ajax-request [params]
-  (let [path (.-pathname js/location)
-        name (last (clojure.string/split path #"/"))]
-    (POST (clojure.string/join "/" ["/ajax-request" name])
+  (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
           {:params params
            :response-format (transit-response-format)
            :handler ajax-handler
            :error-handler ajax-error-handler
-           :timeout 5000}))
+           :timeout 5000})
   (reset! ajax-request-pending true))
 
 ;;; A handle to the current pending ajax poll task.

@@ -1,5 +1,6 @@
 (ns cosheet.server.routes
   (:require [compojure.route :as route]
+            ;; TODO: Get rid of next two lines?
             [compojure.handler :as handler]
             [compojure.response :as response]
             [compojure.core :refer [GET POST defroutes]]
@@ -11,7 +12,7 @@
 
 (defroutes main-routes
   (GET "/cosheet/:name" [name] (initial-page name))
-  (POST "/ajax-request/:name" request (ajax-response request))
+  (POST "/ajax-request/:id" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))
 

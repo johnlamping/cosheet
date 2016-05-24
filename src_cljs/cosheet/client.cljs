@@ -209,5 +209,3 @@
                 (-> (js/Date.) .toTimeString (clojure.string/split " ")  first)]
             (swap! clock (fn [old] (assoc old 2 now))))))
      1000)))
-
-

@@ -30,23 +30,6 @@
                          key->id]]
     [actions :refer [confirm-actions do-actions]])))
 
-(defn initial-page [name]
-  (html5
-    [:head
-     [:title "Hello World"]
-     (include-js "../js/main.js")
-     (include-css "../style.css")]
-    [:body
-     [:div#toolbar.toolbar
-      [:div#undo.tool "⤺" [:div.tooltip "undo"]]
-      [:div#redo.tool "⤼" [:div.tooltip "redo"]]
-      [:div#add-sibling.tool "+" [:div.tooltip "add item"]]
-      [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
-      [:div#add-column.tool "↦" [:div.tooltip "add column right"]]] 
-     [:div#app "Root"]
-     [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
-     [:script "cosheet.client.run();"]]))
-
 (defn starting-store
   []
   (let [unused-orderable orderable/initial
@@ -164,20 +147,55 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
-(defn ensure-session-state
+(defn new-id [session-map]
+  (let [id (str (rand-int 1000000))]
+    (if (contains? session-map id)
+      (new-id session-map)
+      id)))
+
+;;; TODO: We should keep track of how old sessions are, and dump them when
+;;;       they get too old.
+(defn get-session-state [session-id]
+  (@session-states session-id))
+
+(defn create-session
   [name]
   (let [store (ensure-store name)
-        state (ensure-in-atom-map!
-               session-states name
-               (fn [name] (let [do-not-merge (new-mutable-set #{})]
-                            {:store store
-                             :tracker (create-tracker store do-not-merge)
-                             :do-not-merge do-not-merge
-                             :last-action (atom nil)})))]
+        id (swap-control-return!
+            session-states
+            (fn [session-map]
+              (let [id (new-id session-map)
+                    do-not-merge (new-mutable-set #{})]
+                [(assoc session-map id
+                        {:store store
+                         :tracker (create-tracker store do-not-merge)
+                         :do-not-merge do-not-merge
+                         :last-action (atom nil)})
+                 id])))]
     (compute manager-data 1000)
     (println "computed some")
-    (check-propagation-if-quiescent (:tracker state))
-    state))
+    (check-propagation-if-quiescent (:tracker (get-session-state id)))
+    id))
+
+(defn initial-page [name]
+  (let [session-id (create-session name)]
+    (html5
+     [:head
+      [:title "Hello World"]
+      [:meta {:itemprop "session-id"
+              :content session-id}]
+      (include-js "../js/main.js")
+      (include-css "../style.css")]
+     [:body
+      [:div#toolbar.toolbar
+       [:div#undo.tool "⤺" [:div.tooltip "undo"]]
+       [:div#redo.tool "⤼" [:div.tooltip "redo"]]
+       [:div#add-sibling.tool "+" [:div.tooltip "add item"]]
+       [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
+       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]] 
+      [:div#app "Root"]
+      [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
+      [:script "cosheet.client.run();"]])))
 
 ;;; The parameters for the ajax request and response are:
 ;;; request:
@@ -206,8 +224,8 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [name actions acknowledge initialize]} params
-        session-state (ensure-session-state name)
+        {:keys [id actions acknowledge initialize]} params
+        session-state (get-session-state id)
         {:keys [tracker store last-action]} session-state
         original_store (current-store store)]
     ;; TODO: Check whether the session was newly created, and the request is

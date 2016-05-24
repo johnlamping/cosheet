@@ -106,7 +106,8 @@
 
 ;;; A map from file name to session state.
 ;;; Session state consists of a map
-;;;          :store  The store that holds the data
+;;;           :name  The file name to mirror the store.
+;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :do-not-merge  A set of items that should not be merged.
 ;;;    :last-action  an atom holding the id of the last action we did.
@@ -167,7 +168,8 @@
               (let [id (new-id session-map)
                     do-not-merge (new-mutable-set #{})]
                 [(assoc session-map id
-                        {:store store
+                        {:name name
+                         :store store
                          :tracker (create-tracker store do-not-merge)
                          :do-not-merge do-not-merge
                          :last-action (atom nil)})
@@ -226,7 +228,7 @@
   (let [params (:params request)
         {:keys [id actions acknowledge initialize]} params
         session-state (get-session-state id)
-        {:keys [tracker store last-action]} session-state
+        {:keys [tracker name store last-action]} session-state
         original_store (current-store store)]
     ;; TODO: Check whether the session was newly created, and the request is
     ;;       not initialize, in which case, we have to tell the client to

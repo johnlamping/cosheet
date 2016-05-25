@@ -194,7 +194,8 @@
        [:div#redo.tool "⤼" [:div.tooltip "redo"]]
        [:div#add-sibling.tool "+" [:div.tooltip "add item"]]
        [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
-       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]] 
+       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]
+       [:div#add-element.tool "↘" [:div.tooltip "add element"]]] 
       [:div#app "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
       [:script "cosheet.client.run();"]])))

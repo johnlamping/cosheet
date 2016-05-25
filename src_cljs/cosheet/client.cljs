@@ -91,7 +91,8 @@
                  (.-id (.-target event)))
         contextual-keyword ({"add-sibling" :add-sibling
                             "add-row" :add-row
-                            "add-column" :add-column}
+                             "add-column" :add-column
+                             "add-element" :add-element}
                            (.-id (.-target event)))
         selection @selected]
     (cond keyword

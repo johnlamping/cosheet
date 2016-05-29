@@ -10,14 +10,18 @@
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
 
-;;; The semantics of a referent is, in general, a sequence of groups
-;;; of items. There are common special cases where the sequence has
-;;; only one member or the groups are singletons.
+;;; The semantics of a referent is a sequence of groups of items. The
+;;; sequence supports DOM elements, like labels, that can refer to
+;;; several parallel parts of the database, while the groups support
+;;; things, like adjacent element groups, that need to refer to a
+;;; collection of items. The most common situation is a singleton
+;;; sequence of a singleton group. The groups may be empty, so that
+;;; sequences of groups can be aligned.
 
-;;; When a referent contains another referent as a
-;;; sequence-referent, it coerces that that referent into a sequence
-;;; of individual items, by concatenating the items in each group
-;;; together to for a single sequence.
+;;; When a referent contains another referent as a sequence-referent,
+;;; it coerces that that referent into a sequence of individual items,
+;;; by concatenating the items in each group together to for a single
+;;; sequence.
 
 ;;; When a referent contains a <condition>, it can be either an item
 ;;; id or the list form of an element.
@@ -237,9 +241,8 @@
   "Instantiate the referent and call the function on each resulting item,
    collecting the results into a sequence of groups."
   [fun referent immutable-store]
-  (remove empty?
-          (map fun
-               (apply concat (instantiate-referent referent immutable-store)))))
+  (map fun
+       (apply concat (instantiate-referent referent immutable-store))))
 
 (defn instantiate-referent
   "Return the groups of items that the referent refers to."

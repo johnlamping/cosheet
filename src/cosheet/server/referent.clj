@@ -1,5 +1,5 @@
 (ns cosheet.server.referent
-  (:require (cosheet [utils :refer [multiset]]
+  (:require (cosheet [utils :refer [multiset replace-in-seqs]]
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :as entity :refer [call-with-immutable
                                                 StoredEntity]]
@@ -199,23 +199,17 @@
   [item]
   (canonicalize-list (immutable-semantic-to-list item)))
 
-(defn replace-nones
-  "Replace any :none in the seq with nil"
-  [x]
-  (cond (sequential? x) (map replace-nones x)
-        (= x :none) nil
-        true x))
-
 (defn condition-to-list
   "If the condition is an item id, return the list form of its semantics,
    otherwise, return the condition, assuming it is already in
    semantic list form."
   [condition immutable-store]
-  (replace-nones
+  (replace-in-seqs
    (if (satisfies? StoredItemDescription condition)
      (when (id-valid? immutable-store condition)
        (semantic-to-list-R (description->entity condition immutable-store)))
-     condition)))
+     condition)
+   :none nil))
 
 (defn best-matching-element
   "Given the list form of semantic information and an item,

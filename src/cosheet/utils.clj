@@ -168,6 +168,13 @@
     [(fun nil)]
     (update-in vec [(dec (count vec))] fun)))
 
+(defn replace-in-seqs
+  "Replace from with to recursively through the sequence."
+  [x from to]
+  (cond (sequential? x) (map #(replace-in-seqs % from to) x)
+        (= x from) to
+        true x))
+
 (defn ensure-in-map
   "Given a map, if the map has a value for the key, 
    return the map and that value. If not, call the function with the key,

@@ -11,23 +11,24 @@
           
           m1 m2))
 
-(defn struct-combiner
+(defn map-combiner
   "Combine maps and sequences. Otherwise, just return the second."
   [key v1 v2]
-  (cond (and (map? v1) (map? v2)) (combine-maps struct-combiner v1 v2)
-        (and (seq? v1) (seq? v2)) (concat v1 v2)
-        true v2))
+  (if (and (map? v1) (map? v2))
+    (combine-maps map-combiner v1 v2)
+    v2))
 
 (defn into-attributes
   "Add attributes to an attribute map,
    correctly handling multiple classes or styles, or commands."
   [accumulator attributes]
   (combine-maps (fn [key v1 v2]
-                  (if (= key :class)
-                    (if (empty? v2)
-                      v1
-                      (str v1 " " (clojure.string/trim v2)))
-                    (struct-combiner key v1 v2)))
+                  (case key
+                    :class (if (empty? v2)
+                             v1
+                             (str v1 " " (clojure.string/trim v2)))
+                    :commands (into v1 v2)
+                    (map-combiner key v1 v2)))
                 accumulator attributes))
 
 (defn dom-attributes

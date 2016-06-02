@@ -282,20 +282,17 @@
   [mutable-store tracker [action-type client-id & {:as client-args}]]
   (let [target-key (id->key tracker client-id)
         attributes (key->attributes tracker target-key)
-        action_data (first (filter #(= (if (seq? %) (first %) %) action-type)
-                                   (:commands attributes)))
-        [action & {:as action-args}] (if (seq? action_data)
-                                       action_data
-                                       [action_data])
-        handler (get-contextual-handler action)
-        extra-info (into action-args client-args)]
-    (if handler
-      (do
-        (println "command: " (map simplify-for-print
-                                  (list* action-type target-key
-                                         (map concat (seq extra-info)))))
-        (do-storage-update-action handler mutable-store target-key
-                                  (into attributes extra-info)))
+        commands (:commands attributes)
+        handler (get-contextual-handler action-type)]
+    (if (and commands (contains? commands action-type) handler)
+      (let [action-args (or (and commands (commands action-type)) {})
+            extra-info (into action-args client-args)]
+        (do
+          (println "command: " (map simplify-for-print
+                                    (list* action-type target-key
+                                           (map concat (seq extra-info)))))
+          (do-storage-update-action handler mutable-store target-key
+                                    (into attributes extra-info))))
       (println "unhandled action type:" action-type))))
 
 (defn do-undo

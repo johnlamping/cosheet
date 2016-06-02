@@ -255,7 +255,7 @@
     (swap! tracker update-set-component
            {:key ["jane"]
             :definition [(fn [& _] [:div])]
-            :attributes {:commands [:add-element]
+            :attributes {:commands {:add-element nil}
                          :target {:item-referent
                                   (item-referent jane)}}})
     (let [result (do-actions mutable-store {:tracker tracker}

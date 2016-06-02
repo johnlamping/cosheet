@@ -1,22 +1,34 @@
 (ns cosheet.dom-utils)
 
+(defn combine-maps
+  "Add the information of the second map into that of the first,
+   using the combiner to combine ovrlapping information. The combiner
+   is given the key and the two values."
+  [combiner m1 m2]
+  (reduce (fn [accumulator [key value]]
+            (update-in accumulator [key]
+                       #(if % (combiner key % value) value)))
+          
+          m1 m2))
+
+(defn struct-combiner
+  "Combine maps and sequences. Otherwise, just return the second."
+  [key v1 v2]
+  (cond (and (map? v1) (map? v2)) (combine-maps struct-combiner v1 v2)
+        (and (seq? v1) (seq? v2)) (concat v1 v2)
+        true v2))
+
 (defn into-attributes
   "Add attributes to an attribute map,
    correctly handling multiple classes or styles, or commands."
   [accumulator attributes]
-  (reduce (fn [accumulator [key value]]
-            (update-in accumulator [key]
-                       (fn [current]
-                         (if current
-                           (case key
-                             :class (if (empty? value)
-                                      current
-                                      (str current " "
-                                           (clojure.string/trim value)))
-                             :style (into current value)
-                             :commands (into current value))
-                           value))))
-          accumulator attributes))
+  (combine-maps (fn [key v1 v2]
+                  (if (= key :class)
+                    (if (empty? v2)
+                      v1
+                      (str v1 " " (clojure.string/trim v2)))
+                    (struct-combiner key v1 v2)))
+                accumulator attributes))
 
 (defn dom-attributes
   "Return the current specified attributes of a dom."

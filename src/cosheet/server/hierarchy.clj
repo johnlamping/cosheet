@@ -201,6 +201,7 @@
   "Given a sequence of item info maps, and a subset of items in the maps not to
   merge, return a hierarchy. If restrict-empty-merges is true, don't merge
   items at the top level with empty properties."
+  ;; TODO: Get rid of do-not-merge, once the new renderer is done.
   [item-info-maps do-not-merge]
   (let [non-empty-items (map :item
                              (filter #(not (empty? (:property-canonicals %)))

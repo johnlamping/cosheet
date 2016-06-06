@@ -6,7 +6,8 @@
                      [expression :refer [expr-let expr-seq]])
             (cosheet.server [key :refer [filtered-items semantic-element?
                                          item-referent parallel-referent
-                                         canonicalize-list semantic-to-list]])))
+                                         canonicalize-list semantic-to-list]]
+                            [referent :as referent])))
 ;;; A hierarchy organizes a sequence of "members"
 ;;; into a hierarchy, based on a multiset of "properties" associated with
 ;;; each member.
@@ -255,9 +256,16 @@
 
 (defn hierarchy-node-items-referent
   "Given a hierarchy node, return an item referent to all its descendants."
-  [hierarchy-node]
-  (let [descendants (hierarchy-node-descendants hierarchy-node)
-        affected-items (map :item descendants)]
-    (if (= (count affected-items) 1)
-      (item-referent (first affected-items))
-      (parallel-referent [] affected-items))))
+  ;; TODO: Get rid of this obsolete version, once we fully move away from keys.
+  ([hierarchy-node]
+   (let [descendants (hierarchy-node-descendants hierarchy-node)
+         affected-items (map :item descendants)]
+     (if (= (count affected-items) 1)
+       (item-referent (first affected-items))
+       (parallel-referent [] affected-items))))
+  ([hierarchy-node subject-referent]
+   (let [descendants (hierarchy-node-descendants hierarchy-node)
+         affected-items (map :item descendants)]
+     (referent/union-referent
+      (map #(referent/item-or-exemplar-referent % subject-referent)
+           affected-items)))))

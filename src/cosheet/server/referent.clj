@@ -119,11 +119,13 @@
   [:query (coerce-item-to-id condition)])
 
 (defn union-referent
-  "Create a union referent."
+  "Create a referent for the union of the referents."
   [& referents]
   (for [referent referents]
     (assert (referent? referent)))
-  (into [:union] referents))
+  (if (= (count referents) 1)
+    (first referents)
+    (vec (cons :union referents))))
 
 (defn difference-referent
   "Create a difference referent."

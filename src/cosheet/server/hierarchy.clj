@@ -113,6 +113,8 @@
 
 (def hierarchy-nodes-extent)
 
+;;; TODO: This code should be aware of refinements of conditions, not just
+;;; added conditions.
 (defn hierarchy-node-extent
   "Return a seq of descendants the node that is just big enough that
   the properties of each descendant of the node are a superset
@@ -134,12 +136,12 @@
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-;;; The following code assumes that the members of a hierarchy are info-maps,
-;;; containing
-;;;               :item  The item that is the member
+;;; The following code assumes that the members of a hierarchy are info maps,
+;;; containing at least the following:
+;;;                :item  The item that is the member.
 ;;;   :property-elements  The elements of the item that contribute
 ;;;                       to the cumulative properties of this node
-;;;                       in the hierarchy
+;;;                       in the hierarchy.
 ;;; :property-canonicals  A list of canonical-info-sets for each element in
 ;;;                       :property-elements.
 
@@ -179,7 +181,7 @@
     (multiset canonicals)))
 
 (defn split-by-do-not-merge-subset
-  "Given a list of item maps, and a subset of items not to merge,
+  "Given a list of item info maps, and a subset of items not to merge,
   return a list of lists, broken so that any item-info-map whose item
   is in the set gets its own list, if it has non-trivial properties."
   [item-info-maps do-not-merge-subset]
@@ -214,21 +216,22 @@
                 [] %)
        (split-by-do-not-merge-subset item-info-maps do-not-merge-subset)))))
 
-(defn item-maps-by-elements
-  "Given items in order, and a list of elements for characterize the hierarchy,
-  return item maps for each item."
-  [items elements]
-  (expr-seq
-   map
-   (fn [item elements]
-     (expr-let [filtered (filtered-items semantic-element?
-                                         elements)
-                canonicals (expr-seq
-                            map canonical-info filtered)]
+(defn item-map-by-elements
+  "Given an item and a seq of elements of the item that characterize how
+   it should fit in a hierarchy, return an item info map."
+  [item elements]
+  (expr-let [filtered (filtered-items semantic-element? elements)
+             canonicals (expr-seq map canonical-info filtered)]
        {:item item
         :property-elements filtered
         :property-canonicals canonicals}))
-   items elements))
+
+(defn item-maps-by-elements
+  "Given parallel sequences of items in order, and lists of elements
+   that characterize the hierarchy,
+  return item info maps for each item."
+  [items elements]
+  (expr-seq map item-map-by-elements items elements))
 
 (defn items-hierarchy-by-elements
   "Given items in order, and a list of elements for each, organize the items

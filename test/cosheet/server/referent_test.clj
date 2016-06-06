@@ -50,10 +50,10 @@
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 
-(deftest make-item-or-exemplar-test
-  (is (= (make-item-or-exemplar joe nil)
+(deftest item-or-exemplar-referent-test
+  (is (= (item-or-exemplar-referent joe nil)
          (item-referent joe)))
-   (is (= (make-item-or-exemplar joe (query-referent '(:hi :there)))
+   (is (= (item-or-exemplar-referent joe (query-referent '(:hi :there)))
           (exemplar-referent joe (query-referent '(:hi :there))))))
 
 (deftest semantic-test

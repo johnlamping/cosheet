@@ -155,7 +155,7 @@
   (let [{:keys [item-referent       ; item(s) referred to
                 subject-referent    ; subject(s) of the new item(s)
                 adjacents-referent  ; groups of item(s) adjacent to new item(s)
-                position            ; :before or :after sibling/adjacent
+                position            ; :before or :after item/adjacent
                 template]           ; added item(s) should satisfy this
          :or {position :after}}         
         target-info]

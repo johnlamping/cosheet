@@ -132,10 +132,11 @@
   (assert (referent? minus))
   [:difference plus minus])
 
-(defn make-item-or-exemplar
-  "Make an item or an exemplar, as necessary, depending on the subject."
+(defn item-or-exemplar-referent
+  "Make an item or an exemplar referent, as necessary,
+   depending on the subject."
   [item subject]
-  (if (or  (empty? subject) (item-referent? subject))
+  (if (or (empty? subject) (item-referent? subject))
     (item-referent item)
     (exemplar-referent item subject)))
 

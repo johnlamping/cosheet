@@ -107,15 +107,15 @@
                       [jane-age]])))
   (is (check (instantiate-referent
               (union-referent
-               (item-referent joe-age)
-               (elements-referent '(nil "age") (item-referent jane))
-               (query-referent '(nil (nil "age")))) store)
+               [(item-referent joe-age)
+                (elements-referent '(nil "age") (item-referent jane))
+                (query-referent '(nil (nil "age")))]) store)
              [(as-set [joe-age jane-age joe jane])]))
   ;; Exemplar of union
   (is (check (instantiate-referent
               (exemplar-referent joe-age
-                                 (union-referent (item-referent joe)
-                                                 (item-referent jane))) store)
+                                 (union-referent [(item-referent joe)
+                                                  (item-referent jane)])) store)
              (as-set [[joe-age] [jane-age]])))
   (is (check (instantiate-referent
               (difference-referent (query-referent '(nil (nil "age")))
@@ -125,16 +125,16 @@
   (is (check (instantiate-referent
               (exemplar-referent
                (item-referent joe-age-tag)
-               (union-referent (elements-referent 45 (item-referent joe))
-                               (elements-referent 45 (item-referent jane))))
+               (union-referent [(elements-referent 45 (item-referent joe))
+                                (elements-referent 45 (item-referent jane))]))
               store)
              (as-set [[joe-age-tag] [jane-age-tag]])))
   ;; Union of non-trivial sequences
   (is (check (instantiate-referent
-              (union-referent (elements-referent
-                               45 (query-referent '(nil (nil "age"))))
-                              (elements-referent
-                               39 (query-referent '(nil (nil "age")))))
+              (union-referent [(elements-referent
+                                45 (query-referent '(nil (nil "age"))))
+                               (elements-referent
+                                39 (query-referent '(nil (nil "age"))))])
               store)
              (as-set [(as-set [joe-age joe-bogus-age]) [jane-age]]))))
 

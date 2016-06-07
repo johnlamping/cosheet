@@ -120,7 +120,7 @@
 
 (defn union-referent
   "Create a referent for the union of the referents."
-  [& referents]
+  [referents]
   (for [referent referents]
     (assert (referent? referent)))
   (if (= (count referents) 1)
@@ -138,7 +138,7 @@
   "Make an item or an exemplar referent, as necessary,
    depending on the subject."
   [item subject]
-  (if (or (empty? subject) (item-referent? subject))
+  (if (or (nil? subject) (item-referent? subject))
     (item-referent item)
     (exemplar-referent item subject)))
 

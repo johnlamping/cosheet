@@ -12,50 +12,6 @@
 body { /* override the default of 8px */
     margin-top: 0px;
 }
-
-.item { 
-    padding: 3px;
-}
-
-.stack > .item {
-    margin: 0px 3px 0px 3px;
-    padding: 3px 0px 3px 0px;
-}
-
-.stack > .item + .item {
-    border-width: 2px 0px 0px 0px;
-}
-
-.vertical-center-wrapper {
-    display: flex;
-    align-items: center;
-}
-
-.vertical-center-wrapper > * {
-    flex-grow: 1;
-}
-
-.indent-wrapper {
-    display: flex;
-    flex-direction:column;
-}
-
-.indent-wrapper > * {
-    flex-grow: 1;
-}
-
-.indent-wrapper > .depth-1 {
-    margin-left: 8px;
-}
-
-.indent-wrapper > .depth-2 {
-    margin-left: 16px;
-}
-
-.indent-wrapper > .depth-3 {
-    margin-left: 24px;
-}
-
 /* Repeat selector to give this rule highest specificity */
 .selected.selected.selected.selected.selected.selected {
     background-image:
@@ -75,6 +31,46 @@ body { /* override the default of 8px */
                     hsla(220, 100%, 55%, 1),
                     hsla(0, 0%, 100%, 0) 5px,
                     hsla(0, 0%, 100%, 0));
+}
+
+.tags.column-header-container, .tags.column-header-stack,
+.tags.wrapped-element {
+    background-color: hsl(194, 100%, 88%);
+}
+
+.item { 
+    padding: 3px;
+    border-width: 2px;
+    margin: 0px -2px -2px 0px;
+}
+
+.stack > .item {
+    margin: 0px 3px 0px 3px;
+    border-width: 0px;
+    padding: 3px 0px 3px 0px;
+}
+
+.stack > .item + .item {
+    border-width: 2px 0px 0px 0px;
+}
+
+.indent-wrapper {
+    display: flex;
+    flex-direction:column;
+}
+
+.indent-wrapper > * {
+    flex-grow: 1;
+    margin-left: 8px;
+}
+
+.vertical-center-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.vertical-center-wrapper > * {
+    flex-grow: 1;
 }
 
 .element-row {
@@ -315,11 +311,6 @@ body { /* override the default of 8px */
     border-top-width: 2px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
-}
-
-.tags.column-header-container, .tags.column-header-stack,
-.tags.wrapped-element {
-    background-color: hsl(194, 100%, 88%);
 }
 
 /* Keep the label color from bleeding outside the top radiused corners */

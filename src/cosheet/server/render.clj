@@ -291,10 +291,12 @@
   (let [items-referent (hierarchy-node-items-referent
                         hierarchy-node (:subject-referent inherited))
         example-elements (hierarchy-node-example-elements hierarchy-node)]
-    (expr-let [ordered-elements (order-items-R example-elements)]
+    (expr-let [ordered-elements (order-items-R example-elements)
+               satisfiers (expr-seq
+                           map #(condition-satisfiers-R % (:template inherited))
+                           ordered-elements)]
       (item-stack-DOM
-       ordered-elements (map (constantly nil) ordered-elements)
-       attributes
+       ordered-elements satisfiers attributes
        (into inherited {:subject-referent items-referent})))))
 
 (defn tagged-items-one-column-subtree-DOM-R
@@ -357,13 +359,13 @@
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.
-   Don't show elements of the elements that are implied by assumed-condition."
-  [elements assumed-condition must-show-empty-labels inherited]
+   Don't show elements of the elements that are implied by the template."
+  [elements must-show-empty-labels inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
        all-labels (expr-seq map #(matching-elements '(nil :tag) %)
                             ordered-elements)
-       excludeds (expr-seq map #(condition-satisfiers-R % assumed-condition)
+       excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
                              ordered-elements)]
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
@@ -402,7 +404,7 @@
                                         :subject-referent referent)
                                  (dissoc :template :selectable-attribute))]
           (expr-let [elements-dom (elements-DOM-R
-                                   elements nil true inherited-down)]
+                                   elements true inherited-down)]
             [:div {:class "item with-elements" :key key}
              content-dom elements-dom]))))))
 

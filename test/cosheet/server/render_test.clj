@@ -92,15 +92,20 @@
                                    :add-sibling nil
                                    :delete nil}}
                   "Fred"])))
-    ;; Test a single element.
-    (let [[dom age] (let-mutated [age `(39 ("doubtful"
-                                            ("confidence" :tag)
+    ;; Test when there is a single element.
+    (let [[dom age] (let-mutated [age `(39 (:root :non-semantic)
+                                           (~o3 :order :non-semantic)
+                                           ("doubtful"
+                                            ("confidence"
+                                             :tag (~o1 :order :non-semantic))
                                             (~o1 :order :non-semantic)))]
                       (expr-let [dom (item-DOM-R age [] initial)]
                         [dom age]))
           doubtful (first (current-value (matching-elements "doubtful" age)))
           confidence (first (current-value
                              (matching-elements "confidence" doubtful)))
+          confidence-tag (first (current-value
+                                 (matching-elements :tag confidence)))
           item-key [:root (:item-id age)]]
       (is (check
            dom
@@ -117,7 +122,7 @@
              (let [tags-key (conj item-key (:item-id doubtful) :outside)]
                [:component {:key (conj tags-key (:item-id confidence))
                             :class "tag"}
-                [item-DOM-R confidence nil
+                [item-DOM-R confidence [confidence-tag]
                  {:priority 1
                   :narrow true
                   :parent-key tags-key

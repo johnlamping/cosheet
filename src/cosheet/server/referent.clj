@@ -1,8 +1,9 @@
 (ns cosheet.server.referent
   (:require (cosheet [utils :refer [multiset replace-in-seqs]]
                      [expression :refer [expr expr-let expr-seq]]
-                     [entity :as entity :refer [call-with-immutable
-                                                StoredEntity]]
+                     [entity :refer [atom? elements content label->elements
+                                     call-with-immutable description->entity
+                                     StoredEntity]]
                      [store  :as store :refer [id-valid? StoredItemDescription]]
                      [query :refer [matching-elements matching-items
                                     template-matches]])))
@@ -153,24 +154,24 @@
   "Return true if an element counts as semantic information for its subject.
   (Doesn't have a :non-semantic element.)"
   [entity]
-  (expr-let [elements (entity/elements entity)
-             element-contents (expr-seq map entity/content elements)]
+  (expr-let [elements (elements entity)
+             element-contents (expr-seq map content elements)]
     (not-any? #(= % :non-semantic) element-contents)))
 
 (defn semantic-elements-R
   "Return the elements of an entity that are semantic to it."
   [entity]
-  (expr-let [elements (entity/elements entity)
-             non-semantic (entity/label->elements entity :non-semantic)]
+  (expr-let [elements (elements entity)
+             non-semantic (label->elements entity :non-semantic)]
     (remove (set non-semantic) elements)))
 
 (defn immutable-semantic-to-list
   "Given an immutable item, make a list representation of the
   semantic information of the item."
   [item]
-  (if (entity/atom? item)
-    (entity/content item)
-    (let [content (entity/content item)
+  (if (atom? item)
+    (content item)
+    (let [content (content item)
           elements (semantic-elements-R item)
           content-semantic (immutable-semantic-to-list content)
           element-semantics (map immutable-semantic-to-list elements)]

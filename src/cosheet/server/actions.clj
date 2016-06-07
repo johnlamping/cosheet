@@ -1,13 +1,10 @@
 (ns cosheet.server.actions
   (:require
-   [hiccup.page :refer [html5 include-js include-css]]
-   [ring.util.response :refer [response]]
    (cosheet
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map thread-recursive-map
-                   swap-control-return!]]
+                   swap-control-return! replace-in-seqs]]
     [orderable :refer [split earlier?]]
-    [mutable-set :refer [mutable-set-swap!]]
     [store :refer [update-content add-simple-element do-update-control-return!
                    id->subject id-valid? undo! redo!]]
     [store-impl :refer [get-unique-id-number]]
@@ -20,39 +17,32 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [key :refer [item-referent elements-referent prepend-to-key
-                 item-referent? content-location-referent?
-                 elements-referent? comment-referent surrogate-referent
-                 first-primitive-referent remove-first-primitive-referent
-                 remove-content-location-referent remove-comments
-                 item-ids-referred-to
-                 key->items key->item-groups
-                 substitute-in-key]])))
+    [referent :refer [instantiate-referent]])))
 
 ;;; TODO: validate the data coming in, so mistakes won't cause us to
 ;;; crash.
 
-(defn update-set-content
+(defn update-set-content-if-matching
   "Set the content of the item in the store provided the current content
    matches 'from'."
   [from to store item]
   ;; There are two special cases to match: If we have a number,
-  ;; the user will have a string. If we have an anonymous symbol, the user
+  ;; the client will have a string. If we have an anonymous symbol, the client
   ;; will have "???".
   (if (= (parse-string-as-number from)
          (let [content (content item)]
            (if (and (symbol? content) (= (subs (str content) 0 3) "???"))
              "???"
              content)))
-    (update-content store (:item-id item) to)
+    (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" (content item) from)
         store)))
 
 (defn update-add-entity-with-order
-  "Add an entity, described in list form, to the store, with the given subject.
-   Add ordering information to each part of the entity,
-   except for tag specifiers, splitting the provided order for the orders,
-   and returning an unused piece of it.
+  "Add an entity, described in list form, to the store, with the given
+   subject.  Add ordering information to each part of the entity,
+   except for tag specifiers and non-semantic elements, splitting the
+   provided order for the orders, and returning an unused piece of it.
    Put the new entity in the specified position (:before or :after) of
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
@@ -60,14 +50,14 @@
   [store subject-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
-    (if (and (= entity-content :tag) (empty? entity-elements))
-      ;; Tags markers don't get an ordering.
-      (let [[s id] (add-simple-element store subject-id :tag)]
-        [s id order])
-      (let [[s1 id] (add-simple-element
-                     store subject-id (if (nil? entity-content)
-                                     ""
-                                     entity-content))
+    (if (or (keyword? entity-content)
+            (some #{:non-semantic} entity-elements))
+      ;; Keyword markers and non-semantic elements don't get an ordering.
+      (let [[s1 id] (add-entity store subject-id
+                                (replace-in-seqs entity nil ""))]
+        [s1 id order])
+      (let [value-to-store (if (nil? entity-content) "" entity-content)
+            [s1 id] (add-simple-element store subject-id value-to-store)
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
             ;; bigger and a smaller part, putting the bigger part in
@@ -97,27 +87,24 @@
                             :order :non-semantic))]
         [s3 id (if use-bigger smaller-order bigger-order)]))))
 
+(defn furthest-item
+  "Given a list of items and a position,
+  return the furthest item in that position."
+  [items position]
+  (if (= (count items) 1)
+    (first items)
+    (second
+     (reduce (case position
+               :before (fn [a b] (if (earlier? (first a) (first b)) a b))
+               :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
+             (map (fn [item] [(label->content item :order) item]) items)))))
+
 (defn order-element-for-item
   "Return an element with the order information for item,
    or, if that is not available, for the overall store."
   [item store]
   (or (first (label->elements item :order))
       (first (matching-items '(nil :unused-orderable) store))))
-
-(defn add-and-select
-  "Run the specified function on the store and each of the arguments.
-  The function must return an updated store and the id of a new item.
-  Return a map of the new store and a selection request for the first
-  of the new items. key-pattern will be instantited with the first item
-  to generate the key to select."
-  [f store arguments key-pattern old-key]
-  (let [[store element-ids] (thread-map f store arguments)]
-    (if (empty? element-ids)
-      store
-      {:store store
-       :select [(substitute-in-key
-                 key-pattern (description->entity (first element-ids) store))
-                [old-key]]})))
 
 (defn update-add-entity-adjacent-to
   "Add an entity with the given subject id and contents,
@@ -134,77 +121,90 @@
 
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
-  element. Specifically, replace nil with \"\", and replace :??? with
-  a new unique keyword.  This may require updating the store.
-  Return the new condition and new store."
+   element. Specifically, replace '??? with a new unique symbol.  This
+   may require updating the store.  Return the new condition and new
+   store."
   [condition store]
   (reverse
    (thread-recursive-map
     (fn [store item]
-      (cond  (= item nil) [store ""]
-             (= item '???)  (let [[id store] (get-unique-id-number store)]
-                              [store (symbol (str "???-" id))])
-             true [store item]))
+      (if (= item '???)
+        (let [[id store] (get-unique-id-number store)]
+          [store (symbol (str "???-" id))])
+        [store item]))
     store condition)))
 
-(defn furthest-item
-  "Given a list of items and a position,
-  return the furthest item in that position."
-  [items position]
-  (if (= (count items) 1)
-    (first items)
-    (second
-     (reduce (case position
-               :before (fn [a b] (if (earlier? (first a) (first b)) a b))
-               :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
-             (map (fn [item] [(label->content item :order) item]) items)))))
+(defn add-and-select
+  "Run the specified function on the store and each of the arguments.
+  The function must return an updated store and the id of a new item.
+  Return a map of the new store and a selection request for the first
+  of the new items."
+  [f store arguments parent-key old-key]
+  (let [[store element-ids] (thread-map f store arguments)]
+    (if (empty? element-ids)
+      store
+      {:store store
+       :select [(cons (first element-ids) parent-key)
+                old-key]})))
 
-(defn do-add
-  "Add new item(s), in accord with the optional arguments.
-  The default is to add a sibling of the target, adjacent to the target." 
-  [store target-key
-   & {:keys [template subject-key adjacent-key adjacent-group-key
-             select-key all-elements position use-bigger]
-      :or  {template nil           ; template that added item(s) should satisfy
-            subject-key nil        ; subject(s) of the new item(s)
-            adjacent-key nil       ; item(s) adjacent to new item(s)
-            adjacent-group-key nil ; item group(s) adjacent to new item(s)
-            select-key nil         ; instantiate to get key to select
-            all-elements false     ; adjacency applies to elements of adjacent
-            position :after        ; :before or :after adjacent
-            use-bigger false       ; use the bigger part of adjacent's order
-            }}]
-  (let [adjacents (cond
-                    adjacent-key (key->items store adjacent-key)
-                    adjacent-group-key (map #(furthest-item % position)
-                                            (key->item-groups
-                                             store adjacent-group-key))
-                    true (key->items store target-key))
-        subject-ids (if subject-key
-                      (let [cleaned (remove-comments subject-key)]
-                        (if (empty? cleaned)
-                          (map (constantly nil) adjacents)
-                          (map :item-id (key->items store cleaned))))
-                      (map #(id->subject store (:item-id %))
-                           (key->items store target-key)))
-        [adjusted-template store] (adjust-condition template store)]
-    ;; TODO: handle all-elements argument
-    (println "total items added: " (count subject-ids))
-    (assert (= (count subject-ids) (count adjacents)))
-    (add-and-select (fn [store [subject-id adjacent]]
-                      (update-add-entity-adjacent-to
-                       store subject-id adjusted-template
-                       adjacent position use-bigger))
-                    store
-                    (map vector subject-ids adjacents)
-                    (or select-key
-                        (prepend-to-key
-                         (surrogate-referent)
-                         (if subject-key
-                           (remove-content-location-referent subject-key)
-                           (remove-first-primitive-referent
-                            (remove-content-location-referent target-key)))))
-                    target-key)))
+(defn generic-add
+  "Add new item(s), relative to the target information. Either
+   sibling-referent or (adjacent-referent and subject-referent) must
+   be provided."
+  [store target-info parent-key old-key use-bigger]
+  (let [{:keys [item-referent       ; item(s) referred to
+                subject-referent    ; subject(s) of the new item(s)
+                adjacents-referent  ; groups of item(s) adjacent to new item(s)
+                position            ; :before or :after item/adjacent
+                template]           ; added item(s) should satisfy this
+         :or {position :after}}         
+        target-info]
+    (assert (or item-referent adjacents-referent))
+    (assert (not (and item-referent adjacents-referent)))
+    (let [adjacents (if adjacents-referent
+                      (map #(furthest-item % position)
+                           (instantiate-referent adjacents-referent store))
+                      (apply concat
+                             (instantiate-referent item-referent store)))
+          subject-ids (if subject-referent
+                        (map :item-id
+                             (apply concat
+                                    (instantiate-referent subject-referent
+                                                          store)))
+                        (map #(id->subject store (:item-id %)) adjacents))
+          [adjusted-template store] (adjust-condition template store)]
+      (println "total items added: " (count subject-ids))
+      (assert (= (count subject-ids) (count adjacents)))
+      (add-and-select (fn [store [subject-id adjacent]]
+                        (update-add-entity-adjacent-to
+                         store subject-id adjusted-template
+                         adjacent position use-bigger))
+                      store
+                      (map vector subject-ids adjacents)
+                      parent-key old-key))))
+
+(defn do-add-sibling
+  [store key attributes]
+  (when-let [item (:target attributes)]
+    (generic-add store item (rest key) key true)))
+
+(defn do-add-row
+  [store key attributes]
+  (when-let [row (:row attributes)]
+    (generic-add store row nil nil true)))
+
+(defn do-add-column
+  [store key attributes]
+  (when-let [column (:column attributes)]
+    (generic-add store column (rest key) key true)))
+
+(defn do-add-element
+  [store key attributes]
+  (when-let [subject-referent (:item-referent (:target attributes))]
+    (generic-add store
+                 {:subject-referent subject-referent
+                  :adjacents-referent subject-referent}
+                 key key true)))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -212,75 +212,50 @@
   (remove-entity-by-id store (:item-id item)))
 
 (defn do-delete
-  "Add new item(s), in accord with the optional arguments.
-  The default is to add a new element to the target, adjacent to the target." 
-  [store target-key
-   & {:keys [delete-key] :or {delete-key nil}}] 
-  (let [delete-key (or delete-key target-key)
-        items (key->items store delete-key)]
-    (println "total items:" (count items))
-    (reduce update-delete store items)))
+  "Remove item(s)." 
+  [store key attributes]
+  (let [{:keys [target delete-referent] :or {target nil delete-referent nil}}
+        attributes]
+    (when-let [to-delete (or delete-referent (:item-referent target))]
+      (let [items (apply concat (instantiate-referent to-delete store))]
+        (println "total items:" (count items))
+        (reduce update-delete store items)))))
 
 (defn do-set-content
-  [store target-key   
-   & {:keys [from to] :or {from nil to nil}}]
+  [store key attributes]
   ;; TODO: Handle deleting.
-  (assert from)
-  (assert to)
-  (let [to (parse-string-as-number to)]
-    (let [items (key->items store target-key)]
-      (println "updating " (count items) " items")
-      (reduce (partial update-set-content from to)
-              store items))))
+  (let [{:keys [target from to]} attributes
+        referent (:item-referent target)]
+    (when (and referent from to)
+      (let [to (parse-string-as-number to)]
+        (let [items (apply concat (instantiate-referent referent store))]
+          (println "updating " (count items) " items")
+          (reduce (partial update-set-content-if-matching from to)
+                  store items))))))
 
 (defn do-create-content
-  [store target-key
-   & {:keys [to adjacent-key adjacent-group-key all-elements position]
-      :or  {to nil                 ; value of content
-            adjacent-key nil       ; item(s) adjacent to new item(s)
-            adjacent-group-key nil ; item group(s) adjacent to new item(s)
-            all-elements false     ; adjacency applies to elements of adjacent
-            position :after        ; :before or :after adjacent
-            }}]
-  (assert (elements-referent? (first-primitive-referent target-key)))
-  (let [content (parse-string-as-number to)]
+  [store target-key attributes]
+  (let [{:keys [target content]} attributes
+        content (parse-string-as-number content)
+        new-template (cons content (rest (:template target)))]
     (when (not= content "")
-      (let [subjects (key->items store (remove-first-primitive-referent
-                                        target-key))
-            adjacents (cond
-                        adjacent-key (key->items store adjacent-key)
-                        adjacent-group-key (map #(furthest-item % position)
-                                                (key->item-groups
-                                                 store adjacent-group-key))
-                        true subjects)
-            first-primitive (first-primitive-referent target-key)
-            [_ condition] first-primitive
-            model-entity (cons content (rest condition))
-            selection-suffix (remove-first-primitive-referent target-key)]
-        ;; TODO: handle all-elements argument
-        (assert (= (count subjects) (count adjacents)))
-        (add-and-select
-         (fn [store [subject adjacent]]
-           (update-add-entity-adjacent-to
-            store (:item-id subject) model-entity
-            adjacent position false))
-         store (map vector subjects adjacents)
-         (prepend-to-key (surrogate-referent) selection-suffix)
-         target-key)))))
+      (generic-add store (into target {:template new-template})
+                   (rest target-key) target-key false))))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
-  store, and the other arguments passed to this function. It can either
-  return nil, meaning no change, a new store, or a map with a :store
-  value and any additional commands it wants to request of the
-  client (currently, only :select, whose value is the key of the dom
-  it wants to be selected and a list of keys, one of which should already
-  be selected)."
-  [handler mutable-store & action-args]
+  store, the target key, and a map of attributes associated with the
+  DOM element, the particular command, and anything sent by the
+  client. The action can either return nil, meaning no change, a new
+  store, or a map with a :store value and any additional commands it
+  wants to request of the client (currently, only :select, whose value
+  is the key of the dom it wants to be selected and a list of keys,
+  one of which should already be selected)."
+  [handler mutable-store target-key attributes]
   (do-update-control-return!
    mutable-store
    (fn [store]
-     (let [result (apply handler store action-args)]
+     (let [result (handler store target-key attributes)]
        (if result
          (if (satisfies? cosheet.store/Store result)
            [result nil]
@@ -290,68 +265,59 @@
              [(:store result) (dissoc result :store)]))
          [store nil])))))
 
+(defn get-contextual-handler
+  [action]
+  ({:add-sibling do-add-sibling
+    :add-row do-add-row
+    :add-column do-add-column
+    :add-element do-add-element
+    :delete do-delete
+    :set-content do-set-content
+    :create-content do-create-content}
+   action))
+
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
   on that cell."
-  [mutable-store tracker action-type [client-id & additional-args]]
+  [mutable-store tracker [action-type client-id & {:as client-args}]]
   (let [target-key (id->key tracker client-id)
-        command (get-in (key->attributes tracker target-key)
-                        [:commands action-type])]
-    (if command
-      (let [[handler-name & args] command
-            handler (case handler-name
-                      :do-add do-add
-                      :do-delete do-delete
-                      :do-set-content do-set-content
-                      :do-create-content do-create-content
-                      nil)]
-        (println "command: " (map simplify-for-print
-                                  (list* handler-name target-key
-                                         (concat additional-args args))))
-        (when handler
-          (apply do-storage-update-action
-                 handler mutable-store target-key
-                 (concat additional-args args))))
+        attributes (key->attributes tracker target-key)
+        commands (:commands attributes)
+        handler (get-contextual-handler action-type)]
+    (if (and commands (contains? commands action-type) handler)
+      (let [action-args (or (and commands (commands action-type)) {})
+            extra-info (into action-args client-args)]
+        (do
+          (println "command: " (map simplify-for-print
+                                    (list* action-type target-key
+                                           (map concat (seq extra-info)))))
+          (do-storage-update-action handler mutable-store target-key
+                                    (into attributes extra-info))))
       (println "unhandled action type:" action-type))))
 
-(defn selected-handler
-  [store session-state client-id]
-  (let [target-key (id->key (:tracker session-state) client-id)
-        ids (item-ids-referred-to target-key)
-        items (map #(description->entity % store) ids)]
-    (println "Selected key" target-key)
-    (mutable-set-swap!
-     (:do-not-merge session-state)
-     (fn [old]
-       (if (item-referent?
-            (first-primitive-referent (remove-comments target-key)))
-         (set (cons (first items)
-                    (clojure.set/intersection (set (rest items)) old)))
-         (clojure.set/intersection (set items) old))))))
-
-;;; TODO: There should be unit tests for undo and redo.
 (defn do-undo
   [mutable-store session-state]
-  (undo! mutable-store))
+  (undo! mutable-store)
+  nil)
 
 (defn do-redo
   [mutable-store session-state]
-  (redo! mutable-store))
+  (redo! mutable-store)
+  nil)
 
 (defn do-action
-  [mutable-store session-state [action-type & additional-args]]
-  (println "doing action " action-type)
-  (if-let [handler (case action-type
-                     :selected selected-handler
-                     :undo do-undo
-                     :redo do-redo
-                     nil)]
-    (do (println "command: "
-                 (map simplify-for-print (list* action-type additional-args)))
-        (apply handler
-               mutable-store session-state additional-args))
-    (do-contextual-action
-     mutable-store (:tracker session-state) action-type additional-args)))
+  [mutable-store session-state action]
+  (let [[action-type & additional-args] action]
+    (println "doing action " action-type)
+    (if-let [handler (case action-type
+                       :undo do-undo
+                       :redo do-redo
+                       nil)]
+      (do (println "command: " (map simplify-for-print action))
+          (apply handler mutable-store session-state additional-args))
+      (if (= (mod (count action) 2) 0)
+        (do-contextual-action mutable-store (:tracker session-state) action)
+        (println "Error: odd number of keyword/argument pairs:" action)))))
 
 (defn do-actions
   "Run the actions, and return any additional information to be returned
@@ -359,7 +325,7 @@
   [mutable-store session-state action-sequence]
   (reduce (fn [client-info action]
             (let [for-client (do-action mutable-store session-state action)]
-              (println "for client " for-client)
+              (println "for client " (simplify-for-print for-client))
               (into client-info (select-keys for-client [:select]))))
           {} action-sequence))
 

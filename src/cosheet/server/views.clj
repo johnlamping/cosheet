@@ -22,9 +22,9 @@
     [reporters :as reporter]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
-    [key :refer [item-referent prepend-to-key]]
+    [referent :refer [item-referent]]
     ;; TODO: Make item-DOM recognize tables, so we can just call it.
-    [render :refer [item-DOM table-DOM]]
+    [render :refer [item-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -60,12 +60,15 @@
                          (:none ("size" :tag)
                                 (~o2 :order :non-semantic)
                                 (:column :non-semantic)))
-        [store id] (add-entity store nil starting-table)
+        starting-item `(39 ((:root :non-semantic)
+                            ~o3 :order :non-semantic)
+                            ("doubtful"
+                             ("confidence" (~o1 :order :non-semantic))
+                             (~o1 :order :non-semantic)))
+        [store id] (add-entity store nil starting-item)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
     store))
-
-(defonce root-parent-key ["root"])
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
@@ -120,14 +123,15 @@
 ;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
 
+;;; TODO: Get rid of do-not-merge argument.
 (defn create-tracker
   [store do-not-merge]
   (let [immutable-root-item (first (matching-items '(nil :root)
                                                    (current-store store)))
         root-item (description->entity (:item-id immutable-root-item) store)
-        root-key (prepend-to-key (item-referent root-item) root-parent-key)
-        definition [table-DOM root-item root-parent-key
-                    {:depth 0 :do-not-merge do-not-merge}]
+        root-key [(:item-id root-item)]
+        definition [item-DOM-R root-item []
+                    {:priority 0 :narrow true :parent-key []}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     (println "created tracker")

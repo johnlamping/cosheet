@@ -2,14 +2,14 @@
 
 (defn combine-maps
   "Add the information of the second map into that of the first,
-   using the combiner to combine ovrlapping information. The combiner
+   using the combiner to combine overlapping information. The combiner
    is given the key and the two values."
   [combiner m1 m2]
   (reduce (fn [accumulator [key value]]
             (update-in accumulator [key]
                        #(if % (combiner key % value) value)))
           
-          m1 m2))
+          (or m1 {}) (or m2 {})))
 
 (defn map-combiner
   "Combine maps and sequences. Otherwise, just return the second."

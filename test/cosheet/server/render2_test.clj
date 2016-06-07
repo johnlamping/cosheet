@@ -101,13 +101,10 @@
           doubtful (first (current-value (matching-elements "doubtful" age)))
           confidence (first (current-value
                              (matching-elements "confidence" doubtful)))
-          confidence-tag (first (current-value (entity/elements confidence)))
           item-key [:root (:item-id age)]]
       (is (check
            dom
-           [:div {:class "item with-elements"
-                  :key item-key
-                  :target {:item-referent (item-referent age)}}
+           [:div {:class "item with-elements" :key item-key}
             [:div {:class "content-text editable"
                    :key (conj item-key :content)
                    :target {:item-referent (item-referent age)}
@@ -117,15 +114,15 @@
                               :delete nil}}
              "39"]
             [:div {:class "wrapped-element tags"}
-             [:component {:key (conj item-key (:item-id confidence))
-                          :class "tag"}
-              [item-DOM-R confidence nil
-               {:priority 1
-                :narrow true
-                :parent-key item-key
-                :subject-referent (item-referent doubtful)
-                :selectable-attributes {}
-                :template '(nil :tag)}]]
+             (let [tags-key (conj item-key (:item-id doubtful) :outside)]
+               [:component {:key (conj tags-key (:item-id confidence))
+                            :class "tag"}
+                [item-DOM-R confidence nil
+                 {:priority 1
+                  :narrow true
+                  :parent-key tags-key
+                  :subject-referent (item-referent doubtful)
+                  :template '(nil :tag)}]])
              [:div {:class "indent-wrapper"}
               [:component {:key (conj item-key (:item-id doubtful))}
                [item-DOM-R doubtful [confidence]

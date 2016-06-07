@@ -125,13 +125,13 @@
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
-;    :subject-referent       The referent of the subject of the item
+;       :subject-referent  ; The referent of the subject of the item
                            ; the dom is about, if any.
-;            :template       The template that the item for this dom,
+;               :template  ; The template that the item for this dom,
                            ; and any of its siblings, must satisfy, if any.
-:selectable-attributes {}  ; Attributes that the topmost selectable parts
-                           ; of the dom should have. Typically, these are
-                           ; commands for things like new-row.
+;  :selectable-attributes  ; Attributes that the topmost selectable parts
+                           ; of the dom should have, if any. Typically,
+                           ; these are commands for things like new-row.
    })
 
 (defn orderable-comparator
@@ -185,7 +185,7 @@
        (first doms)
        (into [:div (if (empty? doms) {} {:class "stack"})] doms)))
 
-(defn make-item-component
+(defn item-component
   "Make a component dom for the given item."
   [item exclude-elements inherited]
   (let [key (conj (:parent-key inherited) (:item-id item))]
@@ -197,13 +197,13 @@
   and attributes that the doms for each of the items should have,
   generate DOM for a vertical list of a component for each item."
   [items excludeds attributes inherited]
-  (vertical-stack (map (fn [item excluded]
-                         (add-attributes
-                          (make-item-component item excluded inherited)
-                          attributes))
-                       items excludeds)))
+  (vertical-stack
+   (map (fn [item excluded]
+          (add-attributes (item-component item excluded inherited) attributes))
+        items excludeds)))
 
 (defn empty-content-DOM
+  ;; TODO: add an argument that uniquifies the key
   "Make a dom for a place that could hold content, but doesn't."
   [adjacents-referent position inherited]
   (let [template (:template inherited)]
@@ -308,9 +308,9 @@
                            (update-in
                             inherited [:selectable-attributes]
                             #(into-attributes
-                              %  {:commands {:add-row nil}
-                                  :row (hierarchy-add-adjacent-target
-                                        hierarchy-node inherited)})))
+                              % {:commands {:add-row nil}
+                                         :row (hierarchy-add-adjacent-target
+                                               hierarchy-node inherited)})))
         items-dom (when (not (empty? members))
                      (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
@@ -323,24 +323,29 @@
                        (conj items-dom child-doms)  ; Add to stack.
                        (vertical-stack
                         (if items-dom (cons items-dom child-doms) child-doms)))]
-        (if (empty? (:properties hierarchy-node))
-          (let [items-referent (hierarchy-node-items-referent
-                                hierarchy-node (:subject-referent inherited))]
-            [:div {:class "adjacent-element"}
+        (let [items-referent (hierarchy-node-items-referent
+                              hierarchy-node (:subject-referent inherited))
+              example-descendant (first (hierarchy-node-descendants
+                                         hierarchy-node))
+              tags-parent-key (conj (:parent-key inherited)
+                                    (:item-id (:item example-descendant))
+                                    :outside)
+              inherited-for-tags (assoc inherited
+                                        :parent-key tags-parent-key
+                                        :template '(nil :tag)
+                                        :subject-referent items-referent)]
+          (if (empty? (:properties hierarchy-node))
+            [:div {:class "adjacent-tags-element"}
              (add-attributes
-              (empty-content-DOM
-               items-referent :after
-               (into inherited {:subject-referent items-referent
-                                :template '(nil :tag)}) )
+              (empty-content-DOM items-referent :after inherited-for-tags)
               {:class "wrapped-element tags indent-wrapper"})
-             content])
-          (expr-let [tags-dom (hierarchy-properties-DOM
-                               hierarchy-node
-                               {:class "tag"}
-                               (assoc inherited :template '(nil :tag)))]
-            [:div {:class "wrapped-element tags"}
-             tags-dom
-             [:div {:class "indent-wrapper"} content]]))))))
+             content]
+            (expr-let [tags-dom (hierarchy-properties-DOM
+                                 hierarchy-node  {:class "tag"}
+                                 inherited-for-tags)]
+              [:div {:class "wrapped-element tags"}
+               tags-dom
+               [:div {:class "indent-wrapper"} content]])))))))
 
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]
@@ -395,14 +400,11 @@
               inherited-down (-> inherited
                                  (update-in [:priority] inc)
                                  (assoc :parent-key key
-                                        :subject-referent referent
-                                        :selectable-attributes {})
-                                 (dissoc :template))]
+                                        :subject-referent referent)
+                                 (dissoc :template :selectable-attribute))]
           (expr-let [elements-dom (elements-DOM-R
                                    elements nil true inherited-down)]
-            [:div {:class "item with-elements"
-                   :key key
-                   :target (item-target referent inherited)}
+            [:div {:class "item with-elements" :key key}
              content-dom elements-dom]))))))
 
  

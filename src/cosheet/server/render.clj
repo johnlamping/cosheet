@@ -187,9 +187,9 @@
 (defn item-component
   "Make a component dom for the given item."
   [item exclude-elements inherited]
-  (let [key (conj (:parent-key inherited) (:item-id item))]
-    (make-component {:key key}
-                    [item-DOM-R item exclude-elements inherited])))
+  (let [key (conj (:parent-key inherited) (:item-id item))
+        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
+    (make-component {:key key} [item-DOM-R item excluded inherited])))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -212,7 +212,7 @@
               :target (cond-> {:subject-referent (:subject-referent inherited)
                                :adjacents-referent adjacents-referent
                                :position position}
-                        template (assoc :template inherited))}]))
+                        template (assoc :template template))}]))
 
 (defn item-target
   "Return a target for the given item."
@@ -339,7 +339,7 @@
             [:div {:class "adjacent-tags-element"}
              (add-attributes
               (empty-content-DOM items-referent :after inherited-for-tags)
-              {:class "wrapped-element tags indent-wrapper"})
+              {:class "tags indent-width"})
              content]
             (expr-let [tags-dom (hierarchy-properties-DOM-R
                                  hierarchy-node  {:class "tag"}

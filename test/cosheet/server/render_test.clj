@@ -92,13 +92,15 @@
                                    :add-sibling nil
                                    :delete nil}}
                   "Fred"])))
-    ;; Test when there is a single element.
+    ;; Test when there are elements.
     (let [[dom age] (let-mutated [age `(39 (:root :non-semantic)
                                            (~o3 :order :non-semantic)
                                            ("doubtful"
                                             ("confidence"
                                              :tag (~o1 :order :non-semantic))
-                                            (~o1 :order :non-semantic)))]
+                                            (~o1 :order :non-semantic))
+                                           ("more"
+                                            (~o2 :order :non-semantic)))]
                       (expr-let [dom (item-DOM-R age [] initial)]
                         [dom age]))
           doubtful (first (current-value (matching-elements "doubtful" age)))
@@ -106,37 +108,54 @@
                              (matching-elements "confidence" doubtful)))
           confidence-tag (first (current-value
                                  (matching-elements :tag confidence)))
-          item-key [:root (:item-id age)]]
+          more (first (current-value (matching-elements "more" age)))
+          age-key [:root (:item-id age)]]
       (is (check
            dom
-           [:div {:class "item with-elements" :key item-key}
+           [:div {:class "item with-elements" :key age-key}
             [:div {:class "content-text editable"
-                   :key (conj item-key :content)
+                   :key (conj age-key :content)
                    :target {:item-referent (item-referent age)}
                    :commands {:set-content nil
                               :add-element nil
                               :add-sibling nil
                               :delete nil}}
              "39"]
-            [:div {:class "wrapped-element tags"}
-             (let [tags-key (conj item-key (:item-id doubtful) :outside)]
-               [:component {:key (conj tags-key (:item-id confidence))
-                            :class "tag"}
-                [item-DOM-R confidence [confidence-tag]
+            [:div {:class "stack"}
+             [:div {:class "wrapped-element tags"}
+              (let [tags-key (conj age-key (:item-id doubtful) :outside)]
+                [:component {:key (conj tags-key (:item-id confidence))
+                             :class "tag"}
+                 [item-DOM-R confidence [confidence-tag]
+                  {:priority 1
+                   :narrow true
+                   :parent-key tags-key
+                   :subject-referent (item-referent doubtful)
+                   :template '(nil :tag)}]])
+              [:div {:class "indent-wrapper"}
+               [:component {:key (conj age-key (:item-id doubtful))}
+                [item-DOM-R doubtful [confidence]
                  {:priority 1
-                  :narrow true
-                  :parent-key tags-key
-                  :subject-referent (item-referent doubtful)
-                  :template '(nil :tag)}]])
-             [:div {:class "indent-wrapper"}
-              [:component {:key (conj item-key (:item-id doubtful))}
-               [item-DOM-R doubtful [confidence]
-                {:priority 1
-                 :narrow true,
-                 :parent-key item-key
-                 :subject-referent (item-referent age)
-                 :selectable-attributes
-                 {:commands {:add-row nil}
-                  :row {:subject-referent (item-referent age)
-                        :adjacents-referent (item-referent doubtful)}}}]]]]]
-           )))))
+                  :narrow true,
+                  :parent-key age-key
+                  :subject-referent (item-referent age)
+                  :selectable-attributes
+                  {:commands {:add-row nil}
+                   :row {:subject-referent (item-referent age)
+                         :adjacents-referent (item-referent doubtful)}}}]]]]
+             (let [more-key (conj age-key (:item-id more))]
+               [:div {:class "adjacent-tags-element"}
+                [:div {:class "editable tags indent-width"
+                       :key (conj more-key :outside [:template '(nil :tag)])
+                       :commands {:set-content nil}
+                       :target {:subject-referent (item-referent more)
+                                :adjacents-referent (item-referent more)
+                                :position :after
+                                :template '(nil :tag)}}]
+                [:component {:key more-key}
+                 [item-DOM-R more nil
+                  {:priority 1,
+                   :narrow true,
+                   :parent-key age-key
+                   :subject-referent (item-referent age)}]]])]])))
+    ))

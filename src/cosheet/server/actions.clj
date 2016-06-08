@@ -222,25 +222,24 @@
         (reduce update-delete store items)))))
 
 (defn do-set-content
-  [store key attributes]
+  [store target-key attributes]
   ;; TODO: Handle deleting.
   (let [{:keys [target from to]} attributes
         referent (:item-referent target)]
-    (when (and referent from to)
-      (let [to (parse-string-as-number to)]
-        (let [items (apply concat (instantiate-referent referent store))]
-          (println "updating " (count items) " items")
-          (reduce (partial update-set-content-if-matching from to)
-                  store items))))))
-
-(defn do-create-content
-  [store target-key attributes]
-  (let [{:keys [target content]} attributes
-        content (parse-string-as-number content)
-        new-template (cons content (rest (:template target)))]
-    (when (not= content "")
-      (generic-add store (into target {:template new-template})
-                   (rest target-key) target-key false))))
+    (if referent
+      ;; Changing an existing value.
+      (when (and from to)
+        (let [to (parse-string-as-number to)]
+          (let [items (apply concat (instantiate-referent referent store))]
+            (println "updating " (count items) " items")
+            (reduce (partial update-set-content-if-matching from to)
+                    store items))))
+      ;; Creating a new value.
+      (when (not= to "")
+        (let [content (parse-string-as-number to)
+              new-template (cons content (rest (:template target)))]
+          (generic-add store (into target {:template new-template})
+                       (rest target-key) target-key false))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
@@ -272,8 +271,7 @@
     :add-column do-add-column
     :add-element do-add-element
     :delete do-delete
-    :set-content do-set-content
-    :create-content do-create-content}
+    :set-content do-set-content}
    action))
 
 (defn do-contextual-action
@@ -291,6 +289,7 @@
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
                                            (map concat (seq extra-info)))))
+          (println "attributes: " (simplify-for-print attributes))
           (do-storage-update-action handler mutable-store target-key
                                     (into attributes extra-info))))
       (println "unhandled action type:" action-type))))

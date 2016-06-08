@@ -183,8 +183,8 @@
           result-both (generic-add store
                                    {:template '(nil ("new" :tag))
                                     :item-referent (union-referent
-                                                    (item-referent jane-age)
-                                                    (item-referent joe-age))}
+                                                    [(item-referent jane-age)
+                                                     (item-referent joe-age)])}
                                    "parent-key" "old-key" true)]
       (is (check (:store result12) (:store result-both)))
       (is (check (:select result1) (:select result-both))))))
@@ -228,26 +228,26 @@
   (let [modified (do-set-content
                   store "both"
                   {:target {:item-referent (union-referent
-                                            (item-referent joe-age-tag)
-                                            (item-referent jane-age-tag))}
+                                            [(item-referent joe-age-tag)
+                                             (item-referent jane-age-tag)])}
                    :from "age" :to "oldness"})]
     (is (= (item->canonical-semantic
             (description->entity (:item-id joe-age-tag) modified))
            (canonicalize-list '("oldness" :tag))))
     (is (= (item->canonical-semantic
             (description->entity (:item-id jane-age-tag) modified))
-           (canonicalize-list '("oldness" :tag))))))
-
-(deftest do-create-content-test
-  (let [result (do-create-content
-                store ["joe-male"]
-                {:target {:subject-referent (item-referent joe-male)
-                          :adjacents-referent (item-referent joe-male)
-                          :template '(nil :tag)}
-                   :content "gender"})]
-    (is (= (immutable-semantic-to-list
-            (description->entity (:item-id joe-male) (:store result)))
-           ["male" ["gender" :tag]]))))
+           (canonicalize-list '("oldness" :tag)))))
+  ;; Try creating new content
+    (let [result (do-set-content
+                  store ["joe-male"]
+                  {:target {:subject-referent (item-referent joe-male)
+                            :adjacents-referent (item-referent joe-male)
+                            :template '(nil :tag)}
+                   :from ""
+                   :to "gender"})]
+      (is (= (immutable-semantic-to-list
+              (description->entity (:item-id joe-male) (:store result)))
+             ["male" ["gender" :tag]]))))
 
 (deftest do-actions-test
   (let [mutable-store (new-mutable-store store)

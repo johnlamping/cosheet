@@ -320,10 +320,12 @@
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                       % false nested-inherited)
                                 (:children hierarchy-node)))]
-      (let [content (if (> (count members) 1)
-                       (conj items-dom child-doms)  ; Add to stack.
-                       (vertical-stack
-                        (if items-dom (cons items-dom child-doms) child-doms)))]
+      (let [body (add-attributes
+                  (if (> (count members) 1)
+                    (conj items-dom child-doms) ; Adds to item-doms stack.
+                    (vertical-stack
+                     (if items-dom (cons items-dom child-doms) child-doms)))
+                  {:class "bordered"})]
         (let [items-referent (hierarchy-node-items-referent
                               hierarchy-node (:subject-referent inherited))
               example-descendant (first (hierarchy-node-descendants
@@ -336,17 +338,17 @@
                                         :template '(nil :tag)
                                         :subject-referent items-referent)]
           (if (empty? (:properties hierarchy-node))
-            [:div {:class "adjacent-tags-element"}
+            [:div {:class "horizontal-tags-element"}
              (add-attributes
               (empty-content-DOM items-referent :after inherited-for-tags)
-              {:class "tags indent-width"})
-             content]
+              {:class "tags indent-width bordered"})
+             body]
             (expr-let [tags-dom (hierarchy-properties-DOM-R
                                  hierarchy-node  {:class "tag"}
                                  inherited-for-tags)]
-              [:div {:class "wrapped-element tags"}
+              [:div {:class "wrapped-element tags bordered"}
                tags-dom
-               [:div {:class "indent-wrapper"} content]])))))))
+               [:div {:class "indent-wrapper"} body]])))))))
 
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]

@@ -38,15 +38,17 @@ body { /* override the default of 8px */
     background-color: hsl(194, 100%, 88%);
 }
 
-.item { 
-    padding: 3px;
+.bordered, .horizontal-tags-element > * {
     border-width: 2px;
     margin: 0px -2px -2px 0px;
 }
 
+.item { 
+    padding: 3px;
+}
+
 .stack > .item {
     margin: 0px 3px 0px 3px;
-    border-width: 0px;
     padding: 3px 0px 3px 0px;
 }
 
@@ -56,7 +58,7 @@ body { /* override the default of 8px */
 
 .indent-wrapper {
     display: flex;
-    flex-direction:column;
+    flex-direction :column;
 }
 
 .indent-wrapper > * {
@@ -64,108 +66,29 @@ body { /* override the default of 8px */
     margin-left: 8px;
 }
 
-.vertical-center-wrapper {
+.horizontal-tags-element {
     display: flex;
-    align-items: center;
+    flex-direction: row;
 }
 
-.vertical-center-wrapper > * {
-    flex-grow: 1;
+.horizontal-tags-element > :first-child {
+    border-width: 2px;
+    border-bottom-left-radius: 7px;
+    border-top-left-radius: 7px;
+    margin: 0px -2px -2px 0px;
 }
 
-.element-row {
-    display: flex;
-    width:100%;
-    align-items: stretch;
+.horizontal-tags-element > :last-child {
+    flex: 1;
 }
 
-.element-table {
-    display: flex;
-    flex-direction: column;
-    margin-left: 3px;
-    width: 100%;
-}
-
-.row-header.tags.selected {
-    background-color: hsl(194, 100%, 88%);
+.indent-width {
+    width: 12px;
 }
 
 .with-elements > :last-child {
     margin-top: 2px;
     margin-left: 3px;
-}
-
-.top-border {
-    border-top-width: 2px;
-}
-
-.bottom-border {
-    border-bottom-width: 2px;
-}
-
-.ll-corner {
-    border-bottom-left-radius: 7px;
-}
-
-.full-row {
-    text-align: right;
-}
-
-/* Illumination of borders for top level tags */
-.row-header.tags {
-    vertical-align: top;
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-    background-color: hsl(194, 100%, 88%);
-    border-left-width: 2px;
-    width: 30%;
-}
-
-.row-header.tags.top-border {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-    border-top-left-radius: 7px;
-}
-
-.row-header.tags.bottom-border, .row-header.tags.ll-corner {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-    border-bottom-left-radius: 7px;
-}
-
-.row-header.tags.top-border.bottom-border, .row-header.tags.top-border.ll-corner {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-    border-top-left-radius: 7px;
-    border-bottom-left-radius: 7px;
 }
 
 .wrapped-element.tags {
@@ -191,34 +114,7 @@ body { /* override the default of 8px */
     border-bottom-left-radius: 7px;
 }
 
-.editable.wrapped-element.tags {
-    border-top-right-radius: 0px;
-}
-
-/* Illumination of borders for indented tags */
-.row-header.tags > .full-row {
-    background-image:
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.row-header.tags > .full-row.with-children,
-.row-header.tags.bottom-row > .full-row,
-.row-header.tags.ll-corner > .full-row {
-    background-image:
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.for-multiple, .row-header.tags.for-multiple, .for-multiple > .stack {
+.for-multiple, .for-multiple > .stack {
     vertical-align: middle;
 }
 
@@ -226,159 +122,12 @@ body { /* override the default of 8px */
     vertical-align: top;
 }
 
-.with-children, .full-row.with-children,
-.with-elements, .full-row.with-elements {
+.with-children, .with-elements {
     text-align: left;
 }
 
-.no-tags > .row-header.tags {
-    width: 10px;
-}
-
-.row-header.tags {
+.editable {
     min-height: 15px; /* Make no-content cells have minimum height */
-}
-
-.elements-column {
-    min-height: 15px; /* Make no-content cells have minimum height */
-    border-width: 2px 2px 0px 2px;
-    width: 0px;
-    flex-grow: 1;
-    background-color: white;
-}
-
-.last-row > .elements-column {
-    border-bottom-width: 2px;
-}
-
-.table {
-    width: fit-content;
-}
-
-.column-header-container {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    justify-content: flex-end;
-    border-width: 0px 0px 2px 2px;
-}
-
-.column-header-container.tags {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to left,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.column-header-container.tags.empty {
-    background-image: none;
-}
-
-.column-header-container.tags.empty:last-child {
-    background-image:
-    linear-gradient(to left,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.column-header-container.tags.empty:first-child {
-    background-image:
-    linear-gradient(to right,
-                    hsla(0, 0%, 100%, .7),
-                    hsla(0, 0%, 100%, 0) 7px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.column-header-container.with-children {
-     border-bottom-width: 0px;
-}
-
-.column-header-container.rightmost {
-     border-right-width: 2px;
-}
-
-.column-header-container:not(.empty) {
-    border-top-width: 2px;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-}
-
-/* Keep the label color from bleeding outside the top radiused corners */
-.tags.column-header-stack.top-level {
-    background-image:
-    linear-gradient(to bottom,
-                    hsla(0, 0%, 100%, 1),
-                    hsla(0, 0%, 100%, 1) 7px,
-                    hsla(0, 0%, 100%, 0) 0px,
-                    hsla(0, 0%, 100%, 0));
-}
-
-.column-header-stack {
-    display: flex;
-    flex-direction: column;
-}
-
-.column-header {
-    align-items: flex-stretch;
-    text-align: center;
-    padding: 3px;
-}
-
-.column-header.editable {
-    min-height: 20px;
-}
-
-.column-header-sequence {
-    display: flex;
-    align-items: stretch;
-}
-
-.wrapped-element {
-    border-width: 2px;
-}
-
-.has-border:not(.with-elements) > .wrapped-element {
-    margin-left: -2px;
-    margin-right: -2px;
-}
-
-.stack > .wrapped-element + .wrapped-element,
-.has-border:not(.with-elements) > .wrapped-element:first-child {
-    margin-top: -2px;
-}
-
-.has-border:not(.with-elements) > .wrapped-element:last-child {
-    margin-bottom: -2px;
-}
-
-.wrapped-element > .indent-wrapper > * {
-    border-top-width: 2px;
-    border-left-width: 2px;
-}
-
-.table-cell {
-    width: 150px;
-    min-height: 20px;
-    border-width: 0px 0px 2px 2px;
-}
-
-.table-cell:last-child {
-    border-right-width: 2px;
-}
-
-.table-row {
-    display: flex;
-    align-items: stretch;
 }
 
 /* grayish indicators of places where there is no current content */
@@ -386,9 +135,8 @@ body { /* override the default of 8px */
     background-color: hsl(0, 0%, 95%);
 }
 
-.editable.row-header.tags:not(.content-text),
-.row-header.tags > .editable:not(.content-text),
-.editable.tags.indent-wrapper {
+.editable.tags:not(.content-text),
+.tags > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -403,7 +151,6 @@ body { /* override the default of 8px */
 
 .tags.indent-wrapper > *, .tags > .indent-wrapper > * {
     background-color: white;
-    border-left-width: 2px;
 }
 
 .content-text {
@@ -411,11 +158,7 @@ body { /* override the default of 8px */
     overflow-wrap: break-word;
 }
 
-.placeholder {
-    font-size: smaller;
-    font-style: oblique;
-    color: rgba(0, 0, 0, 0.4);
-}
+/* For edit holder */
 
 .editable {
     position: relative; /* To make edit_holder position relative to it */
@@ -449,6 +192,8 @@ body { /* override the default of 8px */
     position: absolute;
     z-index: 1;
 }
+
+/* For toolbar */
 
 .toolbar {
     background-color: white;

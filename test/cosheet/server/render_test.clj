@@ -122,7 +122,7 @@
                               :delete nil}}
              "39"]
             [:div {:class "stack"}
-             [:div {:class "wrapped-element tags"}
+             [:div {:class "wrapped-element tags bordered"}
               (let [tags-key (conj age-key (:item-id doubtful) :outside)]
                 [:component {:key (conj tags-key (:item-id confidence))
                              :class "tag"}
@@ -133,7 +133,8 @@
                    :subject-referent (item-referent doubtful)
                    :template '(nil :tag)}]])
               [:div {:class "indent-wrapper"}
-               [:component {:key (conj age-key (:item-id doubtful))}
+               [:component {:key (conj age-key (:item-id doubtful))
+                            :class "bordered"}
                 [item-DOM-R doubtful [confidence]
                  {:priority 1
                   :narrow true,
@@ -144,15 +145,16 @@
                    :row {:subject-referent (item-referent age)
                          :adjacents-referent (item-referent doubtful)}}}]]]]
              (let [more-key (conj age-key (:item-id more))]
-               [:div {:class "adjacent-tags-element"}
-                [:div {:class "editable tags indent-width"
+               [:div {:class "horizontal-tags-element"}
+                [:div {:class "editable tags indent-width bordered"
                        :key (conj more-key :outside [:template '(nil :tag)])
                        :commands {:set-content nil}
                        :target {:subject-referent (item-referent more)
                                 :adjacents-referent (item-referent more)
                                 :position :after
                                 :template '(nil :tag)}}]
-                [:component {:key more-key}
+                [:component {:key more-key
+                             :class "bordered"}
                  [item-DOM-R more nil
                   {:priority 1,
                    :narrow true,

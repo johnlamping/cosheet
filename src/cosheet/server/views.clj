@@ -64,7 +64,9 @@
                            (~o3 :order :non-semantic)
                            ("doubtful"
                             ("confidence" :tag (~o1 :order :non-semantic))
-                            (~o1 :order :non-semantic)))
+                            (~o1 :order :non-semantic))
+                           ("more"
+                            (~o2 :order :non-semantic)))
         [store id] (add-entity store nil starting-item)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]

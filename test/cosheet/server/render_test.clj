@@ -95,21 +95,40 @@
     ;; Test when there are elements.
     (let [[dom age] (let-mutated [age `(39 (:root :non-semantic)
                                            (~o3 :order :non-semantic)
-                                           ("doubtful"
+                                           ("one" ; One tag.
                                             ("confidence"
                                              :tag (~o1 :order :non-semantic))
                                             (~o1 :order :non-semantic))
-                                           ("more"
-                                            (~o2 :order :non-semantic)))]
+                                           ("two" ; Two tags, one matching.
+                                            ("confidence"
+                                             :tag (~o1 :order :non-semantic))
+                                            ("probability"
+                                             :tag (~o2 :order :non-semantic))
+                                            (~o2 :order :non-semantic))
+                                           ("none" ; No tag.
+                                            (~o3 :order :non-semantic)))]
                       (expr-let [dom (item-DOM-R age [] initial)]
                         [dom age]))
-          doubtful (first (current-value (matching-elements "doubtful" age)))
-          confidence (first (current-value
-                             (matching-elements "confidence" doubtful)))
-          confidence-tag (first (current-value
-                                 (matching-elements :tag confidence)))
-          more (first (current-value (matching-elements "more" age)))
-          age-key [:root (:item-id age)]]
+          one (first (current-value (matching-elements "one" age)))
+          confidence1 (first (current-value
+                              (matching-elements "confidence" one)))
+          confidence1-tag (first (current-value
+                                  (matching-elements :tag confidence1)))
+          two (first (current-value (matching-elements "two" age)))
+          confidence2 (first (current-value
+                              (matching-elements "confidence" two)))
+          confidence2-tag (first (current-value
+                                  (matching-elements :tag confidence2)))
+          probability (first (current-value
+                              (matching-elements "probability" two)))
+          probability-tag (first (current-value
+                                  (matching-elements :tag probability)))
+          none (first (current-value (matching-elements "none" age)))
+          age-key [:root (:item-id age)]
+          tags-key (conj age-key (:item-id one) :outside)
+          none-key (conj age-key (:item-id none))
+          one-two-referent (union-referent [(item-referent one)
+                                            (item-referent two)])]
       (is (check
            dom
            [:div {:class "item with-elements" :key age-key}
@@ -122,40 +141,70 @@
                               :delete nil}}
              "39"]
             [:div {:class "stack"}
+             ;; Everything with "confidence"
              [:div {:class "wrapped-element tags"}
-              (let [tags-key (conj age-key (:item-id doubtful) :outside)]
-                [:component {:key (conj tags-key (:item-id confidence))
-                             :class "tag"}
-                 [item-DOM-R confidence [confidence-tag]
-                  {:priority 1
-                   :narrow true
-                   :parent-key tags-key
-                   :subject-referent (item-referent doubtful)
-                   :template '(nil :tag)}]])
+              [:component {:key (conj tags-key (:item-id confidence1))
+                           :class "tag"}
+               [item-DOM-R confidence1 [confidence1-tag]
+                {:priority 1
+                 :narrow true
+                 :parent-key tags-key
+                 :subject-referent one-two-referent
+                 :template '(nil :tag)}]]
               [:div {:class "indent-wrapper"}
-               [:component {:key (conj age-key (:item-id doubtful))}
-                [item-DOM-R doubtful [confidence]
-                 {:priority 1
-                  :narrow true,
-                  :parent-key age-key
-                  :subject-referent (item-referent age)
-                  :selectable-attributes
-                  {:commands {:add-row nil}
-                   :row {:subject-referent (item-referent age)
-                         :adjacents-referent (item-referent doubtful)}}}]]]]
-             (let [more-key (conj age-key (:item-id more))]
-               [:div {:class "horizontal-tags-element narrow"}
-                [:div {:class "editable tags"
-                       :key (conj more-key :outside [:template '(nil :tag)])
-                       :commands {:set-content nil}
-                       :target {:subject-referent (item-referent more)
-                                :adjacents-referent (item-referent more)
-                                :position :after
-                                :template '(nil :tag)}}]
-                [:component {:key more-key}
-                 [item-DOM-R more nil
-                  {:priority 1,
+               [:div {:class "stack"}
+                ;; One
+                [:component {:key (conj age-key (:item-id one))}
+                 [item-DOM-R one [confidence1]
+                  {:priority 1
                    :narrow true,
                    :parent-key age-key
-                   :subject-referent (item-referent age)}]]])]])))
+                   :subject-referent (item-referent age)
+                   :selectable-attributes
+                   {:commands {:add-row nil}
+                    :row {:subject-referent (item-referent age)
+                          :adjacents-referent one-two-referent}}}]]
+                ;; Two (must be nested)
+                [:div {:class "wrapped-element tags"}
+                 [:component {:key (conj age-key (:item-id two)
+                                         :outside (:item-id probability))
+                              :class "tag"}
+                  [item-DOM-R probability [probability-tag]
+                   {:priority 1
+                    :narrow true
+                    :parent-key (conj age-key (:item-id two) :outside)
+                    :subject-referent (item-referent two)
+                    :template '(nil :tag)
+                    :selectable-attributes
+                    {:commands {:add-row nil}
+                     :row {:subject-referent (item-referent age)
+                           :adjacents-referent one-two-referent}}}]]
+                 [:div {:class "indent-wrapper"}
+                  [:component {:key (conj age-key (:item-id two))}
+                   [item-DOM-R two (as-set [confidence2 probability])
+                    {:priority 1
+                     :narrow true,
+                     :parent-key age-key
+                     :subject-referent (item-referent age)
+                     :selectable-attributes
+                     {:commands {:add-row nil}
+                      :row {:subject-referent (item-referent age)
+                            :adjacents-referent (item-referent two)
+                            :template '(nil ("confidence" :tag))}}}]]]]]]]
+             ;; None
+             [:div {:class "horizontal-tags-element narrow"}
+              [:div {:class "editable tags"
+                     :key (conj none-key :outside [:template '(nil :tag)])
+                     :commands {:set-content nil}
+                     :target {:subject-referent (item-referent none)
+                              :adjacents-referent (item-referent none)
+                              :position :after
+                              :template '(nil :tag)}}]
+              [:component {:key none-key}
+               [item-DOM-R none nil
+                {:priority 1,
+                 :narrow true,
+                 :parent-key age-key
+                 :subject-referent (item-referent age)}]]]]])))
     ))
+

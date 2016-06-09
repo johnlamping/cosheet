@@ -249,16 +249,16 @@
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
-  (let [parent-referent (:subject-referent inherited)
+  (let [subject-referent (:subject-referent inherited)
         ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
    (cond->
-       {:subject-referent parent-referent
+       {:subject-referent subject-referent
         :adjacents-referent (hierarchy-node-items-referent
-                             hierarchy-node parent-referent)}
+                             hierarchy-node subject-referent)}
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
@@ -288,16 +288,12 @@
   "Return DOM for example elements that give rise to the properties
    of one hierarchy node."
   [hierarchy-node attributes inherited]
-  (let [items-referent (hierarchy-node-items-referent
-                        hierarchy-node (:subject-referent inherited))
-        example-elements (hierarchy-node-example-elements hierarchy-node)]
+  (let [example-elements (hierarchy-node-example-elements hierarchy-node)]
     (expr-let [ordered-elements (order-items-R example-elements)
                satisfiers (expr-seq
                            map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
-      (item-stack-DOM
-       ordered-elements satisfiers attributes
-       (into inherited {:subject-referent items-referent})))))
+      (item-stack-DOM ordered-elements satisfiers attributes inherited))))
 
 (defn tagged-items-one-column-subtree-DOM-R
   "Return DOM for the given hierarchy node and its descendants,
@@ -315,8 +311,7 @@
         items-dom (when (not (empty? members))
                      (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
-        [;; TODO: Need unit test for the case where there are children.
-         child-doms (when (:children hierarchy-node)
+        [child-doms (when (:children hierarchy-node)
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                       % false nested-inherited)
                                 (:children hierarchy-node)))]

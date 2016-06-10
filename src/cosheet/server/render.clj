@@ -201,13 +201,12 @@
           (add-attributes (item-component item excluded inherited) attributes))
         items excludeds)))
 
-(defn empty-content-DOM
-  ;; TODO: add an argument that uniquifies the key
-  "Make a dom for a place that could hold content, but doesn't."
-  [adjacents-referent position inherited]
+(defn virtual-item-DOM
+  "Make a dom for a place that could hold an item, but doesn't."
+  [key adjacents-referent position inherited]
   (let [template (:template inherited)]
        [:div {:class "editable"
-              :key (conj (:parent-key inherited) [:template template])
+              :key key
               :commands {:set-content nil}
               :target (cond-> {:subject-referent (:subject-referent inherited)
                                :adjacents-referent adjacents-referent
@@ -274,8 +273,12 @@
                            (:cumulative-properties hierarchy-node)))]
     (if (empty? members)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
-                                         hierarchy-node)))]
-        (empty-content-DOM
+                                         hierarchy-node)))
+            key (conj (:parent-key inherited)
+                      :example-element
+                      (:item-id (first (hierarchy-node-example-elements
+                                        hierarchy-node))))]
+        (virtual-item-DOM
          (item-or-exemplar-referent adjacent-item (:subject-referent inherited))
          :before inherited))
       (let [items (map :item members)
@@ -333,7 +336,8 @@
           (if (empty? (:properties hierarchy-node))
             [:div {:class "horizontal-tags-element narrow"}
              (add-attributes
-              (empty-content-DOM items-referent :after inherited-for-tags)
+              (virtual-item-DOM (conj tags-parent-key :tags) items-referent
+                                :after inherited-for-tags)
               {:class "tags"})
              body]
             (expr-let [tags-dom (hierarchy-properties-DOM-R

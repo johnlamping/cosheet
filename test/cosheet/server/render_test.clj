@@ -92,7 +92,7 @@
                                    :add-sibling nil
                                    :delete nil}}
                   "Fred"])))
-    ;; Test when there are elements.
+    ;; Test when there are elements in a hierarchy.
     (let [[dom age] (let-mutated [age `(39 (:root :non-semantic)
                                            (~o3 :order :non-semantic)
                                            ("one" ; One tag.
@@ -194,7 +194,7 @@
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
               [:div {:class "editable tags"
-                     :key (conj none-key :outside [:template '(nil :tag)])
+                     :key (conj none-key :outside :tags)
                      :commands {:set-content nil}
                      :target {:subject-referent (item-referent none)
                               :adjacents-referent (item-referent none)

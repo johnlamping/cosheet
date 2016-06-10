@@ -1,5 +1,6 @@
 (ns cosheet.server.referent
   (:require (cosheet [utils :refer [multiset replace-in-seqs]]
+                     [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :refer [atom? elements content label->elements
                                      call-with-immutable description->entity
@@ -94,7 +95,8 @@
   "Make sure the argument is an item or id, and coerce it to an id."
   [item]
   (let [id (coerce-item-to-id item)]
-    (assert (satisfies? StoredItemDescription id))
+    (assert (satisfies? StoredItemDescription id)
+            (simplify-for-print id))
     id))
 
 (defn item-referent

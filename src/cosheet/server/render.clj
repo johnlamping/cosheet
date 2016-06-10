@@ -224,7 +224,7 @@
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
-  [item content key referent inherited]
+  [item content key inherited]
   ;; We don't currently handle items as content. That would need
   ;; more interaction and UI design work to deal with the distinction
   ;; between elements of an item and elements on its content.
@@ -236,7 +236,7 @@
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder"))
             :key key
-            :target (item-target referent inherited)
+            :target (item-target item inherited)
             :commands {:set-content nil
                        :delete nil
                        :add-element nil
@@ -388,11 +388,11 @@
                                               (:subject-referent inherited))
           elements (remove (set excluded-elements) elements)]
       (if (empty? elements)
-        (add-attributes (item-content-DOM item content key referent inherited)
+        (add-attributes (item-content-DOM item content key inherited)
                         {:class "item"})
         (let [content-key (conj key :content) ;; Has to be different.
               content-dom (item-content-DOM
-                           item content content-key referent inherited)
+                           item content content-key inherited)
               inherited-down (-> inherited
                                  (update-in [:priority] inc)
                                  (assoc :parent-key key

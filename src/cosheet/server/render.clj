@@ -268,9 +268,13 @@
   show, typically the ones that satisfy the :template of inherited."
   [hierarchy-node inherited]
   (let [members (hierarchy-node-members hierarchy-node)
-        condition (concat (rest (:template inherited))
-                          (canonical-set-to-list
-                           (:cumulative-properties hierarchy-node)))]
+        property-list (canonical-set-to-list
+                       (:cumulative-properties hierarchy-node))
+        template (:template inherited)
+        inherited-down (if (or template (not (empty? property-list)))
+                         (assoc inherited :template
+                                (concat (or template '(nil)) property-list))
+                         inherited)]
     (if (empty? members)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
@@ -280,12 +284,12 @@
                                         hierarchy-node))))]
         (virtual-item-DOM
          (item-or-exemplar-referent adjacent-item (:subject-referent inherited))
-         :before inherited))
+         :before inherited-down))
       (let [items (map :item members)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            members)]
-        (item-stack-DOM items excludeds {} inherited)))))
+        (item-stack-DOM items excludeds {} inherited-down)))))
 
 (defn hierarchy-properties-DOM-R
   "Return DOM for example elements that give rise to the properties

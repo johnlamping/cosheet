@@ -160,6 +160,7 @@
                    :narrow true,
                    :parent-key age-key
                    :subject-referent (item-referent age)
+                   :template '(nil ("confidence" :tag))
                    :selectable-attributes
                    {:commands {:add-row nil}
                     :row {:subject-referent (item-referent age)
@@ -186,6 +187,8 @@
                      :narrow true,
                      :parent-key age-key
                      :subject-referent (item-referent age)
+                     :template (as-set '(nil ("confidence" :tag)
+                                             ("probability" :tag)))
                      :selectable-attributes
                      {:commands {:add-row nil}
                       :row {:subject-referent (item-referent age)

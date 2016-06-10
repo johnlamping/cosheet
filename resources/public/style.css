@@ -74,20 +74,20 @@ body { /* override the default of 8px */
     background-color: hsl(0, 0%, 95%);
 }
 
-.stack > .item {
+.item-stack > .item {
     margin: 0px 3px 0px 3px;
     padding: 3px 0px 3px 0px;
 }
 
-.stack > .item + .item {
+.item-stack > .item + .item {
     border-width: 2px 0px 0px 0px;
 }
 
-.for-multiple, .for-multiple > .stack {
+.for-multiple, .for-multiple > .item-stack {
     vertical-align: middle;
 }
 
-.stack {
+.item-stack {
     vertical-align: top;
 }
 
@@ -102,16 +102,20 @@ body { /* override the default of 8px */
 
 /* --- tags --- */
 
-.tags {
+.tag {
     background-color: hsl(194, 100%, 88%);
 }
 
-.tags.indent-wrapper > *, .tags > .indent-wrapper > * {
+.tag > .tag {
+    background-color: transparent;
+}
+
+.item:not(.tag), .item-stack:not(.tag) {
     background-color: white;
 }
 
-.editable.tags:not(.content-text),
-.tags > .editable:not(.content-text) {
+.editable.tag:not(.content-text),
+.tag > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -130,10 +134,6 @@ body { /* override the default of 8px */
 .horizontal-tags-element > :first-child {
     border-bottom-left-radius: 7px;
     border-top-left-radius: 7px;
-}
-
-.horizontal-tags-element > :last-child {
-    flex: 1;
 }
 
 .horizontal-tags-element.narrow > :first-child {
@@ -173,13 +173,12 @@ body { /* override the default of 8px */
     flex: 1;
 }
 
-.wrapped-element > .indent-wrapper > * {
+.wrapped-element > .indent-wrapper > .item,
+.wrapped-element > .indent-wrapper > .item-stack,
+.wrapped-element > .indent-wrapper > .stack > .item-stack {
     border-width: 2px;
-    margin: 0px -2px -2px 8px;
-}
-
-.wrapped-element > .indent-wrapper > .stack > .wrapped-element {
-    margin-left: -2px;
+    margin-bottom: -2px;
+    margin-right: -2px;
 }
 
 .stack > .wrapped-element:last-child {

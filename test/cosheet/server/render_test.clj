@@ -142,7 +142,7 @@
              "39"]
             [:div {:class "stack"}
              ;; Everything with "confidence"
-             [:div {:class "wrapped-element tags"}
+             [:div {:class "wrapped-element tag"}
               [:component {:key (conj tags-key (:item-id confidence1))
                            :class "tag"}
                [item-DOM-R confidence1 [confidence1-tag]
@@ -166,7 +166,7 @@
                     :row {:subject-referent (item-referent age)
                           :adjacents-referent one-two-referent}}}]]
                 ;; Two (must be nested)
-                [:div {:class "wrapped-element tags"}
+                [:div {:class "wrapped-element tag"}
                  [:component {:key (conj age-key (:item-id two)
                                          :outside (:item-id probability))
                               :class "tag"}
@@ -196,7 +196,7 @@
                             :template '(nil ("confidence" :tag))}}}]]]]]]]
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
-              [:div {:class "editable tags"
+              [:div {:class "editable tag"
                      :key (conj none-key :outside :tags)
                      :commands {:set-content nil}
                      :target {:subject-referent (item-referent none)

@@ -179,10 +179,10 @@
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
   a vertical stack of the items."
-  [doms]
+  [doms & {:keys [class] :or {class "stack"}}]
   (if (= (count doms) 1)
        (first doms)
-       (into [:div (if (empty? doms) {} {:class "stack"})] doms)))
+       (into [:div (if (empty? doms) {} {:class class})] doms)))
 
 (defn item-component
   "Make a component dom for the given item."
@@ -191,6 +191,7 @@
         excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
     (make-component {:key key} [item-DOM-R item excluded inherited])))
 
+;; TODO: Need test to cover a non-trivial stack.
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
@@ -199,7 +200,8 @@
   (vertical-stack
    (map (fn [item excluded]
           (add-attributes (item-component item excluded inherited) attributes))
-        items excludeds)))
+        items excludeds)
+   :class "item-stack"))
 
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't."
@@ -322,10 +324,8 @@
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                       % false nested-inherited)
                                 (:children hierarchy-node)))]
-      (let [body (if (> (count members) 1)
-                   (conj items-dom child-doms) ; Adds to item-doms stack.
-                   (vertical-stack
-                    (if items-dom (cons items-dom child-doms) child-doms)))]
+      (let [body (vertical-stack
+                    (if items-dom (cons items-dom child-doms) child-doms))]
         (let [items-referent (hierarchy-node-items-referent
                               hierarchy-node (:subject-referent inherited))
               example-descendant (first (hierarchy-node-descendants
@@ -342,13 +342,14 @@
              (add-attributes
               (virtual-item-DOM (conj tags-parent-key :tags) items-referent
                                 :after inherited-for-tags)
-              {:class "tags"})
+              {:class "tag"})
              body]
             (expr-let [tags-dom (hierarchy-properties-DOM-R
-                                 hierarchy-node  {:class "tag"}
+                                 hierarchy-node {:class "tag"}
                                  inherited-for-tags)]
-              [:div {:class "wrapped-element tags"}
-               tags-dom
+              [:div {:class "wrapped-element tag"}
+               ;; If the tags-dom is an item-stack, we need to mark it as tag.
+               (add-attributes tags-dom {:class "tag"})
                [:div {:class "indent-wrapper"} body]])))))))
 
 (defn tagged-items-one-column-DOM-R
@@ -375,7 +376,7 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
-        (item-stack-DOM  elements excludeds inherited)
+        (item-stack-DOM  elements excludeds {} inherited)
         (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))

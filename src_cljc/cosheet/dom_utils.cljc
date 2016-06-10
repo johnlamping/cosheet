@@ -26,7 +26,10 @@
                   (case key
                     :class (if (empty? v2)
                              v1
-                             (str v1 " " (clojure.string/trim v2)))
+                             (let [v1s (clojure.string/split v1 #" ")
+                                   v2s (clojure.string/split v2 #" ")]
+                               (clojure.string/join
+                                " " (concat v1s (remove (set v1s) v2s)))))
                     :commands (into v1 v2)
                     (map-combiner key v1 v2)))
                 accumulator attributes))

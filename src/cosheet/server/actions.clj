@@ -192,7 +192,7 @@
 (defn do-add-row
   [store key attributes]
   (when-let [row (:row attributes)]
-    (generic-add store row nil nil true)))
+    (generic-add store row (:parent-key row) key true)))
 
 (defn do-add-column
   [store key attributes]

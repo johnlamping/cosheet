@@ -69,6 +69,8 @@
                ; :adjacents-referent  Groups of item(s) adjacent to new item(s)
                ; :position            :before or :after item/adjacent
                ; :template            Added item(s) should satisfy this.
+               ; :parent-key          The key of the parent of a virtual
+               ;                      new item.
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
@@ -251,6 +253,7 @@
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
   (let [subject-referent (:subject-referent inherited)
+        parent-key (:parent-key inherited)
         ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
@@ -261,7 +264,9 @@
         :adjacents-referent (hierarchy-node-items-referent
                              hierarchy-node subject-referent)}
      (not (empty? conditions))
-     (assoc :template (list* nil conditions)))))
+     (assoc :template (list* nil conditions))
+     parent-key
+     (assoc :parent-key parent-key))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -315,8 +320,8 @@
                             inherited [:selectable-attributes]
                             #(into-attributes
                               % {:commands {:add-row nil}
-                                         :row (hierarchy-add-adjacent-target
-                                               hierarchy-node inherited)})))
+                                 :row (hierarchy-add-adjacent-target
+                                       hierarchy-node inherited)})))
         items-dom (when (not (empty? members))
                      (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let

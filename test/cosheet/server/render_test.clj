@@ -164,7 +164,8 @@
                    :selectable-attributes
                    {:commands {:add-row nil}
                     :row {:subject-referent (item-referent age)
-                          :adjacents-referent one-two-referent}}}]]
+                          :adjacents-referent one-two-referent
+                          :parent-key age-key}}}]]
                 ;; Two (must be nested)
                 [:div {:class "wrapped-element tag"}
                  [:component {:key (conj age-key (:item-id two)
@@ -179,7 +180,8 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-two-referent}}}]]
+                           :adjacents-referent one-two-referent
+                           :parent-key age-key}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
@@ -193,7 +195,8 @@
                      {:commands {:add-row nil}
                       :row {:subject-referent (item-referent age)
                             :adjacents-referent (item-referent two)
-                            :template '(nil ("confidence" :tag))}}}]]]]]]]
+                            :template '(nil ("confidence" :tag))
+                            :parent-key age-key}}}]]]]]]]
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
               [:div {:class "editable tag"

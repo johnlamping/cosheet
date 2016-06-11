@@ -187,7 +187,8 @@
 (defn do-add-sibling
   [store key attributes]
   (when-let [item (:target attributes)]
-    (generic-add store item (pop key) key true)))
+    (let [item-key (if (= (last key) :content) (pop key) key)]
+      (generic-add store item (pop item-key) key true))))
 
 (defn do-add-row
   [store key attributes]
@@ -197,7 +198,7 @@
 (defn do-add-column
   [store key attributes]
   (when-let [column (:column attributes)]
-    (generic-add store column (pop key) key true)))
+    (generic-add store column (:parent-key column) key true)))
 
 (defn do-add-element
   [store key attributes]

@@ -154,7 +154,7 @@
         result1 (generic-add store
                              {:template '(nil ("new" :tag))
                               :item-referent (item-referent jane-age)}
-                             "parent-key" "old-key" true)
+                             ["parent-key"] ["old-key"] true)
         s1 (:store result1)
         new-jane (description->entity jane-id s1)
         new-element (first (matching-elements '(nil "new") new-jane))
@@ -165,33 +165,33 @@
                              {:template '(nil ("new" :tag))
                               :subject-referent (item-referent jane)
                               :adjacents-referent (item-referent jane-age)}
-                             "parent-key" "old-key" true)]    
+                             ["parent-key"] ["old-key"] true)]    
     (is (check (canonicalize-list (to-list new-element))
                (canonicalize-list `(""
                                     (~o6 :order :non-semantic)
                                     ("new" :tag (~o7 :order :non-semantic))))))
     (is (= (content (description->entity (:item-id order-entity) s1)) o5))
     (is (check (:select result1)
-               [(cons (:item-id new-element) "parent-key")
-                "old-key"]))
+               [["parent-key" (:item-id new-element)]
+                [["old-key"]]]))
     (is (check result2 result1))
     ;; Check that adding two separately, is the same as adding in parallel.
     (let [result12 (generic-add s1
                                 {:template '(nil ("new" :tag))
                                  :item-referent (item-referent joe-age)}
-                                nil nil true)
+                                [] [] true)
           result-both (generic-add store
                                    {:template '(nil ("new" :tag))
                                     :item-referent (union-referent
                                                     [(item-referent jane-age)
                                                      (item-referent joe-age)])}
-                                   "parent-key" "old-key" true)]
+                                   ["parent-key"] ["old-key"] true)]
       (is (check (:store result12) (:store result-both)))
       (is (check (:select result1) (:select result-both))))))
 
 (deftest do-add-element-test
   (let [result (do-add-element
-                store "jane-age"
+                store ["jane-age"]
                 {:target {:item-referent (item-referent jane-age)}})
         new-store (:store result)]
     (is (check (item->canonical-semantic
@@ -262,8 +262,8 @@
                              [[:add-element (key->id tracker ["jane"])]])]
       (let [new-store (current-store mutable-store)
             select (:select result)
-            new-id (first (first select))]
-        (is (= select [[new-id "jane"] ["jane"]]))
+            new-id (last (first select))]
+        (is (= select [["jane" new-id] [["jane"]]]))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id jane) new-store))
                    (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))

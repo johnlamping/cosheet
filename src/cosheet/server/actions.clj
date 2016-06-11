@@ -144,8 +144,8 @@
     (if (empty? element-ids)
       store
       {:store store
-       :select [(cons (first element-ids) parent-key)
-                old-key]})))
+       :select [(conj parent-key (first element-ids))
+                [old-key]]})))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
@@ -159,6 +159,7 @@
                 template]           ; added item(s) should satisfy this
          :or {position :after}}         
         target-info]
+    (println "adding" (simplify-for-print target-info))
     (assert (or item-referent adjacents-referent))
     (assert (not (and item-referent adjacents-referent)))
     (let [adjacents (if adjacents-referent
@@ -186,7 +187,7 @@
 (defn do-add-sibling
   [store key attributes]
   (when-let [item (:target attributes)]
-    (generic-add store item (rest key) key true)))
+    (generic-add store item (pop key) key true)))
 
 (defn do-add-row
   [store key attributes]
@@ -196,7 +197,7 @@
 (defn do-add-column
   [store key attributes]
   (when-let [column (:column attributes)]
-    (generic-add store column (rest key) key true)))
+    (generic-add store column (pop key) key true)))
 
 (defn do-add-element
   [store key attributes]
@@ -239,7 +240,7 @@
         (let [content (parse-string-as-number to)
               new-template (cons content (rest (:template target)))]
           (generic-add store (into target {:template new-template})
-                       (rest target-key) target-key false))))))
+                       (pop target-key) target-key false))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the

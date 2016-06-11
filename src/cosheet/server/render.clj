@@ -307,7 +307,7 @@
 (defn tagged-items-one-column-subtree-DOM-R
   "Return DOM for the given hierarchy node and its descendants,
   as a single column."
-  [hierarchy-node top-level inherited]
+  [hierarchy-node must-show-empty-labels inherited]
   (let [members (hierarchy-node-members hierarchy-node)
         nested-inherited (if (empty? (:properties hierarchy-node))
                            inherited
@@ -338,12 +338,14 @@
                                         :template '(nil :tag)
                                         :subject-referent items-referent)]
           (if (empty? (:properties hierarchy-node))
-            [:div {:class "horizontal-tags-element narrow"}
-             (add-attributes
-              (virtual-item-DOM (conj tags-parent-key :tags) items-referent
-                                :after inherited-for-tags)
-              {:class "tag"})
-             body]
+            (if must-show-empty-labels
+              [:div {:class "horizontal-tags-element narrow"}
+               (add-attributes
+                (virtual-item-DOM (conj tags-parent-key :tags) items-referent
+                                  :after inherited-for-tags)
+                {:class "tag"})
+               body]
+              body)
             (expr-let [tags-dom (hierarchy-properties-DOM-R
                                  hierarchy-node {:class "tag"}
                                  inherited-for-tags)]

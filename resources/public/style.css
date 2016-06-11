@@ -61,7 +61,7 @@ body { /* override the default of 8px */
 }
 
 .item.with-elements > :last-child {
-    margin: 0px 5px 5px 3px;
+    margin: 0px 5px 5px 6px;
 }
 
 .editable {

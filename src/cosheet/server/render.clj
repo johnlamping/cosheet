@@ -268,6 +268,19 @@
      parent-key
      (assoc :parent-key parent-key))))
 
+(defn add-adjacent-row-command
+  "Given a hierarchy node and inherited, update inherited to add
+  a row adjacent to the node, if that would be different than just
+  adding a sibling."
+  [hierarchy-node inherited]
+  (if (empty? (:properties hierarchy-node))
+    inherited
+    (update-in
+     inherited [:selectable-attributes]
+     #(into-attributes
+       % {:commands {:add-row nil}
+          :row (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
+
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
   for the members. The members of the node may contain an additional
@@ -312,8 +325,8 @@
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements
-  that give rise to the properties of the node. Inherited describes
-  the context of the items."
+  that give rise to the properties of the node.
+  Inherited describes the overall context of the node."
   [hierarchy-node inherited]
   (let [items-referent (hierarchy-node-items-referent
                         hierarchy-node (:subject-referent inherited))
@@ -341,14 +354,7 @@
    "Return DOM for all descendants of the hierarchy node, as a single column."
   [hierarchy-node inherited]
   (let [members (hierarchy-node-members hierarchy-node)
-        nested-inherited (if (empty? (:properties hierarchy-node))
-                           inherited
-                           (update-in
-                            inherited [:selectable-attributes]
-                            #(into-attributes
-                              % {:commands {:add-row nil}
-                                 :row (hierarchy-add-adjacent-target
-                                       hierarchy-node inherited)})))
+        nested-inherited (add-adjacent-row-command hierarchy-node inherited)
         items-dom (when (not (empty? members))
                     (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
@@ -446,15 +452,7 @@
   [hierarchy-node header-wrapper inherited]
   (let [members (hierarchy-node-members hierarchy-node)
         children (:children hierarchy-node)
-        ;; TODO: Factor this out of here and the one column guy.
-        nested-inherited (if (empty? (:properties hierarchy-node))
-                           inherited
-                           (update-in
-                            inherited [:selectable-attributes]
-                            #(into-attributes
-                              % {:commands {:add-row nil}
-                                 :row (hierarchy-add-adjacent-target
-                                       hierarchy-node inherited)})))
+        nested-inherited (add-adjacent-row-command hierarchy-node inherited)
         members-dom (hierarchy-members-DOM hierarchy-node nested-inherited)]
     (expr-let [properties-dom (tagged-items-properties-DOM-R
                                hierarchy-node inherited)]

@@ -283,15 +283,15 @@
                                 (concat (or template '(nil)) property-list))
                          inherited)]
     (if (empty? members)
-      (let [adjacent-item (:item (first (hierarchy-node-descendants
+      (let [subject (:subject-referent inherited)
+            adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
+            referent (item-or-exemplar-referent adjacent-item subject)
+            example-elements (hierarchy-node-example-elements hierarchy-node)
             key (conj (:parent-key inherited)
                       :example-element
-                      (:item-id (first (hierarchy-node-example-elements
-                                        hierarchy-node))))]
-        (virtual-item-DOM
-         (item-or-exemplar-referent adjacent-item (:subject-referent inherited))
-         :before inherited-down))
+                      (:item-id (first example-elements)))]
+        (virtual-item-DOM key referent :before inherited-down))
       (let [items (map :item members)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -300,14 +300,40 @@
 
 (defn hierarchy-properties-DOM-R
   "Return DOM for example elements that give rise to the properties
-   of one hierarchy node."
+  of one hierarchy node. Inherited describes the context of the properties."
   [hierarchy-node attributes inherited]
   (let [example-elements (hierarchy-node-example-elements hierarchy-node)]
     (expr-let [ordered-elements (order-items-R example-elements)
                satisfiers (expr-seq
                            map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
-      (item-stack-DOM ordered-elements satisfiers attributes inherited))))
+      (item-stack-DOM ordered-elements satisfiers
+                      attributes inherited))))
+
+(defn tagged-items-properties-DOM-R
+  "Given a hierarchy node for tags, Return DOM for example elements
+  that give rise to the properties of the node. Inherited describes
+  the context of the items."
+  [hierarchy-node inherited]
+  (let [items-referent (hierarchy-node-items-referent
+                        hierarchy-node (:subject-referent inherited))
+        example-descendant (first (hierarchy-node-descendants
+                                   hierarchy-node))
+        tags-parent-key (conj (:parent-key inherited)
+                              (:item-id (:item example-descendant))
+                              :outside)
+        inherited-for-tags (assoc inherited
+                                  :parent-key tags-parent-key
+                                  :template '(nil :tag)
+                                  :subject-referent items-referent)]
+    (if (empty? (:properties hierarchy-node))
+      (add-attributes
+          (virtual-item-DOM (conj tags-parent-key :tags) items-referent
+                            :after inherited-for-tags)
+          
+          {:class "tag"})
+      (hierarchy-properties-DOM-R
+       hierarchy-node {:class "tag"} inherited-for-tags))))
 
 (def tagged-items-one-column-subtree-DOM-R)
 
@@ -339,38 +365,111 @@
   (expr-let
       [descendants-dom (tagged-items-one-column-descendants-DOM-R
                         hierarchy-node inherited)]
-    (let [items-referent (hierarchy-node-items-referent
-                          hierarchy-node (:subject-referent inherited))
-          example-descendant (first (hierarchy-node-descendants
-                                     hierarchy-node))
-          tags-parent-key (conj (:parent-key inherited)
-                                (:item-id (:item example-descendant))
-                                :outside)
-          inherited-for-tags (assoc inherited
-                                    :parent-key tags-parent-key
-                                    :template '(nil :tag)
-                                    :subject-referent items-referent)]
-      (if (empty? (:properties hierarchy-node))
+    (if (empty? (:properties hierarchy-node))
         (if must-show-empty-labels
-          [:div {:class "horizontal-tags-element narrow"}
-           (add-attributes
-            (virtual-item-DOM (conj tags-parent-key :tags) items-referent
-                              :after inherited-for-tags)
-            {:class "tag"})
-           descendants-dom]
+          (expr-let [properties-dom (tagged-items-properties-DOM-R
+                                     hierarchy-node inherited)]
+            [:div {:class "horizontal-tags-element narrow"}
+             properties-dom descendants-dom])
           descendants-dom)
-        (expr-let [tags-dom (hierarchy-properties-DOM-R
-                             hierarchy-node {:class "tag"}
-                             inherited-for-tags)]
+        (expr-let [properties-dom (tagged-items-properties-DOM-R
+                                   hierarchy-node inherited)]
           [:div {:class "wrapped-element tag"}
-           ;; If the tags-dom is an item-stack, we need to mark it as tag.
-           (add-attributes tags-dom {:class "tag"})
-           [:div {:class "indent-wrapper"} descendants-dom]])))))
+           ;; If the properties-dom is an item-stack, we need to mark it as tag.
+           (add-attributes properties-dom {:class "tag"})
+           [:div {:class "indent-wrapper"} descendants-dom]]))))
 
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]
   (expr-let [doms (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                   % true inherited)
+                            hierarchy)]
+    (vertical-stack doms)))(def tagged-items-one-column-subtree-DOM-R)
+
+;;; Wrappers are used when one logical cell is broken into several
+;;; adjacent divs. This typically means that the first and last of the
+;;; divs need to be styled differently from the others. A wrapper will
+;;; be called with the div to wrap and with whether it is the first
+;;; and/or last div of the logical cell.
+
+(defn nest-wrapper
+  "Return a wrapper that nests one level more deeply. This is used
+  when a logical has been broken into several pieces and one of those
+  pieces has been further subdivided.
+  We are called with a wrapper and with the position of our group of
+  pieces for that wrapper. Return a new wrapper that itself expects to
+  be called several times, calling the outer wrapper each time, and
+  passing it the appropriate position information. The inner wrapper
+  will call position->class with whether it is first among the inner
+  wrappers ultimate subdivision and whether it is last, and will use
+  the result as the class of the wrapper."
+  [outer-wrapper position->class generated-first generated-last]
+  (fn [body called-first called-last]
+    (outer-wrapper [:div {:class (position->class first last)} body]
+                   (and generated-first called-first)
+                   (and generated-last called-last))))
+
+(defn identity-wrapper
+  "Return a wrapper that does no wrapping -- just returns the body."
+  [body called-first called-last]
+  body)
+
+(defn horizontal-tag-wrapper-class
+  [first last]
+  (cond-> "tag horizontal-header"
+    first (str " top-border")
+    (not first) (str " indent")
+    last (str " bottom-border")))
+
+(def tagged-items-two-column-subtree-DOM-R)
+
+(defn tagged-items-two-column-children-DOM-R
+  "Return a seq of doms for the children of the hierarchy node,
+  as two columns."
+  [hierarchy-node header-wrapper inherited]
+  (let [children (:children hierarchy-node)]
+    (when children
+      (let [wrapper (nest-wrapper header-wrapper
+                                  horizontal-tag-wrapper-class false false)
+            last-wrapper (nest-wrapper header-wrapper
+                                       horizontal-tag-wrapper-class false true)
+            wrappers (concat (map (constantly wrapper) (butlast children))
+                             [last-wrapper])]
+        (map (fn [child-node wrapper]
+               (tagged-items-two-column-subtree-DOM-R
+                child-node wrapper inherited))
+             children wrappers)))))
+
+(defn tagged-items-two-column-subtree-DOM-R
+  "Return a sequence of DOMs for the given hierarchy node and its descendants,
+  as two columns."
+  [hierarchy-node header-wrapper inherited]
+  (let [members (hierarchy-node-members hierarchy-node)
+        children (:children hierarchy-node)
+        ;; TODO: Factor this out of here and the one column guy.
+        nested-inherited (if (empty? (:properties hierarchy-node))
+                           inherited
+                           (update-in
+                            inherited [:selectable-attributes]
+                            #(into-attributes
+                              % {:commands {:add-row nil}
+                                 :row (hierarchy-add-adjacent-target
+                                       hierarchy-node inherited)})))
+        members-dom (hierarchy-members-DOM hierarchy-node nested-inherited)]
+    (expr-let [properties-dom (tagged-items-properties-DOM-R
+                               hierarchy-node inherited)]
+      (cons [:div {:class "horizontal-tags-element wide"}
+             ((nest-wrapper header-wrapper
+                            horizontal-tag-wrapper-class true (empty? children))
+                properties-dom true (empty? children))
+             members-dom]
+            (tagged-items-two-column-children-DOM-R
+             hierarchy-node inherited)))))
+
+(defn tagged-items-two-column-DOM-R
+  [hierarchy inherited]
+  (expr-let [doms (expr-seq map #(tagged-items-one-column-subtree-DOM-R
+                                  % identity-wrapper inherited)
                             hierarchy)]
     (vertical-stack doms)))
 

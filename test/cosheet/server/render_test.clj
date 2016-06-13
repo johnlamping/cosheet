@@ -99,14 +99,18 @@
                                             ("confidence"
                                              :tag (~o1 :order :non-semantic))
                                             (~o1 :order :non-semantic))
+                                           ("another" ; Second with same tag.
+                                            ("confidence"
+                                             :tag (~o1 :order :non-semantic))
+                                            (~o2 :order :non-semantic))
                                            ("two" ; Two tags, one matching.
                                             ("confidence"
                                              :tag (~o1 :order :non-semantic))
                                             ("probability"
                                              :tag (~o2 :order :non-semantic))
-                                            (~o2 :order :non-semantic))
+                                            (~o3 :order :non-semantic))
                                            ("none" ; No tag.
-                                            (~o3 :order :non-semantic)))]
+                                            (~o4 :order :non-semantic)))]
                       (expr-let [dom (item-DOM-R age [] initial)]
                         [dom age]))
           one (first (current-value (matching-elements "one" age)))
@@ -114,6 +118,7 @@
                               (matching-elements "confidence" one)))
           confidence1-tag (first (current-value
                                   (matching-elements :tag confidence1)))
+          another (first (current-value (matching-elements "another" age)))
           two (first (current-value (matching-elements "two" age)))
           confidence2 (first (current-value
                               (matching-elements "confidence" two)))
@@ -127,8 +132,9 @@
           age-key [:root (:item-id age)]
           tags-key (conj age-key (:item-id one) :outside)
           none-key (conj age-key (:item-id none))
-          one-two-referent (union-referent [(item-referent one)
-                                            (item-referent two)])]
+          one-another-two-referent (union-referent [(item-referent one)
+                                                    (item-referent another)
+                                                    (item-referent two)])]
       (is (check
            dom
            [:div {:class "item with-elements" :key age-key}
@@ -149,23 +155,29 @@
                 {:priority 1
                  :width 0.5
                  :parent-key tags-key
-                 :subject-referent one-two-referent
+                 :subject-referent one-another-two-referent
                  :template '(nil :tag)}]]
               [:div {:class "indent-wrapper"}
                [:div {:class "stack"}
-                ;; One
-                [:component {:key (conj age-key (:item-id one))}
-                 [item-DOM-R one [confidence1]
-                  {:priority 1
-                   :width 0.5,
-                   :parent-key age-key
-                   :subject-referent (item-referent age)
-                   :template '(nil ("confidence" :tag))
-                   :selectable-attributes
-                   {:commands {:add-row nil}
-                    :row {:subject-referent (item-referent age)
-                          :adjacents-referent one-two-referent
-                          :parent-key age-key}}}]]
+                ;; One Another
+                [:div {:class "item-stack"}
+                 ;; One
+                 [:component {:key (conj age-key (:item-id one))}
+                  [item-DOM-R one [confidence1]
+                   {:priority 1
+                    :width 0.5,
+                    :parent-key age-key
+                    :subject-referent (item-referent age)
+                    :template '(nil ("confidence" :tag))
+                    :selectable-attributes
+                    {:commands {:add-row nil}
+                     :row {:subject-referent (item-referent age)
+                           :adjacents-referent one-another-two-referent
+                           :parent-key age-key}}}]]
+                 ;; Another
+                 [:component {:key (conj age-key (:item-id another))}
+                  [item-DOM-R another [(any)]
+                   (any)]]]
                 ;; Two (must be nested)
                 [:div {:class "wrapped-element tag"}
                  [:component {:key (conj age-key (:item-id two)
@@ -180,7 +192,7 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-two-referent
+                           :adjacents-referent one-another-two-referent
                            :parent-key age-key}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}

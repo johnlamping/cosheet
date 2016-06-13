@@ -133,7 +133,7 @@
         root-item (description->entity (:item-id immutable-root-item) store)
         root-key [(:item-id root-item)]
         definition [item-DOM-R root-item []
-                    {:priority 0 :narrow true :parent-key []}]
+                    {:priority 0 :width 0.5 :parent-key []}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     (println "created tracker")

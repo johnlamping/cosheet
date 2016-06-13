@@ -76,7 +76,7 @@
 (deftest item-DOM-R-test
   (let [root-id (make-id "root")
         initial {:priority 0
-                 :narrow true
+                 :width 0.5
                  :parent-key [:root]
                  :subject-referent root-id}]
     ;; Test a simple cell
@@ -147,7 +147,7 @@
                            :class "tag"}
                [item-DOM-R confidence1 [confidence1-tag]
                 {:priority 1
-                 :narrow true
+                 :width 0.5
                  :parent-key tags-key
                  :subject-referent one-two-referent
                  :template '(nil :tag)}]]
@@ -157,7 +157,7 @@
                 [:component {:key (conj age-key (:item-id one))}
                  [item-DOM-R one [confidence1]
                   {:priority 1
-                   :narrow true,
+                   :width 0.5,
                    :parent-key age-key
                    :subject-referent (item-referent age)
                    :template '(nil ("confidence" :tag))
@@ -173,7 +173,7 @@
                               :class "tag"}
                   [item-DOM-R probability [probability-tag]
                    {:priority 1
-                    :narrow true
+                    :width 0.5
                     :parent-key (conj age-key (:item-id two) :outside)
                     :subject-referent (item-referent two)
                     :template '(nil :tag)
@@ -186,7 +186,7 @@
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
                     {:priority 1
-                     :narrow true,
+                     :width 0.5,
                      :parent-key age-key
                      :subject-referent (item-referent age)
                      :template (as-set '(nil ("confidence" :tag)
@@ -209,7 +209,7 @@
               [:component {:key none-key}
                [item-DOM-R none nil
                 {:priority 1,
-                 :narrow true,
+                 :width 0.5,
                  :parent-key age-key
                  :subject-referent (item-referent age)}]]]]])))
     ))

@@ -122,7 +122,9 @@
 ;;; Many DOM generating functions take a map argument, inherited, that
 ;;; gives information determined by their container. This includes:
 (def starting_inherited
-  {         :narrow false  ; If true, the item must fit in a narrow space.
+  {            :width 1.0  ; A float, giving the width of this dom element
+                           ; compared to the minimum width for two column
+                           ; format.
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
@@ -452,10 +454,13 @@
   [hierarchy-node header-wrapper inherited]
   (let [members (hierarchy-node-members hierarchy-node)
         children (:children hierarchy-node)
-        nested-inherited (add-adjacent-row-command hierarchy-node inherited)
-        members-dom (hierarchy-members-DOM hierarchy-node nested-inherited)]
+        tags-inherited (update-in inherited [:width] #(* % 0.25))
+        items-inherited (update-in
+                         (add-adjacent-row-command hierarchy-node inherited)
+                         [:width] #(* % 0.6875))
+        members-dom (hierarchy-members-DOM hierarchy-node items-inherited)]
     (expr-let [properties-dom (tagged-items-properties-DOM-R
-                               hierarchy-node inherited)]
+                               hierarchy-node tags-inherited)]
       (cons [:div {:class "horizontal-tags-element wide"}
              ((nest-wrapper header-wrapper
                             horizontal-tag-wrapper-class true (empty? children))
@@ -494,14 +499,15 @@
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)
                    hierarchy (hierarchy-by-canonical-info augmented #{})]
-          (if (or (:narrow inherited) no-labels)
+          (if (or (>= (:width inherited) 1.0) no-labels)
             (tagged-items-one-column-DOM-R hierarchy inherited)
             (tagged-items-two-column-DOM-R hierarchy inherited)))))))
 
 (defn item-DOM-R
   "Make a dom for an item."
   [item excluded-elements inherited]
-  (println "Generating DOM for" (simplify-for-print item))
+  (println "Generating DOM for"
+           (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
   (expr-let [content (entity/content item)
              elements (semantic-elements-R item)]
     (let [key (conj (:parent-key inherited) (:item-id item))

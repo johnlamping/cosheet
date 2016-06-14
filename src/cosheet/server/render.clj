@@ -526,7 +526,7 @@
                                  (update-in [:priority] inc)
                                  (assoc :parent-key key
                                         :subject-referent referent)
-                                 (dissoc :template :selectable-attribute))]
+                                 (dissoc :template :selectable-attributes))]
           (expr-let [elements-dom (elements-DOM-R
                                    elements true inherited-down)]
             [:div {:class "item with-elements" :key key}

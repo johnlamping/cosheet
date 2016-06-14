@@ -149,7 +149,7 @@
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")
-  (print-method (:value @(:manager-data s)) w))
+  (print-method (dissoc (:value @(:manager-data s)) :history) w))
 
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl

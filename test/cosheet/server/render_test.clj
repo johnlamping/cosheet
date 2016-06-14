@@ -176,8 +176,7 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-another-two-referent
-                           :parent-key age-key}}}]]
+                           :adjacents-referent one-another-two-referent}}}]]
                  ;; Another
                  [:component {:key (conj age-key (:item-id another))}
                   [item-DOM-R another [(any)]
@@ -196,8 +195,7 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-another-two-referent
-                           :parent-key age-key}}}]]
+                           :adjacents-referent one-another-two-referent}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
@@ -211,8 +209,7 @@
                      {:commands {:add-row nil}
                       :row {:subject-referent (item-referent age)
                             :adjacents-referent (item-referent two)
-                            :template '(nil ("confidence" :tag))
-                            :parent-key age-key}}}]]]]]]]
+                            :template '(nil ("confidence" :tag))}}}]]]]]]]
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
               [:div {:class "editable tag"
@@ -287,7 +284,6 @@
                                                  (item-referent double)
                                                  (item-referent two)
                                                  (item-referent one)])]
-      ;(println (simplify-for-print dom))
       (is (check
            dom
            [:div {:class "item with-elements" :key age-key}
@@ -306,11 +302,14 @@
                   :template '(nil :tag)}]]]
               [:div {:class "editable"
                      :key (conj age-key :example-element (:item-id confidence1))
-                     :commands {:set-content nil},
+                     :commands {:set-content nil
+                                :add-row nil},
                      :target {:subject-referent (:item-id age)
                               :adjacents-referent (:item-id pair)
                               :position :before,
-                              :template '(nil ("confidence" :tag))}}]]
+                              :template '(nil ("confidence" :tag))}
+                     :row {:subject-referent (:item-id age)
+                           :adjacents-referent all-elements-referent}}]]
              ;; Row for confidence and likelihood.
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent"}
@@ -337,7 +336,6 @@
                   {:commands {:add-row nil}
                    :row {:subject-referent (item-referent age)
                          :adjacents-referent likelihoods-referent
-                         :parent-key age-key
                          :template '(nil ("confidence" :tag))}}}]]
                ;; Double
                [:component {:key (conj age-key (:item-id double))}
@@ -370,8 +368,7 @@
                  {:commands {:add-row nil}
                   :row {:subject-referent (item-referent age)
                         :adjacents-referent (item-referent two)
-                        :template '(nil ("confidence" :tag))
-                        :parent-key age-key}}}]]]
+                        :template '(nil ("confidence" :tag))}}}]]]
              ;; Row for confidence
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent bottom-border"}

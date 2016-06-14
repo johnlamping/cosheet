@@ -199,13 +199,15 @@
   "Make a dom for a place that could hold an item, but doesn't."
   [key adjacents-referent position inherited]
   (let [template (:template inherited)]
-       [:div {:class "editable"
-              :key key
-              :commands {:set-content nil}
-              :target (cond-> {:subject-referent (:subject-referent inherited)
-                               :adjacents-referent adjacents-referent
-                               :position position}
-                        template (assoc :template template))}]))
+    [:div (into-attributes
+           (:selectable-attributes inherited)
+           {:class "editable"
+            :key key
+            :commands {:set-content nil}
+            :target (cond-> {:subject-referent (:subject-referent inherited)
+                             :adjacents-referent adjacents-referent
+                             :position position}
+                      template (assoc :template template))})]))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -254,7 +256,6 @@
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
   (let [subject-referent (:subject-referent inherited)
-        parent-key (:parent-key inherited)
         ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
@@ -265,9 +266,7 @@
         :adjacents-referent (hierarchy-node-items-referent
                              hierarchy-node subject-referent)}
      (not (empty? conditions))
-     (assoc :template (list* nil conditions))
-     parent-key
-     (assoc :parent-key parent-key))))
+     (assoc :template (list* nil conditions)))))
 
 (defn add-adjacent-row-command
   "Given a hierarchy node and inherited, update inherited to add

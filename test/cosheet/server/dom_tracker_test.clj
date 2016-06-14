@@ -5,7 +5,7 @@
             [clojure.data.priority-map :as priority-map]
             (cosheet
              [utils :refer [dissoc-in]]
-             [test-utils :refer [check let-mutated]]
+             [test-utils :refer [check any let-mutated]]
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
@@ -240,11 +240,12 @@
         tracker (new-dom-tracker md)
         [joe jane jill] (let-mutated [joe "Joe", jane "Jane", jill "Jill"]
                           [joe jane jill])
-        joe-key [(item-referent joe) :k]
+        joe-key [:k (item-referent joe)]
         reporter (new-reporter :value jane) ;; Will change to jill.
         c-map {:key joe-key
-               :definition [item-DOM-R
-                            joe [:k] #{} {:depth 0 :do-not-merge #{}}]
+               :definition [item-DOM-R joe [] {:priority 0
+                                               :parent-key [:k]
+                                               :subject-referent nil}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
         deep-c-map {:key [:d]
@@ -252,13 +253,15 @@
                     [(fn [item]
                        [:div {:key [:d]}
                         [:component
-                         {:key [(item-referent joe) :d] :width 1}
-                         [item-DOM-R joe [:d]
-                          #{} {:depth 1 :do-not-merge #{}}]]
+                         {:key [:d (item-referent joe)] :width 1}
+                         [item-DOM-R joe [] {:priority 0
+                                             :parent-key [:d]
+                                             :subject-referent nil}]]
                         [:component
-                         {:key [(item-referent item) :d]}
-                         [item-DOM-R item [:d]
-                          #{} {:depth 1 :do-not-merge #{}}]]])
+                         {:key [:d (item-referent item)]}
+                         [item-DOM-R item [] {:priority 0
+                                              :parent-key [:d]
+                                              :subject-referent nil}]]])
                      reporter]}]
     (swap-and-act
      tracker #(-> %
@@ -271,13 +274,11 @@
       (is (= (:depth component) 0))
       (is (= (:components @tracker) {joe-key component}))
       (is (= (:id->key data) {"root" joe-key}))
-      (is (= (:key->dom data)
-             {joe-key [:div {:key joe-key
-                             :class "content-text editable item"
-                             :commands {:set-content [:do-set-content]
-                                        :add-element [:do-add
-                                                      :subject-key joe-key]
-                                        :delete [:do-delete]}}
+      (is (check (:key->dom data)
+                 {joe-key [:div {:key joe-key
+                                 :class (any)
+                                 :target {:item-referent (:item-id joe)}
+                                 :commands (any)}
                        "Joe"]}))
       (is (= (:next-id data) 1))
       (is (= (:next-version data) 3))
@@ -299,12 +300,10 @@
       (let [store (:store joe)]
         (update-content! store (:item-id joe) "Joe's"))
       (compute md)
-      (is (= (get-in @tracker [:key->dom joe-key])
-             [:div  {:key joe-key :class "content-text editable item"
-                     :commands {:set-content [:do-set-content]
-                                :add-element [:do-add :subject-key joe-key]
-                                :delete [:do-delete]}}
-              "Joe's"]))
+      (is (check (get-in @tracker [:key->dom joe-key])
+                 [:div  {:key joe-key
+                         :class (any) :target (any) :commands (any)}
+                  "Joe's"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[joe-key 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
     (is (nil? (get-in @tracker [:key->dom [:d]])))
@@ -316,37 +315,31 @@
                          [key (get-in @tracker [:key->dom key])])
                        (get-in @tracker [:components])))
          {joe-key [:div {:key joe-key
-                         :class "content-text editable item"
-                         :commands {:set-content [:do-set-content]
-                                    :add-element [:do-add :subject-key joe-key]
-                                    :delete [:do-delete]}}
+                         :target {:item-referent (:item-id joe)}
+                         :class (any)
+                         :commands (any)}
                    "Joe's"]
           [:d] [:div {:key [:d]}
-                [:component {:key [(item-referent joe) :d]
+                [:component {:key [:d (item-referent joe)]
                              :width 1}
-                 [item-DOM-R joe [:d] #{} {:depth 1 :do-not-merge #{}}]]
-                [:component {:key [(item-referent jane) :d]}
-                 [item-DOM-R jane [:d] #{} {:depth 1 :do-not-merge #{}}]]]
-          [(item-referent joe) :d] [:div  {:key [(item-referent joe) :d]
-                                           :class "content-text editable item"
-                                           :commands {:set-content
-                                                      [:do-set-content]
-                                                      :add-element
-                                                      [:do-add
-                                                       :subject-key
-                                                       [(item-referent joe) :d]]
-                                                      :delete [:do-delete]}}
+                 [item-DOM-R joe [] {:priority 0
+                                     :parent-key [:d]
+                                     :subject-referent nil}]]
+                [:component {:key [:d (item-referent jane)]}
+                 [item-DOM-R jane [] {:priority 0
+                                      :parent-key [:d]
+                                      :subject-referent nil}]]]
+          [:d (item-referent joe)] [:div  {:key [:d (item-referent joe)]
+                                            :target {:item-referent
+                                                     (:item-id joe)}
+                                           :class (any)
+                                           :commands (any)}
                                     "Joe's"]
-          [(item-referent jane) :d] [:div  {:key [(item-referent jane) :d]
-                                            :class "content-text editable item"
-                                            :commands {:set-content
-                                                       [:do-set-content]
-                                                       :add-element
-                                                       [:do-add
-                                                        :subject-key
-                                                        [(item-referent jane)
-                                                         :d]]
-                                                       :delete [:do-delete]}}
+          [:d (item-referent jane)] [:div  {:key [:d (item-referent jane)]
+                                            :target {:item-referent
+                                                     (:item-id jane)}
+                                            :class (any)
+                                            :commands (any)}
                                      "Jane"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))))
 
@@ -378,9 +371,11 @@
   (let [md (new-expression-manager-data)
         tracker (new-dom-tracker md)
         joe (let-mutated [joe "Joe"] joe)
-        joe-key [(item-referent joe) :root]]
+        joe-key [:root (item-referent joe)]]
     (add-dom tracker "root" joe-key
-             [item-DOM-R joe [:root] #{} {:depth 0 :do-not-merge #{}}])
+             [item-DOM-R joe [] {:priority 0
+                                 :parent-key [:root]
+                                 :subject-referent nil}])
     (compute md)
     (let [data @tracker
           component (get-in data [:components joe-key])]
@@ -389,13 +384,9 @@
       (is (= (:components @tracker) {joe-key component}))
       (is (= (:id->key data) {"root" joe-key}))
       (is (= (:key->id data  {joe-key "root"})))
-      (is (= (:key->dom data)
-             {joe-key [:div {:key joe-key
-                             :class "content-text editable item"
-                             :commands {:set-content [:do-set-content]
-                                        :add-element [:do-add
-                                                      :subject-key joe-key]
-                                        :delete [:do-delete]}}
+      (is (check (:key->dom data)
+                 {joe-key [:div {:key joe-key
+                                 :class (any) :target (any) :commands (any)}
                        "Joe"]}))
       (is (= (:next-id data) 1))
       (is (= (:next-version data) 3))

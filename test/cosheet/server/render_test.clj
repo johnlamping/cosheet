@@ -92,25 +92,26 @@
                                    :add-sibling nil
                                    :delete nil}}
                   "Fred"])))
-    ;; Test when there are elements in a hierarchy.
-    (let [[dom age] (let-mutated [age `(39 (:root :non-semantic)
-                                           (~o3 :order :non-semantic)
-                                           ("one" ; One tag.
-                                            ("confidence"
-                                             :tag (~o1 :order :non-semantic))
-                                            (~o1 :order :non-semantic))
-                                           ("another" ; Second with same tag.
-                                            ("confidence"
-                                             :tag (~o1 :order :non-semantic))
-                                            (~o2 :order :non-semantic))
-                                           ("two" ; Two tags, one matching.
-                                            ("confidence"
-                                             :tag (~o1 :order :non-semantic))
-                                            ("probability"
-                                             :tag (~o2 :order :non-semantic))
-                                            (~o3 :order :non-semantic))
-                                           ("none" ; No tag.
-                                            (~o4 :order :non-semantic)))]
+    ;; Test a one-column hierarchy
+    (let [age-as-list `(39 (:root :non-semantic)
+                           (~o3 :order :non-semantic)
+                           ("one" ; One tag.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            (~o1 :order :non-semantic))
+                           ("another" ; Second with same tag.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            (~o2 :order :non-semantic))
+                           ("two" ; Two tags, one matching.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            ("probability"
+                             :tag (~o2 :order :non-semantic))
+                            (~o3 :order :non-semantic))
+                           ("none" ; No tag.
+                            (~o4 :order :non-semantic)))
+          [dom age] (let-mutated [age age-as-list]
                       (expr-let [dom (item-DOM-R age [] initial)]
                         [dom age]))
           one (first (current-value (matching-elements "one" age)))
@@ -122,8 +123,6 @@
           two (first (current-value (matching-elements "two" age)))
           confidence2 (first (current-value
                               (matching-elements "confidence" two)))
-          confidence2-tag (first (current-value
-                                  (matching-elements :tag confidence2)))
           probability (first (current-value
                               (matching-elements "probability" two)))
           probability-tag (first (current-value
@@ -224,5 +223,126 @@
                  :width 0.5,
                  :parent-key age-key
                  :subject-referent (item-referent age)}]]]]])))
+    ;; Test two column dom.
+    (let [age-as-list `(39 (:root :non-semantic)
+                           (~o3 :order :non-semantic)
+                           ("one" ; One tag.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            (~o1 :order :non-semantic))
+                           ("another" ; Second with same tag.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            (~o2 :order :non-semantic))
+                           ("two" ; Two tags, one matching.
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            ("probability"
+                             :tag (~o2 :order :non-semantic))
+                            (~o3 :order :non-semantic))
+                           ("one-again"
+                            ("confidence"
+                             :tag (~o1 :order :non-semantic))
+                            (~o4 :order :non-semantic)))
+          [dom age] (let-mutated [age age-as-list]
+                      (expr-let [dom (item-DOM-R
+                                      age [] (assoc initial :width 1.0))]
+                        [dom age]))
+          one (first (current-value (matching-elements "one" age)))
+          confidence1 (first (current-value
+                              (matching-elements "confidence" one)))
+          confidence1-tag (first (current-value
+                                  (matching-elements :tag confidence1)))
+          another (first (current-value (matching-elements "another" age)))
+          two (first (current-value (matching-elements "two" age)))
+          confidence2 (first (current-value
+                              (matching-elements "confidence" two)))
+          probability (first (current-value
+                              (matching-elements "probability" two)))
+          
+          probability-tag (first (current-value
+                                  (matching-elements :tag probability)))
+          one-again (first (current-value (matching-elements "one-again" age)))
+          confidence3 (first (current-value
+                              (matching-elements "confidence" one-again)))
+          age-key [:root (:item-id age)]
+          tags-key (conj age-key (:item-id one) :outside)
+          one-again-key (conj age-key (:item-id one-again))
+          all-elements-referent (union-referent [(item-referent one)
+                                                 (item-referent another)
+                                                 (item-referent two)
+                                                 (item-referent one-again)])]
+      (is (check
+           dom
+           [:div {:class "item with-elements" :key age-key}
+            [:div (any map?) "39"]
+            [:div {:class "stack"}
+             [:div {:class "horizontal-tags-element wide"}
+              [:div {:class "tag horizontal-header top-border"}
+               ;; TODO: Should get same new-row command too.
+               [:component {:key (conj tags-key (:item-id confidence1))
+                            :class "tag"}
+                [item-DOM-R confidence1 [confidence1-tag]
+                 {:priority 1
+                  :width 0.25
+                  :parent-key tags-key
+                  :subject-referent all-elements-referent
+                  :template '(nil :tag)}]]]
+              [:div {:class "item-stack"}
+               ;; One
+               [:component {:key (conj age-key (:item-id one))}
+                [item-DOM-R one [confidence1]
+                 {:priority 1
+                  :width 0.6875,
+                  :parent-key age-key
+                  :subject-referent (item-referent age)
+                  :template '(nil ("confidence" :tag))
+                  :selectable-attributes
+                  {:commands {:add-row nil}
+                   :row {:subject-referent (item-referent age)
+                         :adjacents-referent all-elements-referent
+                         :parent-key age-key}}}]]
+               ;; Another
+               [:component {:key (conj age-key (:item-id another))}
+                [item-DOM-R another [(any)]
+                 (any)]]]]
+             [:div {:class "horizontal-tags-element wide"}
+              [:div {:class "tag horizontal-header indent"}
+               [:div {:class "tag horizontal-header top-border bottom-border"}
+                [:component {:key (conj age-key (:item-id two)
+                                         :outside (:item-id probability))
+                              :class "tag"}
+                  [item-DOM-R probability [probability-tag]
+                   {:priority 1
+                    :width 0.25
+                    :parent-key (conj age-key (:item-id two) :outside)
+                    :subject-referent (item-referent two)
+                    :template '(nil :tag)
+                    ;; TODO: need add-row command.
+                    }]]]]
+              [:component {:key (conj age-key (:item-id two))}
+                   [item-DOM-R two (as-set [confidence2 probability])
+                    {:priority 1
+                     :width 0.6875,
+                     :parent-key age-key
+                     :subject-referent (item-referent age)
+                     :template (as-set '(nil ("confidence" :tag)
+                                             ("probability" :tag)))
+                     :selectable-attributes
+                     {:commands {:add-row nil}
+                      :row {:subject-referent (item-referent age)
+                            :adjacents-referent (item-referent two)
+                            :template '(nil ("confidence" :tag))
+                            :parent-key age-key}}}]]]
+             [:div {:class "horizontal-tags-element wide"}
+              [:div {:class "tag horizontal-header indent bottom-border"}
+               (any)]
+              ;; TODO: Needs new-row command
+              [:component {:key one-again-key}
+               [item-DOM-R one-again [confidence3]
+                {:priority 1,
+                 :width 0.6875,
+                 :parent-key age-key
+                 :subject-referent (item-referent age)
+                 :template '(nil ("confidence" :tag))}]]]]])))
     ))
-

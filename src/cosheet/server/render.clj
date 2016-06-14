@@ -207,7 +207,6 @@
                                :position position}
                         template (assoc :template template))}]))
 
-;; TODO: Need test to cover a non-trivial stack.
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
@@ -341,14 +340,14 @@
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
                                   :subject-referent items-referent)]
-    (if (empty? (:properties hierarchy-node))
-      (add-attributes
-          (virtual-item-DOM (conj tags-parent-key :tags) items-referent
-                            :after inherited-for-tags)
-          
-          {:class "tag"})
-      (hierarchy-properties-DOM-R
-       hierarchy-node {:class "tag"} inherited-for-tags))))
+    (expr-let
+        [dom (if (empty? (:properties hierarchy-node))
+               (virtual-item-DOM (conj tags-parent-key :tags) items-referent
+                                 :after inherited-for-tags)
+               (hierarchy-properties-DOM-R
+                hierarchy-node {:class "tag"} inherited-for-tags))]
+        ;; Even if stacked, we need to mark the stack as "tag" too.
+        (add-attributes dom {:class "tag"}))))
 
 (def tagged-items-one-column-subtree-DOM-R)
 
@@ -392,7 +391,9 @@
   (expr-let [doms (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                   % true inherited)
                             hierarchy)]
-    (vertical-stack doms)))(def tagged-items-one-column-subtree-DOM-R)
+    (vertical-stack doms)))
+
+(def tagged-items-one-column-subtree-DOM-R)
 
 ;;; Wrappers are used when one logical cell is broken into several
 ;;; adjacent divs. This typically means that the first and last of the

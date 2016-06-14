@@ -125,19 +125,19 @@ body { /* override the default of 8px */
     background-color: hsl(194, 50%, 88%);
 }
 
-/* --- label:element pairs --- */
+/* --- label-element pairs: one column format --- */
 
 .horizontal-tags-element {
     display: flex;
     flex-direction: row;
 }
 
-.horizontal-tags-element > * {
+.horizontal-tags-element.narrow > * {
     border-width: 2px;
     margin: 0px -2px -2px 0px;
 }
 
-.horizontal-tags-element > :first-child {
+.horizontal-tags-element.narrow > :first-child {
     border-bottom-left-radius: 7px;
     border-top-left-radius: 7px;
 }
@@ -191,6 +191,87 @@ body { /* override the default of 8px */
 .stack > .wrapped-element:last-child {
     display: flex;
     flex-direction: column;
+}
+
+/* --- label-element pairs: two column format --- */
+
+.horizontal-tags-element.wide > :last-child {
+    width: 70%;
+    border-width: 2px;
+    margin: 0px -2px -2px 0px;
+}
+
+.horizontal-header {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    border-left-width: 2px;
+}
+
+.horizontal-header > :first-child {
+    flex: 1;
+}
+
+.horizontal-header.indent {
+    padding-left: 8px;
+}
+
+.horizontal-header.top-border.bottom-border{
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to top,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    margin-bottom: -2px;
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+}
+
+.horizontal-header.top-border{
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+    border-top-width: 2px;
+    border-top-left-radius: 7px;
+}
+
+.horizontal-header.bottom-border{
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to top,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+    border-bottom-width: 2px;
+    margin-bottom: -2px;
+    border-bottom-left-radius: 7px;
+}
+
+.horizontal-header{
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
 }
 
 /* --- edit holder --- */

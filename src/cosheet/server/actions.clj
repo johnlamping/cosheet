@@ -13,14 +13,37 @@
     [entity :refer [StoredEntity description->entity
                     content elements label->elements label->content to-list]]
     [dom-utils :refer [dom-attributes]]
-    [query :refer [matching-items]]
+    [query :refer [matching-items template-matches]]
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent]])))
 
-;;; TODO: validate the data coming in, so mistakes won't cause us to
+;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
+
+;;; TODO: Replace the asserts with log messages, so things are robust.
+
+(defn substitute-in-key
+  "Substitute into the key, instantiating patterns with the item.  A
+  pattern is of the form [:pattern <template>], where template is
+  either empty, or contains a variable named :v. An empty pattery will
+  be replaced by the item, while a non-empty pattern gets replaced by
+  the id of the match for its variable."
+  [key item]
+  (vec (map (fn [part]
+              (if (and (sequential? part)
+                       (= (first part) :pattern))
+                (let [pattern (second part)]
+                  (if pattern
+                    (let [matches (template-matches pattern item)
+                          value (:v (first matches))]
+                      (assert (= (count matches) 1))
+                      (assert value)
+                      (:item-id value))
+                    (:item-id item)))
+                part))
+            key)))
 
 (defn update-set-content-if-matching
   "Set the content of the item in the store provided the current content
@@ -139,12 +162,13 @@
   The function must return an updated store and the id of a new item.
   Return a map of the new store and a selection request for the first
   of the new items."
-  [f store arguments parent-key old-key]
+  [f store arguments select-pattern old-key]
   (let [[store element-ids] (thread-map f store arguments)]
     (if (empty? element-ids)
       store
       {:store store
-       :select [(conj parent-key (first element-ids))
+       :select [(substitute-in-key
+                 select-pattern (description->entity (first element-ids) store))
                 [old-key]]})))
 
 (defn generic-add
@@ -156,7 +180,8 @@
                 subject-referent    ; subject(s) of the new item(s)
                 adjacents-referent  ; groups of item(s) adjacent to new item(s)
                 position            ; :before or :after item/adjacent
-                template]           ; added item(s) should satisfy this
+                template            ; added item(s) should satisfy this
+                select-pattern]     ; a key pattern to use for selecting 
          :or {position :after}}         
         target-info]
     (println "adding" (simplify-for-print target-info))
@@ -182,7 +207,8 @@
                          adjacent position use-bigger))
                       store
                       (map vector subject-ids adjacents)
-                      parent-key old-key))))
+                      (or select-pattern (conj parent-key [:pattern]))
+                      old-key))))
 
 (defn do-add-sibling
   [store key attributes]

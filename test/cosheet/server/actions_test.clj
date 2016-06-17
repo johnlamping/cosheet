@@ -67,6 +67,21 @@
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 
+(deftest substitute-in-key-test
+  (let [key [[:pattern]
+             [:pattern '(nil (:variable (:v :name)
+                                        ((nil "age" "doubtful") :condition)
+                                        (:true :reference)))]
+             [:pattern '(nil (:variable (:v :name)
+                                        ("male" :condition)
+                                        (:true :reference)))]
+             :foo "bar"]]
+    (is (check  (substitute-in-key key joe)
+                [(:item-id joe)
+                 (:item-id joe-bogus-age)
+                 (:item-id joe-male)
+                 :foo "bar"]))))
+
 (deftest update-add-entity-with-order-test
   (let [[s id order] (update-add-entity-with-order
                       store joe-id 6

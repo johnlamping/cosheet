@@ -183,7 +183,7 @@
 
 (defn vertical-stack
   "If there is only one item in the doms, return it. Otherwise, return
-  a vertical stack of the items."
+  a vertical stack of the items, with the given class."
   [doms & {:keys [class] :or {class "stack"}}]
   (if (= (count doms) 1)
        (first doms)
@@ -213,12 +213,15 @@
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
-  generate DOM for a vertical list of a component for each item."
+  generate DOM for a vertical list of a component for each item.
+  The attributes can be either a single attrbutes map, or a sequence of maps,
+  one per item."
   [items excludeds attributes inherited]
   (vertical-stack
-   (map (fn [item excluded]
+   (map (fn [item excluded attributes]
           (add-attributes (item-component item excluded inherited) attributes))
-        items excludeds)
+        items excludeds
+        (if (sequential? attributes) attributes (repeat attributes)))
    :class "item-stack"))
 
 (defn item-target
@@ -595,7 +598,7 @@
               :position :after
               :template new-column-template}}))
 
-(defn table-header-node-elements-DOM
+(defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
   elements. The elements-condition gives the condition that all the
   elements in the node satisfy. The header-only-subject gives the
@@ -603,39 +606,42 @@
   the elements in rows. inherited, on the other hand, gives the
   context for the header and its entire column."
   [column-item elements width rightmost
-   element-template header-only-subject delete-key inherited]
+   element-template header-only-subject delete-referent inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
+       excludeds (expr-seq map #(condition-satisfiers-R % element-template)
+                           ordered-elements)
        element-lists (expr-seq map semantic-to-list-R ordered-elements)]
-    (let [element-subject (item-or-exemplar-referent
+    (let [column-referent (item-or-exemplar-referent
                            column-item (:subject inherited))
-          inherited-down (-> (if delete-key
+          inherited-down (-> (if delete-referent
                                (assoc inherited :selectable-attributes
-                                      {:commands {:delete {:delete-key
-                                                           delete-key}}})
+                                      {:commands {:delete {:delete-referent
+                                                           delete-referent}}})
                                (dissoc inherited :selectable-attributes))
-                             (assoc :subject element-subject
+                             (assoc :subject column-referent
                                     :template element-template))
           dom (if (empty? ordered-elements)
                 (virtual-item-DOM
                  (conj (:parent-key inherited) (:item-id column-item))
-                 (item-or-exemplar-referent column-item header-only-subject)
-                 :after inherited-down)
-                (vertical-stack
-                 (map-indexed
-                  (fn [position element]
-                    ;; Make the new column condition also require the
-                    ;; elements above this one in the stack for this node.
-                    (let [column-condition
-                          (list* (concat (:template inherited)
-                                         (take position element-lists)))] 
-                      (add-attributes
-                       (item-component element nil inherited-down)
-                       (add-column-command-attributes
-                        column-item element-template
-                        (into inherited {:subject header-only-subject
-                                         :template column-condition}))))))
-                 :class "item-stack"))]
+                 column-referent :after inherited-down)
+                ;; Make the new column condition for an element also
+                ;; require the elements above it in this node.
+                (let [element-lists-above
+                      (map #(take % element-lists)
+                           (range (count ordered-elements)))
+                      element-attributes
+                      (map (fn [element-lists]
+                             (let [column-condition
+                                   (list* (concat (:template inherited)
+                                                  element-lists))]
+                               (add-column-command-attributes
+                                column-item element-template
+                                (into inherited {:subject header-only-subject
+                                                 :template column-condition}))))
+                           element-lists-above)]
+                  (item-stack-DOM ordered-elements excludeds
+                                  element-attributes inherited-down)))]
       (cond-> (let [dom (add-attributes dom {:class "column-header"})]
                 [:div {:class "column-header-container" 
                        :style {:width (str width "px")}} dom])

@@ -14,7 +14,7 @@
                                elements-referent query-referent
                                union-referent difference-referent
                                item-or-exemplar-referent
-                               semantic-elements-R
+                               semantic-elements-R semantic-to-list-R
                                canonicalize-list immutable-semantic-to-list]]
              [hierarchy :refer [canonical-info canonical-set-to-list
                                 hierarchy-node? hierarchy-node-descendants
@@ -128,8 +128,9 @@
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
-;       :subject-referent  ; The referent of the subject of the item
-                           ; the dom is about, if any.
+;       :subject-referent  ; The referent of the subject(s) of the item
+                           ; the dom is about, if any. If present, the
+                           ; item is an exemplar.
 ;               :template  ; The template that the item for this dom,
                            ; and any of its siblings, must satisfy, if any.
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
@@ -532,4 +533,111 @@
             [:div {:class "item with-elements" :key key}
              content-dom elements-dom]))))))
 
- 
+;;; Tables
+
+(def base-table-column-width 150)
+
+(defn table-header-referent
+  "Generate the referent for all items affected by a table
+  header. This means all table request items at or below this header,
+  and, for each row, the elements that the header brings up.
+  The arguments are the info-maps of all the header requests it
+  applies to, info maps that cover the conditions it applies to in
+  rows, and info maps that cover conditions it must not apply to, as
+  well as a referent to the rows of the table."
+  [info-maps extent-info-maps negative-info-maps rows-referent inherited]
+  (let [make-elements-ref #(elements-referent (:item %) rows-referent)
+        positives (union-referent
+                   (vec (concat
+                         ;; The header requests the header applies to.
+                         (map #(item-or-exemplar-referent
+                                (:item %) (:subject-referent inherited))
+                              info-maps)
+                         ;; The row elements the header applies to.
+                         (map make-elements-ref extent-info-maps))))]
+    (if (empty? negative-info-maps)
+      positives
+      (let [negatives (union-referent
+                       (vec (map make-elements-ref negative-info-maps)))]
+        difference-referent positives negatives))))
+
+(defn add-column-command-attributes
+  "Return attributes for add a column command, given the item that
+  requests the column. element-template gives the template of new
+  elements, while inherited describes the header, but not its affect
+  on the overall column."
+  [column-item element-template inherited]
+  (let [template (:template inherited) 
+        new-element-template (cons '??? (rest element-template))
+        new-column-template (cons (first template)
+                                  (cons new-element-template) (rest template))
+        ;; There is an item for the new column, which has an element
+        ;; satisfying the new element template. We want to select that
+        ;; element.
+        ;; TODO: This doesn't handle header items that are below other
+        ;; header items, as there is no query that can pick out the
+        ;; new item as opposed to the the copied items. The solution is to
+        ;; add an :exclusive option on referent variables, which means
+        ;; that they can't match the same item as any other exclusive
+        ;; referent. With that, we introduce variables to match each
+        ;; of the header items that are above, leaving just the new
+        ;; one to match the :v variable.
+        element-variable `(:variable
+                            (:v :name)
+                            (~element-template :condition)
+                            (true :reference))
+        select-pattern (conj (:parent-key inherited)
+                             [:pattern `(nil ~element-variable)])]
+    {:commands {:add-column {:select-pattern select-pattern}}
+     :column {:adjacents-referent (item-or-exemplar-referent
+                                   column-item (:subject inherited))
+              :subject-referent (:subject inherited)
+              :position :after
+              :template new-column-template}}))
+
+(defn table-header-node-elements-DOM
+  "Generate the dom for one node of a table header hierarchy given its
+  elements. The elements-condition gives the condition that all the
+  elements in the node satisfy. The header-only-subject gives the
+  subject for just the header definition(s) of this column, and not
+  the elements in rows. inherited, on the other hand, gives the
+  context for the header and its entire column."
+  [column-item elements width rightmost
+   element-template header-only-subject delete-key inherited]
+  (expr-let
+      [ordered-elements (order-items-R elements)
+       element-lists (expr-seq map semantic-to-list-R ordered-elements)]
+    (let [element-subject (item-or-exemplar-referent
+                           column-item (:subject inherited))
+          inherited-down (-> (if delete-key
+                               (assoc inherited :selectable-attributes
+                                      {:commands {:delete {:delete-key
+                                                           delete-key}}})
+                               (dissoc inherited :selectable-attributes))
+                             (assoc :subject element-subject
+                                    :template element-template))
+          dom (if (empty? ordered-elements)
+                (virtual-item-DOM
+                 (conj (:parent-key inherited) (:item-id column-item))
+                 (item-or-exemplar-referent column-item header-only-subject)
+                 :after inherited-down)
+                (vertical-stack
+                 (map-indexed
+                  (fn [position element]
+                    ;; Make the new column condition also require the
+                    ;; elements above this one in the stack for this node.
+                    (let [column-condition
+                          (list* (concat (:template inherited)
+                                         (take position element-lists)))] 
+                      (add-attributes
+                       (item-component element nil inherited-down)
+                       (add-column-command-attributes
+                        column-item element-template
+                        (into inherited {:subject header-only-subject
+                                         :template column-condition}))))))
+                 :class "item-stack"))]
+      (cond-> (let [dom (add-attributes dom {:class "column-header"})]
+                [:div {:class "column-header-container" 
+                       :style {:width (str width "px")}} dom])
+        rightmost (add-attributes {:class "rightmost"})
+        (= element-template '(nil :tag)) (add-attributes {:class "tags"})))))

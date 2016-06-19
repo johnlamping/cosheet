@@ -213,15 +213,16 @@
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
-  generate DOM for a vertical list of a component for each item.
-  The attributes can be either a single attrbutes map, or a sequence of maps,
-  one per item."
+  generate DOM for a vertical list of a component for each item.  The
+  attributes and inherited can be either a single map to be used for
+  all items, or a sequence of maps, one per item."
   [items excludeds attributes inherited]
   (vertical-stack
-   (map (fn [item excluded attributes]
+   (map (fn [item excluded attributes inherited]
           (add-attributes (item-component item excluded inherited) attributes))
         items excludeds
-        (if (sequential? attributes) attributes (repeat attributes)))
+        (if (sequential? attributes) attributes (repeat attributes))
+        (if (sequential? inherited) inherited (repeat inherited)))
    :class "item-stack"))
 
 (defn item-target
@@ -499,7 +500,7 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
-        (item-stack-DOM  elements excludeds {} inherited)
+        (item-stack-DOM elements excludeds {} inherited)
         (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
@@ -540,14 +541,15 @@
 
 (def base-table-column-width 150)
 
-(defn table-header-referent
+(defn table-column-elements-referent
   "Generate the referent for the elements affected by a table header,
-  including all table request items at or below this header,and also
-  refers to all items in rows that are brought up by the header. The
+  including elements in table request items at or below this header,
+  and also all elements in rows that are brought up by the header. The
   arguments are the info-maps of all the header requests the header
   applies to, info maps that cover the conditions it brings up in
-  rows, and info maps that cover conditions it must not bring up, as
-  well as a referent to the rows of the table."
+  rows, info maps that cover conditions it must not bring up, a
+  referent to the rows of the table, and to the subject of the header
+  requests."
   [info-maps extent-info-maps negative-info-maps rows-referent header-subject]
   (let [header-refs (vec (map #(item-or-exemplar-referent (:item %)
                                                           header-subject)
@@ -555,24 +557,24 @@
         make-elements-ref #(elements-referent (:item %) rows-referent)
         positive-refs (map make-elements-ref extent-info-maps)
         positives-ref (union-referent (vec (concat header-refs positive-refs)))]
-    [(union-referent header-refs)
-     (if (empty? negative-info-maps)
+    (if (empty? negative-info-maps)
        positives-ref
        (let [negative-refs (map make-elements-ref negative-info-maps)
              negatives-ref (union-referent (vec negative-refs))]
-         (difference-referent positives-ref negatives-ref)))]))
+         (difference-referent positives-ref negatives-ref)))))
 
-(defn add-column-command-attributes
-  "Return attributes for add a column command, given the column
+(defn attributes-for-add-column-command
+  "Return attributes for an add a column command, given the column
   request items that gave rise to the column. element-template gives
   the template for new elements, while inherited gives the environment
-  of the header, excluding its affect on the overall column."
+  of the header."
   [column-items element-template inherited]
-  (let [new-element-template (cons '??? (rest element-template))
-        new-column-template (list* (concat (:template inherited)
+  (let [subject (:subject inherited)
+        new-element-template (cons '??? (rest element-template))
+        new-header-template (list* (concat (:template inherited)
                                            [new-element-template]))
         ;; There is an item for the new column, which has an element
-        ;; satisfying the new element template. We want to select that
+        ;; satisfying the element template. We want to select that
         ;; element.
         ;; TODO: This doesn't handle header items that are below other
         ;; header items, as there is no query that can pick out the
@@ -590,50 +592,61 @@
                              [:pattern `(nil ~element-variable)])]
     {:commands {:add-column {:select-pattern select-pattern}}
      :column {:adjacents-referent (union-referent
-                                   (map #(item-or-exemplar-referent
-                                          % (:subject inherited))
+                                   (map #(item-or-exemplar-referent % subject)
                                         column-items))
-              :subject-referent (:subject inherited)
+              :subject-referent subject
               :position :after
-              :template new-column-template}}))
+              :template new-header-template}}))
+
+(defn add-add-column-commands
+  "For each element, which must be in list form, modify inherited to
+  have its :selectable-attributes include a new column command, whose
+  template includes all the elements above the element."
+  [element-lists column-requests header-inherited inherited]
+  (let [element-lists-above (map #(concat (take % element-lists))
+                                 (range (count element-lists)))]
+    (map (fn [element-lists]
+           (let [modified-header-inherited
+                 (update-in header-inherited [:template]
+                            #(list* (concat % element-lists)))]
+             (assoc inherited :selectable-attributes
+                    (attributes-for-add-column-command
+                     column-requests (:template inherited)
+                     modified-header-inherited))))
+         element-lists-above)))
 
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
-  elements. column-items gives the items that requested all columns
+  elements. column-requests gives the items that requested all columns
   that this node covers, and rightmost says whether it is the
-  rightmost child of its parent. The header-inherited gives the
-  context of the header definition(s) of this column, while inherited
-  gives the context for elements of both the header and its entire
-  column."
-  [example-elements column-items rightmost header-inherited inherited]
+  rightmost child of its parent. header-inherited gives the context of
+  the header definition(s) of this column, while inherited gives the
+  context for elements of both the header and its entire column."
+  [example-elements column-requests rightmost header-inherited inherited]
   (expr-let
       [ordered-elements (order-items-R example-elements)
+       element-lists (expr-seq map semantic-to-list-R ordered-elements)
        excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
-                           ordered-elements)
-       element-lists (expr-seq map semantic-to-list-R ordered-elements)]
-    (let [dom (if (empty? ordered-elements)
-                (virtual-item-DOM (:parent-key inherited) (:subject inherited)
-                                  :after inherited)
-                ;; Make the new column condition for an element also
-                ;; require the elements above it in this node.
-                (let [element-lists-above
-                      (map #(take % element-lists)
-                           (range (count ordered-elements)))
-                      element-attributes
-                      (map (fn [element-lists]
-                             (let [column-condition
-                                   (list* (concat (:template inherited)
-                                                  element-lists))]
-                               (add-column-command-attributes
-                                column-items (:template inherited)
-                                header-inherited)))
-                           element-lists-above)]
-                  (item-stack-DOM ordered-elements excludeds
-                                  element-attributes inherited)))]
-      (cond-> (let [width (* (count column-items) base-table-column-width)
-                    dom (add-attributes dom {:class "column-header"})]
+                           ordered-elements)]
+    (let [dom
+          (if (empty? ordered-elements)
+            (let [adjacents
+                  (union-referent
+                   (map #(item-or-exemplar-referent % (:subject inherited))
+                        column-requests))]
+              (virtual-item-DOM (:parent-key inherited) adjacents
+                                :after inherited))
+            ;; Make the new column template for an element also
+            ;; include the elements above it in this node.
+            (item-stack-DOM
+             ordered-elements excludeds {}
+             (add-add-column-commands
+              element-lists column-requests header-inherited inherited)))]
+      (cond-> (let [dom (add-attributes dom {:class "column-header"})
+                    width (* (count column-requests) base-table-column-width)]
                 [:div {:class "column-header-container" 
-                       :style {:width (str width "px")}} dom])
+                       :style {:width (str width "px")}}
+                 dom])
         rightmost (add-attributes {:class "rightmost"})
         (= (:template inherited) '(nil :tag)) (add-attributes
                                                {:class "tags"})))))
@@ -643,7 +656,8 @@
   row-scope-referent should specify all the row items from which this
   header selects elements."
   [node rightmost elements-template rows-referent inherited]
-  (let [next-level (hierarchy-node-next-level node)
+  (let [subject (:subject inherited)
+        next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
         descendants (hierarchy-node-descendants node) 
         example-elements (hierarchy-node-example-elements node)
@@ -651,9 +665,9 @@
                            (:item (first (:members node)))
                            (first example-elements))
         header-key (conj (:parent-key) (:item-id identifying-item))
-        column-referent (table-header-referent
+        column-referent (table-column-elements-referent
                            descendants (hierarchy-node-extent node) nil
-                           rows-referent (:subject inherited))
+                           rows-referent subject)
         delete-referent (when (= (count example-elements) 1)
                           ;; If we don't have children, then deletion
                           ;; removes the column request, while if we
@@ -661,14 +675,16 @@
                           ;; and from elements in the rows.
                           (if (empty? non-trivial-children)
                             (item-or-exemplar-referent identifying-item
-                                                       (:subject inherited))
+                                                       subject)
+                            ;; TODO: Check how this behaves. Why not include
+                            ;; the immediate members of the node?
                             (let [subject
-                                (table-header-referent
+                                (table-column-elements-referent
                                  (mapcat hierarchy-node-descendants
                                          non-trivial-children)
                                  (hierarchy-nodes-extent
                                   non-trivial-children) nil
-                                 rows-referent (:subject inherited))]
+                                 rows-referent subject)]
                             (item-or-exemplar-referent (first example-elements)
                                                        subject))))
         inherited-down (let [temp (assoc inherited

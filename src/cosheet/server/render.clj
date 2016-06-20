@@ -749,7 +749,6 @@
         node-dom
         (let [properties-list (canonical-set-to-list (:properties node))
               inherited (-> inherited
-                            ;; TODO: Update key.
                             (update-in [:priority] inc)
                             (update-in [:template]
                                        #(list* (concat % properties-list))))]
@@ -767,3 +766,22 @@
                                                        {:class "tag"}))
              (add-attributes node-dom {:class "with-children"})
              (into [:div {:class "column-header-sequence"}] dom-seqs)]))))))
+
+(defn table-header-DOM-R
+  "Generate DOM for column headers for the specified templates.
+  The column will contain those elements of the rows that match the templates."
+  [hierarchy elements-template rows-referent inherited]
+  (let [inherited (update-in inherited [:priority] (fnil inc -1))]
+    ;; TODO: Move this comment to table-DOM-R.
+    ;; Unlike row headers for tags, where the header information is
+    ;; computed from the items of the rows, here the header information
+    ;; is explicitly provided by the table definition, so the members of
+    ;; the hierarchy are the column definitions.
+    (expr-let [columns (expr-seq
+                        map (fn [node rightmost]
+                              (table-header-subtree-DOM-R
+                               node true rightmost elements-template
+                               rows-referent inherited))
+                        hierarchy (nils-until-last (count hierarchy) true))]
+      (into [:div {:class "column-header-sequence"}]
+            columns))))

@@ -639,6 +639,19 @@
                      modified-header-inherited))))
          element-lists-above)))
 
+(defn add-table-header-formatting
+  "Given a dom of header elements, return a dom with all the appropriate
+  formatting."
+  [dom column-requests rightmost inherited]
+  (cond-> (let [dom (add-attributes dom {:class "column-header"})
+                width (* (count column-requests) base-table-column-width)]
+            [:div {:class "column-header-container" 
+                   :style {:width (str width "px")}}
+             dom])
+    rightmost (add-attributes {:class "rightmost"})
+    (= (:template inherited) '(nil :tag)) (add-attributes
+                                           {:class "tags"})))
+
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
   elements. column-requests gives the items that requested all columns
@@ -647,33 +660,18 @@
   the header definition(s) of this column, while inherited gives the
   context for elements of both the header and its entire column."
   [example-elements column-requests rightmost header-inherited inherited]
+  (assert (not (empty? example-elements)))
   (expr-let
       [ordered-elements (order-items-R example-elements)
        element-lists (expr-seq map semantic-to-list-R ordered-elements)
        excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
-    (let [dom
-          (if (empty? ordered-elements)
-            (let [adjacents
-                  (union-referent
-                   (map #(item-or-exemplar-referent % (:subject inherited))
-                        column-requests))]
-              (virtual-item-DOM (:parent-key inherited) adjacents
-                                :after inherited))
-            ;; Make the new column template for an element also
-            ;; include the elements above it in this node.
-            (item-stack-DOM
-             ordered-elements excludeds {}
-             (add-add-column-commands
-              element-lists column-requests header-inherited inherited)))]
-      (cond-> (let [dom (add-attributes dom {:class "column-header"})
-                    width (* (count column-requests) base-table-column-width)]
-                [:div {:class "column-header-container" 
-                       :style {:width (str width "px")}}
-                 dom])
-        rightmost (add-attributes {:class "rightmost"})
-        (= (:template inherited) '(nil :tag)) (add-attributes
-                                               {:class "tags"})))))
+    (add-table-header-formatting
+     (item-stack-DOM
+      ordered-elements excludeds {}
+      (add-add-column-commands
+       element-lists column-requests header-inherited inherited))
+     column-requests rightmost inherited)))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
@@ -704,3 +702,68 @@
     (table-header-node-elements-DOM-R
      example-elements (map :item descendants) rightmost
      inherited inherited-down)))
+
+(def table-header-subtree-DOM-R)
+
+(defn table-header-next-level-DOM-R
+  "Given a hieararchy node or element, generate its DOM."
+  [below non-trivial-siblings rightmost elements-template rows-referent
+   inherited]
+  (if (hierarchy-node? below)
+    (table-header-subtree-DOM-R
+     below false rightmost elements-template rows-referent inherited)
+    ;; This is a member that is displayed underneath its node. Since
+    ;; the display of the node already presents all the properties, we
+    ;; need a header DOM with no elements.
+    ;; TODO: Need to make add-column and delete work for these.
+    (let [exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
+          subject (assoc inherited :subject
+                         (table-column-elements-referent
+                          below [below] exclude-from-members
+                          rows-referent (:subject inherited)))
+          inherited (assoc inherited :subject subject)
+          adjacent (item-or-exemplar-referent (:item below) subject)]
+      (add-table-header-formatting
+       (virtual-item-DOM (:parent-key inherited) adjacent :after inherited)
+       [below] rightmost inherited))))
+
+(defn nils-until-last
+  "Return a sequence of the given length, consisting of all nils,
+  except for a possibly different last value."
+  [length final]
+  (concat (repeat (dec length) nil) [final]))
+
+(defn table-header-subtree-DOM-R
+  "Generate the dom for a subtree of a table header hierarchy.  The
+  row-scope-referent should specify all the row items from which this
+  header selects elements."
+  [node top-level rightmost elements-template rows-referent inherited]
+  (expr-let
+      [node-dom (table-header-node-DOM-R
+                 node rightmost elements-template rows-referent inherited)]
+    (let [node-dom (cond-> node-dom
+                     top-level (add-attributes {:class "top-level"}))
+          next-level (hierarchy-node-next-level node)
+          non-trivial-children (filter hierarchy-node? next-level)]
+      (if (and (= (count next-level) 1) (empty? non-trivial-children))
+        node-dom
+        (let [properties-list (canonical-set-to-list (:properties node))
+              inherited (-> inherited
+                            ;; TODO: Update key.
+                            (update-in [:priority] inc)
+                            (update-in [:template]
+                                       #(list* (concat % properties-list))))]
+          (expr-let
+              [dom-seqs (expr-seq
+                         map (fn [below rightmost]
+                               (table-header-next-level-DOM-R
+                                below non-trivial-children rightmost
+                                elements-template rows-referent inherited))
+                         next-level
+                         (nils-until-last (count next-level) rightmost))]
+            [:div (cond-> {:class "column-header-stack"}
+                    top-level (into-attributes {:class "top-level"})
+                    (= elements-template '(nil :tag)) (into-attributes
+                                                       {:class "tag"}))
+             (add-attributes node-dom {:class "with-children"})
+             (into [:div {:class "column-header-sequence"}] dom-seqs)]))))))

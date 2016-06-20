@@ -563,7 +563,31 @@
              negatives-ref (union-referent (vec negative-refs))]
          (difference-referent positives-ref negatives-ref)))))
 
-(defn attributes-for-add-column-command
+(defn attributes-for-header-delete-command
+  "Return attributes for the delete command, if it needs special attributes."
+  [node example-elements identifying-item rows-referent subject]
+  ;; The only special cases are where there is just one element.
+  (when (= (count example-elements) 1)
+    (let [next-level (hierarchy-node-next-level node)
+          non-trivial-children (filter hierarchy-node? next-level)
+          delete-referent
+          ;; If we don't have children, then deletion removes the
+          ;; column request, while if we do, it removes the element
+          ;; from requests and from elements in the rows.
+          (if (empty? non-trivial-children)
+            (item-or-exemplar-referent identifying-item subject)
+            ;; We don't include the item maps at the next level,
+            ;; because removing the element from the corresponding
+            ;; requests would leave them with no elements.
+            (item-or-exemplar-referent
+             (first example-elements)
+             (table-column-elements-referent
+              (mapcat hierarchy-node-descendants non-trivial-children)
+              (hierarchy-nodes-extent non-trivial-children) nil
+              rows-referent subject)))]
+      {:commands {:delete {:delete-referent delete-referent}}})))
+
+(defn attributes-for-header-add-column-command
   "Return attributes for an add a column command, given the column
   request items that gave rise to the column. element-template gives
   the template for new elements, while inherited gives the environment
@@ -610,7 +634,7 @@
                  (update-in header-inherited [:template]
                             #(list* (concat % element-lists)))]
              (assoc inherited :selectable-attributes
-                    (attributes-for-add-column-command
+                    (attributes-for-header-add-column-command
                      column-requests (:template inherited)
                      modified-header-inherited))))
          element-lists-above)))
@@ -657,8 +681,6 @@
   header selects elements."
   [node rightmost elements-template rows-referent inherited]
   (let [subject (:subject inherited)
-        next-level (hierarchy-node-next-level node)
-        non-trivial-children (filter hierarchy-node? next-level)
         descendants (hierarchy-node-descendants node) 
         example-elements (hierarchy-node-example-elements node)
         identifying-item (if (empty? example-elements)
@@ -668,34 +690,16 @@
         column-referent (table-column-elements-referent
                            descendants (hierarchy-node-extent node) nil
                            rows-referent subject)
-        delete-referent (when (= (count example-elements) 1)
-                          ;; If we don't have children, then deletion
-                          ;; removes the column request, while if we
-                          ;; do, it removes the element from requests
-                          ;; and from elements in the rows.
-                          (if (empty? non-trivial-children)
-                            (item-or-exemplar-referent identifying-item
-                                                       subject)
-                            ;; TODO: Check how this behaves. Why not include
-                            ;; the immediate members of the node?
-                            (let [subject
-                                (table-column-elements-referent
-                                 (mapcat hierarchy-node-descendants
-                                         non-trivial-children)
-                                 (hierarchy-nodes-extent
-                                  non-trivial-children) nil
-                                 rows-referent subject)]
-                            (item-or-exemplar-referent (first example-elements)
-                                                       subject))))
+        delete-attributes (attributes-for-header-delete-command
+                           node example-elements identifying-item
+                           rows-referent subject)
         inherited-down (let [temp (assoc inherited
                                          :parent-key header-key
                                          :template elements-template
                                          :subject column-referent
                                          :width 0.75 * (count descendants))]
-                         (if delete-referent
-                           (assoc temp :selectable-attributes
-                                  {:commands {:delete {:delete-referent
-                                                       delete-referent}}})
+                         (if delete-attributes
+                           (assoc temp :selectable-attributes delete-attributes)
                            (dissoc temp :selectable-attributes)))]
     (table-header-node-elements-DOM-R
      example-elements (map :item descendants) rightmost

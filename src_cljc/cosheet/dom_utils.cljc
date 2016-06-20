@@ -8,11 +8,10 @@
   (reduce (fn [accumulator [key value]]
             (update-in accumulator [key]
                        #(if % (combiner key % value) value)))
-          
           (or m1 {}) (or m2 {})))
 
 (defn map-combiner
-  "Combine maps and sequences. Otherwise, just return the second."
+  "Combine maps. Otherwise, just return the second."
   [key v1 v2]
   (if (and (map? v1) (map? v2))
     (combine-maps map-combiner v1 v2)
@@ -30,7 +29,6 @@
                                    v2s (clojure.string/split v2 #" ")]
                                (clojure.string/join
                                 " " (concat v1s (remove (set v1s) v2s)))))
-                    :commands (into v1 v2)
                     (map-combiner key v1 v2)))
                 accumulator attributes))
 

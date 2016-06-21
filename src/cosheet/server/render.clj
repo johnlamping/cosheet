@@ -786,27 +786,7 @@
       (into [:div {:class "column-header-sequence"}]
             columns))))
 
-(defn table-cell-DOM-R
-  "Return the dom for one cell of a table. Inherited gives the context
-  of each item in the cell."
-  [items new-row-template inherited]
-  (let [inherited (-> inherited
-                      (assoc :width 0.75)
-                      (assoc-in :selectable-attributes
-                                {:commands nil
-                                 :row {:item-referent (:subject inherited)
-                                       :template new-row-template}}))]
-    (if (empty? items)
-      ;; TODO: Get our left neighbor as an arg, and pass it in
-      ;; as adjacent information for new-sibling.
-      (add-attributes (virtual-item-DOM
-                       key (:subject inherited) :after inherited)
-                      {:class "table-cell has-border"})
-      (expr-let [items (order-items-R items)]
-        (add-attributes (item-stack-DOM items nil {} inherited)
-                        {:class "table-cell has-border"})))))
-
- (defn table-hierarchy-node-column-descriptions
+(defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
            :item Item that identifies the column.
@@ -825,3 +805,40 @@
                   :template condition
                   :exclusions excluded-conditions}]))
             next-level)))
+
+(defn table-cell-items-DOM-R
+  "Return the dom for one cell of a table, given its items.
+  Inherited gives the context of each item in the cell."
+  [items new-row-template inherited]
+  (let [inherited (-> inherited
+                      (assoc :width 0.75)
+                      (assoc-in :selectable-attributes
+                                {:commands nil
+                                 :row {:item-referent (:subject inherited)
+                                       :template new-row-template}}))]
+    (if (empty? items)
+      ;; TODO: Get our left neighbor as an arg, and pass it in
+      ;; as adjacent information for new-sibling.
+      (add-attributes (virtual-item-DOM
+                       key (:subject inherited) :after inherited)
+                      {:class "table-cell has-border"})
+      (expr-let [items (order-items-R items)]
+        (add-attributes (item-stack-DOM items nil {} inherited)
+                        {:class "table-cell has-border"})))))
+
+(defn table-cell-DOM-R
+  "Return the dom for one cell of a table, given its column description."
+  [row-item new-row-template {:keys [item template exclusions]} inherited]
+  (let [inherited-down (assoc inherited
+                              :parent-key (conj (:parent-key inherited)
+                                                (:item-id item))
+                              :template template)]
+    (expr-let [matches (matching-elements template row-item)
+               do-not-show (when exclusions
+                             (expr-seq map #(matching-elements % row-item)
+                                       exclusions))]
+      (let [elements (seq (clojure.set/difference (set matches)
+                                                  (set do-not-show)))]
+        (table-cell-items-DOM-R elements new-row-template inherited)))))
+
+ 

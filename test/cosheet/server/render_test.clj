@@ -77,7 +77,7 @@
   (let [root-id (make-id "root")
         inherited {:priority 0
                    :parent-key [:root]
-                   :subject-referent root-id}]
+                   :subject root-id}]
     ;; Test a simple cell
     (let [[dom fred] (let-mutated [fred "Fred"]
                    (expr-let [dom (item-DOM-R fred [] inherited)]
@@ -159,7 +159,7 @@
                 {:priority 1
                  :width 0.5
                  :parent-key tags-key
-                 :subject-referent one-another-two-referent
+                 :subject one-another-two-referent
                  :template '(nil :tag)}]]
               [:div {:class "indent-wrapper"}
                [:div {:class "stack"}
@@ -171,7 +171,7 @@
                    {:priority 1
                     :width 0.5,
                     :parent-key age-key
-                    :subject-referent (item-referent age)
+                    :subject (item-referent age)
                     :template '(nil ("confidence" :tag))
                     :selectable-attributes
                     {:commands {:add-row nil}
@@ -190,7 +190,7 @@
                    {:priority 1
                     :width 0.5
                     :parent-key (conj age-key (:item-id two) :outside)
-                    :subject-referent (item-referent two)
+                    :subject (item-referent two)
                     :template '(nil :tag)
                     :selectable-attributes
                     {:commands {:add-row nil}
@@ -202,7 +202,7 @@
                     {:priority 1
                      :width 0.5,
                      :parent-key age-key
-                     :subject-referent (item-referent age)
+                     :subject (item-referent age)
                      :template (as-set '(nil ("confidence" :tag)
                                              ("probability" :tag)))
                      :selectable-attributes
@@ -224,7 +224,7 @@
                 {:priority 1,
                  :width 0.5,
                  :parent-key age-key
-                 :subject-referent (item-referent age)}]]]]])))
+                 :subject (item-referent age)}]]]]])))
     ;; Test two column element hierarchy.
     (let [age-as-list `(39 (:root :non-semantic)
                            (~o3 :order :non-semantic)
@@ -298,7 +298,7 @@
                  {:priority 1
                   :width 0.25
                   :parent-key tags-key
-                  :subject-referent all-elements-referent
+                  :subject all-elements-referent
                   :template '(nil :tag)}]]]
               [:div {:class "editable"
                      :key (conj age-key :example-element (:item-id confidence1))
@@ -320,7 +320,7 @@
                   {:priority 1
                    :width 0.25
                    :parent-key tags-key
-                   :subject-referent likelihoods-referent
+                   :subject likelihoods-referent
                    :template '(nil :tag)}]]]]
               [:div {:class "item-stack"}
                ;; Pair
@@ -329,7 +329,7 @@
                  {:priority 1
                   :width 0.6875,
                   :parent-key age-key
-                  :subject-referent (item-referent age)
+                  :subject (item-referent age)
                   :template (as-set '(nil ("confidence" :tag)
                                           ("likelihood" :tag)))
                   :selectable-attributes
@@ -352,7 +352,7 @@
                   {:priority 1
                    :width 0.25
                    :parent-key (conj age-key (:item-id two) :outside)
-                   :subject-referent (item-referent two)
+                   :subject (item-referent two)
                    :template '(nil :tag)
                    ;; TODO: need add-row command.
                    }]]]]
@@ -361,7 +361,7 @@
                 {:priority 1
                  :width 0.6875,
                  :parent-key age-key
-                 :subject-referent (item-referent age)
+                 :subject (item-referent age)
                  :template (as-set '(nil ("confidence" :tag)
                                          ("probability" :tag)))
                  :selectable-attributes
@@ -379,6 +379,6 @@
                 {:priority 1,
                  :width 0.6875,
                  :parent-key age-key
-                 :subject-referent (item-referent age)
+                 :subject (item-referent age)
                  :template '(nil ("confidence" :tag))}]]]]])))
     ))

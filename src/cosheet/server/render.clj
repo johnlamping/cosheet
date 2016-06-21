@@ -205,7 +205,7 @@
            {:class "editable"
             :key key
             :commands {:set-content nil}
-            :target (cond-> {:subject-referent (:subject-referent inherited)
+            :target (cond-> {:subject-referent (:subject inherited)
                              :adjacents-referent adjacents-referent
                              :position position}
                       template (assoc :template template))})]))
@@ -230,7 +230,7 @@
   [item inherited]
   (let [template (:template inherited)]
     (cond-> {:item-referent (item-or-exemplar-referent
-                             item (:subject-referent inherited))}
+                             item (:subject inherited))}
       template (assoc :template template))))
 
 (defn item-content-DOM
@@ -260,16 +260,16 @@
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
-  (let [subject-referent (:subject-referent inherited)
+  (let [subject (:subject inherited)
         ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
    (cond->
-       {:subject-referent subject-referent
+       {:subject-referent subject
         :adjacents-referent (hierarchy-node-items-referent
-                             hierarchy-node subject-referent)}
+                             hierarchy-node subject)}
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
@@ -301,7 +301,7 @@
                                 (concat (or template '(nil)) property-list))
                          inherited)]
     (if (empty? members)
-      (let [subject (:subject-referent inherited)
+      (let [subject (:subject inherited)
             adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
             referent (item-or-exemplar-referent adjacent-item subject)
@@ -334,7 +334,7 @@
   Inherited describes the overall context of the node."
   [hierarchy-node inherited]
   (let [items-referent (hierarchy-node-items-referent
-                        hierarchy-node (:subject-referent inherited))
+                        hierarchy-node (:subject inherited))
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
         tags-parent-key (conj (:parent-key inherited)
@@ -343,7 +343,7 @@
         inherited-for-tags (assoc inherited
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
-                                  :subject-referent items-referent)]
+                                  :subject items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-item-DOM (conj tags-parent-key :tags) items-referent
@@ -519,7 +519,7 @@
              elements (semantic-elements-R item)]
     (let [key (conj (:parent-key inherited) (:item-id item))
           referent (item-or-exemplar-referent item
-                                              (:subject-referent inherited))
+                                              (:subject inherited))
           elements (remove (set excluded-elements) elements)]
       (if (empty? elements)
         (add-attributes (item-content-DOM item content key inherited)
@@ -530,7 +530,7 @@
               inherited-down (-> inherited
                                  (update-in [:priority] inc)
                                  (assoc :parent-key key
-                                        :subject-referent referent)
+                                        :subject referent)
                                  (dissoc :template :selectable-attributes))]
           (expr-let [elements-dom (elements-DOM-R
                                    elements true inherited-down)]
@@ -785,3 +785,43 @@
                         hierarchy (nils-until-last (count hierarchy) true))]
       (into [:div {:class "column-header-sequence"}]
             columns))))
+
+(defn table-cell-DOM-R
+  "Return the dom for one cell of a table. Inherited gives the context
+  of each item in the cell."
+  [items new-row-template inherited]
+  (let [inherited (-> inherited
+                      (assoc :width 0.75)
+                      (assoc-in :selectable-attributes
+                                {:commands nil
+                                 :row {:item-referent (:subject inherited)
+                                       :template new-row-template}}))]
+    (if (empty? items)
+      ;; TODO: Get our left neighbor as an arg, and pass it in
+      ;; as adjacent information for new-sibling.
+      (add-attributes (virtual-item-DOM
+                       key (:subject inherited) :after inherited)
+                      {:class "table-cell has-border"})
+      (expr-let [items (order-items-R items)]
+        (add-attributes (item-stack-DOM items nil {} inherited)
+                        {:class "table-cell has-border"})))))
+
+ (defn table-hierarchy-node-column-descriptions
+  "Given a hierarchy node, for each column under the node,
+  return a map:
+           :item Item that identifies the column.
+       :template Condition that each element of the column must satisfy.
+     :exclusions Conditions that elements must not satisfy."
+  [node]
+  (let [next-level (hierarchy-node-next-level node)
+        non-trivial-children (filter hierarchy-node? next-level)
+        condition (cons nil (canonical-set-to-list (:properties node)))
+        excluded-conditions (map :condition
+                                 (hierarchy-nodes-extent non-trivial-children))]
+    (mapcat (fn [below]
+              (if (hierarchy-node? below)
+                (table-hierarchy-node-column-descriptions below)
+                [{:item (:item below)
+                  :template condition
+                  :exclusions excluded-conditions}]))
+            next-level)))

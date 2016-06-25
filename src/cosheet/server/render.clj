@@ -3,7 +3,8 @@
             (cosheet [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [utils :refer [multiset multiset-diff multiset-union
-                                    multiset-to-generating-values update-last]]
+                                    multiset-to-generating-values update-last
+                                    replace-in-seqs]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
                      [dom-utils
@@ -128,9 +129,9 @@
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
-;       :subject-referent  ; The referent of the subject(s) of the item
-                           ; the dom is about, if any. If present, the
-                           ; item is an exemplar.
+;                :subject  ; The referent of the subject(s) of the item
+                           ; the dom is about, if any. Only required to
+                           ; be present if the item is an exemplar.
 ;               :template  ; The template that the item for this dom,
                            ; and any of its siblings, must satisfy, if any.
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
@@ -841,4 +842,95 @@
                                                   (set do-not-show)))]
         (table-cell-items-DOM-R elements new-row-template inherited)))))
 
- 
+(defn table-row-DOM-R
+  "Generate dom for a table row."
+  [row-item row-key new-row-template column-descriptions inherited]
+  (let [inherited (assoc :parent-key row-key)]
+    (expr-let [cells (expr-seq (map #(table-cell-DOM-R
+                                      row-item new-row-template % inherited)
+                                    column-descriptions))]
+      (into [:div {:key row-key}] cells))))
+
+(defn table-row-DOM-component
+  "Generate a component for a table row."
+  [row-item new-row-template column-descriptions inherited]
+  (let [row-key (conj (:parent-key inherited) (:item-id row-item))]
+    (make-component
+     {:key row-key :class "table-row"}
+     [table-row-DOM-R
+      row-item row-key new-row-template column-descriptions inherited])))
+
+(defn add-element-to-entity-list
+  [entity element]
+  (concat (if (sequential? entity) entity (list entity))
+          element))
+
+(defn table-DOM-R
+  "Return a hiccup representation of DOM, with the given internal key,
+  describing a table."
+  ;; The following elements of item describe the table:
+  ;;  :row-query  The content is an item whose list form gives the
+  ;;              requirements for an item to appear as a row. When the
+  ;;              query is created, an extra [:top-level
+  ;;              :non-semantic] element is added, to keep the query,
+  ;;              which is also in the database, from matching itself.
+  ;;     :column  The semantics gives the requirements for an element
+  ;;              of a row to appear in this column. The :column
+  ;;              element has, itself, a :non-semantic element, to
+  ;;              make it not part of the semantics of the column
+  ;;              specifier. Generally, the content of the content
+  ;;              will be the keyword :none, to indicate no constraint
+  ;;              on the content of an element in the row, without
+  ;;              breaking the rule that the database doesn't contain
+  ;;              nil. The exception is the special content :other,
+  ;;              which means to show everything not shown in any
+  ;;              other column.
+  ;; TODO: Make there there be an element on a table descriptor that
+  ;;       says what elements of new columns must have, rather than
+  ;;       the current '(nil :tag)
+  ;; TODO: Add the "other" column it a table requests it.
+  [table-item inherited]
+  (println "Generating DOM for table" (simplify-for-print table-item))
+  (assert (satisfies? entity/StoredEntity table-item))
+  (let [store (:store table-item)
+        table-key (conj (:parent-key inherited) (:item-id table-item))
+        inherited (-> inherited 
+                      (assoc :parent-key table-key)
+                      (update-in [:priority] inc))]
+    (expr-let [row-query-item (entity/label->content table-item :row-query)]
+      ;; Don't do anything if we don't yet have the table information filled in.
+      (when row-query-item
+        (expr-let
+            [basic-row-query (semantic-to-list-R row-query-item)
+             row-query (add-element-to-entity-list
+                        (replace-in-seqs basic-row-query :none nil)
+                        ['(:top-level :non-semantic)])
+             columns (expr order-items-R
+                       (entity/label->elements table-item :column))
+             columns-elements (expr-seq map semantic-elements-R columns)
+             columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
+                                     columns-elements)
+             row-items (expr order-items-R
+                         (matching-items row-query store))
+             hierarchy (hierarchy-by-canonical-info
+                        (map (fn [column elements lists]
+                               {:item column
+                                :property-elements elements
+                                :property-canonicals (map canonicalize-list
+                                                          lists)
+                                :condition (replace-in-seqs
+                                            (list* (into '[nil] lists))
+                                            :none nil)})
+                             columns columns-elements columns-lists)
+                        #{})
+             headers (table-header-DOM-R hierarchy '(nil :tag)
+                                         (query-referent row-query) inherited)]
+          (let [column-descriptions (mapcat
+                                     table-hierarchy-node-column-descriptions
+                                     hierarchy)
+                rows (expr-seq map #(table-row-DOM-component
+                                     % row-query column-descriptions inherited)
+                               row-items)]
+            (into [:div {:class "table" :key table-key}
+                   headers]
+                  rows)))))))

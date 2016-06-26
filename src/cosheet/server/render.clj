@@ -634,10 +634,11 @@
            (let [modified-header-inherited
                  (update-in header-inherited [:template]
                             #(list* (concat % element-lists)))]
-             (assoc inherited :selectable-attributes
-                    (attributes-for-header-add-column-command
-                     column-requests (:template inherited)
-                     modified-header-inherited))))
+             (update-in inherited [:selectable-attributes]
+                        #(into-attributes
+                          % (attributes-for-header-add-column-command
+                             column-requests (:template inherited)
+                             modified-header-inherited)))))
          element-lists-above)))
 
 (defn add-table-header-formatting
@@ -685,7 +686,6 @@
         identifying-item (if (empty? example-elements)
                            (:item (first (:members node)))
                            (first example-elements))
-        header-key (conj (:parent-key) (:item-id identifying-item))
         column-referent (table-column-elements-referent
                            descendants (hierarchy-node-extent node) nil
                            rows-referent subject)
@@ -693,10 +693,9 @@
                            node example-elements identifying-item
                            rows-referent subject)
         inherited-down (let [temp (assoc inherited
-                                         :parent-key header-key
                                          :template elements-template
                                          :subject column-referent
-                                         :width 0.75 * (count descendants))]
+                                         :width (* 0.75 (count descendants)))]
                          (if delete-attributes
                            (assoc temp :selectable-attributes delete-attributes)
                            (dissoc temp :selectable-attributes)))]
@@ -718,10 +717,9 @@
     ;; need a header DOM with no elements.
     ;; TODO: Need to make add-column and delete work for these.
     (let [exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
-          subject (assoc inherited :subject
-                         (table-column-elements-referent
-                          below [below] exclude-from-members
-                          rows-referent (:subject inherited)))
+          subject (table-column-elements-referent
+                          [below] [below] exclude-from-members
+                          rows-referent (:subject inherited))
           inherited (assoc inherited :subject subject)
           adjacent (item-or-exemplar-referent (:item below) subject)]
       (add-table-header-formatting
@@ -772,20 +770,14 @@
   "Generate DOM for column headers for the specified templates.
   The column will contain those elements of the rows that match the templates."
   [hierarchy elements-template rows-referent inherited]
-  (let [inherited (update-in inherited [:priority] (fnil inc -1))]
-    ;; TODO: Move this comment to table-DOM-R.
-    ;; Unlike row headers for tags, where the header information is
-    ;; computed from the items of the rows, here the header information
-    ;; is explicitly provided by the table definition, so the members of
-    ;; the hierarchy are the column definitions.
-    (expr-let [columns (expr-seq
-                        map (fn [node rightmost]
-                              (table-header-subtree-DOM-R
-                               node true rightmost elements-template
-                               rows-referent inherited))
-                        hierarchy (nils-until-last (count hierarchy) true))]
-      (into [:div {:class "column-header-sequence"}]
-            columns))))
+  (expr-let [columns (expr-seq
+                      map (fn [node rightmost]
+                            (table-header-subtree-DOM-R
+                             node true rightmost elements-template
+                             rows-referent inherited))
+                      hierarchy (nils-until-last (count hierarchy) true))]
+    (into [:div {:class "column-header-sequence"}]
+          columns)))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -894,9 +886,7 @@
   (assert (satisfies? entity/StoredEntity table-item))
   (let [store (:store table-item)
         table-key (conj (:parent-key inherited) (:item-id table-item))
-        inherited (-> inherited 
-                      (assoc :parent-key table-key)
-                      (update-in [:priority] inc))]
+        inherited (assoc inherited :parent-key table-key)]
     (expr-let [row-query-item (entity/label->content table-item :row-query)]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-query-item
@@ -905,13 +895,19 @@
              row-query (add-element-to-entity-list
                         (replace-in-seqs basic-row-query :none nil)
                         ['(:top-level :non-semantic)])
+             row-items (expr order-items-R
+                         (matching-items row-query store))
              columns (expr order-items-R
                        (entity/label->elements table-item :column))
+             ;; Unlike row headers for tags, where the header
+             ;; information is computed from the items of the elements,
+             ;; here the header information is explicitly provided by
+             ;; the table definition. So the members of the hierarchy
+             ;; are the column definitions.
              columns-elements (expr-seq map semantic-elements-R columns)
              columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
                                      columns-elements)
-             row-items (expr order-items-R
-                         (matching-items row-query store))
+
              hierarchy (hierarchy-by-canonical-info
                         (map (fn [column elements lists]
                                {:item column
@@ -923,8 +919,9 @@
                                             :none nil)})
                              columns columns-elements columns-lists)
                         #{})
-             headers (table-header-DOM-R hierarchy '(nil :tag)
-                                         (query-referent row-query) inherited)]
+             headers (table-header-DOM-R
+                      hierarchy '(nil :tag) (query-referent row-query)
+                      (assoc inherited :subject (item-referent table-item)))]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)

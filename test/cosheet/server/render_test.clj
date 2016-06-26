@@ -66,12 +66,13 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 4)))
+                        (range 5)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
-(def unused-orderable (nth orderables 4))
+(def o4 (nth orderables 4))
+(def unused-orderable (nth orderables 5))
 
 (deftest item-DOM-R-test
   (let [root-id (make-id "root")
@@ -382,3 +383,50 @@
                  :subject (item-referent age)
                  :template '(nil ("confidence" :tag))}]]]]])))
     ))
+
+(deftest table-DOM-test
+  (let [inherited {:priority 1,
+                   :width 3.0,
+                   :parent-key [:foo]}
+        joe-list `("Joe"
+                   (:top-level :non-semantic)
+                   (~o2 :order :non-semantic)
+                   ("male" (~o1 :order :non-semantic))
+                   ("married" (~o2 :order :non-semantic))
+                   (39 (~o3 :order :non-semantic)
+                       ("age" :tag)
+                       ("doubtful" "confidence"))
+                   (45 (~o4 :order :non-semantic)
+                       ("age" :tag)))
+        jane-list `("Jane"
+                    (:top-level :non-semantic)
+                    (~o1 :order :non-semantic)
+                    "plain" "plain")]
+    (let [table-list `("table"
+                       (:none :row-query)
+                       (:none ("name" :tag (~o1 :order :non-semantic))
+                              (~o1 :order :non-semantic)
+                              (:column :non-semantic))
+                       (:none ("name" :tag (~o1 :order :non-semantic))
+                              ("id" :tag (~o2 :order :non-semantic))
+                              (~o2 :order :non-semantic)
+                              (:column :non-semantic))
+                       (:none ("name" :tag (~o1 :order :non-semantic))
+                              (~o3 :order :non-semantic)
+                              (:column :non-semantic))
+                       (:none ("age" :tag (~o1 :order :non-semantic))
+                              ("id" :tag (~o2 :order :non-semantic))
+                              (~o4 :order :non-semantic)
+                              (:column :non-semantic)))
+          [dom table joe jane] (let-mutated [table table-list
+                                             joe joe-list
+                                             jane jane-list]
+                                 (expr-let [dom (table-DOM-R table inherited)]
+                                   [dom table joe jane]))
+          query (current-value (entity/label->content table :row-query))
+          c1 (first (current-value (label->elements table o1)))
+          name1 (first (current-value (label->elements c1 :tag)))
+          name1-tag-spec (first (current-value (entity/elements name1)))
+          c2 (first (current-value (label->elements table o2)))
+          id (first (current-value (label->elements c2 o2)))]
+      (println (simplify-for-print dom)))))

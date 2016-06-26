@@ -818,8 +818,7 @@
          ;; adjacent information for new-sibling.
          (virtual-item-DOM key (:subject inherited) :after inherited)
          (item-stack-DOM items nil {} inherited))
-       {:class "table-cell has-border"
-        :style {:width (str base-table-column-width "px")}}))))
+       {:class "table-cell has-border"}))))
 
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."

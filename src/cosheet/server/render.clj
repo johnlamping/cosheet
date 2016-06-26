@@ -215,13 +215,14 @@
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
   generate DOM for a vertical list of a component for each item.  The
-  attributes and inherited can be either a single map to be used for
-  all items, or a sequence of maps, one per item."
+  excludeds, attributes and inherited can be either a single value to
+  be used for all items, or a sequence of values, one per item."
   [items excludeds attributes inherited]
   (vertical-stack
    (map (fn [item excluded attributes inherited]
           (add-attributes (item-component item excluded inherited) attributes))
-        items excludeds
+        items
+        (if (sequential? excludeds) excludeds (repeat excludeds))
         (if (sequential? attributes) attributes (repeat attributes))
         (if (sequential? inherited) inherited (repeat inherited)))
    :class "item-stack"))
@@ -651,8 +652,7 @@
                    :style {:width (str width "px")}}
              dom])
     rightmost (add-attributes {:class "rightmost"})
-    (= (:template inherited) '(nil :tag)) (add-attributes
-                                           {:class "tags"})))
+    (= (:template inherited) '(nil :tag)) (add-attributes {:class "tag"})))
 
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
@@ -670,7 +670,8 @@
                            ordered-elements)]
     (add-table-header-formatting
      (item-stack-DOM
-      ordered-elements excludeds {}
+      ordered-elements excludeds
+      (if (= (:template inherited) '(nil :tag)) {:class "tag"} {})
       (add-add-column-commands
        element-lists column-requests header-inherited inherited))
      column-requests rightmost inherited)))
@@ -782,9 +783,9 @@
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
-           :item Item that identifies the column.
-       :template Condition that each element of the column must satisfy.
-     :exclusions Conditions that elements must not satisfy."
+     :column-item Item that identifies the column.
+        :template Condition that each element of the column must satisfy.
+      :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
@@ -794,7 +795,7 @@
     (mapcat (fn [below]
               (if (hierarchy-node? below)
                 (table-hierarchy-node-column-descriptions below)
-                [{:item (:item below)
+                [{:column-item (:item below)
                   :template condition
                   :exclusions excluded-conditions}]))
             next-level)))
@@ -805,42 +806,48 @@
   [items new-row-template inherited]
   (let [inherited (-> inherited
                       (assoc :width 0.75)
-                      (assoc-in :selectable-attributes
-                                {:commands nil
-                                 :row {:item-referent (:subject inherited)
-                                       :template new-row-template}}))]
-    (if (empty? items)
-      ;; TODO: Get our left neighbor as an arg, and pass it in
-      ;; as adjacent information for new-sibling.
-      (add-attributes (virtual-item-DOM
-                       key (:subject inherited) :after inherited)
-                      {:class "table-cell has-border"})
-      (expr-let [items (order-items-R items)]
-        (add-attributes (item-stack-DOM items nil {} inherited)
-                        {:class "table-cell has-border"})))))
+                      (update-in [:selectable-attributes]
+                                 #(into-attributes
+                                   % {:commands {:add-row nil}
+                                      :row {:item-referent (:subject inherited)
+                                            :template new-row-template}})))]
+    (expr-let [items (order-items-R items)]
+      (add-attributes
+       (if (empty? items)
+         ;; TODO: Get our left neighbor as an arg, and pass it in as
+         ;; adjacent information for new-sibling.
+         (virtual-item-DOM key (:subject inherited) :after inherited)
+         (item-stack-DOM items nil {} inherited))
+       {:class "table-cell has-border"
+        :style {:width (str base-table-column-width "px")}}))))
 
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
-  [row-item new-row-template {:keys [item template exclusions]} inherited]
+  [row-item new-row-template
+   {:keys [column-item template exclusions]} inherited]
   (let [inherited-down (assoc inherited
                               :parent-key (conj (:parent-key inherited)
-                                                (:item-id item))
+                                                (:item-id column-item))
                               :template template)]
     (expr-let [matches (matching-elements template row-item)
                do-not-show (when exclusions
                              (expr-seq map #(matching-elements % row-item)
                                        exclusions))]
-      (let [elements (seq (clojure.set/difference (set matches)
-                                                  (set do-not-show)))]
-        (table-cell-items-DOM-R elements new-row-template inherited)))))
+      (let [elements (seq (clojure.set/difference
+                           (set matches)
+                           (set (apply concat do-not-show))))]
+        (table-cell-items-DOM-R elements new-row-template inherited-down)))))
 
 (defn table-row-DOM-R
   "Generate dom for a table row."
   [row-item row-key new-row-template column-descriptions inherited]
-  (let [inherited (assoc :parent-key row-key)]
-    (expr-let [cells (expr-seq (map #(table-cell-DOM-R
-                                      row-item new-row-template % inherited)
-                                    column-descriptions))]
+  (let [inherited (-> inherited
+                      (assoc :parent-key row-key)
+                      (update-in [:subject]
+                                 #(item-or-exemplar-referent row-item %)))]
+    (expr-let [cells (expr-seq map #(table-cell-DOM-R
+                                     row-item new-row-template % inherited)
+                               column-descriptions)]
       (into [:div {:key row-key}] cells))))
 
 (defn table-row-DOM-component

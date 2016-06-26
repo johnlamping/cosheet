@@ -66,13 +66,14 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 5)))
+                        (range 6)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
-(def o4 (nth orderables 4))
-(def unused-orderable (nth orderables 5))
+(def o5 (nth orderables 4))
+(def o6 (nth orderables 5))
+(def unused-orderable (nth orderables 6))
 
 (deftest item-DOM-R-test
   (let [root-id (make-id "root")
@@ -397,13 +398,18 @@
                        ("age" :tag)
                        ("doubtful" "confidence"))
                    (45 (~o4 :order :non-semantic)
-                       ("age" :tag)))
+                       ("age" :tag))
+                   ("Joe" (~o5 :order :non-semantic)
+                          ("name" :tag))
+                   ("Joseph" (~o6 :order :non-semantic)
+                             ("name" :tag (~o1 :order :non-semantic))
+                             ("id" :tag (~o2 :order :non-semantic))))
         jane-list `("Jane"
                     (:top-level :non-semantic)
                     (~o1 :order :non-semantic)
                     "plain" "plain")]
     (let [table-list `("table"
-                       (:none :row-query)
+                       ((:none (:none ("age" :tag))) :row-query)
                        (:none ("name" :tag (~o1 :order :non-semantic))
                               (~o1 :order :non-semantic)
                               (:column :non-semantic))
@@ -429,4 +435,9 @@
           name1-tag-spec (first (current-value (entity/elements name1)))
           c2 (first (current-value (label->elements table o2)))
           id (first (current-value (label->elements c2 o2)))]
-      (println (simplify-for-print dom)))))
+      (println (simplify-for-print dom))
+      (let [row-component (nth dom 3)
+            row-command (nth row-component 2)
+            row-dom (current-value
+                     (apply (first row-command) (rest row-command)))]
+        (println (simplify-for-print row-dom))))))

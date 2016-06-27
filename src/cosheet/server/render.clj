@@ -502,7 +502,7 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
-        (item-stack-DOM elements excludeds {} inherited)
+        (item-stack-DOM ordered-elements excludeds {} inherited)
         (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
@@ -597,7 +597,7 @@
   [column-items element-template inherited]
   (let [subject (:subject inherited)
         new-element-template (cons '??? (rest element-template))
-        new-header-template (list* (concat (:template inherited)
+        new-header-template (list* (concat (or (:template inherited) '(nil))
                                            [new-element-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
@@ -634,7 +634,7 @@
     (map (fn [element-lists]
            (let [modified-header-inherited
                  (update-in header-inherited [:template]
-                            #(list* (concat % element-lists)))]
+                            #(list* (concat (or % '(nil)) element-lists)))]
              (update-in inherited [:selectable-attributes]
                         #(into-attributes
                           % (attributes-for-header-add-column-command
@@ -652,7 +652,8 @@
             [:div {:class "column-header-container" 
                    :style {:width (str width "px")}}
              dom])
-    rightmost (add-attributes {:class "rightmost"})))
+    rightmost (add-attributes {:class "rightmost"})
+    is-tag (add-attributes {:class "tag"})))
 
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
@@ -819,7 +820,8 @@
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-sibling.
-               (virtual-item-DOM key (:subject inherited) :after inherited)
+               (virtual-item-DOM
+                (:parent-key inherited) (:subject inherited) :after inherited)
                (elements-DOM-R items false inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 
@@ -930,7 +932,9 @@
                         #{})
              headers (table-header-DOM-R
                       hierarchy '(nil :tag) (query-referent row-query)
-                      (assoc inherited :subject (item-referent table-item)))]
+                      (assoc inherited
+                             :subject (item-referent table-item)
+                             :template '(nil (:column :non-semantic))))]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)

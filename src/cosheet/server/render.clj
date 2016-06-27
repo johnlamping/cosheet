@@ -496,7 +496,7 @@
        all-labels (expr-seq map #(matching-elements '(nil :tag) %)
                             ordered-elements)
        excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
-                             ordered-elements)]
+                           ordered-elements)]
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
                       all-labels excludeds)
@@ -645,14 +645,14 @@
 (defn add-table-header-formatting
   "Given a dom of header elements, return a dom with all the appropriate
   formatting."
-  [dom column-requests rightmost inherited]
-  (cond-> (let [dom (add-attributes dom {:class "column-header"})
+  [dom column-requests rightmost is-tag]
+  (cond-> (let [dom (add-attributes dom {:class (cond-> "column-header"
+                                                  is-tag (str " tag"))})
                 width (* (count column-requests) base-table-column-width)]
             [:div {:class "column-header-container" 
                    :style {:width (str width "px")}}
              dom])
-    rightmost (add-attributes {:class "rightmost"})
-    (= (:template inherited) '(nil :tag)) (add-attributes {:class "tag"})))
+    rightmost (add-attributes {:class "rightmost"})))
 
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
@@ -668,13 +668,14 @@
        element-lists (expr-seq map semantic-to-list-R ordered-elements)
        excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
-    (add-table-header-formatting
-     (item-stack-DOM
-      ordered-elements excludeds
-      (if (= (:template inherited) '(nil :tag)) {:class "tag"} {})
-      (add-add-column-commands
-       element-lists column-requests header-inherited inherited))
-     column-requests rightmost inherited)))
+    (let [is-tag (= (:template inherited) '(nil :tag))]
+      (add-table-header-formatting
+       (item-stack-DOM
+        ordered-elements excludeds
+        (if is-tag {:class "tag"} {})
+        (add-add-column-commands
+         element-lists column-requests header-inherited inherited))
+       column-requests rightmost is-tag))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
@@ -693,16 +694,17 @@
         delete-attributes (attributes-for-header-delete-command
                            node example-elements identifying-item
                            rows-referent subject)
-        inherited-down (let [temp (assoc inherited
-                                         :template elements-template
-                                         :subject column-referent
-                                         :width (* 0.75 (count descendants)))]
-                         (if delete-attributes
-                           (assoc temp :selectable-attributes delete-attributes)
-                           (dissoc temp :selectable-attributes)))]
+        column-inherited (let [temp (assoc inherited
+                                           :template elements-template
+                                           :subject column-referent
+                                           :width (* 0.75 (count descendants)))]
+                           (if delete-attributes
+                             (assoc temp :selectable-attributes
+                                    delete-attributes)
+                             (dissoc temp :selectable-attributes)))]
     (table-header-node-elements-DOM-R
      example-elements (map :item descendants) rightmost
-     inherited inherited-down)))
+     inherited column-inherited)))
 
 (def table-header-subtree-DOM-R)
 
@@ -751,7 +753,8 @@
               inherited (-> inherited
                             (update-in [:priority] inc)
                             (update-in [:template]
-                                       #(list* (concat % properties-list))))]
+                                       #(list* (concat (or % '(nil))
+                                                       properties-list))))]
           (expr-let
               [dom-seqs (expr-seq
                          map (fn [below rightmost]
@@ -768,7 +771,8 @@
              (into [:div {:class "column-header-sequence"}] dom-seqs)]))))))
 
 (defn table-header-DOM-R
-  "Generate DOM for column headers for the specified templates.
+  "Generate DOM for column headers given the hierarchy. elements-template
+  gives what new header items need to satisfy.
   The column will contain those elements of the rows that match the templates."
   [hierarchy elements-template rows-referent inherited]
   (expr-let [columns (expr-seq
@@ -811,14 +815,13 @@
                                    % {:commands {:add-row nil}
                                       :row {:item-referent (:subject inherited)
                                             :template new-row-template}})))]
-    (expr-let [items (order-items-R items)]
-      (add-attributes
-       (if (empty? items)
-         ;; TODO: Get our left neighbor as an arg, and pass it in as
-         ;; adjacent information for new-sibling.
-         (virtual-item-DOM key (:subject inherited) :after inherited)
-         (item-stack-DOM items nil {} inherited))
-       {:class "table-cell has-border"}))))
+    (expr-let
+        [dom (if (empty? items)
+               ;; TODO: Get our left neighbor as an arg, and pass it
+               ;; in as adjacent information for new-sibling.
+               (virtual-item-DOM key (:subject inherited) :after inherited)
+               (elements-DOM-R items false inherited))]
+      (add-attributes dom {:class "table-cell has-border"}))))
 
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."

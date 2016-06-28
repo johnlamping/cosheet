@@ -410,19 +410,22 @@
                     "plain" "plain")]
     (let [table-list `("table"
                        ((:none (:none ("age" :tag))) :row-query)
-                       (:none ("name" :tag (~o1 :order :non-semantic))
+                       (:none ("single" :tag (~o1 :order :non-semantic))
                               (~o1 :order :non-semantic)
                               (:column :non-semantic))
                        (:none ("name" :tag (~o1 :order :non-semantic))
-                              ("id" :tag (~o2 :order :non-semantic))
                               (~o2 :order :non-semantic)
                               (:column :non-semantic))
                        (:none ("name" :tag (~o1 :order :non-semantic))
+                              ("id" :tag (~o2 :order :non-semantic))
                               (~o3 :order :non-semantic)
+                              (:column :non-semantic))
+                       (:none ("name" :tag (~o1 :order :non-semantic))
+                              (~o4 :order :non-semantic)
                               (:column :non-semantic))
                        (:none ("age" :tag (~o1 :order :non-semantic))
                               ("id" :tag (~o2 :order :non-semantic))
-                              (~o4 :order :non-semantic)
+                              (~o5 :order :non-semantic)
                               (:column :non-semantic)))
           [dom table joe jane] (let-mutated [table table-list
                                              joe joe-list

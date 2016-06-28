@@ -244,16 +244,18 @@
   (assert (entity/atom? content))
   (let [is-placeholder (and (symbol? content)
                             (= (subs (str content) 0 3) "???"))]
+    ;; Any attributes we inherit take precedence over basic commands,
+    ;; but nothing else.
     [:div (into-attributes
-           (:selectable-attributes inherited)
+           (into-attributes {:commands {:set-content nil
+                                        :delete nil
+                                        :add-element nil
+                                        :add-sibling nil}}
+                            (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder"))
             :key key
-            :target (item-target item inherited)
-            :commands {:set-content nil
-                       :delete nil
-                       :add-element nil
-                       :add-sibling nil}})
+            :target (item-target item inherited)})
      (cond (= content :none) ""
            is-placeholder "???"                     
            true (str content))]))
@@ -567,8 +569,8 @@
 
 (defn attributes-for-header-delete-command
   "Return attributes for the delete command, if it needs special attributes."
-  [node example-elements identifying-item rows-referent subject]
-  ;; The only special cases are where there is just one element.
+  [node example-elements rows-referent subject]
+  ;; The special cases are where there is just one element.
   (when (= (count example-elements) 1)
     (let [next-level (hierarchy-node-next-level node)
           non-trivial-children (filter hierarchy-node? next-level)
@@ -577,7 +579,7 @@
           ;; column request, while if we do, it removes the element
           ;; from requests and from elements in the rows.
           (if (empty? non-trivial-children)
-            (item-or-exemplar-referent identifying-item subject)
+            (item-or-exemplar-referent (:item (first next-level)) subject)
             ;; We don't include the item maps at the next level,
             ;; because removing the element from the corresponding
             ;; requests would leave them with no elements.
@@ -681,15 +683,11 @@
   (let [subject (:subject inherited)
         descendants (hierarchy-node-descendants node) 
         example-elements (hierarchy-node-example-elements node)
-        identifying-item (if (empty? example-elements)
-                           (:item (first (:members node)))
-                           (first example-elements))
         column-referent (table-column-elements-referent
                            descendants (hierarchy-node-extent node) nil
                            rows-referent subject)
         delete-attributes (attributes-for-header-delete-command
-                           node example-elements identifying-item
-                           rows-referent subject)
+                           node example-elements rows-referent subject)
         column-inherited (let [temp (assoc inherited
                                            :template elements-template
                                            :subject column-referent

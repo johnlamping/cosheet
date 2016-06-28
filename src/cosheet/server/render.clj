@@ -718,9 +718,11 @@
     ;; TODO: Need to make add-column and delete work for these.
     (let [exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
           subject (table-column-elements-referent
-                          [below] [below] exclude-from-members
-                          rows-referent (:subject inherited))
-          inherited (assoc inherited :subject subject)
+                   [below] [below] exclude-from-members
+                   rows-referent (:subject inherited))
+          inherited (assoc inherited
+                           :subject subject
+                           :template elements-template)
           adjacent (item-or-exemplar-referent (:item below) subject)
           key (conj (:parent-key inherited) (:item-id (:item below)))
           is-tag (some #{:tag} elements-template)]
@@ -752,11 +754,6 @@
            (if (and (= (count next-level) 1) (empty? non-trivial-children))
              node-dom
              (let [properties-list (canonical-set-to-list (:properties node))
-                   inherited (-> inherited
-                                 (update-in [:priority] inc)
-                                 (update-in [:template]
-                                            #(list* (concat (or % '(nil))
-                                                            properties-list))))
                    is-tag (some #{:tag} elements-template)]
                (expr-let
                    [dom-seqs (expr-seq

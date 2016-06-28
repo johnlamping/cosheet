@@ -73,7 +73,7 @@
   [store subject-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)]
-    (if (or (keyword? entity-content)
+    (if (or (and (keyword? entity-content) (empty? entity-elements))
             (some #{:non-semantic} entity-elements))
       ;; Keyword markers and non-semantic elements don't get an ordering.
       (let [[s1 id] (add-entity store subject-id
@@ -114,13 +114,15 @@
   "Given a list of items and a position,
   return the furthest item in that position."
   [items position]
-  (if (= (count items) 1)
-    (first items)
-    (second
-     (reduce (case position
-               :before (fn [a b] (if (earlier? (first a) (first b)) a b))
-               :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
-             (map (fn [item] [(label->content item :order) item]) items)))))
+  (cond
+    (empty? items) nil
+    (= (count items) 1) (first items)
+    true (second
+          (reduce (case position
+                    :before (fn [a b] (if (earlier? (first a) (first b)) a b))
+                    :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
+                  (map (fn [item] [(label->content item :order) item])
+                       items)))))
 
 (defn order-element-for-item
   "Return an element with the order information for item,

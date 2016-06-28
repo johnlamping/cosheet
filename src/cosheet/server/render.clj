@@ -798,7 +798,8 @@
   [node]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
-        condition (cons nil (canonical-set-to-list (:properties node)))
+        condition (cons nil (canonical-set-to-list
+                             (:cumulative-properties node)))
         excluded-conditions (map :condition
                                  (hierarchy-nodes-extent non-trivial-children))]
     (mapcat (fn [below]
@@ -929,6 +930,8 @@
                                 :property-elements elements
                                 :property-canonicals (map canonicalize-list
                                                           lists)
+                                ;; TODO: Get rid of this,
+                                ;; as canonicals has the same info.
                                 :condition (replace-in-seqs
                                             (list* (into '[nil] lists))
                                             :none nil)})
@@ -938,7 +941,7 @@
                       hierarchy '(nil :tag) (query-referent row-query)
                       (assoc inherited
                              :subject (item-referent table-item)
-                             :template '(nil (:column :non-semantic))))]
+                             :template '(:none (:column :non-semantic))))]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)

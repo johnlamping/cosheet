@@ -754,6 +754,9 @@
            (if (and (= (count next-level) 1) (empty? non-trivial-children))
              node-dom
              (let [properties-list (canonical-set-to-list (:properties node))
+                   inherited (update-in inherited [:template]
+                                        #(list* (concat (or % '(:none))
+                                                        properties-list)))
                    is-tag (some #{:tag} elements-template)]
                (expr-let
                    [dom-seqs (expr-seq

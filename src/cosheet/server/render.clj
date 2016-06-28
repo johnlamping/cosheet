@@ -727,7 +727,8 @@
           inherited (assoc inherited :subject subject)
           adjacent (item-or-exemplar-referent (:item below) subject)]
       (add-table-header-formatting
-       (virtual-item-DOM (:parent-key inherited) adjacent :after inherited)
+       (virtual-item-DOM (conj (:parent-key inherited) (:item-id (:item below)))
+                         adjacent :after inherited)
        [below] rightmost inherited))))
 
 (defn nils-until-last

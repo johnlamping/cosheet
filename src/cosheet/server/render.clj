@@ -724,7 +724,9 @@
           adjacent (item-or-exemplar-referent (:item below) subject)
           key (conj (:parent-key inherited) (:item-id (:item below)))
           is-tag (some #{:tag} elements-template)]
-      (cond-> (virtual-item-DOM key adjacent :after inherited)
+      (cond-> (add-attributes
+               (virtual-item-DOM key adjacent :after inherited)
+               {:style {:width (str base-table-column-width "px")}})
         is-tag (add-attributes {:class "tag"})))))
 
 (defn nils-until-last

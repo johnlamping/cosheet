@@ -713,19 +713,25 @@
     ;; This is a member that is displayed underneath its node. Since
     ;; the display of the node already presents all the properties, we
     ;; need a header DOM with no elements.
-    ;; TODO: Need to make add-column and delete work for these.
-    (let [exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
-          subject (table-column-elements-referent
-                   [below] [below] exclude-from-members
-                   rows-referent (:subject inherited))
-          inherited (assoc inherited
-                           :subject subject
-                           :template elements-template)
-          adjacent (item-or-exemplar-referent (:item below) subject)
+    ;; TODO: Need to make add-column work for these.
+    (let [request-referent (item-or-exemplar-referent
+                            (:item below) (:subject inherited))
+          exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
+          column-subject (table-column-elements-referent
+                          [below] [below] exclude-from-members
+                          rows-referent (:subject inherited))
+          inherited (-> inherited
+                        (assoc :subject column-subject
+                               :template elements-template)
+                        (update-in
+                         [:selectable-attributes]
+                         #(into-attributes
+                           % {:commands
+                              {:delete {:delete-referent request-referent}}})))
           key (conj (:parent-key inherited) (:item-id (:item below)))
           is-tag (some #{:tag} elements-template)]
       (cond-> (add-attributes
-               (virtual-item-DOM key adjacent :after inherited)
+               (virtual-item-DOM key request-referent :after inherited)
                {:style {:width (str base-table-column-width "px")}})
         is-tag (add-attributes {:class "tag"})))))
 
@@ -894,7 +900,7 @@
   ;; TODO: Make there there be an element on a table descriptor that
   ;;       says what elements of new columns must have, rather than
   ;;       the current '(nil :tag)
-  ;; TODO: Add the "other" column it a table requests it.
+  ;; TODO: Add the "other" column if a table requests it.
   [table-item inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))

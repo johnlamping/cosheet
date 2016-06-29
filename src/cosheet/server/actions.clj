@@ -27,9 +27,9 @@
 (defn substitute-in-key
   "Substitute into the key, instantiating patterns with the item.  A
   pattern is of the form [:pattern <template>], where template is
-  either empty, or contains a variable named :v. An empty pattery will
-  be replaced by the item, while a non-empty pattern gets replaced by
-  the id of the match for its variable."
+  either empty, or somewhere contains a variable named :v. An empty
+  pattery will be replaced by the item, while a non-empty pattern gets
+  replaced by the id of the match for its variable."
   [key item]
   (vec (map (fn [part]
               (if (and (sequential? part)
@@ -226,7 +226,9 @@
 (defn do-add-column
   [store key attributes]
   (when-let [column (:column attributes)]
-    (generic-add store column (:parent-key column) key true)))
+    (generic-add
+     store (assoc column :select-pattern (:select-pattern attributes))
+     (:parent-key column) key true)))
 
 (defn do-add-element
   [store key attributes]

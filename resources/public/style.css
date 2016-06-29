@@ -68,6 +68,13 @@ body { /* override the default of 8px */
     min-height: 15px; /* Make no-content cells have minimum height */
 }
 
+/* For ??? in column headers */
+.placeholder {
+    font-size: smaller;
+    font-style: oblique;
+    color: rgba(0, 0, 0, 0.4);
+}
+
 .content-text {
     min-height: 20px;
     overflow-wrap: break-word;
@@ -314,6 +321,7 @@ body { /* override the default of 8px */
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+    text-align: center;
     border-width: 2px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;

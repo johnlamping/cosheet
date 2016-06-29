@@ -38,7 +38,6 @@
                   (if pattern
                     (let [matches (template-matches pattern item)
                           value (:v (first matches))]
-                      (assert (= (count matches) 1))
                       (assert value)
                       (:item-id value))
                     (:item-id item)))

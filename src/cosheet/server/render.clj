@@ -293,7 +293,8 @@
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:commands {:add-group nil}
+       % {:commands {:add-group {:select-pattern (conj (:parent-key inherited)
+                                                       [:pattern])}}
           :group (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
 
 (defn hierarchy-members-DOM
@@ -351,7 +352,8 @@
         tags-parent-key (conj (:parent-key inherited)
                               (:item-id (:item example-descendant))
                               :outside)
-        inherited-for-tags (assoc inherited
+        inherited-for-tags (assoc (add-adjacent-group-command
+                                   hierarchy-node inherited)
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
                                   :subject items-referent)]

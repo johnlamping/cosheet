@@ -237,12 +237,16 @@
 (defn do-add-group
   [store key attributes]
   (when-let [group (:group attributes)]
-    (generic-add store group (:parent-key group) key true)))
+    (generic-add
+     store (assoc group :select-pattern (:select-pattern attributes))
+     (:parent-key group) key true)))
 
 (defn do-add-row
   [store key attributes]
   (when-let [row (:row attributes)]
-    (generic-add store row (:parent-key row) key true)))
+    (generic-add
+     store (assoc row :select-pattern (:select-pattern attributes))
+     (:parent-key row) key true)))
 
 (defn do-add-column
   [store key attributes]

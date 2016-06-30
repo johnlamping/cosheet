@@ -177,22 +177,31 @@
    sibling-referent or (adjacent-referent and subject-referent) must
    be provided."
   [store target-info parent-key old-key use-bigger]
-  (let [{:keys [item-referent       ; item(s) referred to
-                subject-referent    ; subject(s) of the new item(s)
-                adjacents-referent  ; groups of item(s) adjacent to new item(s)
-                position            ; :before or :after item/adjacent
-                template            ; added item(s) should satisfy this
-                select-pattern]     ; a key pattern to use for selecting 
+  (let [{:keys [item-referent             ; item(s) referred to
+                subject-referent          ; subject(s) of the new item(s)
+                adjacent-referent         ; item(s) adjacent to new item(s)
+                adjacent-groups-referent  ; groups of item(s) adjacent to
+                                          ; new item(s)
+                position                  ; :before or :after item/adjacent
+                template                  ; added item(s) should satisfy this
+                select-pattern]           ; a key pattern to use for selecting 
          :or {position :after}}         
         target-info]
     (println "adding" (simplify-for-print target-info))
-    (assert (or item-referent adjacents-referent))
-    (assert (not (and item-referent adjacents-referent)))
-    (let [adjacents (if adjacents-referent
-                      (map #(furthest-item % position)
-                           (instantiate-referent adjacents-referent store))
+    (assert (= (count (remove nil? [item-referent
+                                    adjacent-referent
+                                    adjacent-groups-referent]))
+               1))
+    (let [adjacents (cond
+                      adjacent-referent
                       (apply concat
-                             (instantiate-referent item-referent store)))
+                             (instantiate-referent adjacent-referent store))
+                      adjacent-groups-referent
+                      (map #(furthest-item % position)
+                           (instantiate-referent adjacent-groups-referent
+                                                 store))
+                      true (apply concat
+                                  (instantiate-referent item-referent store)))
           subject-ids (if subject-referent
                         (map :item-id
                              (apply concat
@@ -234,7 +243,7 @@
   (when-let [subject-referent (:item-referent (:target attributes))]
     (generic-add store
                  {:subject-referent subject-referent
-                  :adjacents-referent subject-referent}
+                  :adjacent-groups-referent subject-referent}
                  key key true)))
 
 (defn update-delete

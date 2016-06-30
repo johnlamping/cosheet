@@ -255,17 +255,11 @@
      (:property-elements example))))
 
 (defn hierarchy-node-items-referent
-  "Given a hierarchy node, return an item referent to all its descendants."
-  ;; TODO: Get rid of this obsolete version, once we fully move away from keys.
-  ([hierarchy-node]
-   (let [descendants (hierarchy-node-descendants hierarchy-node)
-         affected-items (map :item descendants)]
-     (if (= (count affected-items) 1)
-       (item-referent (first affected-items))
-       (parallel-referent [] affected-items))))
-  ([hierarchy-node subject-referent]
-   (let [descendants (hierarchy-node-descendants hierarchy-node)
-         affected-items (map :item descendants)]
-     (referent/union-referent
-      (map #(referent/item-or-exemplar-referent % subject-referent)
-           affected-items)))))
+  "Given a hierarchy node, return a referent to all its descendants,
+  returning one group per descendant."
+  [hierarchy-node subject-referent]
+  (let [descendants (hierarchy-node-descendants hierarchy-node)
+        affected-items (map :item descendants)]
+    (referent/parallel-union-referent
+     (map #(referent/item-or-exemplar-referent % subject-referent)
+          affected-items))))

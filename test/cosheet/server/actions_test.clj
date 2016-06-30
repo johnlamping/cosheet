@@ -179,7 +179,7 @@
         result2 (generic-add store
                              {:template '(nil ("new" :tag))
                               :subject-referent (item-referent jane)
-                              :adjacents-referent (item-referent jane-age)}
+                              :adjacent-referent (item-referent jane-age)}
                              ["parent-key"] ["old-key"] true)]    
     (is (check (canonicalize-list (to-list new-element))
                (canonicalize-list `(""
@@ -256,7 +256,7 @@
     (let [result (do-set-content
                   store ["joe-male"]
                   {:target {:subject-referent (item-referent joe-male)
-                            :adjacents-referent (item-referent joe-male)
+                            :adjacent-groups-referent (item-referent joe-male)
                             :template '(nil :tag)}
                    :from ""
                    :to "gender"})]

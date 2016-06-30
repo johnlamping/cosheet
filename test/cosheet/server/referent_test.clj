@@ -110,7 +110,7 @@
                [(item-referent joe-age)
                 (elements-referent '(nil "age") (item-referent jane))
                 (query-referent '(nil (nil "age")))]) store)
-             [(as-set [joe-age jane-age joe jane])]))
+             (as-set [[joe-age] [jane-age] (as-set [joe jane])])))
   ;; Exemplar of union
   (is (check (instantiate-referent
               (exemplar-referent joe-age
@@ -131,10 +131,15 @@
              (as-set [[joe-age-tag] [jane-age-tag]])))
   ;; Union of non-trivial sequences
   (is (check (instantiate-referent
-              (union-referent [(elements-referent
-                                45 (query-referent '(nil (nil "age"))))
-                               (elements-referent
-                                39 (query-referent '(nil (nil "age"))))])
+              (union-referent
+               [(elements-referent 45 (query-referent '(nil (nil "age"))))
+                (elements-referent 39 (query-referent '(nil (nil "age"))))])
+              store)
+             (as-set [(as-set [joe-age jane-age]) [joe-bogus-age]])))
+  ;; Corresponding parallel union
+  (is (check (instantiate-referent
+              (parallel-union-referent
+               [(elements-referent 45 (query-referent '(nil (nil "age"))))
+                (elements-referent 39 (query-referent '(nil (nil "age"))))])
               store)
              (as-set [(as-set [joe-age joe-bogus-age]) [jane-age]]))))
-

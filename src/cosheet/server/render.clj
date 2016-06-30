@@ -13,7 +13,8 @@
             (cosheet.server
              [referent :refer [item-referent
                                elements-referent query-referent
-                               union-referent difference-referent
+                               union-referent parallel-union-referent
+                               difference-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
                                canonicalize-list immutable-semantic-to-list]]
@@ -65,13 +66,15 @@
                ; the UI, and the rest of the command expression.
       :target  ; The item (or virtual new item) that the dom refers to
                ; It is itself a map, with some of these keys
-               ; :item-referent       Item(s) referred to
-               ; :subject-referent    Subject(s) of the virtual item(s)
-               ; :adjacents-referent  Groups of item(s) adjacent to new item(s)
-               ; :position            :before or :after item/adjacent
-               ; :template            Added item(s) should satisfy this.
-               ; :parent-key          The key of the parent of a virtual
-               ;                      new item.
+               ; :item-referent             Item(s) referred to
+               ; :subject-referent          Subject(s) of the virtual item(s)
+               ; :adjacent-referent         item(s) adjacent to new item(s)
+               ; :adjacent-groups-referent  Groups of item(s) adjacent to
+               ;                            new item(s)
+               ; :position                  :before or :after item/adjacent
+               ; :template                  Added item(s) should satisfy this.
+               ; :parent-key                The key of the parent of a virtual
+               ;                            new item.
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
@@ -198,18 +201,19 @@
     (make-component {:key key} [item-DOM-R item excluded inherited])))
 
 (defn virtual-item-DOM
-  "Make a dom for a place that could hold an item, but doesn't."
-  [key adjacents-referent position inherited]
-  (let [template (:template inherited)]
-    [:div (into-attributes
-           (:selectable-attributes inherited)
-           {:class "editable"
-            :key key
-            :commands {:set-content nil}
-            :target (cond-> {:subject-referent (:subject inherited)
-                             :adjacents-referent adjacents-referent
-                             :position position}
-                      template (assoc :template template))})]))
+  "Make a dom for a place that could hold an item, but doesn't.
+  inherited must specify one of adjacent-referent or adjacent-groups-referent."
+  [key position inherited]
+  [:div (into-attributes
+         (:selectable-attributes inherited)
+         {:class "editable"
+          :key key
+          :commands {:set-content nil}
+          :target (assoc (select-keys inherited
+                                      [:template :adjacent-referent
+                                       :adjacent-groups-referent])
+                         :position position
+                         :subject-referent (:subject inherited))})])
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -272,8 +276,8 @@
                            (rest (:template inherited)))]
    (cond->
        {:subject-referent subject
-        :adjacents-referent (hierarchy-node-items-referent
-                             hierarchy-node subject)}
+        :adjacent-groups-referent (hierarchy-node-items-referent
+                                   hierarchy-node subject)}
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
@@ -308,12 +312,13 @@
       (let [subject (:subject inherited)
             adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
-            referent (item-or-exemplar-referent adjacent-item subject)
+            adjacent-referent (item-or-exemplar-referent adjacent-item subject)
             example-elements (hierarchy-node-example-elements hierarchy-node)
             key (conj (:parent-key inherited)
                       :example-element
                       (:item-id (first example-elements)))]
-        (virtual-item-DOM key referent :before inherited-down))
+        (virtual-item-DOM key :before (assoc inherited-down :adjacent-referent
+                                             adjacent-referent)))
       (let [items (map :item members)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -350,8 +355,9 @@
                                   :subject items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
-               (virtual-item-DOM (conj tags-parent-key :tags) items-referent
-                                 :after inherited-for-tags)
+               (virtual-item-DOM (conj tags-parent-key :tags) :after
+                                 (assoc inherited-for-tags
+                                        :adjacent-referent items-referent))
                (hierarchy-properties-DOM-R
                 hierarchy-node {:class "tag"} inherited-for-tags))]
         ;; Even if stacked, we need to mark the stack as "tag" too.
@@ -619,9 +625,10 @@
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])]
     {:commands {:add-column {:select-pattern select-pattern}}
-     :column {:adjacents-referent (union-referent
-                                   (map #(item-or-exemplar-referent % subject)
-                                        column-items))
+     :column {:adjacent-groups-referent (parallel-union-referent
+                                         (map #(item-or-exemplar-referent
+                                                % subject)
+                                              column-items))
               :subject-referent subject
               :position :after
               :template new-header-template}}))
@@ -731,7 +738,8 @@
           key (conj (:parent-key inherited) (:item-id (:item below)))
           is-tag (some #{:tag} elements-template)]
       (cond-> (add-attributes
-               (virtual-item-DOM key request-referent :after inherited)
+               (virtual-item-DOM
+                key :after (assoc inherited :adjacent-referent column-subject))
                {:style {:width (str base-table-column-width "px")}})
         is-tag (add-attributes {:class "tag"})))))
 
@@ -830,7 +838,8 @@
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-sibling.
                (virtual-item-DOM
-                (:parent-key inherited) (:subject inherited) :after inherited)
+                (:parent-key inherited) :after
+                (assoc inherited :adjacent-referent (:subject inherited)))
                (elements-DOM-R items false inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

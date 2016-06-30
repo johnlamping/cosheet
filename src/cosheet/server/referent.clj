@@ -29,27 +29,31 @@
 ;;; id or the list form of an element.
 
 ;;; The kinds of referent are:
-;;;        item: <an item-id>
-;;;              Refers to the single item.
-;;;    exemplar: [:exemplar <item-id> <sequence-referent>]
-;;;              For each item refered to by referent, refers to an
-;;;              element of it whose semantic information is the same
-;;;              as that of the exemplar.
-;;;    elements: [:elements <condition> <sequence-referent>]
-;;;              For each item refered to by referent, refers to the
-;;;              group of elements of it whose semantic information
-;;;              matches the condition.
-;;;       query: [:query <condition>]
-;;;              Refers to the group of items that satisfies the condition.
-;;;       union: [:union <referent> ...]
-;;;              Refers to a group of items. Each referent must
-;;;              produce the same number of groups, and the union
-;;;              refers to the sequence of groups formed by unioning
-;;;              corresponding groups from the sequences.
-;;;  difference: [:difference <referent> <referent>]
-;;;              The two referents must produce the same number of
-;;;              groups of items. Refers to the sequence of
-;;;              differences of those groups.
+;;;            item  <an item-id>
+;;;                  Refers to the singlton group of the item.
+;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
+;;;                  For each item refered to by sequence-referent,
+;;;                  refers to a singleton group of element of it
+;;;                  whose semantic information is the same as that of
+;;;                  the exemplar.
+;;;        elements  [:elements <condition> <sequence-referent>]
+;;;                  For each item refered to by referent, refers to the
+;;;                  group of elements of it whose semantic information
+;;;                  matches the condition.
+;;;           query  [:query <condition>]
+;;;                  Refers to the group of items that satisfies the condition.
+;;;           union  [:union  <referent> ...]
+;;;                  Refers to one group of items per referent, each
+;;;                  containg all items that referent refers to
+;;;  parallel-union  [:parallel-union <referent> ...]
+;;;                  Refers to a sequence of groups. Each referent must
+;;;                  produce the same number of groups, and the union
+;;;                  refers to the sequence of groups formed by unioning
+;;;                  corresponding groups from the sequences.
+;;;      difference  [:difference <referent> <referent>]
+;;;                  Returns a single group of all items refered to be the
+;;;                  first referent and not by the second.
+;;;                  differences of those groups.
 
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
@@ -68,13 +72,16 @@
   (defn union-referent? [referent]
     (and (sequential? referent) (= ( first referent) :union)))
 
+  (defn parallel-union-referent? [referent]
+    (and (sequential? referent) (= ( first referent) :parallel-union)))
+
   (defn difference-referent? [referent]
     (and (sequential? referent) (= ( first referent) :difference))))
 
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :query :union :difference}
+           (#{:exemplar :elements :query :union :parallel-union :difference}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -129,6 +136,15 @@
   (if (= (count referents) 1)
     (first referents)
     (vec (cons :union referents))))
+
+(defn parallel-union-referent
+  "Create a referent for the parallel union of the referents."
+  [referents]
+  (for [referent referents]
+    (assert (referent? referent)))
+  (if (= (count referents) 1)
+    (first referents)
+    (vec (cons :parallel-union referents))))
 
 (defn difference-referent
   "Create a difference referent."
@@ -237,12 +253,17 @@
 
 (def instantiate-referent)
 
+(defn instantiate-to-items
+  "Same as instantiate referent, except returns a list of all the
+  unique items, rather than a list of groups."
+  [referent immutable-store]
+  (distinct (apply concat (instantiate-referent referent immutable-store))))
+
 (defn map-over-instances
   "Instantiate the referent and call the function on each resulting item,
    collecting the results into a sequence of groups."
   [fun referent immutable-store]
-  (map fun
-       (apply concat (instantiate-referent referent immutable-store))))
+  (map fun (instantiate-to-items referent immutable-store)))
 
 (defn instantiate-referent
   "Return the groups of items that the referent refers to."
@@ -252,23 +273,28 @@
             [[(description->entity referent immutable-store)]])
     :exemplar (let [[_ exemplar subject] referent
                     template (condition-to-list exemplar immutable-store)]
-                (map-over-instances #(best-matching-element template %)
-                                    subject immutable-store))
+                (map #(best-matching-element template %)
+                     (instantiate-to-items subject immutable-store)))
     :elements (let [[_ condition subject] referent
                     template (condition-to-list condition immutable-store)]
-                (map-over-instances #(matching-elements template %)
-                                    subject immutable-store))
+                (map #(matching-elements template %)
+                     (instantiate-to-items subject immutable-store)))
     :query (let [[_ condition] referent
                  template (condition-to-list condition immutable-store)]
              [(matching-items condition immutable-store)])
-    :union (let [[_ & referents] referent
-                 groups (map #(instantiate-referent % immutable-store)
-                             referents)]
-             (apply map (fn [& groups] (apply concat groups)) groups))
+    :union (let [[_ & referents] referent]
+             (map #(instantiate-to-items % immutable-store)
+                  referents))
+    :parallel-union (let [[_ & referents] referent
+                          groupses (map #(instantiate-referent
+                                          % immutable-store)
+                                        referents)]
+                      (apply map (fn [& groups] (apply concat groups))
+                             groupses))
     :difference (let [[_ plus minus] referent]
-                  (map (fn [p m] (remove (set m) p))
-                       (instantiate-referent plus immutable-store)
-                       (instantiate-referent minus immutable-store)))))
+                  [(remove
+                    (set (instantiate-to-items minus immutable-store))
+                    (instantiate-to-items plus immutable-store))])))
 
 
  

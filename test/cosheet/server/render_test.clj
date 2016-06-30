@@ -22,8 +22,9 @@
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])
             (cosheet.server
-             [referent :refer [item-referent union-referent difference-referent
-                           query-referent elements-referent
+             [referent :refer [item-referent union-referent
+                               parallel-union-referent difference-referent
+                               query-referent elements-referent
                           canonicalize-list]]
              [render :refer :all]
              [hierarchy :refer [items-hierarchy-by-elements]])
@@ -136,9 +137,10 @@
           age-key [:root (:item-id age)]
           tags-key (conj age-key (:item-id one) :outside)
           none-key (conj age-key (:item-id none))
-          one-another-two-referent (union-referent [(item-referent one)
-                                                    (item-referent another)
-                                                    (item-referent two)])]
+          one-another-two-referent (parallel-union-referent
+                                    [(item-referent one)
+                                     (item-referent another)
+                                     (item-referent two)])]
       (is (check
            dom
            [:div {:class "item with-elements" :key age-key}
@@ -178,7 +180,7 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-another-two-referent}}}]]
+                           :adjacent-groups-referent one-another-two-referent}}}]]
                  ;; Another
                  [:component {:key (conj age-key (:item-id another))}
                   [item-DOM-R another [(any)]
@@ -197,7 +199,7 @@
                     :selectable-attributes
                     {:commands {:add-row nil}
                      :row {:subject-referent (item-referent age)
-                           :adjacents-referent one-another-two-referent}}}]]
+                           :adjacent-groups-referent one-another-two-referent}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
@@ -210,7 +212,7 @@
                      :selectable-attributes
                      {:commands {:add-row nil}
                       :row {:subject-referent (item-referent age)
-                            :adjacents-referent (item-referent two)
+                            :adjacent-groups-referent (item-referent two)
                             :template '(nil ("confidence" :tag))}}}]]]]]]]
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
@@ -218,7 +220,7 @@
                      :key (conj none-key :outside :tags)
                      :commands {:set-content nil}
                      :target {:subject-referent (item-referent none)
-                              :adjacents-referent (item-referent none)
+                              :adjacent-referent (item-referent none)
                               :position :after
                               :template '(nil :tag)}}]
               [:component {:key none-key}
@@ -280,12 +282,11 @@
           age-key [:root (:item-id age)]
           tags-key (conj age-key (:item-id pair) :outside)
           one-key (conj age-key (:item-id one))
-          likelihoods-referent (union-referent [(item-referent pair)
-                                                 (item-referent double)])
-          all-elements-referent (union-referent [(item-referent pair)
-                                                 (item-referent double)
-                                                 (item-referent two)
-                                                 (item-referent one)])]
+          likelihoods-referent (parallel-union-referent
+                                [(item-referent pair) (item-referent double)])
+          all-elements-referent (parallel-union-referent
+                                 [(item-referent pair) (item-referent double)
+                                  (item-referent two) (item-referent one)])]
       (is (check
            dom
            [:div {:class "item with-elements" :key age-key}
@@ -307,11 +308,11 @@
                      :commands {:set-content nil
                                 :add-row nil},
                      :target {:subject-referent (:item-id age)
-                              :adjacents-referent (:item-id pair)
+                              :adjacent-referent (:item-id pair)
                               :position :before,
                               :template '(nil ("confidence" :tag))}
                      :row {:subject-referent (:item-id age)
-                           :adjacents-referent all-elements-referent}}]]
+                           :adjacent-groups-referent all-elements-referent}}]]
              ;; Row for confidence and likelihood.
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent"}
@@ -337,7 +338,7 @@
                   :selectable-attributes
                   {:commands {:add-row nil}
                    :row {:subject-referent (item-referent age)
-                         :adjacents-referent likelihoods-referent
+                         :adjacent-groups-referent likelihoods-referent
                          :template '(nil ("confidence" :tag))}}}]]
                ;; Double
                [:component {:key (conj age-key (:item-id double))}
@@ -369,7 +370,7 @@
                  :selectable-attributes
                  {:commands {:add-row nil}
                   :row {:subject-referent (item-referent age)
-                        :adjacents-referent (item-referent two)
+                        :adjacent-groups-referent (item-referent two)
                         :template '(nil ("confidence" :tag))}}}]]]
              ;; Row for confidence
              [:div {:class "horizontal-tags-element wide"}

@@ -423,9 +423,14 @@ body { /* override the default of 8px */
     border-width: 1px;
     border-radius: 2px;
     border-color: hsl(0, 0%, 75%);
-    margin: 0px 10px 0px 10px;
+    margin: 0px 7px 0px 7px;
     display: inline-block;
 }
+
+.toolgap {
+     width: 20px;
+    display: inline-block;
+}   
 
 .tooltip {
     visibility: hidden;

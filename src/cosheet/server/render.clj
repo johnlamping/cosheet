@@ -75,6 +75,8 @@
                ; :template                  Added item(s) should satisfy this.
                ; :parent-key                The key of the parent of a virtual
                ;                            new item.
+       :group  ; The group of items (or virtual new group) that the dom belongs
+               ; to, a map with the same keys as :target
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
@@ -281,18 +283,18 @@
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
-(defn add-adjacent-row-command
-  "Given a hierarchy node and inherited, update inherited to add
-  a row adjacent to the node, if that would be different than just
-  adding a sibling."
+(defn add-adjacent-group-command
+  "Given a node from a hierarchy over elements and inherited, update
+  inherited to add an element adjacent to the group, if that would be
+  different than just adding a sibling."
   [hierarchy-node inherited]
   (if (empty? (:properties hierarchy-node))
     inherited
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:commands {:add-row nil}
-          :row (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
+       % {:commands {:add-group nil}
+          :group (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -369,7 +371,7 @@
    "Return DOM for all descendants of the hierarchy node, as a single column."
   [hierarchy-node inherited]
   (let [members (hierarchy-node-members hierarchy-node)
-        nested-inherited (add-adjacent-row-command hierarchy-node inherited)
+        nested-inherited (add-adjacent-group-command hierarchy-node inherited)
         items-dom (when (not (empty? members))
                     (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
@@ -472,7 +474,7 @@
   [hierarchy-node header-wrapper inherited]
   (let [tags-inherited (update-in inherited [:width] #(* % 0.25))
         items-inherited (update-in
-                         (add-adjacent-row-command hierarchy-node inherited)
+                         (add-adjacent-group-command hierarchy-node inherited)
                          [:width] #(* % 0.6875))
         members-dom (hierarchy-members-DOM hierarchy-node items-inherited)
         no-children (empty? (:children hierarchy-node))

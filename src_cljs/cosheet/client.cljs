@@ -90,9 +90,10 @@
                   "redo" :redo}
                  (.-id (.-target event)))
         contextual-keyword ({"add-sibling" :add-sibling
-                            "add-row" :add-row
-                             "add-column" :add-column
-                             "add-element" :add-element}
+                             "add-element" :add-element
+                             "add-group" :add-group
+                             "add-row" :add-row
+                             "add-column" :add-column}
                            (.-id (.-target event)))
         selection @selected]
     (cond keyword
@@ -157,6 +158,8 @@
       (let [command (cond (= key-codes/EQUALS key-code) [:add-sibling]
                           (= key-codes/NUM_PLUS key-code) [:add-sibling] 
                           (= key-codes/PERIOD key-code) [:add-element]
+                          (= key-codes/G key-code) [:add-group]
+                          (= key-codes/HASH key-code) [:add-group]
                           (= key-codes/DASH key-code) [:add-row]
                           (= key-codes/R key-code) [:add-row]
                           (= key-codes/BACKSLASH key-code) [:add-column]

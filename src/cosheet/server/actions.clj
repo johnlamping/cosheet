@@ -226,6 +226,19 @@
     (let [item-key (if (= (last key) :content) (pop key) key)]
       (generic-add store item (pop item-key) key true))))
 
+(defn do-add-element
+  [store key attributes]
+  (when-let [subject-referent (:item-referent (:target attributes))]
+    (generic-add store
+                 {:subject-referent subject-referent
+                  :adjacent-groups-referent subject-referent}
+                 key key true)))
+
+(defn do-add-group
+  [store key attributes]
+  (when-let [group (:group attributes)]
+    (generic-add store group (:parent-key group) key true)))
+
 (defn do-add-row
   [store key attributes]
   (when-let [row (:row attributes)]
@@ -237,14 +250,6 @@
     (generic-add
      store (assoc column :select-pattern (:select-pattern attributes))
      (:parent-key column) key true)))
-
-(defn do-add-element
-  [store key attributes]
-  (when-let [subject-referent (:item-referent (:target attributes))]
-    (generic-add store
-                 {:subject-referent subject-referent
-                  :adjacent-groups-referent subject-referent}
-                 key key true)))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -307,9 +312,10 @@
 (defn get-contextual-handler
   [action]
   ({:add-sibling do-add-sibling
+    :add-element do-add-element
+    :add-group do-add-group
     :add-row do-add-row
     :add-column do-add-column
-    :add-element do-add-element
     :delete do-delete
     :set-content do-set-content}
    action))

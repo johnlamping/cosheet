@@ -178,9 +178,9 @@
                     :subject (item-referent age)
                     :template '(nil ("confidence" :tag))
                     :selectable-attributes
-                    {:commands {:add-row nil}
-                     :row {:subject-referent (item-referent age)
-                           :adjacent-groups-referent one-another-two-referent}}}]]
+                    {:commands {:add-group nil}
+                     :group {:subject-referent (item-referent age)
+                             :adjacent-groups-referent one-another-two-referent}}}]]
                  ;; Another
                  [:component {:key (conj age-key (:item-id another))}
                   [item-DOM-R another [(any)]
@@ -197,9 +197,9 @@
                     :subject (item-referent two)
                     :template '(nil :tag)
                     :selectable-attributes
-                    {:commands {:add-row nil}
-                     :row {:subject-referent (item-referent age)
-                           :adjacent-groups-referent one-another-two-referent}}}]]
+                    {:commands {:add-group nil}
+                     :group {:subject-referent (item-referent age)
+                             :adjacent-groups-referent one-another-two-referent}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
@@ -210,10 +210,10 @@
                      :template (as-set '(nil ("confidence" :tag)
                                              ("probability" :tag)))
                      :selectable-attributes
-                     {:commands {:add-row nil}
-                      :row {:subject-referent (item-referent age)
-                            :adjacent-groups-referent (item-referent two)
-                            :template '(nil ("confidence" :tag))}}}]]]]]]]
+                     {:commands {:add-group nil}
+                      :group {:subject-referent (item-referent age)
+                              :adjacent-groups-referent (item-referent two)
+                              :template '(nil ("confidence" :tag))}}}]]]]]]]
              ;; None
              [:div {:class "horizontal-tags-element narrow"}
               [:div {:class "editable tag"
@@ -293,7 +293,7 @@
             [:div (any map?) "39"]
             [:div {:class "stack"}
              [:div {:class "horizontal-tags-element wide"}
-              ;; Row with empty item.
+              ;; Group with empty item.
               [:div {:class "tag horizontal-header top-border"}
                [:component {:key (conj tags-key (:item-id confidence1))
                             :class "tag"}
@@ -306,14 +306,14 @@
               [:div {:class "editable"
                      :key (conj age-key :example-element (:item-id confidence1))
                      :commands {:set-content nil
-                                :add-row nil},
+                                :add-group nil},
                      :target {:subject-referent (:item-id age)
                               :adjacent-referent (:item-id pair)
                               :position :before,
                               :template '(nil ("confidence" :tag))}
-                     :row {:subject-referent (:item-id age)
-                           :adjacent-groups-referent all-elements-referent}}]]
-             ;; Row for confidence and likelihood.
+                     :group {:subject-referent (:item-id age)
+                             :adjacent-groups-referent all-elements-referent}}]]
+             ;; Group for confidence and likelihood.
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent"}
                [:div {:class "tag horizontal-header top-border bottom-border"}
@@ -336,15 +336,15 @@
                   :template (as-set '(nil ("confidence" :tag)
                                           ("likelihood" :tag)))
                   :selectable-attributes
-                  {:commands {:add-row nil}
-                   :row {:subject-referent (item-referent age)
-                         :adjacent-groups-referent likelihoods-referent
-                         :template '(nil ("confidence" :tag))}}}]]
+                  {:commands {:add-group nil}
+                   :group {:subject-referent (item-referent age)
+                           :adjacent-groups-referent likelihoods-referent
+                           :template '(nil ("confidence" :tag))}}}]]
                ;; Double
                [:component {:key (conj age-key (:item-id double))}
                 [item-DOM-R double (any)
                  (any)]]]]
-             ;; Row for confidence and probability
+             ;; Group for confidence and probability
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent"}
                [:div {:class "tag horizontal-header top-border bottom-border"}
@@ -357,7 +357,7 @@
                    :parent-key (conj age-key (:item-id two) :outside)
                    :subject (item-referent two)
                    :template '(nil :tag)
-                   ;; TODO: need add-row command.
+                   ;; TODO: need add-group command.
                    }]]]]
               [:component {:key (conj age-key (:item-id two))}
                [item-DOM-R two (as-set [confidence2 probability])
@@ -368,15 +368,15 @@
                  :template (as-set '(nil ("confidence" :tag)
                                          ("probability" :tag)))
                  :selectable-attributes
-                 {:commands {:add-row nil}
-                  :row {:subject-referent (item-referent age)
-                        :adjacent-groups-referent (item-referent two)
-                        :template '(nil ("confidence" :tag))}}}]]]
-             ;; Row for confidence
+                 {:commands {:add-group nil}
+                  :group {:subject-referent (item-referent age)
+                          :adjacent-groups-referent (item-referent two)
+                          :template '(nil ("confidence" :tag))}}}]]]
+             ;; Group for confidence
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent bottom-border"}
                (any)]
-              ;; TODO: Needs new-row command
+              ;; TODO: Needs new-group command
               [:component {:key one-key}
                [item-DOM-R one [confidence3]
                 {:priority 1,

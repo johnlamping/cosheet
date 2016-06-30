@@ -24,7 +24,7 @@
    (cosheet.server
     [referent :refer [item-referent]]
     ;; TODO: Make item-DOM recognize tables, so we can just call it.
-    [render :refer [item-DOM-R]]
+    [render :refer [item-DOM-R table-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -67,7 +67,7 @@
                             (~o1 :order :non-semantic))
                            ("more"
                             (~o2 :order :non-semantic)))
-        [store id] (add-entity store nil starting-item)
+        [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
     store))
@@ -132,8 +132,8 @@
                                                    (current-store store)))
         root-item (description->entity (:item-id immutable-root-item) store)
         root-key [(:item-id root-item)]
-        definition [item-DOM-R root-item []
-                    {:priority 0 :width 0.5 :parent-key []}]
+        definition [table-DOM-R root-item ; []
+                    {:priority 0 :width 1.5 :parent-key []}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     (println "created tracker")
@@ -198,10 +198,12 @@
       [:div#toolbar.toolbar
        [:div#undo.tool "⤺" [:div.tooltip "undo"]]
        [:div#redo.tool "⤼" [:div.tooltip "redo"]]
-       [:div#add-sibling.tool "+" [:div.tooltip "add item"]]
+       [:div.toolgap]
+       [:div#add-sibling.tool "+" [:div.tooltip "add sibling"]]
+       [:div#add-element.tool "↘" [:div.tooltip "add element"]] 
+       [:div#add-group.tool "⍗" [:div.tooltip "add group below"]]
        [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
-       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]
-       [:div#add-element.tool "↘" [:div.tooltip "add element"]]] 
+       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]]
       [:div#app "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
       [:script "cosheet.client.run();"]])))

@@ -91,7 +91,7 @@
                         :target {:item-referent (item-referent fred)}
                         :commands {:set-content nil
                                    :add-element nil
-                                   :add-sibling nil
+                                   :add-twin nil
                                    :delete nil}}
                   "Fred"])))
     ;; Test a one-column element hierarchy
@@ -150,7 +150,7 @@
                             :template "foo"}
                    :commands {:set-content nil
                               :add-element nil
-                              :add-sibling nil
+                              :add-twin nil
                               :delete nil
                               :foo nil}}
              "39"]

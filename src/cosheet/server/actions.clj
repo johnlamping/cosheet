@@ -220,7 +220,7 @@
                       (or select-pattern (conj parent-key [:pattern]))
                       old-key))))
 
-(defn do-add-sibling
+(defn do-add-twin
   [store key attributes]
   (when-let [item (:target attributes)]
     (let [item-key (if (= (last key) :content) (pop key) key)]
@@ -315,7 +315,7 @@
 
 (defn get-contextual-handler
   [action]
-  ({:add-sibling do-add-sibling
+  ({:add-twin do-add-twin
     :add-element do-add-element
     :add-group do-add-group
     :add-row do-add-row

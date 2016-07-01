@@ -256,7 +256,7 @@
            (into-attributes {:commands {:set-content nil
                                         :delete nil
                                         :add-element nil
-                                        :add-sibling nil}}
+                                        :add-twin nil}}
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder"))

@@ -603,14 +603,14 @@
 
 (defn attributes-for-header-add-column-command
   "Return attributes for an add a column command, given the column
-  request items that gave rise to the column. element-template gives
+  request items that gave rise to the column. elements-template gives
   the template for new elements, while inherited gives the environment
   of the header."
-  [column-items element-template inherited]
+  [column-items elements-template inherited]
   (let [subject (:subject inherited)
-        new-element-template (cons '??? (rest element-template))
+        new-elements-template (cons '??? (rest elements-template))
         new-header-template (list* (concat (or (:template inherited) '(nil))
-                                           [new-element-template]))
+                                           [new-elements-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
@@ -624,7 +624,7 @@
         ;; one to match the :v variable.
         element-variable `(:variable
                             (:v :name)
-                            (~element-template :condition)
+                            (~elements-template :condition)
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])]
@@ -724,7 +724,6 @@
     ;; This is a member that is displayed underneath its node. Since
     ;; the display of the node already presents all the properties, we
     ;; need a header DOM with no elements.
-    ;; TODO: Need to make add-column work for these.
     (let [request-referent (item-or-exemplar-referent
                             (:item below) (:subject inherited))
           exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
@@ -737,8 +736,12 @@
                         (update-in
                          [:selectable-attributes]
                          #(into-attributes
-                           % {:commands
-                              {:delete {:delete-referent request-referent}}})))
+                           (into-attributes
+                            %
+                            (attributes-for-header-add-column-command
+                             [(:item below)] elements-template inherited))
+                           {:commands
+                            {:delete {:delete-referent request-referent}}})))
           key (conj (:parent-key inherited) (:item-id (:item below)))
           is-tag (some #{:tag} elements-template)]
       (cond-> (add-attributes

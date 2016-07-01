@@ -22,9 +22,9 @@
     [reporters :as reporter]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
-    [key :refer [item-referent prepend-to-key]]
+    [referent :refer [item-referent]]
     ;; TODO: Make item-DOM recognize tables, so we can just call it.
-    [render :refer [item-DOM table-DOM]]
+    [render :refer [item-DOM-R table-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -60,12 +60,17 @@
                          (:none ("size" :tag)
                                 (~o2 :order :non-semantic)
                                 (:column :non-semantic)))
+        starting-item `(39 (:root :non-semantic)
+                           (~o3 :order :non-semantic)
+                           ("doubtful"
+                            ("confidence" :tag (~o1 :order :non-semantic))
+                            (~o1 :order :non-semantic))
+                           ("more"
+                            (~o2 :order :non-semantic)))
         [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
     store))
-
-(defonce root-parent-key ["root"])
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
@@ -120,14 +125,15 @@
 ;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
 
+;;; TODO: Get rid of do-not-merge argument.
 (defn create-tracker
   [store do-not-merge]
   (let [immutable-root-item (first (matching-items '(nil :root)
                                                    (current-store store)))
         root-item (description->entity (:item-id immutable-root-item) store)
-        root-key (prepend-to-key (item-referent root-item) root-parent-key)
-        definition [table-DOM root-item root-parent-key
-                    {:depth 0 :do-not-merge do-not-merge}]
+        root-key [(:item-id root-item)]
+        definition [table-DOM-R root-item ; []
+                    {:priority 0 :width 1.5 :parent-key []}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     (println "created tracker")
@@ -192,10 +198,12 @@
       [:div#toolbar.toolbar
        [:div#undo.tool "⤺" [:div.tooltip "undo"]]
        [:div#redo.tool "⤼" [:div.tooltip "redo"]]
-       [:div#add-sibling.tool "+" [:div.tooltip "add item"]]
+       [:div.toolgap]
+       [:div#add-twin.tool "+" [:div.tooltip "add twin"]]
+       [:div#add-element.tool "↘" [:div.tooltip "add element"]] 
+       [:div#add-sibling.tool "⍗" [:div.tooltip "add sibling below"]]
        [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
-       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]
-       [:div#add-element.tool "↘" [:div.tooltip "add element"]]] 
+       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]]
       [:div#app "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
       [:script "cosheet.client.run();"]])))

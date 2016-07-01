@@ -1,6 +1,9 @@
 (ns cosheet.test-utils
   (require [clojure.test :refer [assert-expr do-report]]
-           (cosheet [store :as store]
+           (cosheet [entity :refer [mutable-entity? description->entity]]
+                    [entity-impl :as entity-impl]
+                    [store :refer [new-element-store new-mutable-store
+                                   current-store]]
                     [expression-manager :as expression-manager]
                     [reporters :refer [value reporter?]]
                     [debug :refer [current-value]])))
@@ -139,8 +142,8 @@
   the resulting reporter, then add the entities to the store, and
   recompute the reporter, returning its value."
   [fun entities]
-  (let [s (store/new-element-store)
-        ms (store/new-mutable-store s)
+  (let [s (new-element-store)
+        ms (new-mutable-store s)
         md (expression-manager/new-expression-manager-data)
         [_ ids] (reduce
                  (fn [[store ids] entity]
@@ -175,7 +178,7 @@
 ;;; with the mutable store as an argument, and return the new current
 ;;; value of the expression.
 (defmacro let-mutated-store [[var initial mutator] exp]
-  `(let [~var (store/new-mutable-store ~initial)
+  `(let [~var (new-mutable-store ~initial)
          md# (expression-manager/new-expression-manager-data)
          exp-val# ~exp]
      (expression-manager/request exp-val# md#)
@@ -183,4 +186,12 @@
      (~mutator ~var)
      (expression-manager/compute md#)
      (value exp-val#)))
+
+(defn item->immutable
+  "Given an item, return an immutable version of its current value."
+  [item]
+  (if (mutable-entity? item)
+    (do (assert (instance? cosheet.entity_impl.MutableStoredItem item))
+        (description->entity (:item-id item) (current-store (:store item))))
+    item))
 

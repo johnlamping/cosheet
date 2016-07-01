@@ -97,3 +97,7 @@
   (is (= (parse-string-as-number "-1.0") -1))
   (is (= (parse-string-as-number " 1.5 ") 1.5)))
 
+(deftest replace-in-seqs-test
+  (is (= (replace-in-seqs [1 [2 [1 2]]] 2 3)
+         [1 [3 [1 3]]])))
+

@@ -234,12 +234,12 @@
                   :adjacent-groups-referent subject-referent}
                  key key true)))
 
-(defn do-add-group
+(defn do-add-sibling
   [store key attributes]
-  (when-let [group (:group attributes)]
+  (when-let [sibling (:sibling attributes)]
     (generic-add
-     store (assoc group :select-pattern (:select-pattern attributes))
-     (:parent-key group) key true)))
+     store (assoc sibling :select-pattern (:select-pattern attributes))
+     (:parent-key sibling) key true)))
 
 (defn do-add-row
   [store key attributes]
@@ -317,7 +317,7 @@
   [action]
   ({:add-twin do-add-twin
     :add-element do-add-element
-    :add-group do-add-group
+    :add-sibling do-add-sibling
     :add-row do-add-row
     :add-column do-add-column
     :delete do-delete

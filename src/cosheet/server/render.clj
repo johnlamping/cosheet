@@ -75,8 +75,8 @@
                ; :template                  Added item(s) should satisfy this.
                ; :parent-key                The key of the parent of a virtual
                ;                            new item.
-       :group  ; The group of items (or virtual new group) that the dom belongs
-               ; to, a map with the same keys as :target
+     :sibling  ; The sibling items (or virtual new sibling) that the dom
+               ; belongs to, a map with the same keys as :target
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
@@ -138,7 +138,7 @@
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
 ;               :template  ; The template that the item for this dom,
-                           ; and any of its siblings, must satisfy, if any.
+                           ; and any of its twins, must satisfy, if any.
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
                            ; of the dom should have, if any. Typically,
                            ; these are commands for things like new-row.
@@ -283,19 +283,19 @@
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
-(defn add-adjacent-group-command
+(defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update
-  inherited to add an element adjacent to the group, if that would be
-  different than just adding a sibling."
+  inherited to add an element adjacent to the sibling, if that would be
+  different than just adding a twin."
   [hierarchy-node inherited]
   (if (empty? (:properties hierarchy-node))
     inherited
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:commands {:add-group {:select-pattern (conj (:parent-key inherited)
+       % {:commands {:add-sibling {:select-pattern (conj (:parent-key inherited)
                                                        [:pattern])}}
-          :group (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
+          :sibling (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -352,7 +352,7 @@
         tags-parent-key (conj (:parent-key inherited)
                               (:item-id (:item example-descendant))
                               :outside)
-        inherited-for-tags (assoc (add-adjacent-group-command
+        inherited-for-tags (assoc (add-adjacent-sibling-command
                                    hierarchy-node inherited)
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
@@ -373,7 +373,7 @@
    "Return DOM for all descendants of the hierarchy node, as a single column."
   [hierarchy-node inherited]
   (let [members (hierarchy-node-members hierarchy-node)
-        nested-inherited (add-adjacent-group-command hierarchy-node inherited)
+        nested-inherited (add-adjacent-sibling-command hierarchy-node inherited)
         items-dom (when (not (empty? members))
                     (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
@@ -476,7 +476,7 @@
   [hierarchy-node header-wrapper inherited]
   (let [tags-inherited (update-in inherited [:width] #(* % 0.25))
         items-inherited (update-in
-                         (add-adjacent-group-command hierarchy-node inherited)
+                         (add-adjacent-sibling-command hierarchy-node inherited)
                          [:width] #(* % 0.6875))
         members-dom (hierarchy-members-DOM hierarchy-node items-inherited)
         no-children (empty? (:children hierarchy-node))
@@ -840,7 +840,7 @@
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
-               ;; in as adjacent information for new-sibling.
+               ;; in as adjacent information for new-twin.
                (virtual-item-DOM
                 (:parent-key inherited) :after
                 (assoc inherited :adjacent-referent (:subject inherited)))

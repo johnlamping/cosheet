@@ -164,7 +164,12 @@
                  :width 0.5
                  :parent-key tags-key
                  :subject one-another-two-referent
-                 :template '(nil :tag)}]]
+                 :template '(nil :tag)
+                 :selectable-attributes
+                 {:commands {:add-group {:select-pattern (conj age-key
+                                                               [:pattern])}}
+                  :group {:subject-referent (item-referent age)
+                          :adjacent-groups-referent one-another-two-referent}}}]]
               [:div {:class "indent-wrapper"}
                [:div {:class "stack"}
                 ;; One Another
@@ -177,10 +182,11 @@
                     :parent-key age-key
                     :subject (item-referent age)
                     :template '(nil ("confidence" :tag))
-                    :selectable-attributes
-                    {:commands {:add-group nil}
-                     :group {:subject-referent (item-referent age)
-                             :adjacent-groups-referent one-another-two-referent}}}]]
+                 :selectable-attributes
+                 {:commands {:add-group {:select-pattern (conj age-key
+                                                               [:pattern])}}
+                  :group {:subject-referent (item-referent age)
+                          :adjacent-groups-referent one-another-two-referent}}}]]
                  ;; Another
                  [:component {:key (conj age-key (:item-id another))}
                   [item-DOM-R another [(any)]
@@ -197,9 +203,11 @@
                     :subject (item-referent two)
                     :template '(nil :tag)
                     :selectable-attributes
-                    {:commands {:add-group nil}
+                    {:commands {:add-group {:select-pattern (conj age-key
+                                                                  [:pattern])}}
                      :group {:subject-referent (item-referent age)
-                             :adjacent-groups-referent one-another-two-referent}}}]]
+                             :adjacent-groups-referent (item-referent two)
+                             :template '(nil ("confidence" :tag))}}}]]
                  [:div {:class "indent-wrapper"}
                   [:component {:key (conj age-key (:item-id two))}
                    [item-DOM-R two (as-set [confidence2 probability])
@@ -210,7 +218,8 @@
                      :template (as-set '(nil ("confidence" :tag)
                                              ("probability" :tag)))
                      :selectable-attributes
-                     {:commands {:add-group nil}
+                     {:commands {:add-group {:select-pattern (conj age-key
+                                                                   [:pattern])}}
                       :group {:subject-referent (item-referent age)
                               :adjacent-groups-referent (item-referent two)
                               :template '(nil ("confidence" :tag))}}}]]]]]]]
@@ -302,11 +311,17 @@
                   :width 0.25
                   :parent-key tags-key
                   :subject all-elements-referent
-                  :template '(nil :tag)}]]]
+                  :template '(nil :tag)
+                  :selectable-attributes
+                  {:commands {:add-group {:select-pattern (conj age-key
+                                                                [:pattern])}}
+                   :group {:subject-referent (item-referent age)
+                           :adjacent-groups-referent all-elements-referent}}}]]]
               [:div {:class "editable"
                      :key (conj age-key :example-element (:item-id confidence1))
                      :commands {:set-content nil
-                                :add-group nil},
+                                :add-group {:select-pattern (conj age-key
+                                                                  [:pattern])}}
                      :target {:subject-referent (:item-id age)
                               :adjacent-referent (:item-id pair)
                               :position :before,
@@ -324,7 +339,13 @@
                    :width 0.25
                    :parent-key tags-key
                    :subject likelihoods-referent
-                   :template '(nil :tag)}]]]]
+                   :template '(nil :tag)
+                   :selectable-attributes
+                   {:commands {:add-group {:select-pattern (conj age-key
+                                                                 [:pattern])}}
+                    :group {:subject-referent (item-referent age)
+                            :adjacent-groups-referent likelihoods-referent
+                            :template '(nil ("confidence" :tag))}}}]]]]
               [:div {:class "item-stack"}
                ;; Pair
                [:component {:key (conj age-key (:item-id pair))}
@@ -336,7 +357,8 @@
                   :template (as-set '(nil ("confidence" :tag)
                                           ("likelihood" :tag)))
                   :selectable-attributes
-                  {:commands {:add-group nil}
+                  {:commands {:add-group {:select-pattern (conj age-key
+                                                                [:pattern])}}
                    :group {:subject-referent (item-referent age)
                            :adjacent-groups-referent likelihoods-referent
                            :template '(nil ("confidence" :tag))}}}]]
@@ -357,8 +379,12 @@
                    :parent-key (conj age-key (:item-id two) :outside)
                    :subject (item-referent two)
                    :template '(nil :tag)
-                   ;; TODO: need add-group command.
-                   }]]]]
+                   :selectable-attributes
+                   {:commands {:add-group {:select-pattern (conj age-key
+                                                                 [:pattern])}}
+                    :group {:subject-referent (item-referent age)
+                            :adjacent-groups-referent (item-referent two)
+                            :template '(nil ("confidence" :tag))}}}]]]]
               [:component {:key (conj age-key (:item-id two))}
                [item-DOM-R two (as-set [confidence2 probability])
                 {:priority 1
@@ -368,7 +394,8 @@
                  :template (as-set '(nil ("confidence" :tag)
                                          ("probability" :tag)))
                  :selectable-attributes
-                 {:commands {:add-group nil}
+                 {:commands {:add-group {:select-pattern (conj age-key
+                                                               [:pattern])}}
                   :group {:subject-referent (item-referent age)
                           :adjacent-groups-referent (item-referent two)
                           :template '(nil ("confidence" :tag))}}}]]]
@@ -376,15 +403,13 @@
              [:div {:class "horizontal-tags-element wide"}
               [:div {:class "tag horizontal-header indent bottom-border"}
                (any)]
-              ;; TODO: Needs new-group command
               [:component {:key one-key}
                [item-DOM-R one [confidence3]
                 {:priority 1,
                  :width 0.6875,
                  :parent-key age-key
                  :subject (item-referent age)
-                 :template '(nil ("confidence" :tag))}]]]]])))
-    ))
+                 :template '(nil ("confidence" :tag))}]]]]])))))
 
 (deftest table-DOM-test
   (let [inherited {:priority 1,

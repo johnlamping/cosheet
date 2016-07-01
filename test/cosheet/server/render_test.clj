@@ -460,13 +460,88 @@
                                    [dom table joe jane]))
           query (current-value (entity/label->content table :row-query))
           c1 (first (current-value (label->elements table o1)))
-          name1 (first (current-value (label->elements c1 :tag)))
-          name1-tag-spec (first (current-value (entity/elements name1)))
+          single (first (current-value (label->elements c1 :tag)))
+          single-tag-spec (first (current-value (entity/elements single)))
           c2 (first (current-value (label->elements table o2)))
-          id (first (current-value (label->elements c2 o2)))]
-      (println (simplify-for-print dom))
+          name2 (first (current-value (label->elements c2 :tag)))
+          name2-tag-spec (first (current-value (entity/elements name2)))
+          c3 (first (current-value (label->elements table o3)))
+          id3 (first (current-value (label->elements c2 o2)))
+          table-key [:foo (:item-id table)]
+          rows-referent (query-referent '(nil (nil ("age" :tag))
+                                              (:top-level :non-semantic)))
+          tag-pattern '[:pattern (nil (:variable (:v :name)
+                                                 ((nil :tag) :condition)
+                                                 (true :reference)))]]
+      (is (check
+           dom
+           [:div {:class "table" :key table-key}
+            [:div {:class "column-header-sequence"}
+             [:component {:key (conj table-key (:item-id single))
+                          :class "tag top-level column-header"
+                          :style {:width "150px"}}
+              [item-DOM-R single [single-tag-spec]
+               {:priority 1
+                :width 0.75
+                :parent-key table-key
+                :subject (union-referent [(item-referent c1)
+                                          (elements-referent c1 rows-referent)])
+                :template '(nil :tag)
+                :selectable-attributes
+                {:commands {:delete {:delete-referent (item-referent c1)}
+                            :add-column {:select-pattern (conj table-key
+                                                               tag-pattern)}}
+                 :column {:adjacent-groups-referent (item-referent c1)
+                          :subject-referent (item-referent table)
+                          :position :after
+                          :template '(:none (:column :non-semantic)
+                                            (??? :tag))}}}]]
+             (any)
+             (any)]
+            [:component {:key (conj table-key (:item-id joe))
+                         :class "table-row"}
+             [table-row-DOM-R joe (conj table-key (:item-id joe))
+              '(nil (nil ("age" :tag)) (:top-level :non-semantic))
+              [{:column-item c1 :template '(nil ("single" :tag))
+                :exclusions '()}
+               {:column-item c2 :template '(nil ("name" :tag))
+                :exclusions '((nil ("name" :tag) ("id" :tag)))}
+               {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
+                :exclusions ()}
+               (any)
+               (any)]
+              {:priority 1, :width 3.0, :parent-key table-key}]]]))
       (let [row-component (nth dom 3)
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]
-        (println (simplify-for-print row-dom))))))
+        (is (check
+             row-dom
+             [:div {:key (conj table-key (:item-id joe))}
+              [:div {:commands {:add-row nil :set-content nil}
+                     :row {:item-referent (:item-id joe)
+                           :template '(nil (nil ("age" :tag))
+                                           (:top-level :non-semantic))}
+                     :class "editable table-cell has-border"
+                     :key (conj table-key (:item-id joe) (:item-id c1))
+                     :target {:template '(nil ("single" :tag))
+                              :adjacent-referent (item-referent joe)
+                              :position :after
+                              :subject-referent (item-referent joe)}}]
+              [:component {:key (conj table-key
+                                      (:item-id joe) (:item-id c2) (any))
+                           :class "table-cell has-border"}
+               [item-DOM-R (any) [(any)]
+                {:priority 1
+                 :width 0.75
+                 :parent-key (conj table-key (:item-id joe) (any))
+                 :subject (item-referent joe)
+                 :template '(nil ("name" :tag))
+                 :selectable-attributes
+                 {:commands {:add-row nil}
+                  :row {:item-referent (item-referent joe)
+                        :template '(nil (nil ("age" :tag))
+                                        (:top-level :non-semantic))}}}]]
+              (any)
+              (any)
+              (any)]))))))

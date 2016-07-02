@@ -10,6 +10,7 @@
             mutable-map-test task-queue-test expression-manager-test
             mutable-store-test store-utils-test)
            (cosheet.server
-            key render actions
-            key-test hierarchy-test render-test dom-tracker-test actions-test)
+            referent hierarchy render dom_tracker actions
+            referent-test hierarchy-test render-test dom-tracker-test
+            actions-test)
            :reload))

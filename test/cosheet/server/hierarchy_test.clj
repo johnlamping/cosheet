@@ -6,7 +6,7 @@
                      [test-utils :refer [check let-mutated]])
             (cosheet.server
              [hierarchy :refer :all]
-             [key :refer [canonicalize-list]])
+             [referent :refer [canonicalize-list]])
              ; :reload
             ))
 

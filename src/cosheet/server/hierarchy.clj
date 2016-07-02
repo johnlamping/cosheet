@@ -4,10 +4,9 @@
                      [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print current-value]]
                      [expression :refer [expr-let expr-seq]])
-            (cosheet.server [key :refer [filtered-items semantic-element?
-                                         item-referent parallel-referent
-                                         canonicalize-list semantic-to-list]]
-                            [referent :as referent])))
+            (cosheet.server  [referent :as referent
+                             :refer [semantic-element?-R
+                                     canonicalize-list semantic-to-list-R]])))
 ;;; A hierarchy organizes a sequence of "members"
 ;;; into a hierarchy, based on a multiset of "properties" associated with
 ;;; each member.
@@ -171,7 +170,7 @@
 
 (defn canonical-info
   [entity]
-  (expr-let [semantic (semantic-to-list entity)]
+  (expr-let [semantic (semantic-to-list-R entity)]
     (canonicalize-list semantic)))
 
 (defn canonical-info-set
@@ -218,11 +217,20 @@
                 [] %)
        (split-by-do-not-merge-subset item-info-maps do-not-merge-subset)))))
 
+(defn filtered-items
+  "Run the filter on each of the items,
+  returning the items for which it is true."
+  [condition items]
+  (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
+                                     (when passes %))
+                              items)]
+    (filter identity passed)))
+
 (defn item-map-by-elements
   "Given an item and a seq of elements of the item that characterize how
    it should fit in a hierarchy, return an item info map."
   [item elements]
-  (expr-let [filtered (filtered-items semantic-element? elements)
+  (expr-let [filtered (filtered-items semantic-element?-R elements)
              canonicals (expr-seq map canonical-info filtered)]
        {:item item
         :property-elements filtered

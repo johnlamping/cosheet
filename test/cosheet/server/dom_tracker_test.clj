@@ -17,7 +17,7 @@
             (cosheet.server
              [dom-tracker :refer :all]
              [render :refer [item-DOM-R]]
-             [key :refer [item-referent]])
+             [referent :refer [item-referent]])
             ; :reload
             ))
 

@@ -22,7 +22,7 @@
             (cosheet.server
              [referent :refer [item-referent union-referent
                                canonicalize-list immutable-semantic-to-list]]
-             [key :refer [item->canonical-semantic]]
+             [referent :refer [item->canonical-semantic]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
              [actions :refer :all])
             ; :reload

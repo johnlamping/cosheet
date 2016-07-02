@@ -1,7 +1,6 @@
 (ns cosheet.server.hierarchy
   (:require (cosheet [utils :refer [multiset multiset-diff multiset-union
                                     multiset-to-generating-values update-last]]
-                     [mutable-set :refer [mutable-set-intersection]]
                      [debug :refer [simplify-for-print current-value]]
                      [expression :refer [expr-let expr-seq]])
             (cosheet.server  [referent :as referent
@@ -180,42 +179,19 @@
   (expr-let [canonicals (expr-seq map canonical-info entities)]
     (multiset canonicals)))
 
-(defn split-by-do-not-merge-subset
-  "Given a list of item info maps, and a subset of items not to merge,
-  return a list of lists, broken so that any item-info-map whose item
-  is in the set gets its own list, if it has non-trivial properties."
-  [item-info-maps do-not-merge-subset]
-  (first
-   (reduce
-    (fn [[result do-not-merge-with-prev] item-info-map]
-      (cond (do-not-merge-subset (:item item-info-map))
-            [(conj result [item-info-map]) true]
-            do-not-merge-with-prev
-            [(conj result [item-info-map]) false]
-            true
-            [(update-last result #((fnil conj []) % item-info-map)) false]))
-    [[] false]
-    item-info-maps)))
-
 (defn hierarchy-by-canonical-info
   "Given a sequence of item info maps, and a subset of items in the maps not to
   merge, return a hierarchy. If restrict-empty-merges is true, don't merge
   items at the top level with empty properties."
-  ;; TODO: Get rid of do-not-merge, once the new renderer is done.
-  [item-info-maps do-not-merge]
+  [item-info-maps]
   (let [non-empty-items (map :item
                              (filter #(not (empty? (:property-canonicals %)))
                                      item-info-maps))]
-    (expr-let
-        [do-not-merge-subset (mutable-set-intersection
-                              do-not-merge non-empty-items)]
-      (mapcat
-       #(reduce (fn [hierarchy item-info-map]
+    (reduce (fn [hierarchy item-info-map]
                   (append-to-hierarchy
                    hierarchy item-info-map
                    (multiset (:property-canonicals item-info-map)) {}))
-                [] %)
-       (split-by-do-not-merge-subset item-info-maps do-not-merge-subset)))))
+                [] item-info-maps)))
 
 (defn filtered-items
   "Run the filter on each of the items,
@@ -246,11 +222,11 @@
 (defn items-hierarchy-by-elements
   "Given items in order, and a list of elements for each, organize the items
   into a hierarchy by the semantic info of the corresponding
-  elements. Don't merge items that are in do-not-merge."
-  [items elements do-not-merge]
+  elements."
+  [items elements]
   (expr-let
       [item-maps (item-maps-by-elements items elements)]
-    (hierarchy-by-canonical-info item-maps do-not-merge)))
+    (hierarchy-by-canonical-info item-maps)))
 
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements

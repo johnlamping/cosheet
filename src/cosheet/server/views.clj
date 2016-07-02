@@ -6,7 +6,6 @@
    (cosheet
     [utils :refer [swap-control-return! ensure-in-atom-map!]]
     [orderable :as orderable]
-    [mutable-set :refer [new-mutable-set]]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store]]
     store-impl
@@ -114,7 +113,6 @@
 ;;;           :name  The file name to mirror the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
-;;;   :do-not-merge  A set of items that should not be merged.
 ;;;    :last-action  an atom holding the id of the last action we did.
 ;;;                  This keeps us from repeating an action if the
 ;;;                  client gets impatient and repeats it while we were
@@ -125,9 +123,8 @@
 ;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
 
-;;; TODO: Get rid of do-not-merge argument.
 (defn create-tracker
-  [store do-not-merge]
+  [store]
   (let [immutable-root-item (first (matching-items '(nil :root)
                                                    (current-store store)))
         root-item (description->entity (:item-id immutable-root-item) store)
@@ -171,13 +168,11 @@
         id (swap-control-return!
             session-states
             (fn [session-map]
-              (let [id (new-id session-map)
-                    do-not-merge (new-mutable-set #{})]
+              (let [id (new-id session-map)]
                 [(assoc session-map id
                         {:name name
                          :store store
-                         :tracker (create-tracker store do-not-merge)
-                         :do-not-merge do-not-merge
+                         :tracker (create-tracker store)
                          :last-action (atom nil)})
                  id])))]
     (compute manager-data 1000)

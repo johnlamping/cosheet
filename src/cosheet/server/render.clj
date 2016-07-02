@@ -519,7 +519,7 @@
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)
-                   hierarchy (hierarchy-by-canonical-info augmented #{})]
+                   hierarchy (hierarchy-by-canonical-info augmented)]
           (if (or (< (:width inherited) 1.0) no-labels)
             (tagged-items-one-column-DOM-R hierarchy inherited)
             (tagged-items-two-column-DOM-R hierarchy inherited)))))))
@@ -955,8 +955,7 @@
                                 :condition (replace-in-seqs
                                             (list* (into '[nil] lists))
                                             :none nil)})
-                             columns columns-elements columns-lists)
-                        #{})
+                             columns columns-elements columns-lists))
              headers (table-header-DOM-R
                       hierarchy '(nil :tag) (query-referent row-query)
                       (assoc inherited

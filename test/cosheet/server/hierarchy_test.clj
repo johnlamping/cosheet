@@ -346,26 +346,12 @@
   (is (= (multiset-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
 
-(deftest split-by-do-not-merge-subset-test
-  (is (check (split-by-do-not-merge-subset
-              (map (fn [x] {:item x :property-canonicals [1]})
-                   [:i :j :k :l :m :n :o])
-              #{:i :l :m :o})
-             [[{:item :i :property-canonicals [1]}]
-              [{:item :j :property-canonicals [1]}
-               {:item :k :property-canonicals [1]}]
-              [{:item :l :property-canonicals [1]}]
-              [{:item :m :property-canonicals [1]}]
-              [{:item :n :property-canonicals [1]}]
-              [{:item :o :property-canonicals [1]}]])))
-
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info
         [{:property-canonicals [:a] :item `(:i (1 :order :non-semantic))}
          {:property-canonicals [:a :b] :item `(:j (2 :order :non-semantic))}
-         {:property-canonicals [:a :c] :item `(:k (3 :order :non-semantic))}]
-        #{})
+         {:property-canonicals [:a :c] :item `(:k (3 :order :non-semantic))}])
        [{:hierarchy-node true
          :properties {:a 1}
          :cumulative-properties {:a 1}

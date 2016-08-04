@@ -1,9 +1,8 @@
 (ns cosheet.server.render
-  (:require [clojure.walk :refer [postwalk]]
-            (cosheet [entity :as entity]
+  (:require (cosheet [entity :as entity]
                      [query :refer [matching-elements matching-items]]
-                     [utils :refer [multiset multiset-diff multiset-union
-                                    multiset-to-generating-values update-last
+                     [utils :refer [multiset multiset-diff
+                                    multiset-to-generating-values
                                     replace-in-seqs]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
@@ -18,7 +17,8 @@
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
                                canonicalize-list immutable-semantic-to-list]]
-             [hierarchy :refer [canonical-info canonical-set-to-list
+             [hierarchy :refer [canonical-info
+                                canonical-set-to-list canonical-to-list
                                 hierarchy-node? hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
@@ -262,7 +262,7 @@
                      is-placeholder (str " placeholder"))
             :key key
             :target (item-target item inherited)})
-     (cond (= content :none) ""
+     (cond (= content :none) "" ;; TODO: Make this have special formatting.
            is-placeholder "???"                     
            true (str content))]))
 
@@ -819,7 +819,10 @@
         non-trivial-children (filter hierarchy-node? next-level)
         condition (cons nil (canonical-set-to-list
                              (:cumulative-properties node)))
-        excluded-conditions (map :condition
+        excluded-conditions (map #(replace-in-seqs
+                                   (cons nil (map canonical-to-list
+                                                  (:property-canonicals %)))
+                                   :none nil)
                                  (hierarchy-nodes-extent non-trivial-children))]
     (mapcat (fn [below]
               (if (hierarchy-node? below)
@@ -949,12 +952,7 @@
                                {:item column
                                 :property-elements elements
                                 :property-canonicals (map canonicalize-list
-                                                          lists)
-                                ;; TODO: Get rid of this,
-                                ;; as canonicals has the same info.
-                                :condition (replace-in-seqs
-                                            (list* (into '[nil] lists))
-                                            :none nil)})
+                                                          lists)})
                              columns columns-elements columns-lists))
              headers (table-header-DOM-R
                       hierarchy '(nil :tag) (query-referent row-query)

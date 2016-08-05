@@ -856,7 +856,8 @@
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
   [row-item new-row-template
-   {:keys [column-item template exclusions]} inherited]
+   {:keys [column-item template exclusions]} ;; A column header description
+   inherited]
   (let [inherited-down (assoc inherited
                               :parent-key (conj (:parent-key inherited)
                                                 (:item-id column-item))

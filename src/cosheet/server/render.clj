@@ -658,21 +658,19 @@
 (defn add-table-header-formatting
   "Given a dom of header elements, return a dom with all the appropriate
   formatting."
-  [dom num-columns rightmost is-tag]
+  [dom num-columns is-tag]
   (let [width (+ (* num-columns (- base-table-column-width 2)) 2)]
     (add-attributes dom {:class (cond-> "column-header"
-                                  is-tag (str " tag")
-                                  rightmost (str " rightmost"))
+                                  is-tag (str " tag"))
                          :style {:width (str width "px")}})))
 
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
   elements. column-requests gives the items that requested all columns
-  that this node covers, and rightmost says whether it is the
-  rightmost child of its parent. header-inherited gives the context of
+  that this node covers. header-inherited gives the context of
   the header definition(s) of this column, while inherited gives the
   context for elements of both the header and its entire column."
-  [example-elements column-requests rightmost header-inherited inherited]
+  [example-elements column-requests header-inherited inherited]
   (assert (not (empty? example-elements)))
   (expr-let
       [ordered-elements (order-items-R example-elements)
@@ -690,7 +688,7 @@
   "Generate the dom for a node of a table header hierarchy. The
   row-scope-referent should specify all the row items from which this
   header selects elements."
-  [node rightmost elements-template rows-referent inherited]
+  [node elements-template rows-referent inherited]
   (let [subject (:subject inherited)
         descendants (hierarchy-node-descendants node) 
         example-elements (hierarchy-node-example-elements node)
@@ -708,19 +706,18 @@
                                     delete-attributes)
                              (dissoc temp :selectable-attributes)))]
     (table-header-node-elements-DOM-R
-     example-elements (map :item descendants) rightmost
-     inherited column-inherited)))
+     example-elements (map :item descendants) inherited column-inherited)))
 
 (def table-header-subtree-DOM-R)
 
 (defn table-header-next-level-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM."
-  [below non-trivial-siblings rightmost elements-template rows-referent
+  [below non-trivial-siblings elements-template rows-referent
    inherited]
   (if (hierarchy-node? below)
     (table-header-subtree-DOM-R
-     below false rightmost elements-template rows-referent inherited)
+     below false elements-template rows-referent inherited)
     ;; This is a member that is displayed underneath its node. Since
     ;; the display of the node already presents all the properties, we
     ;; need a header DOM with no elements.
@@ -750,20 +747,15 @@
                {:style {:width (str base-table-column-width "px")}})
         is-tag (add-attributes {:class "tag"})))))
 
-(defn nils-until-last
-  "Return a sequence of the given length, consisting of all nils,
-  except for a possibly different last value."
-  [length final]
-  (concat (repeat (dec length) nil) [final]))
-
 (defn table-header-subtree-DOM-R
-  "Generate the dom for a subtree of a table header hierarchy.  The
-  row-scope-referent should specify all the row items from which this
+  "Generate the dom for a subtree of a table header hierarchy. 
+  elements-template gives what new header items need to satisfy.
+  rows-referent should specify all the row items from which this
   header selects elements."
-  [node top-level rightmost elements-template rows-referent inherited]
+  [node top-level elements-template rows-referent inherited]
   (expr-let
       [node-dom (table-header-node-DOM-R
-                 node rightmost elements-template rows-referent inherited)]
+                 node elements-template rows-referent inherited)]
     (let [node-dom (cond-> node-dom
                      top-level (add-attributes {:class "top-level"}))
           next-level (hierarchy-node-next-level node)
@@ -779,12 +771,10 @@
                    is-tag (some #{:tag} elements-template)]
                (expr-let
                    [dom-seqs (expr-seq
-                              map (fn [below rightmost]
-                                    (table-header-next-level-DOM-R
-                                     below non-trivial-children rightmost
-                                     elements-template rows-referent inherited))
-                              next-level
-                              (nils-until-last (count next-level) rightmost))]
+                              map #(table-header-next-level-DOM-R
+                                     % non-trivial-children
+                                     elements-template rows-referent inherited)
+                              next-level)]
                  [:div (cond-> {:class "column-header-stack"}
                          top-level (into-attributes {:class "top-level"})
                          is-tag (into-attributes {:class "tag"}))
@@ -792,7 +782,7 @@
                   (into [:div {:class "column-header-sequence"}] dom-seqs)])))]
         (let [is-tag (some #{:tag} elements-template)
               num-columns (count (hierarchy-node-descendants node))]
-          (add-table-header-formatting dom num-columns rightmost is-tag))))))
+          (add-table-header-formatting dom num-columns is-tag))))))
 
 (defn table-header-DOM-R
   "Generate DOM for column headers given the hierarchy. elements-template
@@ -800,11 +790,10 @@
   The column will contain those elements of the rows that match the templates."
   [hierarchy elements-template rows-referent inherited]
   (expr-let [columns (expr-seq
-                      map (fn [node rightmost]
-                            (table-header-subtree-DOM-R
-                             node true rightmost elements-template
-                             rows-referent inherited))
-                      hierarchy (nils-until-last (count hierarchy) true))]
+                      map #(table-header-subtree-DOM-R
+                             % true elements-template
+                             rows-referent inherited)
+                      hierarchy)]
     (into [:div {:class "column-header-sequence"}]
           columns)))
 

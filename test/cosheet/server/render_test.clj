@@ -77,7 +77,7 @@
 (def unused-orderable (nth orderables 6))
 
 (def base-inherited {:priority 0
-                   :parent-key [:root]
+                     :parent-key [:root]
                      :subject (make-id "root")})
 
 (deftest item-DOM-R-test-simple
@@ -180,7 +180,7 @@
                [:component {:key (conj age-key (:item-id one))}
                 [item-DOM-R one [confidence1]
                  {:priority 1
-                  :width 0.5,
+                  :width 0.5
                   :parent-key age-key
                   :subject (item-referent age)
                   :template '(nil ("confidence" :tag))
@@ -214,7 +214,7 @@
                 [:component {:key (conj age-key (:item-id two))}
                  [item-DOM-R two (as-set [confidence2 probability])
                   {:priority 1
-                   :width 0.5,
+                   :width 0.5
                    :parent-key age-key
                    :subject (item-referent age)
                    :template (as-set '(nil ("confidence" :tag)
@@ -236,8 +236,8 @@
                             :template '(nil :tag)}}]
             [:component {:key none-key}
              [item-DOM-R none nil
-              {:priority 1,
-               :width 0.5,
+              {:priority 1
+               :width 0.5
                :parent-key age-key
                :subject (item-referent age)}]]]]]))))
 
@@ -328,7 +328,7 @@
                                                                   [:pattern])}}
                    :target {:subject-referent (:item-id age)
                             :adjacent-referent (:item-id pair)
-                            :position :before,
+                            :position :before
                             :template '(nil ("confidence" :tag))}
                    :sibling {:subject-referent (:item-id age)
                              :adjacent-groups-referent all-elements-referent}}]]
@@ -355,7 +355,7 @@
              [:component {:key (conj age-key (:item-id pair))}
               [item-DOM-R pair (as-set [confidence1 likelihood])
                {:priority 1
-                :width 0.6875,
+                :width 0.6875
                 :parent-key age-key
                 :subject (item-referent age)
                 :template (as-set '(nil ("confidence" :tag)
@@ -392,7 +392,7 @@
             [:component {:key (conj age-key (:item-id two))}
              [item-DOM-R two (as-set [confidence2 probability])
               {:priority 1
-               :width 0.6875,
+               :width 0.6875
                :parent-key age-key
                :subject (item-referent age)
                :template (as-set '(nil ("confidence" :tag)
@@ -409,15 +409,79 @@
              (any)]
             [:component {:key one-key}
              [item-DOM-R one [confidence3]
-              {:priority 1,
-               :width 0.6875,
+              {:priority 1
+               :width 0.6875
                :parent-key age-key
                :subject (item-referent age)
                :template '(nil ("confidence" :tag))}]]]]]))))
 
+;;; Test an item that needs to be wrapped in labels.
+(deftest item-DOM-R-test-labels
+  ;; First, test when there is a label.
+  (let [element-as-list `(39
+                          ("age" :tag (~o1 :order :non-semantic))
+                          ("Ke"
+                           ("according-to" :tag (~o1 :order :non-semantic))
+                           (~o1 :order :non-semantic)))
+        inherited  (assoc base-inherited :width 1.0)
+        [dom element] (let-mutated [element element-as-list]
+                        (expr-let [dom (item-DOM-R element [] inherited)]
+                          [dom element]))]
+    (let [element-key [:root (:item-id element)]
+          age (first (current-value (matching-elements "age" element)))
+          age-tag (first (current-value (matching-elements :tag age)))
+          age-key (conj element-key (:item-id age))]
+      (is (check dom
+                 [:div {:class "item wrapped-element" :key element-key}
+                  [:component {:key age-key :class "tag"}
+                   [item-DOM-R age [age-tag]
+                    {:priority 0 :parent-key element-key
+                     :subject (item-referent element)
+                     :width 1.0
+                     :template '(nil :tag)}]]
+                  [:div {:class "indent-wrapper tag"}
+                   [:div {:class "item with-elements"}
+                    [:div {:commands (any)
+                           :class "content-text editable"
+                           :target {:item-referent (item-referent element)}
+                           :key (conj element-key :content)}
+                     "39"]
+                    [:div {:class "horizontal-tags-element wide"}
+                     (any)
+                     [:component {:key (any)}
+                      [item-DOM-R (any) [(any)] (any)]]]]]]))))
+  ;; Then test when there is no label, but labels must be shown.
+  (let [item-as-list `(39
+                          ("Ke"
+                           ("according-to" :tag (~o1 :order :non-semantic))
+                           (~o1 :order :non-semantic)))
+        inherited  (assoc base-inherited :width 1.0)
+        [dom item] (let-mutated [item item-as-list]
+                     (expr-let [dom (item-DOM-R item [] true inherited)]
+                          [dom item]))]
+    (let [item-key [:root (:item-id item)]]
+      (is (check dom
+                 [:div {:class "horizontal-tags-element narrow" :key item-key}
+                  [:div {:class "editable tag" :key (conj item-key :tags)
+                         :commands {:set-content nil},
+                         :target {:template '(nil :tag)
+                                  :adjacent-referent (item-referent item)
+                                  :position :after
+                                  :subject-referent (item-referent item)}}]
+                  [:div {:class "item with-elements"}
+                    [:div {:commands (any)
+                           :class "content-text editable"
+                           :target {:item-referent (item-referent item)}
+                           :key (conj item-key :content)}
+                     "39"]
+                    [:div {:class "horizontal-tags-element wide"}
+                     (any)
+                     [:component {:key (any)}
+                      [item-DOM-R (any) [(any)] (any)]]]]])))))
+
 (deftest table-DOM-test
-  (let [inherited {:priority 1,
-                   :width 3.0,
+  (let [inherited {:priority 1
+                   :width 3.0
                    :parent-key [:foo]}
         joe-list `("Joe"
                    (:top-level :non-semantic)
@@ -514,7 +578,7 @@
                 :exclusions ()}
                (any)
                (any)]
-              {:priority 1, :width 3.0, :parent-key table-key}]]]))
+              {:priority 1 :width 3.0 :parent-key table-key}]]]))
       (let [row-component (nth dom 3)
             row-command (nth row-component 2)
             row-dom (current-value

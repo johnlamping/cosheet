@@ -134,6 +134,7 @@
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
+;                    :key  ; The key this dom should use.
 ;                :subject  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
@@ -240,31 +241,6 @@
     (cond-> {:item-referent (item-or-exemplar-referent
                              item (:subject inherited))}
       template (assoc :template template))))
-
-(defn item-content-DOM
-  "Make dom for the content part of an item."
-  [item content key inherited]
-  ;; We don't currently handle items as content. That would need
-  ;; more interaction and UI design work to deal with the distinction
-  ;; between elements of an item and elements on its content.
-  (assert (entity/atom? content))
-  (let [is-placeholder (and (symbol? content)
-                            (= (subs (str content) 0 3) "???"))]
-    ;; Any attributes we inherit take precedence over basic commands,
-    ;; but nothing else.
-    [:div (into-attributes
-           (into-attributes {:commands {:set-content nil
-                                        :delete nil
-                                        :add-element nil
-                                        :add-twin nil}}
-                            (:selectable-attributes inherited))
-           {:class (cond-> "content-text editable"
-                     is-placeholder (str " placeholder"))
-            :key key
-            :target (item-target item inherited)})
-     (cond (= content :none) "" ;; TODO: Make this have special formatting.
-           is-placeholder "???"                     
-           true (str content))]))
 
 (defn hierarchy-add-adjacent-target
   "Given a hierarchy node, generate attributes for the target of
@@ -411,8 +387,6 @@
                             hierarchy)]
     (vertical-stack doms)))
 
-(def tagged-items-one-column-subtree-DOM-R)
-
 ;;; Wrappers are used when one logical cell is broken into several
 ;;; adjacent divs. This typically means that the first and last of the
 ;;; divs need to be styled differently from the others. A wrapper will
@@ -423,8 +397,8 @@
   "Return a wrapper that nests one level more deeply. This is used
   when a logical cell has been broken into several pieces and one of those
   pieces has been further subdivided.
-  We are given an outer wrapper and with the position of our sub-part in
-  the logical cell. We  may get further subdivided. So we return a new wrapper
+  We are given an outer wrapper and the position of our sub-part in
+  the logical cell. We may get further subdivided. So we return a new wrapper
   that itself expects to be called several times, each time given the position
   of the call with respect to all calls of the subcell. For each call,
   call position->class with the position of the call with respect to all calls
@@ -524,34 +498,74 @@
             (tagged-items-one-column-DOM-R hierarchy inherited)
             (tagged-items-two-column-DOM-R hierarchy inherited)))))))
 
-(defn item-DOM-R
-  "Make a dom for an item."
+(defn item-content-DOM
+  "Make dom for the content part of an item."
+  [item content inherited]
+  ;; We don't currently handle items as content. That would need
+  ;; more interaction and UI design work to deal with the distinction
+  ;; between elements of an item and elements on its content.
+  (assert (entity/atom? content))
+  (let [is-placeholder (and (symbol? content)
+                            (= (subs (str content) 0 3) "???"))]
+    ;; Any attributes we inherit take precedence over basic commands,
+    ;; but nothing else.
+    [:div (into-attributes
+           (into-attributes {:commands {:set-content nil
+                                        :delete nil
+                                        :add-element nil
+                                        :add-twin nil}}
+                            (:selectable-attributes inherited))
+           {:class (cond-> "content-text editable"
+                     is-placeholder (str " placeholder"))
+            :target (item-target item inherited)})
+     (cond (= content :none) "" ;; TODO: Make this have special formatting.
+           is-placeholder "???"                     
+           true (str content))]))
+
+(defn item-without-labels-DOM-R
+  "Make a dom for an item,
+   given that any of its labels are in excluded-elements.
+   inherted must give the key for the item, but we only record the key on
+   the content, not the whole item if it contains more than the content."
   [item excluded-elements inherited]
   (println "Generating DOM for"
            (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
   (expr-let [content (entity/content item)
              elements (semantic-elements-R item)]
-    (let [key (conj (:parent-key inherited) (:item-id item))
-          referent (item-or-exemplar-referent item
-                                              (:subject inherited))
-          elements (remove (set excluded-elements) elements)]
+    (let [referent (item-or-exemplar-referent item (:subject inherited))
+          elements (remove (set excluded-elements) elements)
+          content-dom (add-attributes
+                       (item-content-DOM item content inherited)
+                       ;; Give it a unique key.
+                       ;; This will be overridden to the item's key
+                       ;; if the item is nothing but this content.
+                       {:key (conj (:key inherited) :content)})]
       (if (empty? elements)
-        (add-attributes (item-content-DOM item content key inherited)
-                        {:class "item"})
-        (let [content-key (conj key :content) ;; Has to be different.
-              content-dom (item-content-DOM
-                           item content content-key inherited)
-              inherited-down (-> inherited
-                                 (update-in [:priority] inc)
-                                 (assoc :parent-key key
-                                        :subject referent)
-                                 (dissoc :template :selectable-attributes))]
+        (add-attributes content-dom {:class "item"})
+        (let [inherited-down
+              (-> inherited
+                  (update-in [:priority] inc)
+                  (assoc :parent-key (:key inherited)
+                         :subject referent)
+                  (dissoc :template :selectable-attributes :key))]
           (expr-let [elements-dom (elements-DOM-R
                                    elements true inherited-down)]
-            [:div {:class "item with-elements" :key key}
+            [:div {:class "item with-elements"}
              content-dom elements-dom]))))))
 
-;;; Tables
+;;; TODO: This needs an inherited argument saying whether this is in a
+;;; selection, so that new items should be :none, rather then the empty string.
+(defn item-DOM-R
+  [item excluded-elements inherited]
+  "Make a dom for an item.
+  If the item is a tag, the caller is responsible for tag formatting."
+  (let [key (conj (:parent-key inherited) (:item-id item))
+        inherited-with-key (assoc inherited :key key)]
+    (expr-let [dom (item-without-labels-DOM-R
+                    item excluded-elements inherited-with-key)]
+      (add-attributes dom {:key key}))))
+
+;;; --- Tables ---
 
 (def base-table-column-width 150)
 

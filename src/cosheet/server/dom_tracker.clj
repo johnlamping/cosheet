@@ -294,13 +294,12 @@
 
 (defn update-dom
   "Given the data, a key, and the latest dom for the key,
-   do all necessary updates."
+   record the key in the dom, and do all necessary updates."
   [data key dom]
-  (let [component-map (get-in data [:components key])
+  (let [dom (add-attributes dom {:key key})
+        component-map (get-in data [:components key])
         old-dom (get-in data [:key->dom key])
         depth (:depth component-map)]
-    (let [attributes (second dom)]
-      (assert (= key (:key attributes))))
     (if (and component-map (not= dom old-dom))
       (do (check-subcomponents-stored data old-dom depth)
           (let [subcomponent-maps (dom->subcomponent-maps dom depth)

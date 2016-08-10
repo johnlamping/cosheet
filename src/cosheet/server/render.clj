@@ -112,12 +112,13 @@
 ;;; as updates to the client once they are computed.
 
 ;;; Each component is uniquely identified with a key, as is any other
-;;; dom node that the user might interact with. There must never be
-;;; two doms with the same key, even during updates, or all sorts of
-;;; confusion can result. The key of a component must also not change
-;;; throughout the life of its parent dom, because we keep a mapping
-;;; between client dom ids and server keys, which will be broken if
-;;; the key changes.
+;;; dom node that the user might interact with. (The dom for a
+;;; component need not have a key; the component can add it when
+;;; necessary.) There must never be two components or doms with the
+;;; same key, even during updates, or all sorts of confusion can
+;;; result. The key of a component must also not change throughout the
+;;; life of its parent dom, because we keep a mapping between client
+;;; dom ids and server keys, which will be broken if the key changes.
 
 ;;; The heart of a key is the id of the item the dom is about. But
 ;;; since there can be several dom nodes about same item, we need more
@@ -134,6 +135,10 @@
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
            :parent-key []  ; The key of the parent dom of the dom.
+                           ; The parent might not actually have a key, if the
+                           ; user can't interact with it, but this is a
+                           ; that is unique to the parent, and can thus be
+                           ; used to generate unique keys for its children.
 ;                :subject  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
@@ -555,6 +560,8 @@
 
 ;;; TODO: This needs an inherited property saying whether this is in a
 ;;; selection, so that new items should be :none, rather then the empty string.
+;;; TODO: Replace some of the calls to this with calls to
+;;; item-without-labels-DOM-R, since the often has excluded any labels.
 (defn item-DOM-R
    "Make a dom for an item.
    If the item is a tag, the caller is responsible for tag formatting."
@@ -568,7 +575,7 @@
          (expr-let [dom (item-without-labels-DOM-R
                          item excluded inherited)]
            (if (and (empty? labels) (not must-show-empty-labels))
-             (add-attributes dom {:key key})
+             dom
              (let [item-referent (item-or-exemplar-referent
                                     item (:subject inherited))
                      inherited-down (-> inherited
@@ -577,7 +584,7 @@
                                                :parent-key key)
                                         (dissoc :selectable-attributes))]
                (if (empty? labels)
-                 [:div {:class "horizontal-tags-element narrow" :key key}
+                 [:div {:class "horizontal-tags-element narrow"}
                   (add-attributes
                    (virtual-item-DOM (conj key :tags) :after
                                      (assoc inherited-down
@@ -588,7 +595,7 @@
                             tags (expr-seq
                                   map #(condition-satisfiers-R % '(nil :tag))
                                   ordered-labels)]
-                   [:div {:class "item wrapped-element" :key key}
+                   [:div {:class "item wrapped-element"}
                     (add-attributes
                      (item-stack-DOM ordered-labels tags {:class "tag"}
                                      inherited-down)
@@ -914,7 +921,7 @@
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
                                column-descriptions)]
-      (into [:div {:key row-key}] cells))))
+      (into [:div {}] cells))))
 
 (defn table-row-DOM-component
   "Generate a component for a table row."
@@ -999,6 +1006,6 @@
                 rows (expr-seq map #(table-row-DOM-component
                                      % row-query column-descriptions inherited)
                                row-items)]
-            (into [:div {:class "table" :key table-key}
+            (into [:div {:class "table"}
                    headers]
                   rows)))))))

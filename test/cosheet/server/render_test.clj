@@ -87,7 +87,7 @@
                        [dom (item->immutable fred)]))]
     (is (check dom
                [:div {:class "content-text editable item"
-                      :key [:root (:item-id fred)]
+                      :key [:root (:item-id fred) :content]
                       :target {:item-referent (item-referent fred)}
                       :commands {:set-content nil
                                  :add-element nil
@@ -145,7 +145,7 @@
                                    (item-referent two)])]
     (is (check
          dom
-         [:div {:class "item with-elements" :key age-key}
+         [:div {:class "item with-elements"}
           [:div {:class "content-text editable"
                  :key (conj age-key :content)
                  :target {:item-referent (item-referent age)
@@ -302,7 +302,7 @@
                                 (item-referent two) (item-referent one)])]
     (is (check
          dom
-         [:div {:class "item with-elements" :key age-key}
+         [:div {:class "item with-elements"}
           [:div (any map?) "39"]
           [:div {:class "stack"}
            [:div {:class "horizontal-tags-element wide"}
@@ -432,7 +432,7 @@
           age-tag (first (current-value (matching-elements :tag age)))
           age-key (conj element-key (:item-id age))]
       (is (check dom
-                 [:div {:class "item wrapped-element" :key element-key}
+                 [:div {:class "item wrapped-element"}
                   [:component {:key age-key :class "tag"}
                    [item-DOM-R age [age-tag]
                     {:priority 0 :parent-key element-key
@@ -461,7 +461,7 @@
                           [dom item]))]
     (let [item-key [:root (:item-id item)]]
       (is (check dom
-                 [:div {:class "horizontal-tags-element narrow" :key item-key}
+                 [:div {:class "horizontal-tags-element narrow"}
                   [:div {:class "editable tag" :key (conj item-key :tags)
                          :commands {:set-content nil},
                          :target {:template '(nil :tag)
@@ -543,7 +543,7 @@
                                                  (true :reference)))]]
       (is (check
            dom
-           [:div {:class "table" :key table-key}
+           [:div {:class "table"}
             [:div {:class "column-header-sequence"}
              [:component {:key (conj table-key (:item-id single))
                           :class "tag top-level column-header"
@@ -585,7 +585,7 @@
                      (apply (first row-command) (rest row-command)))]
         (is (check
              row-dom
-             [:div {:key (conj table-key (:item-id joe))}
+             [:div {}
               [:div {:commands {:add-row nil :set-content nil}
                      :row {:item-referent (:item-id joe)
                            :template '(nil (nil ("age" :tag))

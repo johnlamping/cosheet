@@ -190,6 +190,7 @@
                     canonical-elements elements)))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
+(def item-without-labels-DOM-R)
 (def item-DOM-R)
 
 (defn vertical-stack
@@ -199,13 +200,6 @@
   (if (= (count doms) 1)
        (first doms)
        (into [:div (if (empty? doms) {} {:class class})] doms)))
-
-(defn item-component
-  "Make a component dom for the given item."
-  [item exclude-elements inherited]
-  (let [key (conj (:parent-key inherited) (:item-id item))
-        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
-    (make-component {:key key} [item-DOM-R item excluded inherited])))
 
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
@@ -222,16 +216,26 @@
                          :position position
                          :subject-referent (:subject inherited))})])
 
+(defn item-component
+  "Make a component dom for the given item.
+  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
+  [dom-fn item exclude-elements inherited]
+  (let [key (conj (:parent-key inherited) (:item-id item))
+        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
+    (make-component {:key key} [dom-fn item excluded inherited])))
+
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
   generate DOM for a vertical list of a component for each item.  The
   excludeds, attributes and inherited can be either a single value to
-  be used for all items, or a sequence of values, one per item."
-  [items excludeds attributes inherited]
+  be used for all items, or a sequence of values, one per item.
+  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
+  [dom-fn items excludeds attributes inherited]
   (vertical-stack
    (map (fn [item excluded attributes inherited]
-          (add-attributes (item-component item excluded inherited) attributes))
+          (add-attributes (item-component dom-fn item excluded inherited)
+                          attributes))
         items
         (if (sequential? excludeds) excludeds (repeat excludeds))
         (if (sequential? attributes) attributes (repeat attributes))
@@ -306,19 +310,21 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            members)]
-        (item-stack-DOM items excludeds {} inherited-down)))))
+        (item-stack-DOM
+         item-without-labels-DOM-R items excludeds {} inherited-down)))))
 
 (defn hierarchy-properties-DOM-R
   "Return DOM for example elements that give rise to the properties
-  of one hierarchy node. Inherited describes the context of the properties."
-  [hierarchy-node attributes inherited]
+  of one hierarchy node. Inherited describes the context of the properties.
+  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
+  [dom-fn hierarchy-node attributes inherited]
   (let [example-elements (hierarchy-node-example-elements hierarchy-node)]
     (expr-let [ordered-elements (order-items-R example-elements)
                satisfiers (expr-seq
                            map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
-      (item-stack-DOM ordered-elements satisfiers
-                      attributes inherited))))
+      (item-stack-DOM
+       dom-fn ordered-elements satisfiers attributes inherited))))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements
@@ -343,6 +349,7 @@
                                  (assoc inherited-for-tags
                                         :adjacent-referent items-referent))
                (hierarchy-properties-DOM-R
+                item-without-labels-DOM-R
                 hierarchy-node {:class "tag"} inherited-for-tags))]
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
@@ -492,7 +499,8 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
-        (item-stack-DOM ordered-elements excludeds {} inherited)
+        (item-stack-DOM
+         item-without-labels-DOM-R ordered-elements excludeds {} inherited)
         (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
@@ -560,8 +568,6 @@
 
 ;;; TODO: This needs an inherited property saying whether this is in a
 ;;; selection, so that new items should be :none, rather then the empty string.
-;;; TODO: Replace some of the calls to this with calls to
-;;; item-without-labels-DOM-R, since the often has excluded any labels.
 (defn item-DOM-R
    "Make a dom for an item.
    If the item is a tag, the caller is responsible for tag formatting."
@@ -597,7 +603,8 @@
                                   ordered-labels)]
                    [:div {:class "item wrapped-element"}
                     (add-attributes
-                     (item-stack-DOM ordered-labels tags {:class "tag"}
+                     (item-stack-DOM item-without-labels-DOM-R
+                                     ordered-labels tags {:class "tag"}
                                      inherited-down)
                      {:class "tag"})
                     [:div {:class "indent-wrapper tag"} dom]]))))))))))
@@ -730,10 +737,11 @@
                            ordered-elements)]
     (let [is-tag (some #{:tag} (:template inherited))]
       (item-stack-DOM
-        ordered-elements excludeds
-        (if is-tag {:class "tag"} {})
-        (add-add-column-commands
-         element-lists column-requests header-inherited inherited)))))
+       (if is-tag item-without-labels-DOM-R item-DOM-R)
+       ordered-elements excludeds
+       (if is-tag {:class "tag"} {})
+       (add-add-column-commands
+        element-lists column-requests header-inherited inherited)))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The

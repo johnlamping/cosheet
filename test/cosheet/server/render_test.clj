@@ -161,7 +161,7 @@
            [:div {:class "wrapped-element tag"}
             [:component {:key (conj tags-key (:item-id confidence1))
                          :class "tag"}
-             [item-DOM-R confidence1 [confidence1-tag]
+             [item-without-labels-DOM-R confidence1 [confidence1-tag]
               {:priority 1
                :width 0.5
                :parent-key tags-key
@@ -178,7 +178,7 @@
               [:div {:class "item-stack"}
                ;; One
                [:component {:key (conj age-key (:item-id one))}
-                [item-DOM-R one [confidence1]
+                [item-without-labels-DOM-R one [confidence1]
                  {:priority 1
                   :width 0.5
                   :parent-key age-key
@@ -191,14 +191,14 @@
                              :adjacent-groups-referent one-another-two-referent}}}]]
                ;; Another
                [:component {:key (conj age-key (:item-id another))}
-                [item-DOM-R another [(any)]
+                [item-without-labels-DOM-R another [(any)]
                  (any)]]]
               ;; Two (must be nested)
               [:div {:class "wrapped-element tag"}
                [:component {:key (conj age-key (:item-id two)
                                        :outside (:item-id probability))
                             :class "tag"}
-                [item-DOM-R probability [probability-tag]
+                [item-without-labels-DOM-R probability [probability-tag]
                  {:priority 1
                   :width 0.5
                   :parent-key (conj age-key (:item-id two) :outside)
@@ -212,7 +212,7 @@
                              :template '(nil ("confidence" :tag))}}}]]
                [:div {:class "indent-wrapper"}
                 [:component {:key (conj age-key (:item-id two))}
-                 [item-DOM-R two (as-set [confidence2 probability])
+                 [item-without-labels-DOM-R two (as-set [confidence2 probability])
                   {:priority 1
                    :width 0.5
                    :parent-key age-key
@@ -235,7 +235,7 @@
                             :position :after
                             :template '(nil :tag)}}]
             [:component {:key none-key}
-             [item-DOM-R none nil
+             [item-without-labels-DOM-R none nil
               {:priority 1
                :width 0.5
                :parent-key age-key
@@ -310,7 +310,7 @@
             [:div {:class "tag horizontal-header top-border"}
              [:component {:key (conj tags-key (:item-id confidence1))
                           :class "tag"}
-              [item-DOM-R confidence1 [confidence1-tag]
+              [item-without-labels-DOM-R confidence1 [confidence1-tag]
                {:priority 1
                 :width 0.25
                 :parent-key tags-key
@@ -338,7 +338,7 @@
              [:div {:class "tag horizontal-header top-border bottom-border"}
               [:component {:key (conj tags-key (:item-id likelihood))
                            :class "tag"}
-               [item-DOM-R likelihood [likelihood-tag]
+               [item-without-labels-DOM-R likelihood [likelihood-tag]
                 {:priority 1
                  :width 0.25
                  :parent-key tags-key
@@ -353,7 +353,7 @@
             [:div {:class "item-stack"}
              ;; Pair
              [:component {:key (conj age-key (:item-id pair))}
-              [item-DOM-R pair (as-set [confidence1 likelihood])
+              [item-without-labels-DOM-R pair (as-set [confidence1 likelihood])
                {:priority 1
                 :width 0.6875
                 :parent-key age-key
@@ -368,7 +368,7 @@
                            :template '(nil ("confidence" :tag))}}}]]
              ;; Double
              [:component {:key (conj age-key (:item-id double))}
-              [item-DOM-R double (any)
+              [item-without-labels-DOM-R double (any)
                (any)]]]]
            ;; Group for confidence and probability
            [:div {:class "horizontal-tags-element wide"}
@@ -377,7 +377,7 @@
               [:component {:key (conj age-key (:item-id two)
                                       :outside (:item-id probability))
                            :class "tag"}
-               [item-DOM-R probability [probability-tag]
+               [item-without-labels-DOM-R probability [probability-tag]
                 {:priority 1
                  :width 0.25
                  :parent-key (conj age-key (:item-id two) :outside)
@@ -390,7 +390,7 @@
                             :adjacent-groups-referent (item-referent two)
                             :template '(nil ("confidence" :tag))}}}]]]]
             [:component {:key (conj age-key (:item-id two))}
-             [item-DOM-R two (as-set [confidence2 probability])
+             [item-without-labels-DOM-R two (as-set [confidence2 probability])
               {:priority 1
                :width 0.6875
                :parent-key age-key
@@ -408,7 +408,7 @@
             [:div {:class "tag horizontal-header indent bottom-border"}
              (any)]
             [:component {:key one-key}
-             [item-DOM-R one [confidence3]
+             [item-without-labels-DOM-R one [confidence3]
               {:priority 1
                :width 0.6875
                :parent-key age-key
@@ -434,7 +434,7 @@
       (is (check dom
                  [:div {:class "item wrapped-element"}
                   [:component {:key age-key :class "tag"}
-                   [item-DOM-R age [age-tag]
+                   [item-without-labels-DOM-R age [age-tag]
                     {:priority 0 :parent-key element-key
                      :subject (item-referent element)
                      :width 1.0
@@ -449,7 +449,7 @@
                     [:div {:class "horizontal-tags-element wide"}
                      (any)
                      [:component {:key (any)}
-                      [item-DOM-R (any) [(any)] (any)]]]]]]))))
+                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]]]))))
   ;; Then test when there is no label, but labels must be shown.
   (let [item-as-list `(39
                           ("Ke"
@@ -477,7 +477,7 @@
                     [:div {:class "horizontal-tags-element wide"}
                      (any)
                      [:component {:key (any)}
-                      [item-DOM-R (any) [(any)] (any)]]]]])))))
+                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
 
 (deftest table-DOM-test
   (let [inherited {:priority 1
@@ -548,7 +548,7 @@
              [:component {:key (conj table-key (:item-id single))
                           :class "tag top-level column-header"
                           :style {:width "150px"}}
-              [item-DOM-R single [single-tag-spec]
+              [item-without-labels-DOM-R single [single-tag-spec]
                {:priority 1
                 :width 0.75
                 :parent-key table-key
@@ -599,7 +599,7 @@
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))
                            :class "table-cell has-border"}
-               [item-DOM-R (any) [(any)]
+               [item-without-labels-DOM-R (any) [(any)]
                 {:priority 1
                  :width 0.75
                  :parent-key (conj table-key (:item-id joe) (any))

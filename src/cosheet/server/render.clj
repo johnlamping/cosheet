@@ -574,40 +574,46 @@
   ([item excluded-elements inherited]
    (item-DOM-R item excluded-elements false inherited))
   ([item excluded-elements must-show-empty-labels inherited]
-   (let [key (conj (:parent-key inherited) (:item-id item))]
-     (expr-let [labels (entity/label->elements item :tag)]
-       (let [labels (remove (set excluded-elements) labels)
-             excluded (concat labels excluded-elements)]
-         (expr-let [dom (item-without-labels-DOM-R
-                         item excluded inherited)]
-           (if (and (empty? labels) (not must-show-empty-labels))
-             dom
-             (let [item-referent (item-or-exemplar-referent
-                                    item (:subject inherited))
-                     inherited-down (-> inherited
+   (expr-let [labels (entity/label->elements item :tag)
+              ;; We only show empty labels if we are told to
+              ;; and the item is not, itself a label.
+              must-show (and must-show-empty-labels
+                             (expr-let [tag-specs (entity/label->elements
+                                                   item :tag)]
+                               (empty? tag-specs)))]
+     (let [labels (remove (set excluded-elements) labels)
+           excluded (concat labels excluded-elements)]
+       (expr-let [dom (item-without-labels-DOM-R
+                       item excluded inherited)]
+         (if (and (empty? labels) (not must-show))
+           dom
+           (let [key (conj (:parent-key inherited) (:item-id item))
+                 item-referent (item-or-exemplar-referent
+                                item (:subject inherited))
+                 inherited-for-tags (-> inherited
                                         (assoc :template '(nil :tag)
                                                :subject item-referent
                                                :parent-key key)
                                         (dissoc :selectable-attributes))]
-               (if (empty? labels)
-                 [:div {:class "horizontal-tags-element narrow"}
+             (if (empty? labels)
+               [:div {:class "horizontal-tags-element narrow"}
+                (add-attributes
+                 (virtual-item-DOM (conj key :tags) :after
+                                   (assoc inherited-for-tags
+                                          :adjacent-referent item-referent))
+                 {:class "tag"})
+                dom]
+               (expr-let [ordered-labels (order-items-R labels)
+                          tags (expr-seq
+                                map #(condition-satisfiers-R % '(nil :tag))
+                                ordered-labels)]
+                 [:div {:class "item wrapped-element"}
                   (add-attributes
-                   (virtual-item-DOM (conj key :tags) :after
-                                     (assoc inherited-down
-                                            :adjacent-referent item-referent))
+                   (item-stack-DOM item-without-labels-DOM-R
+                                   ordered-labels tags {:class "tag"}
+                                   inherited-for-tags)
                    {:class "tag"})
-                  dom]
-                 (expr-let [ordered-labels (order-items-R labels)
-                            tags (expr-seq
-                                  map #(condition-satisfiers-R % '(nil :tag))
-                                  ordered-labels)]
-                   [:div {:class "item wrapped-element"}
-                    (add-attributes
-                     (item-stack-DOM item-without-labels-DOM-R
-                                     ordered-labels tags {:class "tag"}
-                                     inherited-down)
-                     {:class "tag"})
-                    [:div {:class "indent-wrapper tag"} dom]]))))))))))
+                  [:div {:class "indent-wrapper tag"} dom]])))))))))
 
 ;;; --- Tables ---
 

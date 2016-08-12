@@ -41,6 +41,7 @@
   "Return all elements of the target that match the condition (which
   must be immutable.)"
   [condition target]
+  (assert (not (entity/mutable-entity? condition)))
   (let [template `(nil (:variable (:v :name)
                                   (~condition :condition)
                                   (true :reference)))]
@@ -68,6 +69,7 @@
   "Return all items in the store that match the condition (which
   must be immutable.)"
   [condition store]
+  (assert (not (entity/mutable-entity? condition)))
   (let [template `(:variable (:v :name)
                              (~condition :condition)
                              (true :reference))]

@@ -22,8 +22,7 @@
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [referent :refer [item-referent]]
-    ;; TODO: Make item-DOM recognize tables, so we can just call it.
-    [render :refer [item-DOM-R table-DOM-R]]
+    [render :refer [top-level-item-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -37,7 +36,7 @@
         [o3 unused-orderable] (orderable/split unused-orderable :after)
         [o4 unused-orderable] (orderable/split unused-orderable :after)
         starting-item `("Joe"
-                        ; (:root :non-semantic)
+                        (:root :non-semantic)
                         (:top-level :non-semantic)
                         (~o1 :order :non-semantic)
                         ("male" (~o1 :order :non-semantic))
@@ -52,6 +51,7 @@
         [store id] (add-entity (new-element-store) nil starting-item)
         starting-table `("table"
                          (:root :non-semantic)
+                         (:table :non-semantic)
                          (:none :row-query)
                          (:none ("age" :tag)
                                 (~o1 :order :non-semantic)
@@ -59,13 +59,14 @@
                          (:none ("size" :tag)
                                 (~o2 :order :non-semantic)
                                 (:column :non-semantic)))
-        starting-item `(39 (:root :non-semantic)
-                           (~o3 :order :non-semantic)
-                           ("doubtful"
-                            ("confidence" :tag (~o1 :order :non-semantic))
-                            (~o1 :order :non-semantic))
-                           ("more"
-                            (~o2 :order :non-semantic)))
+        starting-element `(39 (:root :non-semantic)
+                              ("age" :tag (~o1 :order :non-semantic))
+                              (~o3 :order :non-semantic)
+                              ("doubtful"
+                               ("confidence" :tag (~o1 :order :non-semantic))
+                               (~o1 :order :non-semantic))
+                              ("more"
+                               (~o2 :order :non-semantic)))
         [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]
@@ -129,8 +130,7 @@
                                                    (current-store store)))
         root-item (description->entity (:item-id immutable-root-item) store)
         root-key [(:item-id root-item)]
-        definition [table-DOM-R root-item ; []
-                    {:priority 0 :width 1.5 :parent-key []}]
+        definition [top-level-item-DOM-R root-item {}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" root-key definition)
     (println "created tracker")

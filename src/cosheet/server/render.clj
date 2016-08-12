@@ -574,18 +574,12 @@
   ([item excluded-elements inherited]
    (item-DOM-R item excluded-elements false inherited))
   ([item excluded-elements must-show-empty-labels inherited]
-   (expr-let [labels (entity/label->elements item :tag)
-              ;; We only show empty labels if we are told to
-              ;; and the item is not, itself a label.
-              must-show (and must-show-empty-labels
-                             (expr-let [tag-specs (entity/label->elements
-                                                   item :tag)]
-                               (empty? tag-specs)))]
+   (expr-let [labels (entity/label->elements item :tag)]
      (let [labels (remove (set excluded-elements) labels)
            excluded (concat labels excluded-elements)]
        (expr-let [dom (item-without-labels-DOM-R
                        item excluded inherited)]
-         (if (and (empty? labels) (not must-show))
+         (if (and (empty? labels) (not must-show-empty-labels))
            dom
            (let [key (conj (:parent-key inherited) (:item-id item))
                  item-referent (item-or-exemplar-referent
@@ -1025,3 +1019,15 @@
             (into [:div {:class "table"}
                    headers]
                   rows)))))))
+
+;;; --- Top level item ---
+
+(defn top-level-item-DOM-R
+  "Make a dom for an item, testing the item to see what sort of dom to make."
+  [item inherited]
+  (let [inherited (into {:priority 0 :width 1.5 :parent-key []} inherited)]
+    (expr-let [table (matching-elements :table item)
+               tag (matching-elements :tag item)]
+      (if (empty? table)
+        (item-DOM-R item [] (empty? tag) inherited)
+        (table-DOM-R item inherited)))))

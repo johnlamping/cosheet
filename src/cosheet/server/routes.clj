@@ -11,7 +11,7 @@
             [cosheet.server.views :refer [initial-page ajax-response]]))
 
 (defroutes main-routes
-  (GET "/cosheet/:name" [name] (initial-page name))
+  (GET "/cosheet/:name" [name item] (initial-page name item))
   (POST "/ajax-request/:id" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))
@@ -28,5 +28,3 @@
       (wrap-transit-params)
       (wrap-transit-response {:encoding :json, :opts {}})
       (wrap-base-url)))
-
-

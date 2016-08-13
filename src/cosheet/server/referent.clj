@@ -51,9 +51,8 @@
 ;;;                  refers to the sequence of groups formed by unioning
 ;;;                  corresponding groups from the sequences.
 ;;;      difference  [:difference <referent> <referent>]
-;;;                  Returns a single group of all items refered to be the
+;;;                  Returns a single group of all items refered to by the
 ;;;                  first referent and not by the second.
-;;;                  differences of those groups.
 
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))

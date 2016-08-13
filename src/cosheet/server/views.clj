@@ -7,13 +7,14 @@
     [utils :refer [swap-control-return! ensure-in-atom-map!]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store]]
-    store-impl
+                   read-store write-store id-valid?]]
+    [store-impl :refer [->ItemId]]
     mutable-store-impl
-    [entity :refer [description->entity]]
+    [entity :refer [description->entity in-different-store]]
     entity-impl
     [store-utils :refer [add-entity]]
-    [query :refer [matching-items]]
+    [query :refer [matching-items matching-elements]]
+    [debug :refer [simplify-for-print]]
     query-impl
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
@@ -118,21 +119,29 @@
 ;;;                  This keeps us from repeating an action if the
 ;;;                  client gets impatient and repeats it while we were
 ;;;                  working on it.
-;;; TODO: The key needs to be browser page, not file name, because one browser
-;;;       may have several tabs open to the same page, and each needs
-;;;       their own tracker, so they can all get updates. That will also
-;;;       handle different tabs having different views on the same store. 
 (def session-states (atom {}))
 
 (defn create-tracker
-  [store]
-  (let [immutable-root-item (first (matching-items '(nil :root)
-                                                   (current-store store)))
+  [store item-number]
+  (let [immutable-store (current-store store)
+        immutable-root-item
+        (or (when item-number
+              (when-let [id-num (try (Integer/parseInt item-number)
+                                     (catch Exception e nil))]
+                (let [id (->ItemId id-num)]
+                  (when (id-valid? store id)
+                    (let [item (description->entity id immutable-store)]
+                      ;; Check that the item has an :order element,
+                      ;; which indicates that it is a user visible item.
+                      (when (not (empty?
+                                  (matching-elements '(nil :order) item)))
+                        item))))))
+            (first (matching-items '(nil :root) immutable-store)))
         root-item (description->entity (:item-id immutable-root-item) store)
-        root-key [(:item-id root-item)]
+        _ (println "root item" (simplify-for-print root-item))
         definition [top-level-item-DOM-R root-item {}]
         tracker (new-dom-tracker manager-data)]
-    (add-dom tracker "root" root-key definition)
+    (add-dom tracker "root" [] definition)
     (println "created tracker")
     tracker))
 
@@ -163,7 +172,7 @@
   (@session-states session-id))
 
 (defn create-session
-  [name]
+  [name item-number]
   (let [store (ensure-store name)
         id (swap-control-return!
             session-states
@@ -172,7 +181,7 @@
                 [(assoc session-map id
                         {:name name
                          :store store
-                         :tracker (create-tracker store)
+                         :tracker (create-tracker store item-number)
                          :last-action (atom nil)})
                  id])))]
     (compute manager-data 1000)
@@ -180,8 +189,9 @@
     (check-propagation-if-quiescent (:tracker (get-session-state id)))
     id))
 
-(defn initial-page [name]
-  (let [session-id (create-session name)]
+(defn initial-page [name item-number]
+  (println "initial page" name item-number)
+  (let [session-id (create-session name item-number)]
     (html5
      [:head
       [:title "Hello World"]
@@ -208,6 +218,9 @@
 ;;;    :initialize If true, the server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
+;;;            :id The session id of this client session. The initial html
+;;;                returned to the client will have the session id
+;;;                in its session-id metadata field.
 ;;;       :actions A map id -> action to be performed, where each
 ;;;                action looks like [action_type arg ...], and the
 ;;;                action types are those implemented in actions.clj.
@@ -226,7 +239,8 @@
 ;;;                encoded as [:component {<id and other attributes>}].
 ;;;        :select A list of an id to select, and a list of only ids
 ;;;                that may currently be selected for the command to
-;;;                take efffect.
+;;;                take effect.
+;;;          :open A url that should be opened in a new window.
 ;;;   :acknowledge A vector of action ids of actions that have been
 ;;;                performed.
 

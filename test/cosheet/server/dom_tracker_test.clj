@@ -16,7 +16,7 @@
              mutable-store-impl)
             (cosheet.server
              [dom-tracker :refer :all]
-             [render :refer [item-DOM-R]]
+             [item-render :refer [item-DOM-R]]
              [referent :refer [item-referent]])
             ; :reload
             ))

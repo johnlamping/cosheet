@@ -140,13 +140,13 @@
   [event]
   (let [ctrl (.-ctrlKey event)
         alt (.-altKey event)
-        key-code (.-keyCode event)
+        key-code (or (.-key event) (.-keyCode event))
         ]
     (.log js/console
-          (str "keypress " (if ctrl "ctrl " "") (if alt "alt" "") key-code))
+          (str "keydown " (if ctrl "ctrl " "") (if alt "alt " "") key-code))
     (when (and ctrl (not alt))
       (cond  ; We can't use a case statement,
-             ; as it doesn't work right with key-codes/
+             ; as it doesn't work right with key-codes.
         (= key-codes/Z key-code) (if @edit-field-open-on
                                    (close-edit-field)
                                    (do (.log js/console "undo")
@@ -163,43 +163,48 @@
                           (= key-codes/DASH key-code) [:add-row]
                           (= key-codes/R key-code) [:add-row]
                           (= key-codes/BACKSLASH key-code) [:add-column]
-                          (= key-codes/C key-code) [:add-column])]
+                          (= key-codes/C key-code) [:add-column]
+                          (= key-codes/E key-code) [:expand])]
         (when (and command @selected (not @edit-field-open-on))
           (.log js/console (str command))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))
     (when (not (or ctrl alt))
       (cond
-        (= key-code key-codes/ESC) (close-edit-field)
-        (= key-code key-codes/ENTER) (do (store-edit-field)
-                                         (close-edit-field))
-        (= key-code key-codes/DELETE) (when (and @selected
-                                                 (not @edit-field-open-on))
-                                        (.log js/console (str [:delete]))
-                                        (request-action
-                                         [:delete (.-id @selected)]))
-        (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
-                                           (when @selected
-                                             (.log js/console (str [:backspace]))
-                                             (request-action
-                                              [:delete (.-id @selected)]))
-                                           ;; Prevent navigating to prev page.
-                                           (.preventDefault event))
-        (key-codes/isCharacterKey key-code)
-        (when (and @selected (not @edit-field-open-on))
-          (open-edit-field @selected (str (.-charCode event))))))))
+          (= key-code key-codes/ESC) (close-edit-field)
+          (= key-code key-codes/ENTER) (do (store-edit-field)
+                                           (close-edit-field))
+          (= key-code key-codes/DELETE) (when (and @selected
+                                                   (not @edit-field-open-on))
+                                          (.log js/console (str [:delete]))
+                                          (request-action
+                                           [:delete (.-id @selected)]))
+          (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
+                                             (when @selected
+                                               (.log js/console (str [:backspace]))
+                                               (request-action
+                                                [:delete (.-id @selected)]))
+                                             ;; Prevent navigating to prev page.
+                                             (.preventDefault event))
+          (key-codes/isCharacterKey key-code)
+          (when (and @selected (not @edit-field-open-on))
+            (open-edit-field @selected (str (.-charCode event))))))))
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
         toolbar (js/document.getElementById "toolbar")
         edit-input (js/document.getElementById "edit_input")
         ;; The key handler makes events consistent across browsers.
-        app-key-handler (gevents/KeyHandler. js/document)]
+        ;; TODO: We no longer use this because it seems to rely on
+        ;; the deprecated field KeyboardEvent.keyIdentifier. See if we can
+        ;; get a more recent version of goog.events that fixes the problem.
+        ;; app-key-handler (gevents/KeyHandler. js/document)
+        ]
     (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
-    (gevents/listen app-key-handler key-handler/EventType.KEY
-                    keypress-handler)
+    (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
+    ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler))
   (ajax-request {:initialize true}))
 

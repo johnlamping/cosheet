@@ -137,8 +137,9 @@
         (is (check
              row-dom
              [:div {}
-              [:div {:commands {:add-row nil :set-content nil}
-                     :row {:item-referent (:item-id joe)
+              [:div {:commands {:add-row nil :set-content nil
+                                :expand {:item-referent (item-referent joe)}}
+                     :row {:item-referent (item-referent joe)
                            :template '(nil (nil ("age" :tag))
                                            (:top-level :non-semantic))}
                      :class "editable table-cell has-border"
@@ -157,7 +158,8 @@
                  :subject (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes
-                 {:commands {:add-row nil}
+                 {:commands {:add-row nil
+                             :expand {:item-referent (item-referent joe)}}
                   :row {:item-referent (item-referent joe)
                         :template '(nil (nil ("age" :tag))
                                         (:top-level :non-semantic))}}}]]

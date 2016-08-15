@@ -206,8 +206,9 @@
 
 (deftest do-add-element-test
   (let [result (do-add-element
-                store ["jane-age"]
-                {:target {:item-referent (item-referent jane-age)}})
+                store
+                {:target {:item-referent (item-referent jane-age)}
+                 :target-key ["jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -215,11 +216,13 @@
 
 (deftest do-delete-test
   (let [new-store (do-delete
-                   store "jane"
-                   {:target {:item-referent (item-referent jane-age)}})
+                   store
+                   {:target {:item-referent (item-referent jane-age)}
+                    :target-key "jane"})
         alt-store (do-delete
-                   store "jane"
-                   {:delete-referent (item-referent jane-age)})]
+                   store
+                   {:delete-referent (item-referent jane-age)
+                    :target-key "jane"})]
     (is (= new-store alt-store))
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
@@ -229,22 +232,25 @@
 (deftest do-set-content-test
   (is (= (content
           (description->entity
-           joe-id (do-set-content store "joe"
+           joe-id (do-set-content store
                                   {:target {:item-referent (item-referent joe)}
+                                   :target-key "joe"
                                    :from "Joe" :to "Jim"})))
          "Jim"))
   (is (= (content
           (description->entity
-           joe-id (do-set-content store "joe"
+           joe-id (do-set-content store
                                   {:target {:item-referent (item-referent joe)}
+                                   :target-key "joe"
                                    :from "Wrong" :to "Jim"})))
          "Joe"))
   ;; Now, try calling it when there is a parallel referent.
   (let [modified (do-set-content
-                  store "both"
+                  store
                   {:target {:item-referent (union-referent
                                             [(item-referent joe-age-tag)
                                              (item-referent jane-age-tag)])}
+                   :target-key "both"
                    :from "age" :to "oldness"})]
     (is (= (item->canonical-semantic
             (description->entity (:item-id joe-age-tag) modified))
@@ -254,15 +260,23 @@
            (canonicalize-list '("oldness" :tag)))))
   ;; Try creating new content
     (let [result (do-set-content
-                  store ["joe-male"]
+                  store
                   {:target {:subject-referent (item-referent joe-male)
                             :adjacent-groups-referent (item-referent joe-male)
                             :template '(nil :tag)}
+                   :target-key ["joe-male"]
                    :from ""
                    :to "gender"})]
       (is (= (immutable-semantic-to-list
               (description->entity (:item-id joe-male) (:store result)))
              ["male" ["gender" :tag]]))))
+
+(deftest do-expand-test
+  (is (= (do-expand store {:target {:item-referent (item-referent joe)}
+                           :target-key "joe"
+                           :session-state {:name "foo"}}))
+      {:store store
+       :open (str "foo?item=" (:id (item-referent joe)))}))
 
 (deftest do-actions-test
   (let [mutable-store (new-mutable-store store)

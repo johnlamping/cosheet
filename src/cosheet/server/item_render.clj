@@ -57,7 +57,7 @@
      inherited [:selectable-attributes]
      #(into-attributes
        % {:commands {:add-sibling {:select-pattern (conj (:parent-key inherited)
-                                                       [:pattern])}}
+                                                         [:pattern])}}
           :sibling (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
 
 (defn hierarchy-members-DOM
@@ -304,7 +304,8 @@
            (into-attributes {:commands {:set-content nil
                                         :delete nil
                                         :add-element nil
-                                        :add-twin nil}}
+                                        :add-twin nil
+                                        :expand nil}}
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder"))

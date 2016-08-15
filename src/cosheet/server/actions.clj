@@ -17,7 +17,7 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [referent :refer [instantiate-referent]])))
+    [referent :refer [instantiate-referent item-referent?]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -221,39 +221,42 @@
                       old-key))))
 
 (defn do-add-twin
-  [store key attributes]
-  (when-let [item (:target attributes)]
-    (let [item-key (if (= (last key) :content) (pop key) key)]
-      (generic-add store item (pop item-key) key true))))
+  [store attributes]
+  (let [{:keys [target target-key]} attributes]
+    (when target
+      (let [item-key (if (= (last target-key) :content)
+                       (pop target-key)
+                       target-key)]
+        (generic-add store target (pop item-key) target-key true)))))
 
 (defn do-add-element
-  [store key attributes]
+  [store attributes]
   (when-let [subject-referent (:item-referent (:target attributes))]
     (generic-add store
                  {:subject-referent subject-referent
                   :adjacent-groups-referent subject-referent}
-                 key key true)))
+                 (:target-key attributes)(:target-key attributes) true)))
 
 (defn do-add-sibling
-  [store key attributes]
+  [store attributes]
   (when-let [sibling (:sibling attributes)]
     (generic-add
      store (assoc sibling :select-pattern (:select-pattern attributes))
-     (:parent-key sibling) key true)))
+     (:parent-key sibling) (:target-key attributes) true)))
 
 (defn do-add-row
-  [store key attributes]
+  [store attributes]
   (when-let [row (:row attributes)]
     (generic-add
      store (assoc row :select-pattern (:select-pattern attributes))
-     (:parent-key row) key true)))
+     (:parent-key row) (:target-key attributes) true)))
 
 (defn do-add-column
-  [store key attributes]
+  [store attributes]
   (when-let [column (:column attributes)]
     (generic-add
      store (assoc column :select-pattern (:select-pattern attributes))
-     (:parent-key column) key true)))
+     (:parent-key column) (:target-key attributes) true)))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -262,7 +265,7 @@
 
 (defn do-delete
   "Remove item(s)." 
-  [store key attributes]
+  [store attributes]
   (let [{:keys [target delete-referent] :or {target nil delete-referent nil}}
         attributes]
     (when-let [to-delete (or delete-referent (:item-referent target))]
@@ -271,9 +274,9 @@
         (reduce update-delete store items)))))
 
 (defn do-set-content
-  [store target-key attributes]
+  [store attributes]
   ;; TODO: Handle deleting.
-  (let [{:keys [target from to]} attributes
+  (let [{:keys [target-key target from to]} attributes
         referent (:item-referent target)]
     (if referent
       ;; Changing an existing value.
@@ -290,20 +293,32 @@
           (generic-add store (into target {:template new-template})
                        (pop target-key) target-key false))))))
 
+(defn do-expand
+  [store attributes]
+  (let [{:keys [target item-referent session-state]} attributes
+        target-referent (or item-referent (:item-referent target))]
+    (println "target referent" target-referent)
+    (when (item-referent? target-referent)
+      (println "an item referent" (:item-id target-referent))
+      {:store store
+       :open (str (:name session-state)
+                  "?item=" (:id target-referent))})))
+
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
   store, the target key, and a map of attributes associated with the
   DOM element, the particular command, and anything sent by the
   client. The action can either return nil, meaning no change, a new
   store, or a map with a :store value and any additional commands it
-  wants to request of the client (currently, only :select, whose value
+  wants to request of the client (currently, :select, whose value
   is the key of the dom it wants to be selected and a list of keys,
-  one of which should already be selected)."
-  [handler mutable-store target-key attributes]
+  one of which should already be selected, and :expand, whose value
+  is the key of the item it wants to appear in a new tab.)."
+  [handler mutable-store attributes]
   (do-update-control-return!
    mutable-store
    (fn [store]
-     (let [result (handler store target-key attributes)]
+     (let [result (handler store attributes)]
        (if result
          (if (satisfies? cosheet.store/Store result)
            [result nil]
@@ -321,27 +336,37 @@
     :add-row do-add-row
     :add-column do-add-column
     :delete do-delete
-    :set-content do-set-content}
+    :set-content do-set-content
+    :expand do-expand}
    action))
 
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
-  on that cell."
-  [mutable-store tracker [action-type client-id & {:as client-args}]]
-  (let [target-key (id->key tracker client-id)
-        attributes (key->attributes tracker target-key)
-        commands (:commands attributes)
-        handler (get-contextual-handler action-type)]
+  on that cell. We will call a contextual action handler with attributes
+  including all the atttributes from the dom, any that the dom says to add to
+  the command, and any added by the client. Also include
+  :session-state and :target-key. (The dom will provide :target.)"
+  [mutable-store session-state [action-type client-id & {:as client-args}]]
+  (let [handler (get-contextual-handler action-type)
+        tracker (:tracker session-state)
+        target-key (id->key tracker client-id)
+        dom-attributes (key->attributes tracker target-key)
+        commands (:commands dom-attributes)
+        action-args (or (and commands (commands action-type)) {})
+        attributes (-> dom-attributes
+                       (into action-args)
+                       (into client-args)
+                       (assoc :target-key target-key
+                              :session-state session-state))]
     (if (and commands (contains? commands action-type) handler)
-      (let [action-args (or (and commands (commands action-type)) {})
-            extra-info (into action-args client-args)]
-        (do
+      (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
-                                           (map concat (seq extra-info)))))
-          (println "attributes: " (simplify-for-print attributes))
-          (do-storage-update-action handler mutable-store target-key
-                                    (into attributes extra-info))))
+                                           (map concat
+                                                (concat (seq action-args)
+                                                         (seq client-args))))))
+          (println "dom attributes: " (simplify-for-print dom-attributes))
+          (do-storage-update-action handler mutable-store attributes))
       (println "unhandled action type:" action-type))))
 
 (defn do-undo
@@ -365,7 +390,7 @@
       (do (println "command: " (map simplify-for-print action))
           (apply handler mutable-store session-state additional-args))
       (if (= (mod (count action) 2) 0)
-        (do-contextual-action mutable-store (:tracker session-state) action)
+        (do-contextual-action mutable-store session-state action)
         (println "Error: odd number of keyword/argument pairs:" action)))))
 
 (defn do-actions
@@ -375,7 +400,7 @@
   (reduce (fn [client-info action]
             (let [for-client (do-action mutable-store session-state action)]
               (println "for client " (simplify-for-print for-client))
-              (into client-info (select-keys for-client [:select]))))
+              (into client-info (select-keys for-client [:select :open]))))
           {} action-sequence))
 
 (defn confirm-actions

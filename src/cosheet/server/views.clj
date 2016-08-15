@@ -278,7 +278,7 @@
                               (filter identity
                                       (map (partial key->id tracker)
                                            if-selected))])))
-                answer (cond-> {}
+                answer (cond-> (select-keys client-info [:open])
                          (> (count doms) 0) (assoc :doms doms)
                          select (assoc :select select)
                          actions (assoc :acknowledge (vec (keys actions))))]

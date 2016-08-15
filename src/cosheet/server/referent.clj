@@ -33,7 +33,7 @@
 ;;;                  Refers to the singlton group of the item.
 ;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
 ;;;                  For each item refered to by sequence-referent,
-;;;                  refers to a singleton group of element of it
+;;;                  refers to a singleton group of an element of it
 ;;;                  whose semantic information is the same as that of
 ;;;                  the exemplar.
 ;;;        elements  [:elements <condition> <sequence-referent>]

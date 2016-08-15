@@ -46,7 +46,8 @@
                       :commands {:set-content nil
                                  :add-element nil
                                  :add-twin nil
-                                 :delete nil}}
+                                 :delete nil
+                                 :expand nil}}
                 "Fred"]))))
 
 (deftest item-DOM-R-test-one-column
@@ -72,7 +73,8 @@
         inherited (into base-inherited
                         {:width 0.5
                          :template "foo"
-                         :selectable-attributes {:commands {:foo nil}}})
+                         :selectable-attributes {:commands
+                                                 {:added-by-test {1 2}}}})
         [dom age] (let-mutated [age age-as-list]
                     (expr-let [dom (item-DOM-R age [] inherited)]
                       [dom age]))
@@ -108,7 +110,8 @@
                             :add-element nil
                             :add-twin nil
                             :delete nil
-                            :foo nil}}
+                            :expand nil
+                            :added-by-test {1 2}}}
            "39"]
           [:div {:class "stack"}
            ;; Everything with "confidence"
@@ -280,11 +283,11 @@
                    :commands {:set-content nil
                               :add-sibling {:select-pattern (conj age-key
                                                                   [:pattern])}}
-                   :target {:subject-referent (:item-id age)
-                            :adjacent-referent (:item-id pair)
+                   :target {:subject-referent (item-referent age)
+                            :adjacent-referent (item-referent pair)
                             :position :before
                             :template '(nil ("confidence" :tag))}
-                   :sibling {:subject-referent (:item-id age)
+                   :sibling {:subject-referent (item-referent age)
                              :adjacent-groups-referent all-elements-referent}}]]
            ;; Group for confidence and likelihood.
            [:div {:class "horizontal-tags-element wide"}

@@ -134,6 +134,13 @@
         ;; Tell the server that their selection request went through.
         (add-pending-action [:selected target-id])))))
 
+(defn handle-ajax-open
+  "Handle an open window request in an ajax response."
+  [response]
+  (let [path (:open response)]
+    (when path
+      (.open js/window path))))
+
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
   (when (not= response {})
@@ -145,6 +152,7 @@
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.
         (handle-ajax-select response previously-selected-id)
+        (handle-ajax-open response)
         (process-response-for-pending response)
         (ajax-if-pending))))
   (schedule-poll-task))

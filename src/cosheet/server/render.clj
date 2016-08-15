@@ -1,7 +1,8 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements]]
                      [debug :refer [simplify-for-print current-value]]
-                     [expression :refer [expr expr-let expr-seq cache]])
+                     [expression :refer [expr expr-let expr-seq cache]]
+                     [dom-utils :refer [add-attributes]])
             (cosheet.server [item-render :refer [item-without-labels-DOM-R
                                                  item-DOM-R]]
                             [table-render :refer [table-DOM-R]])))
@@ -127,7 +128,11 @@
   [item inherited]
   (let [inherited (into {:priority 0 :width 1.5 :parent-key []} inherited)]
     (expr-let [table (matching-elements :table item)
-               tag (matching-elements :tag item)]
+               tags (matching-elements :tag item)]
       (if (empty? table)
-        (item-DOM-R item [] (empty? tag) inherited)
+        (let [dom (item-DOM-R item tags (empty? tags) inherited)]
+          (if (empty? tags)
+            dom
+            (expr-let [dom dom]
+              (add-attributes dom {:class "tag"}))))
         (table-DOM-R item inherited)))))

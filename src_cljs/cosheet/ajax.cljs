@@ -139,7 +139,7 @@
   [response]
   (let [path (:open response)]
     (when path
-      (.open js/window path))))
+      (.open js/window path "CosheetExpandPopup"))))
 
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)

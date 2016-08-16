@@ -6,6 +6,7 @@
                                      call-with-immutable description->entity
                                      StoredEntity]]
                      [store  :as store :refer [id-valid? StoredItemDescription]]
+                     [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
                                     template-matches]])))
 
@@ -35,7 +36,7 @@
 ;;;                  For each item refered to by sequence-referent,
 ;;;                  refers to a singleton group of an element of it
 ;;;                  whose semantic information is the same as that of
-;;;                  the exemplar.
+;;;                  the item.
 ;;;        elements  [:elements <condition> <sequence-referent>]
 ;;;                  For each item refered to by referent, refers to the
 ;;;                  group of elements of it whose semantic information
@@ -159,6 +160,70 @@
   (if (or (nil? subject) (item-referent? subject))
     (item-referent item)
     (exemplar-referent item subject)))
+
+;;; The string format of a referent is
+;;;     for item referents: _<the digits of their id>
+;;;    for other referents: <type letter><referent>r
+;;; where type letter for each type of referent is:
+(def letters->type
+  {\X :exemplar
+   \E :elements
+   \Q :query
+   \U :union
+   \P :parallel-union
+   \D :difference})
+(def type->letters (clojure.set/map-invert letters->type))
+
+(defn referent->string
+  "Return a string representation of the referent that can appear in a url.
+  We don't handle referents that contain non-referents (like query referents
+  might)"
+  [referent]
+  (when (referent? referent)
+    (if (item-referent? referent)
+      (str "_" (:id referent))
+      (let [argument-strings (map referent->string (rest referent))]
+        (when (not-any? nil? argument-strings)
+          (str (type->letters (referent-type referent))
+               (apply str argument-strings)
+               \r))))))
+
+(defn string->referent
+  "Parse a string representation of a referent.
+  Return or nil if the string is not a valid representation of a referent."
+  [rep]
+  (loop [index 0 ; Next index in the string to look at
+         partial-referent [:start] ; The referent we are constructing
+         pending-partials nil] ; Partial referents the current one
+                               ; is embedded in
+    (if (= index (count rep))
+      (when (and (= (count partial-referent) 2)
+                 (empty? pending-partials))
+        (second partial-referent))
+      (let [first-letter (nth rep index)]
+        (cond (= first-letter \r)
+              (when (and (not (empty? pending-partials))
+                         (let [num_args (dec (count partial-referent))]
+                           (case (first partial-referent)
+                             nil nil
+                             (:exemplar :elements :difference) (= num_args 2)
+                             :query (= num_args 1)
+                             (>= num_args 1))))
+                (recur (inc index)
+                       (conj (first pending-partials) partial-referent)
+                       (rest pending-partials)))
+              (letters->type first-letter)
+              (recur (inc index)
+                     [(letters->type first-letter)]
+                     (cons partial-referent pending-partials))
+              (= first-letter \_)
+              (let [digits (re-find #"\d+" (subs rep (inc index)))
+                    number (try (Integer/parseInt digits)
+                                (catch Exception e nil))]
+                (when number (recur (+ index (inc (count digits)))
+                                    (conj partial-referent (->ItemId number))
+                                    pending-partials)))
+              true nil)))))
 
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information

@@ -15,6 +15,20 @@
             ; :reload
             ))
 
+(deftest string-conversion-test
+  (let [referent (exemplar-referent
+                  (item-referent (->ItemId 0))
+                  (union-referent
+                   [(elements-referent (item-referent (->ItemId 1))
+                                       (parallel-union-referent
+                                        [(item-referent (->ItemId 3))
+                                         (item-referent (->ItemId 4))]))
+                    (difference-referent
+                     (query-referent (item-referent (->ItemId 5)))
+                     (item-referent (->ItemId 6789)))]))
+        rep (referent->string referent)]
+    (is (check (string->referent rep) referent))))
+
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))

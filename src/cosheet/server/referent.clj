@@ -38,9 +38,9 @@
 ;;;                  whose semantic information is the same as that of
 ;;;                  the item.
 ;;;        elements  [:elements <condition> <sequence-referent>]
-;;;                  For each item refered to by referent, refers to the
-;;;                  group of elements of it whose semantic information
-;;;                  matches the condition.
+;;;                  For each item refered to by sequence-referent,
+;;;                  refers to the group of elements of it each of whose
+;;;                  semantic information matches the condition.
 ;;;           query  [:query <condition>]
 ;;;                  Refers to the group of items that satisfies the condition.
 ;;;           union  [:union  <referent> ...]
@@ -58,25 +58,24 @@
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
 
+(defn exemplar-referent? [referent]
+  (and (sequential? referent) (= (first referent) :exemplar)))
+
 (comment
-
-  (defn exemplar-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :exemplar)))
-
   (defn elements-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :elements)))
+    (and (sequential? referent) (= (first referent) :elements)))
 
   (defn query-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :query)))
+    (and (sequential? referent) (= (first referent) :query)))
 
   (defn union-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :union)))
+    (and (sequential? referent) (= (first referent) :union)))
 
   (defn parallel-union-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :parallel-union)))
+    (and (sequential? referent) (= (first referent) :parallel-union)))
 
   (defn difference-referent? [referent]
-    (and (sequential? referent) (= ( first referent) :difference))))
+    (and (sequential? referent) (= (first referent) :difference))))
 
 (defn referent? [referent]
   (or (item-referent? referent)
@@ -161,10 +160,22 @@
     (item-referent item)
     (exemplar-referent item subject)))
 
+(defn referent->exemplar-and-subject
+  "Given a referent, return an exemplar and subject.
+   Returns nil for anything but item and exemplar referents."
+  [referent]
+  (cond (item-referent? referent) [referent nil]
+        (exemplar-referent? referent) (rest referent)))
+
 ;;; The string format of a referent is
-;;;     for item referents: _<the digits of their id>
+;;;     for item referents: I<the digits of their id>
 ;;;    for other referents: <type letter><referent>r
-;;; where type letter for each type of referent is:
+;;;           for keywords: K<delimiter><keyword letters><delimiter>
+;;;                for nil: N
+;;;              for lists: L<items in the list>l
+;;; The last three cases are needed to describe conditions in, for example,
+;;; query referents.
+;;; The type type letter for the various types of referent is:
 (def letters->type
   {\X :exemplar
    \E :elements
@@ -175,18 +186,34 @@
 (def type->letters (clojure.set/map-invert letters->type))
 
 (defn referent->string
-  "Return a string representation of the referent that can appear in a url.
-  We don't handle referents that contain non-referents (like query referents
-  might)"
+  "Return a string representation of the referent that can appear in a url."
   [referent]
-  (when (referent? referent)
-    (if (item-referent? referent)
-      (str "_" (:id referent))
-      (let [argument-strings (map referent->string (rest referent))]
-        (when (not-any? nil? argument-strings)
-          (str (type->letters (referent-type referent))
-               (apply str argument-strings)
-               \r))))))
+  (cond (referent? referent)
+        (if (item-referent? referent)
+          (str "I" (:id referent))
+          (let [argument-strings (map referent->string (rest referent))]
+            (when (not-any? nil? argument-strings)
+              (str (type->letters (referent-type referent))
+                   (apply str argument-strings)
+                   \r))))
+        (keyword? referent)
+        ;; For a keyword, we find a letter not in the keyword,
+        ;; and use that as the delimiter.
+        (let [name (name referent)
+              letters (set (seq name))
+              candidates (concat [\_]
+                                 (map char (range (int \A) (inc (int \Z))))
+                                 (map char (range (int \a) (inc (int \z)))))
+              delimiter (first (remove letters candidates))]
+          (str "K" delimiter name delimiter))
+        (nil? referent)
+        "N"
+        ;; Things that look like lists can be all sort of things, so just
+        ;; check for them not being vectors.
+        (and (seq? referent) (not (vector? referent)))
+        (let [member-strings (map referent->string referent)]
+          (when (not-any? nil? member-strings)
+            (str "L" (apply str member-strings) "l")))))
 
 (defn string->referent
   "Parse a string representation of a referent.
@@ -203,6 +230,7 @@
       (let [first-letter (nth rep index)]
         (cond (= first-letter \r)
               (when (and (not (empty? pending-partials))
+                         (vector? partial-referent)
                          (let [num_args (dec (count partial-referent))]
                            (case (first partial-referent)
                              nil nil
@@ -216,13 +244,42 @@
               (recur (inc index)
                      [(letters->type first-letter)]
                      (cons partial-referent pending-partials))
-              (= first-letter \_)
+              (= first-letter \I)
               (let [digits (re-find #"\d+" (subs rep (inc index)))
                     number (try (Integer/parseInt digits)
                                 (catch Exception e nil))]
-                (when number (recur (+ index (inc (count digits)))
-                                    (conj partial-referent (->ItemId number))
-                                    pending-partials)))
+                (when (and number (vector? partial-referent))
+                  (recur (+ index (inc (count digits)))
+                         (conj partial-referent (->ItemId number))
+                         pending-partials)))
+              (= first-letter \K)
+              (let [delimiter (nth rep (inc index))
+                    end-index (clojure.string/index-of
+                               rep delimiter (+ index 2))]
+                (when (and end-index
+                           (list? partial-referent))
+                  (let [keyword (keyword (subs rep (+ index 2) end-index))]
+                    (recur (inc end-index)
+                           (apply list (concat partial-referent [keyword]))
+                           pending-partials))))
+              (= first-letter \N)
+              (when (list? partial-referent)
+                (recur (inc index)
+                       (apply list (concat partial-referent [nil]))
+                       pending-partials))
+              (= first-letter \L)
+              (recur (inc index)
+                     '()
+                     (cons partial-referent pending-partials))
+              (= first-letter \l)
+              (when (and (not (empty? pending-partials))
+                         (list? partial-referent))
+                (let [popped (first pending-partials)]
+                  (recur (inc index)
+                         (if (list? popped)
+                           (apply list (concat popped [partial-referent]))
+                           (conj popped partial-referent))
+                         (rest pending-partials))))
               true nil)))))
 
 ;;; For purposes of comparing two entities, not all of their elements
@@ -259,7 +316,7 @@
           element-semantics (map immutable-semantic-to-list elements)]
       (if (empty? element-semantics)
         content-semantic
-        (list* (into [content-semantic] element-semantics))))))
+        (apply list (into [content-semantic] element-semantics))))))
 
 (defn semantic-to-list-R
   "Given an item, make a list representation of the

@@ -22,7 +22,8 @@
     [reporters :as reporter]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
-    [referent :refer [item-referent]]
+    [referent :refer [item-referent referent->exemplar-and-subject
+                      string->referent instantiate-referent]]
     [render :refer [top-level-item-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
@@ -54,10 +55,10 @@
                          (:root :non-semantic)
                          (:table :non-semantic)
                          (:none :row-query)
-                         (:none ("age" :tag)
+                         (:none ("age" :tag (~o1 :order :non-semantic))
                                 (~o1 :order :non-semantic)
                                 (:column :non-semantic))
-                         (:none ("size" :tag)
+                         (:none ("size" :tag (~o1 :order :non-semantic))
                                 (~o2 :order :non-semantic)
                                 (:column :non-semantic)))
         starting-element `(39 (:root :non-semantic)
@@ -122,24 +123,28 @@
 (def session-states (atom {}))
 
 (defn create-tracker
-  [store item-number]
+  [store referent-string]
   (let [immutable-store (current-store store)
-        immutable-root-item
-        (or (when item-number
-              (when-let [id-num (try (Integer/parseInt item-number)
-                                     (catch Exception e nil))]
-                (let [id (->ItemId id-num)]
-                  (when (id-valid? store id)
-                    (let [item (description->entity id immutable-store)]
-                      ;; Check that the item has an :order element,
-                      ;; which indicates that it is a user visible item.
-                      (when (not (empty?
-                                  (matching-elements '(nil :order) item)))
-                        item))))))
-            (first (matching-items '(nil :root) immutable-store)))
-        root-item (description->entity (:item-id immutable-root-item) store)
-        _ (println "root item" (simplify-for-print root-item))
-        definition [top-level-item-DOM-R root-item {}]
+        [immutable-item subject-referent]
+        (or (when referent-string
+              (let [referent (string->referent referent-string)
+                    [item-referent subject-referent]
+                    (referent->exemplar-and-subject referent)]
+                (when item-referent
+                  (let [item (first (first
+                                     (instantiate-referent item-referent
+                                                           immutable-store)))]
+                    ;; Check that the item has an :order element,
+                    ;; which indicates that it is a user visible item.
+                    (when (and item
+                               (not (empty?
+                                     (matching-elements '(nil :order) item))))
+                      [item subject-referent])))))
+            [(first (matching-items '(nil :root) immutable-store))
+             nil])
+        root-item (description->entity (:item-id immutable-item) store)
+        definition [top-level-item-DOM-R root-item
+                    (if subject-referent {:subject subject-referent} {})]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker")
@@ -172,7 +177,7 @@
   (@session-states session-id))
 
 (defn create-session
-  [name item-number]
+  [name referent-string]
   (let [store (ensure-store name)
         id (swap-control-return!
             session-states
@@ -181,7 +186,7 @@
                 [(assoc session-map id
                         {:name name
                          :store store
-                         :tracker (create-tracker store item-number)
+                         :tracker (create-tracker store referent-string)
                          :last-action (atom nil)})
                  id])))]
     (compute manager-data 1000)
@@ -189,9 +194,9 @@
     (check-propagation-if-quiescent (:tracker (get-session-state id)))
     id))
 
-(defn initial-page [name item-number]
-  (println "initial page" name item-number)
-  (let [session-id (create-session name item-number)]
+(defn initial-page [name referent-string]
+  (println "initial page" name referent-string)
+  (let [session-id (create-session name referent-string)]
     (html5
      [:head
       [:title "Hello World"]

@@ -22,7 +22,7 @@
             (cosheet.server
              [referent :refer [item-referent union-referent
                                canonicalize-list immutable-semantic-to-list]]
-             [referent :refer [item->canonical-semantic]]
+             [referent :refer [item->canonical-semantic referent->string]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
              [actions :refer :all])
             ; :reload
@@ -272,11 +272,12 @@
              ["male" ["gender" :tag]]))))
 
 (deftest do-expand-test
-  (is (= (do-expand store {:target {:item-referent (item-referent joe)}
-                           :target-key "joe"
-                           :session-state {:name "foo"}}))
-      {:store store
-       :open (str "foo?item=" (:id (item-referent joe)))}))
+  (is (check (do-expand store {:target {:item-referent (item-referent joe)}
+                               :target-key "joe"
+                               :session-state {:name "foo"}})
+             {:store store
+              :open (str "foo?referent="
+                         (referent->string (item-referent joe)))})))
 
 (deftest do-actions-test
   (let [mutable-store (new-mutable-store store)

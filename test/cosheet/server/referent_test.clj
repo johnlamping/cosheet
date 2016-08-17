@@ -24,7 +24,7 @@
                                         [(item-referent (->ItemId 3))
                                          (item-referent (->ItemId 4))]))
                     (difference-referent
-                     (query-referent (item-referent (->ItemId 5)))
+                     (query-referent '(nil (:root :A_a)))
                      (item-referent (->ItemId 6789)))]))
         rep (referent->string referent)]
     (is (check (string->referent rep) referent))))

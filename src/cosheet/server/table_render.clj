@@ -9,7 +9,8 @@
             (cosheet.server
              [referent :refer [item-referent
                                elements-referent query-referent
-                               union-referent parallel-union-referent
+                               union-referent always-union-referent
+                               parallel-union-referent
                                difference-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
@@ -37,19 +38,25 @@
   applies to, info maps that cover the conditions it brings up in
   rows, info maps that cover conditions it must not bring up, a
   referent to the rows of the table, and to the subject of the header
-  requests."
+  requests.
+  When the referent is instantiated, the first group must be all the elements
+  in table requests, while subsequent groups contain elements in rows brought
+  up by the header."
   [info-maps extent-info-maps negative-info-maps rows-referent header-subject]
-  (let [header-refs (vec (map #(item-or-exemplar-referent (:item %)
-                                                          header-subject)
-                              info-maps)) 
+  (let [header-ref (union-referent
+                    (map #(item-or-exemplar-referent (:item %) header-subject)
+                         info-maps)) 
         make-elements-ref #(elements-referent (:item %) rows-referent)
-        positive-refs (map make-elements-ref extent-info-maps)
-        positives-ref (union-referent (vec (concat header-refs positive-refs)))]
-    (if (empty? negative-info-maps)
-       positives-ref
-       (let [negative-refs (map make-elements-ref negative-info-maps)
-             negatives-ref (union-referent (vec negative-refs))]
-         (difference-referent positives-ref negatives-ref)))))
+        positive-element-refs (map make-elements-ref extent-info-maps)
+        element-refs (if (empty? negative-info-maps)
+                        positive-element-refs
+                        [(difference-referent
+                             (union-referent positive-element-refs)
+                             (union-referent (map make-elements-ref
+                                                  negative-info-maps)))])]
+    ;; We always return a union, to guarantee that instantition will
+    ;; return one group for the header elements.
+    (always-union-referent (concat [header-ref] element-refs))))
 
 (defn attributes-for-header-delete-command
   "Return attributes for the delete command, if it needs special attributes."
@@ -266,8 +273,8 @@
   [hierarchy elements-template rows-referent inherited]
   (expr-let [columns (expr-seq
                       map #(table-header-subtree-DOM-R
-                             % true elements-template
-                             rows-referent inherited)
+                            % true elements-template
+                            rows-referent (assoc inherited :selector true))
                       hierarchy)]
     (into [:div {:class "column-header-sequence"}]
           columns)))

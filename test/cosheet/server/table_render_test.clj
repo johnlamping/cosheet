@@ -106,6 +106,7 @@
                 :subject (union-referent [(item-referent c1)
                                           (elements-referent c1 rows-referent)])
                 :template '(nil :tag)
+                :selector true
                 :selectable-attributes
                 {:commands {:delete {:delete-referent (item-referent c1)}
                             :add-column {:select-pattern (conj table-key

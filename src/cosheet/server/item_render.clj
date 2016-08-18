@@ -303,7 +303,8 @@
     [:div (into-attributes
            (into-attributes {:commands {:set-content nil
                                         :delete nil
-                                        :add-element nil
+                                        :add-element (when (:selector inherited)
+                                                       {:selector true})
                                         :add-twin nil
                                         :expand nil}}
                             (:selectable-attributes inherited))

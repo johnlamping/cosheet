@@ -127,20 +127,19 @@
   [condition]
   [:query (coerce-item-to-id condition)])
 
-(defn always-union-referent
-  "Create a referent for the union of the referents, always returning a
-  union referent, even if there is only one argument referent."
+(defn union-referent
+  "Create a union referent."
   [referents]
   (for [referent referents]
     (assert (referent? referent)))
   (vec (cons :union referents)))
 
-(defn union-referent
-  "Create a referent for the union of the referents."
+(defn union-referent-if-needed
+  "Create a referent for the union of the referents, unless there is only one."
   [referents]
   (if (= (count referents) 1)
     (first referents)
-    (always-union-referent referents)))
+    (union-referent referents)))
 
 (defn parallel-union-referent
   "Create a referent for the parallel union of the referents."

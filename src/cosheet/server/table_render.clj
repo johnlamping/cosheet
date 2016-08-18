@@ -9,7 +9,7 @@
             (cosheet.server
              [referent :refer [item-referent
                                elements-referent query-referent
-                               union-referent always-union-referent
+                               union-referent-if-needed union-referent
                                parallel-union-referent
                                difference-referent
                                item-or-exemplar-referent
@@ -43,20 +43,20 @@
   in table requests, while subsequent groups contain elements in rows brought
   up by the header."
   [info-maps extent-info-maps negative-info-maps rows-referent header-subject]
-  (let [header-ref (union-referent
+  (let [header-ref (union-referent-if-needed
                     (map #(item-or-exemplar-referent (:item %) header-subject)
                          info-maps)) 
         make-elements-ref #(elements-referent (:item %) rows-referent)
         positive-element-refs (map make-elements-ref extent-info-maps)
+        negative-element-refs (map make-elements-ref negative-info-maps)
         element-refs (if (empty? negative-info-maps)
                         positive-element-refs
                         [(difference-referent
-                             (union-referent positive-element-refs)
-                             (union-referent (map make-elements-ref
-                                                  negative-info-maps)))])]
+                          (union-referent-if-needed positive-element-refs)
+                          (union-referent-if-needed negative-element-refs))])]
     ;; We always return a union, to guarantee that instantition will
     ;; return one group for the header elements.
-    (always-union-referent (concat [header-ref] element-refs))))
+    (union-referent (concat [header-ref] element-refs))))
 
 (defn attributes-for-header-delete-command
   "Return attributes for the delete command, if it needs special attributes."

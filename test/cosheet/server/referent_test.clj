@@ -113,7 +113,7 @@
   (is (check (instantiate-referent
               (exemplar-referent joe-age
                                  (query-referent '(nil (nil "age")))) store)
-             (as-set [[joe-age] [jane-age]])))
+             [(as-set [joe-age jane-age])]))
   (is (check (instantiate-referent
               (elements-referent '(nil "age")
                                  (query-referent '(nil (nil "age")))) store)

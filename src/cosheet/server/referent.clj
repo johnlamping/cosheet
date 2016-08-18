@@ -33,8 +33,8 @@
 ;;;            item  <an item-id>
 ;;;                  Refers to the singlton group of the item.
 ;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
-;;;                  For each item refered to by sequence-referent,
-;;;                  refers to a singleton group of an element of it
+;;;                  For each group of items refered to by sequence-referent,
+;;;                  refers to a group of an element of each member
 ;;;                  whose semantic information is the same as that of
 ;;;                  the item.
 ;;;        elements  [:elements <condition> <sequence-referent>]
@@ -394,8 +394,9 @@
             [[(description->entity referent immutable-store)]])
     :exemplar (let [[_ exemplar subject] referent
                     template (condition-to-list exemplar immutable-store)]
-                (map #(best-matching-element template %)
-                     (instantiate-to-items subject immutable-store)))
+                (map (fn [group] (mapcat #(best-matching-element template %)
+                                         group))
+                     (instantiate-referent subject immutable-store)))
     :elements (let [[_ condition subject] referent
                     template (condition-to-list condition immutable-store)]
                 (map #(matching-elements template %)

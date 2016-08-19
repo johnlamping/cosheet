@@ -76,10 +76,9 @@
     (if (or (and (keyword? entity-content) (empty? entity-elements))
             (some #{:non-semantic} entity-elements))
       ;; Keyword markers and non-semantic elements don't get an ordering.
-      (let [[s1 id] (add-entity store subject-id
-                                (replace-in-seqs entity nil ""))]
+      (let [[s1 id] (add-entity store subject-id entity)]
         [s1 id order])
-      (let [value-to-store (if (nil? entity-content) "" entity-content)
+      (let [value-to-store entity-content
             [s1 id] (add-simple-element store subject-id value-to-store)
             ;; The next bunch of complication is to split the order up
             ;; the right way in all cases. First, we split it into a
@@ -164,11 +163,12 @@
   subject-id, adjacents pair.
   Return a map of the new store and a selection request for the first
   of the new items."
-  [store template subject-ids adjacents position use-bigger
+  [store entity subject-ids adjacents position use-bigger
    select-pattern old-key]
-  (let [f (fn [store [subject-id adjacent]]
+  (let [entity (replace-in-seqs entity nil "")
+        f (fn [store [subject-id adjacent]]
             (update-add-entity-adjacent-to
-             store subject-id template adjacent position use-bigger))        
+             store subject-id entity adjacent position use-bigger))        
         [store element-ids] (thread-map f store
                                         (map vector subject-ids adjacents))]
     (if (empty? element-ids)

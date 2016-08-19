@@ -129,11 +129,10 @@
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.
   ;; Also check and that non-semantic elements don't get order information
-  ;; and that nil gets turned into ""
   (let [[s id order] (update-add-entity-with-order
                       store joe-id '(6 ("height" :tag)
-                                       (nil :tag)
-                                       ("other" :non-semantic nil))
+                                       ("" :tag)
+                                       ("other" :non-semantic ""))
                       unused-orderable :after false)
         joe (description->entity joe-id s)
         new-entity (first (label->elements joe "height"))

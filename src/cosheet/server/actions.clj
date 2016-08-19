@@ -160,12 +160,17 @@
     store condition)))
 
 (defn add-and-select
-  "Run the specified function on the store and each of the arguments.
-  The function must return an updated store and the id of a new item.
+  "Add an entity matching the template to the store for each 
+  subject-id, adjacents pair.
   Return a map of the new store and a selection request for the first
   of the new items."
-  [f store arguments select-pattern old-key]
-  (let [[store element-ids] (thread-map f store arguments)]
+  [store template subject-ids adjacents position use-bigger
+   select-pattern old-key]
+  (let [f (fn [store [subject-id adjacent]]
+            (update-add-entity-adjacent-to
+             store subject-id template adjacent position use-bigger))        
+        [store element-ids] (thread-map f store
+                                        (map vector subject-ids adjacents))]
     (if (empty? element-ids)
       store
       {:store store
@@ -195,29 +200,24 @@
                1))
     (let [adjacents (cond
                       adjacent-referent
-                      (apply concat
-                             (instantiate-referent adjacent-referent store))
+                      (instantiate-referent adjacent-referent store)
                       adjacent-groups-referent
-                      (map #(furthest-item % position)
-                           (instantiate-referent adjacent-groups-referent
-                                                 store))
-                      true (apply concat
-                                  (instantiate-referent item-referent store)))
+                      [(map #(furthest-item % position)
+                             (instantiate-referent adjacent-groups-referent
+                                                   store))]
+                      true (instantiate-referent item-referent store))
           subject-ids (if subject-referent
-                        (map :item-id
-                             (apply concat
-                                    (instantiate-referent subject-referent
-                                                          store)))
-                        (map #(id->subject store (:item-id %)) adjacents))
+                        (map #(map :item-id %)
+                             (instantiate-referent subject-referent store))
+                        (map (fn [group]
+                               (map #(id->subject store (:item-id %)) group))
+                             adjacents))
           [adjusted-template store] (adjust-condition template store)]
-      (println "total items added: " (count subject-ids))
-      (assert (= (count subject-ids) (count adjacents)))
-      (add-and-select (fn [store [subject-id adjacent]]
-                        (update-add-entity-adjacent-to
-                         store subject-id adjusted-template
-                         adjacent position use-bigger))
-                      store
-                      (map vector subject-ids adjacents)
+      (println "total items added: " (apply + (map count subject-ids)))
+      (assert (= (map count subject-ids) (map count adjacents)))
+      (add-and-select store adjusted-template
+                      (apply concat subject-ids) (apply concat adjacents)
+                      position use-bigger
                       (or select-pattern (conj parent-key [:pattern]))
                       old-key))))
 
@@ -236,7 +236,7 @@
     (generic-add store
                  {:subject-referent subject-referent
                   :adjacent-groups-referent subject-referent}
-                 (:target-key attributes)(:target-key attributes) true)))
+                 (:target-key attributes) (:target-key attributes) true)))
 
 (defn do-add-sibling
   [store attributes]

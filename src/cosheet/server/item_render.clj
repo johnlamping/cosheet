@@ -297,15 +297,15 @@
   ;; between elements of an item and elements on its content.
   (assert (entity/atom? content))
   (let [is-placeholder (and (symbol? content)
-                            (= (subs (str content) 0 3) "???"))]
+                            (= (subs (str content) 0 3) "???"))
+        selector-map (when (:selector inherited) {:selector true})]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
            (into-attributes {:commands {:set-content nil
                                         :delete nil
-                                        :add-element (when (:selector inherited)
-                                                       {:selector true})
-                                        :add-twin nil
+                                        :add-element selector-map
+                                        :add-twin selector-map
                                         :expand nil}}
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"

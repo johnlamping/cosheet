@@ -248,7 +248,7 @@
              node-dom
              (let [properties-list (canonical-set-to-list (:properties node))
                    inherited (update-in inherited [:template]
-                                        #(list* (concat (or % '(:none))
+                                        #(list* (concat (or % '(anything))
                                                         properties-list)))
                    is-tag (some #{:tag} elements-template)]
                (expr-let
@@ -293,7 +293,7 @@
         excluded-conditions (map #(replace-in-seqs
                                    (cons nil (map canonical-to-list
                                                   (:property-canonicals %)))
-                                   :none nil)
+                                   'anything nil)
                                  (hierarchy-nodes-extent non-trivial-children))]
     (mapcat (fn [below]
               (if (hierarchy-node? below)
@@ -384,7 +384,7 @@
   ;;              element has, itself, a :non-semantic element, to
   ;;              make it not part of the semantics of the column
   ;;              specifier. Generally, the content of the content
-  ;;              will be the keyword :none, to indicate no constraint
+  ;;              will be the keyword 'anything, to indicate no constraint
   ;;              on the content of an element in the row, without
   ;;              breaking the rule that the database doesn't contain
   ;;              nil. The exception is the special content :other,
@@ -406,7 +406,7 @@
         (expr-let
             [basic-row-query (semantic-to-list-R row-query-item)
              row-query (add-element-to-entity-list
-                        (replace-in-seqs basic-row-query :none nil)
+                        (replace-in-seqs basic-row-query 'anything nil)
                         ['(:top-level :non-semantic)])
              row-items (expr order-items-R
                          (matching-items row-query store))
@@ -432,7 +432,7 @@
                       hierarchy '(nil :tag) (query-referent row-query)
                       (assoc inherited
                              :subject (item-referent table-item)
-                             :template '(:none (:column :non-semantic))))]
+                             :template '(anything (:column :non-semantic))))]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)

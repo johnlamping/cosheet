@@ -165,18 +165,16 @@
   of the new items."
   [store entity subject-ids adjacents position use-bigger
    select-pattern old-key]
-  (let [entity (replace-in-seqs entity nil "")
-        f (fn [store [subject-id adjacent]]
+  (let [f (fn [store [subject-id adjacent]]
             (update-add-entity-adjacent-to
              store subject-id entity adjacent position use-bigger))        
         [store element-ids] (thread-map f store
                                         (map vector subject-ids adjacents))]
-    (if (empty? element-ids)
-      store
-      {:store store
-       :select [(substitute-in-key
+    {:store store
+     :select (when (not (empty? element-ids))
+               [(substitute-in-key
                  select-pattern (description->entity (first element-ids) store))
-                [old-key]]})))
+                [old-key]])}))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
@@ -190,6 +188,9 @@
                                           ; new item(s)
                 position                  ; :before or :after item/adjacent
                 template                  ; added item(s) should satisfy this
+                nil-to-anything           ; if true, then for the first group
+                                          ; of items, nils in the template
+                                          ; should go to 'anything
                 select-pattern]           ; a key pattern to use for selecting 
          :or {position :after}}         
         target-info]
@@ -212,14 +213,26 @@
                         (map (fn [group]
                                (map #(id->subject store (:item-id %)) group))
                              adjacents))
-          [adjusted-template store] (adjust-condition template store)]
+          [adjusted-template store] (adjust-condition template store)
+          select-pattern (or select-pattern (conj parent-key [:pattern]))
+          entity (replace-in-seqs adjusted-template nil "")
+          alt-entity (if nil-to-anything
+                       (replace-in-seqs adjusted-template nil 'anything)
+                       entity)]
       (println "total items added: " (apply + (map count subject-ids)))
       (assert (= (map count subject-ids) (map count adjacents)))
-      (add-and-select store adjusted-template
-                      (apply concat subject-ids) (apply concat adjacents)
-                      position use-bigger
-                      (or select-pattern (conj parent-key [:pattern]))
-                      old-key))))
+      (let [{:keys [store select]}
+            (add-and-select
+             store alt-entity
+             (first subject-ids) (first adjacents)
+             position use-bigger select-pattern old-key)
+            select1 select
+            {:keys [store select]}
+            (add-and-select
+             store entity
+             (apply concat (rest subject-ids)) (apply concat (rest adjacents))
+             position use-bigger select-pattern old-key)]
+        {:store store :select (or select1 select)}))))
 
 (defn do-add-twin
   [store attributes]

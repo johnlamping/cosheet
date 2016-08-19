@@ -54,7 +54,7 @@
                     (~o1 :order :non-semantic)
                     "plain" "plain")]
     (let [table-list `("table"
-                       ((:none (:none ("age" :tag))) :row-query)
+                       ((~'anything (~'anything ("age" :tag))) :row-query)
                        (:none ("single" :tag (~o1 :order :non-semantic))
                               (~o1 :order :non-semantic)
                               (:column :non-semantic))
@@ -114,8 +114,8 @@
                  :column {:adjacent-groups-referent (item-referent c1)
                           :subject-referent (item-referent table)
                           :position :after
-                          :template '(:none (:column :non-semantic)
-                                            (??? :tag))}}}]]
+                          :template '(anything (:column :non-semantic)
+                                               (??? :tag))}}}]]
              (any)
              (any)]
             [:component {:key (conj table-key (:item-id joe))

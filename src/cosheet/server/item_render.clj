@@ -311,7 +311,7 @@
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder"))
             :target (item-target item inherited)})
-     (cond (= content :none) "" ;; TODO: Make this have special formatting.
+     (cond (= content 'anything) "" ;; TODO: Make this have special formatting.
            is-placeholder "???"                     
            true (str content))]))
 
@@ -348,7 +348,8 @@
              content-dom elements-dom]))))))
 
 ;;; TODO: This needs an inherited property saying whether this is in a
-;;; selection, so that new items should be :none, rather then the empty string.
+;;; selection, so that new items should be 'anything, rather then
+;;; the empty string.
 (defn item-DOM-R
    "Make a dom for an item.
    If the item is a tag, the caller is responsible for tag formatting."

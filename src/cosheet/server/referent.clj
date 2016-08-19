@@ -357,7 +357,7 @@
      (when (id-valid? immutable-store condition)
        (semantic-to-list-R (description->entity condition immutable-store)))
      condition)
-   :none nil))
+   'anything nil))
 
 (defn best-matching-element
   "Given the list form of semantic information and an item,

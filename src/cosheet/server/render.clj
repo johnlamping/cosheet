@@ -120,7 +120,7 @@
                            ; of the dom should have, if any. Typically,
                            ; these are commands for things like new-row.
 ;               :selector  ; If true, this dom represents a selector, which
-                           ; means that new elements should get :none
+                           ; means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,
                            ; and not part of what is selected. When the
                            ; target referent is instantiated, the first group

@@ -9,7 +9,8 @@
                                         content elements
                                         label->elements label->content]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value profile-and-print-reporters]]
+             [debug :refer [current-value profile-and-print-reporters
+                            simplify-for-print]]
              [reporters :as reporter]
              entity-impl
              [query :refer [matching-elements]]
@@ -201,7 +202,32 @@
                                                      (item-referent joe-age)])}
                                    ["parent-key"] ["old-key"] true)]
       (is (check (:store result12) (:store result-both)))
-      (is (check (:select result1) (:select result-both))))))
+      (is (check (:select result1) (:select result-both))))
+    ;; Checking adding with nil-to-none
+    (let [result (generic-add store {:template '(nil ("new" :tag nil))
+                                     :nil-to-anything true
+                                     :item-referent (union-referent
+                                                     [(item-referent jane-age)
+                                                      (item-referent joe-age)])}
+                              ["parent-key"] ["old-key"] true)
+          s1 (:store result)
+          new-jane (description->entity jane-id s1)
+          new-jane-element (first (matching-elements '(nil "new") new-jane))
+          new-joe (description->entity joe-id s1)
+          new-joe-element (first (matching-elements '(nil "new") new-joe))]
+      (is (check (to-list new-jane-element)
+                 ['anything
+                  ["new" ['anything [(any) :order :non-semantic]]
+                   :tag
+                   [(any) :order :non-semantic]]
+                  [(any) :order :non-semantic]]))
+      (println "namespace" (namespace 'anything))
+      (is (check (to-list new-joe-element)
+                 [""
+                  ["new" ["" [(any) :order :non-semantic]]
+                   :tag
+                   [(any) :order :non-semantic]]
+                  [(any) :order :non-semantic]])))))
 
 (deftest do-add-element-test
   (let [result (do-add-element

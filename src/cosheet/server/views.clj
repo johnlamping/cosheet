@@ -54,7 +54,7 @@
         starting-table `("table"
                          (:root :non-semantic)
                          (:table :non-semantic)
-                         (:none :row-query)
+                         (~'anything :row-query)
                          (:none ("age" :tag (~o1 :order :non-semantic))
                                 (~o1 :order :non-semantic)
                                 (:column :non-semantic))

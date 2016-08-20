@@ -112,7 +112,8 @@
                             :add-column {:select-pattern (conj table-key
                                                                tag-pattern)}}
                  :column {:adjacent-groups-referent (item-referent c1)
-                          :subject-referent (item-referent table)
+                          :subject-referent (union-referent
+                                             [(item-referent table)])
                           :position :after
                           :template '(anything (:column :non-semantic)
                                                (??? :tag))}}}]]

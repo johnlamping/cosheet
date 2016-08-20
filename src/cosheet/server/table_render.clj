@@ -114,7 +114,7 @@
                                          (map #(item-or-exemplar-referent
                                                 % subject)
                                               column-items))
-              :subject-referent subject
+              :subject-referent (union-referent [subject])
               :position :after
               :template new-header-template}}))
 
@@ -335,9 +335,12 @@
                               :parent-key (conj (:parent-key inherited)
                                                 (:item-id column-item))
                               :template template)]
-    (expr-let [matches (matching-elements template row-item)
+    (expr-let [matches (matching-elements
+                        (replace-in-seqs template 'anything nil) row-item)
                do-not-show (when exclusions
-                             (expr-seq map #(matching-elements % row-item)
+                             (expr-seq map #(matching-elements
+                                             (replace-in-seqs % 'anything nil)
+                                             row-item)
                                        exclusions))]
       (let [elements (seq (clojure.set/difference
                            (set matches)

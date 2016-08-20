@@ -220,7 +220,8 @@
                        (replace-in-seqs adjusted-template nil 'anything)
                        entity)]
       (println "total items added: " (apply + (map count subject-ids)))
-      (assert (= (map count subject-ids) (map count adjacents)))
+      (assert (= (map count subject-ids) (map count adjacents))
+              [(simplify-for-print subject-ids) (simplify-for-print adjacents)])
       (let [{:keys [store select]}
             (add-and-select
              store alt-entity
@@ -241,14 +242,19 @@
       (let [item-key (if (= (last target-key) :content)
                        (pop target-key)
                        target-key)]
-        (generic-add store target (pop item-key) target-key true)))))
+        (generic-add store
+                     (cond-> target
+                       (:selector attributes) (assoc :nil-to-anything true))
+                     (pop item-key) target-key true)))))
 
 (defn do-add-element
   [store attributes]
   (when-let [subject-referent (:item-referent (:target attributes))]
     (generic-add store
-                 {:subject-referent subject-referent
-                  :adjacent-groups-referent subject-referent}
+                 (cond-> 
+                     {:subject-referent subject-referent
+                      :adjacent-referent subject-referent}
+                   (:selector attributes) (assoc :nil-to-anything true))
                  (:target-key attributes) (:target-key attributes) true)))
 
 (defn do-add-sibling

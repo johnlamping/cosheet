@@ -403,11 +403,12 @@
                                          group))
                      (instantiate-referent subject immutable-store)))
     :elements (let [[_ condition subject] referent
-                    template (condition-to-list condition immutable-store)]
+                    template (replace-in-seqs
+                              (condition-to-list condition immutable-store)
+                              'anything nil)]
                 (map #(matching-elements template %)
                      (instantiate-to-items subject immutable-store)))
-    :query (let [[_ condition] referent
-                 template (condition-to-list condition immutable-store)]
+    :query (let [[_ condition] referent]
              [(matching-items condition immutable-store)])
     :union (let [[_ & referents] referent]
              (map #(instantiate-to-items % immutable-store)

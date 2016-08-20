@@ -309,9 +309,10 @@
                                         :expand nil}}
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
-                     is-placeholder (str " placeholder"))
+                     is-placeholder (str " placeholder")
+                     (= content 'anything) (str " anything"))
             :target (item-target item inherited)})
-     (cond (= content 'anything) "" ;; TODO: Make this have special formatting.
+     (cond (= content 'anything) ""
            is-placeholder "???"                     
            true (str content))]))
 

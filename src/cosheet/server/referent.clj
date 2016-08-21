@@ -360,21 +360,26 @@
    'anything nil))
 
 (defn best-matching-element
-  "Given the list form of semantic information and an item,
-  find an element of the item that matches the semantic information.
-  Return the best matching element in a list if there is one, otherwise
-  return nil.
-  Only works on immutable items."
-  [semantic-info subject]
-  (let [matches (matching-elements semantic-info subject)]
+  "Given the list form of a template, find an element of the item that
+  matches it. Return the best matching element in a list if there is one,
+  otherwise return nil. Only works on immutable templates."
+  [template subject]
+  (let [matches (matching-elements template subject)]
     (when (not (empty? matches))
       (if (> (count matches) 1)
         ;; Prefer one with no extra semantic info.
-        (let [canonical-semantic (replace-in-seqs
-                                  (canonicalize-list semantic-info)
-                                  nil "")
-              perfect-matches (filter #(= (item->canonical-semantic %)
-                                          canonical-semantic)
+        (let [semantic (immutable-semantic-to-list template)
+              ;; A nil in the template probably came from a wildcard.
+              ;; It should be considered a perfect match with 'anything,
+              ;; to handle selectors, and with the empty string, to handle
+              ;; blank elements added to match a selector.
+              canonical1 (canonicalize-list (replace-in-seqs semantic nil ""))
+              canonical2 (canonicalize-list (replace-in-seqs semantic
+                                                             nil 'anything))
+              perfect-matches (filter #(let [canonical-match
+                                             (item->canonical-semantic %)]
+                                         (or (= canonical-match canonical1)
+                                             (= canonical-match canonical2)))
                                       matches)]
           [(first (if (empty? perfect-matches) matches perfect-matches))])
         matches))))
@@ -395,17 +400,16 @@
 
 (defn template-to-condition
   "Given a template, alter it to work as a condition. Specifically,
-  replace 'anything by (nil (nil :order)) to make 'anything work as a wild
-  card whils avoiding matching non-user
-  editable elements."
+  replace 'anything by (nil (nil :order :non-semantic)) to make 'anything
+   work as a wild card whils avoiding matching non-user editable elements."
   [condition]
   (if (sequential? condition)
     (let [elements (map template-to-condition (rest condition))]
       (if (contains? #{'anything nil} (first condition))
-        (list* nil '(nil :order) elements)
+        (list* nil '(nil :order :non-semantic) elements)
         (cons (first condition) elements)))
     (if  (contains? #{'anything nil} condition)
-      '(nil (nil :order))
+      '(nil (nil :order :non-semantic))
       condition)))
 
 (defn instantiate-referent

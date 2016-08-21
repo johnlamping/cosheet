@@ -49,14 +49,16 @@
   "Set the content of the item in the store provided the current content
    matches 'from'."
   [from to store item]
-  ;; There are two special cases to match: If we have a number,
-  ;; the client will have a string. If we have an anonymous symbol, the client
-  ;; will have "???".
-  (if (= (parse-string-as-number from)
-         (let [content (content item)]
-           (if (and (symbol? content) (= (subs (str content) 0 3) "???"))
-             "???"
-             content)))
+  ;; There are several special cases to match: If we have a number,
+  ;; the client will have a string. If we have an anonymous symbol,
+  ;; the client will have "???". If the client had ..., it was probably
+  ;; a wild card, and we could have anything.
+  (if (let [from (parse-string-as-number from)
+            content (content item)]
+        (println "from" from "content" content)
+        (or (= from "...")
+            (and (symbol? content) (= (subs (str content) 0 3) (= from "???")))
+            (= from content)))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" (content item) from)
         store)))

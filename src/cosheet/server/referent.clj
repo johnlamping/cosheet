@@ -370,7 +370,9 @@
     (when (not (empty? matches))
       (if (> (count matches) 1)
         ;; Prefer one with no extra semantic info.
-        (let [canonical-semantic (canonicalize-list semantic-info)
+        (let [canonical-semantic (replace-in-seqs
+                                  (canonicalize-list semantic-info)
+                                  nil "")
               perfect-matches (filter #(= (item->canonical-semantic %)
                                           canonical-semantic)
                                       matches)]
@@ -391,6 +393,21 @@
   [fun referent immutable-store]
   (map fun (instantiate-to-items referent immutable-store)))
 
+(defn template-to-condition
+  "Given a template, alter it to work as a condition. Specifically,
+  replace 'anything by (nil (nil :order)) to make 'anything work as a wild
+  card whils avoiding matching non-user
+  editable elements."
+  [condition]
+  (if (sequential? condition)
+    (let [elements (map template-to-condition (rest condition))]
+      (if (contains? #{'anything nil} (first condition))
+        (list* nil '(nil :order) elements)
+        (cons (first condition) elements)))
+    (if  (contains? #{'anything nil} condition)
+      '(nil (nil :order))
+      condition)))
+
 (defn instantiate-referent
   "Return the groups of items that the referent refers to."
   [referent immutable-store]
@@ -398,15 +415,15 @@
     :item (when (id-valid? immutable-store referent)
             [[(description->entity referent immutable-store)]])
     :exemplar (let [[_ exemplar subject] referent
-                    template (condition-to-list exemplar immutable-store)]
-                (map (fn [group] (mapcat #(best-matching-element template %)
+                    condition (template-to-condition
+                               (condition-to-list exemplar immutable-store))]
+                (map (fn [group] (mapcat #(best-matching-element condition %)
                                          group))
                      (instantiate-referent subject immutable-store)))
     :elements (let [[_ condition subject] referent
-                    template (replace-in-seqs
-                              (condition-to-list condition immutable-store)
-                              'anything nil)]
-                (map #(matching-elements template %)
+                    condition (template-to-condition
+                               (condition-to-list condition immutable-store))]
+                (map #(matching-elements condition %)
                      (instantiate-to-items subject immutable-store)))
     :query (let [[_ condition] referent]
              [(matching-items condition immutable-store)])

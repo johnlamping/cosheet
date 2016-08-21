@@ -312,7 +312,7 @@
                      is-placeholder (str " placeholder")
                      (= content 'anything) (str " anything"))
             :target (item-target item inherited)})
-     (cond (= content 'anything) ""
+     (cond (= content 'anything) "..."
            is-placeholder "???"                     
            true (str content))]))
 

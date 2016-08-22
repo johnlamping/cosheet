@@ -114,7 +114,8 @@
                 :selectable-attributes
                 {:commands {:delete {:delete-referent (item-referent c1)}
                             :add-column {:select-pattern (conj table-key
-                                                               tag-pattern)}}
+                                                               tag-pattern)}
+                            :expand {:item-referent (item-referent c1)}}
                  :column {:adjacent-groups-referent (item-referent c1)
                           :subject-referent (union-referent
                                              [(item-referent table)])

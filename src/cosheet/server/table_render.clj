@@ -83,7 +83,7 @@
       {:commands {:delete {:delete-referent delete-referent}}})))
 
 (defn attributes-for-header-add-column-command
-  "Return attributes for an add a column command, given the column
+  "Return attributes for an add column command, given the column
   request items that gave rise to the column. elements-template gives
   the template for new elements, while inherited gives the environment
   of the header."
@@ -97,7 +97,7 @@
         ;; element.
         ;; TODO: This doesn't handle header items that are below other
         ;; header items, as there is no query that can pick out the
-        ;; new item as opposed to the the copied items. The solution is to
+        ;; new item as opposed to copied template items. The solution is to
         ;; add an :exclusive option on referent variables, which means
         ;; that they can't match the same item as any other exclusive
         ;; referent. With that, we introduce variables to match each
@@ -172,6 +172,8 @@
   header selects elements."
   [node elements-template rows-referent inherited]
   (let [subject (:subject inherited)
+        item (let [members (:members node)]
+               (when (seq members) (:item (first members))))
         descendants (hierarchy-node-descendants node) 
         example-elements (hierarchy-node-example-elements node)
         column-referent (table-column-elements-referent
@@ -179,16 +181,24 @@
                            rows-referent subject)
         delete-attributes (attributes-for-header-delete-command
                            node example-elements rows-referent subject)
-        column-inherited (let [temp (assoc inherited
-                                           :template elements-template
-                                           :subject column-referent
-                                           :width (* 0.75 (count descendants)))]
-                           (if delete-attributes
-                             (assoc temp :selectable-attributes
-                                    delete-attributes)
-                             (dissoc temp :selectable-attributes)))]
+        selectable (into-attributes
+                    delete-attributes
+                    (when item
+                      {:commands
+                       {:expand {:item-referent
+                                 (item-or-exemplar-referent
+                                  item (:subject inherited))}}}))
+        full-inherited (let [temp-inherited
+                             (assoc inherited
+                                    :template elements-template
+                                    :subject column-referent
+                                    :width (* 0.75 (count descendants)))]
+                         (if (empty? selectable)
+                             (dissoc temp-inherited :selectable-attributes)
+                             (assoc temp-inherited :selectable-attributes
+                                    selectable)))]
     (table-header-node-elements-DOM-R
-     example-elements (map :item descendants) inherited column-inherited)))
+     example-elements (map :item descendants) inherited full-inherited)))
 
 (def table-header-subtree-DOM-R)
 

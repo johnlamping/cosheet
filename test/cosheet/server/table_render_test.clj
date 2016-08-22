@@ -87,6 +87,8 @@
           c3 (first (current-value (label->elements table o3)))
           id3 (first (current-value (label->elements c2 o2)))
           table-key [:foo (:item-id table)]
+          row-template '(nil (nil ("age" :tag))
+                             (:top-level :non-semantic))
           row-condition '(nil (nil :order :non-semantic)
                               (nil (nil :order :non-semantic) ("age" :tag))
                               (:top-level :non-semantic))
@@ -123,7 +125,7 @@
              (any)]
             [:component {:key (conj table-key (:item-id joe))
                          :class "table-row"}
-             [table-row-DOM-R joe (conj table-key (:item-id joe)) row-condition
+             [table-row-DOM-R joe (conj table-key (:item-id joe)) row-template
               [{:column-item c1 :template '(nil ("single" :tag))
                 :exclusions '()}
                {:column-item c2 :template '(nil ("name" :tag))
@@ -143,9 +145,7 @@
               [:div {:commands {:add-row nil :set-content nil
                                 :expand {:item-referent (item-referent joe)}}
                      :row {:item-referent (item-referent joe)
-                           :template '(nil (nil :order :non-semantic)
-                                           (nil (nil :order :non-semantic)
-                                                ("age" :tag))
+                           :template '(nil (nil ("age" :tag))
                                            (:top-level :non-semantic))}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
@@ -166,9 +166,7 @@
                  {:commands {:add-row nil
                              :expand {:item-referent (item-referent joe)}}
                   :row {:item-referent (item-referent joe)
-                        :template '(nil (nil :order :non-semantic)
-                                        (nil (nil :order :non-semantic)
-                                             ("age" :tag))
+                        :template '(nil (nil ("age" :tag))
                                         (:top-level :non-semantic))}}}]]
               (any)
               (any)

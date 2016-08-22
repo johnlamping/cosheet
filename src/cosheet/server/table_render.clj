@@ -1,5 +1,6 @@
 (ns cosheet.server.table-render
-  (:require (cosheet [entity :as entity]
+  (:require (cosheet [utils :refer [replace-in-seqs]]
+                     [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
@@ -411,8 +412,13 @@
              row-query (add-element-to-entity-list
                         (template-to-condition basic-row-query)
                         ['(:top-level :non-semantic)])
-             row-items (expr order-items-R
-                         (matching-items row-query store))
+             ;; Avoid the (nil :order :non-semantic) added by
+             ;; template-to-condition.
+             row-template (add-element-to-entity-list
+                           (replace-in-seqs basic-row-query 'anything nil)
+                           ['(:top-level :non-semantic)])
+             row-items  (expr order-items-R
+                            (matching-items row-query store))
              columns (expr order-items-R
                        (entity/label->elements table-item :column))
              ;; Unlike row headers for tags, where the header
@@ -439,7 +445,8 @@
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)
                 rows (expr-seq map #(table-row-DOM-component
-                                     % row-query column-descriptions inherited)
+                                     % row-template column-descriptions
+                                     inherited)
                                row-items)]
             (into [:div {:class "table"}
                    headers]

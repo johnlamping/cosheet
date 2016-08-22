@@ -1,7 +1,6 @@
 (ns cosheet.server.table-render
   (:require (cosheet [entity :as entity]
                      [query :refer [matching-elements matching-items]]
-                     [utils :refer [replace-in-seqs]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
                      [dom-utils :refer [into-attributes add-attributes]]
@@ -14,7 +13,7 @@
                                difference-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
-                               canonicalize-list]]
+                               canonicalize-list template-to-condition]]
              [hierarchy :refer [canonical-set-to-list canonical-to-list
                                 hierarchy-node? hierarchy-node-descendants
                                 hierarchy-node-members
@@ -284,16 +283,17 @@
   return a map:
      :column-item Item that identifies the column.
         :template Condition that each element of the column must satisfy.
+                  ('anything is handled before putting a condition here.)
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (let [next-level (hierarchy-node-next-level node)
         non-trivial-children (filter hierarchy-node? next-level)
-        condition (cons nil (canonical-set-to-list
-                             (:cumulative-properties node)))
-        excluded-conditions (map #(replace-in-seqs
+        condition (template-to-condition
+                   (cons nil (canonical-set-to-list
+                              (:cumulative-properties node))))
+        excluded-conditions (map #(template-to-condition
                                    (cons nil (map canonical-to-list
-                                                  (:property-canonicals %)))
-                                   'anything nil)
+                                                  (:property-canonicals %))))
                                  (hierarchy-nodes-extent non-trivial-children))]
     (mapcat (fn [below]
               (if (hierarchy-node? below)
@@ -336,10 +336,10 @@
                                                 (:item-id column-item))
                               :template template)]
     (expr-let [matches (matching-elements
-                        (replace-in-seqs template 'anything nil) row-item)
+                        (template-to-condition template) row-item)
                do-not-show (when exclusions
                              (expr-seq map #(matching-elements
-                                             (replace-in-seqs % 'anything nil)
+                                             (template-to-condition %)
                                              row-item)
                                        exclusions))]
       (let [elements (seq (clojure.set/difference
@@ -409,7 +409,7 @@
         (expr-let
             [basic-row-query (semantic-to-list-R row-query-item)
              row-query (add-element-to-entity-list
-                        (replace-in-seqs basic-row-query 'anything nil)
+                        (template-to-condition basic-row-query)
                         ['(:top-level :non-semantic)])
              row-items (expr order-items-R
                          (matching-items row-query store))
@@ -423,7 +423,6 @@
              columns-elements (expr-seq map semantic-elements-R columns)
              columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
                                      columns-elements)
-
              hierarchy (hierarchy-by-canonical-info
                         (map (fn [column elements lists]
                                {:item column

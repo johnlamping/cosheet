@@ -352,12 +352,10 @@
    otherwise, return the condition, assuming it is already in
    semantic list form."
   [condition immutable-store]
-  (replace-in-seqs
-   (if (satisfies? StoredItemDescription condition)
+  (if (satisfies? StoredItemDescription condition)
      (when (id-valid? immutable-store condition)
        (semantic-to-list-R (description->entity condition immutable-store)))
-     condition)
-   'anything nil))
+     condition))
 
 (defn best-matching-element
   "Given the list form of a template, find an element of the item that
@@ -401,14 +399,14 @@
 (defn template-to-condition
   "Given a template, alter it to work as a condition. Specifically,
   replace 'anything by (nil (nil :order :non-semantic)) to make 'anything
-   work as a wild card whils avoiding matching non-user editable elements."
+   work as a wild card that avoids matching non-user editable elements."
   [condition]
   (if (sequential? condition)
     (let [elements (map template-to-condition (rest condition))]
-      (if (contains? #{'anything nil} (first condition))
+      (if (contains? #{'anything} (first condition))
         (list* nil '(nil :order :non-semantic) elements)
         (cons (first condition) elements)))
-    (if  (contains? #{'anything nil} condition)
+    (if  (contains? #{'anything} condition)
       '(nil (nil :order :non-semantic))
       condition)))
 

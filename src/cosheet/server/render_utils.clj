@@ -1,6 +1,7 @@
 (ns cosheet.server.render-utils
   (:require (cosheet [entity :as entity]
-                     [utils :refer [multiset multiset-to-generating-values]]
+                     [utils :refer [multiset multiset-to-generating-values
+                                    replace-in-seqs]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
                      [dom-utils
@@ -32,22 +33,25 @@
 
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
-  satisfy the condition and nothing extra. The condition must be in
-  list form.  and have a nil content.  If part of a condition is not
-  satisfied by any element, ignore that part."
+  satisfy the elements of condition and nothing extra, except that
+  the empty string is considered nothing extra for a nil. The condition
+  must be in list form.  If part of a condition is not satisfied by
+  any element, ignore that part."
   [entity condition]
-  (when (not (empty? condition))
-    (assert (and (sequential? condition)
-                 (nil? (first condition))))
+  (when (and (sequential? condition)
+             (not (empty? (rest condition))))
     (expr-let [satisfiers
                (entity/call-with-immutable
                 entity
-                #(let [elements (entity/elements %)
-                       canonical-elements (expr-seq map canonical-info
-                                                    elements)]
-                   (multiset-to-generating-values
-                    (multiset (map canonical-info (rest condition)))
-                    canonical-elements elements)))]
+                (fn [entity]
+                  (let [elements (entity/elements entity)
+                        canonical-elements (expr-seq map canonical-info
+                                                     elements)]
+                    (multiset-to-generating-values
+                     (multiset (map #(canonical-info
+                                      (replace-in-seqs % nil ""))
+                                    (rest condition)))
+                     canonical-elements elements))))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
 (defn virtual-item-DOM

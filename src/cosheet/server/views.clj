@@ -127,15 +127,15 @@
   (let [immutable-store (current-store store)
         [immutable-item referent]
         (or (when referent-string
-              (let [referent (string->referent referent-string)
-                    [item-referent subject-referent]
-                    (referent->exemplar-and-subject referent)]
-                (when item-referent
-                  (let [item (first (first
-                                     (instantiate-referent item-referent
+              (let [referent (string->referent referent-string)]
+                (println "item referent" (simplify-for-print referent))
+                (when referent
+                  (let [item (first (apply concat
+                                     (instantiate-referent referent
                                                            immutable-store)))]
                     ;; Check that the item has an :order element,
                     ;; which indicates that it is a user visible item.
+                    (println "item" (simplify-for-print item))
                     (when (and item
                                (not (empty?
                                      (matching-elements '(nil :order) item))))

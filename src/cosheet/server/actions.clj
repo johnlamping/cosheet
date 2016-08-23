@@ -17,8 +17,7 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [referent :refer [instantiate-referent referent->string
-                      item-referent? exemplar-referent?]])))
+    [referent :refer [instantiate-referent referent->string referent?]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -321,9 +320,7 @@
   [store attributes]
   (let [{:keys [target item-referent session-state]} attributes
         target-referent (or item-referent (:item-referent target))]
-    (when (or (item-referent? target-referent)
-              (exemplar-referent? target-referent))
-      (println "a rootable referent" target-referent)
+    (when (referent? target-referent)
       {:store store
        :open (str (:name session-state)
                   "?referent=" (referent->string target-referent))})))

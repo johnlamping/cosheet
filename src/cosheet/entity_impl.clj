@@ -196,13 +196,17 @@
 (defmethod label->content false [entity label]
   (let [elements (label->elements entity label)]
     (when elements
-      (assert (= (count elements) 1))
+      (assert (= (count elements) 1)
+              (str "entity "  (:id (:item-id entity))
+                   " has " (count elements) " elements for label " label))
       (content (first elements)))))
 
 (defmethod label->content true [entity label]
   (expr-let [elements (expr label->elements entity label)]
     (when elements
-      (assert (= (count elements) 1))
+      (assert (= (count elements) 1)
+              (str "entity "  (:id (:item-id entity))
+                   " has " (count elements) " elements for label " label))
       (content (first elements)))))
 
 (defmethod atomic-value false [entity]

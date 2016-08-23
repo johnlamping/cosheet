@@ -317,46 +317,56 @@
            true (str content))]))
 
 (defn item-without-labels-DOM-R
-  "Make a dom for an item,
+  "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
+   Either the referent for the item/group must be provided,
+   or inherited must contain :subject
    We only record the key on the content, not the whole item
-   if it contains more than the content."
-  [item excluded-elements inherited]
-  (println "Generating DOM for"
-           (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
-  (expr-let [content (entity/content item)
-             elements (semantic-elements-R item)]
-    (let [key (conj (:parent-key inherited) (:item-id item))
-          referent (item-or-exemplar-referent item (:subject inherited))
-          elements (remove (set excluded-elements) elements)
-          content-dom (add-attributes
-                       (item-content-DOM item content inherited)
-                       ;; Give it a unique key.
-                       ;; This will be overridden to the item's key
-                       ;; if the item has nothing but this content.
-                       {:key (conj key :content)})]
-      (if (empty? elements)
-        (add-attributes content-dom {:class "item"})
-        (let [inherited-down
-              (-> inherited
-                  (update-in [:priority] inc)
-                  (assoc :parent-key key
-                         :subject referent)
-                  (dissoc :template :selectable-attributes))]
-          (expr-let [elements-dom (elements-DOM-R
-                                   elements true inherited-down)]
-            [:div {:class "item with-elements"}
-             content-dom elements-dom]))))))
+   (unless it is just the content)."
+  ([item excluded-elements inherited]
+   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+     (item-without-labels-DOM-R item referent excluded-elements inherited)))
+  ([item referent excluded-elements inherited]
+   (println
+    "Generating DOM for"
+    (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
+   (expr-let [content (entity/content item)
+              elements (semantic-elements-R item)]
+     (let [key (conj (:parent-key inherited) (:item-id item))
+           elements (remove (set excluded-elements) elements)
+           content-dom (add-attributes
+                        (item-content-DOM item content inherited)
+                        ;; Give it a unique key.
+                        ;; This will be overridden to the item's key
+                        ;; if the item has nothing but this content.
+                        {:key (conj key :content)})]
+       (if (empty? elements)
+         (add-attributes content-dom {:class "item"})
+         (let [inherited-down
+               (-> inherited
+                   (update-in [:priority] inc)
+                   (assoc :parent-key key
+                          :subject referent)
+                   (dissoc :template :selectable-attributes))]
+           (expr-let [elements-dom (elements-DOM-R
+                                    elements true inherited-down)]
+             [:div {:class "item with-elements"}
+              content-dom elements-dom])))))))
 
 ;;; TODO: This needs an inherited property saying whether this is in a
 ;;; selection, so that new items should be 'anything, rather then
 ;;; the empty string.
 (defn item-DOM-R
-   "Make a dom for an item.
+   "Make a dom for an item or exemplar for a group of items,
+   Either the referent for the item/group must be provided,
+   or inherited must contain :subject
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (item-DOM-R item excluded-elements false inherited))
-  ([item excluded-elements must-show-empty-labels inherited]
+   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+     (item-DOM-R item referent excluded-elements false inherited)))
+  ([item referent excluded-elements inherited]
+   (item-DOM-R item referent excluded-elements false inherited))
+  ([item referent excluded-elements must-show-empty-labels inherited]
    (expr-let [labels (entity/label->elements item :tag)]
      (let [labels (remove (set excluded-elements) labels)
            excluded (concat labels excluded-elements)]
@@ -365,11 +375,9 @@
          (if (and (empty? labels) (not must-show-empty-labels))
            dom
            (let [key (conj (:parent-key inherited) (:item-id item))
-                 item-referent (item-or-exemplar-referent
-                                item (:subject inherited))
                  inherited-for-tags (-> inherited
                                         (assoc :template '(nil :tag)
-                                               :subject item-referent
+                                               :subject referent
                                                :parent-key key)
                                         (dissoc :selectable-attributes))]
              (if (empty? labels)
@@ -377,7 +385,7 @@
                 (add-attributes
                  (virtual-item-DOM (conj key :tags) :after
                                    (assoc inherited-for-tags
-                                          :adjacent-referent item-referent))
+                                          :adjacent-referent referent))
                  {:class "tag"})
                 dom]
                (expr-let [ordered-labels (order-items-R labels)

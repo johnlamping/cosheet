@@ -93,6 +93,9 @@
                               (nil (nil :order :non-semantic) ("age" :tag))
                               (:top-level :non-semantic))
           rows-referent (query-referent row-condition)
+          first-column-referent (union-referent
+                                 [(item-referent c1)
+                                  (elements-referent c1 rows-referent)])
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
                                                  (true :reference)))]]
@@ -107,15 +110,14 @@
                {:priority 1
                 :width 0.75
                 :parent-key table-key
-                :subject (union-referent [(item-referent c1)
-                                          (elements-referent c1 rows-referent)])
+                :subject first-column-referent
                 :template '(nil :tag)
                 :selector true
                 :selectable-attributes
                 {:commands {:delete {:delete-referent (item-referent c1)}
                             :add-column {:select-pattern (conj table-key
                                                                tag-pattern)}
-                            :expand {:item-referent (item-referent c1)}}
+                            :expand {:item-referent first-column-referent}}
                  :column {:adjacent-groups-referent (item-referent c1)
                           :subject-referent (union-referent
                                              [(item-referent table)])

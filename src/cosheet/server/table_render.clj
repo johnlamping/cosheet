@@ -185,9 +185,7 @@
                     delete-attributes
                     (when item
                       {:commands
-                       {:expand {:item-referent
-                                 (item-or-exemplar-referent
-                                  item (:subject inherited))}}}))
+                       {:expand {:item-referent column-referent}}}))
         full-inherited (let [temp-inherited
                              (assoc inherited
                                     :template elements-template

@@ -125,7 +125,7 @@
 (defn create-tracker
   [store referent-string]
   (let [immutable-store (current-store store)
-        [immutable-item subject-referent]
+        [immutable-item referent]
         (or (when referent-string
               (let [referent (string->referent referent-string)
                     [item-referent subject-referent]
@@ -139,12 +139,11 @@
                     (when (and item
                                (not (empty?
                                      (matching-elements '(nil :order) item))))
-                      [item subject-referent])))))
-            [(first (matching-items '(nil :root) immutable-store))
-             nil])
+                      [item referent])))))
+            (let [item (first (matching-items '(nil :root) immutable-store))]
+              [item (item-referent item)]))
         root-item (description->entity (:item-id immutable-item) store)
-        definition [top-level-item-DOM-R root-item
-                    (if subject-referent {:subject subject-referent} {})]
+        definition [top-level-item-DOM-R root-item referent {}]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker")

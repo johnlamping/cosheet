@@ -131,12 +131,12 @@
 
 (defn top-level-item-DOM-R
   "Make a dom for an item, testing the item to see what sort of dom to make."
-  [item inherited]
+  [item referent inherited]
   (let [inherited (into {:priority 0 :width 1.5 :parent-key []} inherited)]
     (expr-let [table (matching-elements :table item)
                tags (matching-elements :tag item)]
       (if (empty? table)
-        (let [dom (item-DOM-R item tags (empty? tags) inherited)]
+        (let [dom (item-DOM-R item referent tags (empty? tags) inherited)]
           (if (empty? tags)
             dom
             (expr-let [dom dom]

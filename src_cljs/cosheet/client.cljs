@@ -172,7 +172,8 @@
             ;; less likely to be stopped by a popup blocker.
             (.open
              js/window "" "CosheetExpandPopup",
-             "width=600,height=600,centerscreen=yes,toolbar=no,location=no"))
+             (str "width=600,height=600,centerscreen=yes,left=150,top=100,"
+                  "toolbar=no,location=no")))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))
     (when (not (or ctrl alt))

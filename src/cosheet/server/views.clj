@@ -125,25 +125,30 @@
 (defn create-tracker
   [store referent-string]
   (let [immutable-store (current-store store)
-        [immutable-item referent]
+        [immutable-item referent subject]
         (or (when referent-string
               (let [referent (string->referent referent-string)]
                 (println "item referent" (simplify-for-print referent))
                 (when referent
-                  (let [item (first (apply concat
+                  (let [[_ subject] (referent->exemplar-and-subject referent)
+                        item (first (apply concat
                                      (instantiate-referent referent
                                                            immutable-store)))]
                     ;; Check that the item has an :order element,
                     ;; which indicates that it is a user visible item.
+                    ;; TODO: This will also need to check for selectors
+                    ;; that the user should see, even though they don't have
+                    ;; :order.
                     (println "item" (simplify-for-print item))
                     (when (and item
                                (not (empty?
                                      (matching-elements '(nil :order) item))))
-                      [item referent])))))
+                      [item referent subject])))))
             (let [item (first (matching-items '(nil :root) immutable-store))]
-              [item (item-referent item)]))
+              [item (item-referent item) nil]))
         root-item (description->entity (:item-id immutable-item) store)
-        definition [top-level-item-DOM-R root-item referent {}]
+        definition [top-level-item-DOM-R
+                    root-item referent (if subject {:subject subject} {})]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker")

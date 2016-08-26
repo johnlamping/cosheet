@@ -1,11 +1,14 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements]]
                      [debug :refer [simplify-for-print current-value]]
+                     [entity :as entity]
                      [expression :refer [expr expr-let expr-seq cache]]
-                     [dom-utils :refer [add-attributes]])
-            (cosheet.server [item-render :refer [item-without-labels-DOM-R
-                                                 item-DOM-R]]
-                            [table-render :refer [table-DOM-R]])))
+                     [dom-utils :refer [add-attributes into-attributes]])
+            (cosheet.server 
+             [referent :refer [item-referent]]
+             [item-render :refer [item-without-labels-DOM-R
+                                  item-DOM-R]]
+             [table-render :refer [table-DOM-R]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
@@ -136,7 +139,17 @@
     (expr-let [table (matching-elements :table item)
                tags (matching-elements :tag item)]
       (if (empty? table)
-        (let [dom (item-DOM-R item referent tags (empty? tags) inherited)]
+        (let [subject-ref (or (:subject inherited)
+                              (when-let [subject (entity/subject item)]
+                                (item-referent subject)))
+              inherited (cond-> inherited
+                          subject-ref
+                          (update-in
+                           [:selectable-attributes]
+                           #(into-attributes
+                             % {:commands {:expand {:item-referent
+                                                    subject-ref}}})))
+              dom (item-DOM-R item referent tags (empty? tags) inherited)]
           (if (empty? tags)
             dom
             (expr-let [dom dom]

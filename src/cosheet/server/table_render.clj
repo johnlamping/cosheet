@@ -320,9 +320,7 @@
                       (assoc :width 0.75)
                       (update-in [:selectable-attributes]
                                  #(into-attributes
-                                   % {:commands {:add-row nil
-                                                 :expand {:item-referent
-                                                          (:subject inherited)}}
+                                   % {:commands {:add-row nil}
                                       :row {:item-referent (:subject inherited)
                                             :template new-row-template}})))]
     (expr-let

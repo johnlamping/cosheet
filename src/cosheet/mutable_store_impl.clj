@@ -3,6 +3,7 @@
                      store-impl
                      [mutable-manager
                       :refer [new-mutable-manager-data
+                              current-mutable-value
                               get-or-make-reporter
                               describe-and-swap!
                               describe-and-swap-control-return!]]
@@ -54,6 +55,11 @@
   [manager-data ;; A mutable-manager manager-data holding the immutable
                 ;; store and a history as its value. 
    ]
+
+  ElementStore
+
+  (id->subject [this id]
+    (id->subject (:store (current-mutable-value (:manager-data this))) id))
 
   Store
 

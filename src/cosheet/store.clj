@@ -75,15 +75,17 @@
   and each having just one subject."
   
   (id->subject [this id]
-    "Given an item, return its subject.")
-
-  (id-is-content? [this id exceptions]
-    "Return true if the id is the content of some other id
-     that not in the list of exceptions."))
+    "Given an item, return its subject. Assumes that the subject of an entity
+    never changes, so doesn't return a reporter even for a mutable store."))
 
 (defprotocol ImmutableStore
   "The basic methods that immutable stores support to create variants,
    from which higher levels ones are built."
+
+  (id-is-content? [this id exceptions]
+    "Return true if the id is the content of some other id
+     that not in the list of exceptions.")
+
   (add-simple-element [this subject content]
     "Add an element to the subject with the given content,
      which must be atomic, returning the store and id of the new element.")

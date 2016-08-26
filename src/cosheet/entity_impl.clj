@@ -2,7 +2,7 @@
   (:require (cosheet [store :refer [atom-description?
                                     id-label->element-ids
                                     id->element-ids
-                                    id->content
+                                    id->content id->subject
                                     id->content-reference
                                     call-dependent-on-id
                                     mutable-store?
@@ -19,6 +19,10 @@
    item-id]  ; The ItemDescription of the item in the store.
 
   StoredEntity
+
+  (subject [this]
+    (when-let [subject-id (id->subject store item-id)]
+      (description->entity subject-id store)))
 
   (in-different-store [this entity-with-store]
     (description->entity (:item-id this) (:store entity-with-store)))
@@ -53,6 +57,10 @@
      item-id]  ; The ItemDescription of the item in the store.
 
   StoredEntity
+
+  (subject [this]
+    (when-let [subject-id (id->subject store item-id)]
+      (description->entity subject-id store)))
 
   (in-different-store [this entity-with-store]
     (description->entity (:item-id this) (:store entity-with-store)))

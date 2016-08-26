@@ -37,6 +37,7 @@
     (is (= (:item-id  item1) id1))
     (is (= (stored-entity-id-string item0) "0"))
     (is (not (atom? item0)))
+    (is (= (subject (description->entity a s)) item99))
     (is (= (label->elements item99 "foo") [(description->entity a s)]))
     (is (= (label->elements (description->entity a s) nil)
            [(description->entity b s)]))
@@ -86,6 +87,7 @@
         item99 (description->entity id99 ms)]    
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
+    (is (= (subject (description->entity ida ms)) item99))
     (is (= (stored-entity-id-string item0) "0"))
     (is (not (current-value (atom? item0))))
     (is (= (current-value (label->elements item99 "foo"))

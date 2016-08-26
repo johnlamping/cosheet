@@ -24,6 +24,9 @@
 (defprotocol StoredEntity
   "A tag for stored entities. They must have unique item-ids."
 
+  (subject [this]
+    "Return the subject of this stored entity, if any.")
+
   (in-different-store [this entity-with-store]
     "Replace the entity with an entity with the same id,
     but with the store of the second entity."))

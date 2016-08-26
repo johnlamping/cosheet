@@ -295,11 +295,11 @@
     (if (instance? ItemId id)
       (get-in this [:id->data id :subject])
       nil))
+  
+  ImmutableStore
 
   (id-is-content? [this id exceptions]
     (not-every? (set exceptions) (get-in this [:id->data id :containers])))
-  
-  ImmutableStore
 
   (add-simple-element [this subject content]
     (assert (not (nil? content)))

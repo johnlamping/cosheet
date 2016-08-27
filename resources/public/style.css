@@ -301,6 +301,41 @@ body { /* override the default of 8px */
 
 /* --- tables --- */
 
+.table-top {
+    display: flex;
+    border-width: 2px;
+    border-bottom-width: 0px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+}
+
+.table-corner {
+    width: 5px;
+}
+
+.table-condition {
+    border-bottom-width: 2px;
+    flex-grow: 1;
+}
+
+.table-body {
+    display: flex;
+}
+
+.table-indent {
+    width: 7px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-bottom-width: 2px;
+    border-bottom-left-radius: 7px;
+    margin-bottom: -2px;
+}
+
+.table-main {
+    margin-top: 2px;
+    margin-left: 2px;
+}
+
 .column-header-sequence {
     display: flex;
     align-items: stretch;

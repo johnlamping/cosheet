@@ -104,44 +104,52 @@
       (is (check
            dom
            [:div {:class "table"}
-            (any) ;; TODO: put something here
-            [:div {:class "column-header-sequence"}
-             [:component {:key (conj table-key (:item-id single))
-                          :class "tag top-level column-header"
-                          :style {:width "150px"}}
-              [item-without-labels-DOM-R single [single-tag-spec]
-               {:priority 1
-                :width 0.75
-                :parent-key table-key
-                :subject first-column-referent
-                :template '(nil :tag)
-                :selector true
-                :selectable-attributes
-                {:commands {:delete {:delete-referent (item-referent c1)}
-                            :add-column {:select-pattern (conj table-key
-                                                               tag-pattern)}
-                            :expand {:item-referent first-column-referent}}
-                 :column {:adjacent-groups-referent (item-referent c1)
-                          :subject-referent (union-referent
-                                             [(item-referent table)])
-                          :position :after
-                          :template '(anything (:column :non-semantic)
-                                               (??? :tag))}}}]]
-             (any)
+            [:div {:class "table-top tag"}
+             [:div {:class "table-corner"}]
              (any)]
-            [:component {:key (conj table-key (:item-id joe))
-                         :class "table-row"}
-             [table-row-DOM-R joe (conj table-key (:item-id joe)) row-template
-              [{:column-item c1 :template '(nil ("single" :tag))
-                :exclusions '()}
-               {:column-item c2 :template '(nil ("name" :tag))
-                :exclusions '((nil ("name" :tag) ("id" :tag)))}
-               {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
-                :exclusions ()}
+            [:div {:class "table-body"}
+             [:div {:class "table-indent tag"}]
+             [:div {:class "table-main"}
+              [:div {:class "column-header-sequence"}
+               [:component {:key (conj table-key (:item-id single))
+                            :class "tag top-level column-header"
+                            :style {:width "150px"}}
+                [item-without-labels-DOM-R single [single-tag-spec]
+                 {:priority 1
+                  :width 0.75
+                  :parent-key table-key
+                  :subject first-column-referent
+                  :template '(nil :tag)
+                  :selector true
+                  :selectable-attributes
+                  {:commands {:delete {:delete-referent (item-referent c1)}
+                              :add-column {:select-pattern (conj table-key
+                                                                 tag-pattern)}
+                              :expand {:item-referent first-column-referent}}
+                   :column {:adjacent-groups-referent (item-referent c1)
+                            :subject-referent (union-referent
+                                               [(item-referent table)])
+                            :position :after
+                            :template '(anything (:column :non-semantic)
+                                                 (??? :tag))}}}]]
                (any)
                (any)]
-              {:priority 1 :width 3.0 :parent-key table-key}]]]))
-      (let [row-component (nth dom 4)
+              [:component {:key (conj table-key (:item-id joe))
+                           :class "table-row"}
+               [table-row-DOM-R
+                joe (conj table-key (:item-id joe)) row-template
+                [{:column-item c1 :template '(nil ("single" :tag))
+                  :exclusions '()}
+                 {:column-item c2 :template '(nil ("name" :tag))
+                  :exclusions '((nil ("name" :tag) ("id" :tag)))}
+                 {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
+                  :exclusions ()}
+                 (any)
+                 (any)]
+                {:priority 1 :width 3.0 :parent-key table-key}]]]]]))
+      (let [table-body (nth dom 3)
+            table-main (nth table-body 3)
+            row-component (nth table-main 3)
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]

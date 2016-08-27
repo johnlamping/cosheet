@@ -4,7 +4,8 @@
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
-                     [dom-utils :refer [into-attributes add-attributes]]
+                     [dom-utils :refer [ dom-attributes
+                                        into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
              [referent :refer [item-referent
@@ -488,8 +489,18 @@
                 rows (expr-seq map #(table-row-DOM-component
                                      % row-template column-descriptions
                                      inherited)
-                               row-items)]
-            (into [:div {:class "table"}
-                   condition-dom
-                   headers]
-                  rows)))))))
+                               row-items)
+                condition-tag (some #{"tag"} (clojure.string/split
+                                              (or (:class (dom-attributes
+                                                           condition-dom))
+                                                  "")
+                                              #" "))]
+            [:div {:class "table"}
+             [:div {:class (cond-> "table-top" condition-tag (str " tag"))}
+              [:div {:class "table-corner"}]
+              (add-attributes condition-dom {:class "table-condition"})]
+             [:div {:class "table-body"}
+              [:div {:class (cond-> "table-indent" condition-tag (str " tag"))}]
+              (into [:div {:class "table-main"}
+                     headers]
+                    rows)]]))))))

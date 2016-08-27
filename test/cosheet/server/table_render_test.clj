@@ -54,7 +54,8 @@
                     (~o1 :order :non-semantic)
                     "plain" "plain")]
     (let [table-list `("table"
-                       ((~'anything (~'anything ("age" :tag))) :row-query)
+                       (~'anything (~'anything ("age" :tag))
+                                   (:row-condition :non-semantic))
                        (:none ("single" :tag (~o1 :order :non-semantic))
                               (~o1 :order :non-semantic)
                               (:column :non-semantic))
@@ -77,7 +78,8 @@
                                              jane jane-list]
                                  (expr-let [dom (table-DOM-R table inherited)]
                                    [dom table joe jane]))
-          query (current-value (entity/label->content table :row-query))
+          query (first (current-value (entity/label->elements
+                                       table :row-condition)))
           c1 (first (current-value (label->elements table o1)))
           single (first (current-value (label->elements c1 :tag)))
           single-tag-spec (first (current-value (entity/elements single)))
@@ -102,6 +104,7 @@
       (is (check
            dom
            [:div {:class "table"}
+            (any) ;; TODO: put something here
             [:div {:class "column-header-sequence"}
              [:component {:key (conj table-key (:item-id single))
                           :class "tag top-level column-header"
@@ -138,7 +141,7 @@
                (any)
                (any)]
               {:priority 1 :width 3.0 :parent-key table-key}]]]))
-      (let [row-component (nth dom 3)
+      (let [row-component (nth dom 4)
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]

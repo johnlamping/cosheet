@@ -261,11 +261,10 @@
                             hierarchy)]
     (vertical-stack (apply concat dom-lists))))
 
-(def tagged-items-two-column-DOM-R)
-
 (defn elements-DOM-R
   "Make a dom for a stack of elements.
-   Don't show elements of the elements that are implied by the template."
+   Don't show elements of the elements that are implied by the template,
+   if any."
   [elements must-show-empty-labels inherited]
   (expr-let
       [ordered-elements (order-items-R elements)

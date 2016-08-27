@@ -41,6 +41,7 @@
                         (:root :non-semantic)
                         (:top-level :non-semantic)
                         (~o1 :order :non-semantic)
+                        ("person" :tag (~o1 :order :non-semantic))
                         ("male" (~o1 :order :non-semantic))
                         ("married" (~o2 :order :non-semantic))
                         (39 (~o3 :order :non-semantic)
@@ -54,7 +55,9 @@
         starting-table `("table"
                          (:root :non-semantic)
                          (:table :non-semantic)
-                         (~'anything :row-query)
+                         (~'anything ("person" :tag
+                                      (~o1 :order :non-semantic))
+                                     (:row-condition :non-semantic))
                          (~'anything ("age" :tag (~o1 :order :non-semantic))
                                     (~o1 :order :non-semantic)
                                     (:column :non-semantic))

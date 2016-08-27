@@ -145,6 +145,26 @@
                                   is-tag (str " tag"))
                          :style {:width (str width "px")}})))
 
+;;; TODO: This needs to look at the elements and decide about tags,
+;;; rather than rely on the template.
+;;; TODO: This is copy and pasted from table-header-node-elements-DOM-R.
+(defn condition-elements-DOM-R
+  "Generate the dom for a condition, given its
+  elements."
+  [elements inherited]
+  (assert (not (empty? elements)))
+  (expr-let
+      [ordered-elements (order-items-R elements)
+       element-lists (expr-seq map semantic-to-list-R ordered-elements)
+       excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
+                           ordered-elements)]
+    (let [is-tag (some #{:tag} (:template inherited))]
+      (item-stack-DOM
+       (if is-tag item-without-labels-DOM-R item-DOM-R)
+       ordered-elements excludeds
+       (if is-tag {:class "tag"} {})
+       inherited))))
+
 (defn table-header-node-elements-DOM-R
   "Generate the dom for one node of a table header hierarchy given its
   elements. column-requests gives the items that requested all columns
@@ -408,20 +428,23 @@
   (println "Generating DOM for table" (simplify-for-print table-item))
   (assert (satisfies? entity/StoredEntity table-item))
   (let [store (:store table-item)
-        table-key (conj (:parent-key inherited) (:item-id table-item))
+        table-referent (item-or-exemplar-referent
+                        table-item (:subject inherited))
+        table-key (conj (:parent-key inherited) table-referent)
         inherited (assoc inherited :parent-key table-key)]
-    (expr-let [row-query-item (entity/label->content table-item :row-query)]
+    (expr-let [row-condition-items (entity/label->elements
+                                    table-item :row-condition)]
       ;; Don't do anything if we don't yet have the table information filled in.
-      (when row-query-item
+      (when-let [row-condition-item (first row-condition-items)]
         (expr-let
-            [basic-row-query (semantic-to-list-R row-query-item)
+            [row-condition (semantic-to-list-R row-condition-item)
              row-query (add-element-to-entity-list
-                        (template-to-condition basic-row-query)
+                        (template-to-condition row-condition)
                         ['(:top-level :non-semantic)])
              ;; Avoid the (nil :order :non-semantic) added by
              ;; template-to-condition.
              row-template (add-element-to-entity-list
-                           (replace-in-seqs basic-row-query 'anything nil)
+                           (replace-in-seqs row-condition 'anything nil)
                            ['(:top-level :non-semantic)])
              row-items  (expr order-items-R
                             (matching-items row-query store))
@@ -442,6 +465,18 @@
                                 :property-canonicals (map canonicalize-list
                                                           lists)})
                              columns columns-elements columns-lists))
+             condition-dom (expr-let [elements (semantic-elements-R
+                                                row-condition-item)]
+                             (condition-elements-DOM-R
+                              elements
+                              (assoc
+                               inherited
+                               :subject (union-referent
+                                         [(item-referent row-condition-item)
+                                                (query-referent row-query)])
+                               ;; TODO: Get rid of this template once
+                               ;; condition-elements-DOM-R is fixed.
+                               :template '(nil :tag))))
              headers (table-header-DOM-R
                       hierarchy '(nil :tag) (query-referent row-query)
                       (assoc inherited
@@ -455,5 +490,6 @@
                                      inherited)
                                row-items)]
             (into [:div {:class "table"}
+                   condition-dom
                    headers]
                   rows)))))))

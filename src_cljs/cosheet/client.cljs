@@ -84,6 +84,17 @@
      (js/document.getElementById "edit_input")}
    target))
 
+(defn open-expand-popup
+  "Open the expand popup window.
+  This should be called while in any event handler that will end up opening
+  up the window, so we are less likely to be stopped by a popup blocker
+  and more likely to get a popup, rather than a new tab."
+  []
+  (.open
+   js/window "" "CosheetExpandPopup",
+   (str "width=600,height=600,left=150,top=100,centerscreen=yes,"
+        "toolbar=no,location=no")))
+
 (defn menu-click-handler
   [event]
   (let [target (.-target event)
@@ -104,7 +115,8 @@
     (cond keyword
           (request-action [keyword])
           (and contextual-keyword selection)
-          (request-action [contextual-keyword (.-id selection)]))))
+          (do (when (= contextual-keyword :expand) (open-expand-popup))
+              (request-action [contextual-keyword (.-id selection)])))))
 
 (defn click-handler
   [event]
@@ -173,13 +185,7 @@
                           (= key-codes/E key-code) [:expand])]
         (when (and command @selected (not @edit-field-open-on))
           (.log js/console (str command))
-          (when (= (first command) :expand)
-            ;; Open the new window while in the key handler, so we are
-            ;; less likely to be stopped by a popup blocker.
-            (.open
-             js/window "" "CosheetExpandPopup",
-             (str "width=600,height=600,left=150,top=100,centerscreen=yes,"
-                  "toolbar=no,location=no")))
+          (when (= (first command) :expand) (open-expand-popup))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))
     (when (not (or ctrl alt))

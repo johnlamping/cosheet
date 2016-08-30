@@ -456,7 +456,7 @@ body { /* override the default of 8px */
     font-size: 20px;
     text-align: center;
     vertical-align: top;
-    background-color: hsl(0, 0%, 97%);
+    background-color: hsl(0, 0%, 95%);
     border-width: 1px;
     border-radius: 2px;
     border-color: hsl(0, 0%, 75%);
@@ -502,9 +502,16 @@ body { /* override the default of 8px */
     margin-left: -5px;
 }
 
-.tool:hover {
+.tool:hover{
     background-color: hsl(0, 0%, 97%);
     border-color: hsl(0, 0%, 60%);
+    border-width: 2px;
+    border-radius: 3px;
+
+}
+
+.tool:hover > img {
+    margin: -1px 0px 0px -1px;
 }
 
 /* Show the tooltip text when you mouse over the tool */

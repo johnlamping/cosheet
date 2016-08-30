@@ -442,6 +442,11 @@
              row-query (add-element-to-entity-list
                         (template-to-condition row-condition)
                         ['(:top-level :non-semantic)])
+             ;; We have to use the item in the referent's condition, so
+             ;; it doesn't contain strings or other non-serializable stuff.
+             rows-referent (query-referent
+                            (list (item-referent row-condition-item)
+                                  '(:top-level :non-semantic)))
              ;; Avoid the (nil :order :non-semantic) added by
              ;; template-to-condition.
              row-template (add-element-to-entity-list
@@ -474,12 +479,12 @@
                                inherited
                                :subject (union-referent
                                          [(item-referent row-condition-item)
-                                                (query-referent row-query)])
+                                                rows-referent])
                                ;; TODO: Get rid of this template once
                                ;; condition-elements-DOM-R is fixed.
                                :template '(nil :tag))))
              headers (table-header-DOM-R
-                      hierarchy '(nil :tag) (query-referent row-query)
+                      hierarchy '(nil :tag) rows-referent
                       (assoc inherited
                              :subject (item-referent table-item)
                              :template '(anything (:column :non-semantic))))]

@@ -5,7 +5,7 @@
                      [entity :refer [atom? elements content label->elements
                                      call-with-immutable description->entity
                                      StoredEntity]]
-                     [store  :as store :refer [id-valid? StoredItemDescription]]
+                     [store :as store :refer [id-valid? StoredItemDescription]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
                                     template-matches]])))
@@ -27,7 +27,9 @@
 ;;; sequence.
 
 ;;; When a referent contains a <condition>, it can be either an item
-;;; id or the list form of an element.
+;;; id, the list form of an element, or a list of an item id and
+;;; the list form of additional elements. Item ids are turned into the
+;;; condition corresponding to their list expansion.
 
 ;;; The kinds of referent are:
 ;;;            item  <an item-id>
@@ -253,10 +255,13 @@
               (let [digits (re-find #"\d+" (subs rep (inc index)))
                     number (try (Integer/parseInt digits)
                                 (catch Exception e nil))]
-                (when (and number (vector? partial-referent))
-                  (recur (+ index (inc (count digits)))
-                         (conj partial-referent (->ItemId number))
-                         pending-partials)))
+                (when number
+                  (let [id (->ItemId number)]
+                    (recur (+ index (inc (count digits)))
+                           (if (vector? partial-referent)
+                             (conj partial-referent id)
+                             (apply list (concat partial-referent [id])))
+                           pending-partials))))
               (= first-letter \K)
               (let [delimiter (nth rep (inc index))
                     end-index (clojure.string/index-of
@@ -348,14 +353,23 @@
   (canonicalize-list (immutable-semantic-to-list item)))
 
 (defn condition-to-list
-  "If the condition is an item id, return the list form of its semantics,
-   otherwise, return the condition, assuming it is already in
-   semantic list form."
+  "If the condition has an item id, look it up in the store and replace it with
+  the semantic list form of what is in the store."
   [condition immutable-store]
-  (if (satisfies? StoredItemDescription condition)
-     (when (id-valid? immutable-store condition)
-       (semantic-to-list-R (description->entity condition immutable-store)))
-     condition))
+  (cond (satisfies? StoredItemDescription condition)
+        (when (id-valid? immutable-store condition)
+          (semantic-to-list-R (description->entity condition immutable-store)))
+        (and (sequential? condition)
+             (satisfies? StoredItemDescription (first condition)))
+        (let [item (first condition)]
+          (when (id-valid? immutable-store item)
+            (let [as-list (semantic-to-list-R
+                           (description->entity item immutable-store))]
+              (apply list
+                     (concat (if (sequential? as-list) as-list (list as-list))
+                             (rest condition))))))
+        true
+        condition))
 
 (defn best-matching-element
   "Given the list form of a template, find an element of the item that
@@ -403,10 +417,10 @@
   [condition]
   (if (sequential? condition)
     (let [elements (map template-to-condition (rest condition))]
-      (if (contains? #{'anything} (first condition))
-        (list* nil '(nil :order :non-semantic) elements)
+      (if (= 'anything (first condition))
+        (apply list (list* nil '(nil :order :non-semantic) elements))
         (cons (first condition) elements)))
-    (if  (contains? #{'anything} condition)
+    (if  (= 'anything condition)
       '(nil (nil :order :non-semantic))
       condition)))
 
@@ -427,7 +441,9 @@
                                (condition-to-list condition immutable-store))]
                 (map #(matching-elements condition %)
                      (instantiate-to-items subject immutable-store)))
-    :query (let [[_ condition] referent]
+    :query (let [[_ condition] referent
+                 condition (template-to-condition
+                            (condition-to-list condition immutable-store))]
              [(matching-items condition immutable-store)])
     :union (let [[_ & referents] referent]
              (map #(instantiate-to-items % immutable-store)

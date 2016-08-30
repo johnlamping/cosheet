@@ -24,10 +24,13 @@
                                         [(item-referent (->ItemId 3))
                                          (item-referent (->ItemId 4))]))
                     (difference-referent
-                     (query-referent '(nil (:root :A_a)))
+                     (query-referent (list (item-referent (->ItemId 3))
+                                           '(nil (:root :A_a))
+                                           :b))
                      (item-referent (->ItemId 6789)))]))
-        rep (referent->string referent)]
-    (is (check (string->referent rep) referent))))
+        serialized (referent->string referent)
+        parsed (string->referent serialized)]
+    (is (check parsed referent))))
 
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
@@ -52,11 +55,14 @@
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
                      ("age" ~'tag (~o3 :order :non-semantic)))))
+(def age-condition-list '(anything ("age" tag)))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
-(def store (first t2))
 (def jane-id (second t2))
+(def t3 (add-entity (first t2) nil age-condition-list))
+(def age-condition-id (second t3))
+(def store (first t3))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
@@ -101,6 +107,14 @@
     (is (= (best-matching-element '("Joe" ("age" tag)) joes)
            nil))))
 
+(deftest condition-to-list-test
+  (is (= (condition-to-list '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
+  (is (= (canonicalize-list (condition-to-list (item-referent jane) store))
+         (canonicalize-list '("Jane" "female" (45 ("age" tag))))))
+  (is (= (canonicalize-list
+          (condition-to-list [(item-referent jane) 1 '(2 3)] store))
+         (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
+
 (deftest instantiate-referent-test
   (is (= (instantiate-referent (item-referent joe) store) [[joe]]))
   (is (= (instantiate-referent
@@ -115,8 +129,9 @@
               (exemplar-referent joe-age
                                  (query-referent '(nil (nil "age")))) store)
              [(as-set [joe-age jane-age])]))
+  ;; An elements referent with an item for its condition.
   (is (check (instantiate-referent
-              (elements-referent '(nil "age")
+              (elements-referent age-condition-id
                                  (query-referent '(nil (nil "age")))) store)
              (as-set [(as-set [joe-age joe-bogus-age])
                       [jane-age]])))

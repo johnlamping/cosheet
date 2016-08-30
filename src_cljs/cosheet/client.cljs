@@ -86,15 +86,20 @@
 
 (defn menu-click-handler
   [event]
-  (let [keyword ({"undo" :undo
+  (let [target (.-target event)
+        id (.-id (if (= (.-className target) "tool")
+                   target
+                   (.-parentNode target)))
+        keyword ({"undo" :undo
                   "redo" :redo}
-                 (.-id (.-target event)))
-        contextual-keyword ({"add-twin" :add-twin
+                 id)
+        contextual-keyword ({"expand" :expand
                              "add-element" :add-element
+                             "add-twin" :add-twin
                              "add-sibling" :add-sibling
                              "add-row" :add-row
                              "add-column" :add-column}
-                           (.-id (.-target event)))
+                           id)
         selection @selected]
     (cond keyword
           (request-action [keyword])
@@ -110,7 +115,8 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (close-edit-field)
-      (if (= (.-className target) "tool")
+      (if (some #{"tool"}
+                [(.-className target) (.-className (.-parentNode target))])
         (menu-click-handler event)
         (let [editable (find-editable target event)]
           (when (not= editable @selected)

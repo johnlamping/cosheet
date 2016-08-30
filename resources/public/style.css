@@ -451,12 +451,12 @@ body { /* override the default of 8px */
 
 .tool {
     position: relative;
-    height: 30px;
-    width: 60px;
+    height: 34px;
+    width: 34px;
     font-size: 20px;
     text-align: center;
     vertical-align: top;
-    background-color: hsl(0, 0%, 95%);
+    background-color: hsl(0, 0%, 97%);
     border-width: 1px;
     border-radius: 2px;
     border-color: hsl(0, 0%, 75%);

@@ -213,14 +213,32 @@
       (include-css "../style.css")]
      [:body
       [:div#toolbar.toolbar
-       [:div#undo.tool "⤺" [:div.tooltip "undo"]]
-       [:div#redo.tool "⤼" [:div.tooltip "redo"]]
+       [:div#undo.tool
+        [:img {:src "../icons/undo.gif"}]
+        [:div.tooltip "undo"]]
+       [:div#redo.tool
+        [:img {:src "../icons/redo.gif"}]
+        [:div.tooltip "redo"]]
        [:div.toolgap]
-       [:div#add-twin.tool "+" [:div.tooltip "add twin"]]
-       [:div#add-element.tool "↘" [:div.tooltip "add element"]] 
-       [:div#add-sibling.tool "⍗" [:div.tooltip "add sibling below"]]
-       [:div#add-row.tool "↧" [:div.tooltip "add row below"]]
-       [:div#add-column.tool "↦" [:div.tooltip "add column right"]]]
+       [:div#expand.tool
+        [:img {:src "../icons/expand.gif"}]
+        [:div.tooltip "expand"]]
+       [:div.toolgap] 
+       [:div#add-element.tool
+        [:img {:src "../icons/add_element.gif"}]
+        [:div.tooltip "add element"]]
+      [:div#add-twin.tool
+        [:img {:src "../icons/add_twin.gif"}]
+        [:Div.tooltip "add twin"]]
+       [:div#add-sibling.tool
+        [:img {:src "../icons/add_sibling.gif"}]
+        [:div.tooltip "add sibling below"]]
+       [:div#add-row.tool
+        [:img {:src "../icons/add_row.gif"}]
+        [:div.tooltip "add row below"]]
+       [:div#add-column.tool
+        [:img {:src "../icons/add_column.gif"}]
+        [:div.tooltip "add column right"]]]
       [:div#app "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
       [:script "cosheet.client.run();"]])))

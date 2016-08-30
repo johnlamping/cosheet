@@ -371,7 +371,7 @@ body { /* override the default of 8px */
     margin-left: -2px;
 }
 
-.column-header.tag {
+.column-header.tag, .table-top.tag {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -382,6 +382,14 @@ body { /* override the default of 8px */
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0)),
     linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+}
+
+ .table-indent.tag {
+    background-image:
+    linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));

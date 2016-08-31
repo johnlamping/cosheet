@@ -78,8 +78,7 @@
                                              jane jane-list]
                                  (expr-let [dom (table-DOM-R table inherited)]
                                    [dom table joe jane]))
-          query (first (current-value (entity/label->elements
-                                       table :row-condition)))
+          query (first (current-value (entity/label->elements table 'anything)))
           c1 (first (current-value (label->elements table o1)))
           single (first (current-value (label->elements c1 :tag)))
           single-tag-spec (first (current-value (entity/elements single)))
@@ -91,9 +90,8 @@
           table-key [:foo (:item-id table)]
           row-template '(nil (nil ("age" :tag))
                              (:top-level :non-semantic))
-          row-condition '(nil (nil :order :non-semantic)
-                              (nil (nil :order :non-semantic) ("age" :tag))
-                              (:top-level :non-semantic))
+          row-condition (list (item-referent query)
+                              '(:top-level :non-semantic))
           rows-referent (query-referent row-condition)
           first-column-referent (union-referent
                                  [(item-referent c1)

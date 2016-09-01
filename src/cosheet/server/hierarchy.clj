@@ -180,9 +180,9 @@
     (multiset canonicals)))
 
 (defn hierarchy-by-canonical-info
-  "Given a sequence of item info maps, and a subset of items in the maps not to
-  merge, return a hierarchy. If restrict-empty-merges is true, don't merge
-  items at the top level with empty properties."
+  "Given a sequence of item info maps, return a hierarchy.
+  If restrict-empty-merges is true, don't merge items at the top level 
+ with empty properties."
   [item-info-maps]
   (let [non-empty-items (map :item
                              (filter #(not (empty? (:property-canonicals %)))

@@ -131,7 +131,6 @@
 
 ;;; TODO: This needs to look at the elements and decide about tags,
 ;;; rather than rely on the template.
-;;; TODO: This is copy and pasted from table-header-node-elements-DOM-R.
 (defn condition-elements-DOM-R
   "Generate the dom for a condition, given its
   elements."
@@ -155,22 +154,13 @@
   the header definition(s) of this column, while inherited gives the
   context for elements of both the header and its entire column."
   [example-elements column-requests header-inherited inherited]
-  (assert (not (empty? example-elements)))
-  (expr-let
-      [ordered-elements (order-items-R example-elements)
-       element-lists (expr-seq map semantic-to-list-R ordered-elements)
-       excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
-                           ordered-elements)]
-    (let [is-tag (some #{:tag} (:template inherited))]
-      (item-stack-DOM
-       (if is-tag item-without-labels-DOM-R item-DOM-R)
-       ordered-elements excludeds
-       (if is-tag {:class "tag"} {})
-       (update-in inherited [:selectable-attributes]
-                  #(into-attributes
-                    % (attributes-for-header-add-column-command
-                       column-requests (:template inherited)
-                       header-inherited)))))))
+  (condition-elements-DOM-R example-elements
+                            (update-in
+                             inherited [:selectable-attributes]
+                             #(into-attributes
+                               % (attributes-for-header-add-column-command
+                                  column-requests (:template inherited)
+                                  header-inherited)))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The

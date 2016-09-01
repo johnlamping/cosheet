@@ -199,14 +199,15 @@
 (defn table-header-virtual-element-DOM-R
   "Generate the DOM for an element in a hierarchy. It will be displayed
   under its parent but has no elements of its own to show."
-  [item-map elements-template rows-referent inherited]
+  [item-map non-trivial-siblings elements-template rows-referent inherited]
   (let [request-referent (item-or-exemplar-referent
                           (:item item-map) (:subject inherited))
-        column-subject (table-column-elements-referent
-                        [item-map] [item-map] nil
-                        rows-referent (:subject inherited))
+        exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
+        column-referent (table-column-elements-referent
+                         [item-map] [item-map] exclude-from-members
+                         rows-referent (:subject inherited))
         inherited (-> inherited
-                      (assoc :subject column-subject
+                      (assoc :subject column-referent
                              :template elements-template)
                       (update-in
                        [:selectable-attributes]
@@ -216,12 +217,13 @@
                           (attributes-for-header-add-column-command
                            [(:item item-map)] elements-template inherited))
                          {:commands
-                          {:delete {:delete-referent request-referent}}})))
+                          {:delete {:delete-referent request-referent}
+                           :expand {:item-referent column-referent}}})))
         key (conj (:parent-key inherited) (:item-id (:item item-map)))
         is-tag (some #{:tag} elements-template)]
     (cond-> (add-attributes
              (virtual-item-DOM
-              key :after (assoc inherited :adjacent-referent column-subject))
+              key :after (assoc inherited :adjacent-referent column-referent))
              {:style {:width (str base-table-column-width "px")}})
       is-tag (add-attributes {:class "tag"}))))
 
@@ -236,7 +238,7 @@
     (table-header-subtree-DOM-R
      below false elements-template rows-referent inherited)
     (table-header-virtual-element-DOM-R
-     below elements-template rows-referent inherited)))
+     below non-trivial-siblings elements-template rows-referent inherited)))
 
 (defn table-header-subtree-DOM-R
   "Generate the dom for a subtree of a table header hierarchy. 

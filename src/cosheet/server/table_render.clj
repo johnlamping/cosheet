@@ -91,7 +91,8 @@
   [column-items elements-template inherited]
   (let [subject (:subject inherited)
         new-elements-template (cons '??? (rest elements-template))
-        new-header-template (list* (concat (or (:template inherited) '(nil))
+        new-header-template (apply list (concat (or (:template inherited)
+                                                    '(nil))
                                            [new-elements-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
@@ -119,24 +120,6 @@
               :position :after
               :template new-header-template}}))
 
-(defn add-add-column-commands
-  "For each element, which must be in list form, modify inherited to
-  have its :selectable-attributes include a new column command, whose
-  template includes all the elements above the element."
-  [element-lists column-requests header-inherited inherited]
-  (let [element-lists-above (map #(concat (take % element-lists))
-                                 (range (count element-lists)))]
-    (map (fn [element-lists]
-           (let [modified-header-inherited
-                 (update-in header-inherited [:template]
-                            #(list* (concat (or % '(nil)) element-lists)))]
-             (update-in inherited [:selectable-attributes]
-                        #(into-attributes
-                          % (attributes-for-header-add-column-command
-                             column-requests (:template inherited)
-                             modified-header-inherited)))))
-         element-lists-above)))
-
 (defn add-table-header-formatting
   "Given a dom of header elements, return a dom with all the appropriate
   formatting."
@@ -156,7 +139,6 @@
   (assert (not (empty? elements)))
   (expr-let
       [ordered-elements (order-items-R elements)
-       element-lists (expr-seq map semantic-to-list-R ordered-elements)
        excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
     (let [is-tag (some #{:tag} (:template inherited))]
@@ -184,8 +166,11 @@
        (if is-tag item-without-labels-DOM-R item-DOM-R)
        ordered-elements excludeds
        (if is-tag {:class "tag"} {})
-       (add-add-column-commands
-        element-lists column-requests header-inherited inherited)))))
+       (update-in inherited [:selectable-attributes]
+                  #(into-attributes
+                    % (attributes-for-header-add-column-command
+                       column-requests (:template inherited)
+                       header-inherited)))))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The

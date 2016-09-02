@@ -115,7 +115,7 @@
 ;;; TODO: This code should be aware of refinements of conditions, not just
 ;;; added conditions.
 (defn hierarchy-node-extent
-  "Return a seq of descendants the node that is just big enough that
+  "Return a seq of descendants of the node that is just big enough that
   the properties of each descendant of the node are a superset
   of the properties of some member of the extent."
   [node]

@@ -7,7 +7,7 @@
             (cosheet.server 
              [referent :refer [item-referent]]
              [item-render :refer [item-without-labels-DOM-R
-                                  item-DOM-R]]
+                                  item-DOM-R must-show-label-item-DOM-R]]
              [table-render :refer [table-DOM-R]])))
 
 ;;; Code to create hiccup style dom for a database entity.
@@ -149,7 +149,8 @@
                            #(into-attributes
                              % {:commands {:expand {:item-referent
                                                     subject-ref}}})))
-              dom (item-DOM-R item referent tags (empty? tags) inherited)]
+              dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
+                   item referent tags inherited)]
           (if (empty? tags)
             dom
             (expr-let [dom dom]

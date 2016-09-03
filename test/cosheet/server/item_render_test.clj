@@ -414,8 +414,8 @@
                            (~o1 :order :non-semantic)))
         inherited  (assoc base-inherited :width 1.0)
         [dom item] (let-mutated [item item-as-list]
-                     (expr-let [dom (item-DOM-R item (item-referent item)
-                                                [] true inherited)]
+                     (expr-let [dom (must-show-label-item-DOM-R
+                                     item (item-referent item) [] inherited)]
                           [dom item]))]
     (let [item-key [:root (:item-id item)]]
       (is (check dom

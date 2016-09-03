@@ -19,7 +19,6 @@
                                    order-items-R condition-satisfiers-R]])))
 
 (def item-without-labels-DOM-R)
-(def item-DOM-R)
 
 (defn item-target
   "Return a target for the given item."
@@ -342,7 +341,7 @@
 
 (defn label-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
-  make a dom that includes and necessary labels wrapping the item."
+  make a dom that includes any necessary labels wrapping the item."
   [dom item item-referent label-elements must-show-empty-labels inherited]
   (if (and (empty? label-elements) (not must-show-empty-labels))
     dom
@@ -395,20 +394,38 @@
       item referent content (remove (set excluded-elements) elements)
       inherited))))
 
-(defn item-DOM-R
-   "Make a dom for an item or exemplar for a group of items,
+(defn item-DOM-impl-R
+   "Make a dom for an item or exemplar for a group of items.
    Either the referent for the item/group must be provided,
-   or inherited must contain :subject
+   or inherited must contain :subject.
+   If the item is a tag, the caller is responsible for tag formatting."
+  [item referent excluded-elements must-show-empty-label inherited]
+  (expr-let [labels (entity/label->elements item :tag)]
+    (let [labels (remove (set excluded-elements) labels)
+          excluded (concat labels excluded-elements)]
+      (expr-let [dom (item-without-labels-DOM-R item excluded inherited)]
+        (label-wrapper-DOM-R
+         dom item referent labels must-show-empty-label inherited)))))
+
+(defn item-DOM-R
+   "Make a dom for an item or exemplar for a group of items.
+   Either the referent for the item/group must be provided,
+   or inherited must contain :subject.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
    (let [referent (item-or-exemplar-referent item (:subject inherited))]
-     (item-DOM-R item referent excluded-elements false inherited)))
+     (item-DOM-impl-R item referent excluded-elements false inherited)))
   ([item referent excluded-elements inherited]
-   (item-DOM-R item referent excluded-elements false inherited))
-  ([item referent excluded-elements must-show-empty-labels inherited]
-   (expr-let [labels (entity/label->elements item :tag)]
-     (let [labels (remove (set excluded-elements) labels)
-           excluded (concat labels excluded-elements)]
-       (expr-let [dom (item-without-labels-DOM-R item excluded inherited)]
-         (label-wrapper-DOM-R
-          dom item referent labels must-show-empty-labels inherited))))))
+   (item-DOM-impl-R item referent excluded-elements false inherited)))
+
+(defn must-show-label-item-DOM-R
+   "Make a dom for an item or exemplar for a group of items, always showing
+   at least one label, empty, if necessary. 
+   Either the referent for the item/group must be provided,
+   or inherited must contain :subject.
+   If the item is a tag, the caller is responsible for tag formatting."
+  ([item excluded-elements inherited]
+   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+     (item-DOM-impl-R item referent excluded-elements true inherited)))
+  ([item referent excluded-elements inherited]
+   (item-DOM-impl-R item referent excluded-elements true inherited)))

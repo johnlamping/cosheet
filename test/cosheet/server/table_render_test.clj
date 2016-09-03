@@ -102,11 +102,11 @@
       (is (check
            dom
            [:div {:class "table"}
-            [:div {:class "table-top tag"}
+            [:div {:class "table-top"}
              [:div {:class "table-corner"}]
              (any)]
             [:div {:class "table-body"}
-             [:div {:class "table-indent tag"}]
+             [:div {:class "table-indent"}]
              [:div {:class "table-main"}
               [:div {:class "column-header-sequence"}
                [:component {:key (conj table-key (:item-id single))

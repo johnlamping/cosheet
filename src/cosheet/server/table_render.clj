@@ -23,11 +23,13 @@
                                 hierarchy-nodes-extent
                                 hierarchy-by-canonical-info
                                 hierarchy-node-example-elements]]
-             [render-utils :refer [make-component
+             [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
                                    order-items-R condition-satisfiers-R]]
-             [item-render :refer [elements-DOM-R
-                                  item-without-labels-DOM-R item-DOM-R]])))
+             [item-render :refer [elements-DOM-R label-wrapper-DOM-R
+                                  item-content-and-elements-DOM-R
+                                  item-without-labels-DOM-R
+                                  item-DOM-R must-show-label-item-DOM-R]])))
 
 (def base-table-column-width 150)
 
@@ -129,53 +131,45 @@
                                   is-tag (str " tag"))
                          :style {:width (str width "px")}})))
 
-;;; TODO: This needs to look at the elements and decide about tags,
-;;; rather than rely on the template.
 (defn condition-elements-DOM-R
-  "Generate the dom for a condition, given its
-  elements."
+  "Generate the dom for a (subset of) a condition, given its elements."
   [elements inherited]
   (assert (not (empty? elements)))
   (expr-let
-      [ordered-elements (order-items-R elements)
-       excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
-                           ordered-elements)]
-    (let [is-tag (some #{:tag} (:template inherited))]
-      (item-stack-DOM
-       (if is-tag item-without-labels-DOM-R item-DOM-R)
-       ordered-elements excludeds
-       (if is-tag {:class "tag"} {})
-       inherited))))
-
-;;; TODO: This needs to look at the item to see if there is a non-trivial
-;;; content, in which case it needs to show that item plus the elements
-;;; as an item-DOM
-(defn table-header-node-elements-DOM-R
-  "Generate the dom for one node of a table header hierarchy given its
-  elements. column-requests gives the items that requested all columns
-  that this node covers. header-inherited gives the context of
-  the header definition(s) of this column, while inherited gives the
-  context for elements of both the header and its entire column."
-  [example-elements column-requests header-inherited inherited]
-  (condition-elements-DOM-R example-elements
-                            (update-in
-                             inherited [:selectable-attributes]
-                             #(into-attributes
-                               % (attributes-for-header-add-column-command
-                                  column-requests (:template inherited)
-                                  header-inherited)))))
+      [item (entity/subject (first elements))
+       all-labels (entity/label->elements item :tag)
+       all-labels-set (set all-labels)
+       labels (seq (filter all-labels-set elements))
+       non-labels (seq (remove all-labels-set elements))]
+    (if (and labels non-labels)
+      (let [item-referent (item-or-exemplar-referent item (:subject inherited))]
+        (expr-let [inner-dom (item-content-and-elements-DOM-R
+                              item item-referent
+                              'anything-immutable non-labels inherited)]
+          (label-wrapper-DOM-R
+           inner-dom item item-referent labels false inherited)))
+      (expr-let [ordered-elements (order-items-R elements)
+                 excludeds (when labels
+                             (expr-seq map #(matching-elements :tag %)
+                                       ordered-elements))]
+        (item-stack-DOM
+         (if labels item-without-labels-DOM-R must-show-label-item-DOM-R)
+         ordered-elements excludeds
+         (if labels {:class "tag"} {})
+         inherited)))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
-  row-scope-referent should specify all the row items from which this
+  rows-referent should specify all the row items from which this
   header selects elements."
   [node elements-template rows-referent inherited]
   (let [subject (:subject inherited)
-        descendants (hierarchy-node-descendants node) 
-        example-elements (hierarchy-node-example-elements node)
+        descendants (hierarchy-node-descendants node)
+        column-requests (map :item descendants)
         column-referent (table-column-elements-referent
-                           descendants (hierarchy-node-extent node) nil
-                           rows-referent subject)
+                         descendants (hierarchy-node-extent node) nil
+                         rows-referent subject)
+        example-elements (hierarchy-node-example-elements node)
         delete-attributes (attributes-for-header-delete-command
                            node example-elements rows-referent subject)
         selectable (cond-> delete-attributes
@@ -184,24 +178,28 @@
                      (into-attributes
                       {:commands
                        {:expand {:item-referent column-referent}}}))
-        full-inherited (let [temp-inherited
-                             (assoc inherited
-                                    :template elements-template
-                                    :subject column-referent
-                                    :width (* 0.75 (count descendants)))]
-                         (if (empty? selectable)
-                             (dissoc temp-inherited :selectable-attributes)
-                             (assoc temp-inherited :selectable-attributes
-                                    selectable)))]
-    (table-header-node-elements-DOM-R
-     example-elements (map :item descendants) inherited full-inherited)))
+        inherited-down (-> (if (empty? selectable)
+                               (dissoc inherited :selectable-attributes)
+                               (assoc inherited :selectable-attributes
+                                      selectable))
+                           (assoc :width (* 0.75 (count descendants))
+                                  :template elements-template
+                                  :subject column-referent)
+                             (update-in
+                              [:selectable-attributes]
+                              #(into-attributes
+                                % (attributes-for-header-add-column-command
+                                   column-requests elements-template
+                                   inherited))))]
+    (condition-elements-DOM-R example-elements inherited-down)))
 
-(defn table-header-virtual-element-DOM-R
-  "Generate the DOM for an element in a hierarchy. It will be displayed
-  under its parent but has no elements of its own to show."
+ (defn table-header-member-DOM-R
+  "Generate the DOM for an element in a hierarchy that is not the only
+  descendant of its parent. It will be displayed under its parent but
+  has no elements of its own to show."
   [item-map non-trivial-siblings elements-template rows-referent inherited]
-  (let [request-referent (item-or-exemplar-referent
-                          (:item item-map) (:subject inherited))
+  (let [item (:item item-map)
+        request-referent (item-or-exemplar-referent item (:subject inherited))
         exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
         column-referent (table-column-elements-referent
                          [item-map] [item-map] exclude-from-members
@@ -215,17 +213,18 @@
                          (into-attributes
                           %
                           (attributes-for-header-add-column-command
-                           [(:item item-map)] elements-template inherited))
+                           [item] elements-template inherited))
                          {:commands
                           {:delete {:delete-referent request-referent}
                            :expand {:item-referent column-referent}}})))
-        key (conj (:parent-key inherited) (:item-id (:item item-map)))
+        key (conj (:parent-key inherited) (:item-id item))
         is-tag (some #{:tag} elements-template)]
-    (cond-> (add-attributes
-             (virtual-item-DOM
-              key :after (assoc inherited :adjacent-referent column-referent))
-             {:style {:width (str base-table-column-width "px")}})
-      is-tag (add-attributes {:class "tag"}))))
+    (add-attributes
+       (virtual-item-DOM
+        key :after
+        (assoc inherited :adjacent-referent column-referent))
+       (cond-> {:style {:width (str base-table-column-width "px")}}
+         is-tag (into-attributes {:class "tag"})))))
 
 (def table-header-subtree-DOM-R)
 
@@ -237,7 +236,7 @@
   (if (hierarchy-node? below)
     (table-header-subtree-DOM-R
      below false elements-template rows-referent inherited)
-    (table-header-virtual-element-DOM-R
+    (table-header-member-DOM-R
      below non-trivial-siblings elements-template rows-referent inherited)))
 
 (defn table-header-subtree-DOM-R
@@ -268,7 +267,7 @@
                                      % non-trivial-children
                                      elements-template rows-referent inherited)
                               next-level)]
-                 [:div (cond-> {:class "column-header-stack"}
+                 [:div (cond-> {}
                          top-level (into-attributes {:class "top-level"})
                          is-tag (into-attributes {:class "tag"}))
                   (add-attributes node-dom {:class "with-children"})
@@ -345,8 +344,7 @@
                               :parent-key (conj (:parent-key inherited)
                                                 (:item-id column-item))
                               :template template)]
-    (expr-let [matches (matching-elements
-                        (template-to-condition template) row-item)
+    (expr-let [matches (matching-elements template row-item)
                do-not-show (when exclusions
                              (expr-seq map #(matching-elements
                                              (template-to-condition %)
@@ -461,10 +459,7 @@
                                inherited
                                :subject (union-referent
                                          [(item-referent row-condition-item)
-                                                rows-referent])
-                               ;; TODO: Get rid of this template once
-                               ;; condition-elements-DOM-R is fixed.
-                               :template '(nil :tag))))
+                                                rows-referent]))))
              headers (table-header-DOM-R
                       hierarchy '(nil :tag) rows-referent
                       (assoc inherited

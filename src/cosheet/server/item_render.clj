@@ -307,19 +307,79 @@
                                         :add-twin selector-map
                                         :expand nil}}
                             (:selectable-attributes inherited))
-           {:class (cond-> "content-text editable"
+           {:class (cond-> "content-text"
+                     (not= content 'anything-immutable) (str " editable")
                      is-placeholder (str " placeholder")
                      (= content 'anything) (str " anything"))
             :target (item-target item inherited)})
-     (cond (= content 'anything) "..."
+     (cond (#{'anything 'anything-immutable} content) "..."
            is-placeholder "???"                     
            true (str content))]))
+
+(defn item-content-and-elements-DOM-R
+  "Make a dom for a content and a group of non-label elements,
+  all of the same item."
+  [item item-referent content elements inherited]
+  (let [key (conj (:parent-key inherited) (:item-id item))
+        content-dom (add-attributes
+                     (item-content-DOM item content inherited)
+                     ;; Give it a unique key.
+                     ;; This will be overridden to the item's key
+                     ;; if the item has nothing but this content.
+                     {:key (conj key :content)})]
+    (if (empty? elements)
+      (add-attributes content-dom {:class "item"})
+      (let [inherited-down
+            (-> inherited
+                (update-in [:priority] inc)
+                (assoc :parent-key key
+                       :subject item-referent)
+                (dissoc :template :selectable-attributes))]
+        (expr-let [elements-dom (elements-DOM-R
+                                 elements true inherited-down)]
+          [:div {:class "item with-elements"}
+           content-dom elements-dom])))))
+
+(defn label-wrapper-DOM-R
+  "Given a dom for an item, not including its labels, and a list of labels,
+  make a dom that includes and necessary labels wrapping the item."
+  [dom item item-referent label-elements must-show-empty-labels inherited]
+  (if (and (empty? label-elements) (not must-show-empty-labels))
+    dom
+    (let [key (conj (:parent-key inherited) (:item-id item))
+          inherited-for-tags (-> inherited
+                                 (assoc :template '(nil :tag)
+                                        :subject item-referent
+                                        :parent-key key)
+                                 ;; TODO: Keep :expand commands.
+                                 (dissoc :selectable-attributes))]
+      (if (empty? label-elements)
+        [:div {:class "horizontal-tags-element narrow"}
+         (add-attributes
+          (virtual-item-DOM (conj key :tags) :after
+                            (assoc inherited-for-tags
+                                   :adjacent-referent item-referent))
+          {:class "tag"})
+         dom]
+        (expr-let [ordered-labels (order-items-R label-elements)
+                   tags (expr-seq
+                         map #(condition-satisfiers-R % '(nil :tag))
+                         ordered-labels)]
+          ;; We need "tag" in the class to make any margin
+          ;; after the tags also have tag coloring.
+          [:div {:class "item wrapped-element tag"}
+           (add-attributes
+            (item-stack-DOM item-without-labels-DOM-R
+                            ordered-labels tags {:class "tag"}
+                            inherited-for-tags)
+            {:class "tag"})
+           [:div {:class "indent-wrapper tag"} dom]])))))
 
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
    Either the referent for the item/group must be provided,
-   or inherited must contain :subject
+   or inherited must contain :subject.
    We only record the key on the content, not the whole item
    (unless it is just the content)."
   ([item excluded-elements inherited]
@@ -331,30 +391,10 @@
     (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
-     (let [key (conj (:parent-key inherited) (:item-id item))
-           elements (remove (set excluded-elements) elements)
-           content-dom (add-attributes
-                        (item-content-DOM item content inherited)
-                        ;; Give it a unique key.
-                        ;; This will be overridden to the item's key
-                        ;; if the item has nothing but this content.
-                        {:key (conj key :content)})]
-       (if (empty? elements)
-         (add-attributes content-dom {:class "item"})
-         (let [inherited-down
-               (-> inherited
-                   (update-in [:priority] inc)
-                   (assoc :parent-key key
-                          :subject referent)
-                   (dissoc :template :selectable-attributes))]
-           (expr-let [elements-dom (elements-DOM-R
-                                    elements true inherited-down)]
-             [:div {:class "item with-elements"}
-              content-dom elements-dom])))))))
+     (item-content-and-elements-DOM-R
+      item referent content (remove (set excluded-elements) elements)
+      inherited))))
 
-;;; TODO: This needs an inherited property saying whether this is in a
-;;; selection, so that new items should be 'anything, rather then
-;;; the empty string.
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items,
    Either the referent for the item/group must be provided,
@@ -369,34 +409,6 @@
    (expr-let [labels (entity/label->elements item :tag)]
      (let [labels (remove (set excluded-elements) labels)
            excluded (concat labels excluded-elements)]
-       (expr-let [dom (item-without-labels-DOM-R
-                       item excluded inherited)]
-         (if (and (empty? labels) (not must-show-empty-labels))
-           dom
-           (let [key (conj (:parent-key inherited) (:item-id item))
-                 inherited-for-tags (-> inherited
-                                        (assoc :template '(nil :tag)
-                                               :subject referent
-                                               :parent-key key)
-                                        (dissoc :selectable-attributes))]
-             (if (empty? labels)
-               [:div {:class "horizontal-tags-element narrow"}
-                (add-attributes
-                 (virtual-item-DOM (conj key :tags) :after
-                                   (assoc inherited-for-tags
-                                          :adjacent-referent referent))
-                 {:class "tag"})
-                dom]
-               (expr-let [ordered-labels (order-items-R labels)
-                          tags (expr-seq
-                                map #(condition-satisfiers-R % '(nil :tag))
-                                ordered-labels)]
-                 ;; We need "tag" in the class to make any margin
-                 ;; after the tags also have tag coloring.
-                 [:div {:class "item wrapped-element tag"}
-                  (add-attributes
-                   (item-stack-DOM item-without-labels-DOM-R
-                                   ordered-labels tags {:class "tag"}
-                                   inherited-for-tags)
-                   {:class "tag"})
-                  [:div {:class "indent-wrapper tag"} dom]])))))))))
+       (expr-let [dom (item-without-labels-DOM-R item excluded inherited)]
+         (label-wrapper-DOM-R
+          dom item referent labels must-show-empty-labels inherited))))))

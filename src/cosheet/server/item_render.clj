@@ -366,7 +366,7 @@
                          ordered-labels)]
           ;; We need "tag" in the class to make any margin
           ;; after the tags also have tag coloring.
-          [:div {:class "item wrapped-element tag"}
+          [:div {:class "wrapped-element tag"}
            (add-attributes
             (item-stack-DOM item-without-labels-DOM-R
                             ordered-labels tags {:class "tag"}

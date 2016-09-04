@@ -127,8 +127,7 @@
   formatting."
   [dom num-columns is-tag]
   (let [width (+ (* num-columns (- base-table-column-width 2)) 2)]
-    (add-attributes dom {:class (cond-> "column-header"
-                                  is-tag (str " tag"))
+    (add-attributes dom {:class "column-header"
                          :style {:width (str width "px")}})))
 
 (defn condition-elements-DOM-R
@@ -152,11 +151,14 @@
                  excludeds (when labels
                              (expr-seq map #(matching-elements :tag %)
                                        ordered-elements))]
-        (item-stack-DOM
-         (if labels item-without-labels-DOM-R must-show-label-item-DOM-R)
-         ordered-elements excludeds
-         (if labels {:class "tag"} {})
-         inherited)))))
+        (cond->
+            (item-stack-DOM
+             (if labels item-without-labels-DOM-R must-show-label-item-DOM-R)
+             ordered-elements excludeds
+             (if labels {:class "tag"} {})
+             inherited)
+          (and labels (> (count ordered-elements) 1))
+          (add-attributes {:class "tag"}))))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
@@ -268,8 +270,7 @@
                                      elements-template rows-referent inherited)
                               next-level)]
                  [:div (cond-> {}
-                         top-level (into-attributes {:class "top-level"})
-                         is-tag (into-attributes {:class "tag"}))
+                         top-level (into-attributes {:class "top-level"}))
                   (add-attributes node-dom {:class "with-children"})
                   (into [:div {:class "column-header-sequence"}] dom-seqs)])))]
         (let [is-tag (some #{:tag} elements-template)

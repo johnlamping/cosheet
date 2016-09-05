@@ -389,7 +389,7 @@
           age-tag (first (current-value (matching-elements :tag age)))
           age-key (conj element-key (:item-id age))]
       (is (check dom
-                 [:div {:class "item wrapped-element tag"}
+                 [:div {:class "wrapped-element tag"}
                   [:component {:key age-key :class "tag"}
                    [item-without-labels-DOM-R age [age-tag]
                     {:priority 0 :parent-key element-key

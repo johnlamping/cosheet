@@ -22,10 +22,9 @@
 
 (defn item-target
   "Return a target for the given item."
-  [item inherited]
+  [item-referent inherited]
   (let [template (:template inherited)]
-    (cond-> {:item-referent (item-or-exemplar-referent
-                             item (:subject inherited))}
+    (cond-> {:item-referent item-referent}
       template (assoc :template template))))
 
 (defn hierarchy-add-adjacent-target
@@ -289,7 +288,7 @@
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
-  [item content inherited]
+  [item item-referent content inherited]
   ;; We don't currently handle items as content. That would need
   ;; more interaction and UI design work to deal with the distinction
   ;; between elements of an item and elements on its content.
@@ -310,7 +309,7 @@
                      (not= content 'anything-immutable) (str " editable")
                      is-placeholder (str " placeholder")
                      (= content 'anything) (str " anything"))
-            :target (item-target item inherited)})
+            :target (item-target item-referent inherited)})
      (cond (#{'anything 'anything-immutable} content) "..."
            is-placeholder "???"                     
            true (str content))]))
@@ -321,7 +320,7 @@
   [item item-referent content elements inherited]
   (let [key (conj (:parent-key inherited) (:item-id item))
         content-dom (add-attributes
-                     (item-content-DOM item content inherited)
+                     (item-content-DOM item item-referent content inherited)
                      ;; Give it a unique key.
                      ;; This will be overridden to the item's key
                      ;; if the item has nothing but this content.
@@ -403,7 +402,8 @@
   (expr-let [labels (entity/label->elements item :tag)]
     (let [labels (remove (set excluded-elements) labels)
           excluded (concat labels excluded-elements)]
-      (expr-let [dom (item-without-labels-DOM-R item excluded inherited)]
+      (expr-let [dom (item-without-labels-DOM-R
+                      item referent excluded inherited)]
         (label-wrapper-DOM-R
          dom item referent labels must-show-empty-label inherited)))))
 

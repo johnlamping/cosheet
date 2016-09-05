@@ -141,24 +141,22 @@
        labels (seq (filter all-labels-set elements))
        non-labels (seq (remove all-labels-set elements))]
     (if (and labels non-labels)
-      (let [item-referent (item-or-exemplar-referent item (:subject inherited))]
-        (expr-let [inner-dom (item-content-and-elements-DOM-R
-                              item item-referent
-                              'anything-immutable non-labels inherited)]
-          (label-wrapper-DOM-R
-           inner-dom item item-referent labels false inherited)))
-      (expr-let [ordered-elements (order-items-R elements)
-                 excludeds (when labels
-                             (expr-seq map #(matching-elements :tag %)
-                                       ordered-elements))]
-        (cond->
-            (item-stack-DOM
-             (if labels item-without-labels-DOM-R must-show-label-item-DOM-R)
-             ordered-elements excludeds
-             (if labels {:class "tag"} {})
-             inherited)
-          (and labels (> (count ordered-elements) 1))
-          (add-attributes {:class "tag"}))))))
+      (expr-let [inner-dom (item-content-and-elements-DOM-R
+                            item (:subject inherited)
+                            'anything-immutable non-labels inherited)]
+        (label-wrapper-DOM-R
+         inner-dom item (:subject inherited) labels false inherited))
+      (expr-let [ordered-elements (order-items-R elements)]
+        (if labels
+          (expr-let [excludeds (expr-seq map #(matching-elements :tag %)
+                                         ordered-elements)]
+            (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                    ordered-elements excludeds
+                                    {:class "tag"} inherited)
+              (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
+          [:div {:class "elements-wrapper"}
+           (item-stack-DOM must-show-label-item-DOM-R
+                           ordered-elements nil {} inherited)])))))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The

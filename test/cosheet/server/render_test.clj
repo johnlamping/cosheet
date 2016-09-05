@@ -31,7 +31,8 @@
   (let [subject-ref (make-id "subject")
         [dom fred] (let-mutated [fred "Fred"]
                      (expr-let [dom (top-level-item-DOM-R
-                                     fred [] {:subject subject-ref})]
+                                     fred (item-referent fred)
+                                     {:subject subject-ref})]
                        [dom (item->immutable fred)]))]
     (is (check dom
                [:div {:class "horizontal-tags-element narrow"}
@@ -54,7 +55,7 @@
         age (first (current-value
                     (matching-elements "age" element)))]
     (current-value
-     (expr-let [dom (top-level-item-DOM-R age [] {})]
+     (expr-let [dom (top-level-item-DOM-R age (item-referent age) {})]
        (is (check dom
                   [:div {:commands {:set-content nil
                                     :delete nil

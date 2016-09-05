@@ -168,8 +168,9 @@
     (exemplar-referent item subject)))
 
 (defn referent->exemplar-and-subject
-  "Given a referent, return an exemplar and subject.
-   Returns nil for anything but item and exemplar referents."
+  "Given a referent, return an exemplar and subject such that
+  item-or-exemplar-referent could reconstruct the referent
+  Returns nil for anything but item and exemplar referents."
   [referent]
   (cond (item-referent? referent) [referent nil]
         (exemplar-referent? referent) (rest referent)))

@@ -5,7 +5,7 @@
                      [expression :refer [expr expr-let expr-seq cache]]
                      [dom-utils :refer [add-attributes into-attributes]])
             (cosheet.server 
-             [referent :refer [item-referent]]
+             [referent :refer [item-referent referent->exemplar-and-subject]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R must-show-label-item-DOM-R]]
              [table-render :refer [table-DOM-R]])))
@@ -140,8 +140,12 @@
                tags (matching-elements :tag item)]
       (if (empty? table)
         (let [subject-ref (or (:subject inherited)
-                              (when-let [subject (entity/subject item)]
-                                (item-referent subject)))
+                              (let [[exemplar subject]
+                                    (referent->exemplar-and-subject referent)]
+                                (or subject
+                                    (when exemplar
+                                      (when-let [subject (entity/subject item)]
+                                        (item-referent subject))))))
               inherited (cond-> inherited
                           subject-ref
                           (update-in

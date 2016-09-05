@@ -58,7 +58,7 @@
         (or (= from content)
             ;; TODO: We disable changing wildcards for now, because we
             ;; don't correctly handle either doing it or selecting it.
-            (and (= from "...") false) 
+            (= from "...") ;; Probably a wildcard -- matches anything.
             (and (= from "???")
                  (symbol? content)
                  (= (subs (str content) 0 3) "???"))))

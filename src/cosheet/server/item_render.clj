@@ -305,8 +305,7 @@
                                         :add-twin selector-map
                                         :expand nil}}
                             (:selectable-attributes inherited))
-           {:class (cond-> "content-text"
-                     (not= content 'anything-immutable) (str " editable")
+           {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder")
                      (= content 'anything) (str " anything"))
             :target (item-target item-referent inherited)})

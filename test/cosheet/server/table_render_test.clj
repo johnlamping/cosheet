@@ -128,8 +128,9 @@
                             :subject-referent (union-referent
                                                [(item-referent table)])
                             :position :after
-                            :template '(anything (:column :non-semantic)
-                                                 (??? :tag))}}}]]
+                            :template '(anything-immutable
+                                        (:column :non-semantic)
+                                        (??? :tag))}}}]]
                (any)
                (any)]
               [:component {:key (conj table-key (:item-id joe))

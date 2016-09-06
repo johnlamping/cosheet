@@ -128,6 +128,8 @@
                            ; and not part of what is selected. When the
                            ; target referent is instantiated, the first group
                            ; items must be the selector.
+;             :immmutable  ; If true, the content of this dom should never
+                           ; change.
    })
 
 ;;; --- Top level item ---

@@ -57,7 +57,7 @@
         (println "from" from "content" content)
         (or (= from content)
             ;; Probably a wildcard -- matches anything.
-            (and (= from "...") (not= content 'anything-immutable))
+            (and (= from "..."))
             (and (= from "???")
                  (symbol? content)
                  (= (subs (str content) 0 3) "???"))))
@@ -300,11 +300,11 @@
 (defn do-set-content
   [store attributes]
   ;; TODO: Handle deleting.
-  (let [{:keys [target-key target from to]} attributes
+  (let [{:keys [target-key target from to immutable]} attributes
         referent (:item-referent target)]
     (if referent
       ;; Changing an existing value.
-      (when (and from to)
+      (when (and from to (not immutable))
         (let [to (parse-string-as-number to)]
           (let [items (apply concat (instantiate-referent referent store))]
             (println "updating " (count items) " items")

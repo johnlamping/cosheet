@@ -413,15 +413,16 @@
 
 (defn template-to-condition
   "Given a template, alter it to work as a condition. Specifically,
-  replace 'anything by (nil (nil :order :non-semantic)) to make 'anything
-   work as a wild card that avoids matching non-user editable elements."
+  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
+  to make them work as a wild card that avoids matching non-user editable
+  elements."
   [condition]
   (if (sequential? condition)
     (let [elements (map template-to-condition (rest condition))]
-      (if (= 'anything (first condition))
+      (if (#{'anything 'anything-immutable} (first condition))
         (apply list (list* nil '(nil :order :non-semantic) elements))
         (cons (first condition) elements)))
-    (if  (= 'anything condition)
+    (if (#{'anything 'anything-immutable} condition)
       '(nil (nil :order :non-semantic))
       condition)))
 

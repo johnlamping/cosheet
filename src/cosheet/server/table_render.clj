@@ -94,7 +94,7 @@
   (let [subject (:subject inherited)
         new-elements-template (cons '??? (rest elements-template))
         new-header-template (apply list (concat (or (:template inherited)
-                                                    '(nil))
+                                                    '(anything-immutable))
                                            [new-elements-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
@@ -128,6 +128,7 @@
   (assert (not (empty? elements)))
   (expr-let
       [item (entity/subject (first elements))
+       content (entity/content item)
        all-labels (entity/label->elements item :tag)
        all-labels-set (set all-labels)
        labels (seq (filter all-labels-set elements))
@@ -135,7 +136,7 @@
     (if (and labels non-labels)
       (expr-let [inner-dom (item-content-and-elements-DOM-R
                             item (:subject inherited)
-                            'anything-immutable non-labels inherited)]
+                            content non-labels inherited)]
         (label-wrapper-DOM-R
          inner-dom item (:subject inherited) labels false inherited))
       (expr-let [ordered-elements (order-items-R elements)]
@@ -233,7 +234,8 @@
 
 (defn table-header-subtree-DOM-R
   "Generate the dom for a subtree of a table header hierarchy. 
-  elements-template gives what new header items need to satisfy.
+  elements-template gives what additional elements in the header need
+  to satisfy.
   rows-referent should specify all the row items from which this
   header selects elements."
   [node top-level elements-template rows-referent inherited]
@@ -250,8 +252,9 @@
              node-dom
              (let [properties-list (canonical-set-to-list (:properties node))
                    inherited (update-in inherited [:template]
-                                        #(list* (concat (or % '(anything))
-                                                        properties-list)))]
+                                        #(list* (concat
+                                                 (or % '(anything-immutable))
+                                                 properties-list)))]
                (expr-let
                    [dom-seqs (expr-seq
                               map #(table-header-node-or-element-DOM-R
@@ -271,8 +274,9 @@
 
 (defn table-header-DOM-R
   "Generate DOM for column headers given the hierarchy. elements-template
-  gives what new header items need to satisfy.
-  The column will contain those elements of the rows that match the templates."
+  gives what new elements of a header request need to satisfy.
+  The column will contain those elements of the rows that match the templates
+  in the hierarchy."
   [hierarchy elements-template rows-referent inherited]
   (expr-let [columns (expr-seq
                       map #(table-header-subtree-DOM-R
@@ -287,7 +291,7 @@
   return a map:
      :column-item Item that identifies the column.
         :template Condition that each element of the column must satisfy.
-                  ('anything is handled before putting a condition here.)
+                  ('anything is turned to nil before putting a condition here.)
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (let [next-level (hierarchy-node-next-level node)
@@ -457,7 +461,8 @@
                       hierarchy '(nil :tag) rows-referent
                       (assoc inherited
                              :subject (item-referent table-item)
-                             :template '(anything (:column :non-semantic))))]
+                             :template '(anything-immutable
+                                         (:column :non-semantic))))]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)

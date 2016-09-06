@@ -21,6 +21,9 @@
 (defn is-editable? [dom]
   (and dom (.. dom -classList (contains "editable"))))
 
+(defn is-immutable? [dom]
+  (and dom (.. dom -classList (contains "immutable"))))
+
 (defn descendant-with-editable
   "Given a dom, if it has editable children, return it. If a unique
   descendant  does, return it. If none do, return nil, while if more
@@ -149,7 +152,8 @@
       (let [editable (find-editable target event)]
         (if editable
           (do (select editable)
-              (open-edit-field editable (dom-text editable)))
+              (when (not (is-immutable? editable))
+                (open-edit-field editable (dom-text editable))))
           (deselect))
         (when (not= editable @selected)
           (request-action [:selected (and editable (.-id editable))]))))))
@@ -206,7 +210,9 @@
                                              ;; Prevent navigating to prev page.
                                              (.preventDefault event))
           (key-codes/isCharacterKey key-code)
-          (when (and @selected (not @edit-field-open-on))
+          (when (and @selected
+                     (not (is-immutable? @selected))
+                     (not @edit-field-open-on))
             (open-edit-field @selected (str (.-charCode event))))))))
 
 (defn ^:export run []

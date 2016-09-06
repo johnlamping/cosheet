@@ -295,21 +295,26 @@
   (assert (entity/atom? content))
   (let [is-placeholder (and (symbol? content)
                             (= (subs (str content) 0 3) "???"))
+        anything (#{'anything 'anything-immutable} content)
+        immutable (= content 'anything-immutable)
         selector-map (when (:selector inherited) {:selector true})]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
-           (into-attributes {:commands {:set-content nil
-                                        :delete nil
-                                        :add-element selector-map
-                                        :add-twin selector-map
-                                        :expand selector-map}}
+           (into-attributes (cond-> {:commands {:set-content nil
+                                                :delete nil
+                                                :add-element nil
+                                                :add-twin nil
+                                                :expand nil}}
+                              (:selector inherited) (assoc :selector true)
+                              immutable (assoc :immutable true))
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder")
-                     (= content 'anything) (str " anything"))
+                     anything (str " anything")
+                     immutable (str " immutable"))
             :target (item-target item-referent inherited)})
-     (cond (#{'anything 'anything-immutable} content) "..."
+     (cond anything "..."
            is-placeholder "???"                     
            true (str content))]))
 

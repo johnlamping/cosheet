@@ -95,8 +95,7 @@
   []
   (.open
    js/window "" "CosheetExpandPopup",
-   (str "width=600,height=600,left=150,top=100,centerscreen=yes,"
-        "location=no")))
+   (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
 (defn menu-click-handler
   [event]

@@ -423,10 +423,6 @@ body { /* override the default of 8px */
     flex-grow: 1;
 }
 
-.column-header > .horizontal-tags-element:first-child > :last-child {
-    border-top-right-radius: 7px;
-}
-
 .column-header > .horizontal-tags-element > * {
     display: flex;
     align-items: flex-end;

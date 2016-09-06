@@ -126,7 +126,7 @@
 (def session-states (atom {}))
 
 (defn create-tracker
-  [store referent-string]
+  [store referent-string selector-string]
   (let [immutable-store (current-store store)
         [immutable-item referent subject]
         (or (when referent-string
@@ -151,7 +151,10 @@
               [item (item-referent item) nil]))
         root-item (description->entity (:item-id immutable-item) store)
         definition [top-level-item-DOM-R
-                    root-item referent (if subject {:subject subject} {})]
+                    root-item referent
+                    (cond-> {}
+                      subject (assoc :subject subject)
+                      selector-string (assoc :selector true))]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker")
@@ -184,7 +187,7 @@
   (@session-states session-id))
 
 (defn create-session
-  [name referent-string]
+  [name referent-string selector-string]
   (let [store (ensure-store name)
         id (swap-control-return!
             session-states
@@ -193,7 +196,8 @@
                 [(assoc session-map id
                         {:name name
                          :store store
-                         :tracker (create-tracker store referent-string)
+                         :tracker (create-tracker
+                                   store referent-string selector-string)
                          :last-action (atom nil)})
                  id])))]
     (compute manager-data 1000)
@@ -201,9 +205,9 @@
     (check-propagation-if-quiescent (:tracker (get-session-state id)))
     id))
 
-(defn initial-page [name referent-string]
-  (println "initial page" name referent-string)
-  (let [session-id (create-session name referent-string)]
+(defn initial-page [name referent-string selector-string]
+  (println "initial page" name referent-string selector-string)
+  (let [session-id (create-session name referent-string selector-string)]
     (html5
      [:head
       [:title "Hello World"]

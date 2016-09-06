@@ -303,7 +303,7 @@
                                         :delete nil
                                         :add-element selector-map
                                         :add-twin selector-map
-                                        :expand nil}}
+                                        :expand selector-map}}
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder")

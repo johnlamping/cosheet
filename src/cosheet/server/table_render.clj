@@ -4,7 +4,7 @@
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print current-value]]
                      [orderable :as orderable]
-                     [dom-utils :refer [ dom-attributes
+                     [dom-utils :refer [dom-attributes
                                         into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
@@ -121,14 +121,6 @@
               :subject-referent (union-referent [subject])
               :position :after
               :template new-header-template}}))
-
-(defn add-table-header-formatting
-  "Given a dom of header elements, return a dom with all the appropriate
-  formatting."
-  [dom num-columns is-tag]
-  (let [width (+ (* num-columns (- base-table-column-width 2)) 2)]
-    (add-attributes dom {:class "column-header"
-                         :style {:width (str width "px")}})))
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
@@ -259,8 +251,7 @@
              (let [properties-list (canonical-set-to-list (:properties node))
                    inherited (update-in inherited [:template]
                                         #(list* (concat (or % '(anything))
-                                                        properties-list)))
-                   is-tag (some #{:tag} elements-template)]
+                                                        properties-list)))]
                (expr-let
                    [dom-seqs (expr-seq
                               map #(table-header-node-or-element-DOM-R
@@ -271,9 +262,12 @@
                          top-level (into-attributes {:class "top-level"}))
                   (add-attributes node-dom {:class "with-children"})
                   (into [:div {:class "column-header-sequence"}] dom-seqs)])))]
-        (let [is-tag (some #{:tag} elements-template)
-              num-columns (count (hierarchy-node-descendants node))]
-          (add-table-header-formatting dom num-columns is-tag))))))
+        (let [is-tag (re-find #"\btag\b" (:class (dom-attributes node-dom)))
+              num-columns (count (hierarchy-node-descendants node))
+              width (+ (* num-columns (- base-table-column-width 2)) 2)]
+          (add-attributes dom {:class (cond-> "column-header"
+                                        is-tag (str " tag"))
+                               :style {:width (str width "px")}}))))))
 
 (defn table-header-DOM-R
   "Generate DOM for column headers given the hierarchy. elements-template

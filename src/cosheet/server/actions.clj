@@ -56,14 +56,13 @@
             content (content item)]
         (println "from" from "content" content)
         (or (= from content)
-            ;; TODO: We disable changing wildcards for now, because we
-            ;; don't correctly handle either doing it or selecting it.
-            (= from "...") ;; Probably a wildcard -- matches anything.
+            ;; Probably a wildcard -- matches anything.
+            (and (= from "...") (not= content 'anything-immutable))
             (and (= from "???")
                  (symbol? content)
                  (= (subs (str content) 0 3) "???"))))
     (update-content store (:item-id item) (parse-string-as-number to))
-    (do (println "content doesn't match" (content item) from)
+    (do (println "content doesn't match" from (content item))
         store)))
 
 (defn update-add-entity-with-order
@@ -320,12 +319,13 @@
 
 (defn do-expand
   [store attributes]
-  (let [{:keys [target item-referent session-state]} attributes
+  (let [{:keys [target item-referent session-state selector]} attributes
         target-referent (or item-referent (:item-referent target))]
     (when (referent? target-referent)
       {:store store
-       :open (str (:name session-state)
-                  "?referent=" (referent->string target-referent))})))
+       :open (cond-> (str (:name session-state)
+                          "?referent=" (referent->string target-referent))
+               selector (str "&selector=true"))})))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the

@@ -1,5 +1,6 @@
 (ns cosheet.server.item-render
-  (:require (cosheet [entity :as entity]
+  (:require (cosheet [canonical :refer [canonical-set-to-list]]
+                     [entity :as entity]
                      [query :refer [matching-elements]]
                      [utils :refer [multiset-diff]]
                      [debug :refer [simplify-for-print current-value]]
@@ -8,7 +9,7 @@
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
              [referent :refer [item-or-exemplar-referent semantic-elements-R]]
-             [hierarchy :refer [canonical-set-to-list hierarchy-node-descendants
+             [hierarchy :refer [hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-items-referent
                                 hierarchy-by-canonical-info

@@ -7,7 +7,8 @@
                      [dom-utils :refer [dom-attributes
                                         into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]]
-                     [canonical :refer [canonicalize-list]])
+                     [canonical :refer [canonicalize-list canonical-to-list
+                                        canonical-set-to-list]])
             (cosheet.server
              [referent :refer [item-referent
                                elements-referent query-referent
@@ -17,8 +18,7 @@
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
                                template-to-condition]]
-             [hierarchy :refer [canonical-set-to-list canonical-to-list
-                                hierarchy-node? hierarchy-node-descendants
+             [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent

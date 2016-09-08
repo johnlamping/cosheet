@@ -20,3 +20,26 @@
     [(canonicalize-list (first entity))
      (multiset (map canonicalize-list (rest entity)))]
     entity))
+
+(def canonical-to-list)
+
+(defn canonical-set-to-list
+  "Given a set of canonicalized lists or sets,
+   with the set also in canonical form, return a list of the items."
+  [set]
+  (when (not (empty? set))
+    (reduce (fn [result [key count]]
+              (concat result
+                      (repeat count (if (map? key)
+                                      (canonical-set-to-list key)
+                                      (canonical-to-list key)))))
+            [] (seq set))))
+
+(defn canonical-to-list
+  "Given a canonicalized list form of an item, return a list form for it."
+  [item]
+  (if (sequential? item)
+    (do (assert (= (count item) 2))
+        (cons (canonical-to-list (first item))
+              (canonical-set-to-list (second item))))
+    item))

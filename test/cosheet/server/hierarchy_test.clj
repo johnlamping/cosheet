@@ -335,16 +335,6 @@
             [45 {["age" {:tag 1}] 1}] 1}]1
             ["Jane" {"plain" 2}] 1})))
 
-(deftest canonical-to-list-test
-  (let [starting [joe-list jane-list jane-list]
-        canonical (canonicalize-list [starting])]
-    (is (= (canonicalize-list (canonical-to-list canonical))
-           canonical))))
-
-(deftest canonical-info-set-diff-test
-  (is (= (multiset-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
-         [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
-
 (deftest hierarchy-by-canonical-info-test
   (is (check
        (hierarchy-by-canonical-info

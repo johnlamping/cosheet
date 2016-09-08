@@ -1,11 +1,14 @@
 (ns cosheet.server.hierarchy
-  (:require (cosheet [utils :refer [multiset multiset-diff multiset-union
-                                    multiset-to-generating-values update-last]]
-                     [debug :refer [simplify-for-print current-value]]
-                     [expression :refer [expr-let expr-seq]])
-            (cosheet.server  [referent :as referent
-                             :refer [semantic-element?-R
-                                     canonicalize-list semantic-to-list-R]])))
+  (:require (cosheet
+             [utils :refer [multiset multiset-diff multiset-union
+                            multiset-to-generating-values update-last]]
+             [debug :refer [simplify-for-print current-value]]
+             [expression :refer [expr-let expr-seq]]
+             [canonical :refer [canonicalize-list]])
+            (cosheet.server
+             [referent :refer [semantic-element?-R semantic-to-list-R
+                               parallel-union-referent
+                               item-or-exemplar-referent]])))
 ;;; A hierarchy organizes a sequence of "members"
 ;;; into a hierarchy, based on a multiset of "properties" associated with
 ;;; each member.
@@ -244,6 +247,6 @@
   [hierarchy-node subject-referent]
   (let [descendants (hierarchy-node-descendants hierarchy-node)
         affected-items (map :item descendants)]
-    (referent/parallel-union-referent
-     (map #(referent/item-or-exemplar-referent % subject-referent)
+    (parallel-union-referent
+     (map #(item-or-exemplar-referent % subject-referent)
           affected-items))))

@@ -5,6 +5,7 @@
             client-utils-test dom-utils-test
             utils-test orderable-test
             reporters-test expression-test
+            canonical-test
             mutable-manager-test mutable-set-test
             entity-test store-test query-test
             mutable-map-test task-queue-test expression-manager-test

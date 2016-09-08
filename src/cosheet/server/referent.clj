@@ -5,6 +5,7 @@
                      [entity :refer [atom? elements content label->elements
                                      call-with-immutable description->entity
                                      StoredEntity]]
+                     [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
@@ -334,18 +335,6 @@
   semantic information of the item."
   [item]
   (call-with-immutable item immutable-semantic-to-list))
-
-(defn canonicalize-list
-  "Given the list form of an entity, return a canonical representation of it."
-  ;; We record the elements as a map from element to multiplicities,
-  ;; so that we are not sensitive to the order of the elements.
-  ;; That is easier than sorting, because Clojure doesn't define
-  ;; a sort order between heterogenous types, like strings and ints.
-  [entity]
-  (if (sequential? entity)
-    [(canonicalize-list (first entity))
-     (multiset (map canonicalize-list (rest entity)))]
-    entity))
 
 (defn item->canonical-semantic
   "Return the canonical form of the semantic information for the item.

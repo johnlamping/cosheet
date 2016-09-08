@@ -3,10 +3,9 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [multiset-diff]]
-                     [test-utils :refer [check let-mutated]])
-            (cosheet.server
-             [hierarchy :refer :all]
-             [referent :refer [canonicalize-list]])
+                     [test-utils :refer [check let-mutated]]
+                     [canonical :refer [canonicalize-list]])
+            (cosheet.server [hierarchy :refer :all])
              ; :reload
             ))
 

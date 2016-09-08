@@ -9,6 +9,7 @@
                      [store-utils :refer [add-entity]]
                      [query :refer [matching-elements]]
                      [expression :refer [expr expr-let expr-seq]]
+                     [canonical :refer [canonicalize-list]]
                      [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server [referent :refer :all])
@@ -80,13 +81,7 @@
 (deftest semantic-test
   (let [semantic (let-mutated [him joe-list]
                   (semantic-to-list-R him))]
-    (is (= (first semantic) "Joe"))
-    (is (= (set (map canonicalize-list (rest semantic)))
-           #{"male"
-             "married"
-             '(39 {["age" {tag 1}] 1
-                   ("doubtful" {"confidence" 1}) 1})
-             '(45 {["age" {tag 1}] 1})})))
+    (is (= (first semantic) "Joe")))
   (is (= (set (map canonicalize-list
                    (let-mutated [him joe-list]
                      (expr-seq map entity/to-list (semantic-elements-R him)))))

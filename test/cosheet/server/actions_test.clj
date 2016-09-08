@@ -19,10 +19,11 @@
              [store-impl :refer [->ItemId]]
              [store-utils :refer [add-entity]]
              mutable-store-impl
+             [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
             (cosheet.server
              [referent :refer [item-referent union-referent
-                               canonicalize-list immutable-semantic-to-list]]
+                               immutable-semantic-to-list]]
              [referent :refer [item->canonical-semantic referent->string]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
              [actions :refer :all])

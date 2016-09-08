@@ -45,7 +45,6 @@
                       :target {:item-referent (item-referent fred)}
                       :commands {:set-content nil
                                  :add-element nil
-                                 :add-twin nil
                                  :delete nil
                                  :expand nil}}
                 "Fred"]))))
@@ -196,7 +195,8 @@
               {:priority 1
                :width 0.5
                :parent-key age-key
-               :subject (item-referent age)}]]]]]))))
+               :subject (item-referent age)
+               :template '(nil)}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.

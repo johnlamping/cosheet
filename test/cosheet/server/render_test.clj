@@ -40,7 +40,6 @@
                 [:div {:commands {:set-content nil
                                   :delete nil
                                   :add-element nil
-                                  :add-twin nil
                                   :expand {:item-referent subject-ref}}
                        :class "content-text editable item"
                        :target {:item-referent (item-referent fred)}
@@ -60,7 +59,6 @@
                   [:div {:commands {:set-content nil
                                     :delete nil
                                     :add-element nil
-                                    :add-twin nil
                                     :expand {:item-referent
                                              (item-referent element)}}
                          :class "content-text editable item tag"

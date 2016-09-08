@@ -117,8 +117,9 @@
 ;                :subject  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
-;               :template  ; The template that the item for this dom,
-                           ; and any of its twins, must satisfy, if any.
+;               :template  ; The template that the twins of this dom,
+                           ; must satisfy. If not present, then twins
+                           ; may not be created.
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
                            ; of the dom should have, if any. Typically,
                            ; these are commands for things like new-row.

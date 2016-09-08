@@ -67,10 +67,10 @@
   (let [members (hierarchy-node-members hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
-        template (:template inherited)
-        inherited-down (if (or template (not (empty? property-list)))
+        inherited-down (if (not (empty? property-list))
                          (assoc inherited :template
-                                (concat (or template '(nil)) property-list))
+                                (concat (or (:template inherited) '(nil))
+                                        property-list))
                          inherited)]
     (if (empty? members)
       (let [subject (:subject inherited)
@@ -297,6 +297,7 @@
                             (= (subs (str content) 0 3) "???"))
         anything (#{'anything 'anything-immutable} content)
         immutable (= content 'anything-immutable)
+        template (contains? inherited :template)
         selector (:selector inherited)]    
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
@@ -306,7 +307,7 @@
                                               :delete nil
                                               :add-element nil
                                               :expand nil}
-                                       (not immutable) (assoc :add-twin nil))}
+                                       template (assoc :add-twin nil))}
                               selector (assoc :selector true)
                               immutable (assoc :immutable true))
                             (:selectable-attributes inherited))
@@ -336,8 +337,9 @@
             (-> inherited
                 (update-in [:priority] inc)
                 (assoc :parent-key key
-                       :subject item-referent)
-                (dissoc :template :selectable-attributes))]
+                       :subject item-referent
+                       :template '(nil))
+                (dissoc :selectable-attributes))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true inherited-down)]
           [:div {:class "item with-elements"}

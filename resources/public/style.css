@@ -114,7 +114,9 @@ body { /* override the default of 8px */
 }
 
 .elements-wrapper {
-    padding: 5px 5px 5px 5px;
+    /* The boxes inside have margins of -2px all around, so this gives
+       three pixels, except for 6 on the left. */
+    padding: 5px 5px 5px 8px;
 }
 
 /* --- tags --- */
@@ -440,7 +442,7 @@ body { /* override the default of 8px */
     border-top-right-radius: 7px;
 }
 
- .table-indent.tag {
+.table-indent.tag {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),

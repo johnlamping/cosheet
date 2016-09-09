@@ -8,7 +8,8 @@
                                         into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]]
                      [canonical :refer [canonicalize-list canonical-to-list
-                                        canonical-set-to-list]])
+                                        canonical-set-to-list
+                                        common-canonical-multisets]])
             (cosheet.server
              [referent :refer [item-referent
                                elements-referent query-referent
@@ -152,12 +153,30 @@
            (item-stack-DOM must-show-label-item-DOM-R
                            ordered-elements nil {} inherited)])))))
 
+(defn table-header-element-template
+  "Return a template for new elements of a table header. It should include
+  what is common to the specified elements, which should be in canonical
+  list form."
+  [canonical-elements]
+  (or (when (and (seq canonical-elements)
+                 (every? sequential? canonical-elements))
+        (let [common (reduce
+                      (fn [accum element]
+                        (common-canonical-multisets accum (second element)))
+                      (second (first canonical-elements))
+                      (rest canonical-elements))]
+          (when (not (empty? common))
+            (cons nil (canonical-set-to-list common)))))
+      '(nil)))
+
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
   rows-referent should specify all the row items from which this
   header selects elements."
-  [node elements-template rows-referent inherited]
+  [node rows-referent inherited]
   (let [subject (:subject inherited)
+        elements-template (table-header-element-template
+                           (keys (:properties node)))
         descendants (hierarchy-node-descendants node)
         column-requests (map :item descendants)
         column-referent (table-column-elements-referent
@@ -187,12 +206,14 @@
                                    inherited))))]
     (condition-elements-DOM-R example-elements inherited-down)))
 
- (defn table-header-member-DOM-R
+(defn table-header-member-DOM-R
   "Generate the DOM for an element in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [item-map non-trivial-siblings elements-template rows-referent inherited]
+  [item-map non-trivial-siblings rows-referent inherited]
   (let [item (:item item-map)
+        elements-template (table-header-element-template
+                           (:property-canonicals item-map))
         request-referent (item-or-exemplar-referent item (:subject inherited))
         exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
         column-referent (table-column-elements-referent
@@ -212,37 +233,36 @@
                           {:delete {:delete-referent request-referent}
                            :expand {:item-referent column-referent}}})))
         key (conj (:parent-key inherited) (:item-id item))
-        is-tag (some #{:tag} elements-template)]
+        is-tag (some #(or (= (if (sequential? %) (first %) %) :tag))
+                     elements-template)]
     (add-attributes
-       (virtual-item-DOM
-        key :after
-        (assoc inherited :adjacent-referent column-referent))
-       (cond-> {:style {:width (str base-table-column-width "px")}}
-         is-tag (into-attributes {:class "tag"})))))
+     (virtual-item-DOM
+      key :after
+      (assoc inherited :adjacent-referent column-referent))
+     (cond-> {:style {:width (str base-table-column-width "px")}}
+       is-tag (into-attributes {:class "tag"})))))
 
 (def table-header-subtree-DOM-R)
 
 (defn table-header-node-or-element-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [below non-trivial-siblings elements-template rows-referent
+  [node-or-element non-trivial-siblings rows-referent
    inherited]
-  (if (hierarchy-node? below)
+  (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
-     below false elements-template rows-referent inherited)
+     node-or-element false rows-referent inherited)
     (table-header-member-DOM-R
-     below non-trivial-siblings elements-template rows-referent inherited)))
+     node-or-element non-trivial-siblings rows-referent inherited)))
 
 (defn table-header-subtree-DOM-R
   "Generate the dom for a subtree of a table header hierarchy. 
-  elements-template gives what additional elements in the header need
-  to satisfy.
   rows-referent should specify all the row items from which this
   header selects elements."
-  [node top-level elements-template rows-referent inherited]
+  [node top-level rows-referent inherited]
   (expr-let
       [node-dom (table-header-node-DOM-R
-                 node elements-template rows-referent inherited)]
+                 node rows-referent inherited)]
     (let [node-dom (cond-> node-dom
                      top-level (add-attributes {:class "top-level"}))
           next-level (hierarchy-node-next-level node)
@@ -259,8 +279,8 @@
                (expr-let
                    [dom-seqs (expr-seq
                               map #(table-header-node-or-element-DOM-R
-                                     % non-trivial-children
-                                     elements-template rows-referent inherited)
+                                    % non-trivial-children
+                                    rows-referent inherited)
                               next-level)]
                  [:div (cond-> {}
                          top-level (into-attributes {:class "top-level"}))
@@ -278,14 +298,14 @@
   gives what new elements of a header request need to satisfy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-  [hierarchy elements-template rows-referent inherited]
-  (expr-let [columns (expr-seq
-                      map #(table-header-subtree-DOM-R
-                            % true elements-template
-                            rows-referent (assoc inherited :selector true))
-                      hierarchy)]
-    (into [:div {:class "column-header-sequence"}]
-          columns)))
+  [hierarchy rows-referent inherited]
+  (let [inherited-down (assoc inherited :selector true)]
+    (expr-let [columns (expr-seq
+                        map #(table-header-subtree-DOM-R
+                              % true rows-referent inherited-down)
+                        hierarchy)]
+      (into [:div {:class "column-header-sequence"}]
+            columns))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -304,10 +324,10 @@
                                    (cons nil (map canonical-to-list
                                                   (:property-canonicals %))))
                                  (hierarchy-nodes-extent non-trivial-children))]
-    (mapcat (fn [below]
-              (if (hierarchy-node? below)
-                (table-hierarchy-node-column-descriptions below)
-                [{:column-item (:item below)
+    (mapcat (fn [node-or-element]
+              (if (hierarchy-node? node-or-element)
+                (table-hierarchy-node-column-descriptions node-or-element)
+                [{:column-item (:item node-or-element)
                   :template condition
                   :exclusions excluded-conditions}]))
             next-level)))
@@ -459,7 +479,7 @@
                                          [(item-referent row-condition-item)
                                                 rows-referent]))))
              headers (table-header-DOM-R
-                      hierarchy '(nil :tag) rows-referent
+                      hierarchy rows-referent
                       (assoc inherited
                              :subject (item-referent table-item)
                              :template '(anything-immutable

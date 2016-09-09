@@ -57,4 +57,8 @@
   (is (= (common-canonical
           (canonicalize-list '("joe" "a" "b" ("name" "c" "e") "name"))
           (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))
-         (canonicalize-list '("joe" "b" ("name" "e" "c") "name")))))
+         (canonicalize-list '("joe" "b" ("name" "e" "c") "name"))))
+  (is (= (common-canonical
+          (canonicalize-list '("joe" "a" "b" ("name" "c" "e") ("name" "c")))
+          (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))
+         (canonicalize-list '("joe" "b" ("name" "e" "c") ("name" "c"))))))

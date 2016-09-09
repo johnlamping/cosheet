@@ -144,7 +144,7 @@
 ;;;   :property-elements  The elements of the item that contribute
 ;;;                       to the cumulative properties of this node
 ;;;                       in the hierarchy.
-;;; :property-canonicals  A list of canonical-info-sets for each element in
+;;; :property-canonicals  A list of canonical-info for each element in
 ;;;                       :property-elements.
 
 (defn canonical-info

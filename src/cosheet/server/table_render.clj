@@ -35,6 +35,12 @@
 
 (def base-table-column-width 150)
 
+(defn is-tag-template?
+  "Return true if the template describes a label."
+  [template]
+  (some #(or (= (if (sequential? %) (first %) %) :tag))
+        template))
+
 (defn table-column-elements-referent
   "Generate the referent for the elements affected by a table header,
   including elements in table request items at or below this header,
@@ -104,17 +110,18 @@
         ;; TODO: This doesn't handle header items that are below other
         ;; header items, as there is no query that can pick out the
         ;; new item as opposed to copied template items. The solution is to
-        ;; add an :exclusive option on referent variables, which means
-        ;; that they can't match the same item as any other exclusive
-        ;; referent. With that, we introduce variables to match each
-        ;; of the header items that are above, leaving just the new
-        ;; one to match the :v variable.
+        ;; add an "excluded" feature to the pattern, saying patterns not
+        ;; to match.
         element-variable `(:variable
                             (:v :name)
                             (~elements-template :condition)
                             (true :reference))
-        select-pattern (conj (:parent-key inherited)
-                             [:pattern `(nil ~element-variable)])]
+        select-pattern (cond-> (conj (:parent-key inherited)
+                                     [:pattern `(nil ~element-variable)])
+                         ;; If this is not a tag, then the new element will
+                         ;; be wrapped, and its tag will have :content. 
+                         (not (is-tag-template? elements-template))
+                         (conj :content))]
     {:commands {:add-column {:select-pattern select-pattern}}
      :column {:adjacent-groups-referent (parallel-union-referent
                                          (map #(item-or-exemplar-referent
@@ -232,15 +239,13 @@
                          {:commands
                           {:delete {:delete-referent request-referent}
                            :expand {:item-referent column-referent}}})))
-        key (conj (:parent-key inherited) (:item-id item))
-        is-tag (some #(or (= (if (sequential? %) (first %) %) :tag))
-                     elements-template)]
+        key (conj (:parent-key inherited) (:item-id item))]
     (add-attributes
      (virtual-item-DOM
       key :after
       (assoc inherited :adjacent-referent column-referent))
      (cond-> {:style {:width (str base-table-column-width "px")}}
-       is-tag (into-attributes {:class "tag"})))))
+       (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 
 (def table-header-subtree-DOM-R)
 

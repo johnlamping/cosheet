@@ -3,10 +3,12 @@
 ;;; Simple multiset operations.
 
 (defn multiset-conj
-  "Add an item to a multiset,
+  "Add an item (with optional multiplicity) to a multiset,
    represented as a map from items to multiplicities."
-  [ms item]
-  (update-in ms [item] #((fnil + 0) % 1)))
+  ([ms item]
+   (multiset-conj ms item 1))
+  ([ms item count]
+   (update-in ms [item] #((fnil + 0) % count))))
 
 (defn multiset
   "Turn a seq into a multiset."

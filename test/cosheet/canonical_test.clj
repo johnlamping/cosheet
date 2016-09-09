@@ -24,6 +24,37 @@
 (deftest canonical-to-list-test
   (let [starting [joe-list jane-list jane-list]
         canonical (canonicalize-list [starting])]
-    (is (= (canonicalize-list (canonical-to-list canonical))
-           canonical))))
+    (is (check (canonicalize-list (canonical-to-list canonical))
+               canonical))))
 
+(deftest common-canonical-test
+  (is (= (common-canonical "joe" "joe") "joe"))
+  (is (= (common-canonical "joe" "jane") nil))
+  (is (= (common-canonical "joe" (canonicalize-list '("joe" "name")))
+         "joe"))
+  (is (= (common-canonical "joe" (canonicalize-list '("jane" "name")))
+         nil))
+  (is (= (common-canonical (canonicalize-list '("joe" "appelation"))
+                           (canonicalize-list '("joe" "name")))
+         "joe"))
+  (is (= (common-canonical (canonicalize-list '("joe" "a" "name"))
+                           (canonicalize-list '("joe" "name" "b")))
+         (canonicalize-list '("joe" "name"))))
+  (is (= (common-canonical (canonicalize-list '("joe" "a" ("name" "c")))
+                           (canonicalize-list '("joe" "name" "b")))
+         (canonicalize-list '("joe" "name"))))
+  (is (= (common-canonical (canonicalize-list '("joe" "a" ("name" "c" "e")))
+                           (canonicalize-list '("joe" ("name" "d" "c") "b")))
+         (canonicalize-list '("joe" ("name" "c")))))
+  (is (= (common-canonical
+          (canonicalize-list '("joe" "a" "b" ("name" "c" "e")))
+          (canonicalize-list '("joe" ("name" "d" "c") "b" "b")))
+         (canonicalize-list '("joe" "b" ("name" "c")))))
+  (is (= (common-canonical
+          (canonicalize-list '("joe" "a" "b" ("name" "c" "e") "name"))
+          (canonicalize-list '("joe" ("name" "d" "c") "b" "b")))
+         (canonicalize-list '("joe" "b" "name"))))
+  (is (= (common-canonical
+          (canonicalize-list '("joe" "a" "b" ("name" "c" "e") "name"))
+          (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))
+         (canonicalize-list '("joe" "b" ("name" "e" "c") "name")))))

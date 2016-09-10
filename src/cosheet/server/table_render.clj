@@ -478,15 +478,20 @@
                                 :property-canonicals (map canonicalize-list
                                                           lists)})
                              columns columns-elements columns-lists))
-             condition-dom (expr-let [elements (semantic-elements-R
-                                                row-condition-item)]
-                             (condition-elements-DOM-R
-                              elements
-                              (assoc
-                               inherited
-                               :subject (union-referent
-                                         [(item-referent row-condition-item)
-                                                rows-referent]))))
+             condition-elements (semantic-elements-R row-condition-item)
+             conditions-as-lists (expr-seq map semantic-to-list-R
+                                           condition-elements)
+             condition-is-tags (every? #(seq (filter #{:tag} %))
+                                       conditions-as-lists)
+             condition-dom (condition-elements-DOM-R
+                            condition-elements
+                            (assoc
+                             inherited
+                             :subject (union-referent
+                                       [(item-referent row-condition-item)
+                                        rows-referent])
+                             :template (if condition-is-tags
+                                         '(nil :tag) '(nil))))
              headers (table-header-DOM-R
                       hierarchy rows-referent
                       (assoc inherited
@@ -499,18 +504,14 @@
                 rows (expr-seq map #(table-row-DOM-component
                                      % row-template column-descriptions
                                      inherited)
-                               row-items)
-                condition-tag (some #{"tag"} (clojure.string/split
-                                              (or (:class (dom-attributes
-                                                           condition-dom))
-                                                  "")
-                                              #" "))]
+                               row-items)]
             [:div {:class "table"}
-             [:div {:class (cond-> "table-top" condition-tag (str " tag"))}
+             [:div {:class (cond-> "table-top" condition-is-tags (str " tag"))}
               [:div {:class "table-corner"}]
               (add-attributes condition-dom {:class "table-condition"})]
              [:div {:class "table-body"}
-              [:div {:class (cond-> "table-indent" condition-tag (str " tag"))}]
+              [:div {:class (cond-> "table-indent"
+                              condition-is-tags (str " tag"))}]
               (into [:div {:class "table-main"}
                      headers]
                     rows)]]))))))

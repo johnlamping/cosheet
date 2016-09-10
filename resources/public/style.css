@@ -353,7 +353,7 @@ body { /* override the default of 8px */
     flex-shrink: 0;
 }
 
-.column-header-sequence > .editable.tag:not(.content-text) {
+.column-header-sequence > .editable:not(.content-text) {
     background-color: transparent;
     margin-right: -2px;
     margin-bottom: -2px;		    
@@ -376,10 +376,12 @@ body { /* override the default of 8px */
 
  
 .column-header > .column-header,
+.column-header > .wrapped-element,
 .column-header > .column-header-sequence > :first-child {
     margin-left: -2px;
 }
 
+.column-header > .wrapped-element,
 .column-header > .column-header:first-child {
     margin-top: -2px;
 }

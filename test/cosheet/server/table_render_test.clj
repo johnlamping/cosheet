@@ -53,6 +53,7 @@
                     (:top-level :non-semantic)
                     (~o1 :order :non-semantic)
                     "plain" "plain")]
+    ;; TODO: Add a non-tag label.
     (let [table-list `("table"
                        (~'anything (~'anything ("age" :tag))
                                    (:row-condition :non-semantic))

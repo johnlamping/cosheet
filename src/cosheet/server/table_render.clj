@@ -142,23 +142,24 @@
        all-labels-set (set all-labels)
        labels (seq (filter all-labels-set elements))
        non-labels (seq (remove all-labels-set elements))]
-    (if (and labels non-labels)
+    (cond
+      (and labels non-labels)
       (expr-let [inner-dom (item-content-and-elements-DOM-R
                             item (:subject inherited)
                             content non-labels inherited)]
         (label-wrapper-DOM-R
          inner-dom item (:subject inherited) labels false inherited))
-      (expr-let [ordered-elements (order-items-R elements)]
-        (if labels
-          (expr-let [excludeds (expr-seq map #(matching-elements :tag %)
-                                         ordered-elements)]
-            (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                    ordered-elements excludeds
-                                    {:class "tag"} inherited)
-              (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
-          [:div {:class "elements-wrapper"}
-           (item-stack-DOM must-show-label-item-DOM-R
-                           ordered-elements nil {} inherited)])))))
+      labels
+      (expr-let [ordered-elements (order-items-R elements)
+                 excludeds (expr-seq map #(matching-elements :tag %)
+                                     ordered-elements)]
+        (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                ordered-elements excludeds
+                                {:class "tag"} inherited)
+          (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
+      true
+      (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
+        [:div {:class "elements-wrapper"} elements-dom]))))
 
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include
@@ -203,7 +204,9 @@
                                (assoc inherited :selectable-attributes
                                       selectable))
                            (assoc :width (* 0.75 (count descendants))
-                                  :template elements-template
+                                  :template (if (is-tag-template?
+                                                 elements-template)
+                                              '(nil :tag) '(nil))
                                   :subject column-referent)
                              (update-in
                               [:selectable-attributes]
@@ -355,7 +358,7 @@
                (virtual-item-DOM
                 (:parent-key inherited) :after
                 (assoc inherited :adjacent-referent (:subject inherited)))
-               (elements-DOM-R items false inherited))]
+               (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 
 (defn table-cell-DOM-R

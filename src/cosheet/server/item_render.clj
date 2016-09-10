@@ -262,14 +262,14 @@
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.
-   Don't show elements of the elements that are implied by the template,
-   if any."
-  [elements must-show-empty-labels inherited]
+   If implied-template is non-nil, don't show elements implied by it."
+  [elements must-show-empty-labels implied-template inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
        all-labels (expr-seq map #(matching-elements '(nil :tag) %)
                             ordered-elements)
-       excludeds (expr-seq map #(condition-satisfiers-R % (:template inherited))
+       excludeds (expr-seq map #(when implied-template
+                                  (condition-satisfiers-R % implied-template))
                            ordered-elements)]
     (let [labels (map (fn [all minus]
                         (seq (clojure.set/difference (set all) (set minus))))
@@ -342,7 +342,7 @@
                        :template '(nil))
                 (dissoc :selectable-attributes))]
         (expr-let [elements-dom (elements-DOM-R
-                                 elements true inherited-down)]
+                                 elements true nil inherited-down)]
           [:div {:class "item with-elements"}
            content-dom elements-dom])))))
 

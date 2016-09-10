@@ -168,20 +168,26 @@
   [canonical-elements]
   (or (when (and (seq canonical-elements)
                  (every? sequential? canonical-elements))
-        (let [common (reduce
-                      (fn [accum element]
-                        (common-canonical-multisets accum (second element)))
-                      (second (first canonical-elements))
-                      (rest canonical-elements))]
-          (when (not (empty? common))
-            (cons nil (canonical-set-to-list common)))))
+        (let [firsts-sub-elements (second (first canonical-elements))
+              remainder-sub-elements (map second (rest canonical-elements))]
+          (if (empty? remainder-sub-elements)
+            ;; If there is only one current element, then the next one
+            ;; only copies whether or not it has a tag.
+            (when (contains? firsts-sub-elements :tag)
+              '(nil :tag))
+            (let [common (reduce common-canonical-multisets
+                                 firsts-sub-elements
+                                 remainder-sub-elements)]
+              (when (not (empty? common))
+                (cons nil (canonical-set-to-list common)))))))
       '(nil)))
 
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
   rows-referent should specify all the row items from which this
-  header selects elements. The elements template should give what
-  all new elements should have."
+  header selects elements. The elements template describes new elements
+  of the column request(s), in contrast to inherited, which describe the
+  request(s) overall."
   [node rows-referent elements-template inherited]
   (let [subject (:subject inherited)
         descendants (hierarchy-node-descendants node)
@@ -203,9 +209,7 @@
                                (assoc inherited :selectable-attributes
                                       selectable))
                            (assoc :width (* 0.75 (count descendants))
-                                  :template (if (is-tag-template?
-                                                 elements-template)
-                                              '(nil :tag) '(nil))
+                                  :template elements-template
                                   :subject column-referent)
                              (update-in
                               [:selectable-attributes]
@@ -264,10 +268,10 @@
 (defn table-header-subtree-DOM-R
   "Generate the dom for a subtree of a table header hierarchy. 
   rows-referent should specify all the row items from which this
-  header selects elements."
+  header selects elements. Inherited describes the column requests."
   [node top-level rows-referent inherited]
   (let [elements-template (table-header-element-template
-                           (keys (:properties node)))]
+                           (keys (:cumulative-properties node)))]
     (expr-let
         [node-dom (table-header-node-DOM-R
                    node rows-referent elements-template inherited)]

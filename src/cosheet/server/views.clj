@@ -307,7 +307,10 @@
           (let [doms (response-doms @tracker 10)
                 select (let [[select if-selected] (:select client-info)]
                          (when select
-                           (let [select-id (key->id tracker select)]
+                           (let [select-id
+                                 ;; If there is a content item, select that.
+                                 (or (key->id tracker (conj select :content))
+                                     (key->id tracker select))]
                              [select-id
                               (filter identity
                                       (map (partial key->id tracker)

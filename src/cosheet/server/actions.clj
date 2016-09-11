@@ -195,7 +195,10 @@
                 nil-to-anything           ; if true, then for the first group
                                           ; of items, nils in the template
                                           ; should go to 'anything
-                select-pattern]           ; a key pattern to use for selecting 
+                select-pattern            ; a key pattern to use for selecting
+                                          ; :content will to be added if
+                                          ; it makes sense.
+                ] 
          :or {position :after}}         
         target-info]
     (println "adding" (simplify-for-print target-info))

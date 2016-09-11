@@ -116,12 +116,8 @@
                             (:v :name)
                             (~elements-template :condition)
                             (true :reference))
-        select-pattern (cond-> (conj (:parent-key inherited)
-                                     [:pattern `(nil ~element-variable)])
-                         ;; If this is not a tag, then the new element will
-                         ;; be wrapped, and its tag will have :content. 
-                         (not (is-tag-template? elements-template))
-                         (conj :content))]
+        select-pattern (conj (:parent-key inherited)
+                             [:pattern `(nil ~element-variable)])]
     {:commands {:add-column {:select-pattern select-pattern}}
      :column {:adjacent-groups-referent (parallel-union-referent
                                          (map #(item-or-exemplar-referent

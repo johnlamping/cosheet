@@ -80,6 +80,13 @@
         (dissoc-in map keys)
         (assoc-in map keys result))))
 
+(defn assoc-if-non-empty
+  "Like assoc, but does a dissoc if the value is nil"
+  [m k value]
+  (if (empty? value)
+    (dissoc m k)
+    (assoc m k value)))
+
 ;; Utils for working with atoms in a lock free way.
 
 (defn swap-returning-both!

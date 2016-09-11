@@ -2,7 +2,7 @@
   (:require (cosheet [canonical :refer [canonical-set-to-list]]
                      [entity :as entity]
                      [query :refer [matching-elements]]
-                     [utils :refer [multiset-diff]]
+                     [utils :refer [multiset-diff assoc-if-non-empty]]
                      [debug :refer [simplify-for-print current-value]]
                      [dom-utils
                       :refer [into-attributes add-attributes]]
@@ -340,7 +340,9 @@
                 (assoc :parent-key key
                        :subject item-referent
                        :template '(nil))
-                (dissoc :selectable-attributes))]
+                (assoc-if-non-empty
+                 :selectable-attributes (:element-attributes inherited))
+                (dissoc :element-attributes))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
           [:div {:class "item with-elements"}
@@ -356,9 +358,7 @@
           inherited-for-tags (-> inherited
                                  (assoc :template '(nil :tag)
                                         :subject item-referent
-                                        :parent-key key)
-                                 ;; TODO: Keep :expand commands.
-                                 (dissoc :selectable-attributes))]
+                                        :parent-key key))]
       (if (empty? label-elements)
         [:div {:class "horizontal-tags-element narrow"}
          (add-attributes
@@ -402,9 +402,7 @@
       inherited))))
 
 (defn item-DOM-impl-R
-   "Make a dom for an item or exemplar for a group of items.
-   Either the referent for the item/group must be provided,
-   or inherited must contain :subject.
+   "Make a dom for an item or exemplar of a group of items.
    If the item is a tag, the caller is responsible for tag formatting."
   [item referent excluded-elements must-show-empty-label inherited]
   (expr-let [labels (entity/label->elements item :tag)]
@@ -413,7 +411,15 @@
       (expr-let [dom (item-without-labels-DOM-R
                       item referent excluded inherited)]
         (label-wrapper-DOM-R
-         dom item referent labels must-show-empty-label inherited)))))
+         dom item referent labels must-show-empty-label
+         ;; Keep :add-column, and :add-row commands and their data.
+         (update
+          inherited :selectable-attributes
+          #(assoc (select-keys % [:column :row])
+                  :commands
+                  (assoc (select-keys (:commands %)
+                                      [:add-column :add-row])
+                         :expand {:item-referent referent}))))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

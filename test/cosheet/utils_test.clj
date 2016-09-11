@@ -38,9 +38,9 @@
 
 (deftest update-in-clean-up-test
   (is (empty (update-in-clean-up {:a {:b {:c 1}}} [:a :b :c]
-                                       (constantly nil))))
-    (is (empty (update-in-clean-up {:a {:b {:c 1}}} [:a :b :c]
-                                       (constantly #{}))))
+                                 (constantly nil))))
+  (is (empty (update-in-clean-up {:a {:b {:c 1}}} [:a :b :c]
+                                 (constantly #{}))))
   (is (= (update-in-clean-up {:a {:b {:c 1}}} [:a :b :d] (constantly nil))
          {:a {:b {:c 1}}}))
   (is (= (update-in-clean-up  {:a {:b {:c 1}}} [:a :b :c] inc)
@@ -49,6 +49,11 @@
          {:a {:b {:c 1 :d 2}}}))
   (is (= (update-in-clean-up  {:a {:b {:c 1}}} [:a :b :d]  (constantly 2))
          {:a {:b {:c 1 :d 2}}})))
+
+(deftest assoc-if-non-empty-test
+  (is (assoc-if-non-empty {:a 1 :b 2} :a nil) {:b 2})
+  (is (assoc-if-non-empty {:a 1 :b 2} :a {}) {:b 2})
+  (is (assoc-if-non-empty {:a 1 :b 2} :a #{nil}) {:a #{nil} :b 2}))
 
 (deftest swap-returning-both!-test
   (let [a (atom 1)]

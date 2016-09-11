@@ -140,11 +140,15 @@
        non-labels (seq (remove all-labels-set elements))]
     (cond
       (and labels non-labels)
-      (expr-let [inner-dom (item-content-and-elements-DOM-R
-                            item (:subject inherited)
-                            content non-labels (dissoc inherited :template))]
-        (label-wrapper-DOM-R
-         inner-dom item (:subject inherited) labels false inherited))
+      (let [inherited-down
+            (-> inherited
+                (dissoc :template)
+                (assoc :element-attributes (:selectable-attributes inherited)))]
+        (expr-let [inner-dom (item-content-and-elements-DOM-R
+                              item (:subject inherited)
+                              content non-labels inherited-down)]
+          (label-wrapper-DOM-R
+           inner-dom item (:subject inherited) labels false inherited)))
       labels
       (expr-let [ordered-elements (order-items-R elements)
                  excludeds (expr-seq map #(matching-elements :tag %)

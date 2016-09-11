@@ -37,8 +37,13 @@
 (deftest item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[dom fred] (let-mutated [fred "Fred"]
-                     (expr-let [dom (item-DOM-R fred [] base-inherited)]
-                       [dom (item->immutable fred)]))]
+                     (let [my-inherited
+                           (assoc
+                            base-inherited :selectable-attributes
+                            {:commands {:expand {:item-referent
+                                                 (item-referent fred)}}})]
+                       (expr-let [dom (item-DOM-R fred [] my-inherited)]
+                         [dom (item->immutable fred)])))]
     (is (check dom
                [:div {:class "content-text editable item"
                       :key [:root (:item-id fred) :content]
@@ -46,7 +51,7 @@
                       :commands {:set-content nil
                                  :add-element nil
                                  :delete nil
-                                 :expand nil}}
+                                 :expand {:item-referent (item-referent fred)}}}
                 "Fred"]))))
 
 (deftest item-DOM-R-test-one-column
@@ -395,7 +400,10 @@
                     {:priority 0 :parent-key element-key
                      :subject (item-referent element)
                      :width 1.0
-                     :template '(nil :tag)}]]
+                     :template '(nil :tag)
+                     :selectable-attributes
+                     {:commands {:expand {:item-referent (item-referent
+                                                          element)}}}}]]
                   [:div {:class "indent-wrapper tag"}
                    [:div {:class "item with-elements"}
                     [:div {:commands (any)
@@ -408,8 +416,7 @@
                      [:component {:key (any)}
                       [item-without-labels-DOM-R (any) [(any)] (any)]]]]]]))))
   ;; Then test when there is no label, but labels must be shown.
-  (let [item-as-list `(39
-                          ("Ke"
+  (let [item-as-list `(39 ("Ke"
                            ("according-to" :tag (~o1 :order :non-semantic))
                            (~o1 :order :non-semantic)))
         inherited  (assoc base-inherited :width 1.0)
@@ -421,7 +428,9 @@
       (is (check dom
                  [:div {:class "horizontal-tags-element narrow"}
                   [:div {:class "editable tag" :key (conj item-key :tags)
-                         :commands {:set-content nil},
+                         :commands {:set-content nil
+                                    :expand {:item-referent (item-referent
+                                                             item)}}
                          :target {:template '(nil :tag)
                                   :adjacent-referent (item-referent item)
                                   :position :after

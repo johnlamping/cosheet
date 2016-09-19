@@ -191,7 +191,7 @@
                 adjacent-groups-referent  ; groups of item(s) adjacent to
                                           ; new item(s)
                 position                  ; :before or :after item/adjacent
-                template                  ; added item(s) should satisfy this
+                template                  ; added item(s) should satisfy this.
                 nil-to-anything           ; if true, then for the first group
                                           ; of items, nils in the template
                                           ; should go to 'anything
@@ -242,48 +242,45 @@
              position use-bigger select-pattern old-key)]
         {:store store :select (or select1 select)}))))
 
+(defn do-add-element
+  [store attributes]
+  (let [{:keys [target target-key is-selector]} attributes]
+    (when-let [subject-referent (:item-referent target)]
+      (generic-add store
+                   (cond-> {:subject-referent subject-referent
+                            :adjacent-referent subject-referent}
+                     is-selector (assoc :nil-to-anything true))
+                   target-key target-key true))))
+
 (defn do-add-twin
   [store attributes]
   (let [{:keys [target target-key]} attributes]
-    (when target
+    (when (and (:item-referent target) (:template target))
       (let [item-key (if (= (last target-key) :content)
                        (pop target-key)
                        target-key)]
         (generic-add store
                      (cond-> target
-                       (:selector attributes) (assoc :nil-to-anything true))
+                       (:is-selector attributes) (assoc :nil-to-anything true))
                      (pop item-key) target-key true)))))
-
-(defn do-add-element
-  [store attributes]
-  (when-let [subject-referent (:item-referent (:target attributes))]
-    (generic-add store
-                 (cond-> 
-                     {:subject-referent subject-referent
-                      :adjacent-referent subject-referent}
-                   (:selector attributes) (assoc :nil-to-anything true))
-                 (:target-key attributes) (:target-key attributes) true)))
 
 (defn do-add-sibling
   [store attributes]
   (when-let [sibling (:sibling attributes)]
     (generic-add
-     store (assoc sibling :select-pattern (:select-pattern attributes))
-     (:parent-key sibling) (:target-key attributes) true)))
+     store sibling (:parent-key sibling) (:target-key attributes) true)))
 
 (defn do-add-row
   [store attributes]
   (when-let [row (:row attributes)]
     (generic-add
-     store (assoc row :select-pattern (:select-pattern attributes))
-     (:parent-key row) (:target-key attributes) true)))
+     store row (:parent-key row) (:target-key attributes) true)))
 
 (defn do-add-column
   [store attributes]
   (when-let [column (:column attributes)]
     (generic-add
-     store (assoc column :select-pattern (:select-pattern attributes))
-     (:parent-key column) (:target-key attributes) true)))
+     store column (:parent-key column) (:target-key attributes) true)))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -293,9 +290,8 @@
 (defn do-delete
   "Remove item(s)." 
   [store attributes]
-  (let [{:keys [target delete-referent] :or {target nil delete-referent nil}}
-        attributes]
-    (when-let [to-delete (or delete-referent (:item-referent target))]
+  (let [{:keys [target delete]} attributes]
+    (when-let [to-delete (:item-referent (or delete target))]
       (let [items (apply concat (instantiate-referent to-delete store))]
         (println "total items:" (count items))
         (reduce update-delete store items)))))
@@ -322,13 +318,13 @@
 
 (defn do-expand
   [store attributes]
-  (let [{:keys [target item-referent session-state selector]} attributes
-        target-referent (or item-referent (:item-referent target))]
+  (let [{:keys [target expand session-state is-selector]} attributes
+        target-referent (:item-referent (or expand target))]
     (when (referent? target-referent)
       {:store store
        :open (cond-> (str (:name session-state)
                           "?referent=" (referent->string target-referent))
-               selector (str "&selector=true"))})))
+               is-selector (str "&selector=true"))})))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
@@ -356,8 +352,8 @@
 
 (defn get-contextual-handler
   [action]
-  ({:add-twin do-add-twin
-    :add-element do-add-element
+  ({:add-element do-add-element
+    :add-twin do-add-twin
     :add-sibling do-add-sibling
     :add-row do-add-row
     :add-column do-add-column
@@ -377,20 +373,15 @@
         tracker (:tracker session-state)
         target-key (id->key tracker client-id)
         dom-attributes (key->attributes tracker target-key)
-        commands (:commands dom-attributes)
-        action-args (or (and commands (commands action-type)) {})
         attributes (-> dom-attributes
-                       (into action-args)
                        (into client-args)
                        (assoc :target-key target-key
                               :session-state session-state))]
-    (if (and commands (contains? commands action-type) handler)
+    (if handler
       (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
-                                           (map concat
-                                                (concat (seq action-args)
-                                                         (seq client-args))))))
+                                           (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
           (do-storage-update-action handler mutable-store attributes))
       (println "unhandled action type:" action-type))))

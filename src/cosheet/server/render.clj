@@ -39,12 +39,6 @@
 ;;; There are removed by the dom manager before dom is sent to the client.
 (def server-specific-attributes
   [      :key  ; A unique client side key (further described below).
-    :commands  ; a map from command symbol to expression
-               ; to carry out that command. The function
-               ; of the expression will be called with:
-               ; the mutable store, the key of the item,
-               ; the additional arguments passed from
-               ; the UI, and the rest of the command expression.
       :target  ; The item (or virtual new item) that the dom refers to
                ; It is itself a map, with some of these keys
                ; :item-referent             Item(s) referred to
@@ -56,8 +50,15 @@
                ; :template                  Added item(s) should satisfy this.
                ; :parent-key                The key of the parent of a virtual
                ;                            new item.
-     :sibling  ; The sibling items (or virtual new sibling) that the dom
-               ; belongs to, a map with the same keys as :target
+               ; :select-pattern            The pattern to use to generate the
+               ;                            key to select part of a new item.
+               ;                            Will have at most one of this and
+               ;                            :parent-key
+     :sibling  ; A special target to use for add-sibling commands.
+      :delete  ; A special target to use for deletion, if it should be
+               ; different from the :target.
+      :expand  ; A special target to use for expansion, if it should be
+               ; different from the :target.
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
@@ -124,7 +125,7 @@
                            ; of the dom should have, if any. Typically,
                            ; these are commands for things like new-row.
 ;      :element-attributes : Should become :selectable-attributes of elements.
-;               :selector  ; If true, this dom represents a selector, which
+;            :is-selector  ; If true, this dom represents a selector, which
                            ; means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,
                            ; and not part of what is selected. When the
@@ -155,8 +156,7 @@
                           (update-in
                            [:selectable-attributes]
                            #(into-attributes
-                             % {:commands {:expand {:item-referent
-                                                    subject-ref}}})))
+                             % {:expand {:item-referent subject-ref}})))
               dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
                    item referent tags inherited)]
           (if (empty? tags)

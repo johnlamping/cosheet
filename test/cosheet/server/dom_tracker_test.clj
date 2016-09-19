@@ -51,11 +51,11 @@
 (deftest adjust-attributes-for-client-test
   (is (= (adjust-attributes-for-client
           {:key->id {:a 1 :b 2}}
-          [:div {:key :a :commands ["" :c] :foo :f}
-           [:div {:key :b :commands ["" :d]}]
+          [:div {:key :a :foo :f}
+           [:div {:key :b}]
            [:div "foo"]])
          [:div {:id 1 :foo :f}
-          [:div {:key :b :commands ["" :d]}]
+          [:div {:key :b}]
           [:div "foo"]])))
 
 (deftest adjust-dom-for-client-test
@@ -277,8 +277,7 @@
       (is (check (:key->dom data)
                  {joe-key [:div {:key joe-key
                                  :class (any)
-                                 :target {:item-referent (:item-id joe)}
-                                 :commands (any)}
+                                 :target {:item-referent (:item-id joe)}}
                        "Joe"]}))
       (is (= (:next-id data) 1))
       (is (= (:next-version data) 3))
@@ -302,7 +301,7 @@
       (compute md)
       (is (check (get-in @tracker [:key->dom joe-key])
                  [:div  {:key joe-key
-                         :class (any) :target (any) :commands (any)}
+                         :class (any) :target (any)}
                   "Joe's"]))
       (is (= (set (:out-of-date-keys @tracker)) #{[joe-key 0]})))
     (swap-and-act tracker #(update-set-component % deep-c-map))
@@ -316,8 +315,7 @@
                        (get-in @tracker [:components])))
          {joe-key [:div {:key joe-key
                          :target {:item-referent (:item-id joe)}
-                         :class (any)
-                         :commands (any)}
+                         :class (any)}
                    "Joe's"]
           [:d] [:div {:key [:d]}
                 [:component {:key [:d (item-referent joe)]
@@ -332,14 +330,12 @@
           [:d (item-referent joe)] [:div  {:key [:d (item-referent joe)]
                                             :target {:item-referent
                                                      (:item-id joe)}
-                                           :class (any)
-                                           :commands (any)}
+                                           :class (any)}
                                     "Joe's"]
           [:d (item-referent jane)] [:div  {:key [:d (item-referent jane)]
                                             :target {:item-referent
                                                      (:item-id jane)}
-                                            :class (any)
-                                            :commands (any)}
+                                            :class (any)}
                                      "Jane"]}))
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))))
 
@@ -386,7 +382,7 @@
       (is (= (:key->id data  {joe-key "root"})))
       (is (check (:key->dom data)
                  {joe-key [:div {:key joe-key
-                                 :class (any) :target (any) :commands (any)}
+                                 :class (any) :target (any)}
                        "Joe"]}))
       (is (= (:next-id data) 1))
       (is (= (:next-version data) 3))

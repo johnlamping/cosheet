@@ -119,19 +119,18 @@
                   :parent-key table-key
                   :subject first-column-referent
                   :template '(nil :tag)
-                  :selector true
+                  :is-selector true
                   :selectable-attributes
-                  {:commands {:delete {:delete-referent (item-referent c1)}
-                              :add-column {:select-pattern (conj table-key
-                                                                 tag-pattern)}
-                              :expand {:item-referent first-column-referent}}
+                  {:delete {:item-referent (item-referent c1)}
+                   :expand {:item-referent first-column-referent}
                    :column {:adjacent-groups-referent (item-referent c1)
                             :subject-referent (union-referent
                                                [(item-referent table)])
                             :position :after
                             :template '(anything-immutable
                                         (:column :non-semantic)
-                                        (??? :tag))}}}]]
+                                        (??? :tag))
+                            :select-pattern (conj table-key tag-pattern)}}}]]
                (any)
                (any)]
               [:component {:key (conj table-key (:item-id joe))
@@ -156,8 +155,7 @@
         (is (check
              row-dom
              [:div {}
-              [:div {:commands {:add-row nil :set-content nil}
-                     :row {:item-referent (item-referent joe)
+              [:div {:row {:item-referent (item-referent joe)
                            :template '(nil (nil ("age" :tag))
                                            (:top-level :non-semantic))}
                      :class "editable table-cell has-border"
@@ -176,8 +174,7 @@
                  :subject (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes
-                 {:commands {:add-row nil}
-                  :row {:item-referent (item-referent joe)
+                 {:row {:item-referent (item-referent joe)
                         :template '(nil (nil ("age" :tag))
                                         (:top-level :non-semantic))}}}]]
               (any)

@@ -247,7 +247,8 @@
                     :target-key "jane"})
         alt-store (do-delete
                    store
-                   {:delete-referent (item-referent jane-age)
+                   {:delete {:item-referent (item-referent jane-age)}
+                    :target :foo
                     :target-key "jane"})]
     (is (= new-store alt-store))
     (is (check (canonicalize-list

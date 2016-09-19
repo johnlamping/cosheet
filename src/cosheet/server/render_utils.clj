@@ -62,7 +62,6 @@
          (:selectable-attributes inherited)
          {:class "editable"
           :key key
-          :commands {:set-content nil}
           :target (assoc (select-keys inherited
                                       [:template :adjacent-referent
                                        :adjacent-groups-referent])

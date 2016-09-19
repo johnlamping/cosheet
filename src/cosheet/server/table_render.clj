@@ -91,7 +91,7 @@
               (mapcat hierarchy-node-descendants non-trivial-children)
               (hierarchy-nodes-extent non-trivial-children) nil
               rows-referent subject)))]
-      {:commands {:delete {:delete-referent delete-referent}}})))
+      {:delete {:item-referent delete-referent}})))
 
 (defn attributes-for-header-add-column-command
   "Return attributes for an add column command, given the column
@@ -118,14 +118,14 @@
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])]
-    {:commands {:add-column {:select-pattern select-pattern}}
-     :column {:adjacent-groups-referent (parallel-union-referent
+    {:column {:adjacent-groups-referent (parallel-union-referent
                                          (map #(item-or-exemplar-referent
                                                 % subject)
                                               column-items))
               :subject-referent (union-referent [subject])
               :position :after
-              :template new-header-template}}))
+              :template new-header-template
+              :select-pattern select-pattern}}))
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
@@ -202,8 +202,7 @@
                      (and (= (count (:members node)) 1)
                           (empty? (:children node)))
                      (into-attributes
-                      {:commands
-                       {:expand {:item-referent column-referent}}}))
+                      {:expand {:item-referent column-referent}}))
         inherited-down (-> (if (empty? selectable)
                                (dissoc inherited :selectable-attributes)
                                (assoc inherited :selectable-attributes
@@ -240,9 +239,8 @@
                           %
                           (attributes-for-header-add-column-command
                            [item] elements-template inherited))
-                         {:commands
-                          {:delete {:delete-referent request-referent}
-                           :expand {:item-referent column-referent}}})))
+                         {:delete {:item-referent request-referent}
+                          :expand {:item-referent column-referent}})))
         key (conj (:parent-key inherited) (:item-id item))]
     (add-attributes
      (virtual-item-DOM
@@ -312,7 +310,7 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [hierarchy rows-referent inherited]
-  (let [inherited-down (assoc inherited :selector true)]
+  (let [inherited-down (assoc inherited :is-selector true)]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)
@@ -353,8 +351,7 @@
                       (assoc :width 0.75)
                       (update-in [:selectable-attributes]
                                  #(into-attributes
-                                   % {:commands {:add-row nil}
-                                      :row {:item-referent (:subject inherited)
+                                   % {:row {:item-referent (:subject inherited)
                                             :template new-row-template}})))]
     (expr-let
         [dom (if (empty? items)

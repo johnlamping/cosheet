@@ -21,13 +21,6 @@
 
 (def item-without-labels-DOM-R)
 
-(defn item-target
-  "Return a target for the given item."
-  [item-referent inherited]
-  (let [template (:template inherited)]
-    (cond-> {:item-referent item-referent}
-      template (assoc :template template))))
-
 (defn hierarchy-add-adjacent-target
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
@@ -41,7 +34,8 @@
    (cond->
        {:subject-referent subject
         :adjacent-groups-referent (hierarchy-node-items-referent
-                                   hierarchy-node subject)}
+                                   hierarchy-node subject)
+        :parent-key (:parent-key inherited)}
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))
 
@@ -55,9 +49,7 @@
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:commands {:add-sibling {:select-pattern (conj (:parent-key inherited)
-                                                         [:pattern])}}
-          :sibling (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
+       % {:sibling (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -299,24 +291,20 @@
         anything (#{'anything 'anything-immutable} content)
         immutable (= content 'anything-immutable)
         template (contains? inherited :template)
-        selector (:selector inherited)]    
+        is-selector (:is-selector inherited)]    
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
-           (into-attributes (cond-> {:commands
-                                     (cond-> {:set-content nil
-                                              :delete nil
-                                              :add-element nil
-                                              :expand nil}
-                                       template (assoc :add-twin nil))}
-                              selector (assoc :selector true)
+           (into-attributes (cond-> {}
+                              is-selector (assoc :is-selector true)
                               immutable (assoc :immutable true))
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
                      is-placeholder (str " placeholder")
                      anything (str " anything")
                      immutable (str " immutable"))
-            :target (item-target item-referent inherited)})
+            :target (assoc (select-keys inherited [:template])
+                           :item-referent item-referent)})
      (cond anything "..."
            is-placeholder "???"                     
            true (str content))]))
@@ -416,10 +404,7 @@
          (update
           inherited :selectable-attributes
           #(assoc (select-keys % [:column :row])
-                  :commands
-                  (assoc (select-keys (:commands %)
-                                      [:add-column :add-row])
-                         :expand {:item-referent referent}))))))))
+                  :expand {:item-referent referent})))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

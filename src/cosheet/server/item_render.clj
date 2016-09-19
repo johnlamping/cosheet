@@ -108,8 +108,9 @@
         tags-parent-key (conj (:parent-key inherited)
                               (:item-id (:item example-descendant))
                               :outside)
-        inherited-for-tags (assoc (add-adjacent-sibling-command
-                                   hierarchy-node inherited)
+        inherited-for-tags (assoc (into (add-adjacent-sibling-command
+                                         hierarchy-node inherited)
+                                        (select-keys inherited [:row :column]))
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
                                   :subject items-referent)]

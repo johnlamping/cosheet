@@ -223,6 +223,17 @@ body { /* override the default of 8px */
     margin: 0px -2px -2px 0px;
 }
 
+.horizontal-value-last {
+    border-bottom-width: 2px;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+}
+
+.horizontal-tags-element.wide > :last-child.horizontal-value-last {
+    border-bottom-width: 4px;
+}
+
 .stack.has-border > .horizontal-tags-element {
     margin-left: -2px;
 }
@@ -247,7 +258,7 @@ body { /* override the default of 8px */
     padding-left: 8px;
 }
 
-.horizontal-header.top-border.bottom-border{
+.horizontal-header.top-border.bottom-border {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -269,7 +280,7 @@ body { /* override the default of 8px */
     border-bottom-left-radius: 7px;
 }
 
-.horizontal-header.top-border{
+.horizontal-header.top-border {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -283,7 +294,7 @@ body { /* override the default of 8px */
     border-top-left-radius: 7px;
 }
 
-.horizontal-header.bottom-border{
+.horizontal-header.bottom-border {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -296,6 +307,10 @@ body { /* override the default of 8px */
     border-bottom-width: 2px;
     margin-bottom: -2px;
     border-bottom-left-radius: 7px;
+}
+
+.horizontal-header.bottom-border.indent > .horizontal-header {
+    margin-bottom: 0px;
 }
 
 .horizontal-header{

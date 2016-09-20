@@ -347,13 +347,14 @@
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent bottom-border"}
              (any)]
-            [:component {:key one-key}
-             [item-without-labels-DOM-R one [confidence3]
-              {:priority 1
-               :width 0.6875
-               :parent-key age-key
-               :subject (item-referent age)
-               :template '(nil ("confidence" :tag))}]]]]]))))
+            [:div {:class "horizontal-value-last"}
+             [:component {:key one-key}
+              [item-without-labels-DOM-R one [confidence3]
+               {:priority 1
+                :width 0.6875
+                :parent-key age-key
+                :subject (item-referent age)
+                :template '(nil ("confidence" :tag))}]]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels

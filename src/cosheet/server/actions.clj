@@ -10,14 +10,15 @@
     [store-impl :refer [get-unique-id-number]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
-    [entity :refer [StoredEntity description->entity
-                    content elements label->elements label->content to-list]]
+    [entity :refer [StoredEntity description->entity to-list
+                    content elements label->elements label->content subject]]
     [dom-utils :refer [dom-attributes]]
     [query :refer [matching-items template-matches]]
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [referent :refer [instantiate-referent referent->string referent?]])))
+    [referent :refer [instantiate-referent referent->string referent?
+                      item-referent semantic-elements-R]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -321,10 +322,21 @@
   (let [{:keys [target expand session-state is-selector]} attributes
         target-referent (:item-referent (or expand target))]
     (when (referent? target-referent)
-      {:store store
-       :open (cond-> (str (:name session-state)
-                          "?referent=" (referent->string target-referent))
-               is-selector (str "&selector=true"))})))
+      ;; If the target is a single item with no elements, switch the target
+      ;; to its subject.
+      (let [items (apply concat (instantiate-referent target-referent store))
+            item (first items)
+            subject (subject item)
+            referent (if (and (= (count items) 1)
+                              (every? #(= (content %) :tag)
+                                      (semantic-elements-R item))
+                              subject)
+                       (item-referent subject)
+                       target-referent)]        
+        {:store store
+         :open (cond-> (str (:name session-state)
+                            "?referent=" (referent->string referent))
+                 is-selector (str "&selector=true"))}))))
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the

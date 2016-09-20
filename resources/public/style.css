@@ -230,6 +230,10 @@ body { /* override the default of 8px */
     flex-direction: row;
 }
 
+.horizontal-value-last > .item-stack {
+    width: 100%;
+}
+
 .horizontal-tags-element.wide > :last-child.horizontal-value-last {
     border-bottom-width: 4px;
 }

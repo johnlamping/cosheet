@@ -183,15 +183,15 @@
   the logical cell. We may get further subdivided. So we return a new wrapper
   that itself expects to be called several times, each time given the position
   of the call with respect to all calls of the subcell. For each call,
-  call position->class with the position of the call with respect to all calls
-  of our logical cell, and call the outer wrapper with the same information."
-  [outer-wrapper position->class generated-first generated-last]
+  call inner-modifier with the dom and te position of the call with respect
+  to all calls of our logical cell, and call the outer wrapper with the
+  same information."
+  [outer-wrapper inner-modifier generated-first generated-last]
   (fn [body called-first called-last]
     (let [first (and generated-first called-first)
           last (and generated-last called-last)]
-      (outer-wrapper
-       [:div {:class (position->class first last)} body]
-       first last))))
+      (outer-wrapper (inner-modifier body first last)
+                     first last))))
 
 (defn identity-wrapper
   "Return a wrapper that does no wrapping -- just returns the body."
@@ -201,10 +201,12 @@
 (defn nest-horizontal-tag-wrapper
   [outer-wrapper generated-first generated-last]
   (nest-wrapper outer-wrapper
-                (fn [first last] (cond-> "tag horizontal-header"
-                                   first (str " top-border")
-                                   (not first) (str " indent")
-                                   last (str " bottom-border")))
+                (fn [body first last]
+                  [:div {:class (cond-> "tag horizontal-header"
+                                  first (str " top-border")
+                                  (not first) (str " indent")
+                                  last (str " bottom-border"))}
+                   body])
                 generated-first generated-last))
 
 (def tagged-items-two-column-subtree-DOMs-R)

@@ -130,7 +130,6 @@
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
   [elements inherited]
-  (assert (not (empty? elements)))
   (expr-let
       [item (entity/subject (first elements))
        content (entity/content item)

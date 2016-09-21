@@ -5,7 +5,7 @@
              [entity :as entity  :refer [to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
-             [debug :refer [current-value envs-to-list simplify-for-print]]
+             [debug :refer [envs-to-list simplify-for-print]]
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])
             (cosheet.server

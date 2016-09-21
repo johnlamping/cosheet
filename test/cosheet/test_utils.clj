@@ -4,9 +4,9 @@
                     [entity-impl :as entity-impl]
                     [store :refer [new-element-store new-mutable-store
                                    current-store]]
-                    [expression-manager :as expression-manager]
-                    [reporters :refer [value reporter?]]
-                    [debug :refer [current-value]])))
+                    [expression-manager :as expression-manager
+                     :refer [current-value]]
+                    [reporters :refer [value reporter?]])))
 
 (def differences)
 

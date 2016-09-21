@@ -2,7 +2,7 @@
   (:require (cosheet
              [utils :refer [multiset multiset-diff multiset-union
                             multiset-to-generating-values update-last]]
-             [debug :refer [simplify-for-print current-value]]
+             [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]]
              [canonical :refer [canonicalize-list]])
             (cosheet.server

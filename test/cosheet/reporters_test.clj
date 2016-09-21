@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [reporters :refer :all]
-                     [debug :refer [current-value trace-current]])
+                     [debug :refer [trace-current]])
             ; :reload
             ))
 

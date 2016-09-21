@@ -2,7 +2,7 @@
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset multiset-to-generating-values
                                     replace-in-seqs]]
-                     [debug :refer [simplify-for-print current-value]]
+                     [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [dom-utils
                       :refer [into-attributes add-attributes]]

@@ -10,7 +10,7 @@
                      store-impl
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value]]
+                     [expression-manager :refer [current-value]]
                      [test-utils :refer [check any as-set]])
             ; :reload
             ))

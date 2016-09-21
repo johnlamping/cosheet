@@ -5,7 +5,8 @@
              [orderable :as orderable]
              [entity :as entity  :refer [label->elements]]
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value envs-to-list simplify-for-print]]
+             [expression-manager :refer [current-value]]
+             [debug :refer [envs-to-list simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set evals-to let-mutated]])
             (cosheet.server

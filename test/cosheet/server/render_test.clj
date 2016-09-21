@@ -3,7 +3,8 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value envs-to-list simplify-for-print]]
+             [expression-manager :refer [current-value]]
+             [debug :refer [envs-to-list simplify-for-print]]
              [orderable :as orderable]
              [query :refer [matching-elements]]
              entity-impl
@@ -50,11 +51,10 @@
         element (let-mutated [element element-as-list] element)
         age (first (current-value
                     (matching-elements "age" element)))]
-    (current-value
-     (expr-let [dom (top-level-item-DOM-R age (item-referent age) {})]
-       (is (check dom
-                  [:div {:expand {:item-referent (item-referent element)}
-                         :class "content-text editable item tag"
-                         :target {:item-referent (item-referent age)},
-                         :key [(item-referent age) :content]}
-                   "age"]))))))
+    (expr-let [dom (top-level-item-DOM-R age (item-referent age) {})]
+      (is (check dom
+                 [:div {:expand {:item-referent (item-referent element)}
+                        :class "content-text editable item tag"
+                        :target {:item-referent (item-referent age)},
+                        :key [(item-referent age) :content]}
+                  "age"])))))

@@ -13,7 +13,7 @@
     [entity :refer [description->entity in-different-store]]
     entity-impl
     [store-utils :refer [add-entity]]
-    [query :refer [matching-items matching-elements]]
+    [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     query-impl
     [expression-manager :refer [new-expression-manager-data compute]]
@@ -24,7 +24,7 @@
    (cosheet.server
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent instantiate-referent]]
-    [render :refer [top-level-item-DOM-R]]
+    [render :refer [top-level-item-DOM-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id]]
@@ -137,15 +137,8 @@
                         item (first (apply concat
                                      (instantiate-referent referent
                                                            immutable-store)))]
-                    ;; Check that the item has an :order element,
-                    ;; which indicates that it is a user visible item.
-                    ;; TODO: This will also need to check for selectors
-                    ;; that the user should see, even though they don't have
-                    ;; :order.
                     (println "item" (simplify-for-print item))
-                    (when (and item
-                               (not (empty?
-                                     (matching-elements '(nil :order) item))))
+                    (when (and item (user-visible-item? item))
                       [item referent subject])))))
             (let [item (first (matching-items '(nil :root) immutable-store))]
               [item (item-referent item) nil]))

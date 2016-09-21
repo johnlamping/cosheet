@@ -3,7 +3,7 @@
                      [entity :as entity]
                      [query :refer [matching-elements]]
                      [utils :refer [multiset-diff assoc-if-non-empty]]
-                     [debug :refer [simplify-for-print current-value]]
+                     [debug :refer [simplify-for-print]]
                      [dom-utils
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])

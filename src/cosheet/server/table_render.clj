@@ -2,7 +2,7 @@
   (:require (cosheet [utils :refer [replace-in-seqs]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
-                     [debug :refer [simplify-for-print current-value]]
+                     [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [dom-utils :refer [dom-attributes
                                         into-attributes add-attributes]]

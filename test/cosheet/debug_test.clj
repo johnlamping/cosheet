@@ -22,13 +22,6 @@
     s   
     (expr + (fib (- n 1) s) (fib (- n 2) s))))
 
-(deftest current-value-test
-  (let [state (new-reporter :value 0)
-        fib6 (fib 6 state)]
-    (is (= (current-value fib6) 0))
-    (set-value! state 1)
-    (is (= (current-value fib6) 13))))
-
 (defn count-ones [x]
   (cond (= x 1)
         1

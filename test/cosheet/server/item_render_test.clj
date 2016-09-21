@@ -5,7 +5,8 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [expression :refer [expr expr-let expr-seq]]
-             [debug :refer [current-value envs-to-list simplify-for-print]]
+             [expression-manager :refer [current-value]]
+             [debug :refer [envs-to-list simplify-for-print]]
              entity-impl
              [store :refer [make-id]]
              store-impl

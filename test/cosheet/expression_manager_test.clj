@@ -56,6 +56,18 @@
       (print "It's source:")
       (print-sources source))))
 
+(defn fib [n s]
+  (if (<= n 1)
+    s   
+    (expr + (fib (- n 1) s) (fib (- n 2) s))))
+
+(deftest current-value-test
+  (let [state (reporter/new-reporter :value 0)
+        fib6 (fib 6 state)]
+    (is (= (current-value fib6) 0))
+    (reporter/set-value! state 1)
+    (is (= (current-value fib6) 13))))
+
 ;;; These functions check that exactly the right callbacks are in
 ;;; place, and that all copied information is up to date.
 

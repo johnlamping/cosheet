@@ -9,7 +9,7 @@
              [entity :as entity :refer [to-list description->entity]]
              [reporters :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value envs-to-list]]
+             [debug :refer [envs-to-list]]
              entity-impl
              [store :refer [update-content!]]
              store-impl

@@ -7,6 +7,25 @@
                      [reporters :as reporter]
                      [mutable-map :as mm])))
 
+;;; Trivial scheduler that just runs everything and returns the
+;;; current value.
+
+(defn current-value
+  "Run computation on the reporter, returning the current value,
+   rather than tracking dependencies."
+  [expr]
+  (if (reporter/reporter? expr)
+    (let [data (reporter/data expr)
+          expression (:expression data)]
+      (if expression
+        ((or (:trace data) identity)
+         #(current-value (apply (fn [f & args] (apply f args))
+                                (map current-value expression))))
+        (do (when (and (:manager data) (not (reporter/attended? expr)))
+              (reporter/set-attendee! expr :request (fn [key reporter] nil)))
+            (reporter/value expr))))
+    expr))
+
 ;;; Manage the (re)computation of reporters using a priority queue.
 
 ;;; The following fields are used in reporters, in addition to the
@@ -441,6 +460,11 @@
   (manage r md)
   r)
 
+(defn unrequest
+  "Remove request for omputation of a reporter."
+  [r md]
+  (reporter/set-attendee! r :computation-request nil))
+
 (defn compute
   "Do all pending computations, or if the second argument is provided,
    all or that many, which ever comes first."
@@ -453,9 +477,10 @@
   "Given a possible reporter, compute its value and return it."
   [r md]
   (if (reporter/reporter? r)
-    (do
-      (request r md)
-      (compute md)
-      (reporter/value r))
+    (do (request r md)
+        (compute md)
+        (reporter/value r))
     r))
+
+
 

@@ -9,7 +9,8 @@
                      [store-impl :refer [->ItemId]]
                      mutable-store-impl
                      entity-impl
-                     [debug :refer [current-value envs-to-list]]
+                     [expression-manager :refer [current-value]]
+                     [debug :refer [envs-to-list]]
                      [test-utils :refer [check as-set
                                          let-mutated let-mutated-store]]
                      )

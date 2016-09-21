@@ -9,7 +9,7 @@
                                         content elements
                                         label->elements label->content]]
              [expression-manager :refer [new-expression-manager-data compute]]
-             [debug :refer [current-value profile-and-print-reporters
+             [debug :refer [profile-and-print-reporters
                             simplify-for-print]]
              [reporters :as reporter]
              entity-impl

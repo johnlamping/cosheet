@@ -1,9 +1,11 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements]]
-                     [debug :refer [simplify-for-print current-value]]
-                     [entity :as entity]
+                     [debug :refer [simplify-for-print]]
+                     [entity :refer [subject label->elements]]
                      [expression :refer [expr expr-let expr-seq cache]]
-                     [dom-utils :refer [add-attributes into-attributes]])
+                     [expression-manager :refer [current-value]]
+                     [dom-utils :refer [add-attributes into-attributes]]
+                     [query :refer [matching-elements]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject]]
              [item-render :refer [item-without-labels-DOM-R
@@ -135,6 +137,15 @@
                            ; change.
    })
 
+(defn user-visible-item?
+  "Return true if the item is user visible."
+  ;; TODO: This will also need to check for selectors that the user
+  ;;       should see, even though they don't have :order.
+  [item]
+  (let [order-elements (current-value (label->elements item :order))
+        non-semantic (current-value (matching-elements :non-semantic item))]
+    (and (seq order-elements) (empty? non-semantic))))
+
 ;;; --- Top level item ---
 
 (defn top-level-item-DOM-R
@@ -145,11 +156,11 @@
                tags (matching-elements :tag item)]
       (if (empty? table)
         (let [subject-ref (or (:subject inherited)
-                              (let [[exemplar subject]
+                              (let [[exemplar subject-ref]
                                     (referent->exemplar-and-subject referent)]
-                                (or subject
-                                    (when exemplar
-                                      (when-let [subject (entity/subject item)]
+                                (or subject-ref
+                                    (when-let [subject (subject item)]
+                                      (when (user-visible-item? subject)
                                         (item-referent subject))))))
               inherited (cond-> inherited
                           subject-ref

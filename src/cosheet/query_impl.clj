@@ -12,7 +12,7 @@
                                     template-matches-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq]]
-                     [debug :refer [current-value trace-current
+                     [debug :refer [trace-current
                                     simplify-for-print]])))
 
 ;;; TODO:

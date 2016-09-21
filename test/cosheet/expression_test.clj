@@ -4,7 +4,8 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [reporters :as reporter]
                      [expression :refer :all]
-                     [debug :refer [current-value trace-current]])
+                     [expression-manager :refer [current-value]]
+                     [debug :refer [trace-current]])
             ; :reload
             ))
 

@@ -6,6 +6,7 @@
                      [entity :as entity]
                      [reporters :refer [reporter? attended? data value
                                         valid? set-attendee!]]
+                     [expression-manager :refer [current-value]]
                      [entity-impl :as entity-impl]
                      store-utils
                      store-impl
@@ -74,25 +75,6 @@
         (map simplify-for-print item)
         :else
         item))
-
-;;; Trivial scheduler that just runs everything and returns the
-;;; current value.
-
-(defn current-value
-  "Run computation on the reporter returning the current value,
-   rather than tracking dependencies."
-  [expr]
-  (if (reporter? expr)
-    (let [data (data expr)
-          expression (:expression data)]
-      (if expression
-        ((or (:trace data) identity)
-         #(current-value (apply (fn [f & args] (apply f args))
-                                (map current-value expression))))
-        (do (when (and (:manager data) (not (attended? expr)))
-              (set-attendee! expr :request (fn [key reporter] nil)))
-            (value expr))))
-    expr))
 
 (defn- unpack-if-trivial-nested [item]
   (cond (and (sequential? item)

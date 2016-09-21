@@ -428,7 +428,7 @@
          (update
           inherited :selectable-attributes
           #(assoc (select-keys % [:column :row])
-                  :expand {:item-referent referent})))))))
+                  :expand (or (:expand %) {:item-referent referent}))))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

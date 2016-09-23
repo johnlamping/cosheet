@@ -17,12 +17,13 @@ body {
 #app {
     flex: 0 1 auto;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
 
 }
 
 #root.table {
-    flex: 0 1 auto:
+    flex: 0 1 auto;
+    min-width: 0;
 }
 
 /* Repeat selector to give this rule highest specificity */
@@ -362,7 +363,7 @@ body {
 
 .table-condition {
     border-bottom-width: 2px;
-    flex-grow: 1;
+    flex: 1 0 auto;
 }
 
 .table-body {
@@ -384,11 +385,14 @@ body {
     margin-left: 2px;
     display: flex;
     flex-direction: column;
+    overflow-x: scroll;
+    overflow-y: hidden;
 }
 
 .table-rows {
     /* to keep the scrollbar from causing horizontal scroll */
     padding-right: 2px;
+    margin-right: -18px;
     flex: 0 1 auto;
     overflow-x: visible;
     overflow-y: scroll;

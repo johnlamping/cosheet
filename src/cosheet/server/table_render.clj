@@ -512,6 +512,7 @@
              [:div {:class "table-body"}
               [:div {:class (cond-> "table-indent"
                               condition-is-tags (str " tag"))}]
-              (into [:div {:class "table-main"}
-                     headers]
-                    rows)]]))))))
+              [:div {:class "table-main"}
+               headers
+               (into [:div {:class "table-rows"}]
+                     rows)]]]))))))

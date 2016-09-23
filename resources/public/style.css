@@ -6,8 +6,23 @@
     background-color: transparent;
 }
 
-body { /* override the default of 8px */
-    margin-top: 0px;
+body {
+    margin-top: -2px;  /* keep from having scrollbar */
+    margin-bottom: 0px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+#app {
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+
+}
+
+#root.table {
+    flex: 0 1 auto:
 }
 
 /* Repeat selector to give this rule highest specificity */
@@ -327,7 +342,13 @@ body { /* override the default of 8px */
 
 /* --- tables --- */
 
+.table {
+    display: flex;
+    flex-direction: column;
+}
+
 .table-top {
+    flex: 0 0 auto;
     display: flex;
     border-width: 2px;
     border-bottom-width: 0px;
@@ -345,6 +366,7 @@ body { /* override the default of 8px */
 }
 
 .table-body {
+    flex: 0 1 auto;
     display: flex;
 }
 
@@ -354,22 +376,41 @@ body { /* override the default of 8px */
     border-right-width: 2px;
     border-bottom-width: 2px;
     border-bottom-left-radius: 7px;
-    margin-bottom: -2px;
+    margin-bottom: 0px;
 }
 
 .table-main {
     margin-top: 2px;
     margin-left: 2px;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-rows {
+    /* to keep the scrollbar from causing horizontal scroll */
+    padding-right: 2px;
+    flex: 0 1 auto;
+    overflow-x: visible;
+    overflow-y: scroll;
+    border-bottom-width: 2px;
+}
+
+.table-rows > :first-child {
+    margin-top: -2px;
 }
 
 .column-header-sequence {
+    flex: 0 0 auto;
     display: flex;
     align-items: stretch;
 }
 
+.table-main > .column-header-sequence {
+    border-bottom-width: 2px;
+}
+
 .column-header-sequence > * {
-    flex-grow: 0;
-    flex-shrink: 0;
+    flex: 0 0 auto;
 }
 
 .column-header-sequence > .editable:not(.content-text) {
@@ -479,8 +520,7 @@ body { /* override the default of 8px */
 .table-cell {
     width: 150px;
     min-height: 20px;
-    flex-grow: 0;
-    flex-shrink: 0;
+    flex: 0 0 auto;
     border-width: 2px;
     margin: 0px -2px -2px 0px;
 }
@@ -523,9 +563,10 @@ body { /* override the default of 8px */
 /* --- toolbar --- */
 
 .toolbar {
+    flex: 0 0 auto;
     background-color: white;
     width: 100%;
-    padding-top: 4px;
+    padding-top: 6px; /* Make up for the -2px on body */
     padding-bottom: 4px;
     padding-left: 10px;
     margin-bottom: 5px;

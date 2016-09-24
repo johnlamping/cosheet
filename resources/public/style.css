@@ -8,6 +8,7 @@
 
 body {
     margin-top: -2px;  /* keep from having scrollbar */
+    margin-bottom: 8px;
     margin-bottom: 0px;
     display: flex;
     flex-direction: column;
@@ -24,6 +25,12 @@ body {
 #root.table {
     flex: 0 1 auto;
     min-width: 0;
+}
+
+#root.wrapped-element, #root.item {
+    flex: 0 1 auto;
+    padding-right: 2px;
+    overflow: auto;
 }
 
 /* Repeat selector to give this rule highest specificity */

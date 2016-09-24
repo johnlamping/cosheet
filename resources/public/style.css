@@ -349,7 +349,7 @@ body {
 }
 
 .table-top {
-    flex: 0 0 auto;
+    flex: none;
     display: flex;
     border-width: 2px;
     border-bottom-width: 0px;
@@ -383,8 +383,10 @@ body {
 .table-main {
     margin-top: 2px;
     margin-left: 2px;
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     overflow-x: scroll;
     overflow-y: hidden;
 }
@@ -392,7 +394,6 @@ body {
 .table-rows {
     /* to keep the scrollbar from causing horizontal scroll */
     padding-right: 2px;
-    margin-right: -18px;
     flex: 0 1 auto;
     overflow-x: visible;
     overflow-y: scroll;
@@ -404,7 +405,7 @@ body {
 }
 
 .column-header-sequence {
-    flex: 0 0 auto;
+    flex: none;
     display: flex;
     align-items: stretch;
 }
@@ -524,7 +525,7 @@ body {
 .table-cell {
     width: 150px;
     min-height: 20px;
-    flex: 0 0 auto;
+    flex: none;
     border-width: 2px;
     margin: 0px -2px -2px 0px;
 }
@@ -567,7 +568,7 @@ body {
 /* --- toolbar --- */
 
 .toolbar {
-    flex: 0 0 auto;
+    flex: none;
     background-color: white;
     width: 100%;
     padding-top: 6px; /* Make up for the -2px on body */

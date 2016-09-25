@@ -362,6 +362,7 @@ body {
     border-bottom-width: 0px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
+    margin-right: 15px;
 }
 
 .table-corner {
@@ -419,6 +420,7 @@ body {
 
 .table-main > .column-header-sequence {
     border-bottom-width: 2px;
+    maragin-right: 15px;
 }
 
 .column-header-sequence > * {

@@ -166,7 +166,8 @@
                      :target {:template '(nil ("single" :tag))
                               :adjacent-referent (item-referent joe)
                               :position :after
-                              :subject-referent (item-referent joe)}}]
+                              :subject-referent (item-referent joe)}
+                     :delete {:item-referent (item-referent joe)}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))
                            :class "table-cell has-border"}

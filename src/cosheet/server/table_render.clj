@@ -365,7 +365,11 @@
                  inherited
                  {:selectable-attributes
                   {:target {:adjacent-referent (:subject inherited)
-                            :position :after}}}))
+                            :position :after}
+                   :delete {:item-referent (-> inherited
+                                               :selectable-attributes
+                                               :row
+                                               :item-referent)}}}))
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

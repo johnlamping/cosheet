@@ -74,8 +74,11 @@
             key (conj (:parent-key inherited)
                       :example-element
                       (:item-id (first example-elements)))]
-        (virtual-item-DOM key :before (assoc inherited-down :adjacent-referent
-                                             adjacent-referent)))
+        (virtual-item-DOM key (into-attributes
+                               inherited-down
+                               {:selectable-attributes
+                                {:target {:adjacent-referent adjacent-referent
+                                          :position :before}}})))
       (let [items (map :item members)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -116,9 +119,12 @@
                                   :subject items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
-               (virtual-item-DOM (conj tags-parent-key :tags) :after
-                                 (assoc inherited-for-tags
-                                        :adjacent-referent items-referent))
+               (virtual-item-DOM (conj tags-parent-key :tags)
+                                 (into-attributes
+                                  inherited-for-tags
+                                  {:selectable-attributes
+                                   {:target {:adjacent-referent items-referent
+                                             :position :after}}}))
                (hierarchy-properties-DOM-R
                 item-without-labels-DOM-R
                 hierarchy-node {:class "tag"} inherited-for-tags))]
@@ -374,9 +380,12 @@
       (if (empty? label-elements)
         [:div {:class "horizontal-tags-element narrow"}
          (add-attributes
-          (virtual-item-DOM (conj key :tags) :after
-                            (assoc inherited-for-tags
-                                   :adjacent-referent item-referent))
+          (virtual-item-DOM (conj key :tags)
+                            (into-attributes
+                             inherited-for-tags
+                             {:selectable-attributes
+                              {:target {:adjacent-referent item-referent
+                                        :position :after}}}))
           {:class "tag"})
          dom]
         (expr-let [ordered-labels (order-items-R label-elements)

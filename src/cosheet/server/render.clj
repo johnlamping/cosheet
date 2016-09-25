@@ -125,8 +125,8 @@
                            ; may not be created.
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
                            ; of the dom should have, if any. Typically,
-                           ; these are commands for things like new-row.
-;      :element-attributes : Should become :selectable-attributes of elements.
+                           ; these are targets like row.
+;      :element-attributes : Become :selectable-attributes of elements.
 ;            :is-selector  ; If true, this dom represents a selector, which
                            ; means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,

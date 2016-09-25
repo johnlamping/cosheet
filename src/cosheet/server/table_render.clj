@@ -242,9 +242,12 @@
                           :expand {:item-referent column-referent}})))
         key (conj (:parent-key inherited) (:item-id item))]
     (add-attributes
-     (virtual-item-DOM
-      key :after
-      (assoc inherited :adjacent-referent column-referent))
+     (virtual-item-DOM key
+                       (into-attributes
+                        inherited
+                        {:selectable-attributes
+                         {:target {:adjacent-referent column-referent
+                                   :position :after}}}))
      (cond-> {:style {:width (str base-table-column-width "px")}}
        (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 
@@ -357,8 +360,12 @@
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
                (virtual-item-DOM
-                (:parent-key inherited) :after
-                (assoc inherited :adjacent-referent (:subject inherited)))
+                (:parent-key inherited)
+                (into-attributes
+                 inherited
+                 {:selectable-attributes
+                  {:target {:adjacent-referent (:subject inherited)
+                            :position :after}}}))
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

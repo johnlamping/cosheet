@@ -56,17 +56,15 @@
 
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
-  inherited must specify one of adjacent-referent or adjacent-groups-referent."
-  [key position inherited]
+  inherited must specify a :selectable-attributes :target,
+  into which we will put the subject and template."
+  [key inherited]
   [:div (into-attributes
          (:selectable-attributes inherited)
          {:class "editable"
           :key key
-          :target (assoc (select-keys inherited
-                                      [:template :adjacent-referent
-                                       :adjacent-groups-referent])
-                         :position position
-                         :subject-referent (:subject inherited))})])
+          :target {:template (:template inherited)
+                   :subject-referent (:subject inherited)}})])
 
 (defn make-component
   "Make a component dom with the given attributes and definition."

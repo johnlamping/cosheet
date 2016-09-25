@@ -134,22 +134,24 @@
                             :select-pattern (conj table-key tag-pattern)}}}]]
                (any)
                (any)]
-              [:component {:key (conj table-key (:item-id joe))
-                           :class "table-row"}
-               [table-row-DOM-R
-                joe (conj table-key (:item-id joe)) row-template
-                [{:column-item c1 :template '(nil ("single" :tag))
-                  :exclusions '()}
-                 {:column-item c2 :template '(nil ("name" :tag))
-                  :exclusions '((nil ("name" :tag) ("id" :tag)))}
-                 {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
-                  :exclusions ()}
-                 (any)
-                 (any)]
-                {:priority 1 :width 3.0 :parent-key table-key}]]]]]))
+              [:div {:class "table-rows"}
+               [:component {:key (conj table-key (:item-id joe))
+                            :class "table-row"}
+                [table-row-DOM-R
+                 joe (conj table-key (:item-id joe)) row-template
+                 [{:column-item c1 :template '(nil ("single" :tag))
+                   :exclusions '()}
+                  {:column-item c2 :template '(nil ("name" :tag))
+                   :exclusions '((nil ("name" :tag) ("id" :tag)))}
+                  {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
+                   :exclusions ()}
+                  (any)
+                  (any)]
+                 {:priority 1 :width 3.0 :parent-key table-key}]]]]]]))
       (let [table-body (nth dom 3)
             table-main (nth table-body 3)
-            row-component (nth table-main 3)
+            table-rows (nth table-main 3)
+            row-component (nth table-rows 2)
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]

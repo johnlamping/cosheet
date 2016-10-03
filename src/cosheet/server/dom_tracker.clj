@@ -1,3 +1,4 @@
+
 (ns cosheet.server.dom-tracker
   (:require [clojure.data.priority-map :as priority-map]
             (cosheet [reporters :as reporter]
@@ -189,13 +190,10 @@
     (if (= (first dom) :component)
       (let [attributes (second dom) 
             id (get-in data [:key->id (:key attributes)])]
-        (when (nil? id)
-          (println "No id found for key" (:key attributes)))
-        (assert (not (nil? id)))
+        (assert (not (nil? id)) ["No id found for key" (:key attributes)])
         (adjust-attributes-for-client data [:component attributes]))
-      (reduce (fn [subcomponents dom]
-                (conj subcomponents (adjust-dom-for-client data dom)))
-              [] (adjust-attributes-for-client data dom)))
+      (vec (map (partial adjust-dom-for-client data)
+                (adjust-attributes-for-client data dom))))
     dom))
 
 (defn dom-for-client

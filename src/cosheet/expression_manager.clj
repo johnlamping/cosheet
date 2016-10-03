@@ -1,5 +1,5 @@
 (ns cosheet.expression-manager
-  (:require (cosheet [task-queue :refer :all]
+  (:require (cosheet [task-queue :refer [new-priority-task-queue add-task]]
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
                                     swap-control-return!
@@ -123,13 +123,13 @@
 ;;; avoid infinite loops when it is printed out. (The queue will
 ;;; contain references back to the manager data record.)
 (defrecord ExpressionManagerData
-    [queue  ; A task-queue of pending tasks.
+    [queue      ; A task-queue of pending tasks.
      manage-map ; A map from :manager-type of a reporter to a
                 ; function that takes a reporter and a manager data,
                 ; does any needed preparation putting the reporter
                 ; under management, and sets its manager.
-     cache ; A mutable map from expression to reporter.
-           ; (present if cache reporters are supported.)
+     cache      ; A mutable map from expression to reporter.
+                ; (present if cache reporters are supported.)
      ])
 
 (defmethod print-method ExpressionManagerData [s ^java.io.Writer w]
@@ -328,17 +328,17 @@
        (let [value-map (:subordinate-values data)
              application (map #(get value-map % %) (:expression data))
              value (apply (first application) (rest application))]
-         (-> (if (reporter/reporter? value)
-               (-> data
-                   ;; We have to set our value source first, so we
-                   ;; generate demand for the new value, before we
-                   ;; manage it.
-                   (update-value-source reporter value)
-                   (update-new-further-action manage value md))
-               (-> data
-                   (update-value reporter value)
-                   (update-value-source reporter nil)
-                   (update-old-value-source reporter nil)))))))))
+         (if (reporter/reporter? value)
+           (-> data
+               ;; We have to set our value source first, so we
+               ;; generate demand for the new value, before we
+               ;; manage it.
+               (update-value-source reporter value)
+               (update-new-further-action manage value md))
+           (-> data
+               (update-value reporter value)
+               (update-value-source reporter nil)
+               (update-old-value-source reporter nil))))))))
 
 (defn eval-manager
   "Manager for an eval reporter."

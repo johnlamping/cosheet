@@ -244,9 +244,9 @@
         {:store store :select (or select1 select)}))))
 
 (defn do-add-element
-  [store attributes]
-  (let [{:keys [target target-key is-selector]} attributes]
-    (when-let [subject-referent (:item-referent target)]
+  [store context attributes]
+  (let [{:keys [target-key is-selector]} attributes]
+    (when-let [subject-referent (:item-referent context)]
       (generic-add store
                    (cond-> {:subject-referent subject-referent
                             :adjacent-referent subject-referent}
@@ -254,34 +254,31 @@
                    target-key target-key true))))
 
 (defn do-add-twin
-  [store attributes]
-  (let [{:keys [target target-key]} attributes]
-    (when (and (:item-referent target) (:template target))
+  [store context attributes]
+  (let [{:keys [target-key]} attributes]
+    (when (and (:item-referent context) (:template context))
       (let [item-key (if (= (last target-key) :content)
                        (pop target-key)
                        target-key)]
         (generic-add store
-                     (cond-> target
+                     (cond-> context
                        (:is-selector attributes) (assoc :nil-to-anything true))
                      (pop item-key) target-key true)))))
 
 (defn do-add-sibling
-  [store attributes]
-  (when-let [sibling (:sibling attributes)]
-    (generic-add
-     store sibling (:parent-key sibling) (:target-key attributes) true)))
+  [store context attributes]
+  (generic-add
+   store context (:parent-key context) (:target-key attributes) true))
 
 (defn do-add-row
-  [store attributes]
-  (when-let [row (:row attributes)]
-    (generic-add
-     store row (:parent-key row) (:target-key attributes) true)))
+  [store context attributes]
+  (generic-add
+     store context (:parent-key context) (:target-key attributes) true))
 
 (defn do-add-column
-  [store attributes]
-  (when-let [column (:column attributes)]
-    (generic-add
-     store column (:parent-key column) (:target-key attributes) true)))
+  [store context attributes]
+  (generic-add
+     store context (:parent-key context) (:target-key attributes) true))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -290,18 +287,17 @@
 
 (defn do-delete
   "Remove item(s)." 
-  [store attributes]
-  (let [{:keys [target delete]} attributes]
-    (when-let [to-delete (:item-referent (or delete target))]
-      (let [items (apply concat (instantiate-referent to-delete store))]
-        (println "total items:" (count items))
-        (reduce update-delete store items)))))
+  [store context attributes]
+  (when-let [to-delete (:item-referent context)]
+    (let [items (apply concat (instantiate-referent to-delete store))]
+      (println "total items:" (count items))
+      (reduce update-delete store items))))
 
 (defn do-set-content
-  [store attributes]
+  [store context attributes]
   ;; TODO: Handle deleting.
-  (let [{:keys [target-key target from to immutable]} attributes
-        referent (:item-referent target)]
+  (let [{:keys [target-key from to immutable]} attributes
+        referent (:item-referent context)]
     (if referent
       ;; Changing an existing value.
       (when (and from to (not immutable))
@@ -313,14 +309,14 @@
       ;; Creating a new value.
       (when (not= to "")
         (let [content (parse-string-as-number to)
-              new-template (cons content (rest (:template target)))]
-          (generic-add store (into target {:template new-template})
+              new-template (cons content (rest (:template context)))]
+          (generic-add store (into context {:template new-template})
                        (pop target-key) target-key false))))))
 
 (defn do-expand
-  [store attributes]
-  (let [{:keys [target expand session-state is-selector]} attributes
-        target-referent (:item-referent (or expand target))]
+  [store context attributes]
+  (let [{:keys [session-state is-selector]} attributes
+        target-referent (:item-referent context)]
     (when (referent? target-referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
@@ -340,19 +336,18 @@
 
 (defn do-storage-update-action
   "Do an action that can update the store. The action is given the
-  store, the target key, and a map of attributes associated with the
-  DOM element, the particular command, and anything sent by the
-  client. The action can either return nil, meaning no change, a new
+  store and any additional arguments.
+  The action can either return nil, meaning no change, a new
   store, or a map with a :store value and any additional commands it
   wants to request of the client (currently, :select, whose value
   is the key of the dom it wants to be selected and a list of keys,
   one of which should already be selected, and :expand, whose value
   is the key of the item it wants to appear in a new tab.)."
-  [handler mutable-store attributes]
+  [handler mutable-store & args]
   (do-update-control-return!
    mutable-store
    (fn [store]
-     (let [result (handler store attributes)]
+     (let [result (apply handler store args)]
        (if result
          (if (satisfies? cosheet.store/Store result)
            [result nil]
@@ -363,15 +358,18 @@
          [store nil])))))
 
 (defn get-contextual-handler
+  "Return the handler for the command, and the key from the attributes
+   which holds the contextual information for the command. If several keys
+   might hold the information, return them in priority order."
   [action]
-  ({:add-element do-add-element
-    :add-twin do-add-twin
-    :add-sibling do-add-sibling
-    :add-row do-add-row
-    :add-column do-add-column
-    :delete do-delete
-    :set-content do-set-content
-    :expand do-expand}
+  ({:add-element [do-add-element :target]
+    :add-twin [do-add-twin :target]
+    :add-sibling [do-add-sibling :sibling]
+    :add-row [do-add-row :row]
+    :add-column [do-add-column :column]
+    :delete [do-delete :delete :target]
+    :set-content [do-set-content :target]
+    :expand [do-expand :expand :target]}
    action))
 
 (defn do-contextual-action
@@ -381,7 +379,7 @@
   the command, and any added by the client. Also include
   :session-state and :target-key. (The dom will provide :target.)"
   [mutable-store session-state [action-type client-id & {:as client-args}]]
-  (let [handler (get-contextual-handler action-type)
+  (let [[handler & context-keys] (get-contextual-handler action-type)
         tracker (:tracker session-state)
         target-key (id->key tracker client-id)
         dom-attributes (key->attributes tracker target-key)
@@ -390,12 +388,14 @@
                        (assoc :target-key target-key
                               :session-state session-state))]
     (if handler
-      (do
+      (if-let [context (some attributes context-keys)]
+        (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
-          (do-storage-update-action handler mutable-store attributes))
+          (do-storage-update-action handler mutable-store context attributes))
+        (println "No context for action:" action-type attributes))
       (println "unhandled action type:" action-type))))
 
 (defn do-undo

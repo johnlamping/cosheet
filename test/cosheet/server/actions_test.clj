@@ -233,8 +233,8 @@
 (deftest do-add-element-test
   (let [result (do-add-element
                 store
-                {:target {:item-referent (item-referent jane-age)}
-                 :target-key ["jane-age"]})
+                {:item-referent (item-referent jane-age)}
+                {:target-key ["jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -243,14 +243,8 @@
 (deftest do-delete-test
   (let [new-store (do-delete
                    store
-                   {:target {:item-referent (item-referent jane-age)}
-                    :target-key "jane"})
-        alt-store (do-delete
-                   store
-                   {:delete {:item-referent (item-referent jane-age)}
-                    :target :foo
-                    :target-key "jane"})]
-    (is (= new-store alt-store))
+                   {:item-referent (item-referent jane-age)}
+                   {:target-key "jane"})]
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
                (canonicalize-list `("Jane" (~o1 :order :non-semantic)
@@ -260,24 +254,24 @@
   (is (= (content
           (description->entity
            joe-id (do-set-content store
-                                  {:target {:item-referent (item-referent joe)}
-                                   :target-key "joe"
+                                  {:item-referent (item-referent joe)}
+                                  {:target-key "joe"
                                    :from "Joe" :to "Jim"})))
          "Jim"))
   (is (= (content
           (description->entity
            joe-id (do-set-content store
-                                  {:target {:item-referent (item-referent joe)}
-                                   :target-key "joe"
+                                  {:item-referent (item-referent joe)}
+                                  {:target-key "joe"
                                    :from "Wrong" :to "Jim"})))
          "Joe"))
   ;; Now, try calling it when there is a parallel referent.
   (let [modified (do-set-content
                   store
-                  {:target {:item-referent (union-referent
-                                            [(item-referent joe-age-tag)
-                                             (item-referent jane-age-tag)])}
-                   :target-key "both"
+                  {:item-referent (union-referent
+                                   [(item-referent joe-age-tag)
+                                    (item-referent jane-age-tag)])}
+                  {:target-key "both"
                    :from "age" :to "oldness"})]
     (is (= (item->canonical-semantic
             (description->entity (:item-id joe-age-tag) modified))
@@ -288,10 +282,10 @@
   ;; Try creating new content
     (let [result (do-set-content
                   store
-                  {:target {:subject-referent (item-referent joe-male)
-                            :adjacent-groups-referent (item-referent joe-male)
-                            :template '(nil :tag)}
-                   :target-key ["joe-male"]
+                  {:subject-referent (item-referent joe-male)
+                   :adjacent-groups-referent (item-referent joe-male)
+                   :template '(nil :tag)}
+                  {:target-key ["joe-male"]
                    :from ""
                    :to "gender"})]
       (is (= (immutable-semantic-to-list
@@ -299,9 +293,10 @@
              ["male" ["gender" :tag]]))))
 
 (deftest do-expand-test
-  (is (check (do-expand store {:target {:item-referent (item-referent joe)}
-                               :target-key "joe"
-                               :session-state {:name "foo"}})
+  (is (check (do-expand store
+                        {:item-referent (item-referent joe)}
+                        {:target-key "joe"
+                         :session-state {:name "foo"}})
              {:store store
               :open (str "foo?referent="
                          (referent->string (item-referent joe)))})))

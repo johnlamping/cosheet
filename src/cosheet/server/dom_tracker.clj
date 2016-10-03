@@ -330,7 +330,7 @@
        (let [dom-key (:key (dom-attributes dom))]
          (assert (or (= (seq key) (seq dom-key))
                      (= (seq (conj key :content)) (seq dom-key)))
-                 [key (conj key :content) dom]))
+                 [key dom]))
        (swap-and-act
         data-atom
         (fn [data]

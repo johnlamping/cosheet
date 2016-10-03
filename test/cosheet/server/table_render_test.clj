@@ -54,7 +54,6 @@
                     (:top-level :non-semantic)
                     (~o1 :order :non-semantic)
                     "plain" "plain")]
-    ;; TODO: Add a non-tag label.
     (let [table-list `("table"
                        (~'anything (~'anything ("age" :tag))
                                    (:row-condition :non-semantic))
@@ -74,6 +73,10 @@
                        (~'anything ("age" :tag (~o1 :order :non-semantic))
                                    ("id" :tag (~o2 :order :non-semantic))
                                    (~o5 :order :non-semantic)
+                                   (:column :non-semantic))
+                       (~'anything ("6-2" (~o1 :order :non-semantic)
+                                    ("height" :tag (~o2 :order :non-semantic)))
+                                   (~o6 :order :non-semantic)
                                    (:column :non-semantic)))
           [dom table joe jane] (let-mutated [table table-list
                                              joe joe-list
@@ -133,6 +136,7 @@
                                         (??? :tag))
                             :select-pattern (conj table-key tag-pattern)}}}]]
                (any)
+               (any)
                (any)]
               [:div {:class "table-rows"}
                [:component {:key (conj table-key (:item-id joe))
@@ -145,6 +149,7 @@
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
                    :exclusions ()}
+                  (any)
                   (any)
                   (any)]
                  {:priority 1 :width 3.0 :parent-key table-key}]]]]]]))
@@ -181,6 +186,7 @@
                  {:row {:item-referent (item-referent joe)
                         :template '(nil (nil ("age" :tag))
                                         (:top-level :non-semantic))}}}]]
+              (any)
               (any)
               (any)
               (any)]))))))

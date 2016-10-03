@@ -162,7 +162,7 @@
                      (apply (first row-command) (rest row-command)))]
         (is (check
              row-dom
-             [:div {}
+             [:div {:key (conj table-key (:item-id joe))}
               [:div {:row {:item-referent (item-referent joe)
                            :template '(nil (nil ("age" :tag))
                                            (:top-level :non-semantic))}

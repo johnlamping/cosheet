@@ -14,9 +14,6 @@
 
 (def verbose false)
 
-;;; TODO: add a check when the dom of a component comes back that its
-;;; key matches the key the component is stored under.
-
 ;;; Records the current state of the dom, and which items need to be
 ;;; sent to the client. Has the manager compute subcomponents as
 ;;; needed. (Where a computation manager's job is to update a bunch of
@@ -330,6 +327,10 @@
      (when (reporter/valid? dom)
        (when verbose
          (println "value is valid"))
+       (let [dom-key (:key (dom-attributes dom))]
+         (assert (or (= (seq key) (seq dom-key))
+                     (= (seq (conj key :content)) (seq dom-key)))
+                 [key (conj key :content) dom]))
        (swap-and-act
         data-atom
         (fn [data]

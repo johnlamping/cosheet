@@ -363,7 +363,8 @@
                 (dissoc :element-attributes))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
-          [:div {:class "item with-elements"}
+          [:div {:class "item with-elements"
+                 :key key}
            content-dom elements-dom])))))
 
 (defn label-wrapper-DOM-R

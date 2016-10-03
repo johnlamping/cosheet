@@ -1,5 +1,7 @@
 (ns cosheet.expression-manager
-  (:require (cosheet [task-queue :refer [new-priority-task-queue add-task]]
+  (:require (cosheet [task-queue :refer [new-priority-task-queue add-task
+                                         run-all-pending-tasks
+                                         run-some-pending-tasks]]
                      [utils :refer [dissoc-in update-in-clean-up
                                     swap-returning-both!
                                     swap-control-return!

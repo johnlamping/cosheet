@@ -403,7 +403,7 @@
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
                                column-descriptions)]
-      (into [:div {}] cells))))
+      (into [:div {:key row-key}] cells))))
 
 (defn table-row-DOM-component
   "Generate a component for a table row."

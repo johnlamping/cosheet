@@ -114,6 +114,28 @@
           (keys-affected-by-ids modified-ids store new-store)
           result]))))
 
+  (revise-update-control-return! [this expected-current update-fn]
+    (describe-and-swap-control-return!
+     (:manager-data this)
+     (fn [state]
+       (if (not= expected-current (:store state))
+         [state nil]
+         (let [{:keys [store history future]} state]
+           (if (empty? history)
+             [state []]
+             (let [[[prev-modified-ids prev-store] & prev-history] history
+                   [updated-store result] (update-fn prev-store)
+                   [new-store new-modified-ids] (fetch-and-clear-modified-ids
+                                                 updated-store)
+                   all-modified-ids (seq (clojure.set/union
+                                          (set prev-modified-ids)
+                                          (set new-modified-ids)))]
+               [{:store new-store
+                 :history (cons [new-modified-ids prev-store] prev-history)
+                 :future nil}
+                (keys-affected-by-ids all-modified-ids store new-store)
+                result])))))))
+
   (add-simple-element! [this subject content]
     (do-update-control-return! this #(add-simple-element % subject content)))
 
@@ -129,9 +151,9 @@
   (undo! [this]
     (describe-and-swap!
      (:manager-data this)
-     (fn [{:keys [store history future]}]
+     (fn [{:keys [store history future] :as state}]
        (if (empty? history)
-         [{:store store :history history :future future} []]
+         [state []]
          (let [[[modified-ids prev-store] & remaining-history] history]
            [{:store prev-store
              :history remaining-history
@@ -144,9 +166,9 @@
   (redo! [this]
     (describe-and-swap!
      (:manager-data this)
-     (fn [{:keys [store history future]}]
+     (fn [{:keys [store history future] :as state}]
        (if (empty? future)
-         [{:store store :history history :future future} []]
+         [state []]
          (let [[[modified-ids next-store] & remaining-future] future]
            [{:store next-store
              :history (cons [modified-ids store] history)

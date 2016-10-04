@@ -7,9 +7,12 @@
              [store-utils :refer :all]
              [entity :refer [to-list description->entity]]
              [reporters :refer [set-attendee! value invalid]]
+             [expression-manager :refer [new-expression-manager-data
+                                         manage compute]]
              entity-impl
              store-impl
              [mutable-store-impl :refer :all]
+             [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any as-set evals-to let-mutated]])
             ; :reload
             ))
@@ -133,7 +136,37 @@
         ;; reporter.
         (set-attendee! label-ids :a callback "arg")
         (is (= (set (value label-ids))
-               (set (id-label->element-ids store element :label)))))
-      ;; TODO: Put a version of the test
-      ;; here that builds the store from scratch using add-entity!.
-)))
+               (set (id-label->element-ids store element :label)))))))
+  ;; Test building a store from scratch using add-entity!.
+  (let [entity '(77 ("test" :label)
+                    ("Fred" ("by" :label)))
+        mutable-store (new-mutable-store (new-element-store))
+        item-id (add-entity! mutable-store nil entity)
+        as-list (to-list (description->entity item-id mutable-store))
+        md (new-expression-manager-data)]
+    (request as-list)
+    (manage as-list md)
+    (compute md)
+    (is (= (canonicalize-list entity)
+           (canonicalize-list (value as-list))))
+    ;; Test revise-update-control-return!.
+    (add-simple-element! mutable-store item-id 42)
+    (compute md)
+    (let [initial-modified (current-store mutable-store)
+          result (revise-update-control-return!
+                  mutable-store initial-modified
+                  (fn [store] [(first (add-simple-element store item-id 1000))
+                               57]))
+          modified-entity (apply list (concat entity [1000]))]
+      (is (= result 57))
+      (compute md)
+      (is (= (canonicalize-list (value as-list))
+             (canonicalize-list modified-entity)))
+      ;; Now, make sure a change with the wrong store is rejected.
+      (nil? (revise-update-control-return!
+             mutable-store initial-modified
+             (fn [store] [(first (add-simple-element store item-id 9999))
+                          57])))
+      (compute md)
+      (is (= (canonicalize-list (value as-list))
+             (canonicalize-list modified-entity))))))

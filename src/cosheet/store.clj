@@ -115,7 +115,7 @@
   "The basic methods that mutable stores support to change themselves,
   from which higher levels ones are built."
   (current-store [this]
-   "The current state of the mutable store")
+   "The current store of the mutable store.")
 
   (call-dependent-on-id [this id fun]
    "Returns a reporter with the result of calling the function on
@@ -134,6 +134,10 @@
      Update the store with the result, and notify all reporters of
      changes noted by the update. This is a way to package a number
      of updates to the current store into a single transaction.")
+
+  (revise-update-control-return! [this expected-current update-fn]
+    "Run the update function on the previous state of the store,
+    provided the current state matches expected-current.")
   
   (add-simple-element! [this subject content]
     "Add an element to the subject with the given content,

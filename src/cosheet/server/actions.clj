@@ -5,8 +5,9 @@
     [utils :refer [parse-string-as-number thread-map thread-recursive-map
                    swap-control-return! replace-in-seqs]]
     [orderable :refer [split earlier?]]
-    [store :refer [update-content add-simple-element do-update-control-return!
-                   id->subject id-valid? undo! redo!]]
+    [store :refer [update-content add-simple-element
+                   do-update-control-return! revise-update-control-return!
+                   id->subject id-valid? undo! redo! current-store]]
     [store-impl :refer [get-unique-id-number]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
@@ -17,7 +18,8 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [referent :refer [instantiate-referent referent->string referent?
+    [referent :refer [instantiate-referent instantiate-to-items
+                      referent->string referent?
                       item-referent semantic-elements-R]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -335,27 +337,33 @@
                  is-selector (str "&selector=true"))}))))
 
 (defn do-storage-update-action
-  "Do an action that can update the store. The action is given the
-  store and any additional arguments.
+  "Do an action that can update the store and also return any client
+  information requested by the action. store-modifier should be a function
+  like (partial do-update-control-return! mutable-store)
+  that expects a function from current store to new store and return value.
+  We return a map containing the new store and any additional requested
+  information.
+  The action is given the store and any additional arguments.
   The action can either return nil, meaning no change, a new
-  store, or a map with a :store value and any additional commands it
-  wants to request of the client (currently, :select, whose value
-  is the key of the dom it wants to be selected and a list of keys,
-  one of which should already be selected, and :expand, whose value
-  is the key of the item it wants to appear in a new tab.)."
-  [handler mutable-store & args]
-  (do-update-control-return!
-   mutable-store
+  store, or a map with a :store value and any additional information
+  it wants to convey.
+  The extra information can be:
+        :select  The key of the dom to be selected, and a list of keys,
+                 one of which should already be selected.
+        :expand  The key of an item to appear in a new tab."
+  [store-modifier handler & args]
+  (store-modifier
    (fn [store]
      (let [result (apply handler store args)]
        (if result
          (if (satisfies? cosheet.store/Store result)
-           [result nil]
+           [result {:store result}]
            (do
              (assert (map? result))
              (assert (:store result))
-             [(:store result) (dissoc result :store)]))
-         [store nil])))))
+             [(:store result) result]))
+         (do (println "handler didn't update store.")
+             [store {:store store}]))))))
 
 (defn get-contextual-handler
   "Return the handler for the command, and the key from the attributes
@@ -372,12 +380,14 @@
     :expand [do-expand :expand :target]}
    action))
 
+;;; TODO: Add tests for setting alternate, and running it.
+
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
   on that cell. We will call a contextual action handler with attributes
   including all the atttributes from the dom, any that the dom says to add to
   the command, and any added by the client. Also include
-  :session-state and :target-key. (The dom will provide :target.)"
+  :session-state and :target-key."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [[handler & context-keys] (get-contextual-handler action-type)
         tracker (:tracker session-state)
@@ -394,9 +404,39 @@
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
-          (do-storage-update-action handler mutable-store context attributes))
+          (let [initial-store (current-store mutable-store)
+                result (do-storage-update-action
+                        (partial do-update-control-return! mutable-store)
+                        handler context attributes)]
+            (reset! (:alternate session-state)
+                    (when-let [alternate (:alternate context)]
+                      (let [orig-referent (:item-referent context)
+                            alt-referent (:item-referent alternate)]
+                        (when (or (not orig-referent)
+                                  (not alt-referent)
+                                  (not= (set (instantiate-to-items
+                                              orig-referent initial-store))
+                                        (set (instantiate-to-items
+                                              alt-referent initial-store))))
+                          {:new-store (:store result)
+                           :action [handler
+                                    (into context alternate) attributes]
+                           :text (:text alternate)}))))
+            (dissoc result :store)))
         (println "No context for action:" action-type attributes))
       (println "unhandled action type:" action-type))))
+
+(defn do-alternate-contextual-action
+  "Do the alternate interpretation of the recorded contextual action."
+  [mutable-store session-state]
+  (when-let [alternate @(:alternate session-state)]
+    (println "doing alternate.")
+    (let [{:keys [new-store action]} alternate
+          result (apply do-storage-update-action
+                  (partial revise-update-control-return!
+                           mutable-store new-store)
+                  action)]
+      (dissoc result :store))))
 
 (defn do-undo
   [mutable-store session-state]
@@ -415,9 +455,13 @@
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo
+                       :alternate do-alternate-contextual-action
                        nil)]
       (do (println "command: " (map simplify-for-print action))
-          (apply handler mutable-store session-state additional-args))
+          (let [for-client
+                (apply handler mutable-store session-state additional-args)]
+            (reset! (:alternate session-state) nil)
+            for-client))
       (if (= (mod (count action) 2) 0)
         (do-contextual-action mutable-store session-state action)
         (println "Error: odd number of keyword/argument pairs:" action)))))
@@ -426,11 +470,17 @@
   "Run the actions, and return any additional information to be returned
   to the client"
   [mutable-store session-state action-sequence]
-  (reduce (fn [client-info action]
-            (let [for-client (do-action mutable-store session-state action)]
-              (println "for client " (simplify-for-print for-client))
-              (into client-info (select-keys for-client [:select :open]))))
-          {} action-sequence))
+  (let [for-client
+        (reduce (fn [client-info action]
+                  (let [for-client
+                        (do-action mutable-store session-state action)]
+                    (println "for client " (simplify-for-print for-client))
+                    (into client-info
+                          (select-keys for-client [:select :open]))))
+                {} action-sequence)]
+    (if-let [alternate-text (:text @(:alternate session-state))]
+      (assoc for-client :alternate-text alternate-text)
+      for-client)))
 
 (defn confirm-actions
   "Check that the actions have not already been done, update the

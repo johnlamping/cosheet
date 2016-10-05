@@ -310,7 +310,8 @@
             :attributes {:commands {:add-element nil}
                          :target {:item-referent
                                   (item-referent jane)}}})
-    (let [result (do-actions mutable-store {:tracker tracker}
+    (let [result (do-actions mutable-store {:tracker tracker
+                                            :alternate (atom nil)}
                              [[:add-element (key->id tracker ["jane"])]])]
       (let [new-store (current-store mutable-store)
             select (:select result)
@@ -323,10 +324,12 @@
                 (description->entity new-id new-store))
                ""))
         ;; Check undo and redo.
-        (do-actions mutable-store {:tracker tracker} [[:undo]])
+        (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+                    [[:undo]])
         (is (check (current-store mutable-store)
                    (assoc store :modified-ids #{})))
-        (do-actions mutable-store {:tracker tracker} [[:redo]])
+        (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+                    [[:redo]])
         (is (check (current-store mutable-store) new-store))))))
 
 (deftest confirm-actions-test

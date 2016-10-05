@@ -121,8 +121,15 @@
 ;;;        :tracker  The tracker for the session.
 ;;;    :last-action  an atom holding the id of the last action we did.
 ;;;                  This keeps us from repeating an action if the
-;;;                  client gets impatient and repeats it while we were
-;;;                  working on it.
+;;;                  client gets impatient and repeats actions while we
+;;;                  are working on them.
+;;;     :alternate   An atom possibly holding a map indicating an alternate
+;;;                  interpretation of the last command. the map contains
+;;;                  :new-store  The state of the immutable store after
+;;;                              the action.
+;;;                     :action  The alternate storage update action,
+;;;                              with the store missing.
+;;;                       :text  The text shown to the user.
 (def session-states (atom {}))
 
 (defn create-tracker
@@ -191,7 +198,8 @@
                          :store store
                          :tracker (create-tracker
                                    store referent-string selector-string)
-                         :last-action (atom nil)})
+                         :last-action (atom nil)
+                         :alternate (atom nil)})
                  id])))]
     (compute manager-data 1000)
     (println "computed some")

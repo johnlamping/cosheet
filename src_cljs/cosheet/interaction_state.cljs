@@ -1,7 +1,8 @@
 (ns cosheet.interaction-state
   (:require [goog.dom :as gdom]))
 
-;;; These are the UI operations on the edit field and on selections. We
+;;; These are the UI operations on the edit field, alternate interpretation
+;;; field, and on selections. We
 ;;; put them in their own file so both client.cljs and ajax.cljs can
 ;;; access them.
 
@@ -27,6 +28,19 @@
       (reset! edit-field-open-on nil)
       ;; Put it at the end, where it will be invisible, but still findable.
       (gdom/appendChild app edit-holder))))
+
+(defn set-alternate-field
+  [text]
+  (let [alternate-holder (js/document.getElementById
+                          "alternate_interpretation_holder")]
+    (if (nil? text)
+      (set! (.-className alternate-holder) "")
+      (let [alternate (js/document.getElementById "alternate_interpretation")]
+        (set! (.-textContent (.-firstChild alternate-holder)) (first text))
+        (set! (.-textContent alternate) (second text))
+        (set! (.-textContent (.-lastChild alternate-holder))
+              (or (second (rest text)) " "))
+        (set! (.-className alternate-holder) "visible")))))
 
 (def selected (atom nil)) ;; The currently selected dom.
 

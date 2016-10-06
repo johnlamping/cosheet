@@ -120,6 +120,10 @@
           (do (when (= contextual-keyword :expand) (open-expand-popup))
               (request-action [contextual-keyword (.-id selection)])))))
 
+(defn alternate-interpretation-click-handler
+  [event]
+  (request-action [:alternate]))
+
 (defn click-handler
   [event]
   (let [target (.-target event)]
@@ -227,6 +231,9 @@
     (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)
+    (gevents/listen (js/document.getElementById "alternate_interpretation")
+                    gevents/EventType.CLICK
+                    alternate-interpretation-click-handler)    
     (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler))

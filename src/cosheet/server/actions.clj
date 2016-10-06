@@ -424,7 +424,9 @@
                            :text (:text alternate)}))))
             (dissoc result :store)))
         (println "No context for action:" action-type attributes))
-      (println "unhandled action type:" action-type))))
+      (do
+        (reset! (:alternate session-state) nil) 
+        (println "unhandled action type:" action-type)))))
 
 (defn do-alternate-contextual-action
   "Do the alternate interpretation of the recorded contextual action."
@@ -478,7 +480,8 @@
                     (into client-info
                           (select-keys for-client [:select :open]))))
                 {} action-sequence)]
-    (if-let [alternate-text (:text @(:alternate session-state))]
+    (if-let [alternate-text (or (:text @(:alternate session-state))
+                                ["Please " "Click me!"])]
       (assoc for-client :alternate-text alternate-text)
       for-client)))
 

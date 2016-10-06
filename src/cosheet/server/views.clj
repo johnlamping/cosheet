@@ -246,6 +246,10 @@
         [:div.tooltip "add column right"]]]
       [:div#app "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
+      [:div#alternate_interpretation_holder {}
+       [:div " "]
+       [:div#alternate_interpretation " "]
+       [:div " "]]
       [:script "cosheet.client.run();"]])))
 
 ;;; The parameters for the ajax request and response are:
@@ -265,19 +269,22 @@
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
 ;;; response:
-;;;        :reload The server has no record of the session. The page
-;;;                should request a reload.
-;;;          :doms A list of hiccup encoded doms of components. Their
-;;;                attributes will include a unique :id and a :version
-;;;                number that will increase for each change of the dom
-;;;                for that id. Inside the doms may be internal components
-;;;                encoded as [:component {<id and other attributes>}].
-;;;        :select A list of an id to select, and a list of only ids
-;;;                that may currently be selected for the command to
-;;;                take effect.
-;;;          :open A url that should be opened in a new window.
-;;;   :acknowledge A vector of action ids of actions that have been
-;;;                performed.
+;;;         :reload The server has no record of the session. The page
+;;;                 should request a reload.
+;;;           :doms A list of hiccup encoded doms of components. Their
+;;;                 attributes will include a unique :id and a :version
+;;;                 number that will increase for each change of the dom
+;;;                 for that id. Inside the doms may be internal components
+;;;                 encoded as [:component {<id and other attributes>}].
+;;;         :select A list of an id to select, and a list of only ids
+;;;                 that may currently be selected for the command to
+;;;                 take effect.
+;;;           :open A url that should be opened in a new window.
+;;; :alternate-text Either nil or a vector of two or three strings
+;;;                 to display in the  alternate interpretation field.
+;;;                 The second string will be the link text.
+;;;    :acknowledge A vector of action ids of actions that have been
+;;;                 performed.
 
 (defn ajax-response [request]
   (let [params (:params request)
@@ -294,8 +301,7 @@
         (println "process acknowledgements" acknowledge)
         (process-acknowledgements tracker acknowledge)
         (let [action-sequence (confirm-actions actions last-action)
-              client-info (when (not (empty? action-sequence))
-                            (do-actions store session-state action-sequence))]
+              client-info (do-actions store session-state action-sequence)]
           (let [new-store (current-store store)]
             (when (not= new-store store)
               (write-store-file new-store name)))
@@ -316,7 +322,7 @@
                               (filter identity
                                       (map (partial key->id tracker)
                                            if-selected))])))
-                answer (cond-> (select-keys client-info [:open])
+                answer (cond-> (select-keys client-info [:open :alternate-text])
                          (> (count doms) 0) (assoc :doms doms)
                          select (assoc :select select)
                          actions (assoc :acknowledge (vec (keys actions))))]

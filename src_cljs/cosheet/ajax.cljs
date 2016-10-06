@@ -7,6 +7,7 @@
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
+                                               set-alternate-field
                                                select selected deselect]]
             ))
 
@@ -145,13 +146,15 @@
   (reset! ajax-request-pending false)
   (when (not= response {})
     (.log js/console (str response))
-    (reset-poll-delay)
+    (when (not= (dissoc response :alternate-text) {})
+      (reset-poll-delay))
     (if (:reload response)
       (js/location.reload)
       (let [previously-selected-id (and @selected (.-id @selected))]
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.
         (handle-ajax-select response previously-selected-id)
+        (set-alternate-field (:alternate-text response))
         (handle-ajax-open response)
         (process-response-for-pending response)
         (ajax-if-pending))))

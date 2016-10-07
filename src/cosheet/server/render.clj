@@ -64,6 +64,8 @@
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
+ :is-selector  ; If true, this dom is a selector, which affects what
+               ; new elements should look like.
    ])
 
 ;;; The value of the style attribute is represented with its own map,

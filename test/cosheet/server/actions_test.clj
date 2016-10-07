@@ -303,34 +303,66 @@
 
 (deftest do-actions-test
   (let [mutable-store (new-mutable-store store)
-        tracker (new-dom-tracker mutable-store)]
+        tracker (new-dom-tracker mutable-store)
+        session-state {:tracker tracker
+                       :alternate (atom nil)}
+        attributes {:commands {:add-element nil}
+                    :target {:item-referent
+                             (item-referent jane)
+                             :alternate {:item-referent (item-referent joe)
+                                         :text ["Please" "Click me!"]}}}]
     (swap! tracker update-set-component
            {:key ["jane"]
             :definition [(fn [& _] [:div])]
-            :attributes {:commands {:add-element nil}
-                         :target {:item-referent
-                                  (item-referent jane)}}})
-    (let [result (do-actions mutable-store {:tracker tracker
-                                            :alternate (atom nil)}
-                             [[:add-element (key->id tracker ["jane"])]])]
-      (let [new-store (current-store mutable-store)
-            select (:select result)
-            new-id (last (first select))]
-        (is (= select [["jane" new-id] [["jane"]]]))
+            :attributes attributes})
+    (let [result (do-actions mutable-store session-state
+                             [[:add-element (key->id tracker ["jane"])]])
+          new-store (current-store mutable-store)
+          select (:select result)
+          new-id (last (first select))
+          alternate @(:alternate session-state)
+          alternate-target (:alternate (:target attributes))]
+      (is (check alternate
+                 {:new-store new-store
+                  :action [do-add-element
+                           alternate-target
+                           (assoc attributes :target-key ["jane"])]
+                  :text ["Please" "Click me!"]}))
+      (is (= select [["jane" new-id] [["jane"]]]))
+      (is (check (item->canonical-semantic
+                  (description->entity (:item-id jane) new-store))
+                 (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
+      (is (= (immutable-semantic-to-list
+              (description->entity new-id new-store))
+             ""))
+      ;; Check undo redo.
+      (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+                  [[:undo]])
+      (is (check (current-store mutable-store)
+                 (assoc store :modified-ids #{})))
+      ;; Check that alternate does nothing if the store isn't what it expects.
+      (reset! (:alternate session-state) alternate)
+      (do-actions mutable-store session-state [[:alternate]])
+      ;; Check redo.
+      (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+                  [[:redo]])
+      (is (check (current-store mutable-store) new-store))
+      ;; Check alternate.
+      (reset! (:alternate session-state) alternate)
+      (let [result (do-actions mutable-store session-state [[:alternate]])
+            alternate-store (current-store mutable-store)]
         (is (check (item->canonical-semantic
-                    (description->entity (:item-id jane) new-store))
-                   (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
-        (is (= (immutable-semantic-to-list
-                (description->entity new-id new-store))
-               ""))
-        ;; Check undo and redo.
-        (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
-                    [[:undo]])
-        (is (check (current-store mutable-store)
-                   (assoc store :modified-ids #{})))
-        (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
-                    [[:redo]])
-        (is (check (current-store mutable-store) new-store))))))
+                    (description->entity (:item-id jane) alternate-store))
+                   (canonicalize-list '("Jane" "female" (45 ("age" :tag))))))
+        (is (check (item->canonical-semantic
+                    (description->entity (:item-id joe) alternate-store))
+                   (canonicalize-list '("Joe"
+                                        "male" 
+                                        (39 ("age" :tag)
+                                            ("doubtful" "confidence"))
+                                        "married"
+                                        (45 ("age" :tag))
+                                        ""))))))))
 
 (deftest confirm-actions-test
   (let [last (atom nil)]

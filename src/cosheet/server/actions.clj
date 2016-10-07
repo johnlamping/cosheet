@@ -6,6 +6,7 @@
                    swap-control-return! replace-in-seqs]]
     [orderable :refer [split earlier?]]
     [store :refer [update-content add-simple-element
+                   fetch-and-clear-modified-ids
                    do-update-control-return! revise-update-control-return!
                    id->subject id-valid? undo! redo! current-store]]
     [store-impl :refer [get-unique-id-number]]
@@ -418,9 +419,11 @@
                                               orig-referent initial-store))
                                         (set (instantiate-to-items
                                               alt-referent initial-store))))
-                          {:new-store (:store result)
+                          {:new-store (first (fetch-and-clear-modified-ids
+                                              (:store result)))
                            :action [handler
-                                    (into context alternate) attributes]
+                                    (into (dissoc context :alternate) alternate)
+                                    (dissoc attributes :session-state)]
                            :text (:text alternate)}))))
             (dissoc result :store)))
         (println "No context for action:" action-type attributes))
@@ -434,10 +437,12 @@
   (when-let [alternate @(:alternate session-state)]
     (println "doing alternate.")
     (let [{:keys [new-store action]} alternate
+          [handler context attributes] action
           result (apply do-storage-update-action
                   (partial revise-update-control-return!
                            mutable-store new-store)
-                  action)]
+                  [handler context (assoc attributes
+                                          :session-state session-state)])]
       (dissoc result :store))))
 
 (defn do-undo

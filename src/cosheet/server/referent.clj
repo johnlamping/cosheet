@@ -41,9 +41,9 @@
 ;;;                  whose semantic information is the same as that of
 ;;;                  the item.
 ;;;        elements  [:elements <condition> <sequence-referent>]
-;;;                  For each item refered to by sequence-referent,
-;;;                  refers to the group of elements of it each of whose
-;;;                  semantic information matches the condition.
+;;;                  For each group refered to by sequence-referent,
+;;;                  refers to the group of all elements of its items
+;;;                  whose semantic information matches the condition.
 ;;;           query  [:query <condition>]
 ;;;                  Refers to the group of items that satisfies the condition.
 ;;;           union  [:union  <referent> ...]
@@ -175,6 +175,24 @@
   [referent]
   (cond (item-referent? referent) [referent nil]
         (exemplar-referent? referent) (rest referent)))
+
+(defn first-group-referent
+  "Given a referent, return a referent whose instantiation
+  is just the first group of the instantiation of the referent"
+  [referent]
+  (case (referent-type referent)
+    :item referent
+    :exemplar (let [[_ exemplar subject] referent]
+                    (exemplar-referent exemplar (first-group-referent subject)))
+    :elements (let [[_ condition subject] referent]
+                (elements-referent condition (first-group-referent subject)))
+    :query referent
+    :union (let [[_ & referents] referent]
+             (first referents))
+    :parallel-union (let [[_ & referents] referent]
+                      (parallel-union-referent
+                       (map first-group-referent referents)))
+    :difference referent))
 
 ;;; The string format of a referent is
 ;;;     for item referents: I<the digits of their id>
@@ -430,8 +448,9 @@
     :elements (let [[_ condition subject] referent
                     condition (template-to-condition
                                (condition-to-list condition immutable-store))]
-                (map #(matching-elements condition %)
-                     (instantiate-to-items subject immutable-store)))
+                (map (fn [group] (mapcat #(matching-elements condition %)
+                                         group))
+                     (instantiate-referent subject immutable-store)))
     :query (let [[_ condition] referent
                  condition (template-to-condition
                             (condition-to-list condition immutable-store))]
@@ -449,6 +468,7 @@
                   [(remove
                     (set (instantiate-to-items minus immutable-store))
                     (instantiate-to-items plus immutable-store))])))
+
 
 
  

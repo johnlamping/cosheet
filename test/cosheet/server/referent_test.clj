@@ -111,60 +111,81 @@
          (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
 
 (deftest instantiate-referent-test
-  (is (= (instantiate-referent (item-referent joe) store) [[joe]]))
-  (is (= (instantiate-referent
-          (exemplar-referent joe-age (item-referent jane)) store)
-         [[jane-age]]))
-  (is (check (instantiate-referent
-              (elements-referent '(nil ("age" tag)) (item-referent joe)) store)
-             [(as-set [joe-age joe-bogus-age])]))
-  (is (check (instantiate-referent (query-referent '(nil (nil "age"))) store)
-             [(as-set [joe jane])]))
-  (is (check (instantiate-referent
-              (exemplar-referent joe-age
-                                 (query-referent '(nil (nil "age")))) store)
-             [(as-set [joe-age jane-age])]))
+  ;; This also tests first-group-referent
+  (let [referent (item-referent joe)]
+    (is (= (instantiate-referent referent store) [[joe]]))
+    (is (= [(first (instantiate-referent referent store))]
+           (instantiate-referent (first-group-referent referent) store))))
+  (let [referent (exemplar-referent joe-age (item-referent jane))]
+    (is (= (instantiate-referent referent store)
+           [[jane-age]]))
+    (is (= [(first (instantiate-referent referent store))]
+           (instantiate-referent (first-group-referent referent) store))))
+  (let [referent (elements-referent '(nil ("age" tag)) (item-referent joe))]
+    (is (check (instantiate-referent referent store)
+               [(as-set [joe-age joe-bogus-age])]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
+  (let [referent (query-referent '(nil (nil "age")))]
+    (is (check (instantiate-referent referent store)
+               [(as-set [joe jane])]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
+  (let [referent (exemplar-referent joe-age
+                                    (query-referent '(nil (nil "age"))))]
+    (is (check (instantiate-referent referent store)
+               [(as-set [joe-age jane-age])]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
   ;; An elements referent with an item for its condition.
   (is (check (instantiate-referent
               (elements-referent age-condition-id
                                  (query-referent '(nil (nil "age")))) store)
-             (as-set [(as-set [joe-age joe-bogus-age])
-                      [jane-age]])))
-  (is (check (instantiate-referent
-              (union-referent
+             [(as-set [joe-age joe-bogus-age jane-age])]))
+  (let [referent (union-referent
                [(item-referent joe-age)
                 (elements-referent '(nil "age") (item-referent jane))
-                (query-referent '(nil (nil "age")))]) store)
-             (as-set [[joe-age] [jane-age] (as-set [joe jane])])))
+                (query-referent '(nil (nil "age")))])]
+    (is (check (instantiate-referent referent store)
+               (as-set [[joe-age] [jane-age] (as-set [joe jane])])))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
   ;; Exemplar of union
-  (is (check (instantiate-referent
-              (exemplar-referent joe-age
-                                 (union-referent [(item-referent joe)
-                                                  (item-referent jane)])) store)
-             (as-set [[joe-age] [jane-age]])))
-  (is (check (instantiate-referent
-              (difference-referent (query-referent '(nil (nil "age")))
-                                   (item-referent joe)) store)
-             [[jane]]))
+  (let [referent (exemplar-referent joe-age
+                                    (union-referent [(item-referent joe)
+                                                     (item-referent jane)]))]
+    (is (check (instantiate-referent referent store)
+               (as-set [[joe-age] [jane-age]])))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
+  (let [referent (difference-referent (query-referent '(nil (nil "age")))
+                                      (item-referent joe))]
+    (is (check (instantiate-referent referent store)
+               [[jane]]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
   ;; Exemplar of union of elements
-  (is (check (instantiate-referent
-              (exemplar-referent
+  (let [referent (exemplar-referent
                (item-referent joe-age-tag)
                (union-referent [(elements-referent 45 (item-referent joe))
-                                (elements-referent 45 (item-referent jane))]))
-              store)
-             (as-set [[joe-age-tag] [jane-age-tag]])))
+                                (elements-referent 45 (item-referent jane))]))]
+    (is (check (instantiate-referent referent store)
+               [[joe-age-tag] [jane-age-tag]]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
   ;; Union of non-trivial sequences
-  (is (check (instantiate-referent
-              (union-referent
-               [(elements-referent 45 (query-referent '(nil (nil "age"))))
-                (elements-referent 39 (query-referent '(nil (nil "age"))))])
-              store)
-             (as-set [(as-set [joe-age jane-age]) [joe-bogus-age]])))
+  (let [referent (union-referent
+                  [(elements-referent 45 (query-referent '(nil (nil "age"))))
+                   (elements-referent 39 (query-referent '(nil (nil "age"))))])]
+    (is (check (instantiate-referent referent store)
+               (as-set [(as-set [joe-age jane-age]) [joe-bogus-age]])))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store))))
   ;; Corresponding parallel union
-  (is (check (instantiate-referent
-              (parallel-union-referent
-               [(elements-referent 45 (query-referent '(nil (nil "age"))))
-                (elements-referent 39 (query-referent '(nil (nil "age"))))])
-              store)
-             (as-set [(as-set [joe-age joe-bogus-age]) [jane-age]]))))
+  (let [union-ref (union-referent [(item-referent joe) (item-referent jane)])
+        referent (parallel-union-referent [(elements-referent 45 union-ref)
+                                           (elements-referent 39 union-ref)])]
+    (is (check (instantiate-referent referent store)
+               [(as-set [joe-age joe-bogus-age]) [jane-age]]))
+    (is (check [(first (instantiate-referent referent store))]
+               (instantiate-referent (first-group-referent referent) store)))))

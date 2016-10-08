@@ -133,7 +133,7 @@
 (defn union-referent
   "Create a union referent."
   [referents]
-  (for [referent referents]
+  (doseq [referent referents]
     (assert (referent? referent)))
   (vec (cons :union referents)))
 
@@ -147,7 +147,7 @@
 (defn parallel-union-referent
   "Create a referent for the parallel union of the referents."
   [referents]
-  (for [referent referents]
+  (doseq [referent referents]
     (assert (referent? referent)))
   (if (= (count referents) 1)
     (first referents)

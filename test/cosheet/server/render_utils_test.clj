@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet
+             [store :refer [make-id]]
              [entity :as entity  :refer [to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
@@ -9,7 +10,8 @@
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])
             (cosheet.server
-             [render-utils :refer :all])
+             [render-utils :refer :all]
+             [referent :refer [elements-referent union-referent]])
             ; :reload
             ))
 
@@ -44,3 +46,35 @@
                     (expr-seq map to-list
                               (condition-satisfiers-R test '(nil :a :a :b)))))
              [:a])))
+
+(deftest add-alternate-to-target-test
+  (let [ia (make-id "a")
+        ib (make-id "b")
+        ref (union-referent [ia ib])
+        subject (elements-referent '(nil :x) ref)]
+    (is (check (add-alternate-to-target {:item-referent ref} {})
+               {:item-referent ref}))
+    (is (check (add-alternate-to-target {:item-referent ref}
+                                        {:alternate {:scope :narrow
+                                                     :text ["Click" "me!"]}})
+               {:item-referent ref
+                :alternate {:item-referent ia
+                            :text ["Click" "me!"]}}))
+    (is (check (add-alternate-to-target {:item-referent ref
+                                         :subject-referent subject
+                                         :adjacent-referent ref
+                                         :adjacent-groups-referent subject
+                                         :other :foo}
+                                        {:alternate {:scope :broad
+                                                     :text ["Click" "me!"]}})
+               {:item-referent ia
+                :subject-referent (elements-referent '(nil :x) ia)
+                :adjacent-referent ia
+                :adjacent-groups-referent (elements-referent '(nil :x) ia)
+                :other :foo
+                :alternate {:item-referent ref
+                            :subject-referent subject
+                            :adjacent-referent ref
+                            :adjacent-groups-referent subject
+                            :text ["Click" "me!"]}})))
+  )

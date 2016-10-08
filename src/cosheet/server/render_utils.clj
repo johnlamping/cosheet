@@ -8,7 +8,8 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
-             [hierarchy :refer [canonical-info]])))
+             [hierarchy :refer [canonical-info]]
+             [referent :refer [first-group-referent]])))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -106,3 +107,28 @@
         (if (sequential? attributes) attributes (repeat attributes))
         (if (sequential? inherited) inherited (repeat inherited)))
    :class "item-stack"))
+
+(defn add-alternate-to-target
+  "Given the map for a target, and inherited information, change the target
+  to have alternate if the inherited information says to."
+  [target inherited]
+  (if-let [alternate (:alternate inherited)]
+    (let [{:keys [scope text]} alternate]
+      (assert #{:narrow :broad} scope)
+      (assert text)
+      (reduce (fn [target key]
+                (let [ref (target key)
+                      narrow-ref (first-group-referent ref)
+                      [main-ref alt-ref] (if (= scope :broad)
+                                           [narrow-ref ref]
+                                           [ref narrow-ref])]
+                  (-> target
+                      (assoc key main-ref)
+                      (assoc-in [:alternate key] alt-ref))))
+              (assoc-in target [:alternate :text] text)
+              (filter #{:item-referent
+                        :adjacent-referent
+                        :adjacent-groups-referent
+                        :subject-referent}
+                      (keys target))))
+    target))

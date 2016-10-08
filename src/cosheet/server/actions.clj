@@ -381,7 +381,10 @@
     :expand [do-expand :expand :target]}
    action))
 
-;;; TODO: Add tests for setting alternate, and running it.
+(defn target-referent
+  [target]
+  ((some-fn :item-referent :adjacent-referent :adjacent-groups-referent)
+   target))
 
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
@@ -411,14 +414,12 @@
                         handler context attributes)]
             (reset! (:alternate session-state)
                     (when-let [alternate (:alternate context)]
-                      (let [orig-referent (:item-referent context)
-                            alt-referent (:item-referent alternate)]
-                        (when (or (not orig-referent)
-                                  (not alt-referent)
-                                  (not= (set (instantiate-to-items
-                                              orig-referent initial-store))
-                                        (set (instantiate-to-items
-                                              alt-referent initial-store))))
+                      (let [orig-referent (target-referent context)
+                            alt-referent (target-referent alternate)]
+                        (when (not= (set (instantiate-to-items
+                                          orig-referent initial-store))
+                                    (set (instantiate-to-items
+                                          alt-referent initial-store)))
                           {:new-store (first (fetch-and-clear-modified-ids
                                               (:store result)))
                            :action [handler

@@ -15,7 +15,7 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
-             [render-utils :refer [virtual-item-DOM
+             [render-utils :refer [virtual-item-DOM add-alternate-to-target
                                    vertical-stack item-stack-DOM
                                    order-items-R condition-satisfiers-R]])))
 
@@ -49,7 +49,9 @@
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:sibling (hierarchy-add-adjacent-target hierarchy-node inherited)}))))
+       % {:sibling (add-alternate-to-target
+                    (hierarchy-add-adjacent-target hierarchy-node inherited)
+                    inherited)}))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -77,8 +79,10 @@
         (virtual-item-DOM key (into-attributes
                                inherited-down
                                {:selectable-attributes
-                                {:target {:adjacent-referent adjacent-referent
-                                          :position :before}}})))
+                                {:target (add-alternate-to-target
+                                          {:adjacent-referent adjacent-referent
+                                           :position :before}
+                                          inherited-down)}})))
       (let [items (map :item members)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -111,9 +115,8 @@
         tags-parent-key (conj (:parent-key inherited)
                               (:item-id (:item example-descendant))
                               :outside)
-        inherited-for-tags (assoc (into (add-adjacent-sibling-command
-                                         hierarchy-node inherited)
-                                        (select-keys inherited [:row :column]))
+        inherited-for-tags (assoc (add-adjacent-sibling-command
+                                   hierarchy-node inherited)
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
                                   :subject items-referent)]
@@ -123,8 +126,10 @@
                                  (into-attributes
                                   inherited-for-tags
                                   {:selectable-attributes
-                                   {:target {:adjacent-referent items-referent
-                                             :position :after}}}))
+                                   {:target (add-alternate-to-target
+                                             {:adjacent-referent items-referent
+                                              :position :after}
+                                             inherited-for-tags)}}))
                (hierarchy-properties-DOM-R
                 item-without-labels-DOM-R
                 hierarchy-node {:class "tag"} inherited-for-tags))]
@@ -333,8 +338,10 @@
                      is-placeholder (str " placeholder")
                      anything (str " anything")
                      immutable (str " immutable"))
-            :target (assoc (select-keys inherited [:template])
-                           :item-referent item-referent)})
+            :target (add-alternate-to-target
+                     (assoc (select-keys inherited [:template])
+                            :item-referent item-referent)
+                     inherited)})
      (cond anything "..."
            is-placeholder "???"                     
            true (str content))]))
@@ -385,8 +392,10 @@
                             (into-attributes
                              inherited-for-tags
                              {:selectable-attributes
-                              {:target {:adjacent-referent item-referent
-                                        :position :after}}}))
+                              {:target (add-alternate-to-target
+                                        {:adjacent-referent item-referent
+                                         :position :after}
+                                        inherited)}}))
           {:class "tag"})
          dom]
         (expr-let [ordered-labels (order-items-R label-elements)

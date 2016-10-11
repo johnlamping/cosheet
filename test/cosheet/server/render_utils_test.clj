@@ -55,26 +55,6 @@
     (is (check (add-alternate-to-target {:item-referent ref} {})
                {:item-referent ref}))
     (is (check (add-alternate-to-target {:item-referent ref}
-                                        {:alternate {:scope :narrow
-                                                     :text ["Click" "me!"]}})
+                                        {:narrow-alternate :some-alternate})
                {:item-referent ref
-                :alternate {:item-referent ia
-                            :text ["Click" "me!"]}}))
-    (is (check (add-alternate-to-target {:item-referent ref
-                                         :subject-referent subject
-                                         :adjacent-referent ref
-                                         :adjacent-groups-referent subject
-                                         :other :foo}
-                                        {:alternate {:scope :broad
-                                                     :text ["Click" "me!"]}})
-               {:item-referent ia
-                :subject-referent (elements-referent '(nil :x) ia)
-                :adjacent-referent ia
-                :adjacent-groups-referent (elements-referent '(nil :x) ia)
-                :other :foo
-                :alternate {:item-referent ref
-                            :subject-referent subject
-                            :adjacent-referent ref
-                            :adjacent-groups-referent subject
-                            :text ["Click" "me!"]}})))
-  )
+                :narrow-alternate :some-alternate}))))

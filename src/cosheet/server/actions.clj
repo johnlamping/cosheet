@@ -21,7 +21,8 @@
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent instantiate-to-items
                       referent->string referent?
-                      item-referent semantic-elements-R]])))
+                      item-referent first-group-referent
+                      semantic-elements-R]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -298,6 +299,7 @@
 
 (defn do-set-content
   [store context attributes]
+  (println "setting content" (simplify-for-print context) (simplify-for-print (dissoc attributes :session-state)))
   ;; TODO: Handle deleting.
   (let [{:keys [target-key from to immutable]} attributes
         referent (:item-referent context)]
@@ -381,10 +383,42 @@
     :expand [do-expand :expand :target]}
    action))
 
-(defn target-referent
-  [target]
+(defn context-referent
+  [context]
   ((some-fn :item-referent :adjacent-referent :adjacent-groups-referent)
-   target))
+   context))
+
+(defn narrow-referents
+  "Given a context, adjust all its referents to be their narrow versions."
+  [context]
+  (reduce (fn [context key]
+            (update context key #(first-group-referent %)))
+          context
+          (filter #{:item-referent
+                    :adjacent-referent
+                    :adjacent-groups-referent
+                    :subject-referent}
+                  (keys context))))
+
+(defn alternate-contexts
+  "Given the session state and a context, return a vector of the default context
+  to use, and the alternate context, if any. Also return the text to show the
+  user to give them the chance to ask for the alternate context"
+  [session-state context]
+  (or
+   (if-let [alternate (:narrow-alternate context)]
+     (let [context (dissoc context :narrow-alternate)
+           narrow-context (narrow-referents context)
+           store (current-store (:store session-state))]
+       (if (not= (set (instantiate-to-items
+                       (context-referent context) store))
+                 (set (instantiate-to-items
+                       (context-referent narrow-context) store)))
+         ;; TODO: Put real test here.
+         (if true
+           [context narrow-context (:broad-text alternate)]
+           [narrow-context context (:narrow-text alternate)]))))
+   [context nil nil]))
 
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
@@ -408,28 +442,22 @@
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
-          (let [initial-store (current-store mutable-store)
+          (let [[context alternate-context text] (alternate-contexts
+                                                  session-state context)
                 result (do-storage-update-action
-                        (partial do-update-control-return! mutable-store)
-                        handler context attributes)]
+                           (partial do-update-control-return! mutable-store)
+                           handler context attributes)]
             (reset! (:alternate session-state)
-                    (when-let [alternate (:alternate context)]
-                      (let [orig-referent (target-referent context)
-                            alt-referent (target-referent alternate)]
-                        (when (not= (set (instantiate-to-items
-                                          orig-referent initial-store))
-                                    (set (instantiate-to-items
-                                          alt-referent initial-store)))
-                          {:new-store (first (fetch-and-clear-modified-ids
-                                              (:store result)))
-                           :action [handler
-                                    (into (dissoc context :alternate) alternate)
-                                    (dissoc attributes :session-state)]
-                           :text (:text alternate)}))))
+                    (when alternate-context
+                      {:new-store (first (fetch-and-clear-modified-ids
+                                          (:store result)))
+                       :action [handler
+                                alternate-context
+                                (dissoc attributes :session-state)]
+                       :text text}))
             (dissoc result :store)))
         (println "No context for action:" action-type attributes))
-      (do
-        (reset! (:alternate session-state) nil) 
+      (do 
         (println "unhandled action type:" action-type)))))
 
 (defn do-alternate-contextual-action
@@ -486,8 +514,7 @@
                     (into client-info
                           (select-keys for-client [:select :open]))))
                 {} action-sequence)]
-    (if-let [alternate-text (or (:text @(:alternate session-state))
-                                ["Please " "Click me!"])]
+    (if-let [alternate-text (:text @(:alternate session-state))]
       (assoc for-client :alternate-text alternate-text)
       for-client)))
 

@@ -300,32 +300,38 @@
           (reset! last-action nil))
         (println "process acknowledgements" acknowledge)
         (process-acknowledgements tracker acknowledge)
-        (let [action-sequence (confirm-actions actions last-action)
-              client-info (do-actions store session-state action-sequence)]
-          (let [new-store (current-store store)]
-            (when (not= new-store store)
-              (write-store-file new-store name)))
-          (compute manager-data 4000)
-          (check-propagation-if-quiescent tracker)
-          ;; Note: We must get the doms after doing the actions, so we can
-          ;; immediately show the response to the actions. Likewise, we
-          ;; have to pass down select requests after the new dom has been
-          ;; constructed, so the client has the dom we want it to select.      
-          (let [doms (response-doms @tracker 10)
-                select (let [[select if-selected] (:select client-info)]
-                         (when select
-                           (let [select-id
-                                 ;; If there is a content item, select that.
-                                 (or (key->id tracker (conj select :content))
-                                     (key->id tracker select))]
-                             [select-id
-                              (filter identity
-                                      (map (partial key->id tracker)
-                                           if-selected))])))
-                answer (cond-> (select-keys client-info [:open :alternate-text])
-                         (> (count doms) 0) (assoc :doms doms)
-                         select (assoc :select select)
-                         actions (assoc :acknowledge (vec (keys actions))))]
-            (println "response" answer)
-            (response answer))))
+        (let [action-sequence (confirm-actions actions last-action)]
+          (when (and (not-any? #{[:alternate]} action-sequence)
+                     (not (empty? action-sequence))
+                     (empty? acknowledge))
+            (println "resetting alternate" action-sequence acknowledge)
+            (reset! (:alternate session-state) nil))
+          (let [client-info (do-actions store session-state action-sequence)]
+            (let [new-store (current-store store)]
+              (when (not= new-store store)
+                (write-store-file new-store name)))
+            (compute manager-data 4000)
+            (check-propagation-if-quiescent tracker)
+            ;; Note: We must get the doms after doing the actions, so we can
+            ;; immediately show the response to the actions. Likewise, we
+            ;; have to pass down select requests after the new dom has been
+            ;; constructed, so the client has the dom we want it to select.
+            (let [doms (response-doms @tracker 10)
+                  select (let [[select if-selected] (:select client-info)]
+                           (when select
+                             (let [select-id
+                                   ;; If there is a content item, select that.
+                                   (or (key->id tracker (conj select :content))
+                                       (key->id tracker select))]
+                               [select-id
+                                (filter identity
+                                        (map (partial key->id tracker)
+                                             if-selected))])))
+                  answer (cond-> (select-keys client-info [:open
+                                                           :alternate-text])
+                           (> (count doms) 0) (assoc :doms doms)
+                           select (assoc :select select)
+                           actions (assoc :acknowledge (vec (keys actions))))]
+              (println "response" answer)
+              (response answer)))))
       (response {:reload true}))))

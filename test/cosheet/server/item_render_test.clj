@@ -39,15 +39,18 @@
   ;; Test a simple cell
   (let [[dom fred] (let-mutated [fred "Fred"]
                      (let [my-inherited
-                           (assoc
-                            base-inherited :selectable-attributes
-                            {:expand {:item-referent (item-referent fred)}})]
+                           (assoc base-inherited
+                                  :selectable-attributes
+                                  {:expand {:item-referent
+                                            (item-referent fred)}}
+                                  :narrow-alternate :some-alternate)]
                        (expr-let [dom (item-DOM-R fred [] my-inherited)]
                          [dom (item->immutable fred)])))]
     (is (check dom
                [:div {:class "content-text editable item"
                       :key [:root (:item-id fred) :content]
-                      :target {:item-referent (item-referent fred)}
+                      :target {:item-referent (item-referent fred)
+                               :narrow-alternate :some-alternate}
                       :expand {:item-referent (item-referent fred)}}
                 "Fred"]))))
 
@@ -74,7 +77,8 @@
         inherited (into base-inherited
                         {:width 0.5
                          :template "foo"
-                         :selectable-attributes {:added-by-test {1 2}}})
+                         :selectable-attributes {:added-by-test {1 2}}
+                         :narrow-alternate :some-alternate})
         [dom age] (let-mutated [age age-as-list]
                     (expr-let [dom (item-DOM-R age [] inherited)]
                       [dom age]))
@@ -106,7 +110,8 @@
           [:div {:class "content-text editable"
                  :key (conj age-key :content)
                  :target {:item-referent (item-referent age)
-                          :template "foo"}
+                          :template "foo"
+                          :narrow-alternate :some-alternate}
                  :added-by-test {1 2}}
            "39"]
           [:div {:class "stack"}
@@ -123,7 +128,9 @@
                :selectable-attributes
                {:sibling {:subject-referent (item-referent age)
                           :adjacent-groups-referent one-another-two-referent
-                          :parent-key age-key}}}]]
+                          :parent-key age-key
+                          :narrow-alternate :some-alternate}}
+               :narrow-alternate :some-alternate}]]
             [:div {:class "indent-wrapper"}
              [:div {:class "stack"}
               ;; One Another
@@ -139,7 +146,9 @@
                   :selectable-attributes
                   {:sibling {:subject-referent (item-referent age)
                              :adjacent-groups-referent one-another-two-referent
-                             :parent-key age-key}}}]]
+                             :parent-key age-key
+                             :narrow-alternate :some-alternate}}
+                  :narrow-alternate :some-alternate}]]
                ;; Another
                [:component {:key (conj age-key (:item-id another))}
                 [item-without-labels-DOM-R another [(any)]
@@ -159,7 +168,9 @@
                   {:sibling {:subject-referent (item-referent age)
                              :adjacent-groups-referent (item-referent two)
                              :template '(nil ("confidence" :tag))
-                             :parent-key age-key}}}]]
+                             :parent-key age-key
+                             :narrow-alternate :some-alternate}}
+                  :narrow-alternate :some-alternate}]]
                [:div {:class "indent-wrapper"}
                 [:component {:key (conj age-key (:item-id two))}
                  [item-without-labels-DOM-R two (as-set [confidence2 probability])
@@ -173,7 +184,9 @@
                    {:sibling {:subject-referent (item-referent age)
                               :adjacent-groups-referent (item-referent two)
                               :template '(nil ("confidence" :tag))
-                              :parent-key age-key}}}]]]]]]]
+                              :parent-key age-key
+                              :narrow-alternate :some-alternate}}
+                   :narrow-alternate :some-alternate}]]]]]]]
            ;; None
            [:div {:class "horizontal-tags-element narrow"}
             [:div {:class "editable tag"
@@ -181,14 +194,16 @@
                    :target {:subject-referent (item-referent none)
                             :adjacent-referent (item-referent none)
                             :position :after
-                            :template '(nil :tag)}}]
+                            :template '(nil :tag)
+                            :narrow-alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
               {:priority 1
                :width 0.5
                :parent-key age-key
                :subject (item-referent age)
-               :template '(nil)}]]]]]))))
+               :template '(nil)
+               :narrow-alternate :some-alternate}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.

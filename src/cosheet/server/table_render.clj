@@ -312,7 +312,15 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [hierarchy rows-referent inherited]
-  (let [inherited-down (assoc inherited :is-selector true)]
+  (let [inherited-down (assoc
+                        inherited
+                        :is-selector true
+                        :narrow-alternate
+                        {:category :table-header
+                         :broad-text ["Label changed."
+                                     "Change selection instead."]
+                         :narrow-text ["Selection changed."
+                                       "Change label instead."]})]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)

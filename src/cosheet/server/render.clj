@@ -56,12 +56,17 @@
                ;                            key to select part of a new item.
                ;                            Will have at most one of this and
                ;                            :parent-key
-               ; :alternate                 An alternate interpretation of the
-               ;                            target. Will contain different
-               ;                            values of the referents, and a
-               ;                            :text of strings describing the
-               ;                            interpretation, with the second
-               ;                            string being the clickable text.
+               ; :narrow-alternate          Indicates that a narrow
+               ;                            interpretation of the target is
+               ;                            an alternative. Will contain
+               ;                            :narrow-text :broad-text and
+               ;                            :category. The :*-text fields are
+               ;                            vectors of strings to show the user,
+               ;                            with the second being clickable.
+               ;                            The :category field is an atom
+               ;                            describing the context of the
+               ;                            alternative, which will determine
+               ;                            narrow or broad is the default.
      :sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.
@@ -143,16 +148,10 @@
                            ; items must be the selector.
 ;             :immmutable  ; If true, the content of this dom should never
                            ; change.
-;              :alternate  ; If present, there is an alternate interpretation
-                           ; of the referent. It will be a map with two fields,
-                           ; a :scope field will have either
-                           ;   :narrow  the alternate is the
-                           ;            first-group-referent.
-                           ;    :broad  the alternate is the provided referent,
-                           ;            while the main interpretation is
-                           ;            first-group-referent.
-                           ; a :text field gives s vector of strings to
-                           ; describe the alternative, clickable string second.
+;       :narrow-alternate  ; If present, there is an alternate interpretation
+                           ; of the referent. This is a map with the same
+                           ; fields as for the :narrow-alternate attributes
+                           ; of a target.
    })
 
 (defn user-visible-item?

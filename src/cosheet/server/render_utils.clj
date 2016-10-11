@@ -8,8 +8,7 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
-             [hierarchy :refer [canonical-info]]
-             [referent :refer [first-group-referent]])))
+             [hierarchy :refer [canonical-info]])))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -55,6 +54,14 @@
                      canonical-elements elements))))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
+(defn add-alternate-to-target
+  "Given the map for a target, and inherited information, change the target
+  to have a :narrow-alternate if the inherited information says to."
+  [target inherited]
+  (if-let [alternate (:narrow-alternate inherited)]
+    (assoc target :narrow-alternate alternate)
+    target))
+
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must specify a :selectable-attributes :target,
@@ -64,8 +71,10 @@
          (:selectable-attributes inherited)
          {:class "editable"
           :key key
-          :target {:template (:template inherited)
-                   :subject-referent (:subject inherited)}})])
+          :target (add-alternate-to-target
+                   {:template (:template inherited)
+                    :subject-referent (:subject inherited)}
+                   inherited)})])
 
 (defn make-component
   "Make a component dom with the given attributes and definition."
@@ -108,27 +117,3 @@
         (if (sequential? inherited) inherited (repeat inherited)))
    :class "item-stack"))
 
-(defn add-alternate-to-target
-  "Given the map for a target, and inherited information, change the target
-  to have alternate if the inherited information says to."
-  [target inherited]
-  (if-let [alternate (:alternate inherited)]
-    (let [{:keys [scope text]} alternate]
-      (assert #{:narrow :broad} scope)
-      (assert text)
-      (reduce (fn [target key]
-                (let [ref (target key)
-                      narrow-ref (first-group-referent ref)
-                      [main-ref alt-ref] (if (= scope :broad)
-                                           [narrow-ref ref]
-                                           [ref narrow-ref])]
-                  (-> target
-                      (assoc key main-ref)
-                      (assoc-in [:alternate key] alt-ref))))
-              (assoc-in target [:alternate :text] text)
-              (filter #{:item-referent
-                        :adjacent-referent
-                        :adjacent-groups-referent
-                        :subject-referent}
-                      (keys target))))
-    target))

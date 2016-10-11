@@ -305,12 +305,15 @@
   (let [mutable-store (new-mutable-store store)
         tracker (new-dom-tracker mutable-store)
         session-state {:tracker tracker
-                       :alternate (atom nil)}
+                       :alternate (atom nil)
+                       :store mutable-store}
         attributes {:commands {:add-element nil}
                     :target {:item-referent
-                             (item-referent jane)
-                             :alternate {:item-referent (item-referent joe)
-                                         :text ["Please" "Click me!"]}}}]
+                             (union-referent [(item-referent jane)
+                                              (item-referent joe)])
+                             :narrow-alternate
+                             {:broad-text ["Please" "Click me!"]
+                              :narrow-text ["Click me!" "Please"]}}}]
     (swap! tracker update-set-component
            {:key ["jane"]
             :definition [(fn [& _] [:div])]
@@ -321,7 +324,9 @@
           select (:select result)
           new-id (last (first select))
           alternate @(:alternate session-state)
-          alternate-target (:alternate (:target attributes))]
+          alternate-target (-> (:target attributes)
+                               (assoc :item-referent (item-referent jane))
+                               (dissoc :narrow-alternate))]
       (is (check alternate
                  {:new-store new-store
                   :action [do-add-element
@@ -332,6 +337,15 @@
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
                  (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
+      (is (check (item->canonical-semantic
+                    (description->entity (:item-id joe) new-store))
+                   (canonicalize-list '("Joe"
+                                        "male" 
+                                        (39 ("age" :tag)
+                                            ("doubtful" "confidence"))
+                                        "married"
+                                        (45 ("age" :tag))
+                                        ""))))
       (is (= (immutable-semantic-to-list
               (description->entity new-id new-store))
              ""))
@@ -353,7 +367,7 @@
             alternate-store (current-store mutable-store)]
         (is (check (item->canonical-semantic
                     (description->entity (:item-id jane) alternate-store))
-                   (canonicalize-list '("Jane" "female" (45 ("age" :tag))))))
+                   (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id joe) alternate-store))
                    (canonicalize-list '("Joe"
@@ -361,8 +375,7 @@
                                         (39 ("age" :tag)
                                             ("doubtful" "confidence"))
                                         "married"
-                                        (45 ("age" :tag))
-                                        ""))))))))
+                                        (45 ("age" :tag))))))))))
 
 (deftest confirm-actions-test
   (let [last (atom nil)]

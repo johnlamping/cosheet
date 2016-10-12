@@ -312,7 +312,8 @@
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])
                              :narrow-alternate
-                             {:broad-text ["Please" "Click me!"]
+                             {:category :table-header
+                              :broad-text ["Please" "Click me!"]
                               :narrow-text ["Click me!" "Please"]}}}]
     (swap! tracker update-set-component
            {:key ["jane"]

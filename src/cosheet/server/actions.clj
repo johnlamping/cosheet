@@ -414,8 +414,8 @@
                        (context-referent context) store))
                  (set (instantiate-to-items
                        (context-referent narrow-context) store)))
-         ;; TODO: Put real test here.
-         (if true
+         ;; TODO: Make this track last choice.
+         (if (#{:table-header} (:category alternate))
            [context narrow-context (:broad-text alternate)]
            [narrow-context context (:narrow-text alternate)]))))
    [context nil nil]))

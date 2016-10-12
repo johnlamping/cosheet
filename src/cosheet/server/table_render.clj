@@ -510,7 +510,13 @@
                                        [(item-referent row-condition-item)
                                         rows-referent])
                              :template (if condition-is-tags
-                                         '(nil :tag) '(nil))))
+                                         '(nil :tag) '(nil))
+                             :narrow-alternate
+                             {:category :table-condition
+                              :broad-text ["Label changed."
+                                           "Change selection instead."]
+                              :narrow-text ["Selection changed."
+                                            "Change label instead."]}))
              headers (table-header-DOM-R
                       hierarchy rows-referent
                       (assoc inherited

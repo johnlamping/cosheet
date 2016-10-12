@@ -33,25 +33,8 @@ body {
     margin: 0;
 }
 
-/* Repeat selector to give this rule highest specificity */
-.selected.selected.selected.selected.selected.selected {
-    background-image:
-    linear-gradient(to right,
-                    hsla(220, 100%, 55%, 1),
-                    hsla(0, 0%, 100%, 0) 5px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to left,
-                    hsla(220, 100%, 55%, 1),
-                    hsla(0, 0%, 100%, 0) 5px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to bottom,
-                    hsla(220, 100%, 55%, 1),
-                    hsla(0, 0%, 100%, 0) 5px,
-                    hsla(0, 0%, 100%, 0)),
-    linear-gradient(to top,
-                    hsla(220, 100%, 55%, 1),
-                    hsla(0, 0%, 100%, 0) 5px,
-                    hsla(0, 0%, 100%, 0));
+.selected {
+    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
 
 /* In general, if there is a border, there is a matching negative margin

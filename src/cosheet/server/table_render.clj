@@ -314,10 +314,9 @@
   [hierarchy rows-referent inherited]
   (let [inherited-down (assoc
                         inherited
-                        :is-selector true
-                        :narrow-alternate
-                        {:category :table-header
-                         :broad-text ["Label changed."
+                        :selector-category :table-header
+                        :alternate
+                        {:broad-text ["Label changed."
                                      "Change selection instead."]
                          :narrow-text ["Selection changed."
                                        "Change label instead."]})]
@@ -506,14 +505,14 @@
                             condition-elements
                             (assoc
                              inherited
+                             :selector-category :table-condition
                              :subject (union-referent
                                        [(item-referent row-condition-item)
                                         rows-referent])
                              :template (if condition-is-tags
                                          '(nil :tag) '(nil))
-                             :narrow-alternate
-                             {:category :table-condition
-                              :broad-text ["Label changed."
+                             :alternate
+                             {:broad-text ["Label changed."
                                            "Change selection instead."]
                               :narrow-text ["Selection changed."
                                             "Change label instead."]}))

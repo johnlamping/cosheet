@@ -123,10 +123,9 @@
                   :parent-key table-key
                   :subject first-column-referent
                   :template '(nil :tag)
-                  :is-selector true
-                  :narrow-alternate
-                  {:category :table-header
-                   :broad-text ["Label changed." "Change selection instead."]
+                  :selector-category :table-header
+                  :alternate
+                  {:broad-text ["Label changed." "Change selection instead."]
                    :narrow-text ["Selection changed." "Change label instead."]}
                   :selectable-attributes
                   {:delete {:item-referent (item-referent c1)}

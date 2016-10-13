@@ -326,12 +326,11 @@
         anything (#{'anything 'anything-immutable} content)
         immutable (= content 'anything-immutable)
         template (contains? inherited :template)
-        is-selector (:is-selector inherited)]    
+        selector-category (:selector-category inherited)]    
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
-           (into-attributes (cond-> {}
-                              is-selector (assoc :is-selector true)
+           (into-attributes (cond-> (select-keys inherited [:selector-category])
                               immutable (assoc :immutable true))
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"

@@ -43,14 +43,14 @@
                                   :selectable-attributes
                                   {:expand {:item-referent
                                             (item-referent fred)}}
-                                  :narrow-alternate :some-alternate)]
+                                  :alternate :some-alternate)]
                        (expr-let [dom (item-DOM-R fred [] my-inherited)]
                          [dom (item->immutable fred)])))]
     (is (check dom
                [:div {:class "content-text editable item"
                       :key [:root (:item-id fred) :content]
                       :target {:item-referent (item-referent fred)
-                               :narrow-alternate :some-alternate}
+                               :alternate :some-alternate}
                       :expand {:item-referent (item-referent fred)}}
                 "Fred"]))))
 
@@ -78,7 +78,8 @@
                         {:width 0.5
                          :template "foo"
                          :selectable-attributes {:added-by-test {1 2}}
-                         :narrow-alternate :some-alternate})
+                         :selector-category :some-category
+                         :alternate :some-alternate})
         [dom age] (let-mutated [age age-as-list]
                     (expr-let [dom (item-DOM-R age [] inherited)]
                       [dom age]))
@@ -109,9 +110,10 @@
                 :key age-key}
           [:div {:class "content-text editable"
                  :key (conj age-key :content)
+                 :selector-category :some-category
                  :target {:item-referent (item-referent age)
                           :template "foo"
-                          :narrow-alternate :some-alternate}
+                          :alternate :some-alternate}
                  :added-by-test {1 2}}
            "39"]
           [:div {:class "stack"}
@@ -129,8 +131,9 @@
                {:sibling {:subject-referent (item-referent age)
                           :adjacent-groups-referent one-another-two-referent
                           :parent-key age-key
-                          :narrow-alternate :some-alternate}}
-               :narrow-alternate :some-alternate}]]
+                          :alternate :some-alternate}}
+               :selector-category :some-category
+               :alternate :some-alternate}]]
             [:div {:class "indent-wrapper"}
              [:div {:class "stack"}
               ;; One Another
@@ -147,8 +150,9 @@
                   {:sibling {:subject-referent (item-referent age)
                              :adjacent-groups-referent one-another-two-referent
                              :parent-key age-key
-                             :narrow-alternate :some-alternate}}
-                  :narrow-alternate :some-alternate}]]
+                             :alternate :some-alternate}}
+                  :selector-category :some-category
+                  :alternate :some-alternate}]]
                ;; Another
                [:component {:key (conj age-key (:item-id another))}
                 [item-without-labels-DOM-R another [(any)]
@@ -169,8 +173,9 @@
                              :adjacent-groups-referent (item-referent two)
                              :template '(nil ("confidence" :tag))
                              :parent-key age-key
-                             :narrow-alternate :some-alternate}}
-                  :narrow-alternate :some-alternate}]]
+                             :alternate :some-alternate}}
+                  :selector-category :some-category
+                  :alternate :some-alternate}]]
                [:div {:class "indent-wrapper"}
                 [:component {:key (conj age-key (:item-id two))}
                  [item-without-labels-DOM-R two (as-set [confidence2 probability])
@@ -185,17 +190,19 @@
                               :adjacent-groups-referent (item-referent two)
                               :template '(nil ("confidence" :tag))
                               :parent-key age-key
-                              :narrow-alternate :some-alternate}}
-                   :narrow-alternate :some-alternate}]]]]]]]
+                              :alternate :some-alternate}}
+                   :selector-category :some-category
+                   :alternate :some-alternate}]]]]]]]
            ;; None
            [:div {:class "horizontal-tags-element narrow"}
             [:div {:class "editable tag"
                    :key (conj none-key :outside :tags)
+                   :selector-category :some-category
                    :target {:subject-referent (item-referent none)
                             :adjacent-referent (item-referent none)
                             :position :after
                             :template '(nil :tag)
-                            :narrow-alternate :some-alternate}}]
+                            :alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
               {:priority 1
@@ -203,7 +210,8 @@
                :parent-key age-key
                :subject (item-referent age)
                :template '(nil)
-               :narrow-alternate :some-alternate}]]]]]))))
+               :selector-category :some-category
+               :alternate :some-alternate}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.

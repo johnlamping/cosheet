@@ -56,10 +56,10 @@
 
 (defn add-alternate-to-target
   "Given the map for a target, and inherited information, change the target
-  to have a :narrow-alternate if the inherited information says to."
+  to have a :alternate if the inherited information says to."
   [target inherited]
-  (if-let [alternate (:narrow-alternate inherited)]
-    (assoc target :narrow-alternate alternate)
+  (if-let [alternate (:alternate inherited)]
+    (assoc target :alternate alternate)
     target))
 
 (defn virtual-item-DOM
@@ -68,7 +68,8 @@
   into which we will put the subject and template."
   [key inherited]
   [:div (into-attributes
-         (:selectable-attributes inherited)
+         (into-attributes (:selectable-attributes inherited)
+                          (select-keys inherited [:selector-category]))
          {:class "editable"
           :key key
           :target (add-alternate-to-target

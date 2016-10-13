@@ -329,7 +329,9 @@
       (let [items (apply concat (instantiate-referent target-referent store))
             item (first items)
             [_ subject-ref] (referent->exemplar-and-subject target-referent)
-            subject-ref (or subject-ref (item-referent (subject item)))
+            subject-ref (or subject-ref
+                            (when-let [subject (subject item)]
+                              (item-referent subject)))
             referent (if (and (every? #(= (content %) :tag)
                                       (semantic-elements-R item))
                               subject-ref)
@@ -406,19 +408,19 @@
   return a vector of the default context
   to use, and the alternate context, if any. Also return the text to show the
   user to give them the chance to ask for the alternate context"
-  [session-state action-type context]
+  [session-state action-type context attributes]
   (or
-   (if-let [alternate (and (:narrow-alternate context)
-                           (not= action-type :expand))]
-     (let [context (dissoc context :narrow-alternate)
+   (when-let [alternate (when (not= action-type :expand)
+                          (:alternate context))]
+     (let [context (dissoc context :alternate)
            narrow-context (narrow-referents context)
            store (current-store (:store session-state))]
-       (if (not= (set (instantiate-to-items
-                       (context-referent context) store))
-                 (set (instantiate-to-items
-                       (context-referent narrow-context) store)))
+       (when (not= (set (instantiate-to-items
+                         (context-referent context) store))
+                   (set (instantiate-to-items
+                         (context-referent narrow-context) store)))
          ;; TODO: Make this track last choice.
-         (if (#{:table-header} (:category alternate))
+         (if (#{:table-header} (:selector-category attributes))
            [context narrow-context (:broad-text alternate)]
            [narrow-context context (:narrow-text alternate)]))))
    [context nil nil]))
@@ -447,12 +449,13 @@
           (println "dom attributes: " (simplify-for-print dom-attributes))
           (let [[context alternate-context text] (alternate-contexts
                                                   session-state action-type
-                                                  context)
+                                                  context attributes)
                 result (do-storage-update-action
                            (partial do-update-control-return! mutable-store)
                            handler context attributes)]
             (reset! (:alternate session-state)
                     (when alternate-context
+                      (println "setting non-trivial alternate context." text)
                       {:new-store (first (fetch-and-clear-modified-ids
                                           (:store result)))
                        :action [handler

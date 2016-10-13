@@ -56,17 +56,10 @@
                ;                            key to select part of a new item.
                ;                            Will have at most one of this and
                ;                            :parent-key
-               ; :narrow-alternate          Indicates that a narrow
-               ;                            interpretation of the target is
-               ;                            an alternative. Will contain
-               ;                            :narrow-text :broad-text and
-               ;                            :category. The :*-text fields are
+               ; :alternate                 Will contain :narrow-text and
+               ;                            :broad-text, which hold
                ;                            vectors of strings to show the user,
                ;                            with the second being clickable.
-               ;                            The :category field is an atom
-               ;                            describing the context of the
-               ;                            alternative, which will determine
-               ;                            narrow or broad is the default.
      :sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.
@@ -75,8 +68,9 @@
          :row  ; The row (or virtual new row) that the dom belongs to,
                ; a map with the same keys as :target
       :column  ; The analog of :row for a column.
- :is-selector  ; If true, this dom is a selector, which affects what
-               ; new elements should look like.
+   :selector-category  ; If this dom is a selector, this field
+                       ; will be present,  and hold an atom characterizing
+                       ; the kind of selector.
    ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -139,18 +133,18 @@
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
                            ; of the dom should have, if any. Typically,
                            ; these are targets like row.
-;      :element-attributes : Become :selectable-attributes of elements.
-;            :is-selector  ; If true, this dom represents a selector, which
-                           ; means that new elements should get 'anything
+;      :element-attributes ; Become :selectable-attributes of elements.
+;             :immmutable  ; If true, the content of this dom should never
+                           ; change.
+;       :selector-category ; In addition to giving the category of a selector,
+                           ; this means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,
                            ; and not part of what is selected. When the
                            ; target referent is instantiated, the first group
                            ; items must be the selector.
-;             :immmutable  ; If true, the content of this dom should never
-                           ; change.
-;       :narrow-alternate  ; If present, there is an alternate interpretation
-                           ; of the referent. This is a map with the same
-                           ; fields as for the :narrow-alternate attributes
+;               :alternate ; If present, there is an alternate interpretation
+                           ; of the target. This is a map with the same
+                           ; fields as for the :alternate attributes
                            ; of a target.
    })
 

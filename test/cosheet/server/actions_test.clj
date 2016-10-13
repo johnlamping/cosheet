@@ -308,12 +308,13 @@
                        :alternate (atom nil)
                        :store mutable-store}
         attributes {:commands {:add-element nil}
+                    :selector-category :table-header
                     :target {:item-referent
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])
-                             :narrow-alternate
-                             {:category :table-header
-                              :broad-text ["Please" "Click me!"]
+                             
+                             :alternate
+                             {:broad-text ["Please" "Click me!"]
                               :narrow-text ["Click me!" "Please"]}}}]
     (swap! tracker update-set-component
            {:key ["jane"]
@@ -327,7 +328,7 @@
           alternate @(:alternate session-state)
           alternate-target (-> (:target attributes)
                                (assoc :item-referent (item-referent jane))
-                               (dissoc :narrow-alternate))]
+                               (dissoc :alternate))]
       (is (check alternate
                  {:new-store new-store
                   :action [do-add-element

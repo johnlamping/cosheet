@@ -155,7 +155,9 @@
                     root-item referent
                     (cond-> {}
                       subject (assoc :subject subject)
-                      selector-string (assoc :selector true))]
+                      selector-string (assoc :selector-category
+                                             (string->referent
+                                              selector-string)))]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" (or (and (sequential? definition)
                                      (:key (dom-attributes definition)))

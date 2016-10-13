@@ -338,7 +338,9 @@
       (is (= select [["jane" new-id] [["jane"]]]))
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
-                 (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
+                 (canonicalize-list '("Jane" "female"
+                                      (45 ("age" :tag))
+                                      anything))))
       (is (check (item->canonical-semantic
                     (description->entity (:item-id joe) new-store))
                    (canonicalize-list '("Joe"
@@ -350,7 +352,7 @@
                                         ""))))
       (is (= (immutable-semantic-to-list
               (description->entity new-id new-store))
-             ""))
+             'anything))
       ;; Check undo redo.
       (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
                   [[:undo]])
@@ -369,7 +371,10 @@
             alternate-store (current-store mutable-store)]
         (is (check (item->canonical-semantic
                     (description->entity (:item-id jane) alternate-store))
-                   (canonicalize-list '("Jane" "female" (45 ("age" :tag)) ""))))
+                   (canonicalize-list '("Jane"
+                                        "female"
+                                        (45 ("age" :tag))
+                                        anything))))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id joe) alternate-store))
                    (canonicalize-list '("Joe"

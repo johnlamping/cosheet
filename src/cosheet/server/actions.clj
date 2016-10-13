@@ -250,12 +250,12 @@
 
 (defn do-add-element
   [store context attributes]
-  (let [{:keys [target-key is-selector]} attributes]
+  (let [{:keys [target-key selector-category]} attributes]
     (when-let [subject-referent (:item-referent context)]
       (generic-add store
                    (cond-> {:subject-referent subject-referent
                             :adjacent-referent subject-referent}
-                     is-selector (assoc :nil-to-anything true))
+                     selector-category (assoc :nil-to-anything true))
                    target-key target-key true))))
 
 (defn do-add-twin
@@ -267,7 +267,8 @@
                        target-key)]
         (generic-add store
                      (cond-> context
-                       (:is-selector attributes) (assoc :nil-to-anything true))
+                       (:selector-category attributes)
+                       (assoc :nil-to-anything true))
                      (pop item-key) target-key true)))))
 
 (defn do-add-sibling
@@ -321,7 +322,7 @@
 
 (defn do-expand
   [store context attributes]
-  (let [{:keys [session-state is-selector]} attributes
+  (let [{:keys [session-state selector-category]} attributes
         target-referent (:item-referent context)]
     (when (referent? target-referent)
       ;; If the target is a single item with no elements, switch the target
@@ -340,7 +341,8 @@
         {:store store
          :open (cond-> (str (:name session-state)
                             "?referent=" (referent->string referent))
-                 is-selector (str "&selector=true"))}))))
+                 selector-category
+                 (str "&selector=" (referent->string selector-category)))}))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client

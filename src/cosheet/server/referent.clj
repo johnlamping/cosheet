@@ -242,14 +242,22 @@
           (when (not-any? nil? member-strings)
             (str "L" (apply str member-strings) "l")))))
 
+(defn- add-to-partial
+  "Add an entity to the partial referent."
+  [entity partial-referent]
+  (if (vector? partial-referent)
+    (conj partial-referent entity)
+    (apply list (concat partial-referent [entity]))))
+
 (defn string->referent
   "Parse a string representation of a referent.
   Return or nil if the string is not a valid representation of a referent."
   [rep]
   (loop [index 0 ; Next index in the string to look at
          partial-referent [:start] ; The referent we are constructing
-         pending-partials nil] ; Partial referents the current one
-                               ; is embedded in
+         pending-partials nil ; Partial referents the current one
+                              ; is embedded in.
+         ]
     (if (= index (count rep))
       (when (and (= (count partial-referent) 2)
                  (empty? pending-partials))
@@ -278,19 +286,16 @@
                 (when number
                   (let [id (->ItemId number)]
                     (recur (+ index (inc (count digits)))
-                           (if (vector? partial-referent)
-                             (conj partial-referent id)
-                             (apply list (concat partial-referent [id])))
+                           (add-to-partial id partial-referent)
                            pending-partials))))
               (= first-letter \K)
               (let [delimiter (nth rep (inc index))
                     end-index (clojure.string/index-of
                                rep delimiter (+ index 2))]
-                (when (and end-index
-                           (list? partial-referent))
+                (when (and end-index)
                   (let [keyword (keyword (subs rep (+ index 2) end-index))]
                     (recur (inc end-index)
-                           (apply list (concat partial-referent [keyword]))
+                           (add-to-partial keyword partial-referent)
                            pending-partials))))
               (= first-letter \N)
               (when (list? partial-referent)

@@ -163,7 +163,7 @@
                                      (:key (dom-attributes definition)))
                                 [])
              definition)
-    (println "created tracker")
+    (println "created tracker" (simplify-for-print definition))
     tracker))
 
 (defn check-propagation-if-quiescent [tracker]

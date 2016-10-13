@@ -328,7 +328,8 @@
        (when verbose
          (println "value is valid"))
        (let [dom-key (:key (dom-attributes dom))]
-         (assert (or (= (seq key) (seq dom-key))
+         (assert (or (empty? key)
+                     (= (seq key) (seq dom-key))
                      (= (seq (conj key :content)) (seq dom-key)))
                  [key dom]))
        (swap-and-act

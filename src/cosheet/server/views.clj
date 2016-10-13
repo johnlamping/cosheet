@@ -19,6 +19,7 @@
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
+    [dom-utils :refer [dom-attributes]]
     [reporters :as reporter]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
@@ -156,7 +157,10 @@
                       subject (assoc :subject subject)
                       selector-string (assoc :selector true))]
         tracker (new-dom-tracker manager-data)]
-    (add-dom tracker "root" [] definition)
+    (add-dom tracker "root" (or (and (sequential? definition)
+                                     (:key (dom-attributes definition)))
+                                [])
+             definition)
     (println "created tracker")
     tracker))
 

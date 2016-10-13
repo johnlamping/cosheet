@@ -21,6 +21,7 @@
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent instantiate-to-items
                       referent->string referent?
+                      referent->exemplar-and-subject
                       item-referent first-group-referent
                       semantic-elements-R]])))
 
@@ -327,13 +328,13 @@
       ;; to its subject.
       (let [items (apply concat (instantiate-referent target-referent store))
             item (first items)
-            subject (subject item)
-            referent (if (and (= (count items) 1)
-                              (every? #(= (content %) :tag)
+            [_ subject-ref] (referent->exemplar-and-subject target-referent)
+            subject-ref (or subject-ref (item-referent (subject item)))
+            referent (if (and (every? #(= (content %) :tag)
                                       (semantic-elements-R item))
-                              subject)
-                       (item-referent subject)
-                       target-referent)]        
+                              subject-ref)
+                       subject-ref
+                       target-referent)]
         {:store store
          :open (cond-> (str (:name session-state)
                             "?referent=" (referent->string referent))
@@ -401,12 +402,14 @@
                   (keys context))))
 
 (defn alternate-contexts
-  "Given the session state and a context, return a vector of the default context
+  "Given the session state, action type and a context,
+  return a vector of the default context
   to use, and the alternate context, if any. Also return the text to show the
   user to give them the chance to ask for the alternate context"
-  [session-state context]
+  [session-state action-type context]
   (or
-   (if-let [alternate (:narrow-alternate context)]
+   (if-let [alternate (and (:narrow-alternate context)
+                           (not= action-type :expand))]
      (let [context (dissoc context :narrow-alternate)
            narrow-context (narrow-referents context)
            store (current-store (:store session-state))]
@@ -443,7 +446,8 @@
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
           (let [[context alternate-context text] (alternate-contexts
-                                                  session-state context)
+                                                  session-state action-type
+                                                  context)
                 result (do-storage-update-action
                            (partial do-update-control-return! mutable-store)
                            handler context attributes)]

@@ -156,12 +156,12 @@
 
 (defn user-visible-item?
   "Return true if the item is user visible."
-  ;; TODO: This will also need to check for selectors that the user
-  ;;       should see, even though they don't have :order.
   [item]
   (let [order-elements (current-value (label->elements item :order))
-        non-semantic (current-value (matching-elements :non-semantic item))]
-    (and (seq order-elements) (empty? non-semantic))))
+        non-semantic (current-value (matching-elements :non-semantic item))
+        row-condition (current-value (matching-elements :row-condition item))]
+    (and (or (seq order-elements) (seq row-condition))
+         (empty? non-semantic))))
 
 ;;; --- Top level item ---
 

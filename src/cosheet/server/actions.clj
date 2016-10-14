@@ -408,14 +408,22 @@
 (defn broad-alternate-text
   [selector-category]
   (selector-category
-   {:table-header ["Label changed." "Change selection instead."]
-    :table-condition ["Label changed." "Change selection instead."]}))
+   {:table-header ["Column's description changed."
+                   "Change selection instead."]
+    :table-condition ["Table's description changed."
+                      "Change selection instead."]
+    :only-element-delete ["Column data deleted."
+                          "Only hide the column instead."]}))
 
 (defn narrow-alternate-text
   [selector-category]
   (selector-category
-   {:table-header ["Selection changed." "Change label instead."]
-    :table-condition ["Selection changed." "Change label instead."]}))
+   {:table-header ["Column selection changed."
+                   "Change description instead."]
+    :table-condition ["Table selection changed."
+                      "Change description instead."]
+    :only-element-delete ["Column hidden."
+                          "Delete the column data also."]}))
 
 (defn alternate-contexts
   "Given the session state, action type and a context,
@@ -424,22 +432,29 @@
   user to give them the chance to ask for the alternate context"
   [session-state action-type context attributes]
   (or
-   (when (and (not= action-type :expand)
-              (:alternate context))
-     (when-let [selector-category (:selector-category attributes)]
-       (let [context (dissoc context :alternate)
-             narrow-context (narrow-referents context)
-             store (current-store (:store session-state))]
-         (when (not= (set (instantiate-to-items
-                           (context-referent context) store))
-                     (set (instantiate-to-items
-                           (context-referent narrow-context) store)))
-           ;; TODO: Make this track last choice.
-           (if (#{:table-header} (:selector-category attributes))
-             [context narrow-context
-              (broad-alternate-text selector-category)]
-             [narrow-context context
-              (narrow-alternate-text selector-category)])))))
+   (when-let [alternate (:alternate context)]
+     (when (not= action-type :expand)
+       (println "alternate requested.")
+       (when-let [selector-category (if (= alternate true)
+                                      (:selector-category attributes)
+                                      alternate)]
+         (println "selector found" selector-category)
+         (let [context (dissoc context :alternate)
+               narrow-context (narrow-referents context)
+               store (current-store (:store session-state))]
+           (when (not= (set (instantiate-to-items
+                             (context-referent context) store))
+                       (set (instantiate-to-items
+                             (context-referent narrow-context) store)))
+             ;; TODO: Make this track last choice.
+             (let [result
+                   (if (#{:table-header} (:selector-category attributes))
+                     [context narrow-context
+                      (broad-alternate-text selector-category)]
+                     [narrow-context context
+                      (narrow-alternate-text selector-category)])]
+               (println "computed alternate" (simplify-for-print result))
+               result))))))
    [context nil nil]))
 
 (defn do-contextual-action

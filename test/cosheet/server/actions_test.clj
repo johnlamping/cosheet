@@ -313,9 +313,7 @@
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])
                              
-                             :alternate
-                             {:broad-text ["Please" "Click me!"]
-                              :narrow-text ["Click me!" "Please"]}}}]
+                             :alternate true}}]
     (swap! tracker update-set-component
            {:key ["jane"]
             :definition [(fn [& _] [:div])]
@@ -336,7 +334,8 @@
                            (-> attributes
                                (assoc :target-key ["jane"])
                                (dissoc :alternate))]
-                  :text ["Label changed." "Change selection instead."]}))
+                  :text ["Column's description changed."
+                         "Change selection instead."]}))
       (is (= select [["jane" new-id] [["jane"]]]))
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))

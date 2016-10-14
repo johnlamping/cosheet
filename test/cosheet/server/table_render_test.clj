@@ -10,7 +10,7 @@
              entity-impl
              [test-utils :refer [check any as-set evals-to let-mutated]])
             (cosheet.server
-             [referent :refer [item-referent union-referent
+             [referent :refer [item-referent union-referent exemplar-referent
                                query-referent elements-referent]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R]]
@@ -126,7 +126,10 @@
                   :selector-category :table-header
                   :alternate-target true
                   :selectable-attributes
-                  {:delete {:item-referent (item-referent c1)}
+                  {:delete {:item-referent (union-referent [(item-referent c1)
+                                                            (elements-referent
+                                                             c1 rows-referent)])
+                            :alternate :only-element-delete}
                    :expand {:item-referent first-column-referent}
                    :column {:adjacent-groups-referent (item-referent c1)
                             :subject-referent (union-referent

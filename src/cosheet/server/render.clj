@@ -60,6 +60,8 @@
                ;                            alternate interpretation, by
                ;                            narrowing the referent.
                ;                            :selector-category must be present.
+               ;                            If an atom, that atom overrides
+               ;                            :selector-category.
      :sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.

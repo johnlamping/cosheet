@@ -81,7 +81,9 @@
           ;; column request, while if we do, it removes the element
           ;; from requests and from elements in the rows.
           (if (empty? non-trivial-children)
-            (item-or-exemplar-referent (:item (first next-level)) subject)
+            (let [item (:item (first next-level))]
+              (union-referent [(item-referent item)
+                               (elements-referent item rows-referent)]))
             ;; We don't include the item maps at the next level,
             ;; because removing the element from the corresponding
             ;; requests would leave them with no elements.
@@ -91,7 +93,8 @@
               (mapcat hierarchy-node-descendants non-trivial-children)
               (hierarchy-nodes-extent non-trivial-children) nil
               rows-referent subject)))]
-      {:delete {:item-referent delete-referent}})))
+      {:delete {:item-referent delete-referent
+                :alternate :only-element-delete}})))
 
 (defn attributes-for-header-add-column-command
   "Return attributes for an add column command, given the column
@@ -130,35 +133,38 @@
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
   [elements inherited]
-  (expr-let
-      [item (entity/subject (first elements))
-       content (entity/content item)
-       all-labels (entity/label->elements item :tag)
-       all-labels-set (set all-labels)
-       labels (seq (filter all-labels-set elements))
-       non-labels (seq (remove all-labels-set elements))]
-    (cond
-      (and labels non-labels)
-      (let [inherited-down
-            (-> inherited
-                (dissoc :template)
-                (assoc :element-attributes (:selectable-attributes inherited)))]
-        (expr-let [inner-dom (item-content-and-elements-DOM-R
-                              item (:subject inherited)
-                              content non-labels inherited-down)]
-          (label-wrapper-DOM-R
-           inner-dom item (:subject inherited) labels false inherited)))
-      labels
-      (expr-let [ordered-elements (order-items-R elements)
-                 excludeds (expr-seq map #(matching-elements :tag %)
-                                     ordered-elements)]
-        (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                ordered-elements excludeds
-                                {:class "tag"} inherited)
-          (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
-      true
-      (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
-        [:div {:class "elements-wrapper"} elements-dom]))))
+  (if (empty? elements)
+    [:div {:class "elements-wrapper"}]
+    (expr-let
+        [item (entity/subject (first elements))
+         content (entity/content item)
+         all-labels (entity/label->elements item :tag)
+         all-labels-set (set all-labels)
+         labels (seq (filter all-labels-set elements))
+         non-labels (seq (remove all-labels-set elements))]
+      (cond
+        (and labels non-labels)
+        (let [inherited-down
+              (-> inherited
+                  (dissoc :template)
+                  (assoc :element-attributes (:selectable-attributes
+                                              inherited)))]
+          (expr-let [inner-dom (item-content-and-elements-DOM-R
+                                item (:subject inherited)
+                                content non-labels inherited-down)]
+            (label-wrapper-DOM-R
+             inner-dom item (:subject inherited) labels false inherited)))
+        labels
+        (expr-let [ordered-elements (order-items-R elements)
+                   excludeds (expr-seq map #(matching-elements :tag %)
+                                       ordered-elements)]
+          (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                  ordered-elements excludeds
+                                  {:class "tag"} inherited)
+            (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
+        true
+        (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
+          [:div {:class "elements-wrapper"} elements-dom])))))
 
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include

@@ -136,6 +136,8 @@
 (defn create-tracker
   [store referent-string selector-string]
   (let [immutable-store (current-store store)
+        selector-category (when selector-string
+                            (string->referent selector-string))
         [immutable-item referent subject]
         (or (when referent-string
               (let [referent (string->referent referent-string)]
@@ -155,9 +157,9 @@
                     root-item referent
                     (cond-> {}
                       subject (assoc :subject subject)
-                      selector-string (assoc :selector-category
-                                             (string->referent
-                                              selector-string)))]
+                      selector-category (assoc
+                                         :selector-category selector-category
+                                         :alternate-target true))]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" (or (and (sequential? definition)
                                      (:key (dom-attributes definition)))

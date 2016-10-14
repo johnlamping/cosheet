@@ -315,11 +315,7 @@
   (let [inherited-down (assoc
                         inherited
                         :selector-category :table-header
-                        :alternate
-                        {:broad-text ["Label changed."
-                                     "Change selection instead."]
-                         :narrow-text ["Selection changed."
-                                       "Change label instead."]})]
+                        :alternate-target true)]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)
@@ -511,11 +507,7 @@
                                         rows-referent])
                              :template (if condition-is-tags
                                          '(nil :tag) '(nil))
-                             :alternate
-                             {:broad-text ["Label changed."
-                                           "Change selection instead."]
-                              :narrow-text ["Selection changed."
-                                            "Change label instead."]}))
+                             :alternate-target true))
              headers (table-header-DOM-R
                       hierarchy rows-referent
                       (assoc inherited

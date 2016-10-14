@@ -56,10 +56,10 @@
                ;                            key to select part of a new item.
                ;                            Will have at most one of this and
                ;                            :parent-key
-               ; :alternate                 Will contain :narrow-text and
-               ;                            :broad-text, which hold
-               ;                            vectors of strings to show the user,
-               ;                            with the second being clickable.
+               ; :alternate                 If true, this target has an
+               ;                            alternate interpretation, by
+               ;                            narrowing the referent.
+               ;                            :selector-category must be present.
      :sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.
@@ -142,10 +142,8 @@
                            ; and not part of what is selected. When the
                            ; target referent is instantiated, the first group
                            ; items must be the selector.
-;               :alternate ; If present, there is an alternate interpretation
-                           ; of the target. This is a map with the same
-                           ; fields as for the :alternate attributes
-                           ; of a target.
+;        :alternate-target ; If true, there is an alternate interpretation
+                           ; of the item. :selector-category must be present.
    })
 
 (defn user-visible-item?

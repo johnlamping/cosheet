@@ -333,8 +333,10 @@
                  {:new-store new-store
                   :action [do-add-element
                            alternate-target
-                           (assoc attributes :target-key ["jane"])]
-                  :text ["Please" "Click me!"]}))
+                           (-> attributes
+                               (assoc :target-key ["jane"])
+                               (dissoc :alternate))]
+                  :text ["Label changed." "Change selection instead."]}))
       (is (= select [["jane" new-id] [["jane"]]]))
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))

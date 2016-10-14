@@ -55,6 +55,6 @@
     (is (check (add-alternate-to-target {:item-referent ref} {})
                {:item-referent ref}))
     (is (check (add-alternate-to-target {:item-referent ref}
-                                        {:alternate :some-alternate})
+                                        {:alternate-target :some-alternate})
                {:item-referent ref
                 :alternate :some-alternate}))))

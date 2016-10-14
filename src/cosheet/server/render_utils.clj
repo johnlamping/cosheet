@@ -58,7 +58,7 @@
   "Given the map for a target, and inherited information, change the target
   to have a :alternate if the inherited information says to."
   [target inherited]
-  (if-let [alternate (:alternate inherited)]
+  (if-let [alternate (:alternate-target inherited)]
     (assoc target :alternate alternate)
     target))
 

@@ -405,6 +405,18 @@
                     :subject-referent}
                   (keys context))))
 
+(defn broad-alternate-text
+  [selector-category]
+  (selector-category
+   {:table-header ["Label changed." "Change selection instead."]
+    :table-condition ["Label changed." "Change selection instead."]}))
+
+(defn narrow-alternate-text
+  [selector-category]
+  (selector-category
+   {:table-header ["Selection changed." "Change label instead."]
+    :table-condition ["Selection changed." "Change label instead."]}))
+
 (defn alternate-contexts
   "Given the session state, action type and a context,
   return a vector of the default context
@@ -412,19 +424,22 @@
   user to give them the chance to ask for the alternate context"
   [session-state action-type context attributes]
   (or
-   (when-let [alternate (when (not= action-type :expand)
-                          (:alternate context))]
-     (let [context (dissoc context :alternate)
-           narrow-context (narrow-referents context)
-           store (current-store (:store session-state))]
-       (when (not= (set (instantiate-to-items
-                         (context-referent context) store))
-                   (set (instantiate-to-items
-                         (context-referent narrow-context) store)))
-         ;; TODO: Make this track last choice.
-         (if (#{:table-header} (:selector-category attributes))
-           [context narrow-context (:broad-text alternate)]
-           [narrow-context context (:narrow-text alternate)]))))
+   (when (and (not= action-type :expand)
+              (:alternate context))
+     (when-let [selector-category (:selector-category attributes)]
+       (let [context (dissoc context :alternate)
+             narrow-context (narrow-referents context)
+             store (current-store (:store session-state))]
+         (when (not= (set (instantiate-to-items
+                           (context-referent context) store))
+                     (set (instantiate-to-items
+                           (context-referent narrow-context) store)))
+           ;; TODO: Make this track last choice.
+           (if (#{:table-header} (:selector-category attributes))
+             [context narrow-context
+              (broad-alternate-text selector-category)]
+             [narrow-context context
+              (narrow-alternate-text selector-category)])))))
    [context nil nil]))
 
 (defn do-contextual-action

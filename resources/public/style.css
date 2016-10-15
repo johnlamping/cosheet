@@ -630,7 +630,67 @@ body {
 .toolgap {
     width: 20px;
     display: inline-block;
-}   
+}
+
+.selector-container {
+    display: inline-block;
+    z-index: 1;
+}
+
+.selection {
+    position: relative;
+    display: block;
+    height: 18px;
+    margin-bottom: -1px;
+    border-width: 1px;
+    border-radius: 3px;
+    border-color: transparent;
+    /* Keeps margins of contained blocks from merging with us. */
+    overflow: visible;
+}
+
+.selection.picked {
+    border-color: hsl(200, 100%, 90%);
+    background-color: hsl(200, 100%, 97%);
+}
+
+.radio-button {
+    display: inline-block;
+    position: relative;
+    margin: 2px 2px 2px 2px;
+    height: 12px;
+    width: 12px;
+    border-width: 1px;
+    border-radius: 100%;
+    border-color: hsl(0, 0%, 60%);
+    background-color: white;
+}
+
+.inner-radio-button {
+    display: block;
+    position: absolute;
+    top: 50%; /* 50% here is the container's width. */
+    left: 50%;
+    transform: translate(-50%, -50%); /* 50% here is our width. */
+    height: 6px;
+    width: 6px;
+    border-width: 3px;
+    border-radius: 100%;
+    border-color: hsl(0, 0%, 85%);
+    z-index: 1;
+}
+
+.picked > .radio-button > .inner-radio-button {
+    border-color: hsl(200, 100%, 65%)
+}
+
+.selector-img {
+    margin-top: -1px;
+    margin-bottom: 1px;
+    margin-right: 1px;
+    height: 16px;
+    display: inline-block;
+}
 
 .tooltip {
     visibility: hidden;
@@ -654,7 +714,7 @@ body {
 
 /* Make a triangle for the tooltip by adding one more thing after the text,
    which will consist of only border with only one side non-transparent. */
-.tool .tooltip::after {
+.tool .tooltip::after, .selection .tooltip::after {
     content: " ";
     border-width: 5px;
     border-style: solid;
@@ -670,7 +730,6 @@ body {
     border-color: hsl(0, 0%, 60%);
     border-width: 2px;
     border-radius: 3px;
-
 }
 
 .tool:hover > img {
@@ -678,7 +737,7 @@ body {
 }
 
 /* Show the tooltip text when you mouse over the tool */
-.tool:hover .tooltip {
+.tool:hover .tooltip, .selection:hover .tooltip {
     visibility: visible;
     transition-delay: 1s;
 }

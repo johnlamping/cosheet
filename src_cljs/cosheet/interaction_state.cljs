@@ -90,17 +90,25 @@
                                 :broad "select-broad"}
                                interpretation)))
 
+(defn opposite-selector-interpretation
+  [interpretation]
+  ({:broad :narrow
+    :narrow :broad} interpretation))
+
 (defn set-selector-interpretation
   [interpretation]
-  (let [other-interpretation ({:broad :narrow
-                                :narrow :broad}
-                               interpretation)]
-    (reset! selector-interpretation interpretation)
-    (.add (.-classList (interpretation-selector-dom interpretation))
-          "picked")
-    (.remove (.-classList (interpretation-selector-dom other-interpretation))
-             "picked")
-    (set-selector-scope)))
+  (reset! selector-interpretation interpretation)
+  (.add (.-classList (interpretation-selector-dom interpretation))
+        "picked")
+  (.remove (.-classList (interpretation-selector-dom
+                         (opposite-selector-interpretation interpretation)))
+           "picked")
+  (set-selector-scope))
+
+(defn toggle-selector-interpretation
+  []
+  (set-selector-interpretation
+   (opposite-selector-interpretation @selector-interpretation)))
 
 (defn deselect []
   (let [target @selected]

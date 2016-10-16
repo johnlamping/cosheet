@@ -14,6 +14,7 @@
             [cosheet.interaction-state :refer [edit-field-open-on
                                                find-ancestor-with-class
                                                set-selector-interpretation
+                                               toggle-selector-interpretation
                                                open-edit-field close-edit-field
                                                selected select deselect]]
             ))
@@ -130,6 +131,7 @@
 
 (defn alternate-interpretation-click-handler
   [event]
+  (toggle-selector-interpretation)
   (request-action [:alternate]))
 
 (defn click-handler

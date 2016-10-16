@@ -448,7 +448,7 @@
                              (context-referent narrow-context) store)))
              ;; TODO: Make this track last choice.
              (let [result
-                   (if (#{:table-header} (:selector-category attributes))
+                   (if (= (:selector-interpretation session-state) :broad)
                      [context narrow-context
                       (broad-alternate-text selector-category)]
                      [narrow-context context

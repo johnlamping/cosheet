@@ -7,6 +7,7 @@
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
+                                               selector-interpretation
                                                set-alternate-field
                                                select selected deselect]]
             ))
@@ -24,11 +25,12 @@
 
 (defn ajax-request [params]
   (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
-          {:params params
-           :response-format (transit-response-format)
-           :handler ajax-handler
-           :error-handler ajax-error-handler
-           :timeout 5000})
+        {:params (assoc params
+                        :selector-interpretation @selector-interpretation)
+         :response-format (transit-response-format)
+         :handler ajax-handler
+         :error-handler ajax-error-handler
+         :timeout 5000})
   (reset! ajax-request-pending true))
 
 ;;; A handle to the current pending ajax poll task.

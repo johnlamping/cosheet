@@ -131,6 +131,8 @@
 ;;;                     :action  The alternate storage update action,
 ;;;                              with the store missing.
 ;;;                       :text  The text shown to the user.
+;;; When we process client commands, we add to session-state
+;;; :selector-interpretation from the client's request.
 (def session-states (atom {}))
 
 (defn create-tracker
@@ -288,6 +290,8 @@
 ;;;                should have successively higher sort orders.
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
+;;; :selector-interpretation Either :broad or :narrow, giving the interpretation
+;;;                          to use when there is an alternate interpretation.
 ;;; response:
 ;;;         :reload The server has no record of the session. The page
 ;;;                 should request a reload.
@@ -308,7 +312,8 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [id actions acknowledge initialize]} params
+        {:keys [id actions acknowledge initialize :selector-interpretation]}
+        params
         session-state (get-session-state id)]
     (if session-state
       (let [{:keys [tracker name store last-action]} session-state
@@ -326,7 +331,9 @@
                      (empty? acknowledge))
             (println "resetting alternate" action-sequence acknowledge)
             (reset! (:alternate session-state) nil))
-          (let [client-info (do-actions store session-state action-sequence)]
+          (let [augmented-state (assoc session-state :selector-interpretation
+                                      selector-interpretation)
+                client-info (do-actions store augmented-state action-sequence)]
             (let [new-store (current-store store)]
               (when (not= new-store store)
                 (write-store-file new-store name)))

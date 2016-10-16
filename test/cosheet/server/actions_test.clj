@@ -306,7 +306,8 @@
         tracker (new-dom-tracker mutable-store)
         session-state {:tracker tracker
                        :alternate (atom nil)
-                       :store mutable-store}
+                       :store mutable-store
+                       :selector-interpretation :broad}
         attributes {:commands {:add-element nil}
                     :selector-category :table-header
                     :target {:item-referent

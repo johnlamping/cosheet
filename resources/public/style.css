@@ -531,7 +531,7 @@ body {
 
 .narrow-interpretation .selectors {
     box-shadow: 1px 0px 2px 3px hsl(0, 0%, 85%),
-                7px 9px 4px hsla(0, 0%, 0%, .7);
+                7px 9px 4px 2px hsla(0, 0%, 0%, .7);
     z-index: 1;
 }
 

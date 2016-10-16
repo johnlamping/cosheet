@@ -530,21 +530,25 @@ body {
 }
 
 .narrow-interpretation .selectors {
-    box-shadow: 0px 0px 2px 2px hsla(60, 100%, 50%, 1),
-                6px 7px 4px hsla(0, 0%, 0%, .7);
+    box-shadow: 1px 0px 2px 3px hsl(0, 0%, 85%),
+                7px 9px 4px hsla(0, 0%, 0%, .7);
     z-index: 1;
 }
 
-.narrow-interpretation .selecteds {
-    opacity: 0.5;
+.narrow-interpretation .selectors:not(.tag) {
+    background-color: hsl(0, 0%, 85%);
 }
 
-.narrow-interpretation .selector-scope .selectors {
+.narrow-interpretation .selecteds {
+    opacity: 0.4;
+}
+
+.narrow-interpretation .selector-scope .selectors.selectors {
     box-shadow: 0px 0px transparent;
     z-index: 0;
 }
 
-.narrow-interpretation .selector-scope .selecteds {
+.narrow-interpretation .selector-scope .selecteds.selecteds {
     opacity: 1;
 }
 

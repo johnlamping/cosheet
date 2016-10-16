@@ -22,10 +22,16 @@
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
 (defn is-editable? [dom]
-  (and dom (.. dom -classList (contains "editable"))))
+  (when (and dom (exists? dom))
+    (let [classes (.-classList dom)]
+      (when (and classes (exists? classes))
+        (.contains classes "editable")))))
 
 (defn is-immutable? [dom]
-  (and dom (.. dom -classList (contains "immutable"))))
+  (when (and dom (exists? dom))
+    (let [classes (.-classList dom)]
+      (when (and classes (exists? classes))
+        (.contains classes "immutable")))))
 
 (defn descendant-with-editable
   "Given a dom, if it has editable children, return it. If a unique

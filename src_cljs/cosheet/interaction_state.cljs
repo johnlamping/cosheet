@@ -1,6 +1,20 @@
 (ns cosheet.interaction-state
   (:require [goog.dom :as gdom]))
 
+(defn find-ancestor-with-class
+  "Return the first ancestor with the given class,
+  not going above max-depth ancestors (if present)"
+  [node class-name & [max-depth]]
+  (if (let [classes (.-classList node)]
+        (when (exists? classes)
+          (.contains classes class-name)))
+    node
+    (when (not= max-depth 0)
+      (let [parent (.-parentNode node)]
+        (when (and parent (exists? parent))
+          (find-ancestor-with-class
+           parent class-name (when max-depth (dec max-depth))))))))
+
 ;;; These are the UI operations on the edit field, alternate interpretation
 ;;; field, and on selections. We
 ;;; put them in their own file so both client.cljs and ajax.cljs can
@@ -44,11 +58,56 @@
 
 (def selected (atom nil)) ;; The currently selected dom.
 
+;;; The selector-scope dom of the currently selected dom if it is a selector
+;;; and we are doing the narrow interpretation of selection scopes.
+;;; That dom will have the class "narrow-selection"
+(def narrow-selector-scope (atom nil))
+
+;;; :broad or :narrow
+(def selector-interpretation (atom :broad))
+
+(defn set-selector-scope
+  "Set the appropriate dom, if any, to have narrow selector scope."
+  []
+  (let [selection @selected
+        new-scope (when (and selection
+                             (= @selector-interpretation :narrow))
+                    (when-let [selector (find-ancestor-with-class
+                                         selection "selectors")]
+                      (find-ancestor-with-class selector "selector-scope")))
+        current-scope @narrow-selector-scope]
+    (when (not= new-scope current-scope)
+      (when current-scope
+        (.remove (.-classList current-scope) "narrow-interpretation"))
+      (when new-scope
+        (.add (.-classList new-scope) "narrow-interpretation"))
+      (reset! narrow-selector-scope new-scope))))
+
+(defn interpretation-selector-dom
+  "Return the dom choice button for the given interpretation of selectors."
+  [interpretation]
+  (js/document.getElementById ({:narrow "select-narrow"
+                                :broad "select-broad"}
+                               interpretation)))
+
+(defn set-selector-interpretation
+  [interpretation]
+  (let [other-interpretation ({:broad :narrow
+                                :narrow :broad}
+                               interpretation)]
+    (reset! selector-interpretation interpretation)
+    (.add (.-classList (interpretation-selector-dom interpretation))
+          "picked")
+    (.remove (.-classList (interpretation-selector-dom other-interpretation))
+             "picked")
+    (set-selector-scope)))
+
 (defn deselect []
   (let [target @selected]
     (when target
-    (.remove (.-classList target) "selected")
-    (reset! selected nil))))
+      (.remove (.-classList target) "selected")
+      (reset! selected nil)
+      (set-selector-scope))))
 
 (defn select [target]
   (.log js/console (str "Selecting id " (.-id target) "."))
@@ -57,5 +116,6 @@
     (deselect)
     (.add (.-classList target) "selected")
     (.log js/console (str "Selected id " (.-id target) "."))
-    (reset! selected target)))
+    (reset! selected target)
+    (set-selector-scope)))
 

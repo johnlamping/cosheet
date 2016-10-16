@@ -523,6 +523,31 @@ body {
     margin: 0px -2px -2px 0px;
 }
 
+/* --- narrow interpretation --- */
+
+.narrow-interpretation {
+    overflow: visible;
+}
+
+.narrow-interpretation .selectors {
+    box-shadow: 0px 0px 2px 2px hsla(60, 100%, 50%, 1),
+                6px 7px 4px hsla(0, 0%, 0%, .7);
+    z-index: 1;
+}
+
+.narrow-interpretation .selecteds {
+    opacity: 0.5;
+}
+
+.narrow-interpretation .selector-scope .selectors {
+    box-shadow: 0px 0px transparent;
+    z-index: 0;
+}
+
+.narrow-interpretation .selector-scope .selecteds {
+    opacity: 1;
+}
+
 /* --- edit holder --- */
 
 .editable {

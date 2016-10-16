@@ -527,14 +527,16 @@
                                      % row-template column-descriptions
                                      inherited)
                                row-items)]
-            [:div {:class "table"}
-             [:div {:class (cond-> "table-top" condition-is-tags (str " tag"))}
+            [:div {:class "table selector-scope"}
+             [:div {:class (cond-> "table-top selectors"
+                             condition-is-tags (str " tag"))}
               [:div {:class "table-corner"}]
-              (add-attributes condition-dom {:class "table-condition"})]
+              (add-attributes condition-dom
+                              {:class "table-condition"})]
              [:div {:class "table-body"}
               [:div {:class (cond-> "table-indent"
                               condition-is-tags (str " tag"))}]
-              [:div {:class "table-main"}
-               headers
-               (into [:div {:class "table-rows"}]
+              [:div {:class "table-main selecteds selector-scope"}
+               (add-attributes headers {:class "selectors"})
+               (into [:div {:class "table-rows selecteds"}]
                      rows)]]]))))))

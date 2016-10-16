@@ -12,6 +12,8 @@
             cosheet.dom-utils
             [cosheet.ajax :refer [request-action ajax-request]]
             [cosheet.interaction-state :refer [edit-field-open-on
+                                               find-ancestor-with-class
+                                               set-selector-interpretation
                                                open-edit-field close-edit-field
                                                selected select deselect]]
             ))
@@ -98,11 +100,8 @@
    (str "width=600,height=600,left=150,top=100,centerscreen=yes,toolbar=yes")))
 
 (defn menu-click-handler
-  [event]
-  (let [target (.-target event)
-        id (.-id (if (= (.-className target) "tool")
-                   target
-                   (.-parentNode target)))
+  [logical-target]
+  (let [id (.-id logical-target)
         keyword ({"undo" :undo
                   "redo" :redo}
                  id)
@@ -120,6 +119,15 @@
           (do (when (= contextual-keyword :expand) (open-expand-popup))
               (request-action [contextual-keyword (.-id selection)])))))
 
+(defn selection-click-handler
+  [logical-target]
+  (.log js/console (str "selection click"))
+  (let [id (.-id logical-target)]
+    (cond (= id "select-broad")
+          (set-selector-interpretation :broad)
+          (= id "select-narrow")
+          (set-selector-interpretation :narrow))))
+
 (defn alternate-interpretation-click-handler
   [event]
   (request-action [:alternate]))
@@ -133,15 +141,17 @@
     (when (not (target-being-edited? target))
       (store-edit-field)
       (close-edit-field)
-      (if (some #{"tool"}
-                [(.-className target) (.-className (.-parentNode target))])
-        (menu-click-handler event)
-        (let [editable (find-editable target event)]
+      (if-let [tool-target (find-ancestor-with-class target "tool" 1)]
+        (menu-click-handler tool-target)
+        (if-let [selection-target (find-ancestor-with-class
+                                   target "selection" 2)]
+          (selection-click-handler selection-target)
+          (let [editable (find-editable target event)]
           (when (not= editable @selected)
             (if editable
               (select editable)
               (deselect))
-            (request-action [:selected (and editable (.-id editable))])))))))
+            (request-action [:selected (and editable (.-id editable))]))))))))
 
 (defn double-click-handler
   [event]
@@ -236,7 +246,8 @@
                     alternate-interpretation-click-handler)    
     (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
-    (gevents/listen toolbar gevents/EventType.CLICK click-handler))
+    (gevents/listen toolbar gevents/EventType.CLICK click-handler)
+    (set-selector-interpretation :broad))
   (ajax-request {:initialize true}))
 
 ;;; TODO: Get rid of this eventually; It's just something cute.

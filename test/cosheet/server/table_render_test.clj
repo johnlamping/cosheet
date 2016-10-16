@@ -106,14 +106,14 @@
                                                  (true :reference)))]]
       (is (check
            dom
-           [:div {:class "table"}
-            [:div {:class "table-top"}
+           [:div {:class "table selector-scope"}
+            [:div {:class "table-top selectors"}
              [:div {:class "table-corner"}]
              (any)]
             [:div {:class "table-body"}
              [:div {:class "table-indent"}]
-             [:div {:class "table-main"}
-              [:div {:class "column-header-sequence"}
+             [:div {:class "table-main selecteds selector-scope"}
+              [:div {:class "column-header-sequence selectors"}
                [:component {:key (conj table-key (:item-id single))
                             :class "tag top-level column-header"
                             :style {:width "150px"}}
@@ -142,7 +142,7 @@
                (any)
                (any)
                (any)]
-              [:div {:class "table-rows"}
+              [:div {:class "table-rows selecteds"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
                 [table-row-DOM-R

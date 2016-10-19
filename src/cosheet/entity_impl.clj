@@ -205,8 +205,10 @@
   (let [elements (label->elements entity label)]
     (when elements
       (assert (= (count elements) 1)
-              (str "entity "  (:id (:item-id entity))
-                   " has " (count elements) " elements for label " label))
+              (apply str "entity "  (:id (:item-id entity))
+                     " has " (count elements) " elements for label " label
+                     " contents: "
+                     (interleave (repeat " ") (map content elements))))
       (content (first elements)))))
 
 (defmethod label->content true [entity label]

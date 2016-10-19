@@ -7,6 +7,7 @@
                                     call-dependent-on-id
                                     mutable-store?
                                     stored-item-id-string]]
+                     [expression-manager :refer [current-value]]
                      [orderable :as orderable]
                      [entity :refer :all]
                      [expression :refer [expr-seq expr-let expr]])))
@@ -215,8 +216,11 @@
   (expr-let [elements (expr label->elements entity label)]
     (when elements
       (assert (= (count elements) 1)
-              (str "entity "  (:id (:item-id entity))
-                   " has " (count elements) " elements for label " label))
+              (apply str "entity "  (:id (:item-id entity))
+                     " has " (count elements) " elements for label " label
+                     " contents: "
+                     (interleave (repeat " ")
+                                 (map #(current-value (content %)) elements))))
       (content (first elements)))))
 
 (defmethod atomic-value false [entity]

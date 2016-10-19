@@ -81,7 +81,7 @@
 ;;; Doing the read inside an atomic update operation for copying
 ;;; doesn't work. Consider the copied data starting out at A, and
 ;;; source value changing from A to B, and then back to A. An atomic
-;;; swap! to the copy reads its current value as A, then the function
+;;; swap! in the copy reads the copy's current value as A, then the function
 ;;; provided to the swap! reads the intermediate source value B and
 ;;; returns it. But before the swap! finishes, another thread sets the
 ;;; copy's value back to the final A. Now, when the original swap!
@@ -128,7 +128,7 @@
     [queue      ; A task-queue of pending tasks.
      manage-map ; A map from :manager-type of a reporter to a
                 ; function that takes a reporter and a manager data,
-                ; does any needed preparation putting the reporter
+                ; does any needed preparation for putting the reporter
                 ; under management, and sets its manager.
      cache      ; A mutable map from expression to reporter.
                 ; (present if cache reporters are supported.)
@@ -147,7 +147,7 @@
   (update-in data [:further-actions] (fnil conj []) (vec action)))
 
 (defn modify-and-act
-  "Atomicly call the function on the reporter's data.
+  "Atomically call the function on the reporter's data.
    The function should return the new data for the reporter,
    which may also contain a temporary field, :further-actions with
    a list of actions that should be performed."

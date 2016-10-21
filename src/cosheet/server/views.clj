@@ -38,41 +38,35 @@
         [o2 unused-orderable] (orderable/split unused-orderable :after)
         [o3 unused-orderable] (orderable/split unused-orderable :after)
         [o4 unused-orderable] (orderable/split unused-orderable :after)
-        starting-item `("Joe"
-                        (:root :non-semantic)
+        [o5 unused-orderable] (orderable/split unused-orderable :after)
+        [o6 unused-orderable] (orderable/split unused-orderable :after)
+        [o7 unused-orderable] (orderable/split unused-orderable :after)
+        [o8 unused-orderable] (orderable/split unused-orderable :after)
+        [o9 unused-orderable] (orderable/split unused-orderable :after)
+        [o10 unused-orderable] (orderable/split unused-orderable :after)
+        [o11 unused-orderable] (orderable/split unused-orderable :after)
+        starting-item `(""
                         (:top-level :non-semantic)
                         (~o1 :order :non-semantic)
-                        ("person" :tag (~o1 :order :non-semantic))
-                        ("male" (~o1 :order :non-semantic))
-                        ("married" (~o2 :order :non-semantic))
-                        (39 (~o3 :order :non-semantic)
-                            ("age" :tag (~o1 :order :non-semantic))
-                            ("doubtful"
-                             ("confidence" (~o1 :order :non-semantic))
-                             (~o1 :order :non-semantic)))
-                        (45 (~o4 :order :non-semantic)
-                            ("age" :tag (~o1 :order :non-semantic))))
+                        ("restaurant" :tag (~o2 :order :non-semantic))
+                        ("Chef Chu's" (~o3 :order :non-semantic)
+                            ("name" :tag (~o4 :order :non-semantic)))
+                        ("Los Altos" (~o5 :order :non-semantic)
+                            ("location" :tag (~o6 :order :non-semantic))))
         [store id] (add-entity (new-element-store) nil starting-item)
         starting-table `("table"
                          (:root :non-semantic)
                          (:table :non-semantic)
-                         (~'anything ("person" :tag
-                                      (~o1 :order :non-semantic))
+                         (~'anything ("restaurant" :tag
+                                      (~o7 :order :non-semantic))
                                      (:row-condition :non-semantic))
-                         (~'anything ("age" :tag (~o1 :order :non-semantic))
-                                    (~o1 :order :non-semantic)
+                         (~'anything ("name" :tag (~o8 :order :non-semantic))
+                                    (~o9 :order :non-semantic)
                                     (:column :non-semantic))
-                         (~'anything ("size" :tag (~o1 :order :non-semantic))
-                                    (~o2 :order :non-semantic)
+                         (~'anything ("location"
+                                      :tag (~o10 :order :non-semantic))
+                                    (~o11 :order :non-semantic)
                                     (:column :non-semantic)))
-        starting-element `(39 (:root :non-semantic)
-                              ("age" :tag (~o1 :order :non-semantic))
-                              (~o3 :order :non-semantic)
-                              ("doubtful"
-                               ("confidence" :tag (~o1 :order :non-semantic))
-                               (~o1 :order :non-semantic))
-                              ("more"
-                               (~o2 :order :non-semantic)))
         [store id] (add-entity store nil starting-table)
         [store _] (add-entity store nil (list unused-orderable
                                               :unused-orderable))]

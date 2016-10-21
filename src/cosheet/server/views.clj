@@ -260,7 +260,7 @@
           [:div.inner-radio-button]]
          [:img.selector-img {:src "../icons/select_narrow.gif"}]
          [:div.tooltip "act on header selections"]]]]
-      [:div#app "Root"]
+      [:div#app.selector-scope "Root"]
       [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
       [:div#alternate_interpretation_holder {}
        [:div " "]

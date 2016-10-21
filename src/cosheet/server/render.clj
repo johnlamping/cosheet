@@ -181,8 +181,10 @@
                              % {:expand {:item-referent subject-ref}})))
               dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
                    item referent tags inherited)]
-          (if (empty? tags)
-            dom
-            (expr-let [dom dom]
-              (add-attributes dom {:class "tag"}))))
+          (expr-let [dom dom]
+            (cond-> dom
+              (seq tags)
+              (add-attributes {:class "tag"})
+              (:selector-category inherited)
+              (add-attributes {:class "selectors"}))))
         (table-DOM-R item inherited)))))

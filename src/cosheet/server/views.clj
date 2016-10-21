@@ -249,7 +249,7 @@
         [:img {:src "../icons/add_column.gif"}]
         [:div.tooltip "add column right"]]
        [:div.toolgap] [:div.toolgap]
-       [:div.selector-container
+       [:div#selection-interpretation.selector-container
         [:div#select-broad.selection
          [:div.radio-button
           [:div.inner-radio-button]]

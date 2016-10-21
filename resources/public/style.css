@@ -631,7 +631,7 @@ body {
 
 .toolbar {
     flex: none;
-    background-color: white;
+    background-color: hsl(0, 0%, 97%);
     width: 100%;
     padding-top: 6px; /* Make up for the -2px on body */
     padding-bottom: 4px;
@@ -666,6 +666,12 @@ body {
     z-index: 1;
 }
 
+.selector-container.operative {
+    box-shadow: 0px 1px 1px 2px hsl(0, 0%, 80%),
+                0px 1px 2px 5px white;
+    background-color: white;
+}
+
 .selection {
     position: relative;
     display: block;
@@ -674,13 +680,14 @@ body {
     border-width: 1px;
     border-radius: 3px;
     border-color: transparent;
+    background-color: hsl(0, 0%, 95%);
     /* Keeps margins of contained blocks from merging with us. */
     overflow: visible;
 }
 
 .selection.picked {
     border-color: hsl(200, 100%, 90%);
-    background-color: hsl(200, 100%, 97%);
+    background-color: white;
 }
 
 .radio-button {

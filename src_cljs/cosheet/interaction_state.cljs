@@ -70,12 +70,19 @@
   "Set the appropriate dom, if any, to have narrow selector scope."
   []
   (let [selection @selected
+        selectors (when selection
+                    (find-ancestor-with-class selection "selectors"))
         new-scope (when (and selection
+                             selectors
                              (= @selector-interpretation :narrow))
-                    (when-let [selector (find-ancestor-with-class
-                                         selection "selectors")]
-                      (find-ancestor-with-class selector "selector-scope")))
+                    (find-ancestor-with-class selectors "selector-scope"))
         current-scope @narrow-selector-scope]
+    (let [interpretation-tool (js/document.getElementById
+                               "selection-interpretation")
+          classes (.-classList interpretation-tool)]
+      (if selectors
+        (.add classes "operative")
+        (.remove classes "operative")))
     (when (not= new-scope current-scope)
       (when current-scope
         (.remove (.-classList current-scope) "narrow-interpretation"))

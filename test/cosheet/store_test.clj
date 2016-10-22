@@ -218,7 +218,13 @@
 
 (deftest candidate-matching-ids-test
   (is (= (set (candidate-matching-ids test-store nil))
-         #{(make-id "0") (make-id "1") (make-id "2") (make-id "4") })))
+         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
+           (make-id "4") (make-id "5") (make-id "6") (make-id "7")}))
+  (is (= (set (candidate-matching-ids test-store '(1)))
+         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
+           (make-id "4") (make-id "5") (make-id "6") (make-id "7")}))
+  (is (= (set (candidate-matching-ids test-store '(1 2)))
+         #{(make-id "0") (make-id "1") (make-id "2") (make-id "4")})))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]

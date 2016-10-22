@@ -246,13 +246,10 @@
          ['(1 (2 3))]))))
 
 (deftest query-matches-test
-  (let [ia (->ItemId "A")
-        ib (->ItemId "B")
-        s0 (store/new-element-store)
+  (let [s0 (store/new-element-store)
         mutator (fn [s]
-                  (store-utils/add-entity! s ia '(1 (2 3)))
-                  (store-utils/add-entity! s ia '(3 (4 5)))
-                  (store-utils/add-entity! s ib '(1 (2 4))))]
+                  (store-utils/add-entity! s nil '(:a (1 (2 3)) (3 (4 5))))
+                  (store-utils/add-entity! s nil '(:b (1 (2 4)))))]
     ;; elements
     (is (= (let-mutated-store [store s0 mutator]
                               (query-matches '(1 (2)) store)) [{}]))
@@ -265,14 +262,17 @@
     ;; variables as top level entities
     (is (check (set (envs-to-list (let-mutated-store [store s0 mutator]
                                     (query-matches (variable "v") store))))
-               #{{"v" (as-set '(nil (3 (4 5)) (1 (2 3))))}
-                 {"v" '(nil (1 (2 4)))}
+               #{{"v" (as-set '(:a (3 (4 5)) (1 (2 3))))}
+                 {"v" '(:b (1 (2 4)))}
                  {"v" '(3 (4 5))}
                  {"v" '(1 (2 3))}
                  {"v" '(1 (2 4))}
                  {"v" '(2 3)}
                  {"v" '(4 5)}
-                 {"v" '(2 4)}}))
+                 {"v" '(2 4)}
+                 {"v" 5}
+                 {"v" 4}
+                 {"v" 3}}))
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
                    (query-matches `(:and ((1 ~(variable "v")) :first)

@@ -64,7 +64,7 @@
   
   (candidate-matching-ids [this item]
     "Return the ids of all items that could potentially be extensions
-     of the given item")
+     of the given item, which must be immutable.")
 
   (mutable-store? [this]
     "Return whether this store is mutable"))

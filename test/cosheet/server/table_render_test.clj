@@ -126,11 +126,7 @@
                   :selector-category :table-header
                   :alternate-target true
                   :selectable-attributes
-                  {:delete {:item-referent (union-referent [(item-referent c1)
-                                                            (elements-referent
-                                                             c1 rows-referent)])
-                            :alternate :only-element-delete}
-                   :expand {:item-referent first-column-referent}
+                  {:expand {:item-referent first-column-referent}
                    :column {:adjacent-groups-referent (item-referent c1)
                             :subject-referent (union-referent
                                                [(item-referent table)])

@@ -15,7 +15,7 @@
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
     [dom-utils :refer [dom-attributes]]
-    [query :refer [matching-items template-matches]]
+    [query :refer [matching-items matching-elements template-matches]]
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
@@ -291,17 +291,42 @@
   [store item]
   (remove-entity-by-id store (:item-id item)))
 
+(defn adjust-delete-header-item
+  "If an item to be deleted is the only element of a column header,
+  switch the item to be the header, so we will delete the entire header."
+  [item]
+  (let [subject (subject item)]
+    (if (and (seq (matching-elements :column subject))
+             (= (semantic-elements-R subject) [item]))
+      subject
+      item)))
+
 (defn do-delete
   "Remove item(s)." 
   [store context attributes]
   (when-let [to-delete (:item-referent context)]
-    (let [items (apply concat (instantiate-referent to-delete store))]
+    (let [item-groups (instantiate-referent to-delete store)
+          header-group (first item-groups)
+          first-content (content (first header-group))
+          items (apply concat
+                       (map adjust-delete-header-item header-group)
+                       (rest item-groups))]
       (println "total items:" (count items))
-      (reduce update-delete store items))))
+      (let [removed (reduce update-delete store items)]
+        ;; If we removed a placeholder from a header, there will be no way to
+        ;; reference the placeholder again, so change any instances of it
+        ;; to a simple "???".
+        (if (and (symbol? first-content)
+                 (= (subs (str first-content) 0 3) "???")
+                 (seq (matching-elements
+                       :column (subject (first header-group)))))
+          (reduce (fn [store item]
+                    (update-content store (:item-id item) "???"))
+                  removed (matching-items first-content removed))
+          removed)))))
 
 (defn do-set-content
   [store context attributes]
-  (println "setting content" (simplify-for-print context) (simplify-for-print (dissoc attributes :session-state)))
   ;; TODO: Handle deleting.
   (let [{:keys [target-key from to immutable]} attributes
         referent (:item-referent context)]

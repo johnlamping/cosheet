@@ -69,33 +69,6 @@
     ;; return one group for the header elements.
     (union-referent (concat [header-ref] element-refs))))
 
-(defn attributes-for-header-delete-command
-  "Return attributes for the delete command, if it needs special attributes."
-  [node example-elements rows-referent subject]
-  ;; The special cases are where there is just one element.
-  (when (= (count example-elements) 1)
-    (let [next-level (hierarchy-node-next-level node)
-          non-trivial-children (filter hierarchy-node? next-level)
-          delete-referent
-          ;; If we don't have children, then deletion removes the
-          ;; column request, while if we do, it removes the element
-          ;; from requests and from elements in the rows.
-          (if (empty? non-trivial-children)
-            (let [item (:item (first next-level))]
-              (union-referent [(item-referent item)
-                               (elements-referent item rows-referent)]))
-            ;; We don't include the item maps at the next level,
-            ;; because removing the element from the corresponding
-            ;; requests would leave them with no elements.
-            (item-or-exemplar-referent
-             (first example-elements)
-             (table-column-elements-referent
-              (mapcat hierarchy-node-descendants non-trivial-children)
-              (hierarchy-nodes-extent non-trivial-children) nil
-              rows-referent subject)))]
-      {:delete {:item-referent delete-referent
-                :alternate :only-element-delete}})))
-
 (defn attributes-for-header-add-column-command
   "Return attributes for an add column command, given the column
   request items that gave rise to the column. elements-template gives
@@ -201,13 +174,10 @@
                          descendants (hierarchy-node-extent node) nil
                          rows-referent subject)
         example-elements (hierarchy-node-example-elements node)
-        delete-attributes (attributes-for-header-delete-command
-                           node example-elements rows-referent subject)
-        selectable (cond-> delete-attributes
-                     (and (= (count (:members node)) 1)
-                          (empty? (:children node)))
-                     (into-attributes
-                      {:expand {:item-referent column-referent}}))
+        selectable (if (and (= (count (:members node)) 1)
+                            (empty? (:children node)))
+                     {:expand {:item-referent column-referent}}
+                     {})
         inherited-down (-> (if (empty? selectable)
                                (dissoc inherited :selectable-attributes)
                                (assoc inherited :selectable-attributes

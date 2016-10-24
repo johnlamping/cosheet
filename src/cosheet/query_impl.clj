@@ -16,8 +16,6 @@
                                     simplify-for-print]])))
 
 ;;; TODO:
-;;; Assume that the query is immutable, using call-with-immutable when
-;;;     variables are instantiated from the environment
 ;;; Change the special form syntax so all special forms have content
 ;;;    :special-form.
 ;;; Change the store's lookup to take a template, and return all
@@ -255,59 +253,56 @@
         (seq (distinct (apply concat matches))))
       (if reference
         [env]
-        (expr-let [matches (query-matches value env store)]
+        (expr-let [value-as-immutable (current-entity-value value)
+                   matches (query-matches value-as-immutable env store)]
           (when matches [env]))))))
 
 (defn exists-matches-in-store [exists env store]
-  (expr-let [names (expr-seq map content
-                             (label->elements exists :variable-name))
-             qualifier (label->content exists :qualifier)
-             body (label->content exists :body)
-             matches (if qualifier
-                       (expr apply concat
-                             (expr-seq map #(query-matches body % store)
-                                       (query-matches qualifier env store)))
-                       (query-matches body env store))]
-    (seq (distinct (map #(apply dissoc % names) matches)))))
+  (let [names (expr-seq map content
+                        (label->elements exists :variable-name))
+        qualifier (label->content exists :qualifier)
+        body (label->content exists :body)]
+    (expr-let [matches (if qualifier
+                         (expr apply concat
+                               (expr-seq map #(query-matches body % store)
+                                         (query-matches qualifier env store)))
+                         (query-matches body env store))]
+      (seq (distinct (map #(apply dissoc % names) matches))))))
 
 (defn forall-matches-in-store [forall env store]
-  (expr-let [names (expr-seq map content
+  (let [names (expr-seq map content
                              (label->elements forall :variable-name))
              qualifier (label->content forall :qualifier)
-             body (label->content forall :body)
-             matches (query-matches qualifier env store)]
-    (let [groups (group-by #(apply dissoc % names) matches)]
-      ;; Get [for each group of bindings matching the qualifier
-      ;;       [for each binding in the group (which will bind the vars)
-      ;;         [each extension of the binding satisfying the body]]]
-      (expr-let [binding-groups
-                 (expr-seq map (fn [group]
-                                 (expr-seq
-                                  map (fn [binding]
-                                        (query-matches body binding store))
-                                  (groups group)))
-                           (keys groups))]
-        (seq (mapcat
-              (fn [binding-group]
-                (apply clojure.set/intersection
-                       (map (fn [extensions]
-                              (set (map #(apply dissoc % names) extensions)))
-                            binding-group)))
-              binding-groups))))))
+        body (label->content forall :body)]
+    (expr-let [matches (query-matches qualifier env store)]
+      (let [groups (group-by #(apply dissoc % names) matches)]
+        ;; Get [for each group of bindings matching the qualifier
+        ;;       [for each binding in the group (which will bind the vars)
+        ;;         [each extension of the binding satisfying the body]]]
+        (expr-let [binding-groups
+                   (expr-seq map (fn [group]
+                                   (expr-seq
+                                    map (fn [binding]
+                                          (query-matches body binding store))
+                                    (groups group)))
+                             (keys groups))]
+          (seq (mapcat
+                (fn [binding-group]
+                  (apply clojure.set/intersection
+                         (map (fn [extensions]
+                                (set (map #(apply dissoc % names) extensions)))
+                              binding-group)))
+                binding-groups)))))))
 
 (defn and-matches-in-store [and env store]
-  (expr-let [first (label->content and :first)
-             second (label->content and :second)
-             matches (expr apply concat
-                           (expr-seq map #(query-matches-m second % store)
-                                     (query-matches-m first env store)))]
-    (seq (distinct matches))))
+  (let [first (label->content and :first)
+        second (label->content and :second)]
+    (expr-let [matches (expr apply concat
+                             (expr-seq map #(query-matches-m second % store)
+                                       (query-matches-m first env store)))]
+      (seq (distinct matches)))))
 
 (defn item-matches-in-store [item env store]
-  ;;; We don't handle mutable items, because we pass them to
-  ;;; store/candidate-matching-ids, which can't handle them.
-  ;;; TODO: Maybe handle this case?
-  (assert (not (mutable-entity? item)))
   (expr-let [matches
              (expr apply concat
                    (expr-seq
@@ -328,7 +323,7 @@
               (zipmap (keys env) (map deep-to-list (vals env)))))
    (if (atom? query)
      (assert false "queries may not be atoms.")
-     (expr-let [query-content (content query)]
+     (let [query-content (content query)]
        (if (keyword? query-content)
          (case query-content
            :variable (variable-matches-in-store query env store)

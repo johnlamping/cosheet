@@ -38,16 +38,20 @@
     (is (extended-by? itemx itemx))
     (is (extended-by? itemy itemx))
     (is (not (extended-by? itemx itemy)))
-    (is (let-mutated [a '(3 ("foo" false)) b '(3 ("foo" false))]
-          (extended-by? a b)))
+    (is (let [a '(3 ("foo" false))]
+          (let-mutated [b '(3 ("foo" false))]
+            (extended-by? a b))))
     (is (let-mutated [b '(3 ("foo" false))]
           (extended-by? '(nil ("foo" false)) b)))
-    (is (not (let-mutated [a '(4 ("foo" false)) b '(3 ("foo" false))]
-               (extended-by? a b))))
-    (is (let-mutated [a '(3 "foo") b '(3 ("foo" false))]
-          (extended-by? a b)))
-    (is (not (let-mutated [a '(3 ("foo" false)) b '(3 ("foo"))]
-               (extended-by? a b))))
+    (is (not (let [a '(4 ("foo" false))]
+               (let-mutated [b '(3 ("foo" false))]
+                 (extended-by? a b)))))
+    (is (let [a '(3 "foo")]
+          (let-mutated [b '(3 ("foo" false))]
+            (extended-by? a b))))
+    (is (not (let [a '(3 ("foo" false))]
+               (let-mutated [b '(3 ("foo"))]
+                 (extended-by? a b)))))
     (is (let-mutated [a element0] (extended-by? 3 a)))
     (is (extended-by? 3 element2))
     (is (extended-by? element2 3))
@@ -94,16 +98,19 @@
   (is (= (current-value (template-matches 1 {:a :b} 1)) [{:a :b}]))
   (is (= (current-value (template-matches '(1) {:a :b} 1)) [{:a :b}]))
   (is (= (let-mutated [x '(1)] (template-matches 1 {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [x '(1)] (template-matches x {:a :b} x)) [{:a :b}]))
+  (is (= (let-mutated [x '(1)] (template-matches '(1) {:a :b} x)) [{:a :b}]))
   (is (= (let-mutated [x '(1 2)] (template-matches 1 {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [x '(1) y '(1 2)] (template-matches x {:a :b} y))
+  (is (= (let-mutated [y '(1 2)] (template-matches '(1) {:a :b} y))
          [{:a :b}]))
-  (is (= (let-mutated [x '(1 2)] (template-matches x {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [x '(1 2 3) y '(1 (2 3))]
-                      (template-matches x {:a :b} y))
+  (is (= (let [x '(1 2)]
+           (let-mutated [y x] (template-matches x {:a :b} y))) [{:a :b}]))
+  (is (= (let [x '(1 2 3)]
+           (let-mutated [ y '(1 (2 3))]
+             (template-matches x {:a :b} y)))
          nil))
-  (is (= (let-mutated [x '(1 (2 3)) y '(1 2 3)]
-                      (template-matches x {:a :b} y))
+  (is (= (let [x '(1 (2 3))]
+           (let-mutated [y '(1 2 3)]
+             (template-matches x {:a :b} y)))
          nil))
   ;; The next two test a special case optimization.
   (is (= (let-mutated [y '(1 (2 3 4))]
@@ -112,11 +119,13 @@
   (is (= (let-mutated [y '(1 (2 3 4))]
            (template-matches '(nil (nil 2)) {:a :b} y))
          nil))
-  (is (= (let-mutated [x '(1 (4 6))]
-                      (template-matches x {:a :b} x))
+  (is (= (let [x '(1 (4 6))]
+           (let-mutated [y x]
+             (template-matches x {:a :b} y)))
          [{:a :b}]))
-  (is (= (let-mutated [x '((1 2) 3 (4 (5 6)))]
-                      (template-matches x {:a :b} x))
+  (is (= (let [x '((1 2) 3 (4 (5 6)))]
+           (let-mutated [y x]
+             (template-matches x {:a :b} y)))
          [{:a :b}]))
   (is (= (let-mutated [x 2]
                       (template-matches (variable "foo") {:a :b} x))
@@ -124,42 +133,42 @@
   (is (= (let-mutated [x '(1 (2 3))]
                       (template-matches (variable "foo") {:a :b} x))
          [{:a :b, "foo" '(1 (2 3))}]))
-  (is (= (let-mutated [v `(1 ~(variable "foo"))
-                       x '(1 2)]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 ~(variable "foo"))]
+           (let-mutated [x '(1 2)]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo))
-                       x '(1 (2 :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo))]
+           (let-mutated [x '(1 (2 :foo))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo))
-                       x '(1 (2 :bar :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo))]
+           (let-mutated [x '(1 (2 :bar :foo))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo))
-                       x '(1 (2 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo))]
+           (let-mutated [x '(1 (2 :bar))]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo))
-                       x '(1 2)]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo))]
+           (let-mutated [x '(1 2)]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(1 (~(variable "foo") false))
-                       x '(1 (2 false))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") false))]
+           (let-mutated [x '(1 (2 false))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") false))
-                       x '(1 (2 true))]
-                      (template-matches v  {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") false))]
+           (let-mutated [x '(1 (2 true))]
+             (template-matches v  {:a :b} x)))
            nil))
-  (is (= (set (let-mutated [v `(1 (~(variable "foo") :foo))
-                            x '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))]
-                           (template-matches v {:a :b} x)))
+  (is (= (set (let [v `(1 (~(variable "foo") :foo))]
+                (let-mutated [x '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))]
+                  (template-matches v {:a :b} x))))
          #{{:a :b, "foo" 2} {:a :b, "foo" 3}}))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo)
-                             (~(variable "foo") :bar))
-                       x '(1 (2 :foo) (2 :bar))]
-                         (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo)
+                     (~(variable "foo") :bar))]
+           (let-mutated [x '(1 (2 :foo) (2 :bar))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let-mutated [x '(1 (2 :foo) (2 :bar))]
                       (template-matches `(nil (~(variable "foo") :foo)
@@ -167,65 +176,65 @@
                                         {:a :b}
                                         x))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(2 (~(variable "foo") :foo)
-                             (~(variable "foo") :bar))
-                       x '(1 (2 :foo) (2 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(2 (~(variable "foo") :foo)
+                     (~(variable "foo") :bar))]
+           (let-mutated [x '(1 (2 :foo) (2 :bar))]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(~(variable "foo") ~(variable "foo"))
-                       x '(1 1)]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
+           (let-mutated [x '(1 1)]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 1}]))
-  (is (= (let-mutated [v `(~(variable "foo") ~(variable "foo"))
-                       x '(1 2)]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
+           (let-mutated [x '(1 2)]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(~(variable "foo") ~(variable "foo"))
-                       x '(1 2 3 1)]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
+           (let-mutated [x '(1 2 3 1)]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 1}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo)
-                             (~(variable "foo") :bar))
-                       x '(1 (2 :foo) (3 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo)
+                     (~(variable "foo") :bar))]
+           (let-mutated [x '(1 (2 :foo) (3 :bar))]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (set (let-mutated [v `(1 (~(variable "foo") :foo)
-                                  (~(variable "foo") :bar))
-                            x '(1 (1 :foo) (2 :foo)
-                                  (1 :bar) (2 :bar) (3 :bar))]
-                           (template-matches v {:a :b} x)))
+  (is (= (set (let [v `(1 (~(variable "foo") :foo)
+                          (~(variable "foo") :bar))]
+                (let-mutated [x '(1 (1 :foo) (2 :foo)
+                                    (1 :bar) (2 :bar) (3 :bar))]
+                  (template-matches v {:a :b} x))))
          #{{:a :b, "foo" 1} {:a :b, "foo" 2}}))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo)
-                             (~(variable "bar") :bar))
-                       x '(1 (2 :foo) (3 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo)
+                     (~(variable "bar") :bar))]
+           (let-mutated [x '(1 (2 :foo) (3 :bar))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2, "bar" 3}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo") :foo)
-                             (~(variable nil) :bar))
-                       x '(1 (2 :foo) (3 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo") :foo)
+                     (~(variable nil) :bar))]
+           (let-mutated [x '(1 (2 :foo) (3 :bar))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable nil) :foo)
-                             (~(variable nil) :bar))
-                       x '(1 (2 :foo) (3 :bar))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable nil) :foo)
+                     (~(variable nil) :bar))]
+           (let-mutated [x '(1 (2 :foo) (3 :bar))]
+             (template-matches v {:a :b} x)))
          [{:a :b}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo" 2) :foo))
-                       x '(1 (2 :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo" 2) :foo))]
+           (let-mutated [x '(1 (2 :foo))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 2}]))
-  (is (= (let-mutated [v `(1 (~(variable "foo" 2) :foo))
-                       x '(1 (3 :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(1 (~(variable "foo" 2) :foo))]
+           (let-mutated [x '(1 (3 :foo))]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(~(variable "foo" 1) ~(variable "foo"))
-                       x '(1 (1 :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(~(variable "foo" 1) ~(variable "foo"))]
+           (let-mutated [x '(1 (1 :foo))]
+             (template-matches v {:a :b} x)))
          nil))
-  (is (= (let-mutated [v `(~(variable "foo" 1)
-                           ~(variable "foo" nil true))
-                       x '(1 (1 :foo))]
-                      (template-matches v {:a :b} x))
+  (is (= (let [v `(~(variable "foo" 1)
+                   ~(variable "foo" nil true))]
+           (let-mutated [x '(1 (1 :foo))]
+             (template-matches v {:a :b} x)))
          [{:a :b, "foo" 1}])))
 
 (deftest matching-elements-test

@@ -51,9 +51,8 @@
   "Given an entity that is an element, find an atom that can serve as
   a label for that element."
   [element]
-  (expr-let
-      [annotations (elements element)
-       labels (expr-seq map atomic-value annotations)]
+  (let [annotations (elements element)
+        labels (map atomic-value annotations)]
     (first (filter (partial not= nil) labels))))
 
 (defn has-element-satisfying? [element target]
@@ -67,30 +66,29 @@
       (expr-let [matching-elements (label->elements
                                     target (atomic-value (second element)))]
         (not (empty? matching-elements)))
-      (expr-let
-          [label (label-for-element element)
-           candidates (if (not (nil? label))
-                        (label->elements target label)
-                        (elements target))
-           extended-by (expr-seq map (partial extended-by? element) candidates)]
-        (some #(not (nil? %)) extended-by)))))
+      (let [label (label-for-element element)]
+        (expr-let
+            [candidates (if (not (nil? label))
+                          (label->elements target label)
+                          (elements target))
+             extended-by (expr-seq map (partial extended-by? element)
+                                   candidates)]
+          (some #(not (nil? %)) extended-by))))))
 
 (defn extended-by? [template target]
   (or (nil? template)
       (if (atom? template)
-        (expr-let [template-value (atomic-value template)
-                   target-value (atomic-value target)]
-          (= template-value target-value))
+        (expr-let [target-value (atomic-value target)]
+          (= (atomic-value template) target-value))
         (expr-let
             [content-extended (expr extended-by?
                                 (content template)
                                 (content target))]
           (when content-extended
             (expr-let
-                [template-elements (elements template)
-                 satisfied-elements (expr-seq
+                [satisfied-elements (expr-seq
                                      map #(has-element-satisfying? % target)
-                                     template-elements)]
+                                     (elements template))]
               (every? identity satisfied-elements)))))))
 
 (defmethod extended-by-m? true [template target]
@@ -170,14 +168,18 @@
       (if (not (nil? value))
         (if reference
           (when (= value target)
-            [env])
+                [env])
           (expr-let
-              [target-extends (extended-by? value target)]
+              [value-as-immutable (if (mutable-entity? value)
+                                    (deep-to-list value)
+                                    value)
+               target-extends (extended-by? value-as-immutable target)]
             (when target-extends
               (if value-may-extend
                 [env]
-                (expr-let [value-extends (extended-by? target value)]
-                  (when value-extends [env]))))))
+                (expr-let [target-as-list (deep-to-list target)]
+                  (when (extended-by? target-as-list value-as-immutable)
+                    [env]))))))
         (when (not (nil? target))
           (expr-let
               [envs (if (nil? condition)
@@ -190,7 +192,9 @@
 
 ;;; Find matches of elements of the target with the element.
 (defn element-matches [element env target]
+  (assert (not (mutable-entity? element)))
   (when verbose (println "element-matches" element (deep-to-list target)))
+  ;; Test for the special case of looking for any element with a specific label.
   (if (and (seq? element)
            (nil? (first element))
            (atom? (second element))
@@ -231,6 +235,7 @@
     (elements item)))
 
 (defn template-matches [template env target]
+  (assert (not (mutable-entity? template)))
   (when verbose
     (println "template-matches(" template
              (zipmap (keys env) (map deep-to-list (vals env)))
@@ -329,6 +334,7 @@
 (defn query-matches
   ([query store] (query-matches query {} store))
   ([query env store]
+   (assert (not (mutable-entity? query)))
    (when verbose
      (println "query" query "env"
               (zipmap (keys env) (map deep-to-list (vals env)))))

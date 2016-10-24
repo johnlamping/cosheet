@@ -94,17 +94,18 @@
 (defmethod extended-by-m? true [template target]
   (extended-by? template target))
 
-;;; Code to bind an entity in an environment
+;;; Code to bind an immutable entity in an environment
 
 (defn variable? [template]
-  (expr = (content template) :variable))
+  (= (content template) :variable))
 
 (def bind-entity)
 
 (defrecord
     ^{:doc "An entity that is another entity with its variables bound
             by an environment.
-            It will never be an atom or a bare bound variable."}
+            It will never be an atom, a mutable entity,
+            or a bare bound variable."}
     BoundEntity
 
   [wrapped  ; The entity we wrap
@@ -112,52 +113,46 @@
   
   Entity
 
-  (mutable-entity? [this] (mutable-entity? wrapped))
+  (mutable-entity? [this] false)
   
   ;; Note: this assumes that an implicit content reference doesn't
   ;; outlive a promotion of its the content.  
   (atom? [this] (atom? wrapped))
 
   (label->elements [this label]
-    (if (mutable-entity? wrapped)
-      (expr-let [my-elements (elements this)
-                 matches (expr-seq map #(expr some (partial = label)
-                                              (expr-seq map atomic-value
-                                                        (elements %)))
-                                   my-elements)]
-        (seq (map second (filter first (map vector matches elements)))))
-      (seq (filter #(some (partial = label)
+    (seq (filter #(some (partial = label)
                           (map atomic-value (elements %)))
                    (map #(bind-entity % env)
-                        (elements wrapped))))))
+                        (elements wrapped)))))
 
   (elements [this]
-    (expr-let [unbound-elements (elements wrapped)]
+    (let [unbound-elements (elements wrapped)]
       (seq (map #(bind-entity % env) unbound-elements))))
 
   (content [this]
-    (expr bind-entity (content wrapped) env))
+    (bind-entity (content wrapped) env))
 
   (call-with-immutable [this fun]
-    (assert false "call-with-immutable not supported by bound entities")))
+    (fun this)))
 
 (defn bind-entity [entity env]
+  (assert (not (mutable-entity? entity)))
   (if (atom? entity)
     (atomic-value entity)
-    (if (mutable-entity? entity)
-      (expr-let [is-variable (variable? entity)]
-        (if is-variable
-          (expr-let [name (label->content entity :name)]
-            (or (env name) (->BoundEntity entity env)))
-          (->BoundEntity entity env)))
-      (or (and (variable? entity)
-               (env (label->content entity :name)))
-          (->BoundEntity entity env)))))
+    (or (and (variable? entity)
+             (env (label->content entity :name)))
+        (->BoundEntity entity env))))
 
 ;;; TODO: Eventually extend template-matches to pass along a set of used
 ;;;       up stuff, so it can count repeated stuff in templates.
 
 (def template-matches)
+
+(defn current-entity-value
+  [entity]
+  (if (mutable-entity? entity)
+    (deep-to-list entity)
+    entity))
 
 (defn variable-matches [var env target]
   (expr-let [name (label->content var :name)
@@ -170,15 +165,13 @@
           (when (= value target)
                 [env])
           (expr-let
-              [value-as-immutable (if (mutable-entity? value)
-                                    (deep-to-list value)
-                                    value)
+              [value-as-immutable (current-entity-value value)
                target-extends (extended-by? value-as-immutable target)]
             (when target-extends
               (if value-may-extend
                 [env]
-                (expr-let [target-as-list (deep-to-list target)]
-                  (when (extended-by? target-as-list value-as-immutable)
+                (expr-let [target-as-immutable (current-entity-value target)]
+                  (when (extended-by? target-as-immutable value-as-immutable)
                     [env]))))))
         (when (not (nil? target))
           (expr-let
@@ -202,23 +195,20 @@
     (expr-let [matching-elements (label->elements
                                   target (atomic-value (second element)))]
       (when (not (empty? matching-elements)) [env]))
-    (expr-let [label (expr-let [is-variable (variable? element)]
-                       (if is-variable
-                         (expr-let [condition (label->content
-                                               element :condition)]
-                           (label-for-element condition))
-                         (expr-let [candidate-elements
-                                    (expr-seq map #(expr atomic-value
-                                                     (bind-entity % env))
-                                              (elements element))]
-                           (first (filter #(and (not= % nil) (not= % :variable))
-                                          candidate-elements)))))
-               candidates (if (not (nil? label))
-                            (label->elements target label)
-                            (elements target))
-               match-envs (expr-seq map (partial template-matches element env)
-                                    candidates)]
-      (seq (distinct (apply concat match-envs))))))
+    (let [label (if (variable? element)
+                  (let [condition (label->content element :condition)]
+                    (label-for-element condition))
+                  (let [candidate-elements
+                        (map #(atomic-value (bind-entity % env))
+                             (elements element))]
+                    (first (filter #(and (not= % nil) (not= % :variable))
+                                   candidate-elements))))]
+      (expr-let [candidates (if (not (nil? label))
+                              (label->elements target label)
+                              (elements target))
+                 match-envs (expr-seq map (partial template-matches element env)
+                                      candidates)]
+        (seq (distinct (apply concat match-envs)))))))
 
 (defn item-matches [item env target]
   (when verbose (println "item-matches"))
@@ -227,11 +217,10 @@
       (expr-let [env-matches (expr-seq map #(element-matches element % target)
                                        envs)]
         (seq (distinct (apply concat env-matches)))))
-    (expr-let [item-content (content item)]
-      (if item-content
-        (expr template-matches
-          item-content env (content-reference target))
-        [env]))
+    (if-let [item-content (content item)]
+      (expr template-matches
+        item-content env (content-reference target))
+      [env])
     (elements item)))
 
 (defn template-matches [template env target]
@@ -244,10 +233,9 @@
   (if (atom? template)
     (expr-let [extended (extended-by? template target)]
       (when extended [env]))
-    (expr-let [is-variable (variable? template)]
-      (if is-variable
-        (variable-matches template env target)
-        (item-matches template env target)))))
+    (if (variable? template)
+      (variable-matches template env target)
+      (item-matches template env target))))
 
 (defmethod template-matches-m true [template env target]
   (template-matches template env target))
@@ -255,20 +243,20 @@
 (def query-matches)
 
 (defn variable-matches-in-store [var env store]
-  (expr-let [name (label->content var :name)
-             reference (label->content var :reference)]
-    (let [value (env name)]
-      (if (nil? value)
-        (expr-let [candidate-ids (store/candidate-matching-ids store nil)
-                   matches (expr-seq
-                            map #(variable-matches
-                                  var env (description->entity % store))
-                            candidate-ids)]
-          (seq (distinct (apply concat matches))))
-        (if reference
-          [env]
-          (expr-let [matches (query-matches value env store)]
-            (when matches [env])))))))
+  (let [name (label->content var :name)
+        reference (label->content var :reference)
+        value (env name)]
+    (if (nil? value)
+      (expr-let [candidate-ids (store/candidate-matching-ids store nil)
+                 matches (expr-seq
+                          map #(variable-matches
+                                var env (description->entity % store))
+                          candidate-ids)]
+        (seq (distinct (apply concat matches))))
+      (if reference
+        [env]
+        (expr-let [matches (query-matches value env store)]
+          (when matches [env]))))))
 
 (defn exists-matches-in-store [exists env store]
   (expr-let [names (expr-seq map content

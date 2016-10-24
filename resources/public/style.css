@@ -221,6 +221,10 @@ body {
     flex-direction: column;
 }
 
+.wrapped-element ~ .horizontal-tags-element {
+    margin-top: 2px;
+}
+
 /* --- label-element pairs: two column format --- */
 
 .horizontal-tags-element.wide > :last-child {

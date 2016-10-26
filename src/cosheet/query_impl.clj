@@ -43,6 +43,27 @@
 ;;;                       that cause some entity in the database to be
 ;;;                       an extension of the template.
 
+(defn conj-disjoint-combinations
+  "Given a sequence of collections of elements, and a sequence of elements,
+  choose all combinations of a collection and an element not in the collection,
+  returning a sequence of such combinations."
+  [combinations elements]
+  (mapcat (fn [combination]
+            (keep (fn [element] (when (not (some #(= % element) combination))
+                                  (conj combination element)))
+                  elements))
+          combinations))
+
+(defn disjoint-combinations
+  "Given a sequence of sequences of elements,
+  return all disjoint combinations of one element from each sequence."
+  [sequences]
+  (if (empty? sequences)
+    [[]]
+    (reduce conj-disjoint-combinations
+            (map vector (first sequences))
+            (rest sequences))))
+
 (def extended-by?)
 
 (defn label-for-element
@@ -88,11 +109,14 @@
                                 (content template)
                                 (content target))]
           (when content-extended
-            (expr-let
-                [satisfied-elements (expr-seq
-                                     map #(has-element-satisfying? % target)
-                                     (elements template))]
-              (every? identity satisfied-elements)))))))
+            (expr-let [template-elements (elements template)]
+              (or (empty? template-elements)
+                  (expr-let
+                      [satisfied-elements (expr-seq
+                                           map #(elements-satisfying % target)
+                                           template-elements)]
+                    (not (empty? (disjoint-combinations
+                                  satisfied-elements)))))))))))
 
 (defmethod extended-by-m? true [template target]
   (extended-by? template target))

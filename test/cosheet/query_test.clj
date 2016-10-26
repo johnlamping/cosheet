@@ -52,6 +52,12 @@
     (is (not (let [a '(3 ("foo" false))]
                (let-mutated [b '(3 ("foo"))]
                  (extended-by? a b)))))
+    (is (let [a '(3 ("foo" (4 false)))]
+          (let-mutated [b '(3 ("foo" (4 false)))]
+            (extended-by? a b))))
+    (is (not (let [a '(3 ("foo" (4 false)))]
+               (let-mutated [b '(3 ("foo" (4 true)))]
+                 (extended-by? a b)))))
     (is (let-mutated [a element0] (extended-by? 3 a)))
     (is (extended-by? 3 element2))
     (is (extended-by? element2 3))

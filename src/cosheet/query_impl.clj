@@ -53,17 +53,14 @@
         labels (map atomic-value annotations)]
     (first (filter (partial not= nil) labels))))
 
-(defn has-element-satisfying? [element target]
-  "Return true if the target item has an element satisfying
-  the given element)."
+(defn elements-satisfying [element target]
+  "Return a list of the target elements satisfying the given element."
   (when (not (atom? target))
     (if (and (seq? element)
              (nil? (first element))
              (atom? (second element))
              (= (count element) 2))
-      (expr-let [matching-elements (label->elements
-                                    target (atomic-value (second element)))]
-        (not (empty? matching-elements)))
+      (label->elements target (atomic-value (second element)))
       (let [label (label-for-element element)]
         (expr-let
             [candidates (if (not (nil? label))
@@ -71,7 +68,15 @@
                           (elements target))
              extended-by (expr-seq map (partial extended-by? element)
                                    candidates)]
-          (some #(not (nil? %)) extended-by))))))
+          (keep-indexed (fn [index candidate]
+                          (when (nth extended-by index) candidate))
+                        candidates))))))
+
+(defn has-element-satisfying? [element target]
+  "Return true if the target item has an element satisfying
+  the given element)."
+  (expr-let [satisfying (elements-satisfying element target)]
+    (not (empty? satisfying))))
 
 (defn extended-by? [template target]
   (or (nil? template)

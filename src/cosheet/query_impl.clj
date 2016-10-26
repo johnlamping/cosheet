@@ -49,7 +49,8 @@
   returning a sequence of such combinations."
   [combinations elements]
   (mapcat (fn [combination]
-            (keep (fn [element] (when (not (some #(= % element) combination))
+            (keep (fn [element] (when (not (some (partial = element)
+                                                 combination))
                                   (conj combination element)))
                   elements))
           combinations))
@@ -170,9 +171,6 @@
              (env (label->content entity :name)))
         (->BoundEntity entity env))))
 
-;;; TODO: Eventually extend template-matches to pass along a set of used
-;;;       up stuff, so it can count repeated stuff in templates.
-
 (def template-matches)
 
 (defn current-entity-value
@@ -210,10 +208,11 @@
                 (seq (map #(assoc % name value) envs)))
               envs)))))))
 
-;;; Find matches of elements of the target with the element.
-(defn element-matches [element env target]
-  (assert (not (mutable-entity? element)))
-  (when verbose (println "element-matches" element (deep-to-list target)))
+(defn element-match-map
+  "Return a map from environment to seq of elements that match in that
+  environment."
+  [element env target]
+  (when verbose (println "matching-elements" element (deep-to-list target)))
   ;; Test for the special case of looking for any element with a specific label.
   (if (and (seq? element)
            (nil? (first element))
@@ -221,7 +220,7 @@
            (= (count element) 2))
     (expr-let [matching-elements (label->elements
                                   target (atomic-value (second element)))]
-      (when (not (empty? matching-elements)) [env]))
+      (if (empty? matching-elements) {} {env matching-elements}))
     (let [label (if (variable? element)
                   (let [condition (label->content element :condition)]
                     (label-for-element condition))
@@ -235,7 +234,15 @@
                               (elements target))
                  match-envs (expr-seq map (partial template-matches element env)
                                       candidates)]
-        (seq (distinct (apply concat match-envs)))))))
+        (reduce (fn [result [candidate matching-envs]]
+                  (reduce (fn [result env]
+                            (update result env #(conj (or % []) candidate)))
+                          result matching-envs))
+                {} (map vector candidates match-envs))))))
+
+(defn element-matches [element env target]  
+  (expr-let [match-map (element-match-map element env target)]
+    (keys match-map)))
 
 (defn item-matches [item env target]
   (when verbose (println "item-matches"))

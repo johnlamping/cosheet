@@ -244,18 +244,67 @@
   (expr-let [match-map (element-match-map element env target)]
     (keys match-map)))
 
+(defn concat-maps
+  "Given a sequence of maps from key to sequence of values, return a single
+  map that concatenates all the values for a given key."
+  [maps]
+  (when (seq maps)
+    (reduce (fn [m1 m2]
+              (reduce (fn [m k] (update m k #(concat (or % []) (m2 k))))
+                      m1 (keys m2)))
+            (first maps) (rest maps))))
+
+(defn conj-disjoint-maps
+  "Given a collection of disallowed elements, and map from environments
+  to elements, do conj-disjoint-combinations between the collection and
+  each pair in the map."
+  [combinations match-map]
+  (reduce-kv
+   (fn [m k v]
+     (if-let [disjoint (seq (conj-disjoint-combinations combinations v))]
+       (assoc m k disjoint)
+       m))
+   {} match-map))
+
+(defn multiple-element-matches
+  "Given a sequence of elements, a map from environments to collections
+  of disallowed elements, and a target, return a sequence of environments
+  where each element matches a different element in the target,
+  and not a disallowed element."
+  [elements env-map target]
+  (if (empty? elements)
+    (keys env-map)
+    (expr-let [matching-maps
+               (expr-seq map #(element-match-map (first elements) % target)
+                         (keys env-map))]
+      (let [disjoint-map (concat-maps
+                          (map conj-disjoint-maps
+                               (vals env-map) matching-maps))]
+        (multiple-element-matches
+         (rest elements) disjoint-map target)))))
+
 (defn item-matches [item env target]
   (when verbose (println "item-matches"))
-  (expr reduce
-    (fn [envs element]
-      (expr-let [env-matches (expr-seq map #(element-matches element % target)
-                                       envs)]
-        (seq (distinct (apply concat env-matches)))))
-    (if-let [item-content (content item)]
-      (expr template-matches
-        item-content env (content-reference target))
-      [env])
-    (elements item)))
+  (expr-let [content-match-envs
+             (if-let [item-content (content item)]
+               (expr template-matches
+                 item-content env (content-reference target))
+               [env])]
+    (when (seq content-match-envs)
+      (let [item-elements (elements item)]
+        (cond (empty? item-elements)
+              content-match-envs
+              (empty? (rest item-elements))
+              (expr-let [env-matches
+                         (expr-seq map #(element-matches
+                                         (first item-elements) % target)
+                                   content-match-envs)]
+                (seq (distinct (apply concat env-matches))))
+              true
+              (multiple-element-matches item-elements
+                                        (zipmap content-match-envs
+                                                (repeat [[]]))
+                                        target))))))
 
 (defn template-matches [template env target]
   (assert (not (mutable-entity? template)))

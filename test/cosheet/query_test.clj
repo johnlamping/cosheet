@@ -136,6 +136,19 @@
            (let-mutated [y x]
              (template-matches x {:a :b} y)))
          [{:a :b}]))
+  ;; Duplicates in template
+  (is (empty? (let [x '(1 2 2)]
+           (let-mutated [y '(1 2)]
+             (template-matches x {:a :b} y)))))
+  (is (= (let [x '(1 2 2)]
+           (let-mutated [y '(1 2 2 2)]
+             (template-matches x {:a :b} y)))
+         [{:a :b}]))
+  (is (= (let [x '(1 2 2)]
+           (let-mutated [y '(1 2 2)]
+             (template-matches x {:a :b} y)))
+         [{:a :b}]))
+  ;; Variables
   (is (= (let-mutated [x 2]
                       (template-matches (variable "foo") {:a :b} x))
          [{:a :b, "foo" 2}]))
@@ -244,7 +257,16 @@
                    ~(variable "foo" nil true))]
            (let-mutated [x '(1 (1 :foo))]
              (template-matches v {:a :b} x)))
-         [{:a :b, "foo" 1}])))
+         [{:a :b, "foo" 1}]))
+  (is (check (let [x `(1 ~(variable "foo") ~(variable "bar"))]
+               (let-mutated [y '(1 2 3 4)]
+                 (template-matches x {:a :b} y)))
+             (as-set [{:a :b "foo" 2 "bar" 3}
+                      {:a :b "foo" 2 "bar" 4}
+                      {:a :b "foo" 3 "bar" 2}
+                      {:a :b "foo" 3 "bar" 4}
+                      {:a :b "foo" 4 "bar" 2}
+                      {:a :b "foo" 4 "bar" 3}]))))
 
 (deftest matching-elements-test
   (is (= (matching-elements '(nil (2)) '(nil (1 (2 3)) (3 (4 5))))

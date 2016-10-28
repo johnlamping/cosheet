@@ -15,7 +15,7 @@
   (->ElementStoreImpl
    {(make-id "0") {:content 0}
     (make-id "1") {:subject (make-id "0") :content (make-id "4")}
-    (make-id "2") {:subject (make-id "1") :content "foo"}
+    (make-id "2") {:subject (make-id "1") :content "Foo"}
     (make-id "3") {:subject (make-id "2") :content :label}
     (make-id "4") {:containers #{(make-id "1")} :content (make-id "6")}
     (make-id "5") {:subject (make-id "4") :content "bar"}
@@ -43,6 +43,8 @@
 (deftest id-label->element-ids-test
   (is (= (id-label->element-ids test-store (make-id "0") "foo")
          [(make-id "1")]))
+    (is (= (id-label->element-ids test-store (make-id "0") "Foo")
+         [(make-id "1")]))
   (is (= (id-label->element-ids test-store (make-id "1") nil)
          [(make-id "7")]))
   (is (= (id-label->element-ids test-store (make-id "0") "bar") nil))
@@ -57,9 +59,9 @@
 (deftest id->content-test
   (is (= (id->content test-store (make-id "???")) nil))
   (is (= (id->content test-store (make-id "1")) (make-id "4")))
-  (is (= (id->content test-store (make-id "2")) "foo"))
+  (is (= (id->content test-store (make-id "2")) "Foo"))
   (is (= (id->content test-store (make-id "6")) 5))
-  (is (= (id->content test-store (->ImplicitContentId (make-id "2"))) "foo"))
+  (is (= (id->content test-store (->ImplicitContentId (make-id "2"))) "Foo"))
   (is (= (id->content test-store (->ImplicitContentId (make-id "1")))
          (make-id "6")))
   (is (= (id->content test-store (->ImplicitContentId

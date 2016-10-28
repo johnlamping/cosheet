@@ -12,6 +12,7 @@
                                     template-matches-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq]]
+                     [utils :refer [equivalent-atoms?]]
                      [debug :refer [trace-current
                                     simplify-for-print]])))
 
@@ -104,7 +105,7 @@
   (or (nil? template)
       (if (atom? template)
         (expr-let [target-value (atomic-value target)]
-          (= (atomic-value template) target-value))
+          (equivalent-atoms? (atomic-value template) target-value))
         (expr-let
             [content-extended (expr extended-by?
                                 (content template)
@@ -148,7 +149,7 @@
   (atom? [this] (atom? wrapped))
 
   (label->elements [this label]
-    (seq (filter #(some (partial = label)
+    (seq (filter #(some (partial equivalent-atoms? label)
                           (map atomic-value (elements %)))
                    (map #(bind-entity % env)
                         (elements wrapped)))))
@@ -212,7 +213,7 @@
   "Return a map from environment to seq of elements that match in that
   environment."
   [element env target]
-  (when verbose (println "matching-elements" element (deep-to-list target)))
+  (when verbose (println "element-match-map" element (deep-to-list target)))
   ;; Test for the special case of looking for any element with a specific label.
   (if (and (seq? element)
            (nil? (first element))

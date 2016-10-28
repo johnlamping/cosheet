@@ -7,6 +7,7 @@
                                     call-dependent-on-id
                                     mutable-store?
                                     stored-item-id-string]]
+                     [utils :refer [equivalent-atoms?]]
                      [expression-manager :refer [current-value]]
                      [orderable :as orderable]
                      [entity :refer :all]
@@ -106,7 +107,7 @@
   (atom? [this] false)
 
   (label->elements [this label]
-    (seq (filter #(some (partial = label)
+    (seq (filter #(some (partial equivalent-atoms? label)
                         (map atomic-value (elements %)))
                  (elements this))))
 

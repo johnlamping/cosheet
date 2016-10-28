@@ -86,7 +86,7 @@
                    (let-mutated [him joe-list]
                      (expr-seq map entity/to-list (semantic-elements-R him)))))
          (set (map canonicalize-list (rest (rest joe-list))))))
-  (let [expected ["Joe" {"male" 1
+  (let [expected ["joe" {"male" 1
                          "married" 1
                          [39 {["age" {'tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1

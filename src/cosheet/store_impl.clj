@@ -84,7 +84,8 @@
            [:subject->label->ids subject-of-subject nil]
            #(remove-from-vector % subject))
           (update-in
-           [:subject->label->ids subject-of-subject atomic-value]
+           [:subject->label->ids
+            subject-of-subject (canonical-atom-form atomic-value)]
            #(ensure-in-vector % subject))))))
 
 (defn index-in-subject
@@ -130,7 +131,7 @@
                        [:subject->label->ids subject-of-subject nil]
                        #(ensure-in-vector % subject)))
           (update-in-clean-up
-           [:subject->label->ids subject-of-subject label]
+           [:subject->label->ids subject-of-subject (canonical-atom-form label)]
            #(remove-from-vector % subject))))))
 
 (defn deindex-in-subject
@@ -260,7 +261,7 @@
     (contains? (:id->data this) id))
 
   (id-label->element-ids [this id label]
-    (get-in this [:subject->label->ids id label]))
+    (get-in this [:subject->label->ids id (canonical-atom-form label)]))
 
   (id->element-ids [this id]
     (seq (distinct (apply concat

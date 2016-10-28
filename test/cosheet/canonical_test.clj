@@ -8,14 +8,14 @@
 
 (def jane-list `("Jane" "plain" "plain"))
 (def joe-list '("Joe"
-                "male"
+                "Male"
                 (39 ("age" tag) ("doubtful" "confidence") )
                 "married"
                 (45 ("age" tag))))
 
 (deftest canonicalize-list-test
   (is (check (canonicalize-list joe-list)
-             '("Joe" {"male" 1
+             '("joe" {"male" 1
                       "married" 1
                       (39 {["age" {tag 1}] 1
                            ("doubtful" {"confidence" 1}) 1}) 1

@@ -328,12 +328,12 @@
 (deftest canonical-info-set-test
   (is (= (let-mutated [joe joe-list, jane jane-list]
            (canonical-info-set [joe jane]))
-         {["Joe"
+         {["joe"
            {"married" 1
             "male" 1
             [39 {["age" {:tag 1}] 1, ["doubtful" {"confidence" 1}] 1}] 1
             [45 {["age" {:tag 1}] 1}] 1}]1
-            ["Jane" {"plain" 2}] 1})))
+            ["jane" {"plain" 2}] 1})))
 
 (deftest hierarchy-by-canonical-info-test
   (is (check

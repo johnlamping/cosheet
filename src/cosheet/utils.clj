@@ -201,3 +201,17 @@
   [atom-map key fun]
   (swap-control-return! atom-map
                         #(ensure-in-map % key fun)))
+
+(defn canonical-atom-form
+  "Convert a value to its canonical form, so that equivalent atoms will have
+  equal canonical forms. (This means lower case strings.)"
+  [value]
+  (if (string? value) (clojure.string/lower-case value) value))
+
+(defn equivalent-atoms?
+  "Return true if the atoms are equal, ignoring case for strings."
+  [a1 a2]
+  (or (= a1 a2)
+      (and (string? a1) (string? a2)
+           (= (clojure.string/lower-case a1) (clojure.string/lower-case a2)))))
+

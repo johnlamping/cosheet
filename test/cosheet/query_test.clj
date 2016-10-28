@@ -18,7 +18,7 @@
             ))
 
 (deftest extended-by-test
-  (let [element0 '(3 "foo")
+  (let [element0 '(3 "Foo")
         element1 '(3 ("foo" :label))
         element2 '((3))
         itemx `(nil ~element0 ~element1)
@@ -41,18 +41,18 @@
     (is (let [a '(3 ("foo" false))]
           (let-mutated [b '(3 ("foo" false))]
             (extended-by? a b))))
-    (is (let-mutated [b '(3 ("foo" false))]
+    (is (let-mutated [b '(3 ("Foo" false))]
           (extended-by? '(nil ("foo" false)) b)))
-    (is (not (let [a '(4 ("foo" false))]
+    (is (not (let [a '(4 ("Foo" false))]
                (let-mutated [b '(3 ("foo" false))]
                  (extended-by? a b)))))
     (is (let [a '(3 "foo")]
-          (let-mutated [b '(3 ("foo" false))]
+          (let-mutated [b '(3 ("Foo" false))]
             (extended-by? a b))))
     (is (not (let [a '(3 ("foo" false))]
                (let-mutated [b '(3 ("foo"))]
                  (extended-by? a b)))))
-    (is (let [a '(3 ("foo" (4 false)))]
+    (is (let [a '(3 ("Foo" (4 false)))]
           (let-mutated [b '(3 ("foo" (4 false)))]
             (extended-by? a b))))
     (is (not (let [a '(3 ("foo" (4 false)))]
@@ -101,8 +101,9 @@
            ()))))
 
 (deftest template-matches-test
-  (is (= (current-value (template-matches 1 {}  1)) [{}]))
   (is (= (current-value (template-matches 1 {} 1)) [{}]))
+  (is (= (current-value (template-matches "a" {} "A")) [{}]))
+  (is (= (current-value (template-matches "A" {} "a")) [{}]))
   (is (= (current-value (template-matches 1 {} 2)) nil))
   (is (= (current-value (template-matches 1 {:a :b} 1)) [{:a :b}]))
   (is (= (current-value (template-matches '(1) {:a :b} 1)) [{:a :b}]))
@@ -269,18 +270,18 @@
                       {:a :b "foo" 4 "bar" 3}]))))
 
 (deftest matching-elements-test
-  (is (= (matching-elements '(nil (2)) '(nil (1 (2 3)) (3 (4 5))))
-         ['(1 (2 3))]))
+  (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
+         ['(1 ("A" 3))]))
   (let [ia (->ItemId "A")
         ib (->ItemId "B")
         s0 (store/new-element-store)
         mutator (fn [s]
-                  (store-utils/add-entity! s ia '(1 (2 3)))
+                  (store-utils/add-entity! s ia '(1 ("a" 3)))
                   (store-utils/add-entity! s ia '(3 (4 5)))
-                  (store-utils/add-entity! s ib '(1 (2 4))))]
+                  (store-utils/add-entity! s ib '(1 ("a" 4))))]
     (let [matches (let-mutated-store
                    [store s0 mutator]
-                   (matching-elements '(nil (2))
+                   (matching-elements '(nil ("A"))
                                       (entity/description->entity ia store)))]
       (= (map #(current-value (entity/to-list %)) matches)
          ['(1 (2 3))]))))

@@ -182,21 +182,26 @@
 (defn keypress-handler
   [event]
   (let [ctrl (.-ctrlKey event)
+        meta (.-metaKey event)
         alt (.-altKey event)
         key-code (or (.-key event) (.-keyCode event))
         ]
     (.log js/console
-          (str "keydown " (if ctrl "ctrl " "") (if alt "alt " "") key-code))
-    (when (and ctrl (not alt))
+          (str "keydown "
+               (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
+               key-code))
+    (when (and (or alt meta) (not (and alt meta)) (not ctrl))
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.
-        (= key-codes/Z key-code) (if @edit-field-open-on
-                                   (close-edit-field)
-                                   (do (.log js/console "undo")
-                                       (request-action [:undo])))
-        (= key-codes/Y key-code)  (when (not @edit-field-open-on)
-                                    (do (.log js/console "redo")
-                                        (request-action [:redo])))))
+        (= key-codes/Z key-code) (do (.preventDefault event)
+                                     (if @edit-field-open-on
+                                       (close-edit-field)
+                                       (do (.log js/console "undo")
+                                           (request-action [:undo]))))
+        (= key-codes/Y key-code) (do (.preventDefault event)
+                                     (when (not @edit-field-open-on)
+                                       (do (.log js/console "redo")
+                                           (request-action [:redo]))))))
     (when (and alt (not ctrl))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
                           (= key-codes/NUM_PLUS key-code) [:add-twin] 

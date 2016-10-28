@@ -27,7 +27,7 @@
                     (difference-referent
                      (query-referent (list (item-referent (->ItemId 3))
                                            '(nil (:root :A_a))
-                                           :b))
+                                           'b))
                      (item-referent (->ItemId 6789)))]))
         serialized (referent->string referent)
         parsed (string->referent serialized)]

@@ -198,6 +198,7 @@
 ;;;     for item referents: I<the digits of their id>
 ;;;    for other referents: <type letter><referent>r
 ;;;           for keywords: K<delimiter><keyword letters><delimiter>
+;;;            for symbols: S<delimiter><keyword letters><delimiter>
 ;;;                for nil: N
 ;;;              for lists: L<items in the list>l
 ;;; The last three cases are needed to describe conditions in, for example,
@@ -223,8 +224,8 @@
               (str (type->letters (referent-type referent))
                    (apply str argument-strings)
                    \r))))
-        (keyword? referent)
-        ;; For a keyword, we find a letter not in the keyword,
+        (or (keyword? referent) (symbol? referent))
+        ;; For a keywords and symbols, we find a letter not in the keyword,
         ;; and use that as the delimiter.
         (let [name (name referent)
               letters (set (seq name))
@@ -232,7 +233,7 @@
                                  (map char (range (int \A) (inc (int \Z))))
                                  (map char (range (int \a) (inc (int \z)))))
               delimiter (first (remove letters candidates))]
-          (str "K" delimiter name delimiter))
+          (str (if (keyword? referent) "K" "S") delimiter name delimiter))
         (nil? referent)
         "N"
         ;; Things that look like lists can be all sort of things, so just
@@ -288,14 +289,15 @@
                     (recur (+ index (inc (count digits)))
                            (add-to-partial id partial-referent)
                            pending-partials))))
-              (= first-letter \K)
+              (#{\K \S} first-letter)
               (let [delimiter (nth rep (inc index))
                     end-index (clojure.string/index-of
                                rep delimiter (+ index 2))]
-                (when (and end-index)
-                  (let [keyword (keyword (subs rep (+ index 2) end-index))]
+                (when end-index
+                  (let [name (subs rep (+ index 2) end-index)
+                        result (({\K keyword \S symbol} first-letter) name)]
                     (recur (inc end-index)
-                           (add-to-partial keyword partial-referent)
+                           (add-to-partial result partial-referent)
                            pending-partials))))
               (= first-letter \N)
               (when (list? partial-referent)

@@ -325,8 +325,7 @@
                             (= (subs (str content) 0 3) "???"))
         anything (#{'anything 'anything-immutable} content)
         immutable (= content 'anything-immutable)
-        template (contains? inherited :template)
-        selector-category (:selector-category inherited)]    
+        template (contains? inherited :template)]    
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes

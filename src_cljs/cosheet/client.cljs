@@ -190,7 +190,7 @@
           (str "keydown "
                (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
                key-code))
-    (when (and (or alt meta) (not (and alt meta)) (not ctrl))
+    (when (= (count (filter identity [ctrl alt meta])) 1)
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.
         (= key-codes/Z key-code) (do (.preventDefault event)

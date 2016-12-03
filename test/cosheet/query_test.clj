@@ -204,6 +204,12 @@
            (let-mutated [x '(1 (2 :foo) (2 :bar))]
              (template-matches v {:a :b} x)))
          nil))
+  (println "start")
+  (is (= (let [v `(~(variable "foo"))]
+           (let-mutated [x '(1)]
+             (template-matches v {:a :b} x)))
+         [{:a :b, "foo" 1}]))
+  (println "done")
   (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
            (let-mutated [x '(1 1)]
              (template-matches v {:a :b} x)))

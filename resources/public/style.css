@@ -131,7 +131,7 @@ body {
     background-color: hsl(194, 100%, 88%);
 }
 
-.tag > .tag {
+.tag > .tag.tag.tag.tag.tag.tag {
     background-color: transparent;
 }
 
@@ -139,8 +139,8 @@ body {
     background-color: white;
 }
 
-.editable.tag:not(.content-text),
-.tag > .editable:not(.content-text) {
+.editable.tag.tag.tag.tag:not(.content-text),
+.tag.tag.tag.tag > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -415,7 +415,8 @@ body {
     flex: 0 0 auto;
 }
 
-.column-header-sequence > .editable:not(.content-text) {
+.column-header-sequence
+   > .editable.editable.editable.editable.editable:not(.content-text) {
     background-color: transparent;
     margin-right: -2px;
     margin-bottom: -2px;		    
@@ -541,6 +542,16 @@ body {
 
 .narrow-interpretation .selectors:not(.tag) {
     background-color: hsl(0, 0%, 85%);
+}
+
+.narrow-interpretation .selectors .tag,
+.narrow-interpretation .selectors.tag{
+    background-color: hsl(194, 100%, 70%);
+}
+
+.narrow-interpretation .selectors .tag > .tag,
+.narrow-interpretation .selectors.tag > .tag{
+    background-color: transparent;
 }
 
 .narrow-interpretation .selecteds {

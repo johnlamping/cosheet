@@ -252,26 +252,43 @@
   (expr-let [atomics (expr label->atomic-values entity label)]
     (some (partial = value) atomics)))
 
-(defmethod to-list true [entity]
-  (if (atom? entity)
-    (atomic-value entity)
-    (expr-let [content (content entity)
-               elements (elements entity)]
-      (if (empty? elements)
-        content
-        (expr-let [element-lists (expr-seq map to-list elements)]
-          (cons content element-lists))))))
+(defn content-transformed-immutable-to-list [content-transformer]
+  "Internal function that takes a transformer on contents
+  and returns a function converts an immutable entity to a list,
+  running the content transformer on contents."
+  ;; TODO: Replace this defn with Clojure's letrec equivalent.
+  (defn immutable-to-list [entity]
+    (if (atom? entity)
+      (atomic-value entity)
+      (let [content (content-transformer (content entity))
+            elements (elements entity)]
+        (if (empty? elements)
+          content
+          (cons content (map immutable-to-list elements))))))
+    immutable-to-list)
 
-(defmethod deep-to-list true [entity]
+(defmethod to-list true [entity]
+  (if (mutable-entity? entity)
+    ;; We want to run under call-with-immutable, but have stored
+    ;; entities reference the mutable store.
+    (call-with-immutable
+     entity (content-transformed-immutable-to-list
+             (fn [content] (if (satisfies? StoredEntity content)
+                             (in-different-store content entity)
+                             content))))
+    ((content-transformed-immutable-to-list identity) entity)))
+
+(defn immutable-deep-to-list [entity]
   (if (atom? entity)
     (atomic-value entity)
-    (expr-let [content (content entity)
-               content-as-list (deep-to-list content)
-               elements (elements entity)]
+    (let [content-as-list (immutable-deep-to-list (content entity))
+          elements (elements entity)]
       (if (empty? elements)
         content-as-list
-        (expr-let [element-lists (expr-seq map deep-to-list elements)]
-          (cons content-as-list element-lists))))))
+        (cons content-as-list (map immutable-deep-to-list elements))))))
+
+(defmethod deep-to-list true [entity]
+  (call-with-immutable entity immutable-deep-to-list))
 
 (defmethod stored-entity-id-string  true [entity]
   (assert (satisfies? StoredEntity entity))

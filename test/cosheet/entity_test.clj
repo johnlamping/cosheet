@@ -125,8 +125,17 @@
     (is (current-value (label-has-atomic-value? item99 "foo" 3)))
     (is (not (current-value (label-has-atomic-value? item99 "foo" 4))))
     (is (= (current-value (label->atomic-values item99 "bar"))) [4])
+    (println "shallow" (current-value (to-list item99)))
+    (println "deep" (current-value (deep-to-list item99)))
+    (println "deeps" (deep-to-list (description->entity id99 s)))
+    (let [as-list (current-value (to-list item99))]
+      (is (check as-list `(nil (3 "foo") (~(any) "bar"))))
+      (is (= (current-value (to-list (first (nth as-list 2))))
+             '(4 "baz"))))
     (is (= (current-value (deep-to-list item99))
-           (deep-to-list (description->entity id99 s))))
+           '(nil (3 "foo") ((4 "baz") "bar"))))
+    (is (= (deep-to-list (description->entity id99 s))
+           '(nil (3 "foo") ((4 "baz") "bar"))))
     ;; Now  make sure call-with-immutable tracks right.
     (let [record (atom [])
           fun (fn [current-item]

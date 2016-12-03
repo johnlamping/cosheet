@@ -14,10 +14,17 @@
                                     update-in-clean-up
                                     swap-control-return!]])))
 
+(defn non-implicit-id
+  "Traverse through ImplicitContentIds to get to the non-implicit id."
+  [id]
+  (if (instance? cosheet.store_impl.ImplicitContentId id)
+    (non-implicit-id (:containing-item-id id))
+    id))
+
 (defn items-affected-by-id
   "Return a seq of items that might be affected by a change to the given id."
   [id old-store new-store]
-  (loop [item id
+  (loop [item (non-implicit-id id)
          affected nil]
     (if (not (nil? item))
       (recur (or (id->subject new-store item) (id->subject old-store item))
@@ -33,19 +40,18 @@
           #{nil} ; We have to always inform reporters keyed by nil.
           modified-ids))
 
-(defn non-implicit-id
-  "Traverse through ImplicitContentIds to get to the non-implicit id."
-  [id]
-  (if (instance? cosheet.store_impl.ImplicitContentId id)
-    (non-implicit-id (:containing-item-id id))
-    id))
-
 (defn apply-to-store
   "Return a reporter giving the result of the operation on the store
   of the state. Using this lets callers of this avoid creating thunks as
   arguments to get-or-make-reporter, which would break caching."
   [state operation & args]
   (apply operation (:store state) args))
+
+(defn get-or-make-reporter-adjusting-ids
+  "This does a get-or-make-reporter,
+   after making any implicit ids non-implicit."
+  [ids & args]
+  (apply get-or-make-reporter (map non-implicit-id ids) args))
 
 (defrecord MutableStoreImpl
     ^{:doc
@@ -64,28 +70,28 @@
   Store
 
   (id-valid? [this id]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) id-valid? id))
 
   (id-label->element-ids [this id label]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) id-label->element-ids id label))
 
   (id->element-ids [this id]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) id->element-ids id))
 
   (id->content [this id]
     (let [base-id (non-implicit-id id)]
-      (get-or-make-reporter
+      (get-or-make-reporter-adjusting-ids
        [base-id] apply-to-store (:manager-data this) id->content id)))
 
   (id->content-reference [this id]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) id->content-reference id))
 
   (candidate-matching-ids [this item]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [nil] apply-to-store (:manager-data this) candidate-matching-ids item))
 
   (mutable-store? [this] true)
@@ -95,7 +101,7 @@
   (current-store [this] (:store (:value @(:manager-data this))))
 
   (call-dependent-on-id [this id fun]
-    (get-or-make-reporter
+    (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) fun))
 
   (do-update! [this update-fn]

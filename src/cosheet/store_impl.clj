@@ -294,9 +294,9 @@
   ElementStore
 
   (id->subject [this id]
-    (if (instance? ItemId id)
-      (get-in this [:id->data id :subject])
-      nil))
+    (when
+      (instance? ItemId id)
+      (get-in this [:id->data id :subject])))
   
   ImmutableStore
 

@@ -199,15 +199,16 @@
                 (expr-let [target-as-immutable (current-entity-value target)]
                   (when (extended-by? target-as-immutable value-as-immutable)
                     [env]))))))
-        (when (not (nil? target))
-          (expr-let
-              [envs (if (nil? condition)
-                      [env]
-                      (template-matches condition env target))]
-            (if (not (nil? name))
-              (expr-let [value (if reference target (deep-to-list target))]
-                (seq (map #(assoc % name value) envs)))
-              envs)))))))
+        (expr-let [target-as-immutable (current-entity-value target)]
+          (when (not (nil? target-as-immutable))
+            (expr-let
+                [envs (if (nil? condition)
+                        [env]
+                        (template-matches condition env target))]
+              (if (not (nil? name))
+                (expr-let [value (if reference target target-as-immutable)]
+                  (seq (map #(assoc % name value) envs)))
+                envs))))))))
 
 (defn element-match-map
   "Return a map from environment to seq of elements that match in that
@@ -310,7 +311,7 @@
 (defn template-matches [template env target]
   (assert (not (mutable-entity? template)))
   (when verbose
-    (println "template-matches(" template
+    (println "(template-matches " template
              (zipmap (keys env) (map deep-to-list (vals env)))
              (simplify-for-print target)
              ")"))

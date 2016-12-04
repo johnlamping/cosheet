@@ -202,7 +202,7 @@
                                      (when (not @edit-field-open-on)
                                        (do (.log js/console "redo")
                                            (request-action [:redo]))))))
-    (when (and alt (not ctrl))
+    (when (and alt (not (or ctrl meta)))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
                           (= key-codes/NUM_PLUS key-code) [:add-twin] 
                           (= key-codes/PERIOD key-code) [:add-element]
@@ -218,7 +218,7 @@
           (when (= (first command) :expand) (open-expand-popup))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))
-    (when (not (or ctrl alt))
+    (when (not (or ctrl alt meta))
       (cond
           (= key-code key-codes/ESC) (close-edit-field)
           (= key-code key-codes/ENTER) (do (store-edit-field)

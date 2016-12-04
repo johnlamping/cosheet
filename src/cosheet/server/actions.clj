@@ -3,7 +3,7 @@
    (cosheet
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map thread-recursive-map
-                   swap-control-return! replace-in-seqs]]
+                   swap-control-return! replace-in-seqs equivalent-atoms?]]
     [orderable :refer [split earlier?]]
     [store :refer [update-content add-simple-element
                    fetch-and-clear-modified-ids
@@ -61,7 +61,7 @@
   (if (let [from (parse-string-as-number from)
             content (content item)]
         (println "from" from "content" content)
-        (or (= from content)
+        (or (equivalent-atoms? from content)
             ;; Probably a wildcard -- matches anything.
             (and (= from "..."))
             (and (= from "???")

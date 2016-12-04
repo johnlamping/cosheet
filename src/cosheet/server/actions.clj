@@ -14,7 +14,7 @@
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
-    [dom-utils :refer [dom-attributes]]
+    [dom-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-items matching-elements template-matches]]
     query-impl)
    (cosheet.server
@@ -471,7 +471,6 @@
                              (context-referent context) store))
                        (set (instantiate-to-items
                              (context-referent narrow-context) store)))
-             ;; TODO: Make this track last choice.
              (let [result
                    (if (= (:selector-interpretation session-state) :broad)
                      [context narrow-context
@@ -498,7 +497,10 @@
                        (assoc :target-key target-key
                               :session-state session-state))]
     (if handler
-      (if-let [context (some attributes context-keys)]
+      (if-let [context (->> (map attributes context-keys)
+                            (remove nil?)
+                            reverse
+                            (apply merge-with map-combiner))]
         (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key

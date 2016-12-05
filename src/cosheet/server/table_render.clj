@@ -174,23 +174,23 @@
                          descendants (hierarchy-node-extent node) nil
                          rows-referent subject)
         example-elements (hierarchy-node-example-elements node)
-        selectable (if (and (= (count (:members node)) 1)
-                            (empty? (:children node)))
-                     {:expand {:item-referent column-referent}}
-                     {})
-        inherited-down (-> (if (empty? selectable)
-                               (dissoc inherited :selectable-attributes)
+        selectable-attributes (when (and (= (count example-elements) 1)
+                                         (empty? (:children node)))
+                                {:expand {:item-referent column-referent}
+                                 :delete {:delete-column true}})
+        inherited-down (-> (if selectable-attributes
                                (assoc inherited :selectable-attributes
-                                      selectable))
+                                      selectable-attributes)
+                               (dissoc inherited :selectable-attributes))
                            (assoc :width (* 0.75 (count descendants))
                                   :template elements-template
                                   :subject column-referent)
-                             (update-in
-                              [:selectable-attributes]
-                              #(into-attributes
-                                % (attributes-for-header-add-column-command
-                                   column-requests elements-template
-                                   inherited))))]
+                           (update-in
+                            [:selectable-attributes]
+                            #(into-attributes
+                              % (attributes-for-header-add-column-command
+                                 column-requests elements-template
+                                 inherited))))]
     (condition-elements-DOM-R example-elements inherited-down)))
 
 (defn table-header-member-DOM-R
@@ -204,24 +204,23 @@
         column-referent (table-column-elements-referent
                          [item-map] [item-map] exclude-from-members
                          rows-referent (:subject inherited))
-        attributes (-> inherited
-                      (assoc :subject column-referent
-                             :template elements-template)
-                      (update-in
-                       [:selectable-attributes]
-                       #(into-attributes
-                         (into-attributes
-                          %
-                          (attributes-for-header-add-column-command
-                           [item] elements-template inherited))
-                         {:delete {:item-referent request-referent
-                                   :delete-column true}
-                          :expand {:item-referent column-referent}
-                          :target {:adjacent-referent column-referent
-                                   :position :after}})))
+        inherited-down (-> inherited
+                           (assoc :subject column-referent
+                                  :template elements-template)
+                           (update-in
+                            [:selectable-attributes]
+                            #(into-attributes
+                              (into-attributes
+                               %
+                               (attributes-for-header-add-column-command
+                                [item] elements-template inherited))
+                              {:delete {:item-referent request-referent}
+                               :expand {:item-referent column-referent}
+                               :target {:adjacent-referent column-referent
+                                        :position :after}})))
         key (conj (:parent-key inherited) (:item-id item))]
     (add-attributes
-     (virtual-item-DOM key attributes)
+     (virtual-item-DOM key inherited-down)
      (cond-> {:style {:width (str base-table-column-width "px")}}
        (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 

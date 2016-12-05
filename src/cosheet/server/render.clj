@@ -64,7 +64,9 @@
                ;                            :selector-category.
      :sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
-               ; different from the :target.
+               ; different from the :target. May also have a :delete-column
+               ; key, which indicates that deleting the item should also
+               ; delete the entire column it is in.
       :expand  ; A special target to use for expansion, if it should be
                ; different from the :target.
          :row  ; The row (or virtual new row) that the dom belongs to,

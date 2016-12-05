@@ -291,13 +291,15 @@
   [store item]
   (remove-entity-by-id store (:item-id item)))
 
-(defn adjust-delete-header-item
-  "If an item to be deleted is the only element of a column header,
-  switch the item to be the header, so we will delete the entire header."
-  [item]
+(defn promote-delete-header-item
+  "If an item is part of of a column header, and is either the last item,
+  or we are supposed to delete the header, switch the item to be the header,
+  so we will delete the entire column."
+  [item must-delete]
   (let [subject (subject item)]
     (if (and (seq (matching-elements :column subject))
-             (= (semantic-elements-R subject) [item]))
+             (or must-delete
+                 (= (semantic-elements-R subject) [item])))
       subject
       item)))
 
@@ -308,8 +310,13 @@
     (let [item-groups (instantiate-referent to-delete store)
           header-group (first item-groups)
           first-content (content (first header-group))
+          must-delete (:delete-column context)
           items (apply concat
-                       (map adjust-delete-header-item header-group)
+                       ;; This distinct should not be necessary, but is a
+                       ;; safety measure to make sure we don't delete twice
+                       (distinct
+                        (map #(promote-delete-header-item % must-delete)
+                             header-group))
                        (rest item-groups))]
       (println "total items:" (count items))
       (let [removed (reduce update-delete store items)]
@@ -500,7 +507,7 @@
       (if-let [context (->> (map attributes context-keys)
                             (remove nil?)
                             reverse
-                            (apply merge-with map-combiner))]
+                            (apply merge-with (partial map-combiner nil)))]
         (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key

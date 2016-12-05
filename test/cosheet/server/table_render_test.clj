@@ -134,7 +134,8 @@
                             :template '(anything-immutable
                                         (:column :non-semantic)
                                         (??? :tag))
-                            :select-pattern (conj table-key tag-pattern)}}}]]
+                            :select-pattern (conj table-key tag-pattern)}
+                   :delete {:delete-column true}}}]]
                (any)
                (any)
                (any)]

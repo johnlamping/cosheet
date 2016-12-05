@@ -204,7 +204,7 @@
         column-referent (table-column-elements-referent
                          [item-map] [item-map] exclude-from-members
                          rows-referent (:subject inherited))
-        inherited (-> inherited
+        attributes (-> inherited
                       (assoc :subject column-referent
                              :template elements-template)
                       (update-in
@@ -214,16 +214,14 @@
                           %
                           (attributes-for-header-add-column-command
                            [item] elements-template inherited))
-                         {:delete {:item-referent request-referent}
-                          :expand {:item-referent column-referent}})))
+                         {:delete {:item-referent request-referent
+                                   :delete-column true}
+                          :expand {:item-referent column-referent}
+                          :target {:adjacent-referent column-referent
+                                   :position :after}})))
         key (conj (:parent-key inherited) (:item-id item))]
     (add-attributes
-     (virtual-item-DOM key
-                       (into-attributes
-                        inherited
-                        {:selectable-attributes
-                         {:target {:adjacent-referent column-referent
-                                   :position :after}}}))
+     (virtual-item-DOM key attributes)
      (cond-> {:style {:width (str base-table-column-width "px")}}
        (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 

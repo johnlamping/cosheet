@@ -291,18 +291,6 @@
   [store item]
   (remove-entity-by-id store (:item-id item)))
 
-(defn promote-delete-header-item
-  "If an item is part of of a column header, and is either the last item,
-  or we are supposed to delete the header, switch the item to be the header,
-  so we will delete the entire column."
-  [item must-delete]
-  (let [subject (subject item)]
-    (if (and (seq (matching-elements :column subject))
-             (or must-delete
-                 (= (semantic-elements-R subject) [item])))
-      subject
-      item)))
-
 (defn do-delete
   "Remove item(s)." 
   [store context attributes]
@@ -310,14 +298,9 @@
     (let [item-groups (instantiate-referent to-delete store)
           header-group (first item-groups)
           first-content (content (first header-group))
-          must-delete (:delete-column context)
-          items (apply concat
-                       ;; This distinct should not be necessary, but is a
-                       ;; safety measure to make sure we don't delete twice
-                       (distinct
-                        (map #(promote-delete-header-item % must-delete)
-                             header-group))
-                       (rest item-groups))]
+          items (distinct ;; distinct should not be necessary, but is a
+                          ;; safety measure to make sure we don't delete twice
+                 (apply concat item-groups))]
       (println "total items:" (count items))
       (let [removed (reduce update-delete store items)]
         ;; If we removed a placeholder from a header, there will be no way to

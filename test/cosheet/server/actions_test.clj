@@ -269,7 +269,7 @@
     ;; Test delete of the only element of a header
     (let [new-store (do-delete
                      store
-                     {:item-referent (item-referent name-header)}
+                     {:item-referent (item-referent column1)}
                      {:target-key "name"})]
       (is (not (id-valid? new-store column1-id))))
     ;; Test when it is not in header position

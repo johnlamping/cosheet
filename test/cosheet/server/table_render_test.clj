@@ -135,7 +135,7 @@
                                         (:column :non-semantic)
                                         (??? :tag))
                             :select-pattern (conj table-key tag-pattern)}
-                   :delete {:delete-column true}}}]]
+                   :delete {:item-referent first-column-referent}}}]]
                (any)
                (any)
                (any)]

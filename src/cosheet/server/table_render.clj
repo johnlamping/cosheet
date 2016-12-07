@@ -41,79 +41,35 @@
   (some #(or (= (if (sequential? %) (first %) %) :tag))
         template))
 
-(defn table-hierarchy-node-condition
-  "Given a hierarchy node, return the condition that all elements
-  under the node satisfy."
-  [node]
-  (template-to-condition
-   (cons nil (canonical-set-to-list (:cumulative-properties node)))))
+(defn table-node-header-elements-referent
+  "Return a referent for the elements in headers spanned by a table node."
+  [node header-subject]
+  (union-referent-if-needed
+   (map #(item-or-exemplar-referent (:item %) header-subject)
+        (hierarchy-node-descendants node))))
 
-(defn table-hierarchy-node-exclusions
-  "Given a hierarchy node, return a seq of conditions that immediate
-  elements of the node must not satisfy, because they are covered
-  by sub-nodes."
-  [node]
-  (map #(template-to-condition
-         (cons nil (map canonical-to-list (:property-canonicals %))))
-       (->> (hierarchy-node-next-level node)
-            (filter hierarchy-node?)
-            (hierarchy-nodes-extent))))
+(defn table-node-row-elements-referent
+  "Generate a referent for the elements in rows affected by a table header."
+  [node rows-referent]
+  (union-referent-if-needed (map #(elements-referent (:item %) rows-referent)
+                                 (hierarchy-node-descendants node))))
 
-(defn table-hierarchy-node-column-descriptions
-  "Given a hierarchy node, for each column under the node,
-  return a map:
-     :column-item Item that identifies the column.
-        :template Condition that each element of the column must satisfy.
-                  ('anything is turned to nil before putting a condition here.)
-      :exclusions Seq of conditions that elements must not satisfy."
-  [node]
-  (mapcat (fn [node-or-element]
-            (if (hierarchy-node? node-or-element)
-              (table-hierarchy-node-column-descriptions node-or-element)
-              [{:column-item (:item node-or-element)
-                :template (table-hierarchy-node-condition node)
-                :exclusions (table-hierarchy-node-exclusions node)}]))
-          (hierarchy-node-next-level node)))
+(defn table-node-exclusive-row-elements-referent
+  "Generate a referent for the elements in rows affected
+  by a table header, but by no descendant header."
+  [node rows-referent]
+  (let [positive-ref (table-node-row-elements-referent node rows-referent)
+        negative-refs (->> (hierarchy-node-next-level node)
+                           (filter hierarchy-node?)
+                           (hierarchy-nodes-extent)
+                           (map #(elements-referent (:item %) rows-referent)))] 
+    (if (empty? negative-refs)
+      positive-ref
+      (difference-referent
+       positive-ref
+       (union-referent-if-needed negative-refs)))))
 
-(defn table-column-row-elements-referents
-  "Generate a sequence of referents for the elements in rows affected
-  by a table header, including all request items at or below this header. The
-  arguments are the info-maps that cover the conditions it brings up in
-  rows, info maps that cover conditions it must not bring up, a
-  referent to the rows of the table."
-  [extent-info-maps negative-info-maps rows-referent]
-  (let [make-elements-ref #(elements-referent (:item %) rows-referent)
-        positive-element-refs (map make-elements-ref extent-info-maps)
-        negative-element-refs (map make-elements-ref negative-info-maps)] 
-    (if (empty? negative-info-maps)
-      positive-element-refs
-      [(difference-referent
-        (union-referent-if-needed positive-element-refs)
-        (union-referent-if-needed negative-element-refs))])))
-
-(defn table-column-elements-referent
-  "Generate the referent for the elements affected by a table header,
-  including elements in table request items at or below this header,
-  and also all elements in rows that are brought up by the header. The
-  arguments are the info-maps of all the header requests the header
-  applies to, info maps that cover the conditions it brings up in
-  rows, info maps that cover conditions it must not bring up, a
-  referent to the rows of the table, and to the subject of the header
-  requests.
-  When the referent is instantiated, the first group must be all the elements
-  in table requests, while subsequent groups contain elements in rows brought
-  up by the header."
-  [info-maps extent-info-maps negative-info-maps rows-referent header-subject]
-  (let [header-ref (union-referent-if-needed
-                    (map #(item-or-exemplar-referent (:item %) header-subject)
-                         info-maps)) 
-        element-refs (table-column-row-elements-referents
-                      extent-info-maps negative-info-maps rows-referent)]
-    ;; We always return a union, to guarantee that instantition will
-    ;; return one group for the header elements.
-    (union-referent (concat [header-ref] element-refs))))
-
-(defn table-column-delete-referent
+(defn table-node-delete-referent
   "Generate the referent for the elements to be deleted when the only
   item of a table header node is deleted. The arguments are the node,
   a referent to the rows of the table, and to the subject of the
@@ -123,8 +79,6 @@
   up by the header."
   [node rows-referent header-subject]
   (let [exemplar-item (first (hierarchy-node-example-elements node))
-        next-level (hierarchy-node-next-level node)
-        non-trivial-children (filter hierarchy-node? next-level)
         header-ref (union-referent-if-needed
                     (map #(let [item-ref (item-or-exemplar-referent
                                           (:item %) header-subject)]
@@ -134,13 +88,11 @@
                               (item-or-exemplar-referent
                                exemplar-item item-ref)))
                          (hierarchy-node-descendants node)))
-        element-refs (table-column-row-elements-referents
-                      (hierarchy-node-descendants node)
-                      (hierarchy-nodes-extent non-trivial-children)
-                      rows-referent)]
+        element-ref (table-node-exclusive-row-elements-referent
+                     node rows-referent)]
     ;; We always return a union, to guarantee that instantition will
     ;; return one group for the header elements.
-    (union-referent (concat [header-ref] element-refs))))
+    (union-referent [header-ref element-ref])))
 
 (defn attributes-for-header-add-column-command
   "Return attributes for an add column command, given the column
@@ -241,17 +193,18 @@
   request(s) overall."
   [node rows-referent elements-template inherited]
   (let [subject (:subject inherited)
-        descendants (hierarchy-node-descendants node)
-        column-requests (map :item descendants)
-        column-referent (table-column-elements-referent
-                         descendants (hierarchy-node-extent node) nil
-                         rows-referent subject)
+        column-referent (union-referent
+                         [(table-node-header-elements-referent node subject)
+                          (table-node-row-elements-referent node rows-referent)
+                          ])
         example-elements (hierarchy-node-example-elements node)
         selectable-attributes
         (when (= (count example-elements) 1)
           {:expand {:item-referent column-referent}
-           :delete {:item-referent (table-column-delete-referent
+           :delete {:item-referent (table-node-delete-referent
                                     node rows-referent subject)}})
+        descendants (hierarchy-node-descendants node)
+        column-requests (map :item descendants)
         inherited-down (-> (if selectable-attributes
                                (assoc inherited :selectable-attributes
                                       selectable-attributes)
@@ -271,13 +224,12 @@
   "Generate the DOM for an element in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [item-map non-trivial-siblings rows-referent elements-template inherited]
-  (let [item (:item item-map)
-        request-referent (item-or-exemplar-referent item (:subject inherited))
-        exclude-from-members (hierarchy-nodes-extent non-trivial-siblings)
-        column-referent (table-column-elements-referent
-                         [item-map] [item-map] exclude-from-members
-                         rows-referent (:subject inherited))
+  [column-item containing-node rows-referent elements-template inherited]
+  (let [column-referent (union-referent
+                         [(item-or-exemplar-referent
+                           column-item (:subject inherited))
+                          (table-node-exclusive-row-elements-referent
+                           containing-node rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject column-referent
                                   :template elements-template)
@@ -287,12 +239,12 @@
                               (into-attributes
                                %
                                (attributes-for-header-add-column-command
-                                [item] elements-template inherited))
+                                [column-item] elements-template inherited))
                               {:delete {:item-referent column-referent}
                                :expand {:item-referent column-referent}
                                :target {:adjacent-referent column-referent
                                         :position :after}})))
-        key (conj (:parent-key inherited) (:item-id item))]
+        key (conj (:parent-key inherited) (:item-id column-item))]
     (add-attributes
      (virtual-item-DOM key inherited-down)
      (cond-> {:style {:width (str base-table-column-width "px")}}
@@ -303,13 +255,13 @@
 (defn table-header-node-or-element-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [node-or-element non-trivial-siblings rows-referent elements-template
+  [node-or-element containing-node rows-referent elements-template
    inherited]
   (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
      node-or-element false rows-referent inherited)
     (table-header-member-DOM-R
-     node-or-element non-trivial-siblings rows-referent elements-template
+     (:item node-or-element) containing-node rows-referent elements-template
      inherited)))
 
 (defn table-header-subtree-DOM-R
@@ -324,11 +276,11 @@
                    node rows-referent elements-template inherited)]
       (let [node-dom (cond-> node-dom
                        top-level (add-attributes {:class "top-level"}))
-            next-level (hierarchy-node-next-level node)
-            non-trivial-children (filter hierarchy-node? next-level)]
+            next-level (hierarchy-node-next-level node)]
         (expr-let
             [dom
-             (if (and (= (count next-level) 1) (empty? non-trivial-children))
+             (if (= (count next-level) 1)
+               ;; If we have only one descendant, it must be the column request.
                node-dom
                (let [properties-list (canonical-set-to-list (:properties node))
                      inherited (update-in inherited [:template]
@@ -338,7 +290,7 @@
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
-                                      % non-trivial-children
+                                      % node
                                       rows-referent elements-template inherited)
                                 next-level)]
                    [:div (cond-> {}
@@ -443,6 +395,40 @@
   [entity element]
   (concat (if (sequential? entity) entity (list entity))
           element))
+
+(defn table-hierarchy-node-condition
+  "Given a hierarchy node, return the condition that all elements
+  under the node satisfy."
+  [node]
+  (template-to-condition
+   (cons nil (canonical-set-to-list (:cumulative-properties node)))))
+
+(defn table-hierarchy-node-exclusions
+  "Given a hierarchy node, return a seq of conditions that immediate
+  elements of the node must not satisfy, because they are covered
+  by sub-nodes."
+  [node]
+  (map #(template-to-condition
+         (cons nil (map canonical-to-list (:property-canonicals %))))
+       (->> (hierarchy-node-next-level node)
+            (filter hierarchy-node?)
+            (hierarchy-nodes-extent))))
+
+(defn table-hierarchy-node-column-descriptions
+  "Given a hierarchy node, for each column under the node,
+  return a map:
+     :column-item Item that identifies the column.
+        :template Condition that each element of the column must satisfy.
+                  ('anything is turned to nil before putting a condition here.)
+      :exclusions Seq of conditions that elements must not satisfy."
+  [node]
+  (mapcat (fn [node-or-element]
+            (if (hierarchy-node? node-or-element)
+              (table-hierarchy-node-column-descriptions node-or-element)
+              [{:column-item (:item node-or-element)
+                :template (table-hierarchy-node-condition node)
+                :exclusions (table-hierarchy-node-exclusions node)}]))
+          (hierarchy-node-next-level node)))
 
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,

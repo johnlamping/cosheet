@@ -27,6 +27,10 @@
 (def o1 (nth orderables 0))
 (def unused-orderable (nth orderables 6))
 
+(deftest key<->string-test
+  (let [key [:root (make-id "a")]]
+    (is (= (-> key key->string string->key) key))))
+
 (deftest top-level-item-DOM-R-test
   ;; Test a case where the subject is explicitly provided.
   (let [subject-ref (make-id "subject")

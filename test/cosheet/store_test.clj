@@ -36,6 +36,12 @@
   (is (= (stored-item-id-string test-implicit-content) "content-2"))
   (is (= (stored-item-description-name test-implicit-content) "content-Id-2")))
 
+(deftest id<->string-test
+  (let [id (make-id "a")]
+    (is (= (-> id id->string string->id) id)))
+  (let [id (->ItemId 3)]
+    (is (= (-> id id->string string->id) id))))
+
 (deftest id-valid?-test
   (is (id-valid? test-store (make-id "1")))
   (is (not (id-valid? test-store (make-id "wrong")))))

@@ -30,6 +30,18 @@
 
   (stored-item-description-name [this] (clojure.string/join ["Id-" id])))
 
+(defn id->string
+  "Return a string representation of an id."
+  [id]
+  (assert (instance? ItemId id))
+  (let [id (:id id)]
+    (if (integer? id) (str id) (str "I" id))))
+
+(defn string->id
+  "Given the string representation of an id, return the id."
+  [rep]
+  (->ItemId (if (= (first rep) \I) (subs rep 1) (parse-string-as-number rep))))
+
 (defrecord
     ^{:doc
       "The description of the content of an item whose current content

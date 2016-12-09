@@ -1,13 +1,15 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements]]
                      [debug :refer [simplify-for-print]]
+                     [store-impl :refer [id->string string->id]]
                      [entity :refer [subject label->elements]]
                      [expression :refer [expr expr-let expr-seq cache]]
                      [expression-manager :refer [current-value]]
                      [dom-utils :refer [add-attributes into-attributes]]
                      [query :refer [matching-elements]])
             (cosheet.server 
-             [referent :refer [item-referent referent->exemplar-and-subject]]
+             [referent :refer [item-referent referent->exemplar-and-subject
+                               item-referent?]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R must-show-label-item-DOM-R]]
              [table-render :refer [table-DOM-R]])))
@@ -147,6 +149,25 @@
 ;        :alternate-target ; If true, there is an alternate interpretation
                            ; of the item. :selector-category must be present.
    })
+
+(defn key->string
+  "Return a string representation of the key that can be passed to the client."
+  [key]
+  (clojure.string/join
+   "_"
+   (map #(cond (keyword? %) (str ":" (name %))
+               (item-referent? %) (id->string %)
+               true (assert false (str "unknown key component " %)))
+        key)))
+
+(defn string->key
+  "Given a string representation of a key, return the key."
+  [rep]
+  (vec (map
+        #(if (= (first %) \:)
+           (keyword (subs % 1))
+           (string->id %))
+        (clojure.string/split rep #"_"))))
 
 (defn user-visible-item?
   "Return true if the item is user visible."

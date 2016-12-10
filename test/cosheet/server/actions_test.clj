@@ -353,11 +353,11 @@
                              
                              :alternate true}}]
     (swap! tracker update-set-component
-           {:key ["jane"]
+           {:key [:jane]
             :definition [(fn [& _] [:div])]
             :attributes attributes})
     (let [result (do-actions mutable-store session-state
-                             [[:add-element (key->id tracker ["jane"])]])
+                             [[:add-element (key->id tracker [:jane])]])
           new-store (current-store mutable-store)
           select (:select result)
           new-id (last (first select))
@@ -370,11 +370,11 @@
                   :action [do-add-element
                            alternate-target
                            (-> attributes
-                               (assoc :target-key ["jane"])
+                               (assoc :target-key [:jane])
                                (dissoc :alternate))]
                   :text ["Column's description changed."
                          "Change selection instead."]}))
-      (is (= select [["jane" new-id] [["jane"]]]))
+      (is (= select [[:jane new-id] [[:jane]]]))
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
                  (canonicalize-list '("Jane" "female"

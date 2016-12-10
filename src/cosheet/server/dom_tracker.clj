@@ -10,7 +10,8 @@
                                         into-attributes]]
                      [expression-manager :refer [manage]])
             
-            (cosheet.server [render :refer [server-specific-attributes]])))
+            (cosheet.server [render :refer [server-specific-attributes
+                                            key->string string->key]])))
 
 (def verbose false)
 
@@ -20,13 +21,13 @@
 ;;; reporters, the dom tracker's job is to set up a reporter for
 ;;; each visible dom item, and to inform the client of changes.)
 
-;;; The key here is that the identity of a dom component is
-;;; determined by its containing dom, not by the definition that
-;;; yields the component. There are thus two ways that a dom for a
-;;; particular identity can change: the containing dom can change the
-;;; definition for the dom it wants in that spot, or the database can
-;;; change to content that that definition displays. We use a map to
-;;; track the former, which points to a reporter that tracks the
+;;; Note that the identity of a dom component is determined by its
+;;; containing dom, not by the definition that yields the
+;;; component. There are thus two ways that a dom for a particular
+;;; identity can change: the containing dom can change the definition
+;;; for the dom it wants in that spot, or the database can change to
+;;; content that that definition displays. We use a map to track the
+;;; former, which points to a reporter that tracks the
 ;;; latter. Whenever a piece of dom changes, we check all the
 ;;; sub-components it specifies, and update our map, possibly creating
 ;;; new reporters, or ignoring obsolete ones.
@@ -58,10 +59,8 @@
 ;;; The information for all components is stored in an atom,
 ;;; containing a map with these elements:
 ;;;       :components  A map from key to component map.
-;;;          :key->id  A map from key to client id, for both keys of
-;;;                    components and keys of doms inside components.
-;;;                    Unlike the key, the client id must be a string
-;;;                    that is allowed as a DOM id.
+;;;          :key->id  A map from key to client id, for those few components
+;;;                    where add-domt was called directly.
 ;;;          :id->key  The inverse of the key->id map
 ;;;         :key->dom  A map from key to server version of the dom
 ;;;                    for that key. The dom also provides access to any extra
@@ -78,7 +77,6 @@
 ;;;                                  are sent to the client as part of
 ;;;                                  the component definition, before
 ;;;                                  the client gets the rest of its dom.>}
-;;;          :next-id  The next free client id number.
 ;;;     :next-version  The next free version number.
 ;;;                    We use a global version because we might forget about
 ;;;                    a component, and then reconstruct it, all while the
@@ -173,7 +171,8 @@
                                      server-specific-attributes)
             client-attributes (if (nil? key)
                                 pruned-attributes
-                                (let [id (get-in data [:key->id key])]
+                                (let [id (or (get-in data [:key->id key])
+                                             (key->string key))]
                                   (assert (not (nil? id)))
                                   (assoc pruned-attributes :id id)))]
         (assoc dom 1 client-attributes)))))
@@ -186,7 +185,8 @@
   (if (vector? dom)
     (if (= (first dom) :component)
       (let [attributes (second dom) 
-            id (get-in data [:key->id (:key attributes)])]
+            id (or (get-in data [:key->id (:key attributes)])
+                   (key->string (:key attributes)))]
         (assert (not (nil? id)) ["No id found for key" (:key attributes)])
         (adjust-attributes-for-client data [:component attributes]))
       (vec (map (partial adjust-dom-for-client data)
@@ -216,7 +216,7 @@
   [data acknowledgements]
   (reduce
    (fn [data [id version]]
-     (let [key (get-in data [:id->key id])]
+     (let [key (or (get-in data [:id->key id]) (string->key id))]
        (if key
          (cond-> data
            (and (number? version)
@@ -230,30 +230,6 @@
   "Update the atom to reflect the acknowledgements."
   [tracker acknowledgements]
   (swap-and-act tracker #(update-acknowledgements % acknowledgements)))
-
-(defn update-associate-key-to-id
-  "Record that the key has the given client id."
-  [data key id]
-  (-> data
-      (assoc-in [:key->id key] id)
-      (assoc-in [:id->key id] key)))
-
-(defn update-ensure-id-for-key
-  "Make sure the data has an id for the given key."
-  [data key]
-  (if (get-in data [:key->id key])
-    data
-    (let [id (str "id" (:next-id data))]
-      (when verbose
-        (println "added id" id "for key" (simplify-for-print key)))
-      (-> data
-          (update-associate-key-to-id key id)
-          (update-in [:next-id] inc)))))
-
-(defn update-ensure-ids-for-keys
-  "Make sure the data has an id for the given key."
-  [data keys]
-  (reduce update-ensure-id-for-key data keys))
 
 (defn update-unneeded-subcomponents
   "Remove all subcomponents that were in the old version of the component map
@@ -309,7 +285,6 @@
                                          (keys (dom->keys-and-dom old-dom)))
                                   (dom->keys-and-dom dom)))
                 (update-unneeded-subcomponents component-map new-map)
-                (update-ensure-ids-for-keys (keys (dom->keys-and-dom dom)))
                 (update-in [:out-of-date-keys] #(assoc % key depth))
                 (assoc-in [:components key] new-map))))
       data)))
@@ -366,15 +341,12 @@
       data)))
 
 (defn update-ensure-component
-  "Make sure there is a component with the given key.
-   Make an id for the key if there isn't already one."
+  "Make sure there is a component with the given key.."
   [data key]
   (if (get-in data [:components key])
     data
     (let [[data version] (update-next-version data)]
-      (-> data
-          (update-ensure-id-for-key key)
-          (assoc-in [:components key] {:key key :version version :depth 0})))))
+      (assoc-in data [:components key] {:key key :version version :depth 0}))))
 
 (defn update-clear-component
   "Remove the component with the given key."
@@ -382,9 +354,8 @@
   (let [component-map (get-in data [:components key])
         id (get-in data [:key->id key])]
     (if component-map
-      (-> data
-          (update-in [:out-of-date-keys] #(dissoc % key))
-          (update-in [:id->key] #(dissoc % id))
+      (-> (cond-> data id (update-in [:id->key] #(dissoc % id)))
+          (update-in [:out-of-date-keys] #(dissoc % key))          
           (update-in [:key->id] #(dissoc % key))
           (update-in [:key->dom] #(dissoc % key))
           (update-in [:components] #(dissoc % key))
@@ -415,21 +386,28 @@
 (defn add-dom
   "Add dom with the given client id, key, and definition to the tracker."
   [tracker client-id key definition]
+  ;; The id must not be one that we could generate.
+  (assert (string? client-id))
+  (assert (vector? key))
+  (assert (not (#{\: \1 \2 \3 \4 \5 \6 \7 \8 \9 \0} (first client-id))))
   (swap-and-act
    tracker
    #(-> %
-        (update-associate-key-to-id key client-id)
+        (assoc-in [:key->id key] client-id)
+        (assoc-in [:id->key client-id] key)
         (update-set-component {:definition definition :key key}))))
 
 (defn id->key
   "Return the hiccup key for the client id."
   [tracker id]
-  (get-in @tracker [:id->key id]))
+  (or (get-in @tracker [:id->key id])
+      (string->key id)))
 
 (defn key->id
   "Return the client id for the hiccup key."
   [tracker key]
-  (get-in @tracker [:key->id key]))
+  (or (get-in @tracker [:key->id key])
+      (key->string key)))
 
 (defn key->attributes
   "Return the attributes for the dom with the given key,
@@ -459,7 +437,6 @@
     :id->key {}
     :key->id {}
     :key->dom {}
-    :next-id 1
     :next-version 1
     :out-of-date-keys (priority-map/priority-map)
     :manager-data md}))

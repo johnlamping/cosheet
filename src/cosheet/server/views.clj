@@ -156,11 +156,11 @@
                       selector-category (assoc
                                          :selector-category selector-category
                                          :alternate-target true))]
-        tracker (new-dom-tracker manager-data)]
-    (add-dom tracker "root" (or (and (sequential? definition)
-                                     (:key (dom-attributes definition)))
-                                [])
-             definition)
+        tracker (new-dom-tracker manager-data)
+        key (or (and (sequential? definition)
+                     (:key (dom-attributes definition)))
+                [])]    
+    (add-dom tracker "root" key definition)
     (println "created tracker" (simplify-for-print definition))
     tracker))
 

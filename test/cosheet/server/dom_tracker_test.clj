@@ -283,7 +283,9 @@
 (deftest id->key-test
   (let [md (new-expression-manager-data)
         tracker (new-dom-tracker md)]
-    (swap-and-act tracker #(assoc-in % [:id->key "root"] [:foo]))
+    (swap-and-act tracker #(-> %
+                               (assoc-in [:id->key "root"] [:foo])
+                               (assoc-in [:key->dom [:k]] [:div])))
     (is (= (id->key tracker "root") [:foo]))
     (is (= (id->key tracker ":k") [:k]))))
 

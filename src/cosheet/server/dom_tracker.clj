@@ -400,8 +400,13 @@
 (defn id->key
   "Return the hiccup key for the client id."
   [tracker id]
-  (or (get-in @tracker [:id->key id])
-      (string->key id)))
+  (let [data @tracker]
+    (or (get-in data [:id->key id])
+        (let [key (string->key id)]
+          ;; Make sure the key the client sent us is for a dom we know about.
+          (when (or (get-in data [:key->dom key])
+                    (get-in data [:components key]))
+            key)))))
 
 (defn key->id
   "Return the client id for the hiccup key."

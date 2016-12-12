@@ -392,12 +392,15 @@ body {
     /* Wants to be visible, but that gets turned into auto */
     overflow-x: hidden;
     overflow-y: scroll;
-    border-bottom-width: 2px;
     padding-right: 56px; /* Leave room for edit input box. */
 }
 
 .table-rows > :first-child {
     margin-top: -2px;
+}
+
+.table-rows > :last-child {
+    border-bottom-width: 2px;
 }
 
 .column-header-sequence {

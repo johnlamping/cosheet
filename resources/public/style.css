@@ -349,8 +349,8 @@ body {
     border-bottom-width: 0px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
-     /* Two less than the table header, because it's border is in its margin */
-    margin-right: 16px;
+     /* Two less than the table row, because it's border is in its margin */
+    margin-right: 54px;
 }
 
 .table-corner {
@@ -388,12 +388,12 @@ body {
 }
 
 .table-rows {
-    /* to keep the scrollbar from causing horizontal scroll */
-    padding-right: 2px;
     flex: 0 1 auto;
-    overflow-x: visible;
-    overflow-y: auto;
+    /* Wants to be visible, but that gets turned into auto */
+    overflow-x: hidden;
+    overflow-y: scroll;
     border-bottom-width: 2px;
+    padding-right: 56px; /* Leave room for edit input box. */
 }
 
 .table-rows > :first-child {
@@ -408,7 +408,6 @@ body {
 
 .table-main > .column-header-sequence {
     border-bottom-width: 2px;
-    margin-right: 18px;
 }
 
 .column-header-sequence > * {

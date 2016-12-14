@@ -67,7 +67,7 @@
 (def selector-interpretation (atom :broad))
 
 (defn set-selector-scope
-  "Set the appropriate dom, if any, to have narrow selector scope."
+  "Set the appropriate dom, if any, to reflect the current selector scope."
   []
   (let [selection @selected
         selectors (when selection
@@ -77,12 +77,6 @@
                              (= @selector-interpretation :narrow))
                     (find-ancestor-with-class selectors "selector-scope"))
         current-scope @narrow-selector-scope]
-    (let [interpretation-tool (js/document.getElementById
-                               "selection-interpretation")
-          classes (.-classList interpretation-tool)]
-      (if selectors
-        (.add classes "operative")
-        (.remove classes "operative")))
     (when (not= new-scope current-scope)
       (when current-scope
         (.remove (.-classList current-scope) "narrow-interpretation"))
@@ -93,8 +87,8 @@
 (defn interpretation-selector-dom
   "Return the dom choice button for the given interpretation of selectors."
   [interpretation]
-  (js/document.getElementById ({:narrow "select-narrow"
-                                :broad "select-broad"}
+  (js/document.getElementById ({:narrow "narrow_selector_interpretation"
+                                :broad "broad_selector_interpretation"}
                                interpretation)))
 
 (defn opposite-selector-interpretation
@@ -104,6 +98,7 @@
 
 (defn set-selector-interpretation
   [interpretation]
+  (.log js/console (str "setting selector interpretation " interpretation "."))
   (reset! selector-interpretation interpretation)
   (.add (.-classList (interpretation-selector-dom interpretation))
         "picked")

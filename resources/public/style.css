@@ -678,73 +678,6 @@ body {
     display: inline-block;
 }
 
-.selector-container {
-    display: inline-block;
-    z-index: 1;
-}
-
-.selector-container.operative {
-    box-shadow: 0px 1px 1px 2px hsl(0, 0%, 80%),
-                0px 1px 2px 5px white;
-    background-color: white;
-}
-
-.selection {
-    position: relative;
-    display: block;
-    height: 18px;
-    margin-bottom: -1px;
-    border-width: 1px;
-    border-radius: 3px;
-    border-color: transparent;
-    background-color: hsl(0, 0%, 95%);
-    /* Keeps margins of contained blocks from merging with us. */
-    overflow: visible;
-}
-
-.selection.picked {
-    border-color: hsl(200, 100%, 90%);
-    background-color: white;
-}
-
-.radio-button {
-    display: inline-block;
-    position: relative;
-    margin: 2px 2px 2px 2px;
-    height: 12px;
-    width: 12px;
-    border-width: 1px;
-    border-radius: 100%;
-    border-color: hsl(0, 0%, 60%);
-    background-color: white;
-}
-
-.inner-radio-button {
-    display: block;
-    position: absolute;
-    top: 50%; /* 50% here is the container's width. */
-    left: 50%;
-    transform: translate(-50%, -50%); /* 50% here is our width. */
-    height: 6px;
-    width: 6px;
-    border-width: 3px;
-    border-radius: 100%;
-    border-color: hsl(0, 0%, 85%);
-    z-index: 1;
-}
-
-.picked > .radio-button > .inner-radio-button {
-    border-color: hsl(200, 100%, 65%)
-}
-
-.selector-img {
-    margin-top: -1px;
-    margin-bottom: 1px;
-    margin-right: 1px;
-    height: 16px;
-    display: inline-block;
-}
-
 .tooltip {
     visibility: hidden;
     background-color: hsl(0, 0%, 40%);
@@ -793,4 +726,31 @@ body {
 .tool:hover .tooltip, .selection:hover .tooltip {
     visibility: visible;
     transition-delay: 1s;
+}
+
+/* Scope selector tools */
+
+#scope_holder {
+    position: absolute;
+    bottom: -38px;
+    left: 0px;
+    padding: 2px;
+    background-color: cornsilk;
+    box-shadow: 5px 5px 3px grey;
+    visibility: hidden;
+    z-index: 2;
+}
+
+.selectors #scope_holder {
+    visibility: visible;
+}
+
+#scope_holder > .tool {
+    opacity:0.5;
+}
+
+#scope_holder > .tool.picked {
+    border-color: hsl(200, 100%, 90%);
+    background-color: white;
+    opacity: 1.0;
 }

@@ -90,11 +90,8 @@
           (request-action
            [:set-content (.-id target) :from old-value :to value]))))))
 
-(defn target-being-edited? [target]
-  (#{@edit-field-open-on
-     (js/document.getElementById "edit_holder")
-     (js/document.getElementById "edit_input")}
-   target))
+(defn target-in-edit-holder? [target]
+  (find-ancestor-with-class target "edit_holder" 4))
 
 (defn open-expand-popup
   "Open the expand popup window.
@@ -109,6 +106,11 @@
 (defn menu-click-handler
   [logical-target]
   (let [id (.-id logical-target)
+        local-command ({"narrow_selector_interpretation"
+                        [set-selector-interpretation :narrow]
+                        "broad_selector_interpretation"
+                        [set-selector-interpretation :broad]}
+                       id)
         keyword ({"undo" :undo
                   "redo" :redo}
                  id)
@@ -120,20 +122,14 @@
                              "add-column" :add-column}
                            id)
         selection @selected]
-    (cond keyword
+    (.log js/console (str "menu click" id))
+    (cond local-command
+          (apply (first local-command) (rest local-command))
+          keyword
           (request-action [keyword])
           (and contextual-keyword selection)
           (do (when (= contextual-keyword :expand) (open-expand-popup))
               (request-action [contextual-keyword (.-id selection)])))))
-
-(defn selection-click-handler
-  [logical-target]
-  (.log js/console (str "selection click"))
-  (let [id (.-id logical-target)]
-    (cond (= id "select-broad")
-          (set-selector-interpretation :broad)
-          (= id "select-narrow")
-          (set-selector-interpretation :narrow))))
 
 (defn alternate-interpretation-click-handler
   [event]
@@ -146,20 +142,19 @@
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Click on " target "."))
-    (when (not (target-being-edited? target))
-      (store-edit-field)
-      (close-edit-field)
+    (let [in-edit-holder (target-in-edit-holder? target)]
+      (when (not in-edit-holder)
+        (store-edit-field)
+        (close-edit-field))
       (if-let [tool-target (find-ancestor-with-class target "tool" 1)]
         (menu-click-handler tool-target)
-        (if-let [selection-target (find-ancestor-with-class
-                                   target "selection" 2)]
-          (selection-click-handler selection-target)
+        (when (not in-edit-holder)
           (let [editable (find-editable target event)]
-          (when (not= editable @selected)
-            (if editable
-              (select editable)
-              (deselect))
-            (request-action [:selected (and editable (.-id editable))]))))))))
+            (when (not= editable @selected)
+              (if editable
+                (select editable)
+                (deselect))
+              (request-action [:selected (and editable (.-id editable))]))))))))
 
 (defn double-click-handler
   [event]
@@ -167,7 +162,7 @@
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Double click on " target "."))
-    (when (not (target-being-edited? target))
+    (when (not (target-in-edit-holder? target))
       (store-edit-field)
       (close-edit-field)
       (let [editable (find-editable target event)]

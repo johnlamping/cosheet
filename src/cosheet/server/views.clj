@@ -247,21 +247,17 @@
         [:div.tooltip "add row below"]]
        [:div#add-column.tool
         [:img {:src "../icons/add_column.gif"}]
-        [:div.tooltip "add column right"]]
-       [:div.toolgap] [:div.toolgap]
-       [:div#selection-interpretation.selector-container
-        [:div#select-broad.selection
-         [:div.radio-button
-          [:div.inner-radio-button]]
-         [:img.selector-img {:src "../icons/select_broad.gif"}]
-         [:div.tooltip "act on header descriptions"]]
-        [:div#select-narrow.selection.picked
-         [:div.radio-button
-          [:div.inner-radio-button]]
-         [:img.selector-img {:src "../icons/select_narrow.gif"}]
-         [:div.tooltip "act on header selections"]]]]
+        [:div.tooltip "add column right"]]]
       [:div#app.selector-scope "Root"]
-      [:div#edit_holder [:textarea#edit_input {"rows" 1}]]
+      [:div#edit_holder.edit_holder
+       [:textarea#edit_input {"rows" 1}]
+       [:div#scope_holder
+        [:div#broad_selector_interpretation.tool
+         [:img {:src "../icons/edit.gif"}]
+         [:div.tooltip "editing data"]]
+        [:div#narrow_selector_interpretation.tool
+         [:img {:src "../icons/select.gif"}]
+         [:div.tooltip "changing selection"]]]]
       [:div#alternate_interpretation_holder {}
        [:div " "]
        [:div#alternate_interpretation " "]

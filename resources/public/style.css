@@ -587,30 +587,26 @@ body {
 #edit_holder {
     width: 100%;
     height: 100%;
+    min-width: 200px;
+    min-height: fit-content;
     display: none;
     position: absolute;
     left: 0;
     top: 0;
     z-index: 1;
+    background-color: cornsilk;
+    box-shadow: 5px 5px 3px grey;
 }
 
 .editable > #edit_holder {
-    display: block;
+    display: flex;
 }
 
 #edit_input {
-    min-height: 100%;
+    flex-grow: 1;
     font-size: 100%;
-    min-width: 200px;
     height: auto;
-    background-color: cornsilk;
-    box-shadow: 5px 5px 3px grey;
     resize: none;
-    overflow: visible;
-    left: 0;
-    right: 0;
-    position: absolute;
-    z-index: 2;
 }
 
 /* --- alternate interpretation link --- */
@@ -740,26 +736,22 @@ body {
 /* Scope selector tools */
 
 #scope_holder {
-    position: absolute;
-    bottom: -38px;
-    left: 0px;
-    padding: 2px;
     background-color: cornsilk;
-    box-shadow: 5px 5px 3px grey;
-    visibility: hidden;
-    z-index: 2;
+    padding-right: 2px;
+    display: none;
 }
 
 .selectors #scope_holder {
-    visibility: visible;
+    display: inline-block;
 }
 
 #scope_holder > .tool {
-    opacity:0.5;
+    margin: 0px;
+    display: block;
+    opacity:0.4;
 }
 
 #scope_holder > .tool.picked {
     border-color: hsl(200, 100%, 90%);
-    background-color: white;
     opacity: 1.0;
 }

@@ -250,14 +250,14 @@
         [:div.tooltip "add column right"]]]
       [:div#app.selector-scope "Root"]
       [:div#edit_holder.edit_holder
-       [:textarea#edit_input {"rows" 1}]
        [:div#scope_holder
         [:div#broad_selector_interpretation.tool
          [:img {:src "../icons/edit.gif"}]
          [:div.tooltip "editing data"]]
         [:div#narrow_selector_interpretation.tool
          [:img {:src "../icons/select.gif"}]
-         [:div.tooltip "choosing selection"]]]]
+         [:div.tooltip "choosing selection"]]]
+       [:textarea#edit_input {"rows" 1}]]
       [:div#alternate_interpretation_holder {}
        [:div " "]
        [:div#alternate_interpretation " "]

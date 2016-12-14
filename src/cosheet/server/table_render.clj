@@ -450,9 +450,6 @@
   ;;              nil. The exception is the special content :other,
   ;;              which means to show everything not shown in any
   ;;              other column.
-  ;; TODO: Make there there be an element on a table descriptor that
-  ;;       says what elements of new columns must have, rather than
-  ;;       the current '(nil :tag)
   ;; TODO: Add the "other" column if a table requests it.
   [table-item inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))

@@ -204,7 +204,7 @@ body {
 }
 
 .wrapped-element > .indent-wrapper {
-    flex: 1;
+    flex-grow: 1;
 }
 
 .wrapped-element > .indent-wrapper > .item,
@@ -433,6 +433,15 @@ body {
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
     margin: 0px -2px -2px 0px;
+}
+
+/* Make the header fill all the available space, for a better selection box. */
+.column-header > :first-child.content-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex-grow: 1;
+    flex-basis: auto;
 }
 
 .column-header.with-children {

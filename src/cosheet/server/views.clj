@@ -257,7 +257,7 @@
          [:div.tooltip "editing data"]]
         [:div#narrow_selector_interpretation.tool
          [:img {:src "../icons/select.gif"}]
-         [:div.tooltip "changing selection"]]]]
+         [:div.tooltip "choosing selection"]]]]
       [:div#alternate_interpretation_holder {}
        [:div " "]
        [:div#alternate_interpretation " "]

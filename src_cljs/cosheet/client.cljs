@@ -122,7 +122,7 @@
                              "add-column" :add-column}
                            id)
         selection @selected]
-    (.log js/console (str "menu click" id))
+    (.log js/console (str "menu click " id))
     (cond local-command
           (apply (first local-command) (rest local-command))
           keyword
@@ -147,7 +147,10 @@
         (store-edit-field)
         (close-edit-field))
       (if-let [tool-target (find-ancestor-with-class target "tool" 1)]
-        (menu-click-handler tool-target)
+        (do (when @edit-field-open-on
+              ;; A click on the tool can cause a loss of focus. Put it back.
+              (.focus (js/document.getElementById "edit_input")))
+            (menu-click-handler tool-target))
         (when (not in-edit-holder)
           (let [editable (find-editable target event)]
             (when (not= editable @selected)

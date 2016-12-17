@@ -105,7 +105,7 @@
    is contained in one of the changes."
   [doms]
   (when (dom-contained-in-changes?
-         (js/document.getElementById "edit_holder") doms)
+         (js/document.getElementById "select_holder") doms)
     (close-edit-field)))
 
 (defn handle-ajax-doms

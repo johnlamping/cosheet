@@ -25,10 +25,10 @@
 (defn open-edit-field
   [target initial-content]
   (when (not= target @edit-field-open-on)
-    (let [edit-holder (js/document.getElementById "edit_holder")
+    (let [select-holder (js/document.getElementById "select_holder")
           edit-input (js/document.getElementById "edit_input")]
       (set! (.-value edit-input) initial-content)
-      (gdom/appendChild target edit-holder)
+      (gdom/appendChild target select-holder)
       (.focus edit-input)
       (.select edit-input)
       (reset! edit-field-open-on target))))
@@ -37,11 +37,11 @@
   "Close the edit field, without storing the value."
   []
   (when @edit-field-open-on
-    (let [edit-holder (js/document.getElementById "edit_holder")
+    (let [select-holder (js/document.getElementById "select_holder")
           app (js/document.getElementById "app")]
       (reset! edit-field-open-on nil)
       ;; Put it at the end, where it will be invisible, but still findable.
-      (gdom/appendChild app edit-holder))))
+      (gdom/appendChild app select-holder))))
 
 (defn set-alternate-field
   [text]

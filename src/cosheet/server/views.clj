@@ -249,7 +249,7 @@
         [:img {:src "../icons/add_column.gif"}]
         [:div.tooltip "add column right"]]]
       [:div#app.selector-scope "Root"]
-      [:div#edit_holder.edit_holder
+      [:div#select_holder.select_holder
        [:div#scope_holder
         [:div#broad_selector_interpretation.tool
          [:img {:src "../icons/edit.gif"}]

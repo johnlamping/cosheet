@@ -90,8 +90,8 @@
           (request-action
            [:set-content (.-id target) :from old-value :to value]))))))
 
-(defn target-in-edit-holder? [target]
-  (find-ancestor-with-class target "edit_holder" 4))
+(defn target-in-select-holder? [target]
+  (find-ancestor-with-class target "select_holder" 4))
 
 (defn open-expand-popup
   "Open the expand popup window.
@@ -142,8 +142,8 @@
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Click on " target "."))
-    (let [in-edit-holder (target-in-edit-holder? target)]
-      (when (not in-edit-holder)
+    (let [in-select-holder (target-in-select-holder? target)]
+      (when (not in-select-holder)
         (store-edit-field)
         (close-edit-field))
       (if-let [tool-target (find-ancestor-with-class target "tool" 1)]
@@ -151,7 +151,7 @@
               ;; A click on the tool can cause a loss of focus. Put it back.
               (.focus (js/document.getElementById "edit_input")))
             (menu-click-handler tool-target))
-        (when (not in-edit-holder)
+        (when (not in-select-holder)
           (let [editable (find-editable target event)]
             (when (not= editable @selected)
               (if editable
@@ -165,7 +165,7 @@
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
     (.log js/console (str "Double click on " target "."))
-    (when (not (target-in-edit-holder? target))
+    (when (not (target-in-select-holder? target))
       (store-edit-field)
       (close-edit-field)
       (let [editable (find-editable target event)]

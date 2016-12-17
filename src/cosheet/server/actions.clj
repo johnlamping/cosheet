@@ -480,7 +480,7 @@
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [[handler & context-keys] (get-contextual-handler action-type)
         tracker (:tracker session-state)
-        target-key (id->key tracker client-id)
+        target-key (when client-id (id->key tracker client-id))
         dom-attributes (key->attributes tracker target-key)
         attributes (-> dom-attributes
                        (into client-args)

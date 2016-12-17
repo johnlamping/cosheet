@@ -578,85 +578,6 @@ body {
     opacity: 1;
 }
 
-/* --- edit holder --- */
-
-.editable {
-    position: relative; /* To make select_holder position relative to it */
-}
-
-#select_holder {
-    display: none;
-    position: absolute;
-    top: 0;
-    z-index: 1;
-}
-
-#select_holder.editing {
-    width: 100%;
-    height: 100%;
-    min-width: 200px;
-    min-height: fit-content;
-    background-color: cornsilk;
-    box-shadow: 5px 5px 3px grey;
-}
-
-.editable > #select_holder {
-    display: flex;
-}
-
-#edit_input {
-    display: none;
-    flex-grow: 1;
-    font-size: 100%;
-    height: auto;
-    resize: none;
-    z-index: 2;
-}
-
-#select_holder.editing > #edit_input {
-    display: block;
-}
-
-/* --- alternate interpretation link --- */
-
-#alternate_interpretation_holder {
-    visibility: hidden;
-    position: absolute;
-    top: 0;
-    left: 50%; /* 50% here is the container's width. */
-    transform: translate(-50%, 0px); /* 50% here is the link's width. */
-    z-index: 1;
-    background-color: cornsilk;
-    border-width: 1px;
-    border-color: orange;
-    border-radius: 3px;
-    font-family: sans-serif;
-    font-size: 100%;
-    font-weight: bold
-    box-sizing: content-box;
-    width: max-content;
-    text-align: center;
-    padding: 2px 4px;
-}
-
-#alternate_interpretation_holder > * {
-    display: inline-block;
-    margin-left: 1ex;
-}
-
-#alternate_interpretation {
-    color: blue;
-    text-decoration: underline;
-}
-
-#alternate_interpretation:hover {
-    cursor: pointer;
-}
-
-#alternate_interpretation_holder.visible {
-    visibility: visible;
-}
-
 /* --- toolbar --- */
 
 .toolbar {
@@ -739,6 +660,85 @@ body {
 .tool:hover .tooltip, .selection:hover .tooltip {
     visibility: visible;
     transition-delay: 1s;
+}
+
+/* --- alternate interpretation link --- */
+
+#alternate_interpretation_holder {
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 50%; /* 50% here is the container's width. */
+    transform: translate(-50%, 0px); /* 50% here is the link's width. */
+    z-index: 1;
+    background-color: cornsilk;
+    border-width: 1px;
+    border-color: orange;
+    border-radius: 3px;
+    font-family: sans-serif;
+    font-size: 100%;
+    font-weight: bold
+    box-sizing: content-box;
+    width: max-content;
+    text-align: center;
+    padding: 2px 4px;
+}
+
+#alternate_interpretation_holder > * {
+    display: inline-block;
+    margin-left: 1ex;
+}
+
+#alternate_interpretation {
+    color: blue;
+    text-decoration: underline;
+}
+
+#alternate_interpretation:hover {
+    cursor: pointer;
+}
+
+#alternate_interpretation_holder.visible {
+    visibility: visible;
+}
+
+/* --- select holder --- */
+
+.editable {
+    position: relative; /* To make select_holder position relative to it */
+}
+
+#select_holder {
+    display: none;
+    position: absolute;
+    top: 0;
+    z-index: 1;
+}
+
+#select_holder.editing {
+    width: 100%;
+    height: 100%;
+    min-width: 200px;
+    min-height: fit-content;
+    background-color: cornsilk;
+    box-shadow: 5px 5px 3px grey;
+}
+
+.editable > #select_holder {
+    display: flex;
+}
+
+#edit_input {
+    display: none;
+    flex-grow: 1;
+    font-size: 100%;
+    height: auto;
+    resize: none;
+    z-index: 2;
+}
+
+#select_holder.editing > #edit_input {
+    display: block;
 }
 
 /* Scope selector tools */

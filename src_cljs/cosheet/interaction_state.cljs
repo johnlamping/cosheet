@@ -28,7 +28,7 @@
     (let [select-holder (js/document.getElementById "select_holder")
           edit-input (js/document.getElementById "edit_input")]
       (set! (.-value edit-input) initial-content)
-      (gdom/appendChild target select-holder)
+      (.add (.-classList select-holder) "editing")
       (.focus edit-input)
       (.select edit-input)
       (reset! edit-field-open-on target))))
@@ -37,11 +37,9 @@
   "Close the edit field, without storing the value."
   []
   (when @edit-field-open-on
-    (let [select-holder (js/document.getElementById "select_holder")
-          app (js/document.getElementById "app")]
+    (let [select-holder (js/document.getElementById "select_holder")]
       (reset! edit-field-open-on nil)
-      ;; Put it at the end, where it will be invisible, but still findable.
-      (gdom/appendChild app select-holder))))
+      (.remove (.-classList select-holder) "editing"))))
 
 (defn set-alternate-field
   [text]
@@ -116,6 +114,9 @@
   (let [target @selected]
     (when target
       (.remove (.-classList target) "selected")
+      ;; Put it at the end, where it will be invisible, but still findable.
+      (gdom/appendChild  (js/document.getElementById "app")
+                         (js/document.getElementById "select_holder"))
       (reset! selected nil)
       (set-selector-scope))))
 
@@ -125,6 +126,7 @@
   (when (not= target @selected)
     (deselect)
     (.add (.-classList target) "selected")
+    (gdom/appendChild target (js/document.getElementById "select_holder"))
     (.log js/console (str "Selected id " (.-id target) "."))
     (reset! selected target)
     (set-selector-scope)))

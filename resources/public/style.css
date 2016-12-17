@@ -541,14 +541,14 @@ body {
 
 /* --- narrow interpretation --- */
 
-.narrow-interpretation {
+.selectors {
+    /* Allow the box shadow to overlap the selected. */
     overflow: visible;
 }
 
 .narrow-interpretation .selectors {
     box-shadow: 1px 0px 3px 3px hsl(0, 0%, 85%),
                 7px 9px 4px 2px hsla(0, 0%, 0%, .7);
-    z-index: 1;
 }
 
 .narrow-interpretation .selectors:not(.tag) {
@@ -566,12 +566,11 @@ body {
 }
 
 .narrow-interpretation .selecteds {
-    opacity: 0.4;
+    opacity: 0.3;
 }
 
 .narrow-interpretation .selector-scope .selectors.selectors {
     box-shadow: 0px 0px transparent;
-    z-index: 0;
 }
 
 .narrow-interpretation .selector-scope .selecteds.selecteds {
@@ -670,7 +669,7 @@ body {
     top: 0;
     left: 50%; /* 50% here is the container's width. */
     transform: translate(-50%, 0px); /* 50% here is the link's width. */
-    z-index: 1;
+    z-index: 2;
     background-color: cornsilk;
     border-width: 1px;
     border-color: orange;
@@ -713,7 +712,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 1;
+    z-index: 2;
 }
 
 #select_holder.editing {

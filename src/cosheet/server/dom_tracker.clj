@@ -216,7 +216,8 @@
   [data acknowledgements]
   (reduce
    (fn [data [id version]]
-     (let [key (or (get-in data [:id->key id]) (string->key id))]
+     (let [key (or (get-in data [:id->key id])
+                   (when (string? key) (string->key id)))]
        (if key
          (cond-> data
            (and (number? version)
@@ -404,7 +405,7 @@
   [tracker id]
   (let [data @tracker]
     (or (get-in data [:id->key id])
-        (let [key (string->key id)]
+        (let [key (when (string? key) (string->key id))]
           ;; Make sure the key the client sent us is for a dom we know about.
           (when (or (get-in data [:key->dom key])
                     (get-in data [:components key]))
@@ -432,7 +433,9 @@
   (swap! tracker
          (fn [data] (assoc data :out-of-date-keys
                            (reduce (fn [map [key component]]
-                                     (assoc map key (:depth component )))
+                                     (if (get-in data [:key->dom key])
+                                       (assoc map key (:depth component))
+                                       map))
                                    (priority-map/priority-map)
                                    (:components data))))))
 

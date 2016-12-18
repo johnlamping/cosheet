@@ -60,11 +60,11 @@
 ;;; containing a map with these elements:
 ;;;       :components  A map from key to component map.
 ;;;          :key->id  A map from key to client id, for those few components
-;;;                    where add-domt was called directly.
+;;;                    where add-dom was called directly.
 ;;;          :id->key  The inverse of the key->id map
-;;;         :key->dom  A map from key to server version of the dom
+;;;         :key->dom  A map from key to the server version of the dom
 ;;;                    for that key. The dom also provides access to any extra
-;;;                    information needed to interpret actions on a key.
+;;;                    information needed to interpret actions on the key.
 ;;;                    The dom is in hiccup format, as returned by the
 ;;;                    definition or the reporter it returns.
 ;;;                    Inside this dom, subcomponents are annotated as
@@ -267,7 +267,9 @@
   "Given the data, a key, and the latest dom for the key,
    record the key in the dom, and do all necessary updates."
   [data key dom]
-  (let [dom (add-attributes dom {:key key})
+  (let [;; The key of the dom we got might be our key with :content added.
+        ;; Take that off, so the key will match the component.
+        dom (add-attributes dom {:key key})
         component-map (get-in data [:components key])
         old-dom (get-in data [:key->dom key])
         depth (:depth component-map)]

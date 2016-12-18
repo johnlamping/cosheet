@@ -156,10 +156,15 @@
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)
                                        ordered-elements)]
-          (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                  ordered-elements excludeds
-                                  {:class "tag"} inherited)
-            (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
+          (let [subject-ref (:subject inherited)
+                inherited-down (update-in
+                                inherited [:selectable-attributes]
+                                #(assoc % :add-element
+                                        {:item-referent subject-ref}))]
+            (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                    ordered-elements excludeds
+                                    {:class "tag"} inherited-down)
+              (> (count ordered-elements) 1) (add-attributes {:class "tag"}))))
         true
         (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
           [:div {:class "elements-wrapper"} elements-dom])))))

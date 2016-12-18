@@ -45,6 +45,6 @@
         [attr remainder] (if (map? second)
                            [second remainder]
                            [{} (rest dom)])]
-    (into [dom-tag
+    (into [(or dom-tag :div)
            (into-attributes attr attributes)]
           remainder)))

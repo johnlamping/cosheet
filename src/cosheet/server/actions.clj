@@ -398,9 +398,9 @@
     :add-sibling [do-add-sibling :sibling]
     :add-row [do-add-row :row]
     :add-column [do-add-column :column]
-    :delete [do-delete :delete :target]
+    :delete [do-delete :target]
     :set-content [do-set-content :target]
-    :expand [do-expand :expand :target]}
+    :expand [do-expand :target]}
    action))
 
 (defn context-referent
@@ -478,7 +478,7 @@
   the command, and any added by the client. Also include
   :session-state and :target-key."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
-  (let [[handler & context-keys] (get-contextual-handler action-type)
+  (let [[handler context-key] (get-contextual-handler action-type) 
         tracker (:tracker session-state)
         target-key (when client-id (id->key tracker client-id))
         dom-attributes (key->attributes tracker target-key)
@@ -486,10 +486,12 @@
                        (into client-args)
                        (assoc :target-key target-key
                               :session-state session-state))]
+    (println "keys" [context-key action-type])
     (if handler
-      (if-let [context (->> (map attributes context-keys)
+      (if-let [;; We take all attributes for the context and override any
+               ;; specific to the action type.
+               context (->> (map attributes [context-key action-type])
                             (remove nil?)
-                            reverse
                             (apply merge-with (partial map-combiner nil)))]
         (do
           (println "command: " (map simplify-for-print
@@ -512,7 +514,8 @@
                                 (dissoc attributes :session-state)]
                        :text text}))
             (dissoc result :store)))
-        (println "No context for action:" action-type attributes))
+        (println "No context for action:" action-type
+                 (dissoc attributes :session-state)))
       (do 
         (println "unhandled action type:" action-type)))))
 

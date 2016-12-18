@@ -505,7 +505,8 @@
              condition-elements (semantic-elements-R row-condition-item)
              conditions-as-lists (expr-seq map semantic-to-list-R
                                            condition-elements)
-             condition-is-tags (every? #(seq (filter #{:tag} %))
+             condition-is-tags (every? #(and (sequential? %)
+                                             (seq (filter #{:tag} %)))
                                        conditions-as-lists)
              condition-dom (condition-elements-DOM-R
                             condition-elements

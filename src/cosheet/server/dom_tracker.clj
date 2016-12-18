@@ -217,7 +217,7 @@
   (reduce
    (fn [data [id version]]
      (let [key (or (get-in data [:id->key id])
-                   (when (string? key) (string->key id)))]
+                   (when (string? id) (string->key id)))]
        (if key
          (cond-> data
            (and (number? version)
@@ -405,7 +405,7 @@
   [tracker id]
   (let [data @tracker]
     (or (get-in data [:id->key id])
-        (let [key (when (string? key) (string->key id))]
+        (let [key (when (string? id) (string->key id))]
           ;; Make sure the key the client sent us is for a dom we know about.
           (when (or (get-in data [:key->dom key])
                     (get-in data [:components key]))

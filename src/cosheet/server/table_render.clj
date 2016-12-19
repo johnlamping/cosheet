@@ -147,11 +147,10 @@
                   (dissoc :template)
                   (assoc :element-attributes (:selectable-attributes
                                               inherited)))]
-          (expr-let [inner-dom (item-content-and-elements-DOM-R
-                                item (:subject inherited)
-                                content non-labels inherited-down)]
+          (expr-let [inner-dom (elements-DOM-R non-labels true nil inherited)]
             (label-wrapper-DOM-R
-             inner-dom item (:subject inherited) labels false inherited)))
+             [:div {:class "item elements-wrapper"} inner-dom]
+             item (:subject inherited) labels false inherited)))
         labels
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)

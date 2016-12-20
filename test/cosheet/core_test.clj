@@ -6,9 +6,9 @@
             utils-test orderable-test
             reporters-test expression-test
             canonical-test
-            mutable-manager-test mutable-set-test
+            mutable-manager-test state-map-test mutable-map-test
             entity-test store-test query-test
-            mutable-map-test task-queue-test expression-manager-test
+            task-queue-test expression-manager-test
             mutable-store-test store-utils-test)
            (cosheet.server
             referent hierarchy render dom_tracker actions

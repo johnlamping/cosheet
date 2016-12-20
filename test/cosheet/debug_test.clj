@@ -11,8 +11,6 @@
                      [expression :refer [expr expr-let cache]]
                      [store :refer :all]
                      [entity :refer :all]
-                     [mutable-set
-                      :refer [new-mutable-set mutable-set-intersection]]
                      store-impl)
             ; :reload
             ))
@@ -95,16 +93,16 @@
     (is (= (simplify-for-print simplify-for-print) 'debug/simplify-for-print))))
 
 (deftest profile-test
-  (let [ms (new-mutable-set #{:a :b})
-        min-r (expr min (mutable-set-intersection ms #{:a})
-                    (mutable-set-intersection ms #{:b}))
+  (let [ms (new-reporter :value #{:a :b})
+        min-r (expr min (expr clojure.set/intersection ms #{:a})
+                    (expr clojure.set/intersection ms #{:b}))
         rc (cache max
                   min-r
-                  (expr min (mutable-set-intersection ms #{:c})))
+                  (expr min (expr clojure.set/intersection ms #{:c})))
         r (expr list rc rc)]
     (swap! (data-atom min-r)
            #(assoc % :value-source
-                   (expr assoc (mutable-set-intersection ms #{:a}))))
+                   (expr assoc (expr clojure.set/intersection ms #{:a}))))
     (is (check (reporters-profile [r])
                {'min {'intersection 1 'assoc 1}
                 nil {'intersection 4

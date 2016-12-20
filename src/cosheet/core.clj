@@ -1,7 +1,7 @@
 (ns cosheet.core
   (:require (cosheet utils orderable dom-utils
                      reporters expression store entity canonical query
-                     mutable-manager mutable-set
+                     mutable-manager state-map
                      mutable-map task-queue expression-manager
                      store-impl store-utils entity-impl query-impl
                      mutable_store_impl debug)

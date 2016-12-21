@@ -82,14 +82,14 @@
     (is (= @cell 5))))
 
 (deftest thread-map-test
-  (let [[state result] (thread-map (fn [n i] [(conj n i) (* i 2)])
-                                   [] [1 2 3 4])]
+  (let [[result state] (thread-map (fn [i s] [(* i 2) (conj s i)])
+                                   [1 2 3 4] [])]
     (is (= state [1 2 3 4]))
     (is (= result [2 4 6 8]))))
 
 (deftest thread-recursive-map-test
-  (let [[state result] (thread-recursive-map (fn [n i] [(conj n i) (* i 2)])
-                                             [] [[1 2] [3 4]])]
+  (let [[result state] (thread-recursive-map (fn [i s] [(* i 2) (conj s i)])
+                                             [[1 2] [3 4]] [])]
     (is (= state [1 2 3 4]))
     (is (= result [[2 4] [6 8]]))))
 

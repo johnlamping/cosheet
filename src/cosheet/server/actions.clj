@@ -155,18 +155,27 @@
 
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
-   element. Specifically, replace '??? with a new unique symbol.  This
-   may require updating the store.  Return the new condition and new
-   store."
-  [condition store]
-  (reverse
-   (thread-recursive-map
-    (fn [store item]
-      (if (= item '???)
-        (let [[id store] (get-unique-id-number store)]
-          [store (symbol (str "???-" id))])
-        [store item]))
-    store condition)))
+  element. Specifically, replace each '??? with a new unique symbol,
+  and each instance of '???x with the same new symbol or the value
+  from chosen-new-ids, if present. Allocating new symbols will require
+  updating the store, and will be recorded in an updated
+  chosen-new-ids.  Return the new condition and a  pair of the new store,
+  and the chosen ids."
+  [condition [store chosen-new-ids]]
+  (thread-recursive-map
+   (fn [item [store chosen-new-ids]]
+     (let [name (when (symbol? item) (str item))]
+       (if (and name (>= (count name) 3) (= (subs name 0 3) "???"))
+         (let [suffix (subs name 3)]
+           (if-let [sym (chosen-new-ids suffix)]
+             [sym [store chosen-new-ids]]
+             (let [[id store] (get-unique-id-number store)
+                   sym (symbol (str "???-" id))
+                   new-chosen (cond-> chosen-new-ids
+                                (not= suffix "") (assoc suffix sym))]
+               [sym [store new-chosen]])))
+         [item [store chosen-new-ids]])))
+   condition [store chosen-new-ids]))
 
 (defn add-and-select
   "Add an entity matching the template to the store for each 
@@ -175,11 +184,11 @@
   of the new items."
   [store entity subject-ids adjacents position use-bigger
    select-pattern old-key]
-  (let [f (fn [store [subject-id adjacent]]
-            (update-add-entity-adjacent-to
-             store subject-id entity adjacent position use-bigger))        
-        [store element-ids] (thread-map f store
-                                        (map vector subject-ids adjacents))]
+  (let [f (fn [[subject-id adjacent] store]
+            (reverse (update-add-entity-adjacent-to
+                      store subject-id entity adjacent position use-bigger)))
+        [element-ids store] (thread-map f (map vector subject-ids adjacents)
+                                        store)] 
     {:store store
      :select (when (not (empty? element-ids))
                [(substitute-in-key
@@ -226,7 +235,7 @@
                         (map (fn [group]
                                (map #(id->subject store (:item-id %)) group))
                              adjacents))
-          [adjusted-template store] (adjust-condition template store)
+          [adjusted-template [store _]] (adjust-condition template [store {}])
           select-pattern (or select-pattern (conj parent-key [:pattern]))
           entity (replace-in-seqs adjusted-template nil "")
           alt-entity (if nil-to-anything
@@ -306,10 +315,12 @@
         ;; If we removed a placeholder from a header, there will be no way to
         ;; reference the placeholder again, so change any instances of it
         ;; to a simple "???".
-        (if (and (symbol? first-content)
-                 (= (subs (str first-content) 0 3) "???")
-                 (seq (matching-elements
-                       :column (subject (first header-group)))))
+        (if (let [name (when (symbol? first-content) (str first-content))]
+              (and name
+                   (>= (count name) 3)
+                   (= (subs (str first-content) 0 3) "???")
+                   (seq (matching-elements
+                         :column (subject (first header-group))))))
           (reduce (fn [store item]
                     (update-content store (:item-id item) "???"))
                   removed (matching-items first-content removed))

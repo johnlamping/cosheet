@@ -134,27 +134,27 @@
 
 (defn thread-map
   "Call f on each element of the sequence, passing it the current state
-  as its first argument. f must return a pair of the new state and a value.
-  Return the final state and the sequence of values.
+  as its second argument. f must return a pair of a value and the new state.
+  Return the sequence of values and the final state.
   If the initial items are a seq, have the returned sequence be a seq."
-  [f state items]
-  (let [[state mapped]
-        (reduce (fn [[state accum] item]
-                  (let [[state value] (f state item)]
-                    [state (conj accum value)]))
-                [state []] items)]
-    [state (if (seq? items) (list* mapped) mapped)]))
+  [f items state]
+  (let [[mapped state]
+        (reduce (fn [[accum state] item]
+                  (let [[value state] (f item state)]
+                    [(conj accum value) state]))
+                [[] state] items)]
+    [(if (seq? items) (list* mapped) mapped) state]))
 
 (defn thread-recursive-map
   "Walk the possibly nested sequence, calling f on each element,
   passing it the current state as its first argument. f must return a
-  pair of the new state and a value.
-  Return the final state and the nested sequence of values."
-  [f state items]
+  pair of a value and the new state
+  Return the nested sequence of values the final state."
+  [f items state]
   (if (sequential? items)
-    (thread-map (fn [state items] (thread-recursive-map f state items))
-                state items)
-    (f state items)))
+    (thread-map (fn [items state] (thread-recursive-map f items state))
+                items state)
+    (f items state)))
 
 ;;; Parsing
 

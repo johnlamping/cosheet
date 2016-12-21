@@ -1,5 +1,6 @@
 (ns cosheet.server.referent
-  (:require (cosheet [utils :refer [multiset replace-in-seqs]]
+  (:require (cosheet [utils :refer [multiset replace-in-seqs
+                                    thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :refer [atom? elements content label->elements
@@ -7,6 +8,7 @@
                                      StoredEntity]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription]]
+                     [store-impl :refer [get-unique-id-number]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
                                     template-matches]])))
@@ -475,6 +477,30 @@
                   [(remove
                     (set (instantiate-to-items minus immutable-store))
                     (instantiate-to-items plus immutable-store))])))
+
+(defn adjust-condition
+  "Adjust a condition to make it ready for adding as an
+  element. Specifically, replace each '??? with a new unique symbol,
+  and each instance of '???x with the same new symbol or the value
+  from chosen-new-ids, if present. Allocating new symbols will require
+  updating the store, and those of the form '???x will be recorded in
+  an updated chosen-new-ids with a key of \"x\".  Return the new
+  condition and a pair of the new store, and the chosen ids."
+  [condition [store chosen-new-ids]]
+  (thread-recursive-map
+   (fn [item [store chosen-new-ids]]
+     (let [name (when (symbol? item) (str item))]
+       (if (and name (>= (count name) 3) (= (subs name 0 3) "???"))
+         (let [suffix (subs name 3)]
+           (if-let [sym (chosen-new-ids suffix)]
+             [sym [store chosen-new-ids]]
+             (let [[id store] (get-unique-id-number store)
+                   sym (symbol (str "???-" id))
+                   new-chosen (cond-> chosen-new-ids
+                                (not= suffix "") (assoc suffix sym))]
+               [sym [store new-chosen]])))
+         [item [store chosen-new-ids]])))
+   condition [store chosen-new-ids]))
 
 
 

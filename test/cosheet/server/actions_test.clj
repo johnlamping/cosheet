@@ -155,16 +155,6 @@
   (is (= (furthest-item [joe-married joe-male] :before) joe-male))
   (is (= (furthest-item [joe-married joe-male] :after) joe-married)))
 
-(deftest adjust-condition-test
-  (let [[c1 [s1 m1]] (adjust-condition '("x" ('??? :a) ('??? 22))
-                                       [(new-element-store) {}])
-        [c2 [s2 m2]] (adjust-condition '("x" ('???1 "y") ('???1 "22"))
-                                       [s1 {}])]
-    (is (= c1  '("x" ('???-0 :a) ('???-1 22))))
-    (is (= m1 {}))
-    (is (= c2  '("x" ('???-2 "y") ('???-2 "22"))))
-    (is (= m2 {"1" '???-2}))))
-
 (deftest generic-add-test
   (let [order-entity (first (label->elements jane-age :order))
         order (content order-entity)

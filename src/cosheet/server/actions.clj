@@ -2,14 +2,13 @@
   (:require
    (cosheet
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number thread-map thread-recursive-map
+    [utils :refer [parse-string-as-number thread-map
                    swap-control-return! replace-in-seqs equivalent-atoms?]]
     [orderable :refer [split earlier?]]
     [store :refer [update-content add-simple-element
                    fetch-and-clear-modified-ids
                    do-update-control-return! revise-update-control-return!
                    id->subject id-valid? undo! redo! current-store]]
-    [store-impl :refer [get-unique-id-number]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list
@@ -23,7 +22,7 @@
                       referent->string referent?
                       referent->exemplar-and-subject
                       item-referent first-group-referent
-                      semantic-elements-R]])))
+                      semantic-elements-R adjust-condition]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -152,30 +151,6 @@
                               store subject-id entity
                               order position use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))
-
-(defn adjust-condition
-  "Adjust a condition to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique symbol,
-  and each instance of '???x with the same new symbol or the value
-  from chosen-new-ids, if present. Allocating new symbols will require
-  updating the store, and will be recorded in an updated
-  chosen-new-ids.  Return the new condition and a  pair of the new store,
-  and the chosen ids."
-  [condition [store chosen-new-ids]]
-  (thread-recursive-map
-   (fn [item [store chosen-new-ids]]
-     (let [name (when (symbol? item) (str item))]
-       (if (and name (>= (count name) 3) (= (subs name 0 3) "???"))
-         (let [suffix (subs name 3)]
-           (if-let [sym (chosen-new-ids suffix)]
-             [sym [store chosen-new-ids]]
-             (let [[id store] (get-unique-id-number store)
-                   sym (symbol (str "???-" id))
-                   new-chosen (cond-> chosen-new-ids
-                                (not= suffix "") (assoc suffix sym))]
-               [sym [store new-chosen]])))
-         [item [store chosen-new-ids]])))
-   condition [store chosen-new-ids]))
 
 (defn add-and-select
   "Add an entity matching the template to the store for each 

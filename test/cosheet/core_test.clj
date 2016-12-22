@@ -12,7 +12,7 @@
             mutable-store-test store-utils-test)
            (cosheet.server
             referent hierarchy render dom_tracker actions
-            referent-test hierarchy-test
+            referent-test hierarchy-test order-utils-test
             render-utils-test render-test item-render-test table-render-test
             dom-tracker-test actions-test)
            :reload))

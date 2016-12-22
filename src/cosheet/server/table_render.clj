@@ -25,9 +25,10 @@
                                 hierarchy-nodes-extent
                                 hierarchy-by-canonical-info
                                 hierarchy-node-example-elements]]
+             [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
-                                   order-items-R condition-satisfiers-R]]
+                                   condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R label-wrapper-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-without-labels-DOM-R

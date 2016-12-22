@@ -10,27 +10,6 @@
             (cosheet.server
              [hierarchy :refer [canonical-info]])))
 
-(defn orderable-comparator
-  "Compare two sequences each of whose first element is an orderable."
-  [a b]
-  (orderable/earlier? (first a) (first b)))
-
-(defn order-items-R
-  "Return the items in the proper sort order."
-  [items]
-  (if (empty? (rest items))
-    items
-    (expr-let [order-info
-               (expr-seq map #(entity/label->content % :order) items)]
-      (map second (sort orderable-comparator
-                        (map (fn [order item]
-                               ;; It is possible for an item not to have
-                               ;; order information, especially
-                               ;; temporarily while information is being
-                               ;; propagated. Tolerate that.
-                               (vector (or order orderable/initial) item))
-                             order-info items))))))
-
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
   satisfy the elements of condition and nothing extra, except that

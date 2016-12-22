@@ -4,12 +4,11 @@
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map
                    swap-control-return! replace-in-seqs equivalent-atoms?]]
-    [orderable :refer [split earlier?]]
-    [store :refer [update-content add-simple-element
+    [store :refer [update-content
                    fetch-and-clear-modified-ids
                    do-update-control-return! revise-update-control-return!
                    id->subject id-valid? undo! redo! current-store]]
-    [store-utils :refer [add-entity remove-entity-by-id]]
+    [store-utils :refer [remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
@@ -22,7 +21,8 @@
                       referent->string referent?
                       referent->exemplar-and-subject
                       item-referent first-group-referent
-                      semantic-elements-R adjust-condition]])))
+                      semantic-elements-R adjust-condition]]
+    [order-utils :refer [update-add-entity-adjacent-to furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -69,88 +69,6 @@
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))
-
-(defn update-add-entity-with-order
-  "Add an entity, described in list form, to the store, with the given
-   subject.  Add ordering information to each part of the entity,
-   except for tag specifiers and non-semantic elements, splitting the
-   provided order for the orders, and returning an unused piece of it.
-   Put the new entity in the specified position (:before or :after) of
-   the returned order, and make the entity use the bigger piece if
-   use-bigger is true, otherwise return the bigger piece.
-   Return the new store, the id of the item, and the remaining order."
-  [store subject-id entity order position use-bigger]
-  (let [entity-content (content entity)
-        entity-elements (elements entity)]
-    (if (or (and (keyword? entity-content) (empty? entity-elements))
-            (some #{:non-semantic} entity-elements))
-      ;; Keyword markers and non-semantic elements don't get an ordering.
-      (let [[s1 id] (add-entity store subject-id entity)]
-        [s1 id order])
-      (let [value-to-store entity-content
-            [s1 id] (add-simple-element store subject-id value-to-store)
-            ;; The next bunch of complication is to split the order up
-            ;; the right way in all cases. First, we split it into a
-            ;; bigger and a smaller part, putting the bigger part in
-            ;; correct position. Then, when we recursively add the
-            ;; elements, we take their order from the bigger position,
-            ;; leaving most of the space on the bigger position. Finally,
-            ;; we use the appropriate position for the entity and the
-            ;; return value.
-            entity-order-index (case position :before 0 :after 1)
-            other-position ([:after :before] entity-order-index)
-            split-order (split order (if use-bigger position other-position))
-            bigger-index (if use-bigger
-                           entity-order-index
-                           (- 1 entity-order-index))
-            bigger-order (split-order bigger-index)
-            smaller-order (split-order (- 1 bigger-index))
-            [s2 _ bigger-order] (reduce (fn [[store _ order] element]
-                                          (update-add-entity-with-order
-                                           store id element
-                                           order position false))
-                                        [s1 nil bigger-order]
-                                        (case position ;; Make the order match
-                                          :before entity-elements
-                                          :after (reverse entity-elements)))
-            [s3 _] (add-entity
-                    s2 id `(~(if use-bigger bigger-order smaller-order)
-                            :order :non-semantic))]
-        [s3 id (if use-bigger smaller-order bigger-order)]))))
-
-(defn furthest-item
-  "Given a list of items and a position,
-  return the furthest item in that position."
-  [items position]
-  (cond
-    (empty? items) nil
-    (= (count items) 1) (first items)
-    true (second
-          (reduce (case position
-                    :before (fn [a b] (if (earlier? (first a) (first b)) a b))
-                    :after (fn [a b] (if (earlier? (first a) (first b)) b a)))
-                  (map (fn [item] [(label->content item :order) item])
-                       items)))))
-
-(defn order-element-for-item
-  "Return an element with the order information for item,
-   or, if that is not available, for the overall store."
-  [item store]
-  (or (first (label->elements item :order))
-      (first (matching-items '(nil :unused-orderable) store))))
-
-(defn update-add-entity-adjacent-to
-  "Add an entity with the given subject id and contents,
-   taking its order from the given item, in the given position,
-   and giving the entity the bigger piece if use-bigger is true.
-   Return the updated store and the id of the entity."
-  [store subject-id entity adjacent-to position use-bigger]
-  (let [order-element (order-element-for-item adjacent-to store)
-        order (content order-element)
-        [store id remainder] (update-add-entity-with-order
-                              store subject-id entity
-                              order position use-bigger)]
-    [(update-content store (:item-id order-element) remainder) id]))
 
 (defn add-and-select
   "Add an entity matching the template to the store for each 

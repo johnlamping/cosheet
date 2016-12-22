@@ -15,9 +15,10 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
+             [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM add-alternate-to-target
                                    vertical-stack item-stack-DOM
-                                   order-items-R condition-satisfiers-R]])))
+                                   condition-satisfiers-R]])))
 
 (def item-without-labels-DOM-R)
 

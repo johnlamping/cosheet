@@ -28,7 +28,12 @@
                      (query-referent (list (item-referent (->ItemId 3))
                                            '(nil (:root :A_a))
                                            'b))
-                     (item-referent (->ItemId 6789)))]))
+                     (item-referent (->ItemId 6789)))
+                    (virtual-referent (item-referent (->ItemId 1234))
+                                      (item-referent (->ItemId 2345))
+                                      (item-referent (->ItemId 3456))
+                                      :after
+                                      true)]))
         serialized (referent->string referent)
         parsed (string->referent serialized)]
     (is (check parsed referent))))
@@ -106,8 +111,10 @@
   (is (= (condition-to-list '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
   (is (= (canonicalize-list (condition-to-list (item-referent jane) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag))))))
+  (let [l  (condition-to-list `(~(item-referent jane) 1 (2 3)) store)]
+    (println "!!!!" l (list? l) (seq? l) (list? (first l)) (seq? (first l))))
   (is (= (canonicalize-list
-          (condition-to-list [(item-referent jane) 1 '(2 3)] store))
+          (condition-to-list `(~(item-referent jane) 1 (2 3)) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
 
 (deftest instantiate-referent-test

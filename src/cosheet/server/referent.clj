@@ -1,6 +1,6 @@
 (ns cosheet.server.referent
   (:require (cosheet [utils :refer [multiset replace-in-seqs
-                                    thread-recursive-map]]
+                                    thread-map thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :refer [atom? elements content label->elements
@@ -11,7 +11,9 @@
                      [store-impl :refer [get-unique-id-number]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
-                                    template-matches]])))
+                                    template-matches]])
+            (cosheet.server
+             [order-utils :refer [update-add-entity-adjacent-to]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -59,6 +61,19 @@
 ;;;      difference  [:difference <referent> <referent>]
 ;;;                  Returns a single group of all items refered to by the
 ;;;                  first referent and not by the second.
+;;;                  refers to the sequence of groups
+;;;         virtual  [:virtual <exemplar-referent> <sequence-referent>
+;;;                            <adjacent-referent> position use-bigger]
+;;;                  For each group of items refered to by sequence-referent
+;;;                  refers to a group of new items matching the exemplar
+;;;                  referent. Both te exemplar referent and the sequence
+;;;                  referent can also be virtual. Adjacent-referent must
+;;;                  have one group for each item in sequence referent, and
+;;;                  gives items the new items should be adjacent to in the
+;;;                  order. Position and use-bigger say where the new item
+;;;                  should go relative to the adjacent item.
+;;;                  Virtual referents may never be nested inside non-virtual
+;;;                  referents.
 
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
@@ -66,26 +81,11 @@
 (defn exemplar-referent? [referent]
   (and (sequential? referent) (= (first referent) :exemplar)))
 
-(comment
-  (defn elements-referent? [referent]
-    (and (sequential? referent) (= (first referent) :elements)))
-
-  (defn query-referent? [referent]
-    (and (sequential? referent) (= (first referent) :query)))
-
-  (defn union-referent? [referent]
-    (and (sequential? referent) (= (first referent) :union)))
-
-  (defn parallel-union-referent? [referent]
-    (and (sequential? referent) (= (first referent) :parallel-union)))
-
-  (defn difference-referent? [referent]
-    (and (sequential? referent) (= (first referent) :difference))))
-
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :query :union :parallel-union :difference}
+           (#{:exemplar :elements :query :union :parallel-union :difference
+              :virtual}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -116,7 +116,7 @@
   (require-item-or-id item))
 
 (defn exemplar-referent
-  "Create an elements referent."
+  "Create an exemplar referent."
   [exemplar subject]
   (assert (referent? subject))
   [:exemplar (require-item-or-id exemplar) subject])
@@ -162,6 +162,16 @@
   (assert (referent? minus))
   [:difference plus minus])
 
+(defn virtual-referent
+  "Create a virtual referent."
+  [exemplar subject adjacent position use-bigger]
+  (assert (referent? subject))
+  (assert (referent? adjacent))
+  (assert (#{:before :after} position))
+  (assert (#{true false} use-bigger))
+  [:virtual (require-item-or-id exemplar) subject
+             adjacent position use-bigger])
+
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
    depending on the subject."
@@ -202,6 +212,8 @@
 ;;;           for keywords: K<delimiter><keyword letters><delimiter>
 ;;;            for symbols: S<delimiter><keyword letters><delimiter>
 ;;;                for nil: N
+;;;               for true: T
+;;;              for false: F
 ;;;              for lists: L<items in the list>l
 ;;; The last three cases are needed to describe conditions in, for example,
 ;;; query referents.
@@ -212,7 +224,8 @@
    \Q :query
    \U :union
    \P :parallel-union
-   \D :difference})
+   \D :difference
+   \V :virtual})
 (def type->letters (clojure.set/map-invert letters->type))
 
 (defn referent->string
@@ -238,6 +251,10 @@
           (str (if (keyword? referent) "K" "S") delimiter name delimiter))
         (nil? referent)
         "N"
+        (= referent true)
+        "T"
+        (= referent false)
+        "F"
         ;; Things that look like lists can be all sort of things, so just
         ;; check for them not being vectors.
         (and (seq? referent) (not (vector? referent)))
@@ -301,10 +318,11 @@
                     (recur (inc end-index)
                            (add-to-partial result partial-referent)
                            pending-partials))))
-              (= first-letter \N)
-              (when (list? partial-referent)
+              (#{\N \T \F} first-letter)
+              (let [value ({\N nil \T true \F false} first-letter)]
+                (when (sequential? partial-referent))
                 (recur (inc index)
-                       (apply list (concat partial-referent [nil]))
+                       (add-to-partial value partial-referent)
                        pending-partials))
               (= first-letter \L)
               (recur (inc index)
@@ -369,24 +387,30 @@
   [item]
   (canonicalize-list (immutable-semantic-to-list item)))
 
+(defn flatten-content-lists
+  "If item has a form anywhere like ((a ...b...) ...c...), turn that into
+  (a ...b... ...c...)"
+  ;; This case is used to add (:top-level :non-semantic) to rows.
+  [item]
+  (clojure.walk/postwalk
+   (fn [item]
+     (if (and (seq? item) (seq? (first item)))
+       (apply list (concat (first item) (rest item)))
+       item))
+   item))
+
 (defn condition-to-list
   "If the condition has an item id, look it up in the store and replace it with
   the semantic list form of what is in the store."
   [condition immutable-store]
-  (cond (satisfies? StoredItemDescription condition)
-        (when (id-valid? immutable-store condition)
-          (semantic-to-list-R (description->entity condition immutable-store)))
-        (and (sequential? condition)
-             (satisfies? StoredItemDescription (first condition)))
-        (let [item (first condition)]
-          (when (id-valid? immutable-store item)
-            (let [as-list (semantic-to-list-R
-                           (description->entity item immutable-store))]
-              (apply list
-                     (concat (if (sequential? as-list) as-list (list as-list))
-                             (rest condition))))))
-        true
-        condition))
+  (flatten-content-lists
+   (clojure.walk/postwalk
+    (fn [referent]
+      (if (item-referent? referent)
+        (when (id-valid? immutable-store referent)
+          (semantic-to-list-R (description->entity referent immutable-store)))
+        referent))
+    condition)))
 
 (defn best-matching-element
   "Given the list form of a template, find an element of the item that
@@ -443,7 +467,8 @@
       condition)))
 
 (defn instantiate-referent
-  "Return the groups of items that the referent refers to."
+  "Return the groups of items that the referent refers to. Does not handle
+  virtual referents."
   [referent immutable-store]
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
@@ -486,21 +511,82 @@
   updating the store, and those of the form '???x will be recorded in
   an updated chosen-new-ids with a key of \"x\".  Return the new
   condition and a pair of the new store, and the chosen ids."
-  [condition [store chosen-new-ids]]
+  [condition store-and-chosen]
   (thread-recursive-map
-   (fn [item [store chosen-new-ids]]
+   (fn [item store-and-chosen]
      (let [name (when (symbol? item) (str item))]
        (if (and name (>= (count name) 3) (= (subs name 0 3) "???"))
-         (let [suffix (subs name 3)]
+         (let [suffix (subs name 3)
+               [store chosen-new-ids] store-and-chosen]
            (if-let [sym (chosen-new-ids suffix)]
-             [sym [store chosen-new-ids]]
-             (let [[id store] (get-unique-id-number store)
+             [sym store-and-chosen]
+             (let [[id new-store] (get-unique-id-number store)
                    sym (symbol (str "???-" id))
                    new-chosen (cond-> chosen-new-ids
                                 (not= suffix "") (assoc suffix sym))]
-               [sym [store new-chosen]])))
-         [item [store chosen-new-ids]])))
-   condition [store chosen-new-ids]))
+               [sym [new-store new-chosen]])))
+         [item store-and-chosen])))
+   condition store-and-chosen))
+
+(defn find-or-create-element-satisfying
+  "Find an element satistying the condition, or make one.
+  Return the element and the updated store. adjacent-item and position
+  give order information for a new element."
+  [condition subject adjacent-item position immutable-store]
+  (let [element (best-matching-element condition subject)]
+    (if element
+      [element immutable-store]
+      (reverse
+       (update-add-entity-adjacent-to immutable-store (:item-id subject)
+                                      condition adjacent-item position true)))))
+
+(def instantiate-or-create-referent)
+
+(defn instantiate-or-create-exemplar
+  "Run instantiate-or-create-referent on all referents in the exemplar."
+  [exemplar store-and-chosen]
+  (thread-recursive-map
+   (fn [exemplar store-and-chosen]
+     (if (referent? exemplar)
+       (let [[groups store-and-chosen]
+             (instantiate-or-create-referent exemplar store-and-chosen)]
+         [(semantic-to-list-R (first (first groups))) store-and-chosen])
+       [exemplar store-and-chosen]))
+   [exemplar store-and-chosen]))
+
+(defn instantiate-or-create-referent
+  "Find the groups of items that the referent refers to, creating items
+  for virtual referents. The second argument is a pair of an immutable store
+  and a map of chosen new ids. Return the groups of items, and the updated
+  second argument."
+  [referent store-and-chosen]
+  (if (not= (referent-type referent) :virtual)
+    [(instantiate-referent referent (first store-and-chosen)) store-and-chosen]
+    (let [[_ exemplar subject adjacent-referent position use-bigger] referent
+          [template store-and-chosen]
+          (instantiate-or-create-exemplar exemplar store-and-chosen)
+          condition (template-to-condition (flatten-content-lists template))
+          [adjusted_condition store-and-chosen]
+          (adjust-condition condition store-and-chosen)
+          [subject-groups store-and-chosen]
+          (instantiate-or-create-referent subject store-and-chosen)
+          adjacent-groups
+          (instantiate-referent adjacent-referent (first store-and-chosen))
+          [groups immutable-store]
+          (thread-map
+           (fn [[subject-group adjacent-group] immutable-store]
+             (let [[item-groups immutable-store]
+                   (thread-map
+                    (fn [[subject-item adjacent-item] immutable-store]
+                      (find-or-create-element-satisfying
+                       condition subject-item
+                       adjacent-item position immutable-store))
+                    (map vector subject-group adjacent-group)
+                    immutable-store)]
+               [(apply concat item-groups) immutable-store]))
+           (map vector subject-groups adjacent-groups)
+           (first store-and-chosen))]
+      [groups [immutable-store (second store-and-chosen)]])))
 
 
 

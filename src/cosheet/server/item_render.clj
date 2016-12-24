@@ -323,10 +323,10 @@
   ;; between elements of an item and elements on its content.
   (assert (entity/atom? content))
   (let [is-placeholder (and (symbol? content)
-                            (= (subs (str content) 0 3) "???"))
+                            (= (subs (str content) 0 3) "??-"))
         anything (#{'anything 'anything-immutable} content)
         immutable (= content 'anything-immutable)
-        template (contains? inherited :template)]    
+        template (contains? inherited :template)]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes

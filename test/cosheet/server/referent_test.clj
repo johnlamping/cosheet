@@ -204,13 +204,13 @@
                                        [(new-element-store) {}])
         [c2 [s2 m2]] (adjust-condition '("x" ('???1 "y") ('???1 "22"))
                                        [s1 {}])]
-    (is (= c1  '("x" ('???-0 :a) ('???-1 22))))
+    (is (= c1  '("x" ('??-0 :a) ('??-1 22))))
     (is (= m1 {}))
-    (is (= c2  '("x" ('???-2 "y") ('???-2 "22"))))
-    (is (= m2 {"1" '???-2}))))
+    (is (= c2  '("x" ('??-2 "y") ('??-2 "22"))))
+    (is (= m2 {"1" '??-2}))))
 
 (deftest instantiate-or-create-referent-test
-  (let [store-and-chosen [store {"1" '???-42}]]
+  (let [store-and-chosen [store {"1" '??-42}]]
     (let [referent (exemplar-referent joe-age (item-referent jane))]
       (is (= (instantiate-or-create-referent referent store-and-chosen)
              [[[jane-age]] store-and-chosen])))
@@ -279,14 +279,14 @@
             new-jane (in-different-store jane item)]
         (is (= (:store item) store))
         (is (= (entity/subject item) new-joe))
-        (is (= (semantic-to-list-R item) '???-42))
+        (is (= (semantic-to-list-R item) '??-42))
         (is (= (canonicalize-list (semantic-to-list-R new-joe))
                (canonicalize-list
-                '("Joe" ???-42 "male" (45 ("age" tag))
+                '("Joe" ??-42 "male" (45 ("age" tag))
                         (39 ("age" tag) ("doubtful" "confidence")) "married"))))
         (is (= (canonicalize-list (semantic-to-list-R new-jane))
                (canonicalize-list
-                '("Jane" "female" (45 ("age" tag)) ???-42))))))
+                '("Jane" "female" (45 ("age" tag)) ??-42))))))
     ;; Exemplar needs adjusting
     (let [referent (virtual-referent
                     (virtual-referent '??? (item-referent jane)
@@ -301,7 +301,7 @@
             new-sym (semantic-to-list-R item)]
         (is (= (:store item) store))
         (is (= (entity/subject item) new-joe))
-        (is (= (subs (str new-sym) 0 3) "???"))
+        (is (= (subs (str new-sym) 0 3) "??-"))
         (is (= (canonicalize-list (semantic-to-list-R new-joe))
                (canonicalize-list
                 `("Joe" ~new-sym "male" "married" (45 ("age" ~'tag))
@@ -325,10 +325,10 @@
             new-sym (semantic-to-list-R item)]
         (is (= (:store item) store))
         (is (= (entity/subject (entity/subject item)) new-joe))
-        (is (= (subs (str new-sym) 0 3) "???"))
+        (is (= (subs (str new-sym) 0 3) "??-"))
         (is (check (canonicalize-list (semantic-to-list-R new-joe))
                (canonicalize-list
-                `("Joe" (~'???-42 ~new-sym) "male"  "married" (45 ("age" ~'tag))
+                `("Joe" (~'??-42 ~new-sym) "male"  "married" (45 ("age" ~'tag))
                         (39 ("age" ~'tag) ("doubtful" "confidence"))))))
         (is (check (canonicalize-list (semantic-to-list-R new-jane))
                (canonicalize-list

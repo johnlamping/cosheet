@@ -501,7 +501,8 @@
     :difference (let [[_ plus minus] referent]
                   [(remove
                     (set (instantiate-to-items minus immutable-store))
-                    (instantiate-to-items plus immutable-store))])))
+                    (instantiate-to-items plus immutable-store))])
+    :virtual []))
 
 (defn adjust-condition
   "Adjust a condition to make it ready for adding as an
@@ -521,7 +522,7 @@
            (if-let [sym (chosen-new-ids suffix)]
              [sym store-and-chosen]
              (let [[id new-store] (get-unique-id-number store)
-                   sym (symbol (str "???-" id))
+                   sym (symbol (str "??-" id))
                    new-chosen (cond-> chosen-new-ids
                                 (not= suffix "") (assoc suffix sym))]
                [sym [new-store new-chosen]])))

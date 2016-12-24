@@ -17,7 +17,8 @@
     query-impl)
    (cosheet.server
     [dom-tracker :refer [id->key key->attributes]]
-    [referent :refer [instantiate-referent instantiate-to-items
+    [referent :refer [instantiate-referent instantiate-or-create-referent
+                      instantiate-to-items
                       referent->string referent?
                       referent->exemplar-and-subject
                       item-referent first-group-referent
@@ -228,7 +229,9 @@
       ;; Changing an existing value.
       (when (and from to (not immutable))
         (let [to (parse-string-as-number to)]
-          (let [items (apply concat (instantiate-referent referent store))]
+          (let [[groups [store _]] (instantiate-or-create-referent
+                                    referent [store {}])
+                items (apply concat groups)]
             (println "updating " (count items) " items")
             (reduce (partial update-set-content-if-matching from to)
                     store items))))

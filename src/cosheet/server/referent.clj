@@ -169,7 +169,7 @@
   (assert (referent? adjacent))
   (assert (#{:before :after} position))
   (assert (#{true false} use-bigger))
-  [:virtual (require-item-or-id exemplar) subject
+  [:virtual (coerce-item-to-id exemplar) subject
              adjacent position use-bigger])
 
 (defn item-or-exemplar-referent
@@ -286,12 +286,12 @@
         (cond (= first-letter \r)
               (when (and (not (empty? pending-partials))
                          (vector? partial-referent)
-                         (let [num_args (dec (count partial-referent))]
+                         (let [num-args (dec (count partial-referent))]
                            (case (first partial-referent)
                              nil nil
-                             (:exemplar :elements :difference) (= num_args 2)
-                             :query (= num_args 1)
-                             (>= num_args 1))))
+                             (:exemplar :elements :difference) (= num-args 2)
+                             :query (= num-args 1)
+                             (>= num-args 1))))
                 (recur (inc index)
                        (conj (first pending-partials) partial-referent)
                        (rest pending-partials)))
@@ -530,29 +530,38 @@
 
 (defn find-or-create-element-satisfying
   "Find an element satistying the condition, or make one.
-  Return the element and the updated store. adjacent-item and position
-  give order information for a new element."
+  Return the id of the element and the updated store.
+  adjacent-item and position give order information for a new element."
   [condition subject adjacent-item position immutable-store]
   (let [element (best-matching-element condition subject)]
     (if element
       [element immutable-store]
-      (reverse
-       (update-add-entity-adjacent-to immutable-store (:item-id subject)
-                                      condition adjacent-item position true)))))
+      (let [[store id] (update-add-entity-adjacent-to
+                        immutable-store (:item-id subject)
+                        condition adjacent-item position true)]
+        [id store]))))
 
 (def instantiate-or-create-referent)
 
 (defn instantiate-or-create-exemplar
   "Run instantiate-or-create-referent on all referents in the exemplar."
   [exemplar store-and-chosen]
-  (thread-recursive-map
-   (fn [exemplar store-and-chosen]
-     (if (referent? exemplar)
-       (let [[groups store-and-chosen]
-             (instantiate-or-create-referent exemplar store-and-chosen)]
-         [(semantic-to-list-R (first (first groups))) store-and-chosen])
-       [exemplar store-and-chosen]))
-   [exemplar store-and-chosen]))
+  (cond (referent? exemplar)
+        (let [[groups store-and-chosen]
+              (instantiate-or-create-referent exemplar store-and-chosen)]
+          [(first (first groups)) store-and-chosen])        
+        (seq? exemplar)
+        (thread-recursive-map
+         (fn [exemplar store-and-chosen]
+           (if (referent? exemplar)
+             (let [[groups store-and-chosen]
+                   (instantiate-or-create-referent exemplar store-and-chosen)]
+               [(semantic-to-list-R (first (first groups))) store-and-chosen])
+             [exemplar store-and-chosen]))
+         exemplar
+         store-and-chosen)
+        true
+        [exemplar store-and-chosen]))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
@@ -566,27 +575,28 @@
           [template store-and-chosen]
           (instantiate-or-create-exemplar exemplar store-and-chosen)
           condition (template-to-condition (flatten-content-lists template))
-          [adjusted_condition store-and-chosen]
+          [adjusted-condition store-and-chosen]
           (adjust-condition condition store-and-chosen)
-          [subject-groups store-and-chosen]
+          [subject-groups [store chosen]]
           (instantiate-or-create-referent subject store-and-chosen)
           adjacent-groups
-          (instantiate-referent adjacent-referent (first store-and-chosen))
-          [groups immutable-store]
+          (instantiate-referent adjacent-referent store)
+          [id-groups store]
           (thread-map
-           (fn [[subject-group adjacent-group] immutable-store]
-             (let [[item-groups immutable-store]
-                   (thread-map
-                    (fn [[subject-item adjacent-item] immutable-store]
+           (fn [[subject-group adjacent-group] store]
+             (thread-map
+                    (fn [[subject-item adjacent-item] store]
                       (find-or-create-element-satisfying
-                       condition subject-item
-                       adjacent-item position immutable-store))
+                       adjusted-condition subject-item
+                       adjacent-item position store))
                     (map vector subject-group adjacent-group)
-                    immutable-store)]
-               [(apply concat item-groups) immutable-store]))
+                    store))
            (map vector subject-groups adjacent-groups)
-           (first store-and-chosen))]
-      [groups [immutable-store (second store-and-chosen)]])))
+           store)
+          groups (map (fn [id-group]
+                        (map #(description->entity % store) id-group))
+                      id-groups)]
+      [groups [store chosen]])))
 
 
 

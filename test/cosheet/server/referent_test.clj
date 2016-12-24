@@ -3,7 +3,8 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [orderable :as orderable]
-                     [entity :as entity  :refer [description->entity]]
+                     [entity :as entity  :refer [description->entity
+                                                 in-different-store]]
                      [store :refer [new-element-store]]
                      [store-impl :refer [->ItemId]]
                      [store-utils :refer [add-entity]]
@@ -71,6 +72,7 @@
 (def store (first t3))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
+(def joe-male (first (matching-elements "male" joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
 (def joe-age-tag (first (matching-elements "age" joe-age)))
 (def jane (description->entity jane-id store))
@@ -206,3 +208,128 @@
     (is (= m1 {}))
     (is (= c2  '("x" ('???-2 "y") ('???-2 "22"))))
     (is (= m2 {"1" '???-2}))))
+
+(deftest instantiate-or-create-referent-test
+  (let [store-and-chosen [store {"1" '???-42}]]
+    (let [referent (exemplar-referent joe-age (item-referent jane))]
+      (is (= (instantiate-or-create-referent referent store-and-chosen)
+             [[[jane-age]] store-and-chosen])))
+    ;; The simplest virtual referent.
+    (let [referent (virtual-referent "male" (item-referent jane)
+                                     (item-referent jane-age) :after true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any)]]))
+      (let [[[item]] groups
+            new-jane (in-different-store jane item)]
+        (is (= (:store item) store))
+        (is (= (entity/subject item) new-jane))
+        (is (= (semantic-to-list-R item) "male"))
+        (is (= (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                '("Jane" "female" (45 ("age" tag)) "male"))))))
+    ;; A referent for the exemplar.
+    (let [referent (virtual-referent joe-male (item-referent jane)
+                                     (item-referent jane-age) :after true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any)]]))
+      (let [[[item]] groups
+            new-jane (in-different-store jane item)]
+        (is (= (:store item) store))
+        (is (= (entity/subject item) new-jane))
+        (is (= (semantic-to-list-R item) "male"))
+        (is (= (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                '("Jane" "female" (45 ("age" tag)) "male"))))))
+    ;; Multiple subjects
+    (let [referent (virtual-referent '("hi" tag)
+                                     (query-referent '(nil (nil "age")))
+                                     (query-referent '(nil (nil "age")))
+                                     :before true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any) (any)]]))
+      (let [[[item1 item2]] groups
+            new-joe (in-different-store joe item1)
+            new-jane (in-different-store jane item1)]
+        (is (= (:store item1) store))
+        (is (= (:store item2) store))
+        (is (#{new-joe new-jane} (entity/subject item1)))
+        (is (#{new-joe new-jane} (entity/subject item2)))
+        (is (= (semantic-to-list-R item1) '("hi" tag)))
+        (is (= (semantic-to-list-R item2) '("hi" tag)))
+        (is (= (canonicalize-list (semantic-to-list-R new-joe))
+               (canonicalize-list
+                '("Joe" ("hi" tag) "male" (45 ("age" tag))
+                        (39 ("age" tag) ("doubtful" "confidence")) "married"))))
+        (is (= (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))))
+    ;; Exemplar is virtual.
+    (let [referent (virtual-referent
+                    (virtual-referent '???1 (item-referent jane)
+                                      (item-referent jane) :after true)
+                    (item-referent joe) (item-referent joe) :after true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any)]]))
+      (let [[[item]] groups
+            new-joe (in-different-store joe item)
+            new-jane (in-different-store jane item)]
+        (is (= (:store item) store))
+        (is (= (entity/subject item) new-joe))
+        (is (= (semantic-to-list-R item) '???-42))
+        (is (= (canonicalize-list (semantic-to-list-R new-joe))
+               (canonicalize-list
+                '("Joe" ???-42 "male" (45 ("age" tag))
+                        (39 ("age" tag) ("doubtful" "confidence")) "married"))))
+        (is (= (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                '("Jane" "female" (45 ("age" tag)) ???-42))))))
+    ;; Exemplar needs adjusting
+    (let [referent (virtual-referent
+                    (virtual-referent '??? (item-referent jane)
+                                      (item-referent jane) :after true)
+                    (item-referent joe) (item-referent joe) :after true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any)]]))
+      (let [[[item]] groups
+            new-joe (in-different-store joe item)
+            new-jane (in-different-store jane item)
+            new-sym (semantic-to-list-R item)]
+        (is (= (:store item) store))
+        (is (= (entity/subject item) new-joe))
+        (is (= (subs (str new-sym) 0 3) "???"))
+        (is (= (canonicalize-list (semantic-to-list-R new-joe))
+               (canonicalize-list
+                `("Joe" ~new-sym "male" "married" (45 ("age" ~'tag))
+                        (39 ("age" ~'tag) ("doubtful" "confidence"))))))
+        (is (= (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
+    ;; Subject is virtual too
+    (let [referent (virtual-referent
+                    (virtual-referent '??? (item-referent jane)
+                                      (item-referent jane) :after true)
+                    (virtual-referent '???1 (item-referent joe)
+                                      (item-referent joe) :after true)
+                     (item-referent joe) :after true)
+          [groups [store chosen]] (instantiate-or-create-referent
+                                   referent store-and-chosen)]
+      (is (check groups [[(any)]]))
+      (let [[[item]] groups
+            new-joe (in-different-store joe item)
+            new-jane (in-different-store jane item)
+            new-sym (semantic-to-list-R item)]
+        (is (= (:store item) store))
+        (is (= (entity/subject (entity/subject item)) new-joe))
+        (is (= (subs (str new-sym) 0 3) "???"))
+        (is (check (canonicalize-list (semantic-to-list-R new-joe))
+               (canonicalize-list
+                `("Joe" (~'???-42 ~new-sym) "male"  "married" (45 ("age" ~'tag))
+                        (39 ("age" ~'tag) ("doubtful" "confidence"))))))
+        (is (check (canonicalize-list (semantic-to-list-R new-jane))
+               (canonicalize-list
+                `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))))

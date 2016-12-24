@@ -225,22 +225,14 @@
   ;; TODO: Handle deleting.
   (let [{:keys [target-key from to immutable]} attributes
         referent (:item-referent context)]
-    (if referent
-      ;; Changing an existing value.
-      (when (and from to (not immutable))
-        (let [to (parse-string-as-number to)]
-          (let [[groups [store _]] (instantiate-or-create-referent
-                                    referent [store {}])
-                items (apply concat groups)]
-            (println "updating " (count items) " items")
-            (reduce (partial update-set-content-if-matching from to)
-                    store items))))
-      ;; Creating a new value.
-      (when (not= to "")
-        (let [content (parse-string-as-number to)
-              new-template (cons content (rest (:template context)))]
-          (generic-add store (into context {:template new-template})
-                       (pop target-key) target-key false))))))
+    (when (and from to (not immutable))
+      (let [to (parse-string-as-number to)]
+        (let [[groups [store _]] (instantiate-or-create-referent
+                                  referent [store {}])
+              items (apply concat groups)]
+          (println "updating " (count items) " items")
+          (reduce (partial update-set-content-if-matching from to)
+                  store items))))))
 
 (defn do-expand
   [store context attributes]

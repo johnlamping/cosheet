@@ -22,7 +22,7 @@
              [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
             (cosheet.server
-             [referent :refer [item-referent union-referent
+             [referent :refer [item-referent union-referent virtual-referent
                                immutable-semantic-to-list]]
              [referent :refer [item->canonical-semantic referent->string]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
@@ -240,14 +240,14 @@
   ;; Try creating new content
     (let [result (do-set-content
                   store
-                  {:subject-referent (item-referent joe-male)
-                   :adjacent-groups-referent (item-referent joe-male)
-                   :template '(nil :tag)}
+                  {:item-referent (virtual-referent
+                                   '(nil :tag) (item-referent joe-male)
+                                   nil :after false)}
                   {:target-key ["joe-male"]
                    :from ""
                    :to "gender"})]
       (is (= (immutable-semantic-to-list
-              (description->entity (:item-id joe-male) (:store result)))
+              (description->entity (:item-id joe-male) result))
              ["male" ["gender" :tag]]))))
 
 (deftest do-expand-test

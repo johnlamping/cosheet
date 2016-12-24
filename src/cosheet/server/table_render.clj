@@ -246,12 +246,10 @@
                                (attributes-for-header-add-column-command
                                 [column-item] elements-template inherited))
                               {:delete {:item-referent column-referent}
-                               :expand {:item-referent column-referent}
-                               :target {:adjacent-referent column-referent
-                                        :position :after}})))
+                               :expand {:item-referent column-referent}})))
         key (conj (:parent-key inherited) (:item-id column-item))]
     (add-attributes
-     (virtual-item-DOM key inherited-down)
+     (virtual-item-DOM key column-referent :after inherited-down)
      (cond-> {:style {:width (str base-table-column-width "px")}}
        (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 
@@ -342,13 +340,11 @@
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
                (virtual-item-DOM
-                (:parent-key inherited)
+                (:parent-key inherited) (:subject inherited) :after
                 (into-attributes
                  inherited
                  {:selectable-attributes
-                  {:target {:adjacent-referent (:subject inherited)
-                            :position :after}
-                   :delete {:item-referent (-> inherited
+                  {:delete {:item-referent (-> inherited
                                                :selectable-attributes
                                                :row
                                                :item-referent)}}}))

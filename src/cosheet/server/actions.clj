@@ -19,7 +19,7 @@
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent instantiate-or-create-referent
                       instantiate-to-items
-                      referent->string referent?
+                      referent->string referent? virtual-referent?
                       referent->exemplar-and-subject
                       item-referent first-group-referent
                       semantic-elements-R adjust-condition]]
@@ -363,11 +363,13 @@
          (println "selector found" selector-category)
          (let [context (dissoc context :alternate)
                narrow-context (narrow-referents context)
+               wide-referent (context-referent context)
+               narrow-referent (context-referent narrow-context)
                store (current-store (:store session-state))]
-           (when (not= (set (instantiate-to-items
-                             (context-referent context) store))
-                       (set (instantiate-to-items
-                             (context-referent narrow-context) store)))
+           (when (if (virtual-referent? wide-referent)
+                   (not= wide-referent narrow-referent)
+                   (not= (set (instantiate-to-items wide-referent store))
+                         (set (instantiate-to-items narrow-referent store))))
              (let [result
                    (if (= (:selector-interpretation session-state) :broad)
                      [context narrow-context

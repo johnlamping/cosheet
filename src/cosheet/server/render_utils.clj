@@ -8,7 +8,8 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
-             [hierarchy :refer [canonical-info]])))
+             [hierarchy :refer [canonical-info]]
+             [referent :refer [virtual-referent]])))
 
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
@@ -45,15 +46,17 @@
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must specify a :selectable-attributes :target,
   into which we will put the subject and template."
-  [key inherited]
+  [key adjacent-referent position inherited]
   [:div (into-attributes
          (into-attributes (:selectable-attributes inherited)
                           (select-keys inherited [:selector-category]))
          {:class "editable"
           :key key
           :target (add-alternate-to-target
-                   {:template (:template inherited)
-                    :subject-referent (:subject inherited)}
+                   {:item-referent (virtual-referent (:template inherited)
+                                                     (:subject inherited)
+                                                     adjacent-referent
+                                                     position false)}
                    inherited)})])
 
 (defn make-component

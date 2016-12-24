@@ -14,7 +14,8 @@
              [test-utils :refer [check any as-set
                                  let-mutated item->immutable]])
             (cosheet.server
-             [referent :refer [item-referent parallel-union-referent]]
+             [referent :refer [item-referent parallel-union-referent
+                               virtual-referent]]
              [item-render :refer :all])
             ; :reload
             ))
@@ -198,10 +199,9 @@
             [:div {:class "editable tag"
                    :key (conj none-key :outside :tags)
                    :selector-category :some-category
-                   :target {:subject-referent (item-referent none)
-                            :adjacent-referent (item-referent none)
-                            :position :after
-                            :template '(nil :tag)
+                   :target {:item-referent (virtual-referent
+                                            '(nil :tag) (item-referent none)
+                                            nil :after false) 
                             :alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
@@ -295,10 +295,11 @@
                            :parent-key age-key}}}]]]
             [:div {:class "editable"
                    :key (conj age-key :example-element (:item-id confidence1))
-                   :target {:subject-referent (item-referent age)
-                            :adjacent-referent (item-referent pair)
-                            :position :before
-                            :template '(nil ("confidence" :tag))}
+                   :target {:item-referent (virtual-referent
+                                            '(nil ("confidence" :tag))
+                                            (item-referent age)
+                                            (item-referent pair)
+                                            :before false)}
                    :sibling {:subject-referent (item-referent age)
                              :adjacent-groups-referent all-elements-referent
                              :parent-key age-key}}]]
@@ -433,10 +434,10 @@
                  [:div {:class "horizontal-tags-element narrow"}
                   [:div {:class "editable tag" :key (conj item-key :tags)
                          :expand {:item-referent (item-referent item)}
-                         :target {:template '(nil :tag)
-                                  :adjacent-referent (item-referent item)
-                                  :position :after
-                                  :subject-referent (item-referent item)}}]
+                         :target {:item-referent (virtual-referent
+                                                  '(nil :tag)
+                                                  (item-referent item)
+                                                  nil :after false)}}]
                   [:div {:class "item with-elements"
                          :key item-key}
                     [:div {:class "content-text editable"

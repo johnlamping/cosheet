@@ -70,8 +70,9 @@
 ;;;                  referent can also be virtual. Adjacent-referent must
 ;;;                  have one group for each item in sequence referent, and
 ;;;                  gives items the new items should be adjacent to in the
-;;;                  order. Position and use-bigger say where the new item
-;;;                  should go relative to the adjacent item.
+;;;                  order. It can be nil, which means to use the subjects
+;;;                  for order. Position and use-bigger say where the new
+;;;                  item should go relative to the adjacent item.
 ;;;                  Virtual referents may never be nested inside non-virtual
 ;;;                  referents.
 
@@ -80,6 +81,9 @@
 
 (defn exemplar-referent? [referent]
   (and (sequential? referent) (= (first referent) :exemplar)))
+
+(defn virtual-referent? [referent]
+  (and (sequential? referent) (= (first referent) :virtual)))
 
 (defn referent? [referent]
   (or (item-referent? referent)
@@ -166,9 +170,9 @@
   "Create a virtual referent."
   [exemplar subject adjacent position use-bigger]
   (assert (referent? subject))
-  (assert (referent? adjacent))
+  (when adjacent (assert (referent? adjacent)))
   (assert (#{:before :after} position))
-  (assert (#{true false} use-bigger))
+  (assert (contains? #{true false} use-bigger))
   [:virtual (coerce-item-to-id exemplar) subject
              adjacent position use-bigger])
 
@@ -209,7 +213,7 @@
                    referent]
                (virtual-referent exemplar
                                  (first-group-referent subject)
-                                 (first-group-referent adjacent)
+                                 (when adjacent (first-group-referent adjacent))
                                  position use-bigger))))
 
 ;;; The string format of a referent is
@@ -472,6 +476,12 @@
       '(nil (nil :order :non-semantic))
       condition)))
 
+(defn condition-to-template
+  "Given a condition, turn it into a template by replacing nil by
+  the empty string."
+  [condition]
+  (clojure.walk/postwalk #(if (nil? %) "" %) condition))
+
 (defn instantiate-referent
   "Return the groups of items that the referent refers to. Does not handle
   virtual referents."
@@ -581,13 +591,18 @@
     (let [[_ exemplar subject adjacent-referent position use-bigger] referent
           [template store-and-chosen]
           (instantiate-or-create-exemplar exemplar store-and-chosen)
-          condition (template-to-condition (flatten-content-lists template))
+          condition (-> template
+                        flatten-content-lists
+                        template-to-condition
+                        condition-to-template)
           [adjusted-condition store-and-chosen]
           (adjust-condition condition store-and-chosen)
           [subject-groups [store chosen]]
           (instantiate-or-create-referent subject store-and-chosen)
           adjacent-groups
-          (instantiate-referent adjacent-referent store)
+          (if adjacent-referent
+            (instantiate-referent adjacent-referent store)
+            subject-groups)
           [id-groups store]
           (thread-map
            (fn [[subject-group adjacent-group] store]

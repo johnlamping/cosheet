@@ -11,7 +11,8 @@
              [test-utils :refer [check any as-set evals-to let-mutated]])
             (cosheet.server
              [referent :refer [item-referent union-referent exemplar-referent
-                               query-referent elements-referent]]
+                               query-referent elements-referent
+                               virtual-referent]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R]]
              [table-render :refer :all])
@@ -170,10 +171,10 @@
                                            (:top-level :non-semantic))}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
-                     :target {:template '(nil ("single" :tag))
-                              :adjacent-referent (item-referent joe)
-                              :position :after
-                              :subject-referent (item-referent joe)}
+                     :target {:item-referent (virtual-referent
+                                              '(nil ("single" :tag))
+                                              (item-referent joe)
+                                              (item-referent joe) :after false)}
                      :delete {:item-referent (item-referent joe)}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))

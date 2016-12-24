@@ -227,7 +227,14 @@
         (is (= (semantic-to-list-R item) "male"))
         (is (= (canonicalize-list (semantic-to-list-R new-jane))
                (canonicalize-list
-                '("Jane" "female" (45 ("age" tag)) "male"))))))
+                '("Jane" "female" (45 ("age" tag)) "male")))))
+      ;; Check first-group-referent on virtuals
+      (let [[groups1 [store1 chosen1]] (instantiate-or-create-referent
+                                        (first-group-referent referent)
+                                        store-and-chosen)]
+        (is (= groups1 groups))
+        (is (= store1 store))
+        (is (= chosen1 chosen))))
     ;; A referent for the exemplar.
     (let [referent (virtual-referent joe-male (item-referent jane)
                                      (item-referent jane-age) :after true)

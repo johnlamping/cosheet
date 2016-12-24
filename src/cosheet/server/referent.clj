@@ -204,7 +204,13 @@
     :parallel-union (let [[_ & referents] referent]
                       (parallel-union-referent
                        (map first-group-referent referents)))
-    :difference referent))
+    :difference referent
+    :virtual (let [[_ exemplar subject adjacent position use-bigger]
+                   referent]
+               (virtual-referent exemplar
+                                 (first-group-referent subject)
+                                 (first-group-referent adjacent)
+                                 position use-bigger))))
 
 ;;; The string format of a referent is
 ;;;     for item referents: I<the digits of their id>

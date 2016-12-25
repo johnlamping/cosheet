@@ -66,7 +66,7 @@
             (and (= from "..."))
             (and (= from "???")
                  (symbol? content)
-                 (= (subs (str content) 0 3) "???"))))
+                 (= (subs (str content) 0 3) "??-"))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))
@@ -96,9 +96,9 @@
   [store target-info parent-key old-key use-bigger]
   (let [{:keys [item-referent             ; item(s) referred to
                 subject-referent          ; subject(s) of the new item(s)
-                adjacent-referent         ; item(s) adjacent to new item(s)
-                adjacent-groups-referent  ; groups of item(s) adjacent to
-                                          ; new item(s)
+                adjacent-referent         ; item(s) adjacent to new item(s).
+                                          ; Either one per subject, or one
+                                          ; group per subject.
                 position                  ; :before or :after item/adjacent
                 template                  ; added item(s) should satisfy this.
                 nil-to-anything           ; if true, then for the first group
@@ -112,23 +112,23 @@
         target-info]
     (println "adding" (simplify-for-print target-info))
     (assert (= (count (remove nil? [item-referent
-                                    adjacent-referent
-                                    adjacent-groups-referent]))
+                                    adjacent-referent]))
                1))
-    (let [adjacents (cond
-                      adjacent-referent
-                      (instantiate-referent adjacent-referent store)
-                      adjacent-groups-referent
-                      [(map #(furthest-item % position)
-                             (instantiate-referent adjacent-groups-referent
-                                                   store))]
-                      true (instantiate-referent item-referent store))
+    (let [items (when item-referent (instantiate-referent item-referent store))
           subject-ids (if subject-referent
                         (map #(map :item-id %)
                              (instantiate-referent subject-referent store))
                         (map (fn [group]
                                (map #(id->subject store (:item-id %)) group))
-                             adjacents))
+                             items))
+          adjacents (let [groups
+                          (if adjacent-referent
+                            (instantiate-referent adjacent-referent store)
+                            items)]
+                      (if (and (= (count subject-ids) 1)
+                               (= (count groups) (count (first subject-ids))))
+                        [(map #(furthest-item % position) groups)]
+                        groups))
           [adjusted-template [store _]] (adjust-condition template [store {}])
           select-pattern (or select-pattern (conj parent-key [:pattern]))
           entity (replace-in-seqs adjusted-template nil "")
@@ -304,7 +304,7 @@
 
 (defn context-referent
   [context]
-  ((some-fn :item-referent :adjacent-referent :adjacent-groups-referent)
+  ((some-fn :item-referent :adjacent-referent)
    context))
 
 (defn narrow-referents
@@ -315,7 +315,6 @@
           context
           (filter #{:item-referent
                     :adjacent-referent
-                    :adjacent-groups-referent
                     :subject-referent}
                   (keys context))))
 

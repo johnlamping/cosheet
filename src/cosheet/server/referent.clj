@@ -13,7 +13,8 @@
                      [query :refer [matching-elements matching-items
                                     template-matches]])
             (cosheet.server
-             [order-utils :refer [update-add-entity-adjacent-to]])))
+             [order-utils :refer [update-add-entity-adjacent-to
+                                  furthest-item]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -600,9 +601,14 @@
           [subject-groups [store chosen]]
           (instantiate-or-create-referent subject store-and-chosen)
           adjacent-groups
-          (if adjacent-referent
-            (instantiate-referent adjacent-referent store)
-            subject-groups)
+          (let [groups
+                (if adjacent-referent
+                  (instantiate-referent adjacent-referent store)
+                  subject-groups)]
+            (if (and (= (count subject-groups) 1)
+                     (= (count groups) (count (first subject-groups))))
+              [(map #(furthest-item % position) groups)]
+              groups))
           [id-groups store]
           (thread-map
            (fn [[subject-group adjacent-group] store]

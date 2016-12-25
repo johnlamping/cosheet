@@ -120,10 +120,9 @@
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])]
-    {:column {:adjacent-groups-referent (parallel-union-referent
-                                         (map #(item-or-exemplar-referent
-                                                % subject)
-                                              column-items))
+    {:column {:adjacent-referent (parallel-union-referent
+                                  (map #(item-or-exemplar-referent % subject)
+                                       column-items))
               :subject-referent (union-referent [subject])
               :position :after
               :template new-header-template

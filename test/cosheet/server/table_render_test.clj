@@ -128,7 +128,7 @@
                   :alternate-target true
                   :selectable-attributes
                   {:expand {:item-referent first-column-referent}
-                   :column {:adjacent-groups-referent (item-referent c1)
+                   :column {:adjacent-referent (item-referent c1)
                             :subject-referent (union-referent
                                                [(item-referent table)])
                             :position :after

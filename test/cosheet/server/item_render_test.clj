@@ -130,7 +130,7 @@
                :template '(nil :tag)
                :selectable-attributes
                {:sibling {:subject-referent (item-referent age)
-                          :adjacent-groups-referent one-another-two-referent
+                          :adjacent-referent one-another-two-referent
                           :parent-key age-key
                           :alternate :some-alternate}}
                :selector-category :some-category
@@ -149,7 +149,7 @@
                   :template '(nil ("confidence" :tag))
                   :selectable-attributes
                   {:sibling {:subject-referent (item-referent age)
-                             :adjacent-groups-referent one-another-two-referent
+                             :adjacent-referent one-another-two-referent
                              :parent-key age-key
                              :alternate :some-alternate}}
                   :selector-category :some-category
@@ -171,7 +171,7 @@
                   :template '(nil :tag)
                   :selectable-attributes
                   {:sibling {:subject-referent (item-referent age)
-                             :adjacent-groups-referent (item-referent two)
+                             :adjacent-referent (item-referent two)
                              :template '(nil ("confidence" :tag))
                              :parent-key age-key
                              :alternate :some-alternate}}
@@ -188,7 +188,7 @@
                                            ("probability" :tag)))
                    :selectable-attributes
                    {:sibling {:subject-referent (item-referent age)
-                              :adjacent-groups-referent (item-referent two)
+                              :adjacent-referent (item-referent two)
                               :template '(nil ("confidence" :tag))
                               :parent-key age-key
                               :alternate :some-alternate}}
@@ -291,7 +291,7 @@
                 :template '(nil :tag)
                 :selectable-attributes
                 {:sibling {:subject-referent (item-referent age)
-                           :adjacent-groups-referent all-elements-referent
+                           :adjacent-referent all-elements-referent
                            :parent-key age-key}}}]]]
             [:div {:class "editable"
                    :key (conj age-key :example-element (:item-id confidence1))
@@ -301,7 +301,7 @@
                                             (item-referent pair)
                                             :before false)}
                    :sibling {:subject-referent (item-referent age)
-                             :adjacent-groups-referent all-elements-referent
+                             :adjacent-referent all-elements-referent
                              :parent-key age-key}}]]
            ;; Group for confidence and likelihood.
            [:div {:class "horizontal-tags-element wide"}
@@ -317,7 +317,7 @@
                  :template '(nil :tag)
                  :selectable-attributes
                  {:sibling {:subject-referent (item-referent age)
-                            :adjacent-groups-referent likelihoods-referent
+                            :adjacent-referent likelihoods-referent
                             :template '(nil ("confidence" :tag))
                             :parent-key age-key}}}]]]]
             [:div {:class "item-stack"}
@@ -332,7 +332,7 @@
                                         ("likelihood" :tag)))
                 :selectable-attributes
                 {:sibling {:subject-referent (item-referent age)
-                           :adjacent-groups-referent likelihoods-referent
+                           :adjacent-referent likelihoods-referent
                            :template '(nil ("confidence" :tag))
                            :parent-key age-key}}}]]
              ;; Double
@@ -354,7 +354,7 @@
                  :template '(nil :tag)
                  :selectable-attributes
                  {:sibling {:subject-referent (item-referent age)
-                            :adjacent-groups-referent (item-referent two)
+                            :adjacent-referent (item-referent two)
                             :template '(nil ("confidence" :tag))
                             :parent-key age-key}}}]]]]
             [:component {:key (conj age-key (:item-id two))}
@@ -367,7 +367,7 @@
                                        ("probability" :tag)))
                :selectable-attributes
                {:sibling {:subject-referent (item-referent age)
-                          :adjacent-groups-referent (item-referent two)
+                          :adjacent-referent (item-referent two)
                           :template '(nil ("confidence" :tag))
                           :parent-key age-key}}}]]]
            ;; Group for confidence

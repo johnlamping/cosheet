@@ -48,8 +48,8 @@
                ; :item-referent             Item(s) referred to
                ; :subject-referent          Subject(s) of the virtual item(s)
                ; :adjacent-referent         item(s) adjacent to new item(s)
-               ; :adjacent-groups-referent  Groups of item(s) adjacent to
-               ;                            new item(s)
+               ;                            Either one per new item or one
+               ;                            group per new item.
                ; :position                  :before or :after item/adjacent
                ; :template                  Added item(s) should satisfy this.
                ; :parent-key                The key of the parent of a virtual

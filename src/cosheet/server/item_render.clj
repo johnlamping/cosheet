@@ -34,8 +34,8 @@
                            (rest (:template inherited)))]
    (cond->
        {:subject-referent subject
-        :adjacent-groups-referent (hierarchy-node-items-referent
-                                   hierarchy-node subject)
+        :adjacent-referent (hierarchy-node-items-referent
+                            hierarchy-node subject)
         :parent-key (:parent-key inherited)}
      (not (empty? conditions))
      (assoc :template (list* nil conditions)))))

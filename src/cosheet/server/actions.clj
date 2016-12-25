@@ -73,15 +73,16 @@
 
 (defn add-and-select
   "Add an entity matching the template to the store for each 
-  subject-id, adjacents pair.
+  subjects, adjacents pair.
   Return a map of the new store and a selection request for the first
   of the new items."
-  [store entity subject-ids adjacents position use-bigger
+  [store template subjects adjacents position use-bigger
    select-pattern old-key]
-  (let [f (fn [[subject-id adjacent] store]
+  (let [f (fn [[subject adjacent] store]
             (reverse (update-add-entity-adjacent-to
-                      store subject-id entity adjacent position use-bigger)))
-        [element-ids store] (thread-map f (map vector subject-ids adjacents)
+                      store (:item-id subject) template
+                      adjacent position use-bigger)))
+        [element-ids store] (thread-map f (map vector subjects adjacents)
                                         store)] 
     {:store store
      :select (when (not (empty? element-ids))
@@ -118,18 +119,15 @@
                                     adjacent-referent]))
                1))
     (let [items (when item-referent (instantiate-referent item-referent store))
-          subject-ids (if subject-referent
-                        (map #(map :item-id %)
-                             (instantiate-referent subject-referent store))
-                        (map (fn [group]
-                               (map #(id->subject store (:item-id %)) group))
-                             items))
+          subjects (if subject-referent
+                        (instantiate-referent subject-referent store)
+                        (map #(map subject %) items))
           adjacents (let [groups
                           (if adjacent-referent
                             (instantiate-referent adjacent-referent store)
                             items)]
-                      (if (and (= (count subject-ids) 1)
-                               (= (count groups) (count (first subject-ids))))
+                      (if (and (= (count subjects) 1)
+                               (= (count groups) (count (first subjects))))
                         [(map #(furthest-item % position) groups)]
                         groups))
           [adjusted-template [store _]] (adjust-condition template [store {}])
@@ -138,19 +136,19 @@
           alt-entity (if nil-to-anything
                        (replace-in-seqs adjusted-template nil 'anything)
                        entity)]
-      (println "total items added: " (apply + (map count subject-ids)))
-      (assert (= (map count subject-ids) (map count adjacents))
-              [(simplify-for-print subject-ids) (simplify-for-print adjacents)])
+      (println "total items added: " (apply + (map count subjects)))
+      (assert (= (map count subjects) (map count adjacents))
+              [(simplify-for-print subjects) (simplify-for-print adjacents)])
       (let [{:keys [store select]}
             (add-and-select
              store alt-entity
-             (first subject-ids) (first adjacents)
+             (first subjects) (first adjacents)
              position use-bigger select-pattern old-key)
             select1 select
             {:keys [store select]}
             (add-and-select
              store entity
-             (apply concat (rest subject-ids)) (apply concat (rest adjacents))
+             (apply concat (rest subjects)) (apply concat (rest adjacents))
              position use-bigger select-pattern old-key)]
         {:store store :select (or select1 select)}))))
 

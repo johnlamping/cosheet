@@ -199,10 +199,10 @@
     (is (check [(first (instantiate-referent referent store))]
                (instantiate-referent (first-group-referent referent) store)))))
 
-(deftest adjust-condition-test
-  (let [[c1 [s1 m1]] (adjust-condition '("x" ('??? :a) ('??? 22))
+(deftest specialize-template-test
+  (let [[c1 [s1 m1]] (specialize-template '("x" ('??? :a) ('??? 22))
                                        [(new-element-store) {}])
-        [c2 [s2 m2]] (adjust-condition '("x" ('???1 "y") ('???1 "22"))
+        [c2 [s2 m2]] (specialize-template '("x" ('???1 "y") ('???1 "22"))
                                        [s1 {}])]
     (is (= c1  '("x" ('??-0 :a) ('??-1 22))))
     (is (= m1 {}))

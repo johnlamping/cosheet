@@ -479,9 +479,11 @@
 
 (defn condition-to-template
   "Given a condition, turn it into a template by replacing nil by
-  the empty string."
-  [condition]
-  (clojure.walk/postwalk #(if (nil? %) "" %) condition))
+  the specified replacement, or the empty string by default."
+  ([condition]
+   (condition-to-template condition ""))
+  ([condition nil-replacement]
+   (replace-in-seqs condition nil nil-replacement)))
 
 (defn instantiate-referent
   "Return the groups of items that the referent refers to. Does not handle
@@ -521,8 +523,8 @@
                     (instantiate-to-items plus immutable-store))])
     :virtual []))
 
-(defn adjust-condition
-  "Adjust a condition to make it ready for adding as an
+(defn specialize-template
+  "Adjust a template or condition to make it ready for adding as an
   element. Specifically, replace each '??? with a new unique symbol,
   and each instance of '???x with the same new symbol or the value
   from chosen-new-ids, if present. Allocating new symbols will require
@@ -592,12 +594,12 @@
     (let [[_ exemplar subject adjacent-referent position use-bigger] referent
           [template store-and-chosen]
           (instantiate-or-create-exemplar exemplar store-and-chosen)
-          condition (-> template
-                        flatten-content-lists
-                        template-to-condition
-                        condition-to-template)
-          [adjusted-condition store-and-chosen]
-          (adjust-condition condition store-and-chosen)
+          adjusted-template (-> template
+                                flatten-content-lists
+                                template-to-condition
+                                condition-to-template)
+          [specialized-template store-and-chosen]
+          (specialize-template adjusted-template store-and-chosen)
           [subject-groups [store chosen]]
           (instantiate-or-create-referent subject store-and-chosen)
           adjacent-groups
@@ -615,7 +617,7 @@
              (thread-map
                     (fn [[subject-item adjacent-item] store]
                       (find-or-create-element-satisfying
-                       adjusted-condition subject-item
+                       specialized-template subject-item
                        adjacent-item position store))
                     (map vector subject-group adjacent-group)
                     store))

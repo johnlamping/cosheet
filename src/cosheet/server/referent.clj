@@ -548,18 +548,15 @@
          [item store-and-chosen])))
    condition store-and-chosen))
 
-(defn find-or-create-element-satisfying
-  "Find an element satistying the condition, or make one.
+(defn create-element-satisfying
+  "Make an element satistying the template.
   Return the id of the element and the updated store.
   adjacent-item and position give order information for a new element."
-  [condition subject adjacent-item position immutable-store]
-  (let [element (best-matching-element condition subject)]
-    (if element
-      [element immutable-store]
-      (let [[store id] (update-add-entity-adjacent-to
-                        immutable-store (:item-id subject)
-                        condition adjacent-item position true)]
-        [id store]))))
+  [template subject adjacent-item position immutable-store]
+  (let [[store id] (update-add-entity-adjacent-to
+                    immutable-store (:item-id subject)
+                    template adjacent-item position true)]
+        [id store]))
 
 (def instantiate-or-create-referent)
 
@@ -616,7 +613,7 @@
            (fn [[subject-group adjacent-group] store]
              (thread-map
                     (fn [[subject-item adjacent-item] store]
-                      (find-or-create-element-satisfying
+                      (create-element-satisfying
                        specialized-template subject-item
                        adjacent-item position store))
                     (map vector subject-group adjacent-group)

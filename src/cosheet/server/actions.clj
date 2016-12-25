@@ -112,6 +112,9 @@
         target-info]
     (println "adding" (simplify-for-print target-info))
     (assert (= (count (remove nil? [item-referent
+                                    subject-referent]))
+               1))
+    (assert (= (count (remove nil? [item-referent
                                     adjacent-referent]))
                1))
     (let [items (when item-referent (instantiate-referent item-referent store))

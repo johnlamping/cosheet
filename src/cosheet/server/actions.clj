@@ -373,9 +373,10 @@
 
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
-  on that cell. We will call a contextual action handler with attributes
-  including all the atttributes from the dom, any that the dom says to add to
-  the command, and any added by the client. Also include
+  on that cell. We will call a contextual action handler with a context
+  and with attributes. The context is the subset of the attributes focused
+  on the particular command; its target. The attributes comprise
+  all the attributes from the dom, any added by the client, plus
   :session-state and :target-key."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [[handler context-key] (get-contextual-handler action-type) 

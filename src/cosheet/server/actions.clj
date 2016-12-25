@@ -91,7 +91,7 @@
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
-   sibling-referent or (adjacent-referent and subject-referent) must
+   item-referent or (adjacent-referent and subject-referent) must
    be provided."
   [store target-info parent-key old-key use-bigger]
   (let [{:keys [item-referent             ; item(s) referred to

@@ -548,15 +548,36 @@
          [item store-and-chosen])))
    condition store-and-chosen))
 
-(defn create-element-satisfying
-  "Make an element satistying the template.
-  Return the id of the element and the updated store.
-  adjacent-item and position give order information for a new element."
-  [template subject adjacent-item position immutable-store]
-  (let [[store id] (update-add-entity-adjacent-to
-                    immutable-store (:item-id subject)
-                    template adjacent-item position true)]
-        [id store]))
+(defn create-elements-satisfying
+  "Make a series of element satistying the template.
+  Return the new elements of and the updated store.
+  subjects and adjacent-items must be seqs of groups of items, with either
+  corresponding entries, or a single group for the subjects and
+  a group for each of those subjects.
+  adjacent-item and position give order information for a new elements."
+  [template subject-groups adjacent-groups position store]
+  (let [adjacent-groups (if (and (= (count subject-groups) 1)
+                                 (= (count adjacent-groups)
+                                    (count (first subject-groups))))
+                          [(map #(furthest-item % position) adjacent-groups)]
+                          adjacent-groups)
+        [id-groups store]
+        (thread-map
+         (fn [[subject-group adjacent-group] store]
+           (thread-map
+            (fn [[subject-item adjacent-item] store]
+              (let [[store id] (update-add-entity-adjacent-to
+                                store (:item-id subject-item)
+                                template adjacent-item position true)]
+                [id store]))
+            (map vector subject-group adjacent-group)
+            store))
+         (map vector subject-groups adjacent-groups)
+         store)
+        ]
+    [(map (fn [group] (map #(description->entity % store) group))
+          id-groups)
+     store]))
 
 (def instantiate-or-create-referent)
 
@@ -583,7 +604,7 @@
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
   for virtual referents. The second argument is a pair of an immutable store
-  and a map of chosen new ids. Return the groups of items, and the updated
+  and a map of chosen new ids. Return the groups, and the updated
   second argument."
   [referent store-and-chosen]
   (if (not= (referent-type referent) :virtual)
@@ -597,33 +618,16 @@
                                 condition-to-template)
           [specialized-template store-and-chosen]
           (specialize-template adjusted-template store-and-chosen)
+          _ (println "!!! " (simplify-for-print [exemplar template adjusted-template specialized-template]))
           [subject-groups [store chosen]]
           (instantiate-or-create-referent subject store-and-chosen)
-          adjacent-groups
-          (let [groups
-                (if adjacent-referent
-                  (instantiate-referent adjacent-referent store)
-                  subject-groups)]
-            (if (and (= (count subject-groups) 1)
-                     (= (count groups) (count (first subject-groups))))
-              [(map #(furthest-item % position) groups)]
-              groups))
-          [id-groups store]
-          (thread-map
-           (fn [[subject-group adjacent-group] store]
-             (thread-map
-                    (fn [[subject-item adjacent-item] store]
-                      (create-element-satisfying
-                       specialized-template subject-item
-                       adjacent-item position store))
-                    (map vector subject-group adjacent-group)
-                    store))
-           (map vector subject-groups adjacent-groups)
-           store)
-          groups (map (fn [id-group]
-                        (map #(description->entity % store) id-group))
-                      id-groups)]
-      [groups [store chosen]])))
+          adjacent-groups (if adjacent-referent
+                            (instantiate-referent adjacent-referent store)
+                            subject-groups)
+          [added store] (create-elements-satisfying
+                          specialized-template subject-groups
+                          adjacent-groups position store)]
+      [added [store chosen]])))
 
 
 

@@ -23,7 +23,7 @@
                       referent->exemplar-and-subject
                       item-referent first-group-referent
                       semantic-elements-R specialize-template
-                      condition-to-template]]
+                      condition-to-template adjust-adjacents]]
     [order-utils :refer [update-add-entity-adjacent-to furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -72,6 +72,19 @@
     (do (println "content doesn't match" from (content item))
         store)))
 
+(defn add-select-request
+  "Add a selection request to a response."
+  [response element-id select-pattern old-key]
+  (let [response (if (satisfies? cosheet.store/Store response)
+                   {:store response}
+                   response)
+        store (:store response)]
+    (assoc response :select
+           (when (not (nil? element-id))
+             [(substitute-in-key
+               select-pattern (description->entity element-id store))
+              [old-key]]))))
+
 (defn add-and-select
   "Add an entity matching the template to the store for each 
   subjects, adjacents pair.
@@ -84,12 +97,8 @@
                       store (:item-id subject) template
                       adjacent position use-bigger)))
         [element-ids store] (thread-map f (map vector subjects adjacents)
-                                        store)] 
-    {:store store
-     :select (when (not (empty? element-ids))
-               [(substitute-in-key
-                 select-pattern (description->entity (first element-ids) store))
-                [old-key]])}))
+                                        store)]
+    (add-select-request store (first element-ids) select-pattern old-key)))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
@@ -123,14 +132,10 @@
           subjects (if subject-referent
                         (instantiate-referent subject-referent store)
                         (map #(map subject %) items))
-          adjacents (let [groups
-                          (if adjacent-referent
-                            (instantiate-referent adjacent-referent store)
-                            items)]
-                      (if (and (= (count subjects) 1)
-                               (= (count groups) (count (first subjects))))
-                        [(map #(furthest-item % position) groups)]
-                        groups))
+          adjacents (if adjacent-referent
+                      (instantiate-referent adjacent-referent store)
+                      items)
+          adjacents (adjust-adjacents subjects adjacents position)
           [specialized-condition [store _]] (specialize-template template
                                                                  [store {}])
           select-pattern (or select-pattern (conj parent-key [:pattern]))

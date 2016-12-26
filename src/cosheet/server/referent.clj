@@ -560,11 +560,11 @@
 
 (defn create-elements-satisfying
   "Make a series of element satisfying the template.
-  Return the new elements of and the updated store.
+  Return the new elements and the updated store.
   subjects and adjacent-items must be seqs of groups of items, with
   corresponding entries.
   adjacent-item and position give order information for a new elements."
-  [template subject-groups adjacent-groups position store]
+  [template subject-groups adjacent-groups position use-bigger store]
   (let [[id-groups store]
         (thread-map
          (fn [[subject-group adjacent-group] store]
@@ -572,7 +572,7 @@
             (fn [[subject-item adjacent-item] store]
               (let [[store id] (update-add-entity-adjacent-to
                                 store (:item-id subject-item)
-                                template adjacent-item position true)]
+                                template adjacent-item position use-bigger)]
                 [id store]))
             (map vector subject-group adjacent-group)
             store))
@@ -631,7 +631,7 @@
                            subject-groups adjacent-groups position)
           [added store] (create-elements-satisfying
                           specialized-template subject-groups adjacent-groups
-                           position store)]
+                          position true store)]
       [added [store chosen]])))
 
 

@@ -23,7 +23,8 @@
                       referent->exemplar-and-subject
                       item-referent first-group-referent
                       semantic-elements-R specialize-template
-                      condition-to-template adjust-adjacents]]
+                      condition-to-template adjust-adjacents
+                      create-elements-satisfying]]
     [order-utils :refer [update-add-entity-adjacent-to furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -85,21 +86,6 @@
                select-pattern (description->entity element-id store))
               [old-key]]))))
 
-(defn add-and-select
-  "Add an entity matching the template to the store for each 
-  subjects, adjacents pair.
-  Return a map of the new store and a selection request for the first
-  of the new items."
-  [store template subjects adjacents position use-bigger
-   select-pattern old-key]
-  (let [f (fn [[subject adjacent] store]
-            (reverse (update-add-entity-adjacent-to
-                      store (:item-id subject) template
-                      adjacent position use-bigger)))
-        [element-ids store] (thread-map f (map vector subjects adjacents)
-                                        store)]
-    (add-select-request store (first element-ids) select-pattern old-key)))
-
 (defn generic-add
   "Add new item(s), relative to the target information. Either
    item-referent or (adjacent-referent and subject-referent) must
@@ -146,18 +132,15 @@
       (println "total items added: " (apply + (map count subjects)))
       (assert (= (map count subjects) (map count adjacents))
               [(simplify-for-print subjects) (simplify-for-print adjacents)])
-      (let [{:keys [store select]}
-            (add-and-select
-             store alt-template
-             (first subjects) (first adjacents)
-             position use-bigger select-pattern old-key)
-            select1 select
-            {:keys [store select]}
-            (add-and-select
-             store template
-             (apply concat (rest subjects)) (apply concat (rest adjacents))
-             position use-bigger select-pattern old-key)]
-        {:store store :select (or select1 select)}))))
+      (let [[items1 store] (create-elements-satisfying
+                            alt-template [(first subjects)] [(first adjacents)]
+                            position use-bigger store)
+            [items2 store] (create-elements-satisfying
+                            template (rest subjects) (rest adjacents)
+                            position use-bigger store)
+            first-item (first (apply concat (concat items1 items2)))]
+        (add-select-request store
+                            (:item-id first-item) select-pattern old-key)))))
 
 (defn do-add-element
   [store context attributes]

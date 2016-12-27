@@ -177,12 +177,25 @@
     [(fun nil)]
     (update-in vec [(dec (count vec))] fun)))
 
+(defn map-map
+  "Map two levels down."
+  [fun x]
+  (map #(map fun %) x))
+
 (defn replace-in-seqs
   "Replace from with to recursively through the sequence."
   [x from to]
   (cond (sequential? x) (map #(replace-in-seqs % from to) x)
         (= x from) to
         true x))
+
+(defn prewalk-seqs
+  "Like clojure.walk/prewalk, but only descends into seqs"
+  [fun x]
+  (let [pre (fun x)]
+    (if (sequential? pre)
+      (map (partial prewalk-seqs fun) pre)
+      pre)))
 
 (defn ensure-in-map
   "Given a map, if the map has a value for the key, 

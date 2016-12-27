@@ -209,8 +209,9 @@
       (assert (= (count elements) 1)
               (apply str "entity "  (:id (:item-id entity))
                      " has " (count elements) " elements for label " label
-                     " contents: "
-                     (interleave (repeat " ") (map content elements))))
+                     " entity " (to-list entity)
+                     " element contents: "
+                     (interleave (repeat ", ") (map content elements))))
       (content (first elements)))))
 
 (defmethod label->content true [entity label]
@@ -219,7 +220,8 @@
       (assert (= (count elements) 1)
               (apply str "entity "  (:id (:item-id entity))
                      " has " (count elements) " elements for label " label
-                     " contents: "
+                     " entity contents: " (current-value (to-list entity))
+                     " element contents: "
                      (interleave (repeat " ")
                                  (map #(current-value (content %)) elements))))
       (content (first elements)))))

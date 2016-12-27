@@ -28,7 +28,7 @@
     [render :refer [top-level-item-DOM-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
-                         key->id]]
+                         key->id dom-for-key?]]
     [actions :refer [confirm-actions do-actions]])))
 
 (defn starting-store
@@ -336,10 +336,12 @@
             (let [doms (response-doms @tracker 10)
                   select (let [[select if-selected] (:select client-info)]
                            (when select
-                             (let [select-id
-                                   ;; If there is a content item, select that.
-                                   (or (key->id tracker (conj select :content))
-                                       (key->id tracker select))]
+                             (let [select-key
+                                   (first (filter
+                                           #(dom-for-key? tracker %)
+                                           [(conj select :content) select]))
+                                   select-id (when select-key
+                                               (key->id tracker select-key))]
                                [select-id
                                 (filter identity
                                         (map (partial key->id tracker)

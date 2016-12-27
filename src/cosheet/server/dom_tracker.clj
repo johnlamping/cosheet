@@ -417,6 +417,11 @@
   (or (get-in @tracker [:key->id key])
       (key->string key)))
 
+(defn dom-for-key?
+  "Return whether there is dom for the given key."
+  [tracker key]
+  (not (nil? (get-in @tracker [:key->dom key]))))
+
 (defn key->attributes
   "Return the attributes for the dom with the given key,
    include both attributes specified by the dom definition and by

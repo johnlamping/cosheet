@@ -88,40 +88,47 @@
                select-pattern (description->entity (:item-id first-item) store))
               [old-key]]))))
 
-(defn add-selector-elements
-  "Given that the first group of the subject describes a selector, and
+(defn add-possible-selector-elements
+  "Given that the first group of the subject may describe a selector, and
   the rest its selected, create appropriate elements both for the
   selector and its selected. Return the new store and the new items."
-  [store condition subject-groups adjacent-groups position use-bigger]
-  (let [template (condition-to-template condition)
-        alt-template (condition-to-template condition 'anything)
-        [items1 store] (create-elements-satisfying
-                        alt-template
-                        [(first subject-groups)] [(first adjacent-groups)]
-                        position use-bigger store)
-        [items2 store] (create-elements-satisfying
-                        template (rest subject-groups) (rest adjacent-groups)
-                        position use-bigger store)]
-    [store (concat items1 items2)]))
+  [store condition subject-groups adjacent-groups first-group-is-selector
+   position use-bigger]
+  (let [[specialized-condition [store _]] (specialize-template
+                                           condition [store {}])
+        template (condition-to-template specialized-condition)]
+    (if first-group-is-selector
+      (let [alt-template (condition-to-template specialized-condition 'anything)
+            [items1 store] (create-elements-satisfying
+                            alt-template
+                            [(first subject-groups)] [(first adjacent-groups)]
+                            position use-bigger store)
+            [items2 store] (create-elements-satisfying
+                            template (rest subject-groups)
+                            (rest adjacent-groups) position use-bigger store)]
+        [store (concat items1 items2)])
+      (reverse (create-elements-satisfying
+                  template subject-groups adjacent-groups
+                  position use-bigger store)))))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
    item-referent or (adjacent-referent and subject-referent) must
    be provided."
   [store target-info parent-key old-key use-bigger]
-  (let [{:keys [item-referent             ; item(s) referred to
-                subject-referent          ; subject(s) of the new item(s)
-                adjacent-referent         ; item(s) adjacent to new item(s).
-                                          ; Either one per subject, or one
-                                          ; group per subject.
-                position                  ; :before or :after item/adjacent
-                template                  ; added item(s) should satisfy this.
-                nil-to-anything           ; if true, then for the first group
-                                          ; of items, nils in the template
-                                          ; should go to 'anything
-                select-pattern            ; a key pattern to use for selecting
-                                          ; :content will to be added if
-                                          ; it makes sense.
+  (let [{:keys [item-referent           ; item(s) referred to
+                subject-referent        ; subject(s) of the new item(s)
+                adjacent-referent       ; item(s) adjacent to new item(s).
+                                        ; Either one per subject, or one
+                                        ; group per subject.
+                position                ; :before or :after item/adjacent
+                template                ; added item(s) should satisfy this.
+                nil-to-anything         ; if true, then for the first group
+                                        ; of items, nils in the template
+                                        ; should go to 'anything
+                select-pattern          ; a key pattern to use for selecting
+                                        ; :content will to be added if
+                                        ; it makes sense.
                 ] 
          :or {position :after}}         
         target-info]
@@ -134,8 +141,8 @@
                1))
     (let [items (when item-referent (instantiate-referent item-referent store))
           subjects (if subject-referent
-                        (instantiate-referent subject-referent store)
-                        (map #(map subject %) items))
+                     (instantiate-referent subject-referent store)
+                     (map #(map subject %) items))
           adjacents (if adjacent-referent
                       (instantiate-referent adjacent-referent store)
                       items)
@@ -164,16 +171,9 @@
   (let [{:keys [target-key select-pattern selector-category]} attributes]
     (when-let [item-referent (:item-referent context)]
       (let [items (instantiate-referent item-referent store)
-            condition (:template context)
-            [specialized-condition [store _]] (specialize-template
-                                               condition [store {}])
-            [store added]
-            (if selector-category
-              (add-selector-elements
-               store specialized-condition items items :after true)
-              (reverse (create-elements-satisfying
-                        (condition-to-template specialized-condition)
-                        items items :after true store)))]
+            [store added] (add-possible-selector-elements
+                           store nil items items
+                           selector-category :after true)]
         (add-select-request
          store added (conj target-key [:pattern]) target-key)))))
 

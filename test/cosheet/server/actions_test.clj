@@ -159,7 +159,24 @@
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
-               (canonicalize-list '(45 ("age" :tag) ""))))))
+               (canonicalize-list '(45 ("age" :tag) ""))))
+    (is (check (:select result)
+               [["jane-age" (any)] [["jane-age"]]]))))
+
+(deftest do-add-twin-test
+  (let [result (do-add-twin
+                store
+                {:item-referent (item-referent jane-age)
+                 :template '(nil ("age" :tag))}
+                {:target-key ["jane" "jane-age"]})
+        new-store (:store result)]
+    (is (check (item->canonical-semantic
+                (to-list (description->entity (:item-id jane) new-store)))
+               (canonicalize-list '("Jane"
+                                    "female"
+                                    (45 ("age" :tag)) ("" ("age" :tag))))))
+    (is (check (:select result)
+               [["jane" (any)] [["jane" "jane-age"]]]))))
 
 (deftest do-delete-test
   (let [new-store (do-delete

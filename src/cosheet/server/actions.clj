@@ -179,16 +179,19 @@
 
 (defn do-add-twin
   [store context attributes]
-  (let [{:keys [target-key]} attributes]
-    (when (and (:item-referent context) (:template context))
-      (let [item-key (if (= (last target-key) :content)
-                       (pop target-key)
-                       target-key)]
-        (generic-add store
-                     (cond-> context
-                       (:selector-category attributes)
-                       (assoc :nil-to-anything true))
-                     (pop item-key) target-key true)))))
+  (let [{:keys [target-key selector-category]} attributes]
+    (when-let [item-referent (:item-referent context)]
+      (when-let [condition (:template context)]
+        (let [items (instantiate-referent item-referent store)
+              subjects (map #(map subject %) items)
+              [store added] (add-possible-selector-elements
+                             store condition subjects items
+                             selector-category :after true)
+              item-key (if (= (last target-key) :content)
+                         (pop target-key)
+                         target-key)]
+          (add-select-request
+           store added (conj (pop item-key) [:pattern]) target-key))))))
 
 (defn do-add-sibling
   [store context attributes]

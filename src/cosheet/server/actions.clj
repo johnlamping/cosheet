@@ -74,17 +74,35 @@
         store)))
 
 (defn add-select-request
-  "Add a selection request to a response."
-  [response element-id select-pattern old-key]
+  "Add a selection request to a response, given a group of items, the first
+  of which should be selected."
+  [response items select-pattern old-key]
   (let [response (if (satisfies? cosheet.store/Store response)
                    {:store response}
                    response)
-        store (:store response)]
+        store (:store response)
+        first-item (first (apply concat items))]
     (assoc response :select
-           (when (not (nil? element-id))
+           (when (not (nil? first-item))
              [(substitute-in-key
-               select-pattern (description->entity element-id store))
+               select-pattern (description->entity (:item-id first-item) store))
               [old-key]]))))
+
+(defn add-selector-elements
+  "Given that the first group of the subject describes a selector, and
+  the rest its selected, create appropriate elements both for the
+  selector and its selected. Return the new store and the new items."
+  [store condition subject-groups adjacent-groups position use-bigger]
+  (let [template (condition-to-template condition)
+        alt-template (condition-to-template condition 'anything)
+        [items1 store] (create-elements-satisfying
+                        alt-template
+                        [(first subject-groups)] [(first adjacent-groups)]
+                        position use-bigger store)
+        [items2 store] (create-elements-satisfying
+                        template (rest subject-groups) (rest adjacent-groups)
+                        position use-bigger store)]
+    [store (concat items1 items2)]))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
@@ -137,20 +155,27 @@
                             position use-bigger store)
             [items2 store] (create-elements-satisfying
                             template (rest subjects) (rest adjacents)
-                            position use-bigger store)
-            first-item (first (apply concat (concat items1 items2)))]
+                            position use-bigger store)]
         (add-select-request store
-                            (:item-id first-item) select-pattern old-key)))))
+                            (concat items1 items2) select-pattern old-key)))))
 
 (defn do-add-element
   [store context attributes]
-  (let [{:keys [target-key selector-category]} attributes]
-    (when-let [subject-referent (:item-referent context)]
-      (generic-add store
-                   (cond-> {:subject-referent subject-referent
-                            :adjacent-referent subject-referent}
-                     selector-category (assoc :nil-to-anything true))
-                   target-key target-key true))))
+  (let [{:keys [target-key select-pattern selector-category]} attributes]
+    (when-let [item-referent (:item-referent context)]
+      (let [items (instantiate-referent item-referent store)
+            condition (:template context)
+            [specialized-condition [store _]] (specialize-template
+                                               condition [store {}])
+            [store added]
+            (if selector-category
+              (add-selector-elements
+               store specialized-condition items items :after true)
+              (reverse (create-elements-satisfying
+                        (condition-to-template specialized-condition)
+                        items items :after true store)))]
+        (add-select-request
+         store added (conj target-key [:pattern]) target-key)))))
 
 (defn do-add-twin
   [store context attributes]

@@ -112,7 +112,7 @@
                [["parent-key" (:item-id new-element)]
                 [["old-key"]]]))
     (is (check result2 result1))
-    ;; Check that adding two separately, is the same as adding in parallel.
+    ;; Check that adding two separately is the same as adding in parallel.
     (let [result12 (generic-add s1
                                 {:template '(nil ("new" :tag))
                                  :item-referent (item-referent joe-age)}

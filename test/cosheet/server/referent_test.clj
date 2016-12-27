@@ -113,8 +113,6 @@
   (is (= (condition-to-list '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
   (is (= (canonicalize-list (condition-to-list (item-referent jane) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag))))))
-  (let [l  (condition-to-list `(~(item-referent jane) 1 (2 3)) store)]
-    (println "!!!!" l (list? l) (seq? l) (list? (first l)) (seq? (first l))))
   (is (= (canonicalize-list
           (condition-to-list `(~(item-referent jane) 1 (2 3)) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))

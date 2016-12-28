@@ -66,7 +66,9 @@
         (println "from" from "content" content)
         (or (equivalent-atoms? from content)
             ;; Probably a wildcard -- matches anything.
-            (and (= from "..."))
+            (= from "...")
+            ;; Setting a new selector.
+            (and (= from "") (= content 'anything))
             (and (= from "???")
                  (symbol? content)
                  (= (subs (str content) 0 3) "??-"))))

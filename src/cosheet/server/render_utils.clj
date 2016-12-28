@@ -47,16 +47,21 @@
   inherited must specify a :selectable-attributes :target,
   into which we will put the subject and template."
   [key adjacent-referent position inherited]
+  (assert (not (nil? (:subject inherited))))
   [:div (into-attributes
          (into-attributes (:selectable-attributes inherited)
                           (select-keys inherited [:selector-category]))
          {:class "editable"
           :key key
           :target (add-alternate-to-target
-                   {:item-referent (virtual-referent (:template inherited)
-                                                     (:subject inherited)
-                                                     adjacent-referent
-                                                     position false)}
+                   {:item-referent (virtual-referent
+                                    (:template inherited)
+                                    (:subject inherited)
+                                    (or  adjacent-referent (:subject inherited))
+                                    :position position
+                                    :selector (when (:selector-category
+                                                     inherited)
+                                                :first-group))}
                    inherited)})])
 
 (defn make-component

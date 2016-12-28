@@ -33,8 +33,7 @@
                     (virtual-referent (item-referent (->ItemId 1234))
                                       (item-referent (->ItemId 2345))
                                       (item-referent (->ItemId 3456))
-                                      :after
-                                      true)]))
+                                      :use-bigger true)]))
         serialized (referent->string referent)
         parsed (string->referent serialized)]
     (is (check parsed referent))))
@@ -214,7 +213,7 @@
              [[[jane-age]] store-and-chosen])))
     ;; The simplest virtual referent.
     (let [referent (virtual-referent "male" (item-referent jane)
-                                     (item-referent jane-age) :after true)
+                                     (item-referent jane-age))
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any)]]))
@@ -235,7 +234,7 @@
         (is (= chosen1 chosen))))
     ;; A referent for the exemplar.
     (let [referent (virtual-referent joe-male (item-referent jane)
-                                     (item-referent jane-age) :after true)
+                                     (item-referent jane-age))
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any)]]))
@@ -251,7 +250,7 @@
     (let [referent (virtual-referent '("hi" tag)
                                      (query-referent '(nil (nil "age")))
                                      (query-referent '(nil (nil "age")))
-                                     :before true)
+                                     :position :before)
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any) (any)]]))
@@ -274,8 +273,8 @@
     ;; Exemplar is virtual.
     (let [referent (virtual-referent
                     (virtual-referent '???1 (item-referent jane)
-                                      (item-referent jane) :after true)
-                    (item-referent joe) (item-referent joe) :after true)
+                                      (item-referent jane))
+                    (item-referent joe) (item-referent joe))
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any)]]))
@@ -295,8 +294,8 @@
     ;; Exemplar needs adjusting
     (let [referent (virtual-referent
                     (virtual-referent '??? (item-referent jane)
-                                      (item-referent jane) :after true)
-                    (item-referent joe) (item-referent joe) :after true)
+                                      (item-referent jane))
+                    (item-referent joe) (item-referent joe))
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any)]]))
@@ -317,10 +316,10 @@
     ;; Subject is virtual too
     (let [referent (virtual-referent
                     (virtual-referent '??? (item-referent jane)
-                                      (item-referent jane) :after true)
+                                      (item-referent jane))
                     (virtual-referent '???1 (item-referent joe)
-                                      (item-referent joe) :after true)
-                     (item-referent joe) :after true)
+                                      (item-referent joe))
+                     (item-referent joe))
           [groups [store chosen]] (instantiate-or-create-referent
                                    referent store-and-chosen)]
       (is (check groups [[(any)]]))

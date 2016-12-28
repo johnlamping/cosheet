@@ -201,7 +201,8 @@
                    :selector-category :some-category
                    :target {:item-referent (virtual-referent
                                             '(nil :tag) (item-referent none)
-                                            nil :after false) 
+                                            (item-referent none)
+                                            :selector :first-group) 
                             :alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
@@ -299,7 +300,7 @@
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
                                             (item-referent pair)
-                                            :before false)}
+                                            :position :before)}
                    :sibling {:subject-referent (item-referent age)
                              :adjacent-referent all-elements-referent
                              :parent-key age-key}}]]
@@ -430,6 +431,8 @@
                                      item (item-referent item) [] inherited)]
                           [dom item]))]
     (let [item-key [:root (:item-id item)]]
+      (println "dom" (simplify-for-print dom
+                      ))
       (is (check dom
                  [:div {:class "horizontal-tags-element narrow"}
                   [:div {:class "editable tag" :key (conj item-key :tags)
@@ -437,7 +440,8 @@
                          :target {:item-referent (virtual-referent
                                                   '(nil :tag)
                                                   (item-referent item)
-                                                  nil :after false)}}]
+                                                  (item-referent item)
+                                                  :position :after)}}]
                   [:div {:class "item with-elements"
                          :key item-key}
                     [:div {:class "content-text editable"

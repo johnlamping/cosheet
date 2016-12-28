@@ -128,13 +128,14 @@
                   :alternate-target true
                   :selectable-attributes
                   {:expand {:item-referent first-column-referent}
-                   :column {:adjacent-referent (item-referent c1)
-                            :subject-referent (union-referent
-                                               [(item-referent table)])
-                            :position :after
-                            :template '(anything-immutable
-                                        (:column :non-semantic)
-                                        (??? :tag))
+                   :column {:item-referent (virtual-referent
+                                            '(anything-immutable
+                                              (:column :non-semantic)
+                                              (??? :tag))
+                                            (union-referent
+                                             [(item-referent table)])
+                                            (item-referent c1)
+                                            :selector :first-group) 
                             :select-pattern (conj table-key tag-pattern)}
                    :delete {:item-referent first-column-referent}
                    :add-element {:item-referent first-column-referent}}}]]
@@ -174,7 +175,8 @@
                      :target {:item-referent (virtual-referent
                                               '(nil ("single" :tag))
                                               (item-referent joe)
-                                              (item-referent joe) :after false)}
+                                              (item-referent joe)
+                                              :position :after)}
                      :delete {:item-referent (item-referent joe)}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))

@@ -1,5 +1,5 @@
 (ns cosheet.server.referent
-  (:require (cosheet [utils :refer [multiset replace-in-seqs
+  (:require (cosheet [utils :refer [multiset replace-in-seqs prewalk-seqs
                                     thread-map thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
@@ -64,16 +64,23 @@
 ;;;                  first referent and not by the second.
 ;;;                  refers to the sequence of groups
 ;;;         virtual  [:virtual <exemplar-referent> <sequence-referent>
-;;;                            <adjacent-referent> position use-bigger]
+;;;                            <adjacent-referent> position use-bigger selector]
 ;;;                  For each group of items refered to by sequence-referent
 ;;;                  refers to a group of new items matching the exemplar
-;;;                  referent. Both te exemplar referent and the sequence
-;;;                  referent can also be virtual. Adjacent-referent must
-;;;                  have one group for each item in sequence referent, and
-;;;                  gives items the new items should be adjacent to in the
-;;;                  order. It can be nil, which means to use the subjects
-;;;                  for order. Position and use-bigger say where the new
-;;;                  item should go relative to the adjacent item.
+;;;                  referent. The exemplar may be a condition, with nils,
+;;;                  and may be a template, with 'anything or refer to an
+;;;                  item that is a template. The sequence
+;;;                  referent can be virtual. The exemplar can also be
+;;;                  virtual or contain virtual referents.
+;;;                  Adjacent-referent gives items the new items should
+;;;                  be adjacent to in the order. It must either
+;;;                  have the same group structure as subject-referent,
+;;;                  or it must have one group for each item of sequence
+;;;                  referent. Position and use-bigger say where the new
+;;;                  item should go relative to the adjacent item. If selector
+;;;                  has the value :first-group, it means that the first
+;;;                  group of items will be selectors, and so don't need
+;;;                  'anything turned into space.
 ;;;                  Virtual referents may never be nested inside non-virtual
 ;;;                  referents.
 
@@ -169,13 +176,18 @@
 
 (defn virtual-referent
   "Create a virtual referent."
-  [exemplar subject adjacent position use-bigger]
+  [exemplar subject adjacent & {:keys [position use-bigger selector]
+                                :or {position :after
+                                     use-bigger false}
+                                :as options}]
   (assert (referent? subject))
-  (when adjacent (assert (referent? adjacent)))
+  (assert (referent? adjacent))
   (assert (#{:before :after} position))
   (assert (contains? #{true false} use-bigger))
-  [:virtual (coerce-item-to-id exemplar) subject
-             adjacent position use-bigger])
+  (assert (every? #{:position :use-bigger :selector} (keys options)))
+  (when selector (assert (= selector :first-group)))
+  [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
+            (coerce-item-to-id adjacent) position use-bigger selector])
 
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
@@ -210,12 +222,14 @@
                       (parallel-union-referent
                        (map first-group-referent referents)))
     :difference referent
-    :virtual (let [[_ exemplar subject adjacent position use-bigger]
+    :virtual (let [[_ exemplar subject adjacent position use-bigger selector]
                    referent]
                (virtual-referent exemplar
                                  (first-group-referent subject)
-                                 (when adjacent (first-group-referent adjacent))
-                                 position use-bigger))))
+                                 (first-group-referent adjacent)
+                                 :position position
+                                 :use-bigger use-bigger
+                                 :selector selector))))
 
 ;;; The string format of a referent is
 ;;;     for item referents: I<the digits of their id>
@@ -401,7 +415,7 @@
 (defn flatten-content-lists
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
   (a ...b... ...c...)"
-  ;; This case is used to add (:top-level :non-semantic) to rows.
+  ;; This case handles adding (:top-level :non-semantic) to rows.
   [item]
   (clojure.walk/postwalk
    (fn [item]
@@ -421,6 +435,37 @@
         (when (id-valid? immutable-store referent)
           (semantic-to-list-R (description->entity referent immutable-store)))
         referent))
+    condition)))
+
+(defn pattern-to-condition
+  "Given a pattern, alter it to work as a condition. Specifically,
+  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
+  to make them work as a wild card that avoids matching non-user editable
+  elements."
+  [condition]
+  (if (sequential? condition)
+    (let [elements (map pattern-to-condition (rest condition))]
+      (if (#{'anything 'anything-immutable} (first condition))
+        (apply list (list* nil '(nil :order :non-semantic) elements))
+        (cons (first condition) elements)))
+    (if (#{'anything 'anything-immutable} condition)
+      '(nil (nil :order :non-semantic))
+      condition)))
+
+(defn condition-to-template
+  "Given a condition, turn it into a template by removing (nil :order
+  :non-semantic) elements (which get added by template to condition)
+  and by then replacing any nil by the specified replacement, or the empty
+  string by default."
+  ([condition]
+   (condition-to-template condition ""))
+  ([condition nil-replacement]
+   (prewalk-seqs
+    (fn [condition]
+      (cond (sequential? condition)
+            (remove #(= % '(nil :order :non-semantic)) condition)
+            (nil? condition) nil-replacement
+            true condition))
     condition)))
 
 (defn best-matching-element
@@ -462,29 +507,6 @@
   [fun referent immutable-store]
   (map fun (instantiate-to-items referent immutable-store)))
 
-(defn template-to-condition
-  "Given a template, alter it to work as a condition. Specifically,
-  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
-  to make them work as a wild card that avoids matching non-user editable
-  elements."
-  [condition]
-  (if (sequential? condition)
-    (let [elements (map template-to-condition (rest condition))]
-      (if (#{'anything 'anything-immutable} (first condition))
-        (apply list (list* nil '(nil :order :non-semantic) elements))
-        (cons (first condition) elements)))
-    (if (#{'anything 'anything-immutable} condition)
-      '(nil (nil :order :non-semantic))
-      condition)))
-
-(defn condition-to-template
-  "Given a condition, turn it into a template by replacing nil by
-  the specified replacement, or the empty string by default."
-  ([condition]
-   (condition-to-template condition ""))
-  ([condition nil-replacement]
-   (replace-in-seqs condition nil nil-replacement)))
-
 (defn instantiate-referent
   "Return the groups of items that the referent refers to. Does not handle
   virtual referents."
@@ -493,19 +515,19 @@
     :item (when (id-valid? immutable-store referent)
             [[(description->entity referent immutable-store)]])
     :exemplar (let [[_ exemplar subject] referent
-                    condition (template-to-condition
+                    condition (pattern-to-condition
                                (condition-to-list exemplar immutable-store))]
                 (map (fn [group] (mapcat #(best-matching-element condition %)
                                          group))
                      (instantiate-referent subject immutable-store)))
     :elements (let [[_ condition subject] referent
-                    condition (template-to-condition
+                    condition (pattern-to-condition
                                (condition-to-list condition immutable-store))]
                 (map (fn [group] (mapcat #(matching-elements condition %)
                                          group))
                      (instantiate-referent subject immutable-store)))
     :query (let [[_ condition] referent
-                 condition (template-to-condition
+                 condition (pattern-to-condition
                             (condition-to-list condition immutable-store))]
              [(matching-items condition immutable-store)])
     :union (let [[_ & referents] referent]
@@ -583,6 +605,35 @@
           id-groups)
      store]))
 
+(defn create-possible-selector-elements
+  "Given that the first group of the subject may describe a selector, and
+  the rest its selected, create appropriate elements both for the
+  selector and its selected. Return the new items and new store and chosen
+  specilized ids."
+  [template subject-groups adjacent-groups position use-bigger selector
+   store-and-chosen]
+  (let [[specialized-template [store chosen]]
+        (specialize-template template store-and-chosen)
+        flattened-template(flatten-content-lists specialized-template)
+        ;; The template for a non-selector
+        template (-> flattened-template
+                     pattern-to-condition
+                     condition-to-template)]
+    (if (= selector :first-group)
+      (let [sel-template (condition-to-template specialized-template 'anything)
+            [items1 store] (create-elements-satisfying
+                            sel-template
+                            [(first subject-groups)] [(first adjacent-groups)]
+                            position use-bigger store)
+            [items2 store] (create-elements-satisfying
+                            template (rest subject-groups)
+                            (rest adjacent-groups) position use-bigger store)]
+        [(concat items1 items2) [store chosen]])
+      (let [[items store] (create-elements-satisfying
+                           template subject-groups adjacent-groups
+                           position use-bigger store)]
+        [items [store chosen]]))))
+
 (def instantiate-or-create-referent)
 
 (defn instantiate-or-create-exemplar
@@ -605,34 +656,34 @@
         true
         [exemplar store-and-chosen]))
 
+(defn create-virtual-referent
+  "Create items for virtual referents. The second argument is a pair
+  of an immutable store and a map of chosen new ids. Return the groups
+  of new items, and the updated second argument."
+  [referent store-and-chosen]
+  (assert (virtual-referent? referent))
+  (let [[_ exemplar subject adjacent-referent position use-bigger selector]
+        referent
+        [template store-and-chosen]
+        (instantiate-or-create-exemplar exemplar store-and-chosen)
+        [subject-groups [store chosen]]
+        (instantiate-or-create-referent subject store-and-chosen)
+        adjacent-groups (instantiate-referent adjacent-referent store)
+        adjacent-groups (adjust-adjacents
+                         subject-groups adjacent-groups position)]
+    (create-possible-selector-elements
+     template subject-groups adjacent-groups
+     position use-bigger selector [store chosen])))
+
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
   for virtual referents. The second argument is a pair of an immutable store
   and a map of chosen new ids. Return the groups, and the updated
   second argument."
   [referent store-and-chosen]
-  (if (not= (referent-type referent) :virtual)
-    [(instantiate-referent referent (first store-and-chosen)) store-and-chosen]
-    (let [[_ exemplar subject adjacent-referent position use-bigger] referent
-          [template store-and-chosen]
-          (instantiate-or-create-exemplar exemplar store-and-chosen)
-          adjusted-template (-> template
-                                flatten-content-lists
-                                template-to-condition
-                                condition-to-template)
-          [specialized-template store-and-chosen]
-          (specialize-template adjusted-template store-and-chosen)
-          [subject-groups [store chosen]]
-          (instantiate-or-create-referent subject store-and-chosen)
-          adjacent-groups (if adjacent-referent
-                            (instantiate-referent adjacent-referent store)
-                            subject-groups)
-          adjacent-groups (adjust-adjacents
-                           subject-groups adjacent-groups position)
-          [added store] (create-elements-satisfying
-                          specialized-template subject-groups adjacent-groups
-                          position true store)]
-      [added [store chosen]])))
+  (if (virtual-referent? referent)
+    (create-virtual-referent referent store-and-chosen)
+    [(instantiate-referent referent (first store-and-chosen)) store-and-chosen]))
 
 
 

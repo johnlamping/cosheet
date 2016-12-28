@@ -178,6 +178,24 @@
     (is (check (:select result)
                [["jane" (any)] [["jane" "jane-age"]]]))))
 
+(deftest do-add-column-test
+  (let [result (do-add-column
+                store
+                {:item-referent
+                 (virtual-referent '(nil ("age" :tag))
+                                   (union-referent [(item-referent jane)])
+                                   (item-referent jane) :position :after)
+                 :parent-key ["jane"]}
+                {:target-key ["jane" "jane-age"]})]
+    (is (check (item->canonical-semantic
+                (to-list (description->entity (:item-id jane) (:store result))))
+               (canonicalize-list '("Jane"
+                                    "female"
+                                    (45 ("age" :tag)) ("" ("age" :tag))))))
+    (is (check (:select result)
+               [["jane" (any)] [["jane" "jane-age"]]]))))
+
+
 (deftest do-delete-test
   (let [new-store (do-delete
                    store
@@ -259,7 +277,7 @@
                   store
                   {:item-referent (virtual-referent
                                    '(nil :tag) (item-referent joe-male)
-                                   nil :after false)}
+                                    (item-referent joe-male) :position :after)}
                   {:target-key ["joe-male"]
                    :from ""
                    :to "gender"})]

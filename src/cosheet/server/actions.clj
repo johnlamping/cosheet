@@ -24,6 +24,7 @@
                       item-referent first-group-referent
                       semantic-elements-R specialize-template
                       condition-to-template adjust-adjacents
+                      create-possible-selector-elements
                       create-elements-satisfying]]
     [order-utils :refer [update-add-entity-adjacent-to furthest-item]])))
 
@@ -88,28 +89,12 @@
                select-pattern (description->entity (:item-id first-item) store))
               [old-key]]))))
 
-(defn add-possible-selector-elements
-  "Given that the first group of the subject may describe a selector, and
-  the rest its selected, create appropriate elements both for the
-  selector and its selected. Return the new store and the new items."
-  [store condition subject-groups adjacent-groups first-group-is-selector
-   position use-bigger]
-  (let [[specialized-condition [store _]] (specialize-template
-                                           condition [store {}])
-        template (condition-to-template specialized-condition)]
-    (if first-group-is-selector
-      (let [alt-template (condition-to-template specialized-condition 'anything)
-            [items1 store] (create-elements-satisfying
-                            alt-template
-                            [(first subject-groups)] [(first adjacent-groups)]
-                            position use-bigger store)
-            [items2 store] (create-elements-satisfying
-                            template (rest subject-groups)
-                            (rest adjacent-groups) position use-bigger store)]
-        [store (concat items1 items2)])
-      (reverse (create-elements-satisfying
-                  template subject-groups adjacent-groups
-                  position use-bigger store)))))
+(defn add-and-select-virtual-elements
+  "Create actual elements for the virtual element, and select the first."
+  [store virtual-referent select-pattern old-key]
+  (let [[items [store _]] (instantiate-or-create-referent
+                           virtual-referent [store {}])]
+    (add-select-request store items select-pattern old-key)))
 
 (defn generic-add
   "Add new item(s), relative to the target information. Either
@@ -171,9 +156,10 @@
   (let [{:keys [target-key select-pattern selector-category]} attributes]
     (when-let [item-referent (:item-referent context)]
       (let [items (instantiate-referent item-referent store)
-            [store added] (add-possible-selector-elements
-                           store nil items items
-                           selector-category :after true)]
+            selector (when selector-category :first-group)
+            [added [store _]] (create-possible-selector-elements
+                               nil items items :after true selector
+                               [store {}])]
         (add-select-request
          store added (conj target-key [:pattern]) target-key)))))
 
@@ -184,9 +170,10 @@
       (when-let [condition (:template context)]
         (let [items (instantiate-referent item-referent store)
               subjects (map #(map subject %) items)
-              [store added] (add-possible-selector-elements
-                             store condition subjects items
-                             selector-category :after true)
+              selector (when selector-category :first-group)
+              [added [store _]] (create-possible-selector-elements
+                                 condition subjects items :after true selector
+                                 [store {}])
               item-key (if (= (last target-key) :content)
                          (pop target-key)
                          target-key)]
@@ -201,12 +188,16 @@
 (defn do-add-row
   [store context attributes]
   (generic-add
-     store context (:parent-key context) (:target-key attributes) true))
+   store context (:parent-key context) (:target-key attributes) true))
 
+;;; TODO: Change to do-add-virtual, and have it be the handler for siblings, rows, and columns.
 (defn do-add-column
   [store context attributes]
-  (generic-add
-     store context (:parent-key context) (:target-key attributes) true))
+  (let [{:keys [item-referent parent-key select-pattern]} context
+        select-pattern (or select-pattern (conj parent-key [:pattern]))]
+    (println "add-column !!!" (simplify-for-print [context select-pattern]))
+    (add-and-select-virtual-elements
+     store item-referent select-pattern (:target-key attributes))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"

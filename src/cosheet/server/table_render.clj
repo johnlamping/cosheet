@@ -15,10 +15,10 @@
                                elements-referent query-referent
                                union-referent-if-needed union-referent
                                parallel-union-referent
-                               difference-referent
+                               difference-referent virtual-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
-                               template-to-condition]]
+                               pattern-to-condition]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
@@ -119,13 +119,14 @@
                             (~elements-template :condition)
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
-                             [:pattern `(nil ~element-variable)])]
-    {:column {:adjacent-referent (parallel-union-referent
-                                  (map #(item-or-exemplar-referent % subject)
-                                       column-items))
-              :subject-referent (union-referent [subject])
-              :position :after
-              :template new-header-template
+                             [:pattern `(nil ~element-variable)])
+        adjacent-referent (parallel-union-referent
+                           (map #(item-or-exemplar-referent % subject)
+                                column-items))]
+    {:column {:item-referent
+              (virtual-referent new-header-template (union-referent [subject])
+                                adjacent-referent :position :after
+                                :selector :first-group)
               :select-pattern select-pattern}}))
 
 (defn condition-elements-DOM-R
@@ -362,7 +363,7 @@
     (expr-let [matches (matching-elements template row-item)
                do-not-show (when exclusions
                              (expr-seq map #(matching-elements
-                                             (template-to-condition %)
+                                             (pattern-to-condition %)
                                              row-item)
                                        exclusions))]
       (let [elements (seq (clojure.set/difference
@@ -400,7 +401,7 @@
   "Given a hierarchy node, return the condition that all elements
   under the node satisfy."
   [node]
-  (template-to-condition
+  (pattern-to-condition
    (cons nil (canonical-set-to-list (:cumulative-properties node)))))
 
 (defn table-hierarchy-node-exclusions
@@ -408,7 +409,7 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (map #(template-to-condition
+  (map #(pattern-to-condition
          (cons nil (map canonical-to-list (:property-canonicals %))))
        (->> (hierarchy-node-next-level node)
             (filter hierarchy-node?)
@@ -466,7 +467,7 @@
         (expr-let
             [row-condition (semantic-to-list-R row-condition-item)
              row-query (add-element-to-entity-list
-                        (template-to-condition row-condition)
+                        (pattern-to-condition row-condition)
                         ['(:top-level :non-semantic)])
              ;; We have to use the item in the referent's condition, so
              ;; it doesn't contain strings or other non-serializable stuff.
@@ -474,7 +475,7 @@
                             (list (item-referent row-condition-item)
                                   '(:top-level :non-semantic)))
              ;; Avoid the (nil :order :non-semantic) added by
-             ;; template-to-condition.
+             ;; pattern-to-condition.
              row-template (add-element-to-entity-list
                            (replace-in-seqs row-condition 'anything nil)
                            ['(:top-level :non-semantic)])

@@ -8,7 +8,8 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
-             [referent :refer [item-or-exemplar-referent semantic-elements-R]]
+             [referent :refer [item-or-exemplar-referent virtual-referent
+                               semantic-elements-R]]
              [hierarchy :refer [hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-items-referent
@@ -32,13 +33,13 @@
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
-   (cond->
-       {:subject-referent subject
-        :adjacent-referent (hierarchy-node-items-referent
-                            hierarchy-node subject)
-        :parent-key (:parent-key inherited)}
-     (not (empty? conditions))
-     (assoc :template (list* nil conditions)))))
+    (cond->
+        {:item-referent (virtual-referent
+                         (when (seq conditions) (list* nil conditions))
+                         subject
+                         (hierarchy-node-items-referent
+                          hierarchy-node subject))
+        :parent-key (:parent-key inherited)})))
 
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update

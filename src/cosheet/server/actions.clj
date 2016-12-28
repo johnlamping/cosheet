@@ -182,22 +182,15 @@
           (add-select-request
            store added (conj (pop item-key) [:pattern]) target-key))))))
 
-(defn do-add-sibling
-  [store context attributes]
-  (generic-add
-   store context (:parent-key context) (:target-key attributes) true))
-
 (defn do-add-row
   [store context attributes]
   (generic-add
    store context (:parent-key context) (:target-key attributes) true))
 
-;;; TODO: Change to do-add-virtual, and have it be the handler for siblings, rows, and columns.
-(defn do-add-column
+(defn do-add-virtual
   [store context attributes]
   (let [{:keys [item-referent parent-key select-pattern]} context
         select-pattern (or select-pattern (conj parent-key [:pattern]))]
-    (println "add-column !!!" (simplify-for-print [context select-pattern]))
     (add-and-select-virtual-elements
      store item-referent select-pattern (:target-key attributes))))
 
@@ -306,9 +299,9 @@
   [action]
   ({:add-element [do-add-element :target]
     :add-twin [do-add-twin :target]
-    :add-sibling [do-add-sibling :sibling]
+    :add-sibling [do-add-virtual :sibling]
     :add-row [do-add-row :row]
-    :add-column [do-add-column :column]
+    :add-column [do-add-virtual :column]
     :delete [do-delete :target]
     :set-content [do-set-content :target]
     :expand [do-expand :target]}

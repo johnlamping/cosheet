@@ -415,7 +415,7 @@
 (defn flatten-content-lists
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
   (a ...b... ...c...)"
-  ;; This case handles adding (:top-level :non-semantic) to rows.
+  ;; This case handles adding (:top-level :non-semantic) to row referents.
   [item]
   (clojure.walk/postwalk
    (fn [item]

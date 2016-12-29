@@ -167,7 +167,6 @@
 
 (defn do-set-content
   [store context attributes]
-  ;; TODO: Handle deleting.
   (let [{:keys [target-key from to immutable]} attributes
         referent (:item-referent context)]
     (when (and from to (not immutable))

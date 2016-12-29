@@ -94,7 +94,7 @@
           c3 (first (current-value (label->elements table o3)))
           id3 (first (current-value (label->elements c2 o2)))
           table-key [:foo (:item-id table)]
-          row-template '(nil (nil ("age" :tag))
+          row-template '("" ("" ("age" :tag))
                              (:top-level :non-semantic))
           row-condition (list (item-referent query)
                               '(:top-level :non-semantic))
@@ -168,8 +168,8 @@
              row-dom
              [:div {:key (conj table-key (:item-id joe))}
               [:div {:add-row {:item-referent (virtual-referent
-                                               '(nil (nil ("age" :tag))
-                                                     (:top-level :non-semantic))
+                                               '("" ("" ("age" :tag))
+                                                 (:top-level :non-semantic))
                                                nil (item-referent joe)) }
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
@@ -190,8 +190,8 @@
                  :template '(nil ("name" :tag))
                  :selectable-attributes
                  {:add-row {:item-referent (virtual-referent
-                                            '(nil (nil ("age" :tag))
-                                                  (:top-level :non-semantic))
+                                            '("" ("" ("age" :tag))
+                                              (:top-level :non-semantic))
                                             nil (item-referent joe)) }}}]]
               (any)
               (any)

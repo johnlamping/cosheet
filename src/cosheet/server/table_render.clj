@@ -18,7 +18,7 @@
                                difference-referent virtual-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
-                               pattern-to-condition]]
+                               pattern-to-condition condition-to-template]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
@@ -477,9 +477,7 @@
                                   '(:top-level :non-semantic)))
              ;; Avoid the (nil :order :non-semantic) added by
              ;; pattern-to-condition.
-             row-template (add-element-to-entity-list
-                           (replace-in-seqs row-condition 'anything nil)
-                           ['(:top-level :non-semantic)])
+             row-template (condition-to-template row-query)
              row-items  (expr order-items-R
                             (matching-items row-query store))
              columns (expr order-items-R

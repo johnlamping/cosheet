@@ -333,8 +333,11 @@
                       (assoc :width 0.75)
                       (update-in [:selectable-attributes]
                                  #(into-attributes
-                                   % {:row {:item-referent (:subject inherited)
-                                            :template new-row-template}})))]
+                                   % {:row {:item-referent
+                                            (virtual-referent
+                                             new-row-template
+                                             nil
+                                             (:subject inherited))}})))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
@@ -344,10 +347,7 @@
                 (into-attributes
                  inherited
                  {:selectable-attributes
-                  {:delete {:item-referent (-> inherited
-                                               :selectable-attributes
-                                               :row
-                                               :item-referent)}}}))
+                  {:delete {:item-referent (:subject inherited)}}}))
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

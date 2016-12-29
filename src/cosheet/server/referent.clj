@@ -1,6 +1,6 @@
 (ns cosheet.server.referent
   (:require (cosheet [utils :refer [multiset replace-in-seqs prewalk-seqs
-                                    thread-map thread-recursive-map]]
+                                    map-map thread-map thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
                      [entity :refer [atom? elements content label->elements
@@ -180,7 +180,7 @@
                                 :or {position :after
                                      use-bigger false}
                                 :as options}]
-  (assert (referent? subject))
+  (when subject (assert (referent? subject)))
   (assert (referent? adjacent))
   (assert (#{:before :after} position))
   (assert (contains? #{true false} use-bigger))
@@ -664,16 +664,18 @@
   (assert (virtual-referent? referent))
   (let [[_ exemplar subject adjacent-referent position use-bigger selector]
         referent
-        [template store-and-chosen]
+        [template [store chosen]]
         (instantiate-or-create-exemplar exemplar store-and-chosen)
-        [subject-groups [store chosen]]
-        (instantiate-or-create-referent subject store-and-chosen)
         adjacent-groups (instantiate-referent adjacent-referent store)
+        [subject-groups store-and-chosen]
+        (if (nil? subject)
+          [(map-map (constantly nil) adjacent-groups) [store chosen]]
+          (instantiate-or-create-referent subject [store chosen]))
         adjacent-groups (adjust-adjacents
                          subject-groups adjacent-groups position)]
     (create-possible-selector-elements
      template subject-groups adjacent-groups
-     position use-bigger selector [store chosen])))
+     position use-bigger selector store-and-chosen)))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items

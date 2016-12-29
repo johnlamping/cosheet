@@ -98,61 +98,6 @@
                            virtual-referent [store {}])]
     (add-select-request store items select-pattern old-key)))
 
-(defn generic-add
-  "Add new item(s), relative to the target information. Either
-   item-referent or (adjacent-referent and subject-referent) must
-   be provided."
-  [store target-info parent-key old-key use-bigger]
-  (let [{:keys [item-referent           ; item(s) referred to
-                subject-referent        ; subject(s) of the new item(s)
-                adjacent-referent       ; item(s) adjacent to new item(s).
-                                        ; Either one per subject, or one
-                                        ; group per subject.
-                position                ; :before or :after item/adjacent
-                template                ; added item(s) should satisfy this.
-                nil-to-anything         ; if true, then for the first group
-                                        ; of items, nils in the template
-                                        ; should go to 'anything
-                select-pattern          ; a key pattern to use for selecting
-                                        ; :content will to be added if
-                                        ; it makes sense.
-                ] 
-         :or {position :after}}         
-        target-info]
-    (println "adding" (simplify-for-print target-info))
-    (assert (= (count (remove nil? [item-referent
-                                    subject-referent]))
-               1))
-    (assert (= (count (remove nil? [item-referent
-                                    adjacent-referent]))
-               1))
-    (let [items (when item-referent (instantiate-referent item-referent store))
-          subjects (if subject-referent
-                     (instantiate-referent subject-referent store)
-                     (map #(map subject %) items))
-          adjacents (if adjacent-referent
-                      (instantiate-referent adjacent-referent store)
-                      items)
-          adjacents (adjust-adjacents subjects adjacents position)
-          [specialized-condition [store _]] (specialize-template template
-                                                                 [store {}])
-          select-pattern (or select-pattern (conj parent-key [:pattern]))
-          template (condition-to-template specialized-condition)
-          alt-template (if nil-to-anything
-                         (condition-to-template specialized-condition 'anything)
-                         template)]
-      (println "total items added: " (apply + (map count subjects)))
-      (assert (= (map count subjects) (map count adjacents))
-              [(simplify-for-print subjects) (simplify-for-print adjacents)])
-      (let [[items1 store] (create-elements-satisfying
-                            alt-template [(first subjects)] [(first adjacents)]
-                            position use-bigger store)
-            [items2 store] (create-elements-satisfying
-                            template (rest subjects) (rest adjacents)
-                            position use-bigger store)]
-        (add-select-request store
-                            (concat items1 items2) select-pattern old-key)))))
-
 (defn do-add-element
   [store context attributes]
   (let [{:keys [target-key select-pattern selector-category]} attributes]
@@ -181,11 +126,6 @@
                          target-key)]
           (add-select-request
            store added (conj (pop item-key) [:pattern]) target-key))))))
-
-(defn do-add-row
-  [store context attributes]
-  (generic-add
-   store context (:parent-key context) (:target-key attributes) true))
 
 (defn do-add-virtual
   [store context attributes]
@@ -300,7 +240,7 @@
   ({:add-element [do-add-element :target]
     :add-twin [do-add-twin :target]
     :add-sibling [do-add-virtual :sibling]
-    :add-row [do-add-row :row]
+    :add-row [do-add-virtual :row]
     :add-column [do-add-virtual :column]
     :delete [do-delete :target]
     :set-content [do-set-content :target]

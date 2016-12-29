@@ -84,73 +84,6 @@
                  (:item-id joe-male)
                  :foo "bar"]))))
 
-(deftest generic-add-test
-  (let [order-entity (first (label->elements jane-age :order))
-        order (content order-entity)
-        ;; Try with sibling referent.
-        result1 (generic-add store
-                             {:template '(nil ("new" :tag))
-                              :item-referent (item-referent jane-age)}
-                             ["parent-key"] ["old-key"] true)
-        s1 (:store result1)
-        new-jane (description->entity jane-id s1)
-        new-element (first (matching-elements '(nil "new") new-jane))
-        [o5 x] (orderable/split order :after)
-        [o6 o7] (orderable/split x :before)
-        ;; Try with adjacent referent.
-        result2 (generic-add store
-                             {:template '(nil ("new" :tag))
-                              :subject-referent (item-referent jane)
-                              :adjacent-referent (item-referent jane-age)}
-                             ["parent-key"] ["old-key"] true)]    
-    (is (check (canonicalize-list (to-list new-element))
-               (canonicalize-list `(""
-                                    (~o6 :order :non-semantic)
-                                    ("new" :tag (~o7 :order :non-semantic))))))
-    (is (= (content (description->entity (:item-id order-entity) s1)) o5))
-    (is (check (:select result1)
-               [["parent-key" (:item-id new-element)]
-                [["old-key"]]]))
-    (is (check result2 result1))
-    ;; Check that adding two separately is the same as adding in parallel.
-    (let [result12 (generic-add s1
-                                {:template '(nil ("new" :tag))
-                                 :item-referent (item-referent joe-age)}
-                                [] [] true)
-          result-both (generic-add store
-                                   {:template '(nil ("new" :tag))
-                                    :item-referent (union-referent
-                                                    [(item-referent jane-age)
-                                                     (item-referent joe-age)])}
-                                   ["parent-key"] ["old-key"] true)]
-      (is (check (:store result12) (:store result-both)))
-      (is (check (:select result1) (:select result-both))))
-    ;; Checking adding with nil-to-none
-    (let [result (generic-add store {:template '(nil ("new" :tag nil))
-                                     :nil-to-anything true
-                                     :item-referent (union-referent
-                                                     [(item-referent jane-age)
-                                                      (item-referent joe-age)])}
-                              ["parent-key"] ["old-key"] true)
-          s1 (:store result)
-          new-jane (description->entity jane-id s1)
-          new-jane-element (first (matching-elements '(nil "new") new-jane))
-          new-joe (description->entity joe-id s1)
-          new-joe-element (first (matching-elements '(nil "new") new-joe))]
-      (is (check (to-list new-jane-element)
-                 ['anything
-                  ["new" ['anything [(any) :order :non-semantic]]
-                   :tag
-                   [(any) :order :non-semantic]]
-                  [(any) :order :non-semantic]]))
-      (println "namespace" (namespace 'anything))
-      (is (check (to-list new-joe-element)
-                 [""
-                  ["new" ["" [(any) :order :non-semantic]]
-                   :tag
-                   [(any) :order :non-semantic]]
-                  [(any) :order :non-semantic]])))))
-
 (deftest do-add-element-test
   (let [result (do-add-element
                 store
@@ -178,8 +111,8 @@
     (is (check (:select result)
                [["jane" (any)] [["jane" "jane-age"]]]))))
 
-(deftest do-add-column-test
-  (let [result (do-add-column
+(deftest do-add-virtual-test
+  (let [result (do-add-virtual
                 store
                 {:item-referent
                  (virtual-referent '(nil ("age" :tag))

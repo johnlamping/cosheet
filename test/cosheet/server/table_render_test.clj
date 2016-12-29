@@ -167,9 +167,10 @@
         (is (check
              row-dom
              [:div {:key (conj table-key (:item-id joe))}
-              [:div {:row {:item-referent (item-referent joe)
-                           :template '(nil (nil ("age" :tag))
-                                           (:top-level :non-semantic))}
+              [:div {:row {:item-referent (virtual-referent
+                                           '(nil (nil ("age" :tag))
+                                                 (:top-level :non-semantic))
+                                           nil (item-referent joe)) }
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
                      :target {:item-referent (virtual-referent
@@ -188,9 +189,10 @@
                  :subject (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes
-                 {:row {:item-referent (item-referent joe)
-                        :template '(nil (nil ("age" :tag))
-                                        (:top-level :non-semantic))}}}]]
+                 {:row {:item-referent (virtual-referent
+                                        '(nil (nil ("age" :tag))
+                                              (:top-level :non-semantic))
+                                        nil (item-referent joe)) }}}]]
               (any)
               (any)
               (any)

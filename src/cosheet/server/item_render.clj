@@ -51,9 +51,9 @@
     (update-in
      inherited [:selectable-attributes]
      #(into-attributes
-       % {:sibling (add-alternate-to-target
-                    (hierarchy-add-adjacent-target hierarchy-node inherited)
-                    inherited)}))))
+       % {:add-sibling (add-alternate-to-target
+                        (hierarchy-add-adjacent-target hierarchy-node inherited)
+                        inherited)}))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM

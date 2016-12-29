@@ -123,10 +123,11 @@
         adjacent-referent (parallel-union-referent
                            (map #(item-or-exemplar-referent % subject)
                                 column-items))]
-    {:column {:item-referent
-              (virtual-referent new-header-template (union-referent [subject])
-                                adjacent-referent :position :after
-                                :selector :first-group)
+    {:add-column {:item-referent
+                  (virtual-referent new-header-template
+                                    (union-referent [subject])
+                                    adjacent-referent :position :after
+                                    :selector :first-group)
               :select-pattern select-pattern}}))
 
 (defn condition-elements-DOM-R
@@ -333,11 +334,11 @@
                       (assoc :width 0.75)
                       (update-in [:selectable-attributes]
                                  #(into-attributes
-                                   % {:row {:item-referent
-                                            (virtual-referent
-                                             new-row-template
-                                             nil
-                                             (:subject inherited))}})))]
+                                   % {:add-row {:item-referent
+                                                (virtual-referent
+                                                 new-row-template
+                                                 nil
+                                                 (:subject inherited))}})))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it

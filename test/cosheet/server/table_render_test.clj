@@ -128,15 +128,15 @@
                   :alternate-target true
                   :selectable-attributes
                   {:expand {:item-referent first-column-referent}
-                   :column {:item-referent (virtual-referent
-                                            '(anything-immutable
-                                              (:column :non-semantic)
-                                              (??? :tag))
-                                            (union-referent
-                                             [(item-referent table)])
-                                            (item-referent c1)
-                                            :selector :first-group) 
-                            :select-pattern (conj table-key tag-pattern)}
+                   :add-column {:item-referent (virtual-referent
+                                                '(anything-immutable
+                                                  (:column :non-semantic)
+                                                  (??? :tag))
+                                                (union-referent
+                                                 [(item-referent table)])
+                                                (item-referent c1)
+                                                :selector :first-group) 
+                                :select-pattern (conj table-key tag-pattern)}
                    :delete {:item-referent first-column-referent}
                    :add-element {:item-referent first-column-referent}}}]]
                (any)
@@ -167,10 +167,10 @@
         (is (check
              row-dom
              [:div {:key (conj table-key (:item-id joe))}
-              [:div {:row {:item-referent (virtual-referent
-                                           '(nil (nil ("age" :tag))
-                                                 (:top-level :non-semantic))
-                                           nil (item-referent joe)) }
+              [:div {:add-row {:item-referent (virtual-referent
+                                               '(nil (nil ("age" :tag))
+                                                     (:top-level :non-semantic))
+                                               nil (item-referent joe)) }
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
                      :target {:item-referent (virtual-referent
@@ -189,10 +189,10 @@
                  :subject (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes
-                 {:row {:item-referent (virtual-referent
-                                        '(nil (nil ("age" :tag))
-                                              (:top-level :non-semantic))
-                                        nil (item-referent joe)) }}}]]
+                 {:add-row {:item-referent (virtual-referent
+                                            '(nil (nil ("age" :tag))
+                                                  (:top-level :non-semantic))
+                                            nil (item-referent joe)) }}}]]
               (any)
               (any)
               (any)

@@ -239,9 +239,9 @@
   [action]
   ({:add-element [do-add-element :target]
     :add-twin [do-add-twin :target]
-    :add-sibling [do-add-virtual :sibling]
-    :add-row [do-add-virtual :row]
-    :add-column [do-add-virtual :column]
+    :add-sibling [do-add-virtual :add-sibling]
+    :add-row [do-add-virtual :add-row]
+    :add-column [do-add-virtual :add-column]
     :delete [do-delete :target]
     :set-content [do-set-content :target]
     :expand [do-expand :target]}

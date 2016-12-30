@@ -393,6 +393,42 @@
      [table-row-DOM-R
       row-item row-key new-row-template column-descriptions inherited])))
 
+(defn table-virtual-row-cell-DOM
+  "Return the dom for one cell of a virtual row of a table."
+  [adjacent-referent
+   {:keys [column-item template exclusions]} ;; A column header description
+   inherited]
+  (let [inherited (assoc inherited
+                         :parent-key (conj (:parent-key inherited)
+                                           (:item-id column-item))
+                         :template template)]
+    (add-attributes
+     (virtual-item-DOM
+      (:parent-key inherited) adjacent-referent :after inherited)
+     {:class "table-cell has-border"})))
+
+(defn table-virtual-row-DOM
+  "Generate dom for a table's virtual row."
+  [row-key new-row-template adjacent-referent column-descriptions inherited]
+  (let [inherited (-> inherited
+                      (assoc :parent-key row-key)
+                      (update-in [:subject]
+                                 #(virtual-referent
+                                   new-row-template % adjacent-referent)))
+        cells (map #(table-virtual-row-cell-DOM
+                     adjacent-referent % inherited) column-descriptions)]
+    (into [:div {:key row-key}] cells)))
+
+(defn table-virtual-row-DOM-component
+  "Generate a component for a table row."
+  [new-row-template adjacent-referent column-descriptions inherited]
+  (let [row-key (conj (:parent-key inherited) :virtual)]
+    (make-component
+     {:key row-key :class "table-row"}
+     [table-virtual-row-DOM
+      row-key new-row-template adjacent-referent column-descriptions
+      inherited])))
+
 (defn add-element-to-entity-list
   [entity element]
   (concat (if (sequential? entity) entity (list entity))
@@ -523,10 +559,14 @@
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)
-                rows (expr-seq map #(table-row-DOM-component
+                rows (map #(table-row-DOM-component
                                      % row-template column-descriptions
                                      inherited)
-                               row-items)]
+                          row-items)
+                virtual-row (table-virtual-row-DOM-component
+                             row-template
+                             (item-referent (or (last row-items) table-item))
+                             column-descriptions inherited)]
             [:div {:class "table selector-scope"}
              [:div {:class (cond-> "table-top selectors"
                              condition-is-tags (str " tag"))}
@@ -539,4 +579,4 @@
               [:div {:class "table-main selecteds selector-scope"}
                (add-attributes headers {:class "selectors"})
                (into [:div {:class "table-rows selecteds"}]
-                     rows)]]]))))))
+                     (concat rows [virtual-row]))]]]))))))

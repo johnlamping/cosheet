@@ -156,6 +156,16 @@
                   (any)
                   (any)
                   (any)]
+                 {:priority 1 :width 3.0 :parent-key table-key}]]
+               [:component {:key (conj table-key :virtual)
+                            :class "table-row"}
+                [table-virtual-row-DOM
+                 (conj table-key :virtual)
+                 '("" ("" ("age" :tag)) (:top-level :non-semantic))
+                 (item-referent joe)
+                 [{:column-item c1 :template '(nil ("single" :tag))
+                   :exclusions '()}
+                  (any) (any) (any) (any) (any)]
                  {:priority 1 :width 3.0 :parent-key table-key}]]]]]]))
       (let [table-body (nth dom 3)
             table-main (nth table-body 3)

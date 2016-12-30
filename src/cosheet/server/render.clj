@@ -64,14 +64,13 @@
                ;                            :selector-category must be present.
                ;                            If an atom, that atom overrides
                ;                            :selector-category.
-     :sibling  ; A special target to use for add-sibling commands.
+ :add-sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.
       :expand  ; A special target to use for expansion, if it should be
                ; different from the :target.
-         :row  ; The row (or virtual new row) that the dom belongs to,
-               ; a map with the same keys as :target
-      :column  ; The analog of :row for a column.
+     :add-row  ; A special target to use for add-row commands.
+  :add-column  ; The analog of :row for a column.
    :selector-category  ; If this dom is a selector, this field
                        ; will be present,  and hold an atom characterizing
                        ; the kind of selector.

@@ -355,11 +355,11 @@
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
   [row-item new-row-template
-   {:keys [column-item template exclusions]} ;; A column header description
+   {:keys [column-id template exclusions]} ;; A column header description
    inherited]
   (let [inherited-down (assoc inherited
                               :parent-key (conj (:parent-key inherited)
-                                                (:item-id column-item))
+                                                column-id)
                               :template template)]
     (expr-let [matches (matching-elements template row-item)
                do-not-show (when exclusions
@@ -396,11 +396,10 @@
 (defn table-virtual-row-cell-DOM
   "Return the dom for one cell of a virtual row of a table."
   [adjacent-referent
-   {:keys [column-item template exclusions]} ;; A column header description
+   {:keys [column-id template exclusions]} ;; A column header description
    inherited]
   (let [inherited (assoc inherited
-                         :parent-key (conj (:parent-key inherited)
-                                           (:item-id column-item))
+                         :parent-key (conj (:parent-key inherited) column-id)
                          :template template)]
     (add-attributes
      (virtual-item-DOM
@@ -455,7 +454,8 @@
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
-     :column-item Item that identifies the column.
+       :column-id Id that identifies the column.
+                  Typically the id of the column item.
         :template Condition that each element of the column must satisfy.
                   ('anything is turned to nil before putting a condition here.)
       :exclusions Seq of conditions that elements must not satisfy."
@@ -463,7 +463,7 @@
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              [{:column-item (:item node-or-element)
+              [{:column-id (:item-id (:item node-or-element))
                 :template (table-hierarchy-node-condition node)
                 :exclusions (table-hierarchy-node-exclusions node)}]))
           (hierarchy-node-next-level node)))

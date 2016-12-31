@@ -147,11 +147,12 @@
                             :class "table-row"}
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
-                 [{:column-item c1 :template '(nil ("single" :tag))
+                 [{:column-id (:item-id c1) :template '(nil ("single" :tag))
                    :exclusions '()}
-                  {:column-item c2 :template '(nil ("name" :tag))
+                  {:column-id (:item-id c2) :template '(nil ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
-                  {:column-item c3 :template '(nil ("name" :tag) ("id" :tag))
+                  {:column-id (:item-id c3)
+                   :template '(nil ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
                   (any)
@@ -163,7 +164,7 @@
                  (conj table-key :virtual)
                  '("" ("" ("age" :tag)) (:top-level :non-semantic))
                  (item-referent joe)
-                 [{:column-item c1 :template '(nil ("single" :tag))
+                 [{:column-id (:item-id c1) :template '(nil ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]
                  {:priority 1 :width 3.0 :parent-key table-key}]]]]]]))

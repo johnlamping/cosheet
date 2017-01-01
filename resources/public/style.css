@@ -527,8 +527,8 @@ body {
     align-items: stretch;
 }
 
-.table-rows > :last-child > table-cell {
-    border-bottom-width: 2px;
+.table-rows > :last-child > .table-cell {
+    margin-bottom: 0px;
 }
 
 .table-cell {

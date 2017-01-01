@@ -399,10 +399,6 @@ body {
     margin-top: -2px;
 }
 
-.table-rows > :last-child {
-    border-bottom-width: 2px;
-}
-
 .column-header-sequence {
     flex: none;
     display: flex;
@@ -417,7 +413,7 @@ body {
     flex: 0 0 auto;
 }
 
-.column-header-sequence
+.column-header > .column-header-sequence
    > .editable.editable.editable.editable.editable:not(.content-text) {
     background-color: transparent;
     margin-right: -2px;
@@ -531,6 +527,10 @@ body {
     align-items: stretch;
 }
 
+.table-rows > :last-child > table-cell {
+    border-bottom-width: 2px;
+}
+
 .table-cell {
     width: 150px;
     min-height: 20px;
@@ -538,6 +538,11 @@ body {
     border-width: 2px;
     margin: 0px -2px -2px 0px;
 }
+
+.table-cell.virtual-column {
+    width: 35px;
+}
+
 
 /* --- narrow interpretation --- */
 

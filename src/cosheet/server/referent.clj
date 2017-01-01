@@ -642,7 +642,7 @@
   (cond (referent? exemplar)
         (let [[groups store-and-chosen]
               (instantiate-or-create-referent exemplar store-and-chosen)]
-          [(first (first groups)) store-and-chosen])        
+          [(semantic-to-list-R (first (first groups))) store-and-chosen])
         (seq? exemplar)
         (thread-recursive-map
          (fn [exemplar store-and-chosen]

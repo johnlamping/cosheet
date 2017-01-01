@@ -92,7 +92,7 @@
           name2 (first (current-value (label->elements c2 :tag)))
           name2-tag-spec (first (current-value (entity/elements name2)))
           c3 (first (current-value (label->elements table o3)))
-          id3 (first (current-value (label->elements c2 o2)))
+          c6 (first (current-value (label->elements table o6)))
           table-key [:foo (:item-id table)]
           row-template '("" ("" ("age" :tag))
                              (:top-level :non-semantic))
@@ -141,7 +141,22 @@
                    :add-element {:item-referent first-column-referent}}}]]
                (any)
                (any)
-               (any)]
+               (any)
+               [:div {:selector-category :table-header
+                      :class "editable column-header"
+                      :key (conj table-key :virtualColumn)
+                      :target {:item-referent
+                               (virtual-referent
+                                ["" :tag]
+                                (virtual-referent
+                                 '(anything-immutable (:column :non-semantic))
+                                 (item-referent table)
+                                 (item-referent c6)
+                                 :selector :first-group)
+                                (item-referent c6)
+                                :selector :first-group)
+                               :alternate true}
+                      :style {:width "35px"}}]]
               [:div {:class "table-rows selecteds"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
@@ -156,12 +171,20 @@
                    :exclusions ()}
                   (any)
                   (any)
-                  (any)]
+                  (any)
+                  {:column-id :virtualColumn
+                   :template (virtual-referent
+                              '(anything-immutable (??? :tag)
+                                                   (:column :non-semantic))
+                              (item-referent table)
+                              (item-referent c6)
+                              :selector :first-group)
+                   :exclusions nil}]
                  {:priority 1 :width 3.0 :parent-key table-key}]]
-               [:component {:key (conj table-key :virtual)
+               [:component {:key (conj table-key :virtualRow)
                             :class "table-row"}
                 [table-virtual-row-DOM
-                 (conj table-key :virtual)
+                 (conj table-key :virtualRow)
                  '("" ("" ("age" :tag)) (:top-level :non-semantic))
                  (item-referent joe)
                  [{:column-id (:item-id c1) :template '(nil ("single" :tag))
@@ -207,4 +230,16 @@
               (any)
               (any)
               (any)
-              (any)]))))))
+              (any)
+              [:div {:class "editable table-cell virtual-column has-border"
+                     :key (conj table-key (:item-id joe) :virtualColumn)
+                     :target {:item-referent
+                              (virtual-referent
+                               (virtual-referent
+                                '(anything-immutable
+                                  (??? :tag) (:column :non-semantic))
+                                (item-referent table)
+                                (item-referent c6)
+                                :selector :first-group)
+                               (item-referent joe)
+                               (item-referent joe))}}]]))))))

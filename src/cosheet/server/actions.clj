@@ -331,7 +331,6 @@
                        (into client-args)
                        (assoc :target-key target-key
                               :session-state session-state))]
-    (println "keys" [context-key action-type])
     (if handler
       (if-let [;; We take all attributes for the context and override any
                ;; specific to the action type.

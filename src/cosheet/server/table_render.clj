@@ -35,6 +35,7 @@
                                   item-DOM-R must-show-label-item-DOM-R]])))
 
 (def base-table-column-width 150)
+(def base-table-virtual-column-width 35)
 
 (defn is-tag-template?
   "Return true if the template describes a label."
@@ -101,11 +102,11 @@
   the template for new elements, while inherited gives the environment
   of the header."
   [column-items elements-template inherited]
+  (assert (:template inherited))
   (let [subject (:subject inherited)
         new-elements-template (cons '??? (rest elements-template))
-        new-header-template (apply list (concat (or (:template inherited)
-                                                    '(anything-immutable))
-                                           [new-elements-template]))
+        new-header-template (apply list (concat (:template inherited)
+                                                [new-elements-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
@@ -226,6 +227,20 @@
                                  inherited))))]
     (condition-elements-DOM-R example-elements inherited-down)))
 
+(defn table-virtual-header-node-DOM
+  [adjacent-referent inherited]
+  (let [key (conj (:parent-key inherited) :virtualColumn)
+        inherited (assoc inherited
+                         :subject (virtual-referent
+                                   (:template inherited) (:subject inherited)
+                                   adjacent-referent
+                                   :selector :first-group)
+                         :template ["" :tag])]
+    (add-attributes
+     (virtual-item-DOM key adjacent-referent :after inherited)
+     {:class "column-header"
+      :style {:width (str base-table-virtual-column-width "px")}})))
+
 (defn table-header-member-DOM-R
   "Generate the DOM for an element in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
@@ -318,13 +333,16 @@
   (let [inherited-down (assoc
                         inherited
                         :selector-category :table-header
-                        :alternate-target true)]
+                        :alternate-target true)
+        last-column (last (hierarchy-node-descendants (last hierarchy)))
+        virtual-header (table-virtual-header-node-DOM
+                        (item-referent (:item last-column)) inherited-down)]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
-            columns))))
+            (concat columns [virtual-header])))))
 
 (defn table-cell-items-DOM-R
   "Return the dom for one cell of a table, given its items.
@@ -352,25 +370,38 @@
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 
+(defn table-virtual-column-cell-DOM
+  [row-item new-row-template
+   {:keys [column-id template exclusions]}
+   inherited]
+  (let [inherited (assoc inherited :template template)
+        key (conj (:parent-key inherited) column-id)]
+    (add-attributes
+     (virtual-item-DOM key (:subject inherited) :after inherited)
+     {:class "table-cell virtual-column has-border"})))
+
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
   [row-item new-row-template
-   {:keys [column-id template exclusions]} ;; A column header description
+   {:keys [column-id template exclusions] :as header-description}
    inherited]
   (let [inherited-down (assoc inherited
                               :parent-key (conj (:parent-key inherited)
                                                 column-id)
                               :template template)]
-    (expr-let [matches (matching-elements template row-item)
-               do-not-show (when exclusions
-                             (expr-seq map #(matching-elements
-                                             (pattern-to-condition %)
-                                             row-item)
-                                       exclusions))]
-      (let [elements (seq (clojure.set/difference
-                           (set matches)
-                           (set (apply concat do-not-show))))]
-        (table-cell-items-DOM-R elements new-row-template inherited-down)))))
+    (if (= column-id :virtualColumn)
+      (table-virtual-column-cell-DOM
+       row-item new-row-template header-description inherited)
+      (expr-let [matches (matching-elements template row-item)
+                 do-not-show (when exclusions
+                               (expr-seq map #(matching-elements
+                                               (pattern-to-condition %)
+                                               row-item)
+                                         exclusions))]
+        (let [elements (seq (clojure.set/difference
+                             (set matches)
+                             (set (apply concat do-not-show))))]
+          (table-cell-items-DOM-R elements new-row-template inherited-down))))))
 
 (defn table-row-DOM-R
   "Generate dom for a table row."
@@ -398,12 +429,10 @@
   [adjacent-referent
    {:keys [column-id template exclusions]} ;; A column header description
    inherited]
-  (let [inherited (assoc inherited
-                         :parent-key (conj (:parent-key inherited) column-id)
-                         :template template)]
+  (let [inherited (assoc inherited :template template)
+        key (conj (:parent-key inherited) column-id)]
     (add-attributes
-     (virtual-item-DOM
-      (:parent-key inherited) adjacent-referent :after inherited)
+     (virtual-item-DOM key adjacent-referent :after inherited)
      {:class "table-cell has-border"})))
 
 (defn table-virtual-row-DOM
@@ -421,7 +450,7 @@
 (defn table-virtual-row-DOM-component
   "Generate a component for a table row."
   [new-row-template adjacent-referent column-descriptions inherited]
-  (let [row-key (conj (:parent-key inherited) :virtual)]
+  (let [row-key (conj (:parent-key inherited) :virtualRow)]
     (make-component
      {:key row-key :class "table-row"}
      [table-virtual-row-DOM
@@ -559,9 +588,21 @@
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)
+                virtual-template (virtual-referent '(anything-immutable
+                                                     (??? :tag)
+                                                     (:column :non-semantic))
+                                                   (item-referent table-item)
+                                                   (item-referent
+                                                    (or (last columns)
+                                                        table-item))
+                                                   :selector :first-group)
+                virtual-column-description {:column-id :virtualColumn
+                                            :template virtual-template
+                                            :exclusions nil}
                 rows (map #(table-row-DOM-component
-                                     % row-template column-descriptions
-                                     inherited)
+                            % row-template (concat column-descriptions
+                                                   [virtual-column-description])
+                            inherited)
                           row-items)
                 virtual-row (table-virtual-row-DOM-component
                              row-template

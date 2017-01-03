@@ -246,22 +246,6 @@
     :expand [do-expand :target]}
    action))
 
-(defn context-referent
-  [context]
-  ((some-fn :referent :adjacent-referent)
-   context))
-
-(defn narrow-referents
-  "Given a context, adjust all its referents to be their narrow versions."
-  [context]
-  (reduce (fn [context key]
-            (update context key #(first-group-referent %)))
-          context
-          (filter #{:referent
-                    :adjacent-referent
-                    :subject-referent}
-                  (keys context))))
-
 (defn broad-alternate-text
   [selector-category]
   (selector-category
@@ -297,9 +281,10 @@
                                       alternate)]
          (println "selector found" selector-category)
          (let [context (dissoc context :alternate)
-               narrow-context (narrow-referents context)
-               wide-referent (context-referent context)
-               narrow-referent (context-referent narrow-context)
+               narrow-context (update-in context [:referent]
+                                         #(first-group-referent %))
+               wide-referent (:referent context)
+               narrow-referent (:referent narrow-context)
                store (current-store (:store session-state))]
            (when (if (virtual-referent? wide-referent)
                    (not= wide-referent narrow-referent)

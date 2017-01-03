@@ -87,7 +87,7 @@
 (deftest do-add-element-test
   (let [result (do-add-element
                 store
-                {:item-referent (item-referent jane-age)}
+                {:referent (item-referent jane-age)}
                 {:target-key ["jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
@@ -99,7 +99,7 @@
 (deftest do-add-twin-test
   (let [result (do-add-twin
                 store
-                {:item-referent (item-referent jane-age)
+                {:referent (item-referent jane-age)
                  :template '(nil ("age" :tag))}
                 {:target-key ["jane" "jane-age"]})
         new-store (:store result)]
@@ -114,7 +114,7 @@
 (deftest do-add-virtual-test
   (let [result (do-add-virtual
                 store
-                {:item-referent
+                {:referent
                  (virtual-referent '(nil ("age" :tag))
                                    (union-referent [(item-referent jane)])
                                    (item-referent jane) :position :after)
@@ -132,7 +132,7 @@
 (deftest do-delete-test
   (let [new-store (do-delete
                    store
-                   {:item-referent (item-referent jane-age)}
+                   {:referent (item-referent jane-age)}
                    {:target-key "jane"})]
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
@@ -158,13 +158,13 @@
     ;; Test delete of the only element of a header
     (let [new-store (do-delete
                      store
-                     {:item-referent (item-referent column1)}
+                     {:referent (item-referent column1)}
                      {:target-key "name"})]
       (is (not (id-valid? new-store column1-id))))
     ;; Test when it is not in header position
     (let [new-store (do-delete
                      store
-                     {:item-referent (union-referent
+                     {:referent (union-referent
                                       [(item-referent joe)
                                        (item-referent name-header)])}
                      {:target-key "name"})]
@@ -172,7 +172,7 @@
     ;; Test delete of placeholder in header.
     (let [new-store (do-delete
                      store
-                     {:item-referent (item-referent placeholder-header)}
+                     {:referent (item-referent placeholder-header)}
                      {:target-key "name"})]
       (is (= (content (description->entity placeholder-id new-store)) "???")))))
 
@@ -180,21 +180,21 @@
   (is (= (content
           (description->entity
            joe-id (do-set-content store
-                                  {:item-referent (item-referent joe)}
+                                  {:referent (item-referent joe)}
                                   {:target-key "joe"
                                    :from "Joe" :to "Jim"})))
          "Jim"))
   (is (= (content
           (description->entity
            joe-id (do-set-content store
-                                  {:item-referent (item-referent joe)}
+                                  {:referent (item-referent joe)}
                                   {:target-key "joe"
                                    :from "Wrong" :to "Jim"})))
          "Joe"))
   ;; Now, try calling it when there is a parallel referent.
   (let [modified (do-set-content
                   store
-                  {:item-referent (union-referent
+                  {:referent (union-referent
                                    [(item-referent joe-age-tag)
                                     (item-referent jane-age-tag)])}
                   {:target-key "both"
@@ -208,7 +208,7 @@
   ;; Try creating new content
     (let [result (do-set-content
                   store
-                  {:item-referent (virtual-referent
+                  {:referent (virtual-referent
                                    '(nil :tag) (item-referent joe-male)
                                     (item-referent joe-male) :position :after)}
                   {:target-key ["joe-male"]
@@ -220,7 +220,7 @@
 
 (deftest do-expand-test
   (is (check (do-expand store
-                        {:item-referent (item-referent joe)}
+                        {:referent (item-referent joe)}
                         {:target-key "joe"
                          :session-state {:name "foo"}})
              {:store store
@@ -236,7 +236,7 @@
                        :selector-interpretation :broad}
         attributes {:commands {:add-element nil}
                     :selector-category :table-header
-                    :target {:item-referent
+                    :target {:referent
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])
                              
@@ -252,7 +252,7 @@
           new-id (last (first select))
           alternate @(:alternate session-state)
           alternate-target (-> (:target attributes)
-                               (assoc :item-referent (item-referent jane))
+                               (assoc :referent (item-referent jane))
                                (dissoc :alternate))]
       (is (check alternate
                  {:new-store new-store

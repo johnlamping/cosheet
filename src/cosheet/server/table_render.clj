@@ -124,7 +124,7 @@
         adjacent-referent (parallel-union-referent
                            (map #(item-or-exemplar-referent % subject-ref)
                                 column-items))]
-    {:add-column {:item-referent
+    {:add-column {:referent
                   (virtual-referent new-header-template
                                     (union-referent [subject-ref])
                                     adjacent-referent :position :after
@@ -162,7 +162,7 @@
                 inherited-down (update-in
                                 inherited [:selectable-attributes]
                                 #(assoc % :add-element
-                                        {:item-referent subject-ref}))]
+                                        {:referent subject-ref}))]
             (cond-> (item-stack-DOM item-without-labels-DOM-R
                                     ordered-elements excludeds
                                     {:class "tag"} inherited-down)
@@ -207,9 +207,9 @@
         example-elements (hierarchy-node-example-elements node)
         selectable-attributes
         (when (= (count example-elements) 1)
-          {:expand {:item-referent column-referent}
-           :delete {:item-referent (table-node-delete-referent
-                                    node rows-referent subject-ref)}})
+          {:expand {:referent column-referent}
+           :delete {:referent (table-node-delete-referent
+                               node rows-referent subject-ref)}})
         descendants (hierarchy-node-descendants node)
         column-requests (map :item descendants)
         inherited-down (-> (if selectable-attributes
@@ -262,8 +262,8 @@
                                %
                                (attributes-for-header-add-column-command
                                 [column-item] elements-template inherited))
-                              {:delete {:item-referent column-referent}
-                               :expand {:item-referent column-referent}})))
+                              {:delete {:referent column-referent}
+                               :expand {:referent column-referent}})))
         key (conj (:parent-key inherited) (:item-id column-item))]
     (add-attributes
      (virtual-item-DOM key column-referent :after inherited-down)
@@ -354,7 +354,7 @@
                       (update-in
                        [:selectable-attributes]
                        #(into-attributes
-                         % {:add-row {:item-referent
+                         % {:add-row {:referent
                                       (virtual-referent
                                        new-row-template nil
                                        (:subject-referent inherited))}})))]
@@ -367,7 +367,7 @@
                 (into-attributes
                  inherited
                  {:selectable-attributes
-                  {:delete {:item-referent (:subject-referent inherited)}}}))
+                  {:delete {:referent (:subject-referent inherited)}}}))
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

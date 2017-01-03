@@ -219,7 +219,7 @@
       (is (check (:key->dom data)
                  {joe-key [:div {:key joe-key
                                  :class (any)
-                                 :target {:item-referent (:item-id joe)}}
+                                 :target {:referent (:item-id joe)}}
                        "Joe"]}))
       (is (= (:next-version data) 3))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]}))
@@ -255,7 +255,7 @@
                          [key (get-in @tracker [:key->dom key])])
                        (get-in @tracker [:components])))
          {joe-key [:div {:key joe-key
-                         :target {:item-referent (:item-id joe)}
+                         :target {:referent (:item-id joe)}
                          :class (any)}
                    "Joe's"]
           [:d] [:div {:key [:d]}
@@ -269,12 +269,12 @@
                                       :parent-key [:d]
                                       :subject-referent nil}]]]
           [:d (item-referent joe)] [:div  {:key [:d (item-referent joe)]
-                                            :target {:item-referent
+                                            :target {:referent
                                                      (:item-id joe)}
                                            :class (any)}
                                     "Joe's"]
           [:d (item-referent jane)] [:div  {:key [:d (item-referent jane)]
-                                            :target {:item-referent
+                                            :target {:referent
                                                      (:item-id jane)}
                                             :class (any)}
                                      "Jane"]}))

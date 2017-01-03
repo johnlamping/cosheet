@@ -54,15 +54,15 @@
          {:class "editable"
           :key key
           :target (add-alternate-to-target
-                   {:item-referent (virtual-referent
-                                    (:template inherited)
-                                    (:subject-referent inherited)
-                                    (or  adjacent-referent
-                                         (:subject-referent inherited))
-                                    :position position
-                                    :selector (when (:selector-category
-                                                     inherited)
-                                                :first-group))}
+                   {:referent (virtual-referent
+                               (:template inherited)
+                               (:subject-referent inherited)
+                               (or  adjacent-referent
+                                    (:subject-referent inherited))
+                               :position position
+                               :selector (when (:selector-category
+                                                inherited)
+                                           :first-group))}
                    inherited)})])
 
 (defn make-component

@@ -42,9 +42,9 @@
     (is (check dom
                [:div {:class "horizontal-tags-element narrow"}
                 (any)
-                [:div {:expand {:item-referent subject-ref}
+                [:div {:expand {:referent subject-ref}
                        :class "content-text editable item"
-                       :target {:item-referent (item-referent fred)}
+                       :target {:referent (item-referent fred)}
                        :key [(:item-id fred) :content]}
                  "Fred"]])))
 
@@ -57,8 +57,8 @@
                     (matching-elements "age" element)))]
     (expr-let [dom (top-level-item-DOM-R age (item-referent age) {})]
       (is (check dom
-                 [:div {:expand {:item-referent (item-referent element)}
+                 [:div {:expand {:referent (item-referent element)}
                         :class "content-text editable item tag"
-                        :target {:item-referent (item-referent age)},
+                        :target {:referent (item-referent age)},
                         :key [(item-referent age) :content]}
                   "age"])))))

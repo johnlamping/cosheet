@@ -101,8 +101,8 @@
 (defn do-add-element
   [store context attributes]
   (let [{:keys [target-key select-pattern selector-category]} attributes]
-    (when-let [item-referent (:item-referent context)]
-      (let [items (instantiate-referent item-referent store)
+    (when-let [referent (:referent context)]
+      (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
             [added [store _]] (create-possible-selector-elements
                                nil items items :after true selector
@@ -113,9 +113,9 @@
 (defn do-add-twin
   [store context attributes]
   (let [{:keys [target-key selector-category]} attributes]
-    (when-let [item-referent (:item-referent context)]
+    (when-let [referent (:referent context)]
       (when-let [condition (:template context)]
-        (let [items (instantiate-referent item-referent store)
+        (let [items (instantiate-referent referent store)
               subjects (map #(map subject %) items)
               selector (when selector-category :first-group)
               [added [store _]] (create-possible-selector-elements
@@ -129,10 +129,10 @@
 
 (defn do-add-virtual
   [store context attributes]
-  (let [{:keys [item-referent parent-key select-pattern]} context
+  (let [{:keys [referent parent-key select-pattern]} context
         select-pattern (or select-pattern (conj parent-key [:pattern]))]
     (add-and-select-virtual-elements
-     store item-referent select-pattern (:target-key attributes))))
+     store referent select-pattern (:target-key attributes))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -142,7 +142,7 @@
 (defn do-delete
   "Remove item(s)." 
   [store context attributes]
-  (when-let [to-delete (:item-referent context)]
+  (when-let [to-delete (:referent context)]
     (let [item-groups (instantiate-referent to-delete store)
           header-group (first item-groups)
           first-content (content (first header-group))
@@ -168,7 +168,7 @@
 (defn do-set-content
   [store context attributes]
   (let [{:keys [target-key from to immutable]} attributes
-        referent (:item-referent context)]
+        referent (:referent context)]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number to)]
         (let [[groups [store _]] (instantiate-or-create-referent
@@ -181,7 +181,7 @@
 (defn do-expand
   [store context attributes]
   (let [{:keys [session-state selector-category]} attributes
-        target-referent (:item-referent context)]
+        target-referent (:referent context)]
     (when (referent? target-referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
@@ -248,7 +248,7 @@
 
 (defn context-referent
   [context]
-  ((some-fn :item-referent :adjacent-referent)
+  ((some-fn :referent :adjacent-referent)
    context))
 
 (defn narrow-referents
@@ -257,7 +257,7 @@
   (reduce (fn [context key]
             (update context key #(first-group-referent %)))
           context
-          (filter #{:item-referent
+          (filter #{:referent
                     :adjacent-referent
                     :subject-referent}
                   (keys context))))

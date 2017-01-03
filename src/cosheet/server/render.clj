@@ -45,13 +45,7 @@
   [      :key  ; A unique client side key (further described below).
       :target  ; The item (or virtual new item) that the dom refers to
                ; It is itself a map, with some of these keys
-               ; :item-referent             Item(s) referred to
-               ; :subject-referent          Subject(s) of the virtual item(s)
-               ; :adjacent-referent         item(s) adjacent to new item(s)
-               ;                            Either one per new item or one
-               ;                            group per new item.
-               ; :position                  :before or :after item/adjacent
-               ; :template                  Added item(s) should satisfy this.
+               ; :referent                  Item(s) referred to
                ; :parent-key                The key of the parent of a virtual
                ;                            new item.
                ; :select-pattern            The pattern to use to generate the
@@ -196,7 +190,7 @@
                           (update-in
                            [:selectable-attributes]
                            #(into-attributes
-                             % {:expand {:item-referent subject-ref}})))
+                             % {:expand {:referent subject-ref}})))
               dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
                    item referent tags inherited)]
           (expr-let [dom dom]

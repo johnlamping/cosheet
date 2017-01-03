@@ -34,11 +34,11 @@
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
     (cond->
-        {:item-referent (virtual-referent
-                         (when (seq conditions) (list* nil conditions))
-                         subject-ref
-                         (hierarchy-node-items-referent
-                          hierarchy-node subject-ref))
+        {:referent (virtual-referent
+                    (when (seq conditions) (list* nil conditions))
+                    subject-ref
+                    (hierarchy-node-items-referent
+                     hierarchy-node subject-ref))
         :parent-key (:parent-key inherited)})))
 
 (defn add-adjacent-sibling-command
@@ -324,7 +324,7 @@
                      is-placeholder (str " placeholder"))
             :target (add-alternate-to-target
                      (assoc (select-keys inherited [:template])
-                            :item-referent item-referent)
+                            :referent item-referent)
                      inherited)})
      (cond anything "..."
            is-placeholder "???"                     
@@ -426,7 +426,7 @@
          (update
           inherited :selectable-attributes
           #(assoc (select-keys % [:column :row])
-                  :expand (or (:expand %) {:item-referent referent}))))))))
+                  :expand (or (:expand %) {:referent referent}))))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

@@ -335,9 +335,13 @@
                         inherited
                         :selector-category :table-header
                         :alternate-target true)
-        last-column (last (hierarchy-node-descendants (last hierarchy)))
+        adjacent-referent (if (seq hierarchy)
+                            (let [last-column (last (hierarchy-node-descendants
+                                                     (last hierarchy)))]
+                              (item-referent (:item last-column)))
+                            (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
-                        (item-referent (:item last-column)) inherited-down)]
+                        adjacent-referent inherited-down)]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)

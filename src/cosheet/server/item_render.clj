@@ -314,18 +314,14 @@
   (let [is-placeholder (and (symbol? content)
                             (= (subs (str content) 0 3) "??-"))
         anything (#{'anything 'anything-immutable} content)
-        immutable (= content 'anything-immutable)
         template (contains? inherited :template)]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
-           (into-attributes (cond-> (select-keys inherited [:selector-category])
-                              immutable (assoc :immutable true))
+           (into-attributes (select-keys inherited [:selector-category])
                             (:selectable-attributes inherited))
            {:class (cond-> "content-text editable"
-                     is-placeholder (str " placeholder")
-                     anything (str " anything")
-                     immutable (str " immutable"))
+                     is-placeholder (str " placeholder"))
             :target (add-alternate-to-target
                      (assoc (select-keys inherited [:template])
                             :item-referent item-referent)

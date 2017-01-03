@@ -47,7 +47,7 @@
   inherited must specify a :selectable-attributes :target,
   into which we will put the subject and template."
   [key adjacent-referent position inherited]
-  (assert (not (nil? (:subject inherited))))
+  (assert (not (nil? (:subject-referent inherited))))
   [:div (into-attributes
          (into-attributes (:selectable-attributes inherited)
                           (select-keys inherited [:selector-category]))
@@ -56,8 +56,9 @@
           :target (add-alternate-to-target
                    {:item-referent (virtual-referent
                                     (:template inherited)
-                                    (:subject inherited)
-                                    (or  adjacent-referent (:subject inherited))
+                                    (:subject-referent inherited)
+                                    (or  adjacent-referent
+                                         (:subject-referent inherited))
                                     :position position
                                     :selector (when (:selector-category
                                                      inherited)

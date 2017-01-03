@@ -103,7 +103,7 @@
   of the header."
   [column-items elements-template inherited]
   (assert (:template inherited))
-  (let [subject (:subject inherited)
+  (let [subject-ref (:subject-referent inherited)
         new-elements-template (cons '??? (rest elements-template))
         new-header-template (apply list (concat (:template inherited)
                                                 [new-elements-template]))
@@ -122,11 +122,11 @@
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])
         adjacent-referent (parallel-union-referent
-                           (map #(item-or-exemplar-referent % subject)
+                           (map #(item-or-exemplar-referent % subject-ref)
                                 column-items))]
     {:add-column {:item-referent
                   (virtual-referent new-header-template
-                                    (union-referent [subject])
+                                    (union-referent [subject-ref])
                                     adjacent-referent :position :after
                                     :selector :first-group)
               :select-pattern select-pattern}}))
@@ -153,12 +153,12 @@
           (expr-let [inner-dom (elements-DOM-R non-labels true nil inherited)]
             (label-wrapper-DOM-R
              [:div {:class "item elements-wrapper"} inner-dom]
-             item (:subject inherited) labels false inherited)))
+             item (:subject-referent inherited) labels false inherited)))
         labels
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)
                                        ordered-elements)]
-          (let [subject-ref (:subject inherited)
+          (let [subject-ref (:subject-referent inherited)
                 inherited-down (update-in
                                 inherited [:selectable-attributes]
                                 #(assoc % :add-element
@@ -199,9 +199,9 @@
   of the column request(s), in contrast to inherited, which describe the
   request(s) overall."
   [node rows-referent elements-template inherited]
-  (let [subject (:subject inherited)
+  (let [subject-ref (:subject-referent inherited)
         column-referent (union-referent
-                         [(table-node-header-elements-referent node subject)
+                         [(table-node-header-elements-referent node subject-ref)
                           (table-node-row-elements-referent node rows-referent)
                           ])
         example-elements (hierarchy-node-example-elements node)
@@ -209,7 +209,7 @@
         (when (= (count example-elements) 1)
           {:expand {:item-referent column-referent}
            :delete {:item-referent (table-node-delete-referent
-                                    node rows-referent subject)}})
+                                    node rows-referent subject-ref)}})
         descendants (hierarchy-node-descendants node)
         column-requests (map :item descendants)
         inherited-down (-> (if selectable-attributes
@@ -218,7 +218,7 @@
                                (dissoc inherited :selectable-attributes))
                            (assoc :width (* 0.75 (count descendants))
                                   :template elements-template
-                                  :subject column-referent)
+                                  :subject-referent column-referent)
                            (update-in
                             [:selectable-attributes]
                             #(into-attributes
@@ -231,10 +231,11 @@
   [adjacent-referent inherited]
   (let [key (conj (:parent-key inherited) :virtualColumn)
         inherited (assoc inherited
-                         :subject (virtual-referent
-                                   (:template inherited) (:subject inherited)
-                                   adjacent-referent
-                                   :selector :first-group)
+                         :subject-referent (virtual-referent
+                                            (:template inherited)
+                                            (:subject-referent inherited)
+                                            adjacent-referent
+                                            :selector :first-group)
                          :template ["" :tag])]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
@@ -248,11 +249,11 @@
   [column-item containing-node rows-referent elements-template inherited]
   (let [column-referent (union-referent
                          [(item-or-exemplar-referent
-                           column-item (:subject inherited))
+                           column-item (:subject-referent inherited))
                           (table-node-exclusive-row-elements-referent
                            containing-node rows-referent)])
         inherited-down (-> inherited
-                           (assoc :subject column-referent
+                           (assoc :subject-referent column-referent
                                   :template elements-template)
                            (update-in
                             [:selectable-attributes]
@@ -350,23 +351,23 @@
   [items new-row-template inherited]
   (let [inherited (-> inherited
                       (assoc :width 0.75)
-                      (update-in [:selectable-attributes]
-                                 #(into-attributes
-                                   % {:add-row {:item-referent
-                                                (virtual-referent
-                                                 new-row-template
-                                                 nil
-                                                 (:subject inherited))}})))]
+                      (update-in
+                       [:selectable-attributes]
+                       #(into-attributes
+                         % {:add-row {:item-referent
+                                      (virtual-referent
+                                       new-row-template nil
+                                       (:subject-referent inherited))}})))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
                (virtual-item-DOM
-                (:parent-key inherited) (:subject inherited) :after
+                (:parent-key inherited) (:subject-referent inherited) :after
                 (into-attributes
                  inherited
                  {:selectable-attributes
-                  {:delete {:item-referent (:subject inherited)}}}))
+                  {:delete {:item-referent (:subject-referent inherited)}}}))
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 
@@ -377,7 +378,7 @@
   (let [inherited (assoc inherited :template template)
         key (conj (:parent-key inherited) column-id)]
     (add-attributes
-     (virtual-item-DOM key (:subject inherited) :after inherited)
+     (virtual-item-DOM key (:subject-referent inherited) :after inherited)
      {:class "table-cell virtual-column has-border"})))
 
 (defn table-cell-DOM-R
@@ -408,7 +409,7 @@
   [row-item row-key new-row-template column-descriptions inherited]
   (let [inherited (-> inherited
                       (assoc :parent-key row-key)
-                      (update-in [:subject]
+                      (update-in [:subject-referent]
                                  #(item-or-exemplar-referent row-item %)))]
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
@@ -440,7 +441,7 @@
   [row-key new-row-template adjacent-referent column-descriptions inherited]
   (let [inherited (-> inherited
                       (assoc :parent-key row-key)
-                      (update-in [:subject]
+                      (update-in [:subject-referent]
                                  #(virtual-referent
                                    new-row-template % adjacent-referent)))
         cells (map #(table-virtual-row-cell-DOM
@@ -523,7 +524,7 @@
   (assert (satisfies? entity/StoredEntity table-item))
   (let [store (:store table-item)
         table-referent (item-or-exemplar-referent
-                        table-item (:subject inherited))
+                        table-item (:subject-referent inherited))
         table-key (conj (:parent-key inherited) table-referent)
         inherited (assoc inherited :parent-key table-key)]
     (expr-let [row-condition-items (entity/label->elements
@@ -573,16 +574,17 @@
                             (assoc
                              inherited
                              :selector-category :table-condition
-                             :subject (union-referent
-                                       [(item-referent row-condition-item)
-                                        rows-referent])
+                             :subject-referent (union-referent
+                                                [(item-referent
+                                                  row-condition-item)
+                                                 rows-referent])
                              :template (if condition-is-tags
                                          '(nil :tag) '(nil))
                              :alternate-target true))
              headers (table-header-DOM-R
                       hierarchy rows-referent
                       (assoc inherited
-                             :subject (item-referent table-item)
+                             :subject-referent (item-referent table-item)
                              :template '(anything-immutable
                                          (:column :non-semantic))))]
           (let [column-descriptions (mapcat

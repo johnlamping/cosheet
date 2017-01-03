@@ -27,7 +27,7 @@
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
-  (let [subject (:subject inherited)
+  (let [subject-ref (:subject-referent inherited)
         ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
@@ -36,9 +36,9 @@
     (cond->
         {:item-referent (virtual-referent
                          (when (seq conditions) (list* nil conditions))
-                         subject
+                         subject-ref
                          (hierarchy-node-items-referent
-                          hierarchy-node subject))
+                          hierarchy-node subject-ref))
         :parent-key (:parent-key inherited)})))
 
 (defn add-adjacent-sibling-command
@@ -70,10 +70,10 @@
                                         property-list))
                          inherited)]
     (if (empty? members)
-      (let [subject (:subject inherited)
-            adjacent-item (:item (first (hierarchy-node-descendants
+      (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
-            adjacent-referent (item-or-exemplar-referent adjacent-item subject)
+            adjacent-referent (item-or-exemplar-referent
+                               adjacent-item (:subject-referent inherited))
             example-elements (hierarchy-node-example-elements hierarchy-node)
             key (conj (:parent-key inherited)
                       :example-element
@@ -105,7 +105,7 @@
   Inherited describes the overall context of the node."
   [hierarchy-node inherited]
   (let [items-referent (hierarchy-node-items-referent
-                        hierarchy-node (:subject inherited))
+                        hierarchy-node (:subject-referent inherited))
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
         tags-parent-key (conj (:parent-key inherited)
@@ -115,7 +115,7 @@
                                    hierarchy-node inherited)
                                   :parent-key tags-parent-key
                                   :template '(nil :tag)
-                                  :subject items-referent)]
+                                  :subject-referent items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-item-DOM (conj tags-parent-key :tags)
@@ -351,7 +351,7 @@
             (-> inherited
                 (update-in [:priority] inc)
                 (assoc :parent-key key
-                       :subject item-referent
+                       :subject-referent item-referent
                        :template '(nil))
                 (assoc-if-non-empty
                  :selectable-attributes (:element-attributes inherited))
@@ -371,7 +371,7 @@
     (let [key (conj (:parent-key inherited) (:item-id item))
           inherited-for-tags (-> inherited
                                  (assoc :template '(nil :tag)
-                                        :subject item-referent
+                                        :subject-referent item-referent
                                         :parent-key key))]
       (if (empty? label-elements)
         [:div {:class "horizontal-tags-element narrow"}
@@ -398,11 +398,12 @@
   "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
    Either the referent for the item/group must be provided,
-   or inherited must contain :subject.
+   or inherited must contain :subject-referent.
    We only record the key on the content, not the whole item
    (unless it is just the content)."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+   (let [referent (item-or-exemplar-referent
+                   item (:subject-referent inherited))]
      (item-without-labels-DOM-R item referent excluded-elements inherited)))
   ([item referent excluded-elements inherited]
    (println
@@ -434,10 +435,11 @@
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.
    Either the referent for the item/group must be provided,
-   or inherited must contain :subject.
+   or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+   (let [referent (item-or-exemplar-referent
+                   item (:subject-referent inherited))]
      (item-DOM-impl-R item referent excluded-elements false inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements false inherited)))
@@ -446,10 +448,11 @@
    "Make a dom for an item or exemplar for a group of items, always showing
    at least one label, empty, if necessary. 
    Either the referent for the item/group must be provided,
-   or inherited must contain :subject.
+   or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent item (:subject inherited))]
+   (let [referent (item-or-exemplar-referent
+                   item (:subject-referent inherited))]
      (item-DOM-impl-R item referent excluded-elements true inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements true inherited)))

@@ -134,25 +134,26 @@
   (let [immutable-store (current-store store)
         selector-category (when selector-string
                             (string->referent selector-string))
-        [immutable-item referent subject]
+        [immutable-item referent subject-ref]
         (or (when referent-string
               (let [referent (string->referent referent-string)]
                 (println "item referent" (simplify-for-print referent))
                 (when referent
-                  (let [[_ subject] (referent->exemplar-and-subject referent)
+                  (let [[_ subject-ref]
+                        (referent->exemplar-and-subject referent)
                         item (first (apply concat
                                      (instantiate-referent referent
                                                            immutable-store)))]
                     (println "item" (simplify-for-print item))
                     (when (and item (user-visible-item? item))
-                      [item referent subject])))))
+                      [item referent subject-ref])))))
             (let [item (first (matching-items '(nil :root) immutable-store))]
               [item (item-referent item) nil]))
         root-item (description->entity (:item-id immutable-item) store)
         definition [top-level-item-DOM-R
                     root-item referent
                     (cond-> {}
-                      subject (assoc :subject subject)
+                      subject-ref (assoc :subject-referent subject-ref)
                       selector-category (assoc
                                          :selector-category selector-category
                                          :alternate-target true))]

@@ -37,7 +37,7 @@
         [dom fred] (let-mutated [fred "Fred"]
                      (expr-let [dom (top-level-item-DOM-R
                                      fred (item-referent fred)
-                                     {:subject subject-ref})]
+                                     {:subject-referent subject-ref})]
                        [dom (item->immutable fred)]))]
     (is (check dom
                [:div {:class "horizontal-tags-element narrow"}

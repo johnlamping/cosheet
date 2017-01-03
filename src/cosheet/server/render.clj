@@ -127,7 +127,7 @@
                            ; user can't interact with it, but this is a
                            ; that is unique to the parent, and can thus be
                            ; used to generate unique keys for its children.
-;                :subject  ; The referent of the subject(s) of the item
+;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
 ;               :template  ; The template that the twins of this dom,
@@ -186,7 +186,7 @@
     (expr-let [table (matching-elements :table item)
                tags (matching-elements :tag item)]
       (if (empty? table)
-        (let [subject-ref (or (:subject inherited)
+        (let [subject-ref (or (:subject-referent inherited)
                               (let [[exemplar subject-ref]
                                     (referent->exemplar-and-subject referent)]
                                 (or subject-ref

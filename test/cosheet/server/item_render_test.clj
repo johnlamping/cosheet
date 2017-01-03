@@ -35,7 +35,7 @@
 
 (def base-inherited {:priority 0
                      :parent-key [:root]
-                     :subject (make-id "root")})
+                     :subject-referent (make-id "root")})
 (deftest item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[dom fred] (let-mutated [fred "Fred"]
@@ -126,7 +126,7 @@
               {:priority 1
                :width 0.5
                :parent-key tags-key
-               :subject one-another-two-referent
+               :subject-referent one-another-two-referent
                :template '(nil :tag)
                :selectable-attributes
                {:add-sibling {:item-referent (virtual-referent
@@ -146,7 +146,7 @@
                  {:priority 1
                   :width 0.5
                   :parent-key age-key
-                  :subject (item-referent age)
+                  :subject-referent (item-referent age)
                   :template '(nil ("confidence" :tag))
                   :selectable-attributes
                   {:add-sibling {:item-referent (virtual-referent
@@ -169,7 +169,7 @@
                  {:priority 1
                   :width 0.5
                   :parent-key (conj age-key (:item-id two) :outside)
-                  :subject (item-referent two)
+                  :subject-referent (item-referent two)
                   :template '(nil :tag)
                   :selectable-attributes
                   {:add-sibling {:item-referent (virtual-referent
@@ -186,7 +186,7 @@
                   {:priority 1
                    :width 0.5
                    :parent-key age-key
-                   :subject (item-referent age)
+                   :subject-referent (item-referent age)
                    :template (as-set '(nil ("confidence" :tag)
                                            ("probability" :tag)))
                    :selectable-attributes
@@ -213,7 +213,7 @@
               {:priority 1
                :width 0.5
                :parent-key age-key
-               :subject (item-referent age)
+               :subject-referent (item-referent age)
                :template '(nil)
                :selector-category :some-category
                :alternate-target :some-alternate}]]]]]))))
@@ -292,7 +292,7 @@
                {:priority 1
                 :width 0.25
                 :parent-key tags-key
-                :subject all-elements-referent
+                :subject-referent all-elements-referent
                 :template '(nil :tag)
                 :selectable-attributes
                 {:add-sibling {:item-referent (virtual-referent
@@ -320,7 +320,7 @@
                 {:priority 1
                  :width 0.25
                  :parent-key tags-key
-                 :subject likelihoods-referent
+                 :subject-referent likelihoods-referent
                  :template '(nil :tag)
                  :selectable-attributes
                  {:add-sibling {:item-referent (virtual-referent
@@ -335,7 +335,7 @@
                {:priority 1
                 :width 0.6875
                 :parent-key age-key
-                :subject (item-referent age)
+                :subject-referent (item-referent age)
                 :template (as-set '(nil ("confidence" :tag)
                                         ("likelihood" :tag)))
                 :selectable-attributes
@@ -359,7 +359,7 @@
                 {:priority 1
                  :width 0.25
                  :parent-key (conj age-key (:item-id two) :outside)
-                 :subject (item-referent two)
+                 :subject-referent (item-referent two)
                  :template '(nil :tag)
                  :selectable-attributes
                  {:add-sibling {:item-referent (virtual-referent
@@ -372,7 +372,7 @@
               {:priority 1
                :width 0.6875
                :parent-key age-key
-               :subject (item-referent age)
+               :subject-referent (item-referent age)
                :template (as-set '(nil ("confidence" :tag)
                                        ("probability" :tag)))
                :selectable-attributes
@@ -391,7 +391,7 @@
                {:priority 1
                 :width 0.6875
                 :parent-key age-key
-                :subject (item-referent age)
+                :subject-referent (item-referent age)
                 :template '(nil ("confidence" :tag))}]]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
@@ -415,7 +415,7 @@
                   [:component {:key age-key :class "tag"}
                    [item-without-labels-DOM-R age [age-tag]
                     {:priority 0 :parent-key element-key
-                     :subject (item-referent element)
+                     :subject-referent (item-referent element)
                      :width 1.0
                      :template '(nil :tag)
                      :selectable-attributes

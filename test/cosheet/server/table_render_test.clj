@@ -122,7 +122,7 @@
                  {:priority 1
                   :width 0.75
                   :parent-key table-key
-                  :subject first-column-referent
+                  :subject-referent first-column-referent
                   :template '(nil :tag)
                   :selector-category :table-header
                   :alternate-target true
@@ -220,7 +220,7 @@
                 {:priority 1
                  :width 0.75
                  :parent-key (conj table-key (:item-id joe) (any))
-                 :subject (item-referent joe)
+                 :subject-referent (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes
                  {:add-row {:item-referent (virtual-referent

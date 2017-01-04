@@ -24,4 +24,8 @@
     (is (= (value ra) 2))
     (is (= (value rb) 3))
     (state-map-reset! sm :b 5)
-    (is (= (value rb) 5))))
+    (is (= (value rb) 5))
+    (let [result (state-map-swap-control-return! sm :b (fn [x] [(inc x) 99]))]
+      (is (= (value rb) 6))
+      (is (= result 99)))))
+

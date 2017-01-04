@@ -1,6 +1,7 @@
 (ns cosheet.state-map
   (:require (cosheet [mutable-manager
                       :refer [new-mutable-manager-data
+                              current-mutable-value
                               get-or-make-reporter
                               describe-and-swap!
                               describe-and-swap-control-return!]])))
@@ -14,6 +15,9 @@
 
 (defn state-map-get [state-map key & rest]
   (apply get-or-make-reporter [key] get state-map key rest))
+
+(defn state-map-get-current-value [state-map key & rest]
+  (apply get (current-mutable-value state-map) key rest))
 
 (defn state-map-reset! [state-map key value]
   (describe-and-swap! state-map (fn [data] [(assoc data key value) [key]])))

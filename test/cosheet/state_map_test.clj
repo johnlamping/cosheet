@@ -22,6 +22,7 @@
     (is (= (value rc) "nobody here"))
     (state-map-swap! sm :a inc)
     (is (= (value ra) 2))
+    (is (= (state-map-get-current-value sm :a) 2))
     (is (= (value rb) 3))
     (state-map-reset! sm :b 5)
     (is (= (value rb) 5))

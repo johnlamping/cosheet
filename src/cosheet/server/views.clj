@@ -21,6 +21,8 @@
     [task-queue :refer [finished-all-tasks?]]
     [dom-utils :refer [dom-attributes]]
     [reporters :as reporter]
+    [mutable-manager :refer [current-mutable-value]]
+    [state-map :refer [new-state-map state-map-reset!]]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [referent :refer [item-referent referent->exemplar-and-subject
@@ -114,17 +116,18 @@
 ;;;           :name  The file name to mirror the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
-;;;    :last-action  an atom holding the id of the last action we did.
-;;;                  This keeps us from repeating an action if the
-;;;                  client gets impatient and repeats actions while we
-;;;                  are working on them.
-;;;     :alternate   An atom possibly holding a map indicating an alternate
-;;;                  interpretation of the last command. the map contains
-;;;                  :new-store  The state of the immutable store after
-;;;                              the action.
-;;;                     :action  The alternate storage update action,
-;;;                              with the store missing.
-;;;                       :text  The text shown to the user.
+;;;   :client-state  A state-map holding these keys:
+;;;       :last-action  The id of the last action we did.
+;;;                     This keeps us from repeating an action if the
+;;;                     client gets impatient and repeats actions while we
+;;;                     are working on them.
+;;;        :alternate   Either nil or a map indicating an alternate
+;;;                     interpretation of the last command. the map contains
+;;;                     :new-store  The state of the immutable store after
+;;;                                 the action.
+;;;                        :action  The alternate storage update action,
+;;;                                 with the store missing.
+;;;                          :text  The text shown to the user.
 ;;; When we process client commands, we add to session-state
 ;;; :selector-interpretation from the client's request.
 (def session-states (atom {}))
@@ -203,8 +206,8 @@
                          :store store
                          :tracker (create-tracker
                                    store referent-string selector-string)
-                         :last-action (atom nil)
-                         :alternate (atom nil)})
+                         :client-state (new-state-map {:last-action nil
+                                                       :alternate nil})})
                  id])))]
     (compute manager-data 1000)
     (println "computed some")
@@ -303,27 +306,27 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [id actions acknowledge initialize :selector-interpretation]}
+        {:keys [id actions acknowledge initialize selector-interpretation]}
         params
         session-state (get-session-state id)]
     (if session-state
-      (let [{:keys [tracker name store last-action]} session-state
+      (let [{:keys [tracker name store client-state]} session-state
             original_store (current-store store)]
         (println "request" params)
         (when initialize
           (println "requesting client refresh")
           (request-client-refresh tracker)
-          (reset! last-action nil))
+          (state-map-reset! client-state :last-action nil))
         (println "process acknowledgements" acknowledge)
         (process-acknowledgements tracker acknowledge)
-        (let [action-sequence (confirm-actions actions last-action)]
+        (let [action-sequence (confirm-actions actions client-state)]
           (when (and (not-any? #{[:alternate]} action-sequence)
                      (not (empty? action-sequence))
                      (empty? acknowledge))
             (println "resetting alternate" action-sequence acknowledge)
-            (reset! (:alternate session-state) nil))
+            (state-map-reset! client-state :alternate nil))
           (let [augmented-state (assoc session-state :selector-interpretation
-                                      selector-interpretation)
+                                       selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
             (let [new-store (current-store store)]
               (when (not= new-store store)

@@ -4,6 +4,8 @@
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map
                    swap-control-return! equivalent-atoms?]]
+    [state-map :refer [state-map-get-current-value state-map-reset!
+                       state-map-swap-control-return!]]
     [store :refer [update-content
                    fetch-and-clear-modified-ids
                    do-update-control-return! revise-update-control-return!
@@ -333,15 +335,16 @@
                 result (do-storage-update-action
                            (partial do-update-control-return! mutable-store)
                            handler context attributes)]
-            (reset! (:alternate session-state)
-                    (when alternate-context
-                      (println "setting non-trivial alternate context." text)
-                      {:new-store (first (fetch-and-clear-modified-ids
-                                          (:store result)))
-                       :action [handler
-                                alternate-context
-                                (dissoc attributes :session-state)]
-                       :text text}))
+            (state-map-reset!
+             (:client-state session-state) :alternate
+             (when alternate-context
+               (println "setting non-trivial alternate context." text)
+               {:new-store (first (fetch-and-clear-modified-ids
+                                   (:store result)))
+                :action [handler
+                         alternate-context
+                         (dissoc attributes :session-state)]
+                :text text}))
             (dissoc result :store)))
         (println "No context for action:" action-type
                  (dissoc attributes :session-state)))
@@ -351,7 +354,8 @@
 (defn do-alternate-contextual-action
   "Do the alternate interpretation of the recorded contextual action."
   [mutable-store session-state]
-  (when-let [alternate @(:alternate session-state)]
+  (when-let [alternate (state-map-get-current-value
+                        (:client-state session-state) :alternate)]
     (println "doing alternate.")
     (let [{:keys [new-store action]} alternate
           [handler context attributes] action
@@ -384,7 +388,7 @@
       (do (println "command: " (map simplify-for-print action))
           (let [for-client
                 (apply handler mutable-store session-state additional-args)]
-            (reset! (:alternate session-state) nil)
+            (state-map-reset! (:client-state session-state) :alternate nil)
             for-client))
       (if (= (mod (count action) 2) 0)
         (do-contextual-action mutable-store session-state action)
@@ -402,19 +406,20 @@
                     (into client-info
                           (select-keys for-client [:select :open]))))
                 {} action-sequence)]
-    (if-let [alternate-text (:text @(:alternate session-state))]
+    (if-let [alternate-text (:text (state-map-get-current-value
+                                    (:client-state session-state) :alternate))]
       (assoc for-client :alternate-text alternate-text)
       for-client)))
 
 (defn confirm-actions
   "Check that the actions have not already been done, update the
-  last-action atom to reflect that these actions have
+  last-action to reflect that these actions have
   been done, and return the sequence of actions to be done."
-  [actions last-action-atom]
-  (swap-control-return!
-   last-action-atom
+  [actions client-state]
+  (state-map-swap-control-return!
+   client-state :last-action
    (fn [last-action]
-     (let [keys (cond->> (sort (keys actions))
+     (let [later-times (cond->> (sort (keys actions))
                   last-action (filter #(pos? (compare % last-action))))]
-       [(if (empty? keys) last-action (last keys))
-        (map actions keys)]))))
+       [(if (empty? later-times) last-action (last later-times))
+        (map actions later-times)]))))

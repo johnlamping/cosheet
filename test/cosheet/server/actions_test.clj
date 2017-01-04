@@ -5,6 +5,8 @@
             (cosheet
              [utils :refer [dissoc-in]]
              [orderable :as orderable]
+             [state-map :refer [new-state-map state-map-get-current-value
+                                state-map-reset!]]
              [entity :as entity :refer [description->entity to-list
                                         content elements
                                         label->elements label->content]]
@@ -231,9 +233,10 @@
   (let [mutable-store (new-mutable-store store)
         tracker (new-dom-tracker mutable-store)
         session-state {:tracker tracker
-                       :alternate (atom nil)
                        :store mutable-store
-                       :selector-interpretation :broad}
+                       :selector-interpretation :broad
+                       :client-state (new-state-map {:last-action nil
+                                                     :alternate nil})}
         attributes {:commands {:add-element nil}
                     :selector-category :table-header
                     :target {:referent
@@ -250,7 +253,8 @@
           new-store (current-store mutable-store)
           select (:select result)
           new-id (last (first select))
-          alternate @(:alternate session-state)
+          alternate (state-map-get-current-value
+                     (:client-state session-state) :alternate)
           alternate-target (-> (:target attributes)
                                (assoc :referent (item-referent jane))
                                (dissoc :alternate))]
@@ -282,19 +286,23 @@
               (description->entity new-id new-store))
              'anything))
       ;; Check undo redo.
-      (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+      (do-actions mutable-store {:tracker tracker
+                                 :client-state (new-state-map {:last-action nil
+                                                               :alternate nil})}
                   [[:undo]])
       (is (check (current-store mutable-store)
                  (assoc store :modified-ids #{})))
       ;; Check that alternate does nothing if the store isn't what it expects.
-      (reset! (:alternate session-state) alternate)
+      (state-map-reset! (:client-state session-state) :alternate alternate)
       (do-actions mutable-store session-state [[:alternate]])
       ;; Check redo.
-      (do-actions mutable-store {:tracker tracker :alternate (atom nil)}
+      (do-actions mutable-store {:tracker tracker
+                                 :client-state (new-state-map {:last-action nil
+                                                               :alternate nil})}
                   [[:redo]])
       (is (check (current-store mutable-store) new-store))
       ;; Check alternate.
-      (reset! (:alternate session-state) alternate)
+      (state-map-reset! (:client-state session-state) :alternate alternate)
       (let [result (do-actions mutable-store session-state [[:alternate]])
             alternate-store (current-store mutable-store)]
         (is (check (item->canonical-semantic
@@ -313,13 +321,13 @@
                                         (45 ("age" :tag))))))))))
 
 (deftest confirm-actions-test
-  (let [last (atom nil)]
-    (is (= (confirm-actions {1 :a 2 :b 3 :c} last)
+  (let [client-state (new-state-map {:last-action nil})]
+    (is (= (confirm-actions {1 :a 2 :b 3 :c} client-state)
            [:a :b :c]))
-    (is (= (confirm-actions {2 :b 3 :c 4 :d} last)
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} client-state)
            [:d]))
-    (is (= (confirm-actions {2 :b 3 :c 4 :d} last)
+    (is (= (confirm-actions {2 :b 3 :c 4 :d} client-state)
            []))
-    (is (= (confirm-actions {} last)
+    (is (= (confirm-actions {} client-state)
            []))
-    (is (= @last 4))))
+    (is (= (state-map-get-current-value client-state :last-action) 4))))

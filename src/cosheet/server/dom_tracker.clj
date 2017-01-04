@@ -344,7 +344,7 @@
       data)))
 
 (defn update-ensure-component
-  "Make sure there is a component with the given key.."
+  "Make sure there is a component with the given key."
   [data key]
   (if (get-in data [:components key])
     data
@@ -396,6 +396,10 @@
   (swap-and-act
    tracker
    #(-> %
+        ;; It is possible that the id was paired with
+        ;; something different. Get rid of that pairing too.
+        (update-clear-component (get-in % [:id->key client-id]))
+        (update-clear-component key)
         (assoc-in [:key->id key] client-id)
         (assoc-in [:id->key client-id] key)
         (update-set-component {:definition definition :key key}))))
@@ -455,5 +459,3 @@
     :next-version 1
     :out-of-date-keys (priority-map/priority-map)
     :manager-data md}))
-
-

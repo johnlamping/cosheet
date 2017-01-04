@@ -19,5 +19,3 @@
 
 (defn state-map-swap! [state-map key fun]
   (describe-and-swap! state-map (fn [data] [(update data key fun) [key]])))
-
-

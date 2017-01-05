@@ -7,7 +7,7 @@
     [utils :refer [swap-control-return! ensure-in-atom-map!]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store id-valid?]]
+                   read-store write-store id-valid? call-dependent-on-id]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
     [entity :refer [description->entity in-different-store]]
@@ -16,6 +16,7 @@
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     query-impl
+    [expression :refer [expr-let]]
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
@@ -23,11 +24,11 @@
     [reporters :as reporter]
     [mutable-manager :refer [current-mutable-value]]
     [state-map :refer [new-state-map state-map-get-current-value
-                       state-map-reset!]]
+                       state-map-get state-map-reset!]]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [referent :refer [item-referent referent->exemplar-and-subject
-                      string->referent instantiate-referent]]
+                      string->referent instantiate-to-items]]
     [render :refer [top-level-item-DOM-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
@@ -118,8 +119,8 @@
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
-;;;            :root-referent  The referent for the root of the display
-;;;    :root-subject-referent  The referent, if any for the subject of the
+;;;                 :referent  The referent for the root of the display
+;;;         :subject-referent  The referent, if any for the subject of the
 ;;;                            root of the display.
 ;;;              :last-action  The id of the last action we did.
 ;;;                            This keeps us from repeating an action if the
@@ -147,38 +148,44 @@
                 (when referent
                   (let [[_ subject-ref]
                         (referent->exemplar-and-subject referent)
-                        item (first (apply concat
-                                           (instantiate-referent
-                                            referent immutable-store)))]
+                        item (first (instantiate-to-items
+                                     referent immutable-store))]
                     (println "item" (simplify-for-print item))
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))
             (let [item (first (matching-items '(nil :root) immutable-store))]
               [(item-referent item) nil]))]
-    (new-state-map {:root-referent referent
+    (new-state-map {:referent referent
                     :subject-referent subject-ref
                     :last-action nil
                     :alternate nil})))
+
+(defn DOM-for-client-R
+  "Return a reporter giving the DOM specified by the client."
+  [store client-state selector-category]
+  (expr-let [referent (state-map-get client-state :referent)
+             subject-referent (state-map-get client-state :subject-referent)
+             immutable-item (call-dependent-on-id
+                             store nil
+                             (fn [immutable-store]
+                               (first (instantiate-to-items
+                                       referent immutable-store))))]
+    (if immutable-item
+      (let [item (description->entity (:item-id immutable-item) store)]
+        (top-level-item-DOM-R
+         item referent
+         (cond-> {}
+           subject-referent (assoc :subject-referent subject-referent)
+           selector-category (assoc
+                              :selector-category selector-category
+                              :alternate-target true))))
+      [:div])))
 
 (defn create-tracker
   [store client-state selector-string]
   (let [selector-category (when selector-string
                             (string->referent selector-string))
-        referent (state-map-get-current-value client-state :root-referent)
-        subject-ref (state-map-get-current-value
-                     client-state :root-subject-referent)
-        immutable-store (current-store store)
-        immutable-item (first (apply concat
-                                     (instantiate-referent
-                                      referent immutable-store)))
-        root-item (description->entity (:item-id immutable-item) store)
-        definition [top-level-item-DOM-R
-                    root-item referent
-                    (cond-> {}
-                      subject-ref (assoc :subject-referent subject-ref)
-                      selector-category (assoc
-                                         :selector-category selector-category
-                                         :alternate-target true))]
+        definition [DOM-for-client-R store client-state selector-category]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker" (simplify-for-print definition))

@@ -21,8 +21,8 @@
     (non-implicit-id (:containing-item-id id))
     id))
 
-(defn items-affected-by-id
-  "Return a seq of items that might be affected by a change to the given id."
+(defn item-ids-affected-by-id
+  "Return a seq of item ids that might be affected by a change to the given id."
   [id old-store new-store]
   (loop [item (non-implicit-id id)
          affected nil]
@@ -36,13 +36,13 @@
    The set must be non-empty."
   [modified-ids old-store new-store]
   (reduce (fn [accum id]
-            (into accum (items-affected-by-id id old-store new-store)))
+            (into accum (item-ids-affected-by-id id old-store new-store)))
           #{nil} ; We have to always inform reporters keyed by nil.
           modified-ids))
 
 (defn apply-to-store
-  "Return a reporter giving the result of the operation on the store
-  of the state. Using this lets callers of this avoid creating thunks as
+  "Return the result of the operation on the store
+  of the state. Using this lets callers creating thunks as
   arguments to get-or-make-reporter, which would break caching."
   [state operation & args]
   (apply operation (:store state) args))

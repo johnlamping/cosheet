@@ -38,7 +38,7 @@
   (:value @manager-data))
 
 (defn compute-reporter
-  "Given the value, compute the value for the reporter."
+  "Given the current mutable value, compute the value for the reporter."
   [value reporter]
   (let [[f & args] (:application (reporter/data reporter))]
     (set-value! reporter (apply f value args))))

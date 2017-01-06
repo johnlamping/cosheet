@@ -614,7 +614,8 @@
                              row-template
                              (item-referent (or (last row-items) table-item))
                              column-descriptions inherited)]
-            [:div {:class "table selector-scope"}
+            [:div {:class "table selector-scope"
+                   :key table-key}
              [:div {:class (cond-> "table-top selectors"
                              condition-is-tags (str " tag"))}
               [:div {:class "table-corner"}]

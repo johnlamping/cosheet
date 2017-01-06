@@ -10,10 +10,10 @@
                    read-store write-store id-valid? call-dependent-on-id]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
-    [entity :refer [description->entity in-different-store]]
+    [entity :refer [description->entity in-different-store content]]
     entity-impl
     [store-utils :refer [add-entity]]
-    [query :refer [matching-items]]
+    [query :refer [matching-items matching-elements]]
     [debug :refer [simplify-for-print]]
     query-impl
     [expression :refer [expr-let]]
@@ -27,8 +27,10 @@
                        state-map-get state-map-reset!]]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
-    [referent :refer [item-referent referent->exemplar-and-subject
+    [referent :refer [item-referent union-referent
+                      referent->exemplar-and-subject
                       string->referent instantiate-to-items]]
+    [render-utils :refer [make-component]]
     [render :refer [top-level-item-DOM-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
@@ -171,14 +173,31 @@
                                (first (instantiate-to-items
                                        referent immutable-store))))]
     (if immutable-item
-      (let [item (description->entity (:item-id immutable-item) store)]
-        (top-level-item-DOM-R
-         item referent
-         (cond-> {}
-           subject-referent (assoc :subject-referent subject-referent)
-           selector-category (assoc
-                              :selector-category selector-category
-                              :alternate-target true))))
+      (let [item (description->entity (:item-id immutable-item) store)
+            inherited (cond-> {}
+                        subject-referent (assoc
+                                          :subject-referent subject-referent)
+                        selector-category (assoc
+                                           :selector-category selector-category
+                                           :alternate-target true))]
+        (expr-let [table (matching-elements :table item)
+                   content (content item)]
+          (if (empty? table)
+            (top-level-item-DOM-R item referent inherited)
+            ;; Under the narrow interpretation of commands, we don't want to
+            ;; affect the item, only the selection of which item,
+            ;; so make the item referent have an empty first group.
+            (let [regrouped-referent (union-referent [(union-referent [])
+                                                      referent])]
+              [:div {:class "tab-holder"}
+               [:div {:class "tab" :target {:key [:tab]
+                                            :special :tab
+                                            :referent regrouped-referent}}
+                (str content)]
+               (make-component
+                {:key [:selected (:item-id item)] :class "table"}
+                [top-level-item-DOM-R item referent
+                 (assoc inherited :parent-key [:selected])])]))))
       [:div])))
 
 (defn create-tracker

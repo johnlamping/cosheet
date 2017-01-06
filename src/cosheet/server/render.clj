@@ -44,20 +44,19 @@
 (def server-specific-attributes
   [      :key  ; A unique client side key (further described below).
       :target  ; The item (or virtual new item) that the dom refers to
-               ; It is itself a map, with some of these keys
-               ; :referent                  Item(s) referred to
-               ; :parent-key                The key of the parent of a virtual
-               ;                            new item.
-               ; :select-pattern            The pattern to use to generate the
-               ;                            key to select part of a new item.
-               ;                            Will have at most one of this and
-               ;                            :parent-key
-               ; :alternate                 If true, this target has an
-               ;                            alternate interpretation, by
-               ;                            narrowing the referent.
-               ;                            :selector-category must be present.
-               ;                            If an atom, that atom overrides
-               ;                            :selector-category.
+               ; It is itself a map, with some of these keys:
+               ; :special         A keyword indicating a special action
+               ;                  to perform on commands.
+               ; :referent        Item(s) referred to
+               ; :parent-key      The key of the parent of a virtual new item.
+               ; :select-pattern  The pattern to use to generate the key to
+               ;                  select part of a new item.
+               ;                  Will have at most one of this and :parent-key
+               ; :alternate       If true, this target has an alternate
+               ;                  interpretation, by narrowing the referent.
+               ;                  :selector-category must be present.
+               ;                  If an atom, that atom overrides
+               ;                  :selector-category.
  :add-sibling  ; A special target to use for add-sibling commands.
       :delete  ; A special target to use for deletion, if it should be
                ; different from the :target.

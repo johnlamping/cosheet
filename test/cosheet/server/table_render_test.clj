@@ -107,7 +107,8 @@
                                                  (true :reference)))]]
       (is (check
            dom
-           [:div {:class "table selector-scope"}
+           [:div {:class "table selector-scope"
+                  :key table-key}
             [:div {:class "table-top selectors"}
              [:div {:class "table-corner"}]
              (any)]

@@ -306,15 +306,14 @@
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
-  [item item-referent content inherited]
+  [item-referent content inherited]
   ;; We don't currently handle items as content. That would need
   ;; more interaction and UI design work to deal with the distinction
   ;; between elements of an item and elements on its content.
   (assert (entity/atom? content))
   (let [is-placeholder (and (symbol? content)
                             (= (subs (str content) 0 3) "??-"))
-        anything (#{'anything 'anything-immutable} content)
-        template (contains? inherited :template)]
+        anything (#{'anything 'anything-immutable} content)]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
@@ -336,7 +335,7 @@
   [item item-referent content elements inherited]
   (let [key (conj (:parent-key inherited) (:item-id item))
         content-dom (add-attributes
-                     (item-content-DOM item item-referent content inherited)
+                     (item-content-DOM item-referent content inherited)
                      ;; Give it a unique key.
                      ;; This will be overridden to the item's key
                      ;; if the item has nothing but this content.

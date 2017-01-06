@@ -20,7 +20,7 @@
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
-    [dom-utils :refer [dom-attributes]]
+    [dom-utils :refer [dom-attributes add-attributes]]
     [reporters :as reporter]
     [mutable-manager :refer [current-mutable-value]]
     [state-map :refer [new-state-map state-map-get-current-value
@@ -32,11 +32,14 @@
                       string->referent instantiate-to-items]]
     [render-utils :refer [make-component]]
     [render :refer [top-level-item-DOM-R user-visible-item?]]
+    [item-render :refer [item-content-DOM]]
+    [table-render :refer [table-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
     [actions :refer [confirm-actions do-actions]])))
 
+;;; TODO: Make this just be an empty table.
 (defn starting-store
   []
   (let [unused-orderable orderable/initial
@@ -157,6 +160,7 @@
                       [referent subject-ref])))))
             (let [item (first (matching-items '(nil :root) immutable-store))]
               [(item-referent item) nil]))]
+    ;; TODO: Put :referent and :subject-referent under :root
     (new-state-map {:referent referent
                     :subject-referent subject-ref
                     :last-action nil
@@ -190,13 +194,16 @@
             (let [regrouped-referent (union-referent [(union-referent [])
                                                       referent])]
               [:div {:class "tab-holder"}
-               [:div {:class "tab" :target {:key [:tab]
-                                            :special :tab
-                                            :referent regrouped-referent}}
-                (str content)]
+               (add-attributes
+                (item-content-DOM regrouped-referent content inherited)
+                {:class "tab"
+                 :key [:tab]
+                 :target {:special :tab
+                          :alternate true}
+                 :selector-category :tab})
                (make-component
                 {:key [:selected (:item-id item)] :class "table"}
-                [top-level-item-DOM-R item referent
+                [table-DOM-R item
                  (assoc inherited :parent-key [:selected])])]))))
       [:div])))
 

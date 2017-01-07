@@ -151,7 +151,7 @@
                                        referent immutable-store))))]
     (if immutable-item
       (let [item (description->entity (:item-id immutable-item) store)
-            inherited (cond-> {}
+            inherited (cond-> {:priority 0}
                         subject-referent (assoc
                                           :subject-referent subject-referent)
                         selector-category (assoc

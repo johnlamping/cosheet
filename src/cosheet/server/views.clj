@@ -43,6 +43,7 @@
   []
   (let [unused-orderable orderable/initial
         [o1 unused-orderable] (orderable/split unused-orderable :after)
+        ;; TODO: Use update-add-blank-table-view from actions.
         starting-table `("table"
                          (:root :non-semantic)
                          (:table :non-semantic)

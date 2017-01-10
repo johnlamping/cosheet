@@ -28,7 +28,8 @@
                       condition-to-template adjust-adjacents
                       create-possible-selector-elements
                       create-elements-satisfying]]
-    [order-utils :refer [update-add-entity-adjacent-to furthest-item]])))
+    [order-utils :refer [update-add-entity-adjacent-to furthest-item
+                         order-element-for-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -169,7 +170,7 @@
 
 (defn do-set-content
   [store context attributes]
-  (let [{:keys [target-key from to immutable]} attributes
+  (let [{:keys [from to immutable]} attributes
         referent (:referent context)]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number to)]
@@ -302,6 +303,44 @@
                result))))))
    [context nil nil]))
 
+(defn update-add-blank-table-view
+  "Add a blank table view with the given name to the store, returning the
+  new store and the id of the new view."
+  [store view-name]
+  (let [generic (cons view-name '((:root :non-semantic)
+                                  (:table :non-semantic)
+                                  (anything (??? :tag)
+                                            (:row-condition :non-semantic))))
+        [specialized [store _]] (specialize-template generic [store {}])]
+    (update-add-entity-adjacent-to
+     store nil specialized (order-element-for-item nil store) :after false)))
+
+(defn do-find-or-create-table-view
+  "Find a table view with the given name, or create one. Return the view item"
+  [store view-name]
+  (let [id (do-update-control-return!
+            store
+            (fn [store]
+              (let [item (first (matching-items
+                                 `(~view-name (:root :non-semantic)
+                                              (:table :non-semantic))
+                                 store))]
+                (if item
+                  [store (:item-id item)]
+                  (update-add-blank-table-view store view-name)))))]
+    (description->entity id store)))
+
+(defn do-set-tab
+  "The tab selector has been set to a new value. Update the session state to
+  reference the specified table view, creating a blank one if necessary."
+  [session-state attributes]
+  (let [{:keys [from to immutable]} attributes
+        {:keys [client-state store]} session-state]
+    (when (and from to (not immutable))
+      (let [item (do-find-or-create-table-view store to)]
+        (state-map-reset! client-state :subject-referent nil)
+        (state-map-reset! client-state :referent (item-referent item))))))
+
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
   on that cell. We will call a contextual action handler with a context
@@ -333,19 +372,22 @@
                                                   session-state action-type
                                                   context attributes)
                 result (do-storage-update-action
-                           (partial do-update-control-return! mutable-store)
-                           handler context attributes)]
-            (state-map-reset!
-             (:client-state session-state) :alternate
-             (when alternate-context
-               (println "setting non-trivial alternate context." text)
-               {:new-store (first (fetch-and-clear-modified-ids
-                                   (:store result)))
-                :action [handler
-                         alternate-context
-                         (dissoc attributes :session-state)]
-                :text text}))
-            (dissoc result :store)))
+                        (partial do-update-control-return! mutable-store)
+                        handler context attributes)]
+            (when (or (not (:special context)) (= action-type :set-content))
+              (state-map-reset!
+               (:client-state session-state) :alternate
+               (when alternate-context
+                 (println "setting non-trivial alternate context." text)
+                 {:new-store (first (fetch-and-clear-modified-ids
+                                     (:store result)))
+                  :action [handler
+                           alternate-context
+                           (dissoc attributes :session-state)]
+                  :text text}))
+              (when (= (:special context) :tab)
+                (do-set-tab session-state, attributes))
+              (dissoc result :store))))
         (println "No context for action:" action-type
                  (dissoc attributes :session-state)))
       (do 

@@ -170,7 +170,7 @@
               [:div {:class "tab-holder"}
                (add-attributes
                 (item-content-DOM regrouped-referent content inherited)
-                {:class "tab"
+                {:class "selectors tab"
                  :key [:tab]
                  :target {:special :tab
                           :alternate true}

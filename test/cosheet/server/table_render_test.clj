@@ -148,7 +148,7 @@
                       :key (conj table-key :virtualColumn)
                       :target {:referent
                                (virtual-referent
-                                '(nil) ; ["" :tag]
+                                '(nil :tag)
                                 (virtual-referent
                                  '(anything-immutable (:column :non-semantic))
                                  (item-referent table)
@@ -176,7 +176,7 @@
                   {:column-id :virtualColumn
                    :template (virtual-referent
                               '(anything-immutable (:column :non-semantic)
-                                                   (???))
+                                                   (??? :tag))
                               (item-referent table)
                               (item-referent c6)
                               :selector :first-group)
@@ -238,7 +238,7 @@
                               (virtual-referent
                                (virtual-referent
                                 '(anything-immutable (:column :non-semantic)
-                                                     (???))
+                                                     (??? :tag))
                                 (item-referent table)
                                 (item-referent c6)
                                 :selector :first-group)

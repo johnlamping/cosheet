@@ -206,7 +206,7 @@
                                  remainder-sub-elements)]
               (when (not (empty? common))
                 (cons nil (canonical-set-to-list common)))))))
-      '(nil)))
+      '(nil :tag)))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

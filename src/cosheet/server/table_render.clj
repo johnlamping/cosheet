@@ -96,17 +96,22 @@
     ;; return one group for the header elements.
     (union-referent [header-ref element-ref])))
 
-(defn attributes-for-header-add-column-command
-  "Return attributes for an add column command, given the column
-  request items that gave rise to the column. elements-template gives
-  the template for new elements, while inherited gives the environment
-  of the header."
+(defn new-header-template
+  "Return the template for a new header. elements-template gives
+  the template for new elements in the header, while inherited gives
+  the environment of the header."
+  [new-elements-template inherited]
+  (apply list (concat (:template inherited)
+                      [(cons '??? (rest new-elements-template))])))
+
+(defn target-for-header-add-column-command
+  "Return the target for an add column command, given the column
+  request items that the column spans. elements-template gives
+  the template for new elements in the header, while inherited gives
+  the environment of the header."
   [column-items elements-template inherited]
   (assert (:template inherited))
   (let [subject-ref (:subject-referent inherited)
-        new-elements-template (cons '??? (rest elements-template))
-        new-header-template (apply list (concat (:template inherited)
-                                                [new-elements-template]))
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
@@ -121,15 +126,26 @@
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])
+        ;; The parallel-union-referent will produce a single group of
+        ;; adjacents, and the virtual referent will choose the furthest.
         adjacent-referent (parallel-union-referent
                            (map #(item-or-exemplar-referent % subject-ref)
                                 column-items))]
-    {:add-column {:referent
-                  (virtual-referent new-header-template
-                                    (union-referent [subject-ref])
-                                    adjacent-referent :position :after
-                                    :selector :first-group)
-              :select-pattern select-pattern}}))
+    {:referent
+     (virtual-referent (new-header-template elements-template inherited)
+                       (union-referent [subject-ref])
+                       adjacent-referent :position :after
+                       :selector :first-group)
+     :select-pattern select-pattern}))
+
+(defn attributes-for-header-add-column-command
+  "Return attributes for an add column command, given the column
+  request items that gave rise to the column. elements-template gives
+  the template for new elements, while inherited gives the environment
+  of the header."
+  [column-items elements-template inherited]
+  {:add-column (target-for-header-add-column-command
+                column-items elements-template inherited)})
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
@@ -192,6 +208,13 @@
                 (cons nil (canonical-set-to-list common)))))))
       '(nil)))
 
+(defn table-virtual-header-element-template
+  "Return a template for new elements of a virtual table header."
+  [hierarchy]
+  (table-header-element-template
+   (when (seq hierarchy)
+     (keys (:cumulative-properties (last hierarchy))))))
+
 (defn table-header-node-DOM-R
   "Generate the dom for a node of a table header hierarchy. The
   rows-referent should specify all the row items from which this
@@ -228,7 +251,7 @@
     (condition-elements-DOM-R example-elements inherited-down)))
 
 (defn table-virtual-header-node-DOM
-  [adjacent-referent inherited]
+  [hierarchy adjacent-referent inherited]
   (let [key (conj (:parent-key inherited) :virtualColumn)
         inherited (assoc inherited
                          :subject-referent (virtual-referent
@@ -236,7 +259,8 @@
                                             (:subject-referent inherited)
                                             adjacent-referent
                                             :selector :first-group)
-                         :template ["" :tag])]
+                         :template (table-virtual-header-element-template
+                                    hierarchy))]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
      {:class "column-header"
@@ -341,7 +365,7 @@
                               (item-referent (:item last-column)))
                             (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
-                        adjacent-referent inherited-down)]
+                        hierarchy adjacent-referent inherited-down)]
     (expr-let [columns (expr-seq
                         map #(table-header-subtree-DOM-R
                               % true rows-referent inherited-down)
@@ -491,6 +515,7 @@
        :column-id Id that identifies the column.
                   Typically the id of the column item.
         :template Condition that each element of the column must satisfy.
+                  May be a constant or a (typically virtual) referent.
                   ('anything is turned to nil before putting a condition here.)
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
@@ -521,7 +546,7 @@
   ;;              breaking the rule that the database doesn't contain
   ;;              nil. The exception is the special content :other,
   ;;              which means to show everything not shown in any
-  ;;              other column.
+  ;;              other column. (:other not yet implemented.)
   ;; TODO: Add the "other" column if a table requests it.
   [table-item inherited]
   (println "Generating DOM for table" (simplify-for-print table-item))
@@ -585,18 +610,21 @@
                              :template (if condition-is-tags
                                          '(nil :tag) '(nil))
                              :alternate-target true))
+             headers-inherited (assoc inherited
+                                      :subject-referent (item-referent
+                                                         table-item)
+                                      :template '(anything-immutable
+                                                  (:column :non-semantic)))
              headers (table-header-DOM-R
-                      hierarchy rows-referent
-                      (assoc inherited
-                             :subject-referent (item-referent table-item)
-                             :template '(anything-immutable
-                                         (:column :non-semantic))))]
+                      hierarchy rows-referent headers-inherited)]
           (let [column-descriptions (mapcat
                                      table-hierarchy-node-column-descriptions
                                      hierarchy)
-                virtual-template (virtual-referent '(anything-immutable
-                                                     (??? :tag)
-                                                     (:column :non-semantic))
+                new-column-template (new-header-template
+                                     (table-virtual-header-element-template
+                                      hierarchy)
+                                     headers-inherited)
+                virtual-template (virtual-referent new-column-template
                                                    (item-referent table-item)
                                                    (item-referent
                                                     (or (last columns)

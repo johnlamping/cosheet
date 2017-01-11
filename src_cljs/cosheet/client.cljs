@@ -138,21 +138,24 @@
 
 (defn click-handler
   [event]
-  (let [target (.-target event)]
+  (let [target (.-target event)
+        ;; If a cell is selected, but not being edited, the select holder
+        ;; is in front of it, but empty. Move the click to the cell.
+        effective-target (if (= (.-id target) "select_holder")
+                           @selected target)]
     (.log js/console (str "Click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
-    (.log js/console (str "Click on " target "."))
-    (let [in-select-holder (target-in-select-holder? target)]
+    (let [in-select-holder (target-in-select-holder? effective-target)]
       (when (not in-select-holder)
         (store-edit-field)
         (close-edit-field))
-      (if-let [tool-target (find-ancestor-with-class target "tool" 1)]
+      (if-let [tool-target (find-ancestor-with-class effective-target "tool" 1)]
         (do (when @edit-field-open-on
               ;; A click on the tool can cause a loss of focus. Put it back.
               (.focus (js/document.getElementById "edit_input")))
             (menu-click-handler tool-target))
         (when (not in-select-holder)
-          (let [editable (find-editable target event)]
+          (let [editable (find-editable effective-target event)]
             (when (not= editable @selected)
               (if editable
                 (select editable)
@@ -161,14 +164,17 @@
 
 (defn double-click-handler
   [event]
-  (let [target (.-target event)]
+  (let [target (.-target event)
+        ;; If a cell is selected, but not being edited, the select holder
+        ;; is in front of it, but empty. Move the click to the cell.
+        effective-target (if (= (.-id target) "select_holder")
+                           @selected target)]
     (.log js/console (str "Double click on id " (.-id target) "."))
     (.log js/console (str "with class " (.-className target) "."))
-    (.log js/console (str "Double click on " target "."))
-    (when (not (target-in-select-holder? target))
+    (when (not (target-in-select-holder? effective-target))
       (store-edit-field)
       (close-edit-field)
-      (let [editable (find-editable target event)]
+      (let [editable (find-editable effective-target event)]
         (if editable
           (do (select editable)
               (when (not (is-immutable? editable))

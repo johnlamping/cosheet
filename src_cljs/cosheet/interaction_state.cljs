@@ -1,13 +1,17 @@
 (ns cosheet.interaction-state
   (:require [goog.dom :as gdom]))
 
+(defn has-class?
+  [node class-name]
+  (let [classes (.-classList node)]
+    (when (exists? classes)
+      (.contains classes class-name))))
+
 (defn find-ancestor-with-class
   "Return the first ancestor with the given class,
   not going above max-depth ancestors (if present)"
   [node class-name & [max-depth]]
-  (if (let [classes (.-classList node)]
-        (when (exists? classes)
-          (.contains classes class-name)))
+  (if (has-class? node class-name)
     node
     (when (not= max-depth 0)
       (let [parent (.-parentNode node)]

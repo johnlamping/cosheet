@@ -168,13 +168,17 @@
             (let [regrouped-referent (union-referent [(union-referent [])
                                                       referent])]
               [:div {:class "tab-holder selector-scope"}
-               (add-attributes
-                (item-content-DOM regrouped-referent content inherited)
-                {:class "selectors tab"
-                 :key [:tab]
-                 :target {:special :tab
-                          :alternate true}
-                 :selector-category :tab})
+               ;; We need a div around the tab text, so it can have
+               ;; a drop shadow that won't interfere with a selection inset
+               ;; drop shadow.
+               [:div {:class "tab-text-holder selectors"}
+                (add-attributes
+                 (item-content-DOM regrouped-referent content inherited)
+                 {:class "tab"
+                  :key [:tab]
+                  :target {:special :tab
+                           :alternate true}
+                  :selector-category :tab})]
                (make-component
                 {:key [:tab (:item-id item)] :class "table selecteds"}
                 [table-DOM-R item

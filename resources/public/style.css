@@ -33,6 +33,10 @@ body {
     margin: 0;
 }
 
+.tab-text-holder {
+    margin-right: 54px;
+}
+
 .selected {
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
@@ -556,12 +560,8 @@ body {
                 7px 9px 4px 2px hsla(0, 0%, 0%, .7);
 }
 
-.narrow-interpretation .selectors:not(.tag) {
-    background-color: hsl(0, 0%, 85%);
-}
-
 .narrow-interpretation .selectors .tag,
-.narrow-interpretation .selectors.tag{
+.narrow-interpretation .selectors.tag {
     background-color: hsl(194, 100%, 70%);
 }
 
@@ -751,6 +751,7 @@ body {
 /* Scope selector tools */
 
 #scope_holder {
+    width: 72px;
     background-color: white;
     border: 2px;
     border-color: grey;

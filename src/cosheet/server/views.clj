@@ -167,7 +167,7 @@
             ;; so make the item referent have an empty first group.
             (let [regrouped-referent (union-referent [(union-referent [])
                                                       referent])]
-              [:div {:class "tab-holder"}
+              [:div {:class "tab-holder selector-scope"}
                (add-attributes
                 (item-content-DOM regrouped-referent content inherited)
                 {:class "selectors tab"
@@ -176,9 +176,9 @@
                           :alternate true}
                  :selector-category :tab})
                (make-component
-                {:key [:selected (:item-id item)] :class "table"}
+                {:key [:tab (:item-id item)] :class "table selecteds"}
                 [table-DOM-R item
-                 (assoc inherited :parent-key [:selected])])]))))
+                 (assoc inherited :parent-key [:tab])])]))))
       [:div])))
 
 (defn create-tracker

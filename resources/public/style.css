@@ -433,6 +433,7 @@ body {
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
     margin: 0px -2px -2px 0px;
+    min-height: 25px;
 }
 
 /* Make the header fill all the available space, for a better selection box. */
@@ -751,9 +752,10 @@ body {
 /* Scope selector tools */
 
 #scope_holder {
-    width: 72px;
+    width: 84px;
     background-color: white;
-    border: 2px;
+    border-width: 0px 2px 2px 2px;
+    padding: 0px;
     border-color: grey;
     border-style: solid;
     display: none;
@@ -767,6 +769,11 @@ body {
 }
 
 #scope_holder > .tool {
+    height: 40px;
+    width: 40px;
+    border-width: 0px;
+    border-radius: 0px;
+    padding: 3px;
     margin: 0px;
     display: inline-block;
 }
@@ -775,7 +782,17 @@ body {
     opacity:0.4;
 }
 
+#scope_holder > .tool:hover {
+    background-color: hsl(0, 0%, 95%);
+}
+
+#scope_holder > .tool:hover > img {
+    opacity: 1.0;
+    margin: 0px;
+}
+
 #scope_holder > .tool.picked {
+    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
     border-color: hsl(200, 100%, 90%);
 }
 

@@ -192,21 +192,22 @@
   what is common to the specified elements, which should be in canonical
   list form."
   [canonical-elements]
-  (or (when (and (seq canonical-elements)
-                 (every? sequential? canonical-elements))
-        (let [firsts-sub-elements (second (first canonical-elements))
-              remainder-sub-elements (map second (rest canonical-elements))]
-          (if (empty? remainder-sub-elements)
-            ;; If there is only one current element, then the next one
-            ;; only copies whether or not it has a tag.
-            (when (contains? firsts-sub-elements :tag)
-              '(nil :tag))
-            (let [common (reduce common-canonical-multisets
-                                 firsts-sub-elements
-                                 remainder-sub-elements)]
-              (when (not (empty? common))
-                (cons nil (canonical-set-to-list common)))))))
-      '(nil :tag)))
+  (if (seq canonical-elements)
+    (or (when (every? sequential? canonical-elements)
+          (let [firsts-sub-elements (second (first canonical-elements))
+                remainder-sub-elements (map second (rest canonical-elements))]
+            (if (empty? remainder-sub-elements)
+              ;; If there is only one current element, then the next one
+              ;; only copies whether or not it has a tag.
+              (when (contains? firsts-sub-elements :tag)
+                '(nil :tag))
+              (let [common (reduce common-canonical-multisets
+                                   firsts-sub-elements
+                                   remainder-sub-elements)]
+                (when (not (empty? common))
+                  (cons nil (canonical-set-to-list common)))))))
+        '(nil))
+    '(nil :tag)))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

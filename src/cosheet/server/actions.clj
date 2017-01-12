@@ -147,8 +147,15 @@
   [store context attributes]
   (when-let [to-delete (:referent context)]
     (let [item-groups (instantiate-referent to-delete store)
-          header-group (first item-groups)
-          first-content (content (first header-group))
+          header (first (first item-groups))
+          placeholder (first
+                       (filter
+                        #(let [content (content %) ]
+                           (if-let [name (when (symbol? content) (str content))]
+                             (and (>= (count name) 3)
+                                  (= (subs name 0 3) "??-"))))
+                        (when (seq (matching-elements :column header))
+                          (elements header))))
           items (distinct ;; distinct should not be necessary, but is a
                           ;; safety measure to make sure we don't delete twice
                  (apply concat item-groups))]
@@ -157,15 +164,10 @@
         ;; If we removed a placeholder from a header, there will be no way to
         ;; reference the placeholder again, so change any instances of it
         ;; to a simple "???".
-        (if (let [name (when (symbol? first-content) (str first-content))]
-              (and name
-                   (>= (count name) 3)
-                   (= (subs (str first-content) 0 3) "???")
-                   (seq (matching-elements
-                         :column (subject (first header-group))))))
+        (if placeholder
           (reduce (fn [store item]
                     (update-content store (:item-id item) "???"))
-                  removed (matching-items first-content removed))
+                  removed (matching-items (content placeholder) removed))
           removed)))))
 
 (defn do-set-content

@@ -149,14 +149,13 @@
         [s2 column2-id] (add-entity s1 nil
                                     `(~'anything
                                       ("age" :tag (~o1 :order :non-semantic))
-                                      (~'???234 (~o2 :order :non-semantic))
+                                      (~'??-234 (~o2 :order :non-semantic))
                                       (~o2 :order :non-semantic)
                                       (:column :non-semantic)))
-        [store placeholder-id] (add-entity s2 nil '???234)
+        [store placeholder-id] (add-entity s2 nil '??-234)
         column1 (description->entity column1-id store)
         name-header (first (matching-elements "name" column1))
-        column2 (description->entity column2-id store)
-        placeholder-header (first (matching-elements '???234 column2))]
+        column2 (description->entity column2-id store)]
     ;; Test delete of the only element of a header
     (let [new-store (do-delete
                      store
@@ -174,7 +173,7 @@
     ;; Test delete of placeholder in header.
     (let [new-store (do-delete
                      store
-                     {:referent (item-referent placeholder-header)}
+                     {:referent (item-referent column2)}
                      {:target-key "name"})]
       (is (= (content (description->entity placeholder-id new-store)) "???")))))
 

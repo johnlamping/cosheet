@@ -1,4 +1,5 @@
-(ns cosheet.utils)
+(ns cosheet.utils
+  (:require clojure.set))
 
 ;;; Simple multiset operations.
 

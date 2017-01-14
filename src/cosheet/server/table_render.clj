@@ -528,6 +528,41 @@
                 :exclusions (table-hierarchy-node-exclusions node)}]))
           (hierarchy-node-next-level node)))
 
+(defn row-template-and-items-R
+  "Given the item giving the row condition, return the template for a row
+  and the items for the rows, in order."
+  [store row-condition-item]
+  (expr-let [row-condition (semantic-to-list-R row-condition-item)
+             row-query (add-element-to-entity-list
+                        (pattern-to-condition row-condition)
+                        ['(:top-level :non-semantic)])
+             ;; Avoid the (nil :order :non-semantic) added by
+             ;; pattern-to-condition.
+             row-template (condition-to-template row-query)
+             row-items (expr order-items-R
+                         (matching-items row-query store))]
+    [row-template row-items]))
+
+(defn table-hierarchy-R
+  "Construct the hierarchy for a table's columns."
+  [columns]
+  (expr-let
+      [;; Unlike row headers for tags, where the header
+       ;; information is computed from the items of the elements,
+       ;; here the header information is explicitly provided by
+       ;; the table definition. So the members of the hierarchy
+       ;; are the column definitions.
+       columns-elements (expr-seq map semantic-elements-R columns)
+       columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
+                               columns-elements)]
+    (hierarchy-by-canonical-info
+                  (map (fn [column elements lists]
+                         {:item column
+                          :property-elements elements
+                          :property-canonicals (map canonicalize-list
+                                                    lists)})
+                       columns columns-elements columns-lists))))
+
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
@@ -557,103 +592,82 @@
                         table-item (:subject-referent inherited))
         table-key (conj (:parent-key inherited) table-referent)
         inherited (assoc inherited :parent-key table-key)]
-    (expr-let [row-condition-items (entity/label->elements
-                                    table-item :row-condition)]
+    (expr-let [row-condition-item (expr first (entity/label->elements
+                                               table-item :row-condition))]
       ;; Don't do anything if we don't yet have the table information filled in.
-      (when-let [row-condition-item (first row-condition-items)]
-        (expr-let
-            [row-condition (semantic-to-list-R row-condition-item)
-             row-query (add-element-to-entity-list
-                        (pattern-to-condition row-condition)
-                        ['(:top-level :non-semantic)])
-             ;; We have to use the item in the referent's condition, so
-             ;; it doesn't contain strings or other non-serializable stuff.
-             rows-referent (query-referent
-                            (list (item-referent row-condition-item)
-                                  '(:top-level :non-semantic)))
-             ;; Avoid the (nil :order :non-semantic) added by
-             ;; pattern-to-condition.
-             row-template (condition-to-template row-query)
-             row-items  (expr order-items-R
-                            (matching-items row-query store))
-             columns (expr order-items-R
-                       (entity/label->elements table-item :column))
-             ;; Unlike row headers for tags, where the header
-             ;; information is computed from the items of the elements,
-             ;; here the header information is explicitly provided by
-             ;; the table definition. So the members of the hierarchy
-             ;; are the column definitions.
-             columns-elements (expr-seq map semantic-elements-R columns)
-             columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
-                                     columns-elements)
-             hierarchy (hierarchy-by-canonical-info
-                        (map (fn [column elements lists]
-                               {:item column
-                                :property-elements elements
-                                :property-canonicals (map canonicalize-list
-                                                          lists)})
-                             columns columns-elements columns-lists))
-             condition-elements (semantic-elements-R row-condition-item)
-             conditions-as-lists (expr-seq map semantic-to-list-R
-                                           condition-elements)
-             condition-is-tags (every? #(and (sequential? %)
-                                             (seq (filter #{:tag} %)))
-                                       conditions-as-lists)
-             condition-dom (condition-elements-DOM-R
-                            condition-elements
-                            (assoc
-                             inherited
-                             :selector-category :table-condition
-                             :subject-referent (union-referent
-                                                [(item-referent
-                                                  row-condition-item)
-                                                 rows-referent])
-                             :template (if condition-is-tags
-                                         '(nil :tag) '(nil))
-                             :alternate-target true))
-             headers-inherited (assoc inherited
-                                      :subject-referent (item-referent
-                                                         table-item)
-                                      :template '(anything-immutable
-                                                  (:column :non-semantic)))
-             headers (table-header-DOM-R
-                      hierarchy rows-referent headers-inherited)]
-          (let [column-descriptions (mapcat
-                                     table-hierarchy-node-column-descriptions
-                                     hierarchy)
-                new-column-template (new-header-template
-                                     (table-virtual-header-element-template
-                                      hierarchy)
-                                     headers-inherited)
-                virtual-template (virtual-referent new-column-template
-                                                   (item-referent table-item)
-                                                   (item-referent
-                                                    (or (last columns)
-                                                        table-item))
-                                                   :selector :first-group)
-                virtual-column-description {:column-id :virtualColumn
-                                            :template virtual-template
-                                            :exclusions nil}
-                rows (map #(table-row-DOM-component
-                            % row-template (concat column-descriptions
-                                                   [virtual-column-description])
-                            inherited)
-                          row-items)
-                virtual-row (table-virtual-row-DOM-component
-                             row-template
-                             (item-referent (or (last row-items) table-item))
-                             column-descriptions inherited)]
-            [:div {:class "table selector-scope"
-                   :key table-key}
-             [:div {:class (cond-> "table-top selectors"
-                             condition-is-tags (str " tag"))}
-              [:div {:class "table-corner"}]
-              (add-attributes condition-dom
-                              {:class "table-condition"})]
-             [:div {:class "table-body"}
-              [:div {:class (cond-> "table-indent"
-                              condition-is-tags (str " tag"))}]
-              [:div {:class "table-main selecteds selector-scope"}
-               (add-attributes headers {:class "selectors"})
-               (into [:div {:class "table-rows selecteds"}]
-                     (concat rows [virtual-row]))]]]))))))
+      (when row-condition-item
+        (let [;; We have to use the item in the referent's condition, so
+              ;; it doesn't contain strings or other non-serializable stuff.
+              rows-referent (query-referent
+                             (list (item-referent row-condition-item)
+                                   '(:top-level :non-semantic)))
+              headers-inherited (assoc inherited
+                                       :subject-referent (item-referent
+                                                          table-item)
+                                       :template '(anything-immutable
+                                                   (:column :non-semantic)))]
+          (expr-let
+              [[row-template row-items] (row-template-and-items-R
+                                         store row-condition-item)
+               columns (expr order-items-R
+                         (entity/label->elements table-item :column))
+               hierarchy (table-hierarchy-R columns)
+               condition-elements (semantic-elements-R row-condition-item)
+               conditions-as-lists (expr-seq map semantic-to-list-R
+                                             condition-elements)
+               condition-is-tags (every? #(and (sequential? %)
+                                               (seq (filter #{:tag} %)))
+                                         conditions-as-lists)
+               condition-dom (condition-elements-DOM-R
+                              condition-elements
+                              (assoc
+                               inherited
+                               :selector-category :table-condition
+                               :subject-referent (union-referent
+                                                  [(item-referent
+                                                    row-condition-item)
+                                                   rows-referent])
+                               :template (if condition-is-tags
+                                           '(nil :tag) '(nil))
+                               :alternate-target true))
+               headers (table-header-DOM-R
+                        hierarchy rows-referent headers-inherited)]
+            (let [column-descriptions (mapcat
+                                       table-hierarchy-node-column-descriptions
+                                       hierarchy)
+                  new-column-template (new-header-template
+                                       (table-virtual-header-element-template
+                                        hierarchy)
+                                       headers-inherited)
+                  virtual-template (virtual-referent new-column-template
+                                                     (item-referent table-item)
+                                                     (item-referent
+                                                      (or (last columns)
+                                                          table-item))
+                                                     :selector :first-group)
+                  virtual-column-description {:column-id :virtualColumn
+                                              :template virtual-template
+                                              :exclusions nil}
+                  rows (map #(table-row-DOM-component
+                              % row-template (concat column-descriptions
+                                                     [virtual-column-description])
+                              inherited)
+                            row-items)
+                  virtual-row (table-virtual-row-DOM-component
+                               row-template
+                               (item-referent (or (last row-items) table-item))
+                               column-descriptions inherited)]
+              [:div {:class "table selector-scope"
+                     :key table-key}
+               [:div {:class (cond-> "table-top selectors"
+                               condition-is-tags (str " tag"))}
+                [:div {:class "table-corner"}]
+                (add-attributes condition-dom
+                                {:class "table-condition"})]
+               [:div {:class "table-body"}
+                [:div {:class (cond-> "table-indent"
+                                condition-is-tags (str " tag"))}]
+                [:div {:class "table-main selecteds selector-scope"}
+                 (add-attributes headers {:class "selectors"})
+                 (into [:div {:class "table-rows selecteds"}]
+                       (concat rows [virtual-row]))]]])))))))

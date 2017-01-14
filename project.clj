@@ -32,4 +32,5 @@
          ;; Keep lein ring from reloading tests.
          :reload-paths ["src" "src_cljc"]}
   :main ^:skip-aot cosheet.core
-  :target-path "target/%s")
+  ;; :target-path "target/%s"
+  )

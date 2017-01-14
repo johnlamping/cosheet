@@ -3,9 +3,9 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet
-             [orderable :as orderable]
              [entity :as entity :refer [description->entity to-list
                                         label->elements]]
+             [orderable :as orderable]
              [debug :refer [profile-and-print-reporters
                             simplify-for-print]]
              entity-impl

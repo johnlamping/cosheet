@@ -153,8 +153,10 @@
   (if (empty? elements)
     [:div {:class "elements-wrapper"}]
     (expr-let
+        ;; The subject of one of the elements is the item they came from.
+        ;; We need that to more efficiently find the labels, and for
+        ;; label-wrapper-DOM-R to make its key.
         [item (entity/subject (first elements))
-         content (entity/content item)
          all-labels (entity/label->elements item :tag)
          all-labels-set (set all-labels)
          labels (seq (filter all-labels-set elements))

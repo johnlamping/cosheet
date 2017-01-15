@@ -331,17 +331,18 @@
 
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of non-label elements,
-  all of the same item."
+  all of the same item. Don't show a content of 'anything-immutable"
   [item item-referent content elements inherited]
   (let [key (conj (:parent-key inherited) (:item-id item))
-        content-dom (add-attributes
-                     (item-content-DOM item-referent content inherited)
-                     ;; Give it a unique key.
-                     ;; This will be overridden to the item's key
-                     ;; if the item has nothing but this content.
-                     {:key (conj key :content)})]
+        content-dom (when (not= content 'anything-immutable)
+                      (add-attributes
+                       (item-content-DOM item-referent content inherited)
+                       ;; Give it a unique key.
+                       ;; This will be overridden to the item's key
+                       ;; if the item has nothing but this content.
+                       {:key (conj key :content)}))]
     (if (empty? elements)
-      (add-attributes content-dom {:class "item"})
+      (add-attributes (or content-dom [:div]) {:class "item"})
       (let [inherited-down
             (-> inherited
                 (update-in [:priority] inc)
@@ -353,13 +354,16 @@
                 (dissoc :element-attributes))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
-          [:div {:class "item with-elements"
-                 :key key}
-           content-dom elements-dom])))))
+          (if content-dom
+            [:div {:class "item with-elements" :key key}
+             content-dom elements-dom]
+            [:div {:class "item elements-wrapper"}
+             elements-dom]))))))
 
 (defn label-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
-  make a dom that includes any necessary labels wrapping the item."
+  make a dom that includes any necessary labels wrapping the item. We only
+  use the item to make the key."
   [dom item item-referent label-elements must-show-empty-labels inherited]
   (if (and (empty? label-elements) (not must-show-empty-labels))
     dom

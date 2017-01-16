@@ -223,7 +223,7 @@
 
 (defn hierarchy-node-items-referent
   "Given a hierarchy node or member, return a referent to all its descendants,
-  returning one group per descendant."
+  returning one group per group the subject returns."
   [hierarchy-node-or-member subject-referent]
   (let [descendants (hierarchy-node-descendants hierarchy-node-or-member)
         affected-items (map :item descendants)]

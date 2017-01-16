@@ -14,7 +14,6 @@
              [referent :refer [item-referent
                                elements-referent query-referent
                                union-referent-if-needed union-referent
-                               parallel-union-referent
                                difference-referent virtual-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R
@@ -109,28 +108,26 @@
   request items that the column spans. elements-template gives
   the template for new elements in the header, while inherited gives
   the environment of the header."
-  [column-items elements-template inherited]
+  [node-or-member elements-template inherited]
   (assert (:template inherited))
-  (let [subject-ref (:subject-referent inherited)
+  (let [column-items (map :item (hierarchy-node-descendants node-or-member))
+        subject-ref (:subject-referent inherited)
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
         ;; TODO: This doesn't handle header items that are below other
         ;; header items, as there is no query that can pick out the
         ;; new item as opposed to copied template items. The solution is to
-        ;; add an "excluded" feature to the pattern, saying patterns not
-        ;; to match.
+        ;; have the variables in the select pattern navigate relative to the
+        ;; new item, not relative to whatever it is now.
         element-variable `(:variable
                             (:v :name)
                             (~elements-template :condition)
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])
-        ;; The parallel-union-referent will produce a single group of
-        ;; adjacents, and the virtual referent will choose the furthest.
-        adjacent-referent (parallel-union-referent
-                           (map #(item-or-exemplar-referent % subject-ref)
-                                column-items))]
+        adjacent-referent (item-or-exemplar-referent
+                           (last column-items) subject-ref)]
     {:referent
      (virtual-referent (new-header-template elements-template inherited)
                        (union-referent [subject-ref])
@@ -143,9 +140,9 @@
   request items that gave rise to the column. elements-template gives
   the template for new elements, while inherited gives the environment
   of the header."
-  [column-items elements-template inherited]
+  [node-or-member elements-template inherited]
   {:add-column (target-for-header-add-column-command
-                column-items elements-template inherited)})
+                node-or-member elements-template inherited)})
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements."
@@ -237,7 +234,6 @@
            :delete {:referent (table-node-delete-referent
                                node rows-referent subject-ref)}})
         descendants (hierarchy-node-descendants node)
-        column-requests (map :item descendants)
         inherited-down (-> (if selectable-attributes
                                (assoc inherited :selectable-attributes
                                       selectable-attributes)
@@ -249,7 +245,7 @@
                             [:selectable-attributes]
                             #(into-attributes
                               % (attributes-for-header-add-column-command
-                                 column-requests elements-template
+                                 node elements-template
                                  inherited))))]
     (condition-elements-DOM-R example-elements inherited-down)))
 
@@ -288,7 +284,8 @@
                               (into-attributes
                                %
                                (attributes-for-header-add-column-command
-                                [column-item] elements-template inherited))
+                                {:item column-item}
+                                elements-template inherited))
                               {:delete {:referent column-referent}
                                :expand {:referent column-referent}})))
         key (conj (:parent-key inherited) (:item-id column-item))]

@@ -93,8 +93,11 @@
 
 (defn hierarchy-node-descendants
   "Return all members at or below the node."
-  [node]
-  (concat (:members node) (mapcat hierarchy-node-descendants (:children node))))
+  [node-or-member]
+  (if (hierarchy-node? node-or-member)
+    (concat (:members node-or-member)
+            (mapcat hierarchy-node-descendants (:children node-or-member)))
+    [node-or-member]))
 
 (defn hierarchy-node-next-level
   "Return the concatenation of the members and children of the node.
@@ -219,10 +222,10 @@
      (:property-elements example))))
 
 (defn hierarchy-node-items-referent
-  "Given a hierarchy node, return a referent to all its descendants,
+  "Given a hierarchy node or member, return a referent to all its descendants,
   returning one group per descendant."
-  [hierarchy-node subject-referent]
-  (let [descendants (hierarchy-node-descendants hierarchy-node)
+  [hierarchy-node-or-member subject-referent]
+  (let [descendants (hierarchy-node-descendants hierarchy-node-or-member)
         affected-items (map :item descendants)]
     (parallel-union-referent
      (map #(item-or-exemplar-referent % subject-referent)

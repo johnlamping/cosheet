@@ -245,7 +245,9 @@
                    {:hierarchy-node true
                     :properties {:a 1}
                     :members [:i]
-                    :children [{:properties {:b 1} :members [:j]}]}))
+                    :children [{:hierarchy-node true
+                                :properties {:b 1}
+                                :members [:j]}]}))
              #{:i :j})))
 
 (deftest hierarchy-node-next-level-test

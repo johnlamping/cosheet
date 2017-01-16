@@ -109,7 +109,7 @@
 
 ;;; Many DOM generating functions take a map argument, inherited, that
 ;;; gives information determined by their container. This includes:
-(def starting_inherited
+(def starting-inherited
   {            :width 1.0  ; A float, giving the width of this dom element
                            ; compared to the minimum width for two column
                            ; format.

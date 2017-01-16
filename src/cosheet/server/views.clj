@@ -31,7 +31,7 @@
                       referent->exemplar-and-subject
                       string->referent instantiate-to-items]]
     [render-utils :refer [make-component]]
-    [render :refer [top-level-item-DOM-R user-visible-item?]]
+    [render :refer [top-level-item-DOM-R user-visible-item? starting-inherited]]
     [item-render :refer [item-content-DOM]]
     [table-render :refer [table-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
@@ -152,7 +152,7 @@
                                        referent immutable-store))))]
     (if immutable-item
       (let [item (description->entity (:item-id immutable-item) store)
-            inherited (cond-> {:priority 0}
+            inherited (cond-> starting-inherited
                         subject-referent (assoc
                                           :subject-referent subject-referent)
                         selector-category (assoc

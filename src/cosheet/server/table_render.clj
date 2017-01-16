@@ -23,7 +23,8 @@
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
                                 hierarchy-by-canonical-info
-                                hierarchy-node-example-elements]]
+                                hierarchy-node-example-elements
+                                hierarchy-node-items-referent]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
@@ -110,8 +111,7 @@
   the environment of the header."
   [node-or-member elements-template inherited]
   (assert (:template inherited))
-  (let [column-items (map :item (hierarchy-node-descendants node-or-member))
-        subject-ref (:subject-referent inherited)
+  (let [subject-ref (:subject-referent inherited)
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
@@ -126,8 +126,8 @@
                             (true :reference))
         select-pattern (conj (:parent-key inherited)
                              [:pattern `(nil ~element-variable)])
-        adjacent-referent (item-or-exemplar-referent
-                           (last column-items) subject-ref)]
+        adjacent-referent (hierarchy-node-items-referent
+                           node-or-member subject-ref)]
     {:referent
      (virtual-referent (new-header-template elements-template inherited)
                        (union-referent [subject-ref])

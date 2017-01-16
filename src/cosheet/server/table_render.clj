@@ -150,7 +150,7 @@
   (if (empty? elements)
     [:div {:class "elements-wrapper"}]
     (expr-let
-        ;; The subject of one of the elements is the item they came from.
+        ;; The subject of any of the elements is the item they came from.
         ;; We need that to more efficiently find the labels, and for
         ;; label-wrapper-DOM-R to make its key.
         [item (entity/subject (first elements))

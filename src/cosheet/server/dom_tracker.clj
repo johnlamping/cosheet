@@ -268,8 +268,8 @@
   "Given the data, a key, and the latest dom for the key,
    record the key in the dom, and do all necessary updates."
   [data key dom]
-  (let [;; The key of the dom we got might be our key with :content added.
-        ;; Take that off, so the key will match the component.
+  (let [;; The key of the dom we got might be missing, or might be our key
+        ;; with :content added. Make key match the component.
         dom (add-attributes dom {:key key})
         component-map (get-in data [:components key])
         old-dom (get-in data [:key->dom key])
@@ -306,7 +306,7 @@
        (when verbose
          (println "value is valid"))
        (let [dom-key (:key (dom-attributes dom))]
-         (assert (or (empty? key)
+         (assert (or (nil? dom-key)
                      (= (seq key) (seq dom-key))
                      (= (seq (conj key :content)) (seq dom-key)))
                  [key dom]))

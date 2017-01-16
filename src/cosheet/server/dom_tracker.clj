@@ -1,4 +1,3 @@
-
 (ns cosheet.server.dom-tracker
   (:require [clojure.data.priority-map :as priority-map]
             (cosheet [reporters :as reporter]

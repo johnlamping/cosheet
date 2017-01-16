@@ -76,7 +76,7 @@
   "Make a component dom for the given item.
   dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
   [dom-fn item exclude-elements inherited]
-  (let [key (conj (:parent-key inherited) (:item-id item))
+  (let [key (conj (:key-prefix inherited) (:item-id item))
         excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
     (make-component {:key key} [dom-fn item excluded inherited])))
 

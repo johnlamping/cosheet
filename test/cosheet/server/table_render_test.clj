@@ -35,7 +35,7 @@
 (deftest table-DOM-test
   (let [inherited {:priority 1
                    :width 3.0
-                   :parent-key [:foo]}
+                   :key-prefix [:foo]}
         joe-list `("Joe"
                    (:top-level :non-semantic)
                    (~o2 :order :non-semantic)
@@ -123,7 +123,7 @@
                 [item-without-labels-DOM-R single [single-tag-spec]
                  {:priority 1
                   :width 0.75
-                  :parent-key (conj table-key (:item-id c1))
+                  :key-prefix (conj table-key (:item-id c1))
                   :subject-referent first-column-referent
                   :template '(nil :tag)
                   :selector-category :table-header
@@ -182,7 +182,7 @@
                               (item-referent c6)
                               :selector :first-group)
                    :exclusions nil}]
-                 {:priority 1 :width 3.0 :parent-key table-key}]]
+                 {:priority 1 :width 3.0 :key-prefix table-key}]]
                [:component {:key (conj table-key :virtualRow)
                             :class "table-row"}
                 [table-virtual-row-DOM
@@ -192,7 +192,7 @@
                  [{:column-id (:item-id c1) :template '(nil ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]
-                 {:priority 1 :width 3.0 :parent-key table-key}]]]]]]))
+                 {:priority 1 :width 3.0 :key-prefix table-key}]]]]]]))
       (let [table-body (nth dom 3)
             table-main (nth table-body 3)
             table-rows (nth table-main 3)
@@ -221,7 +221,7 @@
                [item-without-labels-DOM-R (any) [(any)]
                 {:priority 1
                  :width 0.75
-                 :parent-key (conj table-key (:item-id joe) (any))
+                 :key-prefix (conj table-key (:item-id joe) (any))
                  :subject-referent (item-referent joe)
                  :template '(nil ("name" :tag))
                  :selectable-attributes

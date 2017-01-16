@@ -38,7 +38,7 @@
                 subject-ref
                 (hierarchy-node-items-referent
                  hierarchy-node subject-ref))
-     :parent-key (:parent-key inherited)}))
+     :key-prefix (:key-prefix inherited)}))
 
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update
@@ -74,7 +74,7 @@
             adjacent-referent (item-or-exemplar-referent
                                adjacent-item (:subject-referent inherited))
             example-elements (hierarchy-node-example-elements hierarchy-node)
-            key (conj (:parent-key inherited)
+            key (conj (:key-prefix inherited)
                       :example-element
                       (:item-id (first example-elements)))]
         (virtual-item-DOM key adjacent-referent :before inherited-down))
@@ -107,17 +107,17 @@
                         hierarchy-node (:subject-referent inherited))
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
-        tags-parent-key (conj (:parent-key inherited)
+        tags-key-prefix (conj (:key-prefix inherited)
                               (:item-id (:item example-descendant))
                               :outside)
         inherited-for-tags (assoc (add-adjacent-sibling-command
                                    hierarchy-node inherited)
-                                  :parent-key tags-parent-key
+                                  :key-prefix tags-key-prefix
                                   :template '(nil :tag)
                                   :subject-referent items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
-               (virtual-item-DOM (conj tags-parent-key :tags)
+               (virtual-item-DOM (conj tags-key-prefix :tags)
                                  nil :after inherited-for-tags)
                (hierarchy-properties-DOM-R
                 item-without-labels-DOM-R
@@ -332,7 +332,7 @@
   "Make a dom for a content and a group of non-label elements,
   all of the same item. Don't show a content of 'anything-immutable"
   [item item-referent content elements inherited]
-  (let [key (conj (:parent-key inherited) (:item-id item))
+  (let [key (conj (:key-prefix inherited) (:item-id item))
         content-dom (when (not= content 'anything-immutable)
                       (add-attributes
                        (item-content-DOM item-referent content inherited)
@@ -345,7 +345,7 @@
       (let [inherited-down
             (-> inherited
                 (update-in [:priority] inc)
-                (assoc :parent-key key
+                (assoc :key-prefix key
                        :subject-referent item-referent
                        :template '(nil))
                 (assoc-if-non-empty
@@ -362,7 +362,7 @@
 (defn label-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
   make a dom that includes any necessary labels wrapping the item. The
-  :parent-key of inherited must be the key for the item."
+  :key-prefix of inherited must give a unique prefix for the labels."
   [dom item-referent label-elements must-show-empty-labels inherited]
   (if (and (empty? label-elements) (not must-show-empty-labels))
     dom
@@ -372,7 +372,7 @@
       (if (empty? label-elements)
         [:div {:class "horizontal-tags-element narrow"}
          (add-attributes
-          (virtual-item-DOM (conj (:parent-key inherited) :tags)
+          (virtual-item-DOM (conj (:key-prefix inherited) :tags)
                             nil :after inherited-for-tags)
           {:class "tag"})
          dom]
@@ -404,7 +404,7 @@
   ([item referent excluded-elements inherited]
    (println
     "Generating DOM for"
-    (simplify-for-print (conj (:parent-key inherited) (:item-id item))))
+    (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
      (item-content-and-elements-DOM-R
@@ -427,7 +427,7 @@
              (update :selectable-attributes
                      #(assoc (select-keys % [:column :row])
                              :expand (or (:expand %) {:referent referent})))
-             (update :parent-key #(conj % (:item-id item) ))))))))
+             (update :key-prefix #(conj % (:item-id item) ))))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

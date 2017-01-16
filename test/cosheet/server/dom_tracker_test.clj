@@ -189,7 +189,7 @@
         reporter (new-reporter :value jane) ;; Will change to jill.
         c-map {:key joe-key
                :definition [item-DOM-R joe [] {:priority 0
-                                               :parent-key [:k]
+                                               :key-prefix [:k]
                                                :subject-referent nil}]
                :attributes {:style {:color "blue"}}}
         alt-c-map (assoc-in c-map [:attributes :style :color] "black")
@@ -200,12 +200,12 @@
                         [:component
                          {:key [:d (item-referent joe)] :width 1}
                          [item-DOM-R joe [] {:priority 0
-                                             :parent-key [:d]
+                                             :key-prefix [:d]
                                              :subject-referent nil}]]
                         [:component
                          {:key [:d (item-referent item)]}
                          [item-DOM-R item [] {:priority 0
-                                              :parent-key [:d]
+                                              :key-prefix [:d]
                                               :subject-referent nil}]]])
                      reporter]}]
     (swap-and-act
@@ -262,11 +262,11 @@
                 [:component {:key [:d (item-referent joe)]
                              :width 1}
                  [item-DOM-R joe [] {:priority 0
-                                     :parent-key [:d]
+                                     :key-prefix [:d]
                                      :subject-referent nil}]]
                 [:component {:key [:d (item-referent jane)]}
                  [item-DOM-R jane [] {:priority 0
-                                      :parent-key [:d]
+                                      :key-prefix [:d]
                                       :subject-referent nil}]]]
           [:d (item-referent joe)] [:div  {:key [:d (item-referent joe)]
                                             :target {:referent
@@ -322,7 +322,7 @@
         joe-key [:root (item-referent joe)]]
     (add-dom tracker "root" joe-key
              [item-DOM-R joe [] {:priority 0
-                                 :parent-key [:root]
+                                 :key-prefix [:root]
                                  :subject-referent nil}])
     (compute md)
     (let [data @tracker

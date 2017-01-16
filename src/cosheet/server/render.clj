@@ -48,10 +48,10 @@
                ; :special         A keyword indicating a special action
                ;                  to perform on commands.
                ; :referent        Item(s) referred to
-               ; :parent-key      The key of the parent of a virtual new item.
+               ; :key-prefix      A prefix for the key of a virtual new item.
                ; :select-pattern  The pattern to use to generate the key to
                ;                  select part of a new item.
-               ;                  Will have at most one of this and :parent-key
+               ;                  Will have at most one of this and :key-prefix
                ; :alternate       If true, this target has an alternate
                ;                  interpretation, by narrowing the referent.
                ;                  :selector-category must be present.
@@ -110,16 +110,14 @@
 ;;; Many DOM generating functions take a map argument, inherited, that
 ;;; gives information determined by their container. This includes:
 (def starting-inherited
-  {            :width 1.0  ; A float, giving the width of this dom element
+  {            :width 1.5  ; A float, giving the width of this dom element
                            ; compared to the minimum width for two column
                            ; format.
               :priority 0  ; How important it is to render this item earlier.
                            ; (Lower is more important.)
-           :parent-key []  ; The key of the parent dom of the dom.
-                           ; The parent might not actually have a key, if the
-                           ; user can't interact with it, but this is a
-                           ; that is unique to the parent, and can thus be
-                           ; used to generate unique keys for its children.
+           :key-prefix []  ; A prefix for the keys the dom that will make them
+                           ; distinct from other keys. Typically reflects the
+                           ; containment path in the dom.
 ;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
@@ -173,7 +171,7 @@
 (defn top-level-item-DOM-R
   "Make a dom for an item, testing the item to see what sort of dom to make."
   [item referent inherited]
-  (let [inherited (into {:priority 0 :width 1.5 :parent-key []} inherited)]
+  (let [inherited (into starting-inherited inherited)]
     (expr-let [table (matching-elements :table item)
                tags (matching-elements :tag item)]
       (if (empty? table)

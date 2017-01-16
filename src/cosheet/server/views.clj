@@ -182,7 +182,7 @@
                (make-component
                 {:key [:tab (:item-id item)] :class "table selecteds"}
                 [table-DOM-R item
-                 (assoc inherited :parent-key [:tab])])]))))
+                 (assoc inherited :key-prefix [:tab])])]))))
       [:div])))
 
 (defn create-tracker

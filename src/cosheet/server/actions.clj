@@ -132,8 +132,8 @@
 
 (defn do-add-virtual
   [store context attributes]
-  (let [{:keys [referent parent-key select-pattern]} context
-        select-pattern (or select-pattern (conj parent-key [:pattern]))]
+  (let [{:keys [referent key-prefix select-pattern]} context
+        select-pattern (or select-pattern (conj key-prefix [:pattern]))]
     (add-and-select-virtual-elements
      store referent select-pattern (:target-key attributes))))
 

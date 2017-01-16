@@ -124,7 +124,7 @@
                             (:v :name)
                             (~elements-template :condition)
                             (true :reference))
-        select-pattern (conj (:parent-key inherited)
+        select-pattern (conj (:key-prefix inherited)
                              [:pattern `(nil ~element-variable)])
         adjacent-referent (hierarchy-node-items-referent
                            node-or-member subject-ref)]
@@ -146,7 +146,7 @@
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
-  :parent-key of inherited must give the key of a containing item."
+  :key-prefix of inherited must give a prefix for the doms of each element."
   [elements inherited]
   (if (empty? elements)
     [:div {:class "elements-wrapper"}]
@@ -248,13 +248,13 @@
                                   % (attributes-for-header-add-column-command
                                      node elements-template
                                      inherited)))
-                               (update :parent-key
+                               (update :key-prefix
                                        #(conj % (:item-id parent-item))))]
         (condition-elements-DOM-R example-elements inherited-down)))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
-  (let [key (conj (:parent-key inherited) :virtualColumn)
+  (let [key (conj (:key-prefix inherited) :virtualColumn)
         inherited (assoc inherited
                          :subject-referent (virtual-referent
                                             (:template inherited)
@@ -291,7 +291,7 @@
                                 elements-template inherited))
                               {:delete {:referent column-referent}
                                :expand {:referent column-referent}})))
-        key (conj (:parent-key inherited) (:item-id column-item))]
+        key (conj (:key-prefix inherited) (:item-id column-item))]
     (add-attributes
      (virtual-item-DOM key column-referent :after inherited-down)
      (cond-> {:style {:width (str base-table-column-width "px")}}
@@ -394,7 +394,7 @@
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
                (virtual-item-DOM
-                (:parent-key inherited) (:subject-referent inherited) :after
+                (:key-prefix inherited) (:subject-referent inherited) :after
                 (into-attributes
                  inherited
                  {:selectable-attributes
@@ -407,7 +407,7 @@
    {:keys [column-id template exclusions]}
    inherited]
   (let [inherited (assoc inherited :template template)
-        key (conj (:parent-key inherited) column-id)]
+        key (conj (:key-prefix inherited) column-id)]
     (add-attributes
      (virtual-item-DOM key (:subject-referent inherited) :after inherited)
      {:class "table-cell virtual-column has-border"})))
@@ -418,7 +418,7 @@
    {:keys [column-id template exclusions] :as header-description}
    inherited]
   (let [inherited-down (assoc inherited
-                              :parent-key (conj (:parent-key inherited)
+                              :key-prefix (conj (:key-prefix inherited)
                                                 column-id)
                               :template template)]
     (if (= column-id :virtualColumn)
@@ -439,7 +439,7 @@
   "Generate dom for a table row."
   [row-item row-key new-row-template column-descriptions inherited]
   (let [inherited (-> inherited
-                      (assoc :parent-key row-key)
+                      (assoc :key-prefix row-key)
                       (update-in [:subject-referent]
                                  #(item-or-exemplar-referent row-item %)))]
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
@@ -450,7 +450,7 @@
 (defn table-row-DOM-component
   "Generate a component for a table row."
   [row-item new-row-template column-descriptions inherited]
-  (let [row-key (conj (:parent-key inherited) (:item-id row-item))]
+  (let [row-key (conj (:key-prefix inherited) (:item-id row-item))]
     (make-component
      {:key row-key :class "table-row"}
      [table-row-DOM-R
@@ -462,7 +462,7 @@
    {:keys [column-id template exclusions]} ;; A column header description
    inherited]
   (let [inherited (assoc inherited :template template)
-        key (conj (:parent-key inherited) column-id)]
+        key (conj (:key-prefix inherited) column-id)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
      {:class "table-cell has-border"})))
@@ -471,7 +471,7 @@
   "Generate dom for a table's virtual row."
   [row-key new-row-template adjacent-referent column-descriptions inherited]
   (let [inherited (-> inherited
-                      (assoc :parent-key row-key)
+                      (assoc :key-prefix row-key)
                       (update-in [:subject-referent]
                                  #(virtual-referent
                                    new-row-template % adjacent-referent)))
@@ -482,7 +482,7 @@
 (defn table-virtual-row-DOM-component
   "Generate a component for a table row."
   [new-row-template adjacent-referent column-descriptions inherited]
-  (let [row-key (conj (:parent-key inherited) :virtualRow)]
+  (let [row-key (conj (:key-prefix inherited) :virtualRow)]
     (make-component
      {:key row-key :class "table-row"}
      [table-virtual-row-DOM
@@ -592,8 +592,8 @@
   (let [store (:store table-item)
         table-referent (item-or-exemplar-referent
                         table-item (:subject-referent inherited))
-        table-key (conj (:parent-key inherited) table-referent)
-        inherited (assoc inherited :parent-key table-key)]
+        table-key (conj (:key-prefix inherited) table-referent)
+        inherited (assoc inherited :key-prefix table-key)]
     (expr-let [row-condition-item (expr first (entity/label->elements
                                                table-item :row-condition))]
       ;; Don't do anything if we don't yet have the table information filled in.

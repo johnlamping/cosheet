@@ -34,7 +34,7 @@
 (def unused-orderable (nth orderables 6))
 
 (def base-inherited {:priority 0
-                     :parent-key [:root]
+                     :key-prefix [:root]
                      :subject-referent (make-id "root")})
 (deftest item-DOM-R-test-simple
   ;; Test a simple cell
@@ -125,14 +125,14 @@
              [item-without-labels-DOM-R confidence1 [confidence1-tag]
               {:priority 1
                :width 0.5
-               :parent-key tags-key
+               :key-prefix tags-key
                :subject-referent one-another-two-referent
                :template '(nil :tag)
                :selectable-attributes
                {:add-sibling {:referent (virtual-referent
                                          'nil (item-referent age)
                                          one-another-two-referent) 
-                              :parent-key age-key
+                              :key-prefix age-key
                               :alternate :some-alternate}}
                :selector-category :some-category
                :alternate-target :some-alternate}]]
@@ -145,14 +145,14 @@
                 [item-without-labels-DOM-R one [confidence1]
                  {:priority 1
                   :width 0.5
-                  :parent-key age-key
+                  :key-prefix age-key
                   :subject-referent (item-referent age)
                   :template '(nil ("confidence" :tag))
                   :selectable-attributes
                   {:add-sibling {:referent (virtual-referent
                                             'nil (item-referent age)
                                             one-another-two-referent) 
-                                 :parent-key age-key
+                                 :key-prefix age-key
                                  :alternate :some-alternate}}
                   :selector-category :some-category
                   :alternate-target :some-alternate}]]
@@ -168,7 +168,7 @@
                 [item-without-labels-DOM-R probability [probability-tag]
                  {:priority 1
                   :width 0.5
-                  :parent-key (conj age-key (:item-id two) :outside)
+                  :key-prefix (conj age-key (:item-id two) :outside)
                   :subject-referent (item-referent two)
                   :template '(nil :tag)
                   :selectable-attributes
@@ -176,7 +176,7 @@
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
                                             (item-referent two)) 
-                                 :parent-key age-key
+                                 :key-prefix age-key
                                  :alternate :some-alternate}}
                   :selector-category :some-category
                   :alternate-target :some-alternate}]]
@@ -185,7 +185,7 @@
                  [item-without-labels-DOM-R two (as-set [confidence2 probability])
                   {:priority 1
                    :width 0.5
-                   :parent-key age-key
+                   :key-prefix age-key
                    :subject-referent (item-referent age)
                    :template (as-set '(nil ("confidence" :tag)
                                            ("probability" :tag)))
@@ -194,7 +194,7 @@
                                              '(nil ("confidence" :tag))
                                              (item-referent age)
                                              (item-referent two)) 
-                                  :parent-key age-key
+                                  :key-prefix age-key
                                   :alternate :some-alternate}}
                    :selector-category :some-category
                    :alternate-target :some-alternate}]]]]]]]
@@ -212,7 +212,7 @@
              [item-without-labels-DOM-R none nil
               {:priority 1
                :width 0.5
-               :parent-key age-key
+               :key-prefix age-key
                :subject-referent (item-referent age)
                :template '(nil)
                :selector-category :some-category
@@ -291,14 +291,14 @@
               [item-without-labels-DOM-R confidence1 [confidence1-tag]
                {:priority 1
                 :width 0.25
-                :parent-key tags-key
+                :key-prefix tags-key
                 :subject-referent all-elements-referent
                 :template '(nil :tag)
                 :selectable-attributes
                 {:add-sibling {:referent (virtual-referent
                                           nil (item-referent age)
                                           all-elements-referent) 
-                               :parent-key age-key}}}]]]
+                               :key-prefix age-key}}}]]]
             [:div {:class "editable"
                    :key (conj age-key :example-element (:item-id confidence1))
                    :target {:referent (virtual-referent
@@ -309,7 +309,7 @@
                    :add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
                                             all-elements-referent) 
-                                 :parent-key age-key}}]]
+                                 :key-prefix age-key}}]]
            ;; Group for confidence and likelihood.
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent"}
@@ -319,7 +319,7 @@
                [item-without-labels-DOM-R likelihood [likelihood-tag]
                 {:priority 1
                  :width 0.25
-                 :parent-key tags-key
+                 :key-prefix tags-key
                  :subject-referent likelihoods-referent
                  :template '(nil :tag)
                  :selectable-attributes
@@ -327,14 +327,14 @@
                                            '(nil ("confidence" :tag))
                                            (item-referent age)
                                            likelihoods-referent) 
-                                :parent-key age-key}}}]]]]
+                                :key-prefix age-key}}}]]]]
             [:div {:class "item-stack"}
              ;; Pair
              [:component {:key (conj age-key (:item-id pair))}
               [item-without-labels-DOM-R pair (as-set [confidence1 likelihood])
                {:priority 1
                 :width 0.6875
-                :parent-key age-key
+                :key-prefix age-key
                 :subject-referent (item-referent age)
                 :template (as-set '(nil ("confidence" :tag)
                                         ("likelihood" :tag)))
@@ -343,7 +343,7 @@
                                           '(nil ("confidence" :tag))
                                           (item-referent age)
                                           likelihoods-referent) 
-                               :parent-key age-key}}}]]
+                               :key-prefix age-key}}}]]
              ;; Double
              [:component {:key (conj age-key (:item-id double))}
               [item-without-labels-DOM-R double (any)
@@ -358,7 +358,7 @@
                [item-without-labels-DOM-R probability [probability-tag]
                 {:priority 1
                  :width 0.25
-                 :parent-key (conj age-key (:item-id two) :outside)
+                 :key-prefix (conj age-key (:item-id two) :outside)
                  :subject-referent (item-referent two)
                  :template '(nil :tag)
                  :selectable-attributes
@@ -366,12 +366,12 @@
                                            '(nil ("confidence" :tag))
                                            (item-referent age)
                                            (item-referent two)) 
-                                :parent-key age-key}}}]]]]
+                                :key-prefix age-key}}}]]]]
             [:component {:key (conj age-key (:item-id two))}
              [item-without-labels-DOM-R two (as-set [confidence2 probability])
               {:priority 1
                :width 0.6875
-               :parent-key age-key
+               :key-prefix age-key
                :subject-referent (item-referent age)
                :template (as-set '(nil ("confidence" :tag)
                                        ("probability" :tag)))
@@ -380,7 +380,7 @@
                                          '(nil ("confidence" :tag))
                                          (item-referent age)
                                          (item-referent two)) 
-                              :parent-key age-key}}}]]]
+                              :key-prefix age-key}}}]]]
            ;; Group for confidence
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent bottom-border"}
@@ -390,7 +390,7 @@
               [item-without-labels-DOM-R one [confidence3]
                {:priority 1
                 :width 0.6875
-                :parent-key age-key
+                :key-prefix age-key
                 :subject-referent (item-referent age)
                 :template '(nil ("confidence" :tag))}]]]]]]))))
 
@@ -414,7 +414,7 @@
                  [:div {:class "wrapped-element tag"}
                   [:component {:key age-key :class "tag"}
                    [item-without-labels-DOM-R age [age-tag]
-                    {:priority 0 :parent-key element-key
+                    {:priority 0 :key-prefix element-key
                      :subject-referent (item-referent element)
                      :width 1.0
                      :template '(nil :tag)

@@ -120,7 +120,7 @@
                  (virtual-referent '(nil ("age" :tag))
                                    (union-referent [(item-referent jane)])
                                    (item-referent jane) :position :after)
-                 :parent-key ["jane"]}
+                 :key-prefix ["jane"]}
                 {:target-key ["jane" "jane-age"]})]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane) (:store result))))

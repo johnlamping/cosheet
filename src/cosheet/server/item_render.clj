@@ -361,20 +361,18 @@
 
 (defn label-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
-  make a dom that includes any necessary labels wrapping the item. We only
-  use the item to make the key."
-  [dom item item-referent label-elements must-show-empty-labels inherited]
+  make a dom that includes any necessary labels wrapping the item. The
+  :parent-key of inherited must be the key for the item."
+  [dom item-referent label-elements must-show-empty-labels inherited]
   (if (and (empty? label-elements) (not must-show-empty-labels))
     dom
-    (let [key (conj (:parent-key inherited) (:item-id item))
-          inherited-for-tags (-> inherited
+    (let [inherited-for-tags (-> inherited
                                  (assoc :template '(nil :tag)
-                                        :subject-referent item-referent
-                                        :parent-key key))]
+                                        :subject-referent item-referent))]
       (if (empty? label-elements)
         [:div {:class "horizontal-tags-element narrow"}
          (add-attributes
-          (virtual-item-DOM (conj key :tags)
+          (virtual-item-DOM (conj (:parent-key inherited) :tags)
                             nil :after inherited-for-tags)
           {:class "tag"})
          dom]
@@ -423,12 +421,13 @@
       (expr-let [dom (item-without-labels-DOM-R
                       item referent excluded inherited)]
         (label-wrapper-DOM-R
-         dom item referent labels must-show-empty-label
-         ;; Keep :add-column, and :add-row commands and their data.
-         (update
-          inherited :selectable-attributes
-          #(assoc (select-keys % [:column :row])
-                  :expand (or (:expand %) {:referent referent}))))))))
+         dom referent labels must-show-empty-label
+         (-> inherited
+             ;; Keep :add-column, and :add-row commands and their data.
+             (update :selectable-attributes
+                     #(assoc (select-keys % [:column :row])
+                             :expand (or (:expand %) {:referent referent})))
+             (update :parent-key #(conj % (:item-id item) ))))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

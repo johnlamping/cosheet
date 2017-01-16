@@ -116,13 +116,14 @@
              [:div {:class "table-indent"}]
              [:div {:class "table-main selecteds selector-scope"}
               [:div {:class "column-header-sequence selectors"}
-               [:component {:key (conj table-key (:item-id single))
+               [:component {:key (conj table-key
+                                       (:item-id c1) (:item-id single))
                             :class "tag top-level column-header"
                             :style {:width "150px"}}
                 [item-without-labels-DOM-R single [single-tag-spec]
                  {:priority 1
                   :width 0.75
-                  :parent-key table-key
+                  :parent-key (conj table-key (:item-id c1))
                   :subject-referent first-column-referent
                   :template '(nil :tag)
                   :selector-category :table-header

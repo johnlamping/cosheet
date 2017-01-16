@@ -145,14 +145,14 @@
                 node-or-member elements-template inherited)})
 
 (defn condition-elements-DOM-R
-  "Generate the dom for a (subset of) a condition, given its elements."
+  "Generate the dom for a (subset of) a condition, given its elements.
+  :parent-key of inherited must give the key of a containing item."
   [elements inherited]
   (if (empty? elements)
     [:div {:class "elements-wrapper"}]
     (expr-let
         ;; The subject of any of the elements is the item they came from.
-        ;; We need that to more efficiently find the labels, and for
-        ;; label-wrapper-DOM-R to make its key.
+        ;; We use that to more efficiently find the labels.
         [item (entity/subject (first elements))
          all-labels (entity/label->elements item :tag)
          all-labels-set (set all-labels)
@@ -168,7 +168,7 @@
           (expr-let [inner-dom (elements-DOM-R non-labels true nil inherited)]
             (label-wrapper-DOM-R
              [:div {:class "item elements-wrapper"} inner-dom]
-             item (:subject-referent inherited) labels false inherited)))
+             (:subject-referent inherited) labels false inherited)))
         labels
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)
@@ -223,31 +223,34 @@
   request(s) overall."
   [node rows-referent elements-template inherited]
   (let [subject-ref (:subject-referent inherited)
-        column-referent (union-referent
-                         [(table-node-header-elements-referent node subject-ref)
-                          (table-node-row-elements-referent node rows-referent)
-                          ])
+        column-referent (union-referent [(table-node-header-elements-referent
+                                          node subject-ref)
+                                         (table-node-row-elements-referent
+                                          node rows-referent)])
         example-elements (hierarchy-node-example-elements node)
         selectable-attributes
         (when (= (count example-elements) 1)
           {:expand {:referent column-referent}
            :delete {:referent (table-node-delete-referent
                                node rows-referent subject-ref)}})
-        descendants (hierarchy-node-descendants node)
-        inherited-down (-> (if selectable-attributes
-                               (assoc inherited :selectable-attributes
-                                      selectable-attributes)
-                               (dissoc inherited :selectable-attributes))
-                           (assoc :width (* 0.75 (count descendants))
-                                  :template elements-template
-                                  :subject-referent column-referent)
-                           (update-in
-                            [:selectable-attributes]
-                            #(into-attributes
-                              % (attributes-for-header-add-column-command
-                                 node elements-template
-                                 inherited))))]
-    (condition-elements-DOM-R example-elements inherited-down)))
+        descendants (hierarchy-node-descendants node)]
+    (expr-let [parent-item (entity/subject (first example-elements))]
+      (let [inherited-down (-> (if selectable-attributes
+                                 (assoc inherited :selectable-attributes
+                                        selectable-attributes)
+                                 (dissoc inherited :selectable-attributes))
+                               (assoc :width (* 0.75 (count descendants))
+                                      :template elements-template
+                                      :subject-referent column-referent)
+                               (update-in
+                                [:selectable-attributes]
+                                #(into-attributes
+                                  % (attributes-for-header-add-column-command
+                                     node elements-template
+                                     inherited)))
+                               (update :parent-key
+                                       #(conj % (:item-id parent-item))))]
+        (condition-elements-DOM-R example-elements inherited-down)))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]

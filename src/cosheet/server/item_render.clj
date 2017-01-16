@@ -33,13 +33,12 @@
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
-    (cond->
-        {:referent (virtual-referent
-                    (when (seq conditions) (list* nil conditions))
-                    subject-ref
-                    (hierarchy-node-items-referent
-                     hierarchy-node subject-ref))
-        :parent-key (:parent-key inherited)})))
+    {:referent (virtual-referent
+                (when (seq conditions) (list* nil conditions))
+                subject-ref
+                (hierarchy-node-items-referent
+                 hierarchy-node subject-ref))
+     :parent-key (:parent-key inherited)}))
 
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update

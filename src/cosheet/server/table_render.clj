@@ -306,7 +306,10 @@
    inherited]
   (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
-     node-or-element false rows-referent inherited)
+     node-or-element false rows-referent
+     ;; The child nodes might use the same item in their keys as their parent,
+     ;; so add to the prefix to make their keys distinct.
+     (update inherited :key-prefix #(conj % :nested)))
     (table-header-member-DOM-R
      (:item node-or-element) containing-node rows-referent elements-template
      inherited)))

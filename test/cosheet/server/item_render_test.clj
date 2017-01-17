@@ -107,8 +107,7 @@
                                    (item-referent two)])]
     (is (check
          dom
-         [:div {:class "item with-elements"
-                :key age-key}
+         [:div {:class "item with-elements"}
           [:div {:class "content-text editable"
                  :key (conj age-key :content)
                  :selector-category :some-category
@@ -279,8 +278,7 @@
                                 (item-referent two) (item-referent one)])]
     (is (check
          dom
-         [:div {:class "item with-elements"
-                :key age-key}
+         [:div {:class "item with-elements"}
           [:div (any map?) "39"]
           [:div {:class "stack"}
            [:div {:class "horizontal-tags-element wide"}
@@ -421,8 +419,7 @@
                      :selectable-attributes
                      {:expand {:referent (item-referent element)}}}]]
                   [:div {:class "indent-wrapper tag"}
-                   [:div {:class "item with-elements"
-                          :key element-key}
+                   [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
                            :target {:referent (item-referent element)}
                            :key (conj element-key :content)}
@@ -450,8 +447,7 @@
                                              (item-referent item)
                                              (item-referent item)
                                              :position :after)}}]
-                  [:div {:class "item with-elements"
-                         :key item-key}
+                  [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
                            :target {:referent (item-referent item)}
                            :key (conj item-key :content)}

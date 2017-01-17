@@ -354,7 +354,7 @@
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
           (if content-dom
-            [:div {:class "item with-elements" :key key}
+            [:div {:class "item with-elements"}
              content-dom elements-dom]
             [:div {:class "item elements-wrapper"}
              elements-dom]))))))

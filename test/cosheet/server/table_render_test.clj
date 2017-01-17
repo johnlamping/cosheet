@@ -107,8 +107,7 @@
                                                  (true :reference)))]]
       (is (check
            dom
-           [:div {:class "table selector-scope"
-                  :key table-key}
+           [:div {:class "table selector-scope"}
             [:div {:class "table-top selectors"}
              [:div {:class "table-corner"}]
              (any)]
@@ -202,7 +201,7 @@
                      (apply (first row-command) (rest row-command)))]
         (is (check
              row-dom
-             [:div {:key (conj table-key (:item-id joe))}
+             [:div {}
               [:div {:add-row {:referent (virtual-referent
                                           '("" ("" ("age" :tag))
                                             (:top-level :non-semantic))

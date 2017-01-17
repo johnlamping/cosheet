@@ -445,7 +445,7 @@
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
                                column-descriptions)]
-      (into [:div {:key row-key}] cells))))
+      (into [:div {}] cells))))
 
 (defn table-row-DOM-component
   "Generate a component for a table row."
@@ -477,7 +477,7 @@
                                    new-row-template % adjacent-referent)))
         cells (map #(table-virtual-row-cell-DOM
                      adjacent-referent % inherited) column-descriptions)]
-    (into [:div {:key row-key}] cells)))
+    (into [:div {}] cells)))
 
 (defn table-virtual-row-DOM-component
   "Generate a component for a table row."
@@ -659,8 +659,7 @@
                                row-template
                                (item-referent (or (last row-items) table-item))
                                column-descriptions inherited)]
-              [:div {:class "table selector-scope"
-                     :key table-key}
+              [:div {:class "table selector-scope"}
                [:div {:class (cond-> "table-top selectors"
                                condition-is-tags (str " tag"))}
                 [:div {:class "table-corner"}]

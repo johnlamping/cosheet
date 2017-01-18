@@ -99,7 +99,7 @@
                                 (matching-elements :tag probability)))
         none (first (current-value (matching-elements "none" age)))
         age-key [:root (:item-id age)]
-        tags-key (conj age-key (:item-id one) :outside)
+        tags-key (conj age-key :label)
         none-key (conj age-key (:item-id none))
         one-another-two-referent (parallel-union-referent
                                   [(item-referent one)
@@ -161,13 +161,12 @@
                  (any)]]]
               ;; Two (must be nested)
               [:div {:class "wrapped-element tag"}
-               [:component {:key (conj age-key (:item-id two)
-                                       :outside (:item-id probability))
+               [:component {:key (conj age-key :label (:item-id probability))
                             :class "tag"}
                 [item-without-labels-DOM-R probability [probability-tag]
                  {:priority 1
                   :width 0.5
-                  :key-prefix (conj age-key (:item-id two) :outside)
+                  :key-prefix (conj age-key :label)
                   :subject-referent (item-referent two)
                   :template '(nil :tag)
                   :selectable-attributes
@@ -200,7 +199,7 @@
            ;; None
            [:div {:class "horizontal-tags-element narrow"}
             [:div {:class "editable tag"
-                   :key (conj none-key :outside :tags)
+                   :key (conj (conj age-key :label (:item-id none)) :virtual)
                    :selector-category :some-category
                    :target {:referent (virtual-referent
                                        '(nil :tag) (item-referent none)
@@ -269,7 +268,7 @@
         confidence3 (first (current-value
                             (matching-elements "confidence" one)))
         age-key [:root (:item-id age)]
-        tags-key (conj age-key (:item-id pair) :outside)
+        tags-key (conj age-key :label)
         one-key (conj age-key (:item-id one))
         likelihoods-referent (parallel-union-referent
                               [(item-referent pair) (item-referent double)])
@@ -350,13 +349,12 @@
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent"}
              [:div {:class "tag horizontal-header top-border bottom-border"}
-              [:component {:key (conj age-key (:item-id two)
-                                      :outside (:item-id probability))
+              [:component {:key (conj age-key :label (:item-id probability))
                            :class "tag"}
                [item-without-labels-DOM-R probability [probability-tag]
                 {:priority 1
                  :width 0.25
-                 :key-prefix (conj age-key (:item-id two) :outside)
+                 :key-prefix (conj age-key :label)
                  :subject-referent (item-referent two)
                  :template '(nil :tag)
                  :selectable-attributes

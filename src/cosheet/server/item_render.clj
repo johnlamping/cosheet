@@ -107,9 +107,7 @@
                         hierarchy-node (:subject-referent inherited))
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
-        tags-key-prefix (conj (:key-prefix inherited)
-                              (:item-id (:item example-descendant))
-                              :outside)
+        tags-key-prefix (conj (:key-prefix inherited) :label)
         inherited-for-tags (assoc (add-adjacent-sibling-command
                                    hierarchy-node inherited)
                                   :key-prefix tags-key-prefix
@@ -117,7 +115,11 @@
                                   :subject-referent items-referent)]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
-               (virtual-item-DOM (conj tags-key-prefix :tags)
+               (virtual-item-DOM (conj tags-key-prefix
+                                       ;; Need to make it different from
+                                       ;; sibling virtuals.
+                                       (:item-id (:item example-descendant))
+                                       :virtual)
                                  nil :after inherited-for-tags)
                (hierarchy-properties-DOM-R
                 item-without-labels-DOM-R

@@ -70,11 +70,22 @@
            ~@(if (empty? suffix) body [`(expr-let ~(vec suffix) ~@body)]))
        ~@values)))
 
-;;; TODO: This is eager. Consider adding support for lazy sequences of
+(defmacro cache
+  "Takes a function and a series of arguments, and produces a cache
+   reporter with a tracing thunk. Extra information can be added as meta
+   on the function."
+  [& args]
+  `(new-expression ~(vec args)
+                   :trace (fn [thunk#] (thunk#))
+                   :manager-type :cache
+                   ~@(apply concat (seq (meta (first args))))))
+
+;;; TODO: These are eager. Consider adding support for lazy sequences of
 ;;; reporters. That requires adding a new lazy sequence  manager type
 ;;; that returns a valid value of a lazy-seq, which when requested
 ;;; sets the value to invalid, and sets up the computation of the
 ;;; pieces.
+
 (defmacro expr-seq
   "Given an expression that may evaluate to a sequence of reporters, make
    a reporter whose value is the sequence of corresponding values."
@@ -85,13 +96,14 @@
        (new-expression (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))
 
-(defmacro cache
-  "Takes a function and a series of arguments, and produces a cache
-   reporter with a tracing thunk. Extra information can be added as meta
-   on the function."
-  [& args]
-  `(new-expression ~(vec args)
-                   :trace (fn [thunk#] (thunk#))
-                   :manager-type :cache
-                   ~@(apply concat (seq (meta (first args))))))
+(defn expr-filter
+  "Given a function that might return a reporter, and a sequence,
+  return a reporter whose value is the subsequence for which the filter
+  is truthy."
+  [condition items]
+  (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
+                                     (when passes %))
+                              items)]
+    (filter identity passed)))
+
 

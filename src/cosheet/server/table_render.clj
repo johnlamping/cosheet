@@ -221,7 +221,7 @@
   header selects elements. The elements template describes new elements
   of the column request(s), in contrast to inherited, which describe the
   request(s) overall."
-  [node rows-referent elements-template inherited]
+  [node top-level rows-referent elements-template inherited]
   (let [subject-ref (:subject-referent inherited)
         column-referent (union-referent [(table-node-header-elements-referent
                                           node subject-ref)
@@ -230,9 +230,10 @@
         example-elements (hierarchy-node-example-elements node)
         selectable-attributes
         (when (= (count example-elements) 1)
-          {:expand {:referent column-referent}
-           :delete {:referent (table-node-delete-referent
-                               node rows-referent subject-ref)}})
+          (cond-> {:expand {:referent column-referent} }
+            top-level (assoc :delete
+                             {:referent (table-node-delete-referent
+                                         node rows-referent subject-ref)})))
         descendants (hierarchy-node-descendants node)]
     (expr-let [parent-item (entity/subject (first example-elements))]
       (let [inherited-down (-> (if selectable-attributes
@@ -323,7 +324,7 @@
                            (keys (:cumulative-properties node)))]
     (expr-let
         [node-dom (table-header-node-DOM-R
-                   node rows-referent elements-template inherited)]
+                   node top-level rows-referent elements-template inherited)]
       (let [node-dom (cond-> node-dom
                        top-level (add-attributes {:class "top-level"}))
             next-level (hierarchy-node-next-level node)]

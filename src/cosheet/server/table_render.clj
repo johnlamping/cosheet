@@ -93,7 +93,7 @@
         element-ref (table-node-exclusive-row-elements-referent
                      node rows-referent)]
     ;; We always return a union, to guarantee that instantition will
-    ;; return one group for the header elements.
+    ;; return the header elements in the first group.
     (union-referent [header-ref element-ref])))
 
 (defn new-header-template
@@ -148,16 +148,13 @@
   "Generate the dom for a (subset of) a condition, given its elements.
   :key-prefix of inherited must give a prefix for the doms of each element."
   [elements inherited]
-  (if (empty? elements)
-    [:div {:class "elements-wrapper"}]
-    (expr-let
-        ;; The subject of any of the elements is the item they came from.
-        ;; We use that to more efficiently find the labels.
-        [item (entity/subject (first elements))
-         all-labels (entity/label->elements item :tag)
-         all-labels-set (set all-labels)
-         labels (seq (filter all-labels-set elements))
-         non-labels (seq (remove all-labels-set elements))]
+  (expr-let
+      [tags (expr-seq map #(matching-elements :tag %) elements)]
+    (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
+                              tags elements))
+          non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
+                                                       [element]))
+                                  tags elements))]
       (cond
         (and labels non-labels)
         (let [inherited-down
@@ -182,9 +179,11 @@
                                     ordered-elements excludeds
                                     {:class "tag"} inherited-down)
               (> (count ordered-elements) 1) (add-attributes {:class "tag"}))))
-        true
+        non-labels
         (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
-          [:div {:class "elements-wrapper"} elements-dom])))))
+          [:div {:class "elements-wrapper"} elements-dom])
+        true
+        [:div {:class "elements-wrapper"}]))))
 
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include
@@ -230,7 +229,7 @@
         example-elements (hierarchy-node-example-elements node)
         selectable-attributes
         (when (= (count example-elements) 1)
-          (cond-> {:expand {:referent column-referent} }
+          (cond-> {:expand {:referent column-referent}}
             top-level (assoc :delete
                              {:referent (table-node-delete-referent
                                          node rows-referent subject-ref)})))

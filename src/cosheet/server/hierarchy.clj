@@ -176,23 +176,13 @@
                    (multiset (:property-canonicals item-info-map)) {}))
                 [] item-info-maps)))
 
-(defn filtered-items
-  "Run the filter on each of the items,
-  returning the items for which it is true."
-  [condition items]
-  (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
-                                     (when passes %))
-                              items)]
-    (filter identity passed)))
-
 (defn item-map-by-elements
   "Given an item and a seq of elements of the item that characterize how
    it should fit in a hierarchy, return an item info map."
   [item elements]
-  (expr-let [filtered (filtered-items semantic-element?-R elements)
-             canonicals (expr-seq map canonical-info filtered)]
+  (expr-let [canonicals (expr-seq map canonical-info elements)]
        {:item item
-        :property-elements filtered
+        :property-elements elements
         :property-canonicals canonicals}))
 
 (defn item-maps-by-elements
@@ -201,15 +191,6 @@
   return item info maps for each item."
   [items elements]
   (expr-seq map item-map-by-elements items elements))
-
-(defn items-hierarchy-by-elements
-  "Given items in order, and a list of elements for each, organize the items
-  into a hierarchy by the semantic info of the corresponding
-  elements."
-  [items elements]
-  (expr-let
-      [item-maps (item-maps-by-elements items elements)]
-    (hierarchy-by-canonical-info item-maps)))
 
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements

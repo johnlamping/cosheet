@@ -6,10 +6,10 @@
                      [debug :refer [simplify-for-print]]
                      [dom-utils
                       :refer [into-attributes add-attributes]]
-                     [expression :refer [expr expr-let expr-seq cache]])
+                     [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [item-or-exemplar-referent virtual-referent
-                               semantic-elements-R]]
+                               semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-items-referent
@@ -284,8 +284,9 @@
   [elements must-show-empty-labels implied-template inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
-       all-labels (expr-seq map #(matching-elements '(nil :tag) %)
-                            ordered-elements)
+       all-labels (expr-filter semantic-element?-R
+                               (expr-seq map #(matching-elements '(nil :tag) %)
+                                         ordered-elements))
        excludeds (expr-seq map #(when implied-template
                                   (condition-satisfiers-R % implied-template))
                            ordered-elements)]

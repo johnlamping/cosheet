@@ -22,6 +22,7 @@
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
                                 hierarchy-by-canonical-info
+                                hierarchy-by-all-elements
                                 hierarchy-node-example-elements
                                 hierarchy-node-items-referent]]
              [order-utils :refer [order-items-R]]
@@ -547,26 +548,6 @@
                          (matching-items row-query store))]
     [row-template row-items]))
 
-(defn table-hierarchy-R
-  "Construct the hierarchy for a table's columns."
-  [columns]
-  (expr-let
-      [;; Unlike row headers for tags, where the header
-       ;; information is computed from the items of the elements,
-       ;; here the header information is explicitly provided by
-       ;; the table definition. So the members of the hierarchy
-       ;; are the column definitions.
-       columns-elements (expr-seq map semantic-elements-R columns)
-       columns-lists (expr-seq map #(expr-seq map semantic-to-list-R %)
-                               columns-elements)]
-    (hierarchy-by-canonical-info
-                  (map (fn [column elements lists]
-                         {:item column
-                          :property-elements elements
-                          :property-canonicals (map canonicalize-list
-                                                    lists)})
-                       columns columns-elements columns-lists))))
-
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
@@ -615,7 +596,7 @@
                                          store row-condition-item)
                columns (expr order-items-R
                          (entity/label->elements table-item :column))
-               hierarchy (table-hierarchy-R columns)
+               hierarchy (hierarchy-by-all-elements columns)
                condition-elements (semantic-elements-R row-condition-item)
                conditions-as-lists (expr-seq map semantic-to-list-R
                                              condition-elements)

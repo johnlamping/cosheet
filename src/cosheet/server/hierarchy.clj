@@ -6,7 +6,7 @@
              [expression :refer [expr-let expr-seq]]
              [canonical :refer [canonicalize-list]])
             (cosheet.server
-             [referent :refer [semantic-element?-R semantic-to-list-R
+             [referent :refer [semantic-elements-R semantic-to-list-R
                                parallel-union-referent
                                item-or-exemplar-referent]])))
 ;;; A hierarchy organizes a sequence of "members"
@@ -163,18 +163,13 @@
     (multiset canonicals)))
 
 (defn hierarchy-by-canonical-info
-  "Given a sequence of item info maps, return a hierarchy.
-  If restrict-empty-merges is true, don't merge items at the top level 
- with empty properties."
+  "Given a sequence of item info maps, return a hierarchy."
   [item-info-maps]
-  (let [non-empty-items (map :item
-                             (filter #(not (empty? (:property-canonicals %)))
-                                     item-info-maps))]
-    (reduce (fn [hierarchy item-info-map]
-                  (append-to-hierarchy
-                   hierarchy item-info-map
-                   (multiset (:property-canonicals item-info-map)) {}))
-                [] item-info-maps)))
+  (reduce (fn [hierarchy item-info-map]
+            (append-to-hierarchy
+             hierarchy item-info-map
+             (multiset (:property-canonicals item-info-map)) {}))
+          [] item-info-maps))
 
 (defn item-map-by-elements
   "Given an item and a seq of elements of the item that characterize how
@@ -191,6 +186,14 @@
   return item info maps for each item."
   [items elements]
   (expr-seq map item-map-by-elements items elements))
+
+(defn hierarchy-by-all-elements
+  "Given a sequence of items, generate a hierarchy based on all their elements."
+  [items]
+  (expr-let
+      [items-elements (expr-seq map semantic-elements-R items)
+       item-maps (item-maps-by-elements items items-elements)]
+    (hierarchy-by-canonical-info item-maps)))
 
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements

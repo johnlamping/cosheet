@@ -24,7 +24,8 @@
                                 hierarchy-by-canonical-info
                                 hierarchy-by-all-elements
                                 hierarchy-node-example-elements
-                                hierarchy-node-items-referent]]
+                                hierarchy-node-items-referent
+                                hierarchy-node-parallel-items-referent]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
@@ -42,13 +43,6 @@
   [template]
   (some #(or (= (if (sequential? %) (first %) %) :tag))
         template))
-
-(defn table-node-header-elements-referent
-  "Return a referent for the elements in headers spanned by a table node."
-  [node header-subject]
-  (union-referent-if-needed
-   (map #(item-or-exemplar-referent (:item %) header-subject)
-        (hierarchy-node-descendants node))))
 
 (defn table-node-row-elements-referent
   "Generate a referent for the elements in rows affected by a table header."
@@ -126,7 +120,7 @@
                             (true :reference))
         select-pattern (conj (:key-prefix inherited)
                              [:pattern `(nil ~element-variable)])
-        adjacent-referent (hierarchy-node-items-referent
+        adjacent-referent (hierarchy-node-parallel-items-referent
                            node-or-member subject-ref)]
     {:referent
      (virtual-referent (new-header-template elements-template inherited)
@@ -222,7 +216,7 @@
   request(s) overall."
   [node top-level rows-referent elements-template inherited]
   (let [subject-ref (:subject-referent inherited)
-        column-referent (union-referent [(table-node-header-elements-referent
+        column-referent (union-referent [(hierarchy-node-items-referent
                                           node subject-ref)
                                          (table-node-row-elements-referent
                                           node rows-referent)])

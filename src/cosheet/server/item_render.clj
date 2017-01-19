@@ -13,6 +13,7 @@
              [hierarchy :refer [hierarchy-node-descendants
                                 hierarchy-node-members
                                 hierarchy-node-items-referent
+                                hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
@@ -36,7 +37,7 @@
     {:referent (virtual-referent
                 (when (seq conditions) (list* nil conditions))
                 subject-ref
-                (hierarchy-node-items-referent
+                (hierarchy-node-parallel-items-referent
                  hierarchy-node subject-ref))
      :key-prefix (:key-prefix inherited)}))
 

@@ -7,6 +7,7 @@
              [canonical :refer [canonicalize-list]])
             (cosheet.server
              [referent :refer [semantic-elements-R semantic-to-list-R
+                               union-referent-if-needed
                                parallel-union-referent
                                item-or-exemplar-referent]])))
 ;;; A hierarchy organizes a sequence of "members"
@@ -209,8 +210,14 @@
   "Given a hierarchy node or member, return a referent to all its descendants,
   returning one group per group the subject returns."
   [hierarchy-node-or-member subject-referent]
-  (let [descendants (hierarchy-node-descendants hierarchy-node-or-member)
-        affected-items (map :item descendants)]
-    (parallel-union-referent
-     (map #(item-or-exemplar-referent % subject-referent)
-          affected-items))))
+  (union-referent-if-needed
+   (map #(item-or-exemplar-referent (:item %) subject-referent)
+        (hierarchy-node-descendants hierarchy-node-or-member))))
+
+(defn hierarchy-node-parallel-items-referent
+  "Given a hierarchy node or member, return a referent to all its descendants,
+  returning one group per group the subject returns."
+  [hierarchy-node-or-member subject-referent]
+  (parallel-union-referent
+   (map #(item-or-exemplar-referent (:item %) subject-referent)
+        (hierarchy-node-descendants hierarchy-node-or-member))))

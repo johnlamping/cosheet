@@ -104,7 +104,9 @@
   that give rise to the properties of the node.
   Inherited describes the overall context of the node."
   [hierarchy-node inherited]
-  (let [items-referent (hierarchy-node-items-referent
+  ;; We have to use a parallel union referent here, so that the groupings
+  ;; of the subject are preserved if we are part of a header.
+  (let [items-referent (hierarchy-node-parallel-items-referent
                         hierarchy-node (:subject-referent inherited))
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))

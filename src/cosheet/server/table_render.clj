@@ -234,23 +234,22 @@
                              {:referent (table-node-delete-referent
                                          node rows-referent subject-ref)})))
         descendants (hierarchy-node-descendants node)]
-    (expr-let [parent-item (entity/subject (first example-elements))]
-      (let [inherited-down (-> (if selectable-attributes
-                                 (assoc inherited :selectable-attributes
-                                        selectable-attributes)
-                                 (dissoc inherited :selectable-attributes))
-                               (assoc :width (* 0.75 (count descendants))
-                                      :template elements-template
-                                      :subject-referent column-referent)
-                               (update-in
-                                [:selectable-attributes]
-                                #(into-attributes
-                                  % (attributes-for-header-add-column-command
-                                     node elements-template
-                                     inherited)))
-                               (update :key-prefix
-                                       #(conj % (:item-id parent-item))))]
-        (condition-elements-DOM-R example-elements inherited-down)))))
+    (let [inherited-down (-> (if selectable-attributes
+                               (assoc inherited :selectable-attributes
+                                      selectable-attributes)
+                               (dissoc inherited :selectable-attributes))
+                             (assoc :width (* 0.75 (count descendants))
+                                    :template elements-template
+                                    :subject-referent column-referent)
+                             (update-in
+                              [:selectable-attributes]
+                              #(into-attributes
+                                % (attributes-for-header-add-column-command
+                                   node elements-template
+                                   inherited)))
+                             (update :key-prefix
+                                     #(conj % :nested)))]
+      (condition-elements-DOM-R example-elements inherited-down))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
@@ -268,7 +267,7 @@
      {:class "column-header"
       :style {:width (str base-table-virtual-column-width "px")}})))
 
-(defn table-header-member-DOM-R
+(defn table-header-member-DOM
   "Generate the DOM for an element in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
@@ -310,7 +309,7 @@
      ;; The child nodes might use the same item in their keys as their parent,
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
-    (table-header-member-DOM-R
+    (table-header-member-DOM
      (:item node-or-element) containing-node rows-referent elements-template
      inherited)))
 

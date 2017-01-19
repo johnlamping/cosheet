@@ -116,13 +116,13 @@
              [:div {:class "table-main selecteds selector-scope"}
               [:div {:class "column-header-sequence selectors"}
                [:component {:key (conj table-key
-                                       (:item-id c1) (:item-id single))
+                                       :nested (:item-id single))
                             :class "tag top-level column-header"
                             :style {:width "150px"}}
                 [item-without-labels-DOM-R single [single-tag-spec]
                  {:priority 1
                   :width 0.75
-                  :key-prefix (conj table-key (:item-id c1))
+                  :key-prefix (conj table-key :nested)
                   :subject-referent first-column-referent
                   :template '(nil :tag)
                   :selector-category :table-header

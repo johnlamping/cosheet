@@ -283,7 +283,7 @@
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.
-   If implied-template is non-nil, don't show elements implied by it."
+   If implied-template is non-nil, don't show sub-elements implied by it."
   [elements must-show-empty-labels implied-template inherited]
   (expr-let
       [ordered-elements (order-items-R elements)

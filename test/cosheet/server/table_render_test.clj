@@ -117,7 +117,7 @@
               [:div {:class "column-header-sequence selectors"}
                [:component {:key (conj table-key
                                        :nested (:item-id single))
-                            :class "tag top-level column-header"
+                            :class "tag column-header"
                             :style {:width "150px"}}
                 [item-without-labels-DOM-R single [single-tag-spec]
                  {:priority 1

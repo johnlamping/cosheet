@@ -101,10 +101,6 @@
         age-key [:root (:item-id age)]
         tags-key (conj age-key :label)
         none-key (conj age-key (:item-id none))
-        one-another-two-referent (union-referent
-                                  [(item-referent one)
-                                   (item-referent another)
-                                   (item-referent two)])
         one-another-two-parallel-referent (parallel-union-referent
                                            [(item-referent one)
                                             (item-referent another)
@@ -129,7 +125,7 @@
               {:priority 1
                :width 0.5
                :key-prefix tags-key
-               :subject-referent one-another-two-referent
+               :subject-referent one-another-two-parallel-referent
                :template '(nil :tag)
                :selectable-attributes
                {:add-sibling {:referent (virtual-referent
@@ -274,14 +270,9 @@
         age-key [:root (:item-id age)]
         tags-key (conj age-key :label)
         one-key (conj age-key (:item-id one))
-        likelihoods-referent (union-referent
-                              [(item-referent pair) (item-referent double)])
         likelihoods-parallel-referent (parallel-union-referent
                                        [(item-referent pair)
                                         (item-referent double)])
-        all-elements-referent (union-referent
-                               [(item-referent pair) (item-referent double)
-                                (item-referent two) (item-referent one)])
         all-elements-parallel-referent (parallel-union-referent
                                         [(item-referent pair)
                                          (item-referent double)
@@ -301,7 +292,7 @@
                {:priority 1
                 :width 0.25
                 :key-prefix tags-key
-                :subject-referent all-elements-referent
+                :subject-referent all-elements-parallel-referent
                 :template '(nil :tag)
                 :selectable-attributes
                 {:add-sibling {:referent (virtual-referent
@@ -329,7 +320,7 @@
                 {:priority 1
                  :width 0.25
                  :key-prefix tags-key
-                 :subject-referent likelihoods-referent
+                 :subject-referent likelihoods-parallel-referent
                  :template '(nil :tag)
                  :selectable-attributes
                  {:add-sibling {:referent (virtual-referent

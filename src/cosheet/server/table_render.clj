@@ -317,9 +317,7 @@
     (expr-let
         [node-dom (table-header-node-DOM-R
                    node top-level rows-referent elements-template inherited)]
-      (let [node-dom (cond-> node-dom
-                       top-level (add-attributes {:class "top-level"}))
-            next-level (hierarchy-node-next-level node)]
+      (let [next-level (hierarchy-node-next-level node)]
         (expr-let
             [dom
              (if (= (count next-level) 1)

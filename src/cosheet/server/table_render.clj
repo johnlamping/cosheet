@@ -25,7 +25,8 @@
                                 hierarchy-by-all-elements
                                 hierarchy-node-example-elements
                                 hierarchy-node-items-referent
-                                hierarchy-node-parallel-items-referent]]
+                                hierarchy-node-parallel-items-referent
+                                hierarchy-last-item-referent]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
@@ -324,10 +325,10 @@
                ;; If we have only one descendant, it must be the column request.
                node-dom
                (let [properties-list (canonical-set-to-list (:properties node))
-                     inherited (update-in inherited [:template]
-                                          #(list* (concat
-                                                   (or % '(anything-immutable))
-                                                   properties-list)))]
+                     inherited (update inherited :template
+                                       #(list* (concat
+                                                (or % '(anything-immutable))
+                                                properties-list)))]
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
@@ -356,11 +357,8 @@
                         inherited
                         :selector-category :table-header
                         :alternate-target true)
-        adjacent-referent (if (seq hierarchy)
-                            (let [last-column (last (hierarchy-node-descendants
-                                                     (last hierarchy)))]
-                              (item-referent (:item last-column)))
-                            (:subject-referent inherited))
+        adjacent-referent (or (hierarchy-last-item-referent hierarchy)
+                              (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
                         hierarchy adjacent-referent inherited-down)]
     (expr-let [columns (expr-seq

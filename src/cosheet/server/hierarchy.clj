@@ -8,7 +8,7 @@
             (cosheet.server
              [referent :refer [semantic-elements-R semantic-to-list-R
                                union-referent-if-needed
-                               parallel-union-referent
+                               item-referent parallel-union-referent
                                item-or-exemplar-referent]])))
 ;;; A hierarchy organizes a sequence of "members"
 ;;; into a hierarchy, based on a multiset of "properties" associated with
@@ -221,3 +221,10 @@
   (parallel-union-referent
    (map #(item-or-exemplar-referent (:item %) subject-referent)
         (hierarchy-node-descendants hierarchy-node-or-member))))
+
+(defn hierarchy-last-item-referent
+  "Return a referent to the last item of the hierarchy, if any."
+  [hierarchy]
+  (when (seq hierarchy)
+    (let [last-item (last (hierarchy-node-descendants (last hierarchy)))]
+      (item-referent (:item last-item)))))

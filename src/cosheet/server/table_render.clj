@@ -263,7 +263,7 @@
       :style {:width (str base-table-virtual-column-width "px")}})))
 
 (defn table-header-member-DOM
-  "Generate the DOM for an element in a hierarchy that is not the only
+  "Generate the DOM for an member in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
   [column-item containing-node rows-referent elements-template inherited]

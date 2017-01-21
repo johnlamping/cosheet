@@ -12,7 +12,12 @@
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R]]
              [hierarchy :refer [hierarchy-by-all-elements
-                                hierarchy-last-item-referent]]
+                                hierarchy-node?
+                                hierarchy-node-descendants
+                                hierarchy-node-items-referent
+                                hierarchy-last-item-referent
+                                hierarchy-node-next-level
+                                hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
@@ -58,7 +63,7 @@
   "Generate the DOM for a member in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [tab-item rows-referent inherited]
+  [tab-item inherited]
   (let [tab-referent (item-or-exemplar-referent
                       tab-item (:subject-referent inherited))
         inherited-down (-> inherited
@@ -120,8 +125,8 @@
                   (add-attributes node-dom {:class "multi-tab"})
                   (into [:div {:class "tab-sequence"}]
                         dom-seqs)])))]
-        (let [num-columns (count (hierarchy-node-descendants node))
-              width (+ (* num-columns (- base-tab-width 2)) 2)]
+        (let [num-tabs (count (hierarchy-node-descendants node))
+              width (+ (* num-tabs (- base-tab-width 2)) 2)]
           (add-attributes dom {:class (cond-> "column-header")
                                :style {:width (str width "px")}}))))))
 
@@ -130,14 +135,18 @@
   [tabs-subject chosen-tab inherited]
   (let [inherited (assoc starting-inherited
                          :selector-category :tab
-                         :template '(nil (nil :table) :tab)
+                         :template '(nil (nil (:table :non-semantic)
+                                              (:non-semantic :non-semantic))
+                                         (:tab :non-semantic))
                          :subject-referent (item-referent tabs-subject)
                          :chosen-tab chosen-tab)]
     (expr-let [tabs (expr order-items-R
                       (entity/label->elements tabs-subject :tab))
                hierarchy (hierarchy-by-all-elements tabs)]
-      (expr-let [doms (map #(tabs-subtree-DOM % inherited) hierarchy)]
-        (into [:div {:class "tabs-holder"}
-               (concat doms [(virtual-tab-DOM
-                              (or (hierarchy-last-item-referent hierarchy)
-                                  (item-referent tabs-subject)))])])))))
+      (expr-let [doms (expr-seq map #(tabs-subtree-DOM-R % inherited)
+                                hierarchy)]
+        (into [:div {:class "tabs-holder"}]
+              (concat doms [(virtual-tab-DOM
+                             (or (hierarchy-last-item-referent hierarchy)
+                                 (item-referent tabs-subject))
+                             inherited)]))))))

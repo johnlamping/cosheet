@@ -8,7 +8,8 @@
                                         canonical-set-to-list
                                         common-canonical-multisets]])
             (cosheet.server
-             [referent :refer [item-referent virtual-referent
+             [referent :refer [item-referent? exemplar-referent?
+                               item-referent virtual-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R]]
              [hierarchy :refer [hierarchy-by-all-elements
@@ -40,6 +41,22 @@
   {:add-column {:referent (new-tab-virtual-referent
                            adjacent-referent inherited)}})
 
+(defn inherited-for-tab-elements
+  "Return the information to be inherited down to the elements of a tabs DOM."
+  [tabs-referent inherited]
+  (-> inherited
+      (assoc :subject tabs-referent)
+      (update :selectable-attributes
+              #(cond-> (into-attributes
+                        % (assoc
+                           (add-column-command tabs-referent inherited)
+                           :select {:referent tabs-referent
+                                    :special :tab}))
+                 (or (item-referent? tabs-referent)
+                     (exemplar-referent? tabs-referent))
+                 (into-attributes {:delete {:referent tabs-referent}})))
+      (dissoc :template :chosen-tab)))
+
 (defn tabs-node-DOM-R
   [node inherited]
   "Generate the dom for a node of the tabs hierarchy, but not any of its
@@ -47,16 +64,7 @@
   (expr-let [elements (hierarchy-node-example-elements node)]
     (let [subject-referent (:subject-referent inherited)
           tabs-referent (hierarchy-node-items-referent node subject-referent)
-          inherited-down
-          (-> inherited
-              (assoc :subject tabs-referent)
-              (update :selectable-attributes
-                      #(cond-> (into-attributes
-                                % (add-column-command  tabs-referent inherited))
-                         (= (count (hierarchy-node-next-level node)) 1)
-                         (into-attributes {:delete {:referent tabs-referent}
-                                           :select {:special :tab}})))
-              (dissoc :template :chosen-tab))]
+          inherited-down (inherited-for-tab-elements tabs-referent inherited)]
       (elements-DOM-R elements false nil inherited-down))))
 
 (defn tabs-member-DOM
@@ -64,23 +72,16 @@
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
   [tab-item inherited]
-  (let [tab-referent (item-or-exemplar-referent
-                      tab-item (:subject-referent inherited))
-        inherited-down (-> inherited
-                           (assoc :subject-referent tab-referent)
-                           (update-in
-                            [:selectable-attributes]
-                            #(into-attributes
-                              (into-attributes % (add-column-command
-                                                  tab-referent inherited))
-                              {:delete {:referent tab-referent}})))
+  (let [subject-referent (:subject-referent inherited)
+        tab-referent (item-or-exemplar-referent tab-item subject-referent)
+        inherited-down (inherited-for-tab-elements tab-referent inherited)
         key (conj (:key-prefix inherited) (:item-id tab-item))]
     (add-attributes
      (virtual-item-DOM key tab-referent :after inherited-down)
      (let [is-chosen (= tab-item (:chosen-tab inherited))]
        {:class (if is-chosen "tab chosen" "tab")}))))
 
-(defn tabs-node-or-element-DOM-R
+(defn tabs-tree-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
   [node-or-element inherited]
@@ -108,7 +109,7 @@
       (expr-let
           [dom
            (if (= (count next-level) 1)
-             ;; We have only one descendant; it must be the column request.
+             ;; We have only one descendant; it must be the tab request.
              (let [is-chosen (= (:item (first next-level))
                                 (:chosen-tab inherited))]
                (add-attributes node-dom
@@ -118,7 +119,7 @@
                                    inherited :template
                                    #(list* (concat % properties-list)))]
                (expr-let
-                   [dom-seqs (expr-seq map  #(tabs-node-or-element-DOM-R
+                   [dom-seqs (expr-seq map  #(tabs-tree-DOM-R
                                               % inherited)
                                        next-level)]
                  [:div {}
@@ -127,8 +128,7 @@
                         dom-seqs)])))]
         (let [num-tabs (count (hierarchy-node-descendants node))
               width (+ (* num-tabs (- base-tab-width 2)) 2)]
-          (add-attributes dom {:class (cond-> "column-header")
-                               :style {:width (str width "px")}}))))))
+          (add-attributes dom {:style {:width (str width "px")}}))))))
 
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."

@@ -171,6 +171,13 @@
 
 ;;; Misc
 
+(defn separate-by
+  "Split a seq into those where the predicate is true, and those where it
+  is false."
+  [fun x]
+  (let [groups (group-by #(if (fun %) true false) x)]
+    [(groups true) (groups false)]))
+
 (defn update-last
   "Update the last element of a vector."
   [vec fun]

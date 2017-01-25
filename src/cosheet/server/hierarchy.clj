@@ -27,10 +27,15 @@
 ;;;                        have qualified to be members of the node,
 ;;;                        except for coming after other non-members.
 ;;;             :children  An optional vector of child nodes.
+;;;
+;;; Many of the functions below also work on non-hierarchy nodes,
+;;; which are assumed to be members of the hierarchy. These are interpreted
+;;; as nodes with just themselves as a member, and no properties or children.
 
 (defn hierarchy-node?
   [node]
-  (contains? node :hierarchy-node))
+  (and (map? node)
+       (contains? node :hierarchy-node)))
 
 (defn append-to-hierarchy
   "Given a member and its properties, add them to the hierarchy.
@@ -80,7 +85,7 @@
 (def flatten-hierarchy)
 
 (defn flatten-hierarchy-node
-  "Given a hierarchy node, a depth, return the sequence of
+  "Given a hierarchy node, and a depth, return the sequence of
   all descendant nodes in pre-order. Add :depth to the returned nodes."
   [node depth]
   (cons (assoc node :depth depth)
@@ -103,19 +108,35 @@
 (defn hierarchy-node-next-level
   "Return the concatenation of the members and children of the node.
   If any children have empty :properties, splice in their members."
-  [node]
-  (concat (:members node)
-          (mapcat #(if (empty? (:properties %))
-                     (do (assert (empty? (:children %)))
-                         (:members %))
-                     [%])
-                  (:children node))))
+  [node-or-member]
+  (if (hierarchy-node? node-or-member)
+    (concat (:members node-or-member)
+            (mapcat #(if (empty? (:properties %))
+                       (do (assert (empty? (:children %)))
+                           (:members %))
+                       [%])
+                    (:children node-or-member)))
+    [node-or-member]))
 
 (defn hierarchy-node-members
   "Return the members at the level of the hierarchy node
   (not the descendants below)."
-  [node]
-  (:members node))
+  [node-or-member]
+  (if (hierarchy-node? node-or-member)
+    (:members node-or-member)
+    [node-or-member]))
+
+(defn hierarchy-node-properties
+  "Return the local properties of the hierarchy node."
+  [node-or-member]
+  (when (hierarchy-node? node-or-member)
+    (:properties node-or-member)))
+
+(defn hierarchy-node-cumulative-properties
+  "Return the local properties of the hierarchy node."
+  [node-or-member]
+  (when (hierarchy-node? node-or-member)
+    (:cumulative-properties node-or-member)))
 
 (def hierarchy-nodes-extent)
 
@@ -199,12 +220,13 @@
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements
   for its properties."
-  [hierarchy-node]
-  (let [example (first (hierarchy-node-descendants hierarchy-node))]
-    (multiset-to-generating-values
-     (:properties hierarchy-node)
-     (:property-canonicals example)
-     (:property-elements example))))
+  [node-or-member]
+  (when (hierarchy-node? node-or-member)
+    (let [example (first (hierarchy-node-descendants node-or-member))]
+      (multiset-to-generating-values
+       (:properties node-or-member)
+       (:property-canonicals example)
+       (:property-elements example)))))
 
 (defn hierarchy-node-items-referent
   "Given a hierarchy node or member, return a referent to all its descendants,

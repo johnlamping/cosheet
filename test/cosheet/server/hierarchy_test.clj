@@ -248,7 +248,9 @@
                     :children [{:hierarchy-node true
                                 :properties {:b 1}
                                 :members [:j]}]}))
-             #{:i :j})))
+             #{:i :j}))
+  (is (check (hierarchy-node-descendants :foo)
+             [:foo])))
 
 (deftest hierarchy-node-next-level-test
   (is (check (hierarchy-node-next-level
@@ -259,7 +261,9 @@
                           {:hierarchy-node true :properties {} :members [:l :m ]}]})
              [:i
               {:hierarchy-node true :properties {:c 1} :members [:j :k]}
-              :l :m])))
+              :l :m]))
+  (is (check (hierarchy-node-next-level :foo)
+             [:foo])))
 
 (deftest flatten-hierarchy-test
   (is (check (flatten-hierarchy

@@ -43,18 +43,16 @@
 
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM."
-  [tabs-referent inherited]
+  [tabs-referent delete-deletes-tab inherited]
   (-> inherited
       (assoc :subject tabs-referent)
       (update :selectable-attributes
-              #(cond-> (into-attributes
-                        % (assoc
-                           (add-column-command tabs-referent inherited)
-                           :select {:referent tabs-referent
-                                    :special :tab}))
-                 (or (item-referent? tabs-referent)
-                     (exemplar-referent? tabs-referent))
-                 (into-attributes {:delete {:referent tabs-referent}})))
+              #(into-attributes %
+                (cond-> (assoc (add-column-command tabs-referent inherited)
+                               :select {:referent tabs-referent
+                                        :special :tab})
+                  delete-deletes-tab
+                  (assoc :delete {:referent tabs-referent}))))
       (dissoc :template :chosen-tab)))
 
 (defn tabs-node-DOM-R
@@ -64,7 +62,8 @@
   (expr-let [elements (hierarchy-node-example-elements node)]
     (let [subject-referent (:subject-referent inherited)
           tabs-referent (hierarchy-node-items-referent node subject-referent)
-          inherited-down (inherited-for-tab-elements tabs-referent inherited)]
+          inherited-down (inherited-for-tab-elements
+                          tabs-referent (= (count elements) 1) inherited)]
       (elements-DOM-R elements false nil inherited-down))))
 
 (defn tabs-member-DOM
@@ -74,7 +73,7 @@
   [tab-item inherited]
   (let [subject-referent (:subject-referent inherited)
         tab-referent (item-or-exemplar-referent tab-item subject-referent)
-        inherited-down (inherited-for-tab-elements tab-referent inherited)
+        inherited-down (inherited-for-tab-elements tab-referent true inherited)
         key (conj (:key-prefix inherited) (:item-id tab-item))]
     (add-attributes
      (virtual-item-DOM key tab-referent :after inherited-down)

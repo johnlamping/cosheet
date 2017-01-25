@@ -1,5 +1,5 @@
 (ns cosheet.server.table-render
-  (:require (cosheet [utils :refer [replace-in-seqs multiset]]
+  (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
@@ -10,7 +10,7 @@
                                         canonical-set-to-list
                                         common-canonical-multisets]])
             (cosheet.server
-             [referent :refer [item-referent
+             [referent :refer [item-referent exemplar-referent
                                elements-referent query-referent
                                union-referent-if-needed union-referent
                                difference-referent virtual-referent
@@ -76,20 +76,34 @@
   up by the header."
   [node rows-referent header-subject]
   (let [exemplar-item (first (hierarchy-node-example-elements node))
+        [own-descendants deeper-descendants]
+        (separate-by #(= (multiset (:property-canonicals %))
+                         (:cumulative-properties node))
+                     (hierarchy-node-descendants node))
+        referent-for-member #(item-or-exemplar-referent
+                              (:item %) header-subject)
         header-ref (union-referent-if-needed
-                    (map #(let [item-ref (item-or-exemplar-referent
-                                          (:item %) header-subject)]
-                            (if (= (multiset (:property-canonicals %))
-                                   (:cumulative-properties node))
-                              item-ref
-                              (item-or-exemplar-referent
-                               exemplar-item item-ref)))
-                         (hierarchy-node-descendants node)))
+                    (concat (when own-descendants
+                              [(union-referent-if-needed
+                                 (map referent-for-member own-descendants))])
+                            (when deeper-descendants
+                              [(item-or-exemplar-referent
+                                exemplar-item
+                                (union-referent-if-needed
+                                 (map referent-for-member
+                                      deeper-descendants)))])))
+        ;; The element added by this header to the elements in the columns.
+        matches-ref (exemplar-referent
+                     exemplar-item
+                     (table-node-row-elements-referent node rows-referent))
+        ;; The elements of the columns that are members of the node.
         element-ref (table-node-exclusive-row-elements-referent
                      node rows-referent)]
+    ;; TODO: Don't include matches-ref if exclusive-row-elements-ref
+    ;; is the same as row-elements-ref. Also, rename exclusive to no-siblings.
     ;; We always return a union, to guarantee that instantition will
     ;; return the header elements in the first group.
-    (union-referent [header-ref element-ref])))
+    (union-referent [header-ref matches-ref element-ref])))
 
 (defn new-header-template
   "Return the template for a new header. elements-template gives
@@ -266,13 +280,13 @@
   "Generate the DOM for an member in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [column-member rows-referent elements-template inherited]
+  [column-member containing-node rows-referent elements-template inherited]
   (let [column-item (:item column-member)
         column-referent (union-referent
                          [(item-or-exemplar-referent
                            column-item (:subject-referent inherited))
-                          (table-node-row-elements-referent
-                           column-member rows-referent)])
+                          (table-node-exclusive-row-elements-referent
+                           containing-node rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
@@ -297,7 +311,7 @@
 (defn table-header-node-or-element-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [node-or-element rows-referent elements-template
+  [node-or-element containing-node rows-referent elements-template
    inherited]
   (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
@@ -306,7 +320,7 @@
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
     (table-header-member-DOM
-     node-or-element rows-referent elements-template
+     node-or-element containing-node rows-referent elements-template
      inherited)))
 
 (defn table-header-subtree-DOM-R
@@ -333,7 +347,7 @@
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
-                                      % rows-referent elements-template
+                                      % node rows-referent elements-template
                                       inherited)
                                 next-level)]
                    [:div (cond-> {}

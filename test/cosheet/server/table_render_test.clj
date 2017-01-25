@@ -102,6 +102,11 @@
           first-column-referent (union-referent
                                  [(item-referent c1)
                                   (elements-referent c1 rows-referent)])
+          delete-referent (union-referent
+                           [(item-referent c1)
+                            (exemplar-referent
+                             single (elements-referent c1 rows-referent))
+                            (elements-referent c1 rows-referent)])
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
                                                  (true :reference)))]]
@@ -138,7 +143,7 @@
                                            (item-referent c1)
                                            :selector :first-group) 
                                 :select-pattern (conj table-key tag-pattern)}
-                   :delete {:referent first-column-referent}
+                   :delete {:referent delete-referent}
                    :add-element {:referent first-column-referent}}}]]
                (any)
                (any)

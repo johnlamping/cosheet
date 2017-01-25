@@ -55,43 +55,36 @@
                   (assoc :delete {:referent tabs-referent}))))
       (dissoc :template :chosen-tab)))
 
-(defn tabs-node-DOM-R
-  [node inherited]
+(defn tabs-node-or-member-DOM-R
+  [node-or-member inherited]
   "Generate the dom for a node of the tabs hierarchy, but not any of its
   children."
-  (expr-let [elements (hierarchy-node-example-elements node)]
+  (expr-let [elements (hierarchy-node-example-elements node-or-member)]
     (let [subject-referent (:subject-referent inherited)
-          tabs-referent (hierarchy-node-items-referent node subject-referent)
+          tabs-referent (hierarchy-node-items-referent
+                         node-or-member subject-referent)
           inherited-down (inherited-for-tab-elements
-                          tabs-referent (= (count elements) 1) inherited)]
-      (elements-DOM-R elements false nil inherited-down))))
-
-(defn tabs-member-DOM
-  "Generate the DOM for a member in a hierarchy that is not the only
-  descendant of its parent. It will be displayed under its parent but
-  has no elements of its own to show."
-  [tab-item inherited]
-  (let [subject-referent (:subject-referent inherited)
-        tab-referent (item-or-exemplar-referent tab-item subject-referent)
-        inherited-down (inherited-for-tab-elements tab-referent true inherited)
-        key (conj (:key-prefix inherited) (:item-id tab-item))]
-    (add-attributes
-     (virtual-item-DOM key tab-referent :after inherited-down)
-     (let [is-chosen (= tab-item (:chosen-tab inherited))]
-       {:class (if is-chosen "tab chosen" "tab")}))))
+                          tabs-referent (<= (count elements) 1) inherited)]
+      (if (hierarchy-node? node-or-member)
+        (elements-DOM-R elements false nil inherited-down)
+        (let [key (conj (:key-prefix inherited)
+                        (:item-id (:item node-or-member)))]
+          (virtual-item-DOM key tabs-referent :after inherited-down))))))
 
 (defn tabs-tree-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [node-or-element inherited]
-  (if (hierarchy-node? node-or-element)
+  [node-or-member inherited]
+  (if (hierarchy-node? node-or-member)
     (tabs-subtree-DOM-R
-     node-or-element
+     node-or-member
      ;; The child nodes might use the same item in their keys as their parent,
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
-    (tabs-member-DOM
-     (:item node-or-element) inherited)))
+    (add-attributes
+     (tabs-node-or-member-DOM-R node-or-member inherited)
+     (let [is-chosen (= (:item node-or-member) (:chosen-tab inherited))]
+       {:class (if is-chosen "tab chosen" "tab")}))))
 
 (defn virtual-tab-DOM
   [adjacent-referent inherited]
@@ -103,7 +96,7 @@
 (defn tabs-subtree-DOM-R
   ;; :template in inherited gives the template for a new tab.
   [node inherited]
-  (expr-let [node-dom (tabs-node-DOM-R node inherited)]
+  (expr-let [node-dom (tabs-node-or-member-DOM-R node inherited)]
     (let [next-level (hierarchy-node-next-level node)]
       (expr-let
           [dom
@@ -118,8 +111,7 @@
                                    inherited :template
                                    #(list* (concat % properties-list)))]
                (expr-let
-                   [dom-seqs (expr-seq map  #(tabs-tree-DOM-R
-                                              % inherited)
+                   [dom-seqs (expr-seq map #(tabs-tree-DOM-R % inherited)
                                        next-level)]
                  [:div {}
                   (add-attributes node-dom {:class "multi-tab"})

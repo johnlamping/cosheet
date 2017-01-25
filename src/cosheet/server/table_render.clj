@@ -266,12 +266,13 @@
   "Generate the DOM for an member in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [column-item containing-node rows-referent elements-template inherited]
-  (let [column-referent (union-referent
+  [column-member rows-referent elements-template inherited]
+  (let [column-item (:item column-member)
+        column-referent (union-referent
                          [(item-or-exemplar-referent
                            column-item (:subject-referent inherited))
-                          (table-node-exclusive-row-elements-referent
-                           containing-node rows-referent)])
+                          (table-node-row-elements-referent
+                           column-member rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
@@ -296,7 +297,7 @@
 (defn table-header-node-or-element-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [node-or-element containing-node rows-referent elements-template
+  [node-or-element rows-referent elements-template
    inherited]
   (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
@@ -305,7 +306,7 @@
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
     (table-header-member-DOM
-     (:item node-or-element) containing-node rows-referent elements-template
+     node-or-element rows-referent elements-template
      inherited)))
 
 (defn table-header-subtree-DOM-R
@@ -332,8 +333,8 @@
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
-                                      % node
-                                      rows-referent elements-template inherited)
+                                      % rows-referent elements-template
+                                      inherited)
                                 next-level)]
                    [:div (cond-> {}
                            top-level (into-attributes {:class "top-level"}))

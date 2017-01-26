@@ -43,14 +43,15 @@
 
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM."
-  [tabs-referent delete-deletes-tab inherited]
+  [tabs-referent select-selects-tab delete-deletes-tab inherited]
   (-> inherited
       (assoc :subject tabs-referent)
       (update :selectable-attributes
               #(into-attributes %
-                (cond-> (assoc (add-column-command tabs-referent inherited)
-                               :select {:referent tabs-referent
-                                        :special :tab})
+                (cond-> (add-column-command tabs-referent inherited)
+                  select-selects-tab
+                  (assoc :select {:referent tabs-referent
+                                  :special :tab})
                   delete-deletes-tab
                   (assoc :delete {:referent tabs-referent}))))
       (dissoc :template :chosen-tab)))
@@ -63,8 +64,11 @@
     (let [subject-referent (:subject-referent inherited)
           tabs-referent (hierarchy-node-items-referent
                          node-or-member subject-referent)
+          descendants (hierarchy-node-descendants node-or-member)
           inherited-down (inherited-for-tab-elements
-                          tabs-referent (<= (count elements) 1) inherited)]
+                          tabs-referent
+                          (= (count descendants) 1) (<= (count elements) 1)
+                          inherited)]
       (if (hierarchy-node? node-or-member)
         (elements-DOM-R elements false nil inherited-down)
         (let [key (conj (:key-prefix inherited)

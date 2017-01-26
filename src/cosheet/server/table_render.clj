@@ -47,19 +47,18 @@
 
 (defn table-node-row-elements-referent
   "Generate a referent for the elements in rows affected by a table header."
-  [node rows-referent]
+  [node-or-member rows-referent]
   (union-referent-if-needed (map #(elements-referent (:item %) rows-referent)
-                                 (hierarchy-node-descendants node))))
+                                 (hierarchy-node-descendants node-or-member))))
 
-(defn table-node-exclusive-row-elements-referent
+(defn table-node-no-siblings-row-elements-referent
   "Generate a referent for the elements in rows affected
-  by a table header, but by no descendant header."
-  [node rows-referent]
-  (let [positive-ref (table-node-row-elements-referent node rows-referent)
-        negative-refs (->> (hierarchy-node-next-level node)
-                           (filter hierarchy-node?)
-                           (hierarchy-nodes-extent)
-                           (map #(elements-referent (:item %) rows-referent)))] 
+  by a table header, but by no sibling header."
+  [member sibling-nodes rows-referent]
+  (let [positive-ref (table-node-row-elements-referent member rows-referent)
+        negative-refs (map
+                       #(elements-referent (:item %) rows-referent)
+                       (hierarchy-nodes-extent sibling-nodes))] 
     (if (empty? negative-refs)
       positive-ref
       (difference-referent
@@ -100,7 +99,7 @@
         element-ref (table-node-exclusive-row-elements-referent
                      node rows-referent)]
     ;; TODO: Don't include matches-ref if exclusive-row-elements-ref
-    ;; is the same as row-elements-ref. Also, rename exclusive to no-siblings.
+    ;; is the same as row-elements-ref.
     ;; We always return a union, to guarantee that instantition will
     ;; return the header elements in the first group.
     (union-referent [header-ref matches-ref element-ref])))
@@ -280,13 +279,13 @@
   "Generate the DOM for an member in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [column-member containing-node rows-referent elements-template inherited]
+  [column-member sibling-nodes rows-referent elements-template inherited]
   (let [column-item (:item column-member)
         column-referent (union-referent
                          [(item-or-exemplar-referent
                            column-item (:subject-referent inherited))
-                          (table-node-exclusive-row-elements-referent
-                           containing-node rows-referent)])
+                          (table-node-no-siblings-row-elements-referent
+                           column-member sibling-nodes rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
@@ -311,7 +310,7 @@
 (defn table-header-node-or-element-DOM-R
   "Given something that is either a hieararchy node or element,
   generate its DOM, but not the DOM for any children."
-  [node-or-element containing-node rows-referent elements-template
+  [node-or-element sibling-nodes rows-referent elements-template
    inherited]
   (if (hierarchy-node? node-or-element)
     (table-header-subtree-DOM-R
@@ -320,7 +319,7 @@
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
     (table-header-member-DOM
-     node-or-element containing-node rows-referent elements-template
+     node-or-element sibling-nodes rows-referent elements-template
      inherited)))
 
 (defn table-header-subtree-DOM-R
@@ -343,12 +342,13 @@
                      inherited (update inherited :template
                                        #(list* (concat
                                                 (or % '(anything-immutable))
-                                                properties-list)))]
+                                                properties-list)))
+                     sibling-nodes (filter hierarchy-node? next-level)]
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
-                                      % node rows-referent elements-template
-                                      inherited)
+                                      % sibling-nodes rows-referent
+                                      elements-template inherited)
                                 next-level)]
                    [:div (cond-> {}
                            top-level (into-attributes {:class "top-level"}))

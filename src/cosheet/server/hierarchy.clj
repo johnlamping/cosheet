@@ -119,8 +119,7 @@
     [node-or-member]))
 
 (defn hierarchy-node-members
-  "Return the members at the level of the hierarchy node
-  (not the descendants below)."
+  "Return the members at the level of the hierarchy node."
   [node-or-member]
   (if (hierarchy-node? node-or-member)
     (:members node-or-member)

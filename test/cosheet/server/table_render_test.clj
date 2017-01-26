@@ -104,8 +104,6 @@
                                   (elements-referent c1 rows-referent)])
           delete-referent (union-referent
                            [(item-referent c1)
-                            (exemplar-referent
-                             single (elements-referent c1 rows-referent))
                             (elements-referent c1 rows-referent)])
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)

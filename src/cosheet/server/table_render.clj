@@ -75,34 +75,39 @@
   up by the header."
   [node rows-referent header-subject]
   (let [exemplar-item (first (hierarchy-node-example-elements node))
-        [own-descendants deeper-descendants]
+        [members deeper-descendants]
         (separate-by #(= (multiset (:property-canonicals %))
                          (:cumulative-properties node))
                      (hierarchy-node-descendants node))
         referent-for-member #(item-or-exemplar-referent
                               (:item %) header-subject)
         header-ref (union-referent-if-needed
-                    (concat (when own-descendants
+                    (concat (when members
+                              ;; We delete columns for our own members.
                               [(union-referent-if-needed
-                                 (map referent-for-member own-descendants))])
+                                 (map referent-for-member members))])
                             (when deeper-descendants
+                              ;; We just delete an element for descendant nodes.
                               [(item-or-exemplar-referent
                                 exemplar-item
                                 (union-referent-if-needed
                                  (map referent-for-member
                                       deeper-descendants)))])))
+        sub-nodes (filter hierarchy-node? (hierarchy-node-next-level node))
         ;; The element added by this header to the elements in the columns.
-        matches-ref (exemplar-referent
-                     exemplar-item
-                     (table-node-row-elements-referent node rows-referent))
+        matches-ref (when (seq sub-nodes)
+                      (exemplar-referent
+                       exemplar-item
+                       (table-node-row-elements-referent node rows-referent)))
         ;; The elements of the columns that are members of the node.
-        element-ref (table-node-exclusive-row-elements-referent
-                     node rows-referent)]
-    ;; TODO: Don't include matches-ref if exclusive-row-elements-ref
-    ;; is the same as row-elements-ref.
+        element-ref (when (seq members)
+                      (table-node-no-siblings-row-elements-referent
+                       (first members) sub-nodes rows-referent))]
     ;; We always return a union, to guarantee that instantition will
     ;; return the header elements in the first group.
-    (union-referent [header-ref matches-ref element-ref])))
+    (union-referent (cond-> [header-ref]
+                      matches-ref (conj matches-ref)
+                      element-ref (conj element-ref)))))
 
 (defn new-header-template
   "Return the template for a new header. elements-template gives
@@ -238,9 +243,8 @@
         selectable-attributes
         (when (= (count example-elements) 1)
           (cond-> {:expand {:referent column-referent}}
-            top-level (assoc :delete
-                             {:referent (table-node-delete-referent
-                                         node rows-referent subject-ref)})))
+            top-level (assoc :delete {:referent (table-node-delete-referent
+                               node rows-referent subject-ref)})))
         descendants (hierarchy-node-descendants node)]
     (let [inherited-down (-> (if selectable-attributes
                                (assoc inherited :selectable-attributes

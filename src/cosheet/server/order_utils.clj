@@ -45,6 +45,9 @@
     (if (or (and (keyword? entity-content) (empty? entity-elements))
             (some #{:non-semantic} entity-elements))
       ;; Keyword markers and non-semantic elements don't get an ordering.
+      ;; (Elements whose :non-semantic is itself qualified do get an ordering,
+      ;; as their sub-elements might be semantic with respect to them,
+      ;; and so need ordering.
       (let [[s1 id] (add-entity store subject-id entity)]
         [s1 id order])
       (let [value-to-store entity-content

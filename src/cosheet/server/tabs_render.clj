@@ -125,14 +125,24 @@
               width (+ (* num-tabs (- base-tab-width 2)) 2)]
           (add-attributes dom {:style {:width (str width "px")}}))))))
 
+(def new-tab-elements '((:tab :non-semantic)
+                        (""
+                         (:tab-referent :non-semantic)
+                         (:root :non-semantic)
+                         (:table :non-semantic)
+                         (anything (??? :tag)
+                                   (:row-condition :non-semantic)
+                                   (:non-semantic :non-semantic))
+                         (anything (??? :tag)
+                                   (:column :non-semantic)
+                                   (:non-semantic :non-semantic)))))
+
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."
   [tabs-subject chosen-tab inherited]
   (let [inherited (assoc starting-inherited
                          :selector-category :tab
-                         :template '(nil (nil (:table :non-semantic)
-                                              (:non-semantic :non-semantic))
-                                         (:tab :non-semantic))
+                         :template (cons nil new-tab-elements)
                          :subject-referent (item-referent tabs-subject)
                          :chosen-tab chosen-tab)]
     (expr-let [tabs (expr order-items-R

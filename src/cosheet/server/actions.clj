@@ -29,7 +29,8 @@
                       create-possible-selector-elements
                       create-elements-satisfying]]
     [order-utils :refer [update-add-entity-adjacent-to furthest-item
-                         order-element-for-item]])))
+                         order-element-for-item]]
+    [tabs-render :refer [new-tab-elements]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -305,14 +306,12 @@
                result))))))
    [context nil nil]))
 
+;; TODO: Add as element of tabs holder. Then get rid of :root.
 (defn update-add-blank-table-view
   "Add a blank table view with the given name to the store, returning the
   new store and the id of the new view."
   [store view-name]
-  (let [generic (cons view-name '((:root :non-semantic)
-                                  (:table :non-semantic)
-                                  (anything (??? :tag)
-                                            (:row-condition :non-semantic))))
+  (let [generic (cons view-name new-tab-elements)
         [specialized [store _]] (specialize-template generic [store {}])]
     (update-add-entity-adjacent-to
      store nil specialized (order-element-for-item nil store) :after false)))

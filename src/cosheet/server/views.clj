@@ -37,22 +37,14 @@
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
-    [actions :refer [confirm-actions do-actions]])))
+    [actions :refer [update-add-blank-table-view confirm-actions do-actions]])))
 
 (defn starting-store
   []
-  (let [unused-orderable orderable/initial
-        [o1 unused-orderable] (orderable/split unused-orderable :after)
-        ;; TODO: Use update-add-blank-table-view from actions.
-        starting-table `("table"
-                         (:root :non-semantic)
-                         (:table :non-semantic)
-                         (~'anything (~'??-1 :tag
-                                      (~o1 :order :non-semantic))
-                                     (:row-condition :non-semantic)))
-        [store id] (add-entity (new-element-store) nil starting-table)
-        [store _] (add-entity store nil (list unused-orderable
-                                              :unused-orderable))]
+  (let [[store _] (add-entity (new-element-store) nil
+                              (list orderable/initial :unused-orderable))
+        [store _] (add-entity store nil '("tabs" (:tabs :non-semantic)))
+        [store _] (update-add-blank-table-view store "table")]
     store))
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1

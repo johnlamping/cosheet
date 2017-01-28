@@ -76,7 +76,7 @@
                                    (~o5 :order :non-semantic)
                                    (:column :non-semantic))
                        (~'anything ("6-2" (~o1 :order :non-semantic)
-                                    ("height" :tag (~o2 :order :non-semantic)))
+                                   ("height" :tag (~o2 :order :non-semantic)))
                                    (~o6 :order :non-semantic)
                                    (:column :non-semantic)))
           [dom table joe jane] (let-mutated [table table-list

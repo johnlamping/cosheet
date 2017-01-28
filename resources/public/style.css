@@ -129,6 +129,53 @@ body {
     padding: 5px 5px 5px 8px;
 }
 
+/* --- tabs --- */
+
+.tabs-holder {
+    flex: none;
+    display: flex;
+    align-items: stretch;
+}
+
+.tab:before {
+    border-style: solid;
+    border-color: hsl(0, 0%, 80%);
+    border-width: 2px 0px 0px 2px;
+    border-top-left-radius: 7px;
+    display: block;
+    content:" ";
+    width: 7px;
+    height: 25px;
+    top: -2px;
+    position: absolute;
+    left: -10px;
+    transform:skewX(-15deg);
+    z-index: -1;
+}
+.tab {
+    border-top-width: 2px;
+    margin-left: 12px;
+    margin-right: 12px;
+    width: 150px;
+    height: 25px;
+    position: relative;
+}
+.tab:after {
+    border-style: solid;
+    border-color: hsl(0, 0%, 80%);
+    border-width: 2px 2px 0px 0px;
+    border-top-right-radius: 7px;
+    display: block;
+    content:" ";
+    width: 7px;
+    height: 25px;
+    top: -2px;
+    position: absolute;
+    right: -10px;
+    transform:skewX(15deg);
+    z-index: -1;
+}
+
 /* --- tags --- */
 
 .tag {

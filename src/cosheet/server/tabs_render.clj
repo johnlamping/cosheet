@@ -140,7 +140,6 @@
   "Return a reporter giving the DOM for the elements of the given item as tabs."
   [tabs-subject chosen-tab inherited]
   (let [inherited (assoc starting-inherited
-                         :selector-category :tab
                          :template (cons nil new-tab-elements)
                          :subject-referent (item-referent tabs-subject)
                          :chosen-tab chosen-tab)]

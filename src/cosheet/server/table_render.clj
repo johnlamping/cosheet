@@ -594,11 +594,13 @@
               rows-referent (query-referent
                              (list (item-referent row-condition-item)
                                    '(:top-level :non-semantic)))
-              headers-inherited (assoc inherited
-                                       :subject-referent (item-referent
-                                                          table-item)
-                                       :template '(anything-immutable
-                                                   (:column :non-semantic)))]
+              headers-inherited (assoc
+                                 inherited
+                                 :subject-referent (item-referent
+                                                    table-item)
+                                 :template '(anything-immutable
+                                             (:column :non-semantic)
+                                             (:non-semantic :non-semantic)))]
           (expr-let
               [[row-template row-items] (row-template-and-items-R
                                          store row-condition-item)

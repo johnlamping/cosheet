@@ -34,7 +34,7 @@
     [render-utils :refer [make-component]]
     [render :refer [top-level-item-DOM-R user-visible-item? starting-inherited]]
     [item-render :refer [item-content-DOM]]
-    [table-render :refer [table-DOM-R]]
+    [tabs-render :refer [tabs-DOM-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
@@ -158,23 +158,15 @@
             ;; Under the narrow interpretation of commands, we don't want to
             ;; affect the item, only the selection of which item,
             ;; so make the item referent have an empty first group.
-            (expr-let [topic (expr first (label->elements item :tab-topic))]
+            (expr-let [topic (expr first (label->elements item :tab-topic))
+                       subject (cosheet.entity/subject item)]
               (let [regrouped-referent (union-referent [(union-referent [])
                                                         referent])]
-                [:div {:class "tab-holder selector-scope"}
-                 ;; We need a div around the tab text, so it can have
-                 ;; a drop shadow that won't interfere with a selection inset
-                 ;; drop shadow.
-                 [:div {:class "tab-text-holder selectors"}
-                  (add-attributes
-                   (item-content-DOM regrouped-referent content inherited)
-                   {:class "tab"
-                    :key [:tab]
-                    :target {:special :tab
-                             :alternate true}
-                    :selector-category :tab})]
+                [:div {:class "tabbed"}
+                 (make-component {:key [:tabs]}
+                                 [tabs-DOM-R subject nil inherited])
                  (make-component
-                  {:key [:tab (:item-id topic)] :class "table selecteds"}
+                  {:key [:tab (:item-id topic)]}
                   [top-level-item-DOM-R topic nil
                    (assoc inherited :key-prefix [:tab])])])))))
       [:div])))

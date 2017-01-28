@@ -127,7 +127,7 @@
 
 (def new-tab-elements '((:tab :non-semantic)
                         (""
-                         (:tab-referent :non-semantic)
+                         (:tab-topic :non-semantic)
                          (:table :non-semantic)
                          (anything (??? :tag)
                                    (:row-condition :non-semantic)

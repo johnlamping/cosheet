@@ -17,7 +17,7 @@
     [query :refer [matching-items matching-elements]]
     [debug :refer [simplify-for-print]]
     query-impl
-    [expression :refer [expr-let]]
+    [expression :refer [expr expr-let]]
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
@@ -122,15 +122,12 @@
                         (referent->exemplar-and-subject referent)
                         item (first (instantiate-to-items
                                      referent immutable-store))]
-                    (println "item" (simplify-for-print item))
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))
             (let [tabs-holder (first (matching-items '(nil :tabs)
                                                      immutable-store))
-                  tab (first (label->elements tabs-holder :tab))
-                  item (first (label->elements tab :tab-referent))]
-              [(item-referent item) nil]))]
-    ;; TODO: Put :referent and :subject-referent under :root
+                  tab (first (label->elements tabs-holder :tab))]
+              [(item-referent tab) nil]))]
     (new-state-map {:referent referent
                     :subject-referent subject-ref
                     :last-action nil
@@ -154,31 +151,32 @@
                         selector-category (assoc
                                            :selector-category selector-category
                                            :alternate-target true))]
-        (expr-let [table (matching-elements :table item)
+        (expr-let [tab-tags (matching-elements :tab item)
                    content (content item)]
-          (if (empty? table)
+          (if (empty? tab-tags)
             (top-level-item-DOM-R item referent inherited)
             ;; Under the narrow interpretation of commands, we don't want to
             ;; affect the item, only the selection of which item,
             ;; so make the item referent have an empty first group.
-            (let [regrouped-referent (union-referent [(union-referent [])
-                                                      referent])]
-              [:div {:class "tab-holder selector-scope"}
-               ;; We need a div around the tab text, so it can have
-               ;; a drop shadow that won't interfere with a selection inset
-               ;; drop shadow.
-               [:div {:class "tab-text-holder selectors"}
-                (add-attributes
-                 (item-content-DOM regrouped-referent content inherited)
-                 {:class "tab"
-                  :key [:tab]
-                  :target {:special :tab
-                           :alternate true}
-                  :selector-category :tab})]
-               (make-component
-                {:key [:tab (:item-id item)] :class "table selecteds"}
-                [table-DOM-R item
-                 (assoc inherited :key-prefix [:tab])])]))))
+            (expr-let [topic (expr first (label->elements item :tab-topic))]
+              (let [regrouped-referent (union-referent [(union-referent [])
+                                                        referent])]
+                [:div {:class "tab-holder selector-scope"}
+                 ;; We need a div around the tab text, so it can have
+                 ;; a drop shadow that won't interfere with a selection inset
+                 ;; drop shadow.
+                 [:div {:class "tab-text-holder selectors"}
+                  (add-attributes
+                   (item-content-DOM regrouped-referent content inherited)
+                   {:class "tab"
+                    :key [:tab]
+                    :target {:special :tab
+                             :alternate true}
+                    :selector-category :tab})]
+                 (make-component
+                  {:key [:tab (:item-id topic)] :class "table selecteds"}
+                  [top-level-item-DOM-R topic nil
+                   (assoc inherited :key-prefix [:tab])])])))))
       [:div])))
 
 (defn create-tracker

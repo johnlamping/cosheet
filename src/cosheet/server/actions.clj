@@ -306,15 +306,17 @@
                result))))))
    [context nil nil]))
 
-;; TODO: Add as element of tabs holder. Then get rid of :root.
+;; TODO: Accept an adjacent, so the tab can go in the right position.
 (defn update-add-blank-table-view
   "Add a blank table view with the given name to the store, returning the
   new store and the id of the new view."
   [store view-name]
   (let [generic (cons view-name new-tab-elements)
-        [specialized [store _]] (specialize-template generic [store {}])]
+        [specialized [store _]] (specialize-template generic [store {}])
+        tabs-holder (first (matching-items '(nil :tabs) store))]
     (update-add-entity-adjacent-to
-     store nil specialized (order-element-for-item nil store) :after false)))
+     store (:item-id tabs-holder) specialized (order-element-for-item nil store)
+     :after false)))
 
 (defn do-find-or-create-table-view
   "Find a table view with the given name, or create one. Return the view item"
@@ -322,10 +324,8 @@
   (let [id (do-update-control-return!
             store
             (fn [store]
-              (let [item (first (matching-items
-                                 `(~view-name (:root :non-semantic)
-                                              (:table :non-semantic))
-                                 store))]
+              (let [tabs-holder (first (matching-items '(nil :tabs) store))
+                    item (first (matching-elements view-name store))]
                 (if item
                   [store (:item-id item)]
                   (update-add-blank-table-view store view-name)))))]

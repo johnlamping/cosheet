@@ -10,7 +10,8 @@
                    read-store write-store id-valid? call-dependent-on-id]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
-    [entity :refer [description->entity in-different-store content]]
+    [entity :refer [description->entity in-different-store
+                    content label->elements]]
     entity-impl
     [store-utils :refer [add-entity]]
     [query :refer [matching-items matching-elements]]
@@ -124,7 +125,10 @@
                     (println "item" (simplify-for-print item))
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))
-            (let [item (first (matching-items '(nil :root) immutable-store))]
+            (let [tabs-holder (first (matching-items '(nil :tabs)
+                                                     immutable-store))
+                  tab (first (label->elements tabs-holder :tab))
+                  item (first (label->elements tab :tab-referent))]
               [(item-referent item) nil]))]
     ;; TODO: Put :referent and :subject-referent under :root
     (new-state-map {:referent referent

@@ -159,6 +159,7 @@ body {
     border-top-width: 2px;
     margin-left: 12px;
     margin-right: 12px;
+    min-width: 20px;
     width: fit-content;
     position: relative;
 }
@@ -192,10 +193,13 @@ body {
     transform:skewX(15deg);
 }
 
-.tab-sequence
-   > .empty-child.empty-child.empty-child.empty-child {
+.tab.empty-child.empty-child.empty-child.empty-child {
     background-color: transparent;
     width: 40px;
+}
+
+.tab.virtualTab, .tab.virtualTab:before, .tab.virtualTab:after { 
+    background-color: hsl(0, 0%, 95%);
 }
 
 .tab.complex {

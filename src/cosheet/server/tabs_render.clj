@@ -130,7 +130,10 @@
   (let [key (conj (:key-prefix inherited) :virtualTab)
         inherited (assoc inherited
                          :subject-referent (new-tab-virtual-referent
-                                            adjacent-referent inherited))]))
+                                            adjacent-referent inherited))]
+    (add-attributes
+     (virtual-item-DOM key adjacent-referent :after inherited)
+           {:class "tab virtualTab"})))
 
 (def new-tab-elements '((:tab :non-semantic)
                         (""

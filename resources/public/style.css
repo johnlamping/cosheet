@@ -137,43 +137,45 @@ body {
     align-items: stretch;
 }
 
-.tab:before {
-    border-style: solid;
-    border-color: hsl(0, 0%, 80%);
-    border-width: 2px 0px 0px 2px;
-    border-top-left-radius: 7px;
-    display: block;
-    content:" ";
-    width: 7px;
-    height: 25px;
-    top: -2px;
-    position: absolute;
-    left: -10px;
-    transform:skewX(-15deg);
-    z-index: -1;
-}
 .tab {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    text-align: center;
     border-top-width: 2px;
     margin-left: 12px;
     margin-right: 12px;
     width: 150px;
-    height: 25px;
     position: relative;
 }
-.tab:after {
+
+.tab:before, .tab:after{
+    height: 100%;
+    /* Make its background override edges of on other tabs, but not content. */
+    width: 30px;
+    background-color: white;
+    z-index: -1;    
     border-style: solid;
     border-color: hsl(0, 0%, 80%);
-    border-width: 2px 2px 0px 0px;
-    border-top-right-radius: 7px;
     display: block;
     content:" ";
-    width: 7px;
-    height: 25px;
     top: -2px;
     position: absolute;
-    right: -10px;
+    transform-origin: top;
+}
+
+.tab:before {
+    border-width: 2px 0px 0px 2px;
+    border-top-left-radius: 7px;
+    left: -8px;
+    transform:skewX(-15deg);
+}
+
+.tab:after {
+    border-width: 2px 2px 0px 0px;
+    border-top-right-radius: 7px;
+    right: -8px;
     transform:skewX(15deg);
-    z-index: -1;
 }
 
 /* --- tags --- */

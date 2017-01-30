@@ -45,7 +45,8 @@
   "Return the information to be inherited down to the elements of a tabs DOM."
   [tabs-referent select-selects-tab delete-deletes-tab inherited]
   (-> inherited
-      (assoc :subject tabs-referent)
+      (assoc :subject tabs-referent
+             :template '(nil))
       (update :selectable-attributes
               #(into-attributes %
                 (cond-> (add-column-command tabs-referent inherited)
@@ -54,7 +55,7 @@
                                   :special :tab})
                   delete-deletes-tab
                   (assoc :delete {:referent tabs-referent}))))
-      (dissoc :template :chosen-tab)))
+      (dissoc :chosen-tab)))
 
 (defn tabs-node-or-member-DOM-R
   [node-or-member inherited]
@@ -77,7 +78,7 @@
 
 (defn tabs-tree-DOM-R
   "Given something that is either a hieararchy node or element,
-  generate its DOM, but not the DOM for any children."
+  generate its DOM."
   [node-or-member inherited]
   (if (hierarchy-node? node-or-member)
     (tabs-subtree-DOM-R

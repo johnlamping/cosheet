@@ -26,7 +26,7 @@
              [render :refer [starting-inherited]]
              [item-render :refer [elements-DOM-R]])))
 
-(def tabs-subtree-DOM-R)
+(def tabs-tree-DOM-R)
 
 (def base-tab-width 150)
 
@@ -71,32 +71,17 @@
                           (= (count descendants) 1) (<= (count elements) 1)
                           inherited)]
       (if (hierarchy-node? node-or-member)
-        (elements-DOM-R elements false nil inherited-down)
+        (expr-let [dom (elements-DOM-R elements false nil inherited-down)
+                   elements-elements (expr-seq map semantic-elements-R
+                                               elements)]
+          (cond-> dom
+            (not (empty? (apply concat elements-elements)))
+            (add-attributes {:class "complex"})))        
         (let [key (conj (:key-prefix inherited)
                         (:item-id (:item node-or-member)))]
-          (virtual-item-DOM key tabs-referent :after inherited-down))))))
-
-(defn tabs-tree-DOM-R
-  "Given something that is either a hieararchy node or element,
-  generate its DOM."
-  [node-or-member inherited]
-  (if (hierarchy-node? node-or-member)
-    (tabs-subtree-DOM-R
-     node-or-member
-     ;; The child nodes might use the same item in their keys as their parent,
-     ;; so add to the prefix to make their keys distinct.
-     (update inherited :key-prefix #(conj % :nested)))
-    (add-attributes
-     (tabs-node-or-member-DOM-R node-or-member inherited)
-     (let [is-chosen (= (:item node-or-member) (:chosen-tab inherited))]
-       {:class (if is-chosen "tab chosen" "tab")}))))
-
-(defn virtual-tab-DOM
-  [adjacent-referent inherited]
-  (let [key (conj (:key-prefix inherited) :virtualTab)
-        inherited (assoc inherited
-                         :subject-referent (new-tab-virtual-referent
-                                            adjacent-referent inherited))]))
+          (add-attributes
+           (virtual-item-DOM key tabs-referent :after inherited-down)
+           {:class "empty-child"}))))))
 
 (defn tabs-subtree-DOM-R
   ;; :template in inherited gives the template for a new tab.
@@ -107,10 +92,7 @@
           [dom
            (if (= (count next-level) 1)
              ;; We have only one descendant; it must be the tab request.
-             (let [is-chosen (= (:item (first next-level))
-                                (:chosen-tab inherited))]
-               (add-attributes node-dom
-                               {:class (if is-chosen "tab chosen" "tab")}))
+             (add-attributes node-dom {:class "tab"})
              (let [properties-list (canonical-set-to-list (:properties node))
                    inherited-down (update
                                    inherited :template
@@ -118,13 +100,37 @@
                (expr-let
                    [dom-seqs (expr-seq map #(tabs-tree-DOM-R % inherited)
                                        next-level)]
-                 [:div {}
+                 [:div {:class "tab-tree"}
                   (add-attributes node-dom {:class "multi-tab"})
                   (into [:div {:class "tab-sequence"}]
                         dom-seqs)])))]
-        (let [num-tabs (count (hierarchy-node-descendants node))
-              width (+ (* num-tabs (- base-tab-width 2)) 2)]
-          (add-attributes dom {:style {:width (str width "px")}}))))))
+        dom))))
+
+(defn tabs-tree-DOM-R
+  "Given something that is either a hieararchy node or element,
+  generate its DOM."
+  [node-or-member inherited]
+  (let [is-chosen (seq (filter #(= (:item %) (:chosen-tab inherited))
+                               (hierarchy-node-descendants node-or-member)))]
+    (expr-let
+        [dom (if (hierarchy-node? node-or-member)
+               (tabs-subtree-DOM-R
+                node-or-member
+                ;; The child nodes might use the same item in their keys as
+                ;; their parent,  so add to the prefix to make their keys
+                ;; distinct.
+                (update inherited :key-prefix #(conj % :nested)))
+               (add-attributes
+                (tabs-node-or-member-DOM-R node-or-member inherited)
+                {:class "tab"}))]
+      (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
+
+(defn virtual-tab-DOM
+  [adjacent-referent inherited]
+  (let [key (conj (:key-prefix inherited) :virtualTab)
+        inherited (assoc inherited
+                         :subject-referent (new-tab-virtual-referent
+                                            adjacent-referent inherited))]))
 
 (def new-tab-elements '((:tab :non-semantic)
                         (""
@@ -147,7 +153,7 @@
     (expr-let [tabs (expr order-items-R
                       (entity/label->elements tabs-subject :tab))
                hierarchy (hierarchy-by-all-elements tabs)]
-      (expr-let [doms (expr-seq map #(tabs-subtree-DOM-R % inherited)
+      (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % inherited)
                                 hierarchy)]
         (into [:div {:class "tabs-holder"}]
               (concat doms [(virtual-tab-DOM

@@ -131,10 +131,24 @@ body {
 
 /* --- tabs --- */
 
-.tabs-holder {
+.tabs-holder, .tab-sequence {
     flex: none;
     display: flex;
     align-items: stretch;
+    z-index: 1;  /* Make the :before and :after borders go in front */
+    position:relative;  /* Make the z-index effective */
+}
+
+.tabs-holder {
+    margin-bottom: 2px;
+}
+
+.tab-tree {
+    background-color: white;
+}
+
+.multi-tab {
+    text-align: center;
 }
 
 .tab {
@@ -145,7 +159,7 @@ body {
     border-top-width: 2px;
     margin-left: 12px;
     margin-right: 12px;
-    width: 150px;
+    width: fit-content;
     position: relative;
 }
 
@@ -176,6 +190,33 @@ body {
     border-top-right-radius: 7px;
     right: -8px;
     transform:skewX(15deg);
+}
+
+.tab-sequence
+   > .empty-child.empty-child.empty-child.empty-child {
+    background-color: transparent;
+    width: 40px;
+}
+
+.tab.complex {
+    background-color: transparent;
+    width: 150px;
+}
+
+.tab.chosen, .tab-tree.chosen {
+    z-index: 2;
+}
+
+.tab.chosen {
+    box-shadow: inset 0px 2px hsl(0, 0%, 80%);
+}
+
+.tab.chosen:before {
+    box-shadow: inset 2px 2px hsl(0, 0%, 80%);
+}
+
+.tab.chosen:after {
+    box-shadow: inset -2px 2px hsl(0, 0%, 80%);
 }
 
 /* --- tags --- */

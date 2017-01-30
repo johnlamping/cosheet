@@ -164,7 +164,7 @@
                                                         referent])]
                 [:div {:class "tabbed"}
                  (make-component {:key [:tabs]}
-                                 [tabs-DOM-R subject nil inherited])
+                                 [tabs-DOM-R subject item inherited])
                  (make-component
                   {:key [:tab (:item-id topic)]}
                   [top-level-item-DOM-R topic nil
@@ -265,7 +265,7 @@
        [:div#add-column.tool
         [:img {:src "../icons/add_column.gif"}]
         [:div.tooltip "add column right"]]]
-      [:div#app.selector-scope "Root"]
+      [:div#app "Root"]
       [:div#select_holder.select_holder
        [:textarea#edit_input {"rows" 1}]
        [:div#scope_holder

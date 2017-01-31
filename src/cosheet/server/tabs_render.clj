@@ -45,7 +45,7 @@
   tabs-referent gives the tab or tabs that these elements apply to."
   [tabs-referent select-selects-tab delete-deletes-tab inherited]
   (-> inherited
-      (assoc :subject tabs-referent
+      (assoc :subject-referent tabs-referent
              :template '(nil))
       (update :selectable-attributes
               #(into-attributes %

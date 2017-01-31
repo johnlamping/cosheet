@@ -98,12 +98,16 @@
                                    inherited :template
                                    #(list* (concat % properties-list)))]
                (expr-let
-                   [dom-seqs (expr-seq map #(tabs-tree-DOM-R % inherited)
-                                       next-level)]
+                   [next-doms (expr-seq map #(tabs-tree-DOM-R % inherited)
+                                        next-level)]
                  [:div {:class "tab-tree"}
                   (add-attributes node-dom {:class "multi-tab"})
                   (into [:div {:class "tab-sequence"}]
-                        dom-seqs)])))]
+                        ;; We list the tabs in reverse order, so the
+                        ;; logically first tab will have priority in
+                        ;; the stacking order.  Then in the style, we
+                        ;; say to lay them out in reverse row order.
+                        (reverse next-doms))])))]
         dom))))
 
 (defn tabs-tree-DOM-R

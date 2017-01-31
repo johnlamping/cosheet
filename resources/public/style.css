@@ -137,14 +137,14 @@ body {
     align-items: stretch;
     z-index: 1;  /* Make the :before and :after borders go in front */
     position:relative;  /* Make the z-index effective */
-}
-
-.tabs-holder {
-    margin-bottom: 2px;
     /* The tabs are give in reverse order, so the logically first tab will
        come on top in the stacking order. */
     flex-direction: row-reverse;
     justify-content: flex-end;
+}
+
+.tabs-holder {
+    margin-bottom: 2px;
 }
 
 .tab-tree {

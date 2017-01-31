@@ -150,7 +150,7 @@
   [tabs-subject chosen-tab inherited]
   (let [subject-referent (item-referent tabs-subject)
         tabs-inherited (assoc inherited
-                              :template (cons "" new-tab-elements)
+                              :template (cons "" (cons "" new-tab-elements))
                               :subject-referent subject-referent
                               :chosen-tab chosen-tab)]
     (expr-let [tabs (expr order-items-R

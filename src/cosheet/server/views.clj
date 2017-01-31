@@ -45,7 +45,7 @@
   (let [[store _] (add-entity (new-element-store) nil
                               (list orderable/initial :unused-orderable))
         [store _] (add-entity store nil '("tabs" (:tabs :non-semantic)))
-        [store _] (update-add-blank-table-view store "table")]
+        [store _] (update-add-blank-table-view store "tab")]
     store))
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1

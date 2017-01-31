@@ -51,8 +51,8 @@
               #(into-attributes %
                 (cond-> (add-column-command tabs-referent inherited)
                   select-selects-tab
-                  (assoc :select {:referent tabs-referent
-                                  :special :tab})
+                  (assoc :selected {:referent tabs-referent
+                                    :special :tab})
                   delete-deletes-tab
                   (assoc :delete {:referent tabs-referent}))))
       (dissoc :chosen-tab)))

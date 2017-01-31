@@ -63,20 +63,23 @@
 ;;;                  Returns a single group of all items refered to by the
 ;;;                  first referent and not by the second.
 ;;;                  refers to the sequence of groups
-;;;         virtual  [:virtual <exemplar-referent> <sequence-referent>
+;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
 ;;;                            <adjacent-referent> position use-bigger selector]
 ;;;                  For each group of items refered to by sequence-referent
 ;;;                  refers to a group of new items matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
 ;;;                  and may be a template, with 'anything or refer to an
-;;;                  item that is a template. The sequence
-;;;                  referent can be virtual. The exemplar can also be
-;;;                  virtual or contain virtual referents.
+;;;                  item that is a template. It can also be
+;;;                  virtual or contain virtual referents. The subject
+;;;                  referent can be virtual, and may be nil, in which case
+;;;                  one element is created for each item in adjacent.
 ;;;                  Adjacent-referent gives items the new items should
 ;;;                  be adjacent to in the order. It must either
 ;;;                  have the same group structure as subject-referent,
 ;;;                  or it must have one group for each item of sequence
-;;;                  referent. Position and use-bigger say where the new
+;;;                  referent. It may be nil, in which case subject-referent
+;;;                  must not be nil, and the subject is used for adjacent.
+;;;                  Position and use-bigger say where the new
 ;;;                  item should go relative to the adjacent item. If selector
 ;;;                  has the value :first-group, it means that the first
 ;;;                  group of items will be selectors, and so don't need
@@ -181,7 +184,8 @@
                                      use-bigger false}
                                 :as options}]
   (when subject (assert (referent? subject)))
-  (assert (referent? adjacent))
+  (when adjacent (assert (referent? adjacent)))
+  (assert (or subject adjacent))
   (assert (#{:before :after} position))
   (assert (contains? #{true false} use-bigger))
   (assert (every? #{:position :use-bigger :selector} (keys options)))
@@ -662,15 +666,22 @@
   of new items, and the updated second argument."
   [referent store-and-chosen]
   (assert (virtual-referent? referent))
-  (let [[_ exemplar subject adjacent-referent position use-bigger selector]
+  (let [[_ exemplar subject-referent adjacent-referent
+         position use-bigger selector]
         referent
         [template [store chosen]]
         (instantiate-or-create-exemplar exemplar store-and-chosen)
-        adjacent-groups (instantiate-referent adjacent-referent store)
         [subject-groups store-and-chosen]
-        (if (nil? subject)
-          [(map-map (constantly nil) adjacent-groups) [store chosen]]
-          (instantiate-or-create-referent subject [store chosen]))
+        (if (nil? subject-referent)
+          [nil [store chosen]]
+          (instantiate-or-create-referent subject-referent [store chosen]))
+        adjacent-groups (if (nil? adjacent-referent)
+                          subject-groups
+                          (instantiate-referent adjacent-referent store))
+        subject-groups
+        (if (nil? subject-referent)
+          [(map-map (constantly nil) adjacent-groups)]
+          subject-groups)
         adjacent-groups (adjust-adjacents
                          subject-groups adjacent-groups position)]
     (create-possible-selector-elements

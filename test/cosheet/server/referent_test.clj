@@ -313,10 +313,9 @@
         (is (= (canonicalize-list (semantic-to-list-R new-jane))
                (canonicalize-list
                 `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
-    ;; Subject is virtual too
+    ;; Subject is virtual too, plus nil adjacent
     (let [referent (virtual-referent
-                    (virtual-referent '??? (item-referent jane)
-                                      (item-referent jane))
+                    (virtual-referent '??? (item-referent jane) nil)
                     (virtual-referent '???1 (item-referent joe)
                                       (item-referent joe))
                      (item-referent joe))

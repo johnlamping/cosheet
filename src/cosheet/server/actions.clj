@@ -444,7 +444,7 @@
   "Add a blank table view with the given name to the store, returning the
   new store and the id of the new view."
   [store view-name]
-  (let [generic (cons view-name new-tab-elements)
+  (let [generic (cons "" (cons view-name new-tab-elements))
         [specialized [store _]] (specialize-template generic [store {}])
         tabs-holder (first (matching-items '(nil :tabs) store))]
     (update-add-entity-adjacent-to

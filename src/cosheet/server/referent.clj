@@ -416,7 +416,7 @@
   [item]
   (canonicalize-list (immutable-semantic-to-list item)))
 
-(defn flatten-content-lists
+(defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
   (a ...b... ...c...)"
   ;; This case handles adding (:top-level :non-semantic) to row referents.
@@ -432,7 +432,7 @@
   "If the condition has an item id, look it up in the store and replace it with
   the semantic list form of what is in the store."
   [condition immutable-store]
-  (flatten-content-lists
+  (flatten-nested-content
    (clojure.walk/postwalk
     (fn [referent]
       (if (item-referent? referent)
@@ -618,7 +618,7 @@
    store-and-chosen]
   (let [[specialized-template [store chosen]]
         (specialize-template template store-and-chosen)
-        flattened-template(flatten-content-lists specialized-template)
+        flattened-template (flatten-nested-content specialized-template)
         ;; The template for a non-selector
         template (-> flattened-template
                      pattern-to-condition

@@ -141,9 +141,9 @@
                          (anything (??? :tag)
                                    (:row-condition :non-semantic)
                                    (:non-semantic :non-semantic))
-                         (anything (??? :tag)
-                                   (:column :non-semantic)
-                                   (:non-semantic :non-semantic)))))
+                         (anything-immutable (??? :tag)
+                                             (:column :non-semantic)
+                                             (:non-semantic :non-semantic)))))
 
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."

@@ -141,6 +141,10 @@ body {
 
 .tabs-holder {
     margin-bottom: 2px;
+    /* The tabs are give in reverse order, so the logically first tab will
+       come on top in the stacking order. */
+    flex-direction: row-reverse;
+    justify-content: flex-end;
 }
 
 .tab-tree {
@@ -203,7 +207,6 @@ body {
 }
 
 .tab.virtualTab {
-    z-index: -1;
     position: relative;
 }
 

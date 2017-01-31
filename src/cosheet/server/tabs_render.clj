@@ -167,4 +167,8 @@
               virtual-tab (virtual-tab-DOM v-ref nil
                                            virtual-inherited)]
           (into [:div {:class "tabs-holder"}]
-                (concat doms [virtual-tab])))))))
+                ;; We list the tabs in reverse order, so the logically first
+                ;; tab will have priority in the stacking order.
+                ;; Then in the style, we say to lay them out in reverse
+                ;; row order.
+                (concat [virtual-tab] (reverse doms))))))))

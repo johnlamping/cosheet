@@ -41,7 +41,8 @@
                            adjacent-referent inherited)}})
 
 (defn inherited-for-tab-elements
-  "Return the information to be inherited down to the elements of a tabs DOM."
+  "Return the information to be inherited down to the elements of a tabs DOM.
+  tabs-referent gives the tab or tabs that these elements apply to."
   [tabs-referent select-selects-tab delete-deletes-tab inherited]
   (-> inherited
       (assoc :subject tabs-referent

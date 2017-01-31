@@ -32,6 +32,7 @@
                       referent->exemplar-and-subject
                       string->referent instantiate-to-items]]
     [render-utils :refer [make-component]]
+    [order-utils :refer [order-items-R]]
     [render :refer [top-level-item-DOM-R user-visible-item? starting-inherited]]
     [item-render :refer [item-content-DOM]]
     [tabs-render :refer [tabs-DOM-R]]
@@ -110,6 +111,13 @@
 ;;; :selector-interpretation from the client's request.
 (def session-states (atom {}))
 
+(defn first-tab
+  "Return the first tab, if there is one."
+  [immutable-store]
+  (let [tabs-holder (first (matching-items '(nil :tabs)  immutable-store))
+        tabs (order-items-R (label->elements tabs-holder :tab))]
+    (first tabs)))
+
 (defn create-client-state
   [store referent-string]
   (let [immutable-store (current-store store)
@@ -124,10 +132,8 @@
                                      referent immutable-store))]
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))
-            (let [tabs-holder (first (matching-items '(nil :tabs)
-                                                     immutable-store))
-                  tab (first (label->elements tabs-holder :tab))]
-              [(item-referent tab) nil]))]
+            (let [tab (first-tab immutable-store)]
+              [(when tab (item-referent tab)) nil]))]
     (new-state-map {:referent referent
                     :subject-referent subject-ref
                     :last-action nil
@@ -141,8 +147,9 @@
              immutable-item (call-dependent-on-id
                              store nil
                              (fn [immutable-store]
-                               (first (instantiate-to-items
-                                       referent immutable-store))))]
+                               (or (first (instantiate-to-items
+                                           referent immutable-store))
+                                   (first-tab immutable-store))))]
     (if immutable-item
       (let [item (description->entity (:item-id immutable-item) store)
             inherited (cond-> starting-inherited

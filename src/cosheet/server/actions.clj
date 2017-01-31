@@ -256,7 +256,7 @@
     :delete [do-delete :target]
     :set-content [do-set-content :target]
     :expand [do-expand :target]
-    :selected [do-select :selected]}
+    :selected [do-selected :selected]}
    action))
 
 (defn broad-alternate-text
@@ -437,3 +437,16 @@
                   last-action (filter #(pos? (compare % last-action))))]
        [(if (empty? later-times) last-action (last later-times))
         (map actions later-times)]))))
+
+;;; Used by views.clj.
+;;; TODO: Put someplace better?
+(defn update-add-blank-table-view
+  "Add a blank table view with the given name to the store, returning the
+  new store and the id of the new view."
+  [store view-name]
+  (let [generic (cons view-name new-tab-elements)
+        [specialized [store _]] (specialize-template generic [store {}])
+        tabs-holder (first (matching-items '(nil :tabs) store))]
+    (update-add-entity-adjacent-to
+     store (:item-id tabs-holder) specialized (order-element-for-item nil store)
+     :after false)))

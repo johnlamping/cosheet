@@ -57,8 +57,7 @@
                    {:referent (virtual-referent
                                (:template inherited)
                                (:subject-referent inherited)
-                               (or  adjacent-referent
-                                    (:subject-referent inherited))
+                               adjacent-referent
                                :position position
                                :selector (when (:selector-category
                                                 inherited)

@@ -203,7 +203,7 @@
                    :selector-category :some-category
                    :target {:referent (virtual-referent
                                        '(nil :tag) (item-referent none)
-                                       (item-referent none)
+                                       nil
                                        :selector :first-group) 
                             :alternate :some-alternate}}]
             [:component {:key none-key}
@@ -446,7 +446,7 @@
                          :target {:referent (virtual-referent
                                              '(nil :tag)
                                              (item-referent item)
-                                             (item-referent item)
+                                             nil
                                              :position :after)}}]
                   [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"

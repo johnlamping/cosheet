@@ -23,7 +23,6 @@
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM item-stack-DOM
                                    condition-satisfiers-R]]
-             [render :refer [starting-inherited]]
              [item-render :refer [elements-DOM-R]])))
 
 (def tabs-tree-DOM-R)
@@ -125,18 +124,18 @@
                 {:class "tab"}))]
       (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
 
+;;; TODO: Put more of the work here.
 (defn virtual-tab-DOM
-  [adjacent-referent inherited]
+  [subject-referent adjacent-referent inherited]
   (let [key (conj (:key-prefix inherited) :virtualTab)
-        inherited (assoc inherited
-                         :subject-referent (new-tab-virtual-referent
-                                            adjacent-referent inherited))]
+        inherited (assoc inherited :subject-referent subject-referent)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
            {:class "tab virtualTab"})))
 
 (def new-tab-elements '((:tab :non-semantic)
                         (""
+                         (:non-semantic :non-semantic)
                          (:tab-topic :non-semantic)
                          (:table :non-semantic)
                          (anything (??? :tag)
@@ -149,17 +148,22 @@
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."
   [tabs-subject chosen-tab inherited]
-  (let [inherited (assoc starting-inherited
-                         :template (cons nil new-tab-elements)
-                         :subject-referent (item-referent tabs-subject)
-                         :chosen-tab chosen-tab)]
+  (let [subject-referent (item-referent tabs-subject)
+        tabs-inherited (assoc inherited
+                              :template (cons "" new-tab-elements)
+                              :subject-referent subject-referent
+                              :chosen-tab chosen-tab)]
     (expr-let [tabs (expr order-items-R
                       (entity/label->elements tabs-subject :tab))
                hierarchy (hierarchy-by-all-elements tabs)]
-      (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % inherited)
+      (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % tabs-inherited)
                                 hierarchy)]
-        (into [:div {:class "tabs-holder"}]
-              (concat doms [(virtual-tab-DOM
-                             (or (hierarchy-last-item-referent hierarchy)
-                                 (item-referent tabs-subject))
-                             inherited)]))))))
+        (let [v-ref (virtual-referent
+                     (cons "" new-tab-elements)
+                     subject-referent
+                     (hierarchy-last-item-referent hierarchy))
+              virtual-inherited (assoc inherited :template "")
+              virtual-tab (virtual-tab-DOM v-ref nil
+                                           virtual-inherited)]
+          (into [:div {:class "tabs-holder"}]
+                (concat doms [virtual-tab])))))))

@@ -161,6 +161,7 @@ body {
     justify-content: flex-end;
     text-align: center;
     border-top-width: 2px;
+    border-bottom-width:2px;
     margin-left: 12px;
     margin-right: 12px;
     min-width: 20px;
@@ -184,14 +185,14 @@ body {
 }
 
 .tab:before {
-    border-width: 2px 0px 0px 2px;
+    border-width: 2px 0px 2px 2px;
     border-top-left-radius: 7px;
     left: -8px;
     transform:skewX(-15deg);
 }
 
 .tab:after {
-    border-width: 2px 2px 0px 0px;
+    border-width: 2px 2px 2px 0px;
     border-top-right-radius: 7px;
     right: -8px;
     transform:skewX(15deg);
@@ -221,6 +222,7 @@ body {
 
 .tab.chosen {
     box-shadow: inset 0px 2px hsl(0, 0%, 80%);
+    border-bottom: 0px;
 }
 
 .tab.chosen.selected {
@@ -235,10 +237,12 @@ body {
 
 .tab.chosen:before {
     box-shadow: inset 2px 2px hsl(0, 0%, 80%);
+    border-bottom: 0px;
 }
 
 .tab.chosen:after {
     box-shadow: inset -2px 2px hsl(0, 0%, 80%);
+    border-bottom: 0px;
 }
 
 /* --- tags --- */

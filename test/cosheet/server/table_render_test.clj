@@ -116,7 +116,7 @@
              (any)]
             [:div {:class "table-body"}
              [:div {:class "table-indent"}]
-             [:div {:class "table-main selecteds selector-scope"}
+             [:div {:class "table-main selectees selector-scope"}
               [:div {:class "column-header-sequence selectors"}
                [:component {:key (conj table-key
                                        :nested (:item-id single))
@@ -135,6 +135,7 @@
                    :add-column {:referent (virtual-referent
                                            '(anything-immutable
                                              (:column :non-semantic)
+                                             (:non-semantic :non-semantic)
                                              (??? :tag))
                                            (union-referent
                                             [(item-referent table)])
@@ -153,7 +154,9 @@
                                (virtual-referent
                                 '(nil)
                                 (virtual-referent
-                                 '(anything-immutable (:column :non-semantic))
+                                 '(anything-immutable
+                                   (:column :non-semantic)
+                                   (:non-semantic :non-semantic))
                                  (item-referent table)
                                  (item-referent c6)
                                  :selector :first-group)
@@ -161,7 +164,7 @@
                                 :selector :first-group)
                                :alternate true}
                       :style {:width "35px"}}]]
-              [:div {:class "table-rows selecteds"}
+              [:div {:class "table-rows selectees"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
                 [table-row-DOM-R
@@ -178,8 +181,10 @@
                   (any)
                   {:column-id :virtualColumn
                    :template (virtual-referent
-                              '(anything-immutable (:column :non-semantic)
-                                                   (???))
+                              '(anything-immutable
+                                (:column :non-semantic)
+                                (:non-semantic :non-semantic)
+                                (???))
                               (item-referent table)
                               (item-referent c6)
                               :selector :first-group)
@@ -240,8 +245,10 @@
                      :target {:referent
                               (virtual-referent
                                (virtual-referent
-                                '(anything-immutable (:column :non-semantic)
-                                                     (???))
+                                '(anything-immutable
+                                  (:column :non-semantic)
+                                  (:non-semantic :non-semantic)
+                                  (???))
                                 (item-referent table)
                                 (item-referent c6)
                                 :selector :first-group)

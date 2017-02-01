@@ -661,7 +661,7 @@
                [:div {:class "table-body"}
                 [:div {:class (cond-> "table-indent"
                                 condition-is-tags (str " tag"))}]
-                [:div {:class "table-main selecteds selector-scope"}
+                [:div {:class "table-main selectees selector-scope"}
                  (add-attributes headers {:class "selectors"})
-                 (into [:div {:class "table-rows selecteds"}]
+                 (into [:div {:class "table-rows selectees"}]
                        (concat rows [virtual-row]))]]])))))))

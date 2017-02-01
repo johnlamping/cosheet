@@ -684,7 +684,7 @@ body {
     background-color: transparent;
 }
 
-.narrow-interpretation .selecteds {
+.narrow-interpretation .selectees {
     opacity: 0.3;
 }
 
@@ -692,7 +692,7 @@ body {
     box-shadow: 0px 0px transparent;
 }
 
-.narrow-interpretation .selector-scope .selecteds.selecteds {
+.narrow-interpretation .selector-scope .selectees.selectees {
     opacity: 1;
 }
 

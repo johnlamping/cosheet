@@ -198,6 +198,11 @@ body {
     transform:skewX(15deg);
 }
 
+.tab.item-stack {
+    /* Leave room for selection box-shadow. */
+    padding-top: 2px;
+}
+
 .tab.empty-child.empty-child.empty-child.empty-child {
     background-color: transparent;
     width: 40px;

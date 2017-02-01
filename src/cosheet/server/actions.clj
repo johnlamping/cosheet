@@ -161,6 +161,8 @@
                           ;; safety measure to make sure we don't delete twice
                  (apply concat item-groups))]
       (println "total items:" (count items))
+      (when placeholder
+        (println "Also removing placeholder matches."))
       (let [removed (reduce update-delete store items)]
         ;; If we removed a placeholder from a header, there will be no way to
         ;; reference the placeholder again, so change any instances of it

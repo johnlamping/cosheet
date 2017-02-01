@@ -10,6 +10,7 @@
             (cosheet.server
              [referent :refer [item-referent? exemplar-referent?
                                item-referent virtual-referent
+                               union-referent-if-needed
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R]]
              [hierarchy :refer [hierarchy-by-all-elements
@@ -43,45 +44,60 @@
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM.
   tabs-referent gives the tab or tabs that these elements apply to."
-  [tabs-referent select-selects-tab delete-deletes-tab inherited]
-  (-> inherited
-      (assoc :subject-referent tabs-referent
-             :template '(nil))
-      (update :selectable-attributes
-              #(into-attributes %
-                (cond-> (add-column-command tabs-referent inherited)
-                  select-selects-tab
-                  (assoc :selected {:referent tabs-referent
-                                    :special :tab})
-                  delete-deletes-tab
-                  (assoc :delete {:referent tabs-referent}))))
-      (dissoc :chosen-tab)))
+  [tab-items tabs-elements example-elements tabs-referent inherited]
+  (println "inherited for " (count tab-items) (count example-elements))
+  (let [subject-referent (:subject-referent inherited)
+        ;; For tabs with just one element (or none), delete the tab.
+        delete-referent
+        (when (<= (count example-elements) 1)
+          (union-referent-if-needed
+           (map (fn [tab-item tab-elements]
+                  (if (= (count tab-elements) 1)
+                    (item-referent tab-item)
+                    (item-or-exemplar-referent
+                     (first example-elements) (item-referent tab-item))))
+                tab-items tabs-elements)))]
+    (-> inherited
+        (assoc :subject-referent tabs-referent
+               :template '(nil))
+        (update
+         :selectable-attributes
+         #(into-attributes
+           %
+           (cond-> (add-column-command tabs-referent inherited)
+             (= (count tab-items) 1)
+             (assoc :selected {:referent tabs-referent
+                               :special :tab})
+             delete-referent
+             (assoc :delete  {:referent delete-referent}))))
+        (dissoc :chosen-tab))))
 
 (defn tabs-node-or-member-DOM-R
   [node-or-member inherited]
   "Generate the dom for a node of the tabs hierarchy, but not any of its
   children."
-  (expr-let [elements (hierarchy-node-example-elements node-or-member)]
-    (let [subject-referent (:subject-referent inherited)
-          tabs-referent (hierarchy-node-items-referent
-                         node-or-member subject-referent)
-          descendants (hierarchy-node-descendants node-or-member)
-          inherited-down (inherited-for-tab-elements
-                          tabs-referent
-                          (= (count descendants) 1) (<= (count elements) 1)
-                          inherited)]
-      (if (hierarchy-node? node-or-member)
-        (expr-let [dom (elements-DOM-R elements false nil inherited-down)
-                   elements-elements (expr-seq map semantic-elements-R
-                                               elements)]
-          (cond-> dom
-            (not (empty? (apply concat elements-elements)))
-            (add-attributes {:class "complex"})))        
-        (let [key (conj (:key-prefix inherited)
-                        (:item-id (:item node-or-member)))]
-          (add-attributes
-           (virtual-item-DOM key tabs-referent :after inherited-down)
-           {:class "empty-child"}))))))
+  (let [subject-referent (:subject-referent inherited)
+        tabs-referent (hierarchy-node-items-referent
+                       node-or-member subject-referent)
+        tab-items (map :item (hierarchy-node-descendants node-or-member))]
+    (expr-let [example-elements (hierarchy-node-example-elements node-or-member)
+               tabs-elements (expr-seq map semantic-elements-R tab-items)]
+      (let [inherited-down (inherited-for-tab-elements
+                            tab-items tabs-elements example-elements
+                            tabs-referent inherited)]
+        (if (hierarchy-node? node-or-member)
+          (expr-let [dom (elements-DOM-R example-elements false nil
+                                         inherited-down)
+                     elements-elements (expr-seq map semantic-elements-R
+                                                 example-elements)]
+            (cond-> dom
+              (not (empty? (apply concat elements-elements)))
+              (add-attributes {:class "complex"})))        
+          (let [key (conj (:key-prefix inherited)
+                          (:item-id (:item node-or-member)))]
+            (add-attributes
+             (virtual-item-DOM key tabs-referent :after inherited-down)
+             {:class "empty-child"})))))))
 
 (defn tabs-subtree-DOM-R
   ;; :template in inherited gives the template for a new tab.
@@ -124,9 +140,9 @@
                 ;; their parent,  so add to the prefix to make their keys
                 ;; distinct.
                 (update inherited :key-prefix #(conj % :nested)))
-               (add-attributes
-                (tabs-node-or-member-DOM-R node-or-member inherited)
-                {:class "tab"}))]
+               (expr-let [dom (tabs-node-or-member-DOM-R node-or-member
+                                                         inherited)]
+                 (add-attributes dom {:class "tab"})))]
       (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
 
 ;;; TODO: Put more of the work here.

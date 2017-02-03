@@ -1,7 +1,6 @@
 (ns cosheet.server.order-utils
   (:require
    (cosheet
-    [debug :refer [simplify-for-print]]
     [orderable :refer [split earlier? initial]]
     [store :refer [update-content add-simple-element]]
     [entity :refer [content elements label->elements label->content]]

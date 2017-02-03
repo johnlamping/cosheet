@@ -229,8 +229,8 @@
     :virtual (let [[_ exemplar subject adjacent position use-bigger selector]
                    referent]
                (virtual-referent exemplar
-                                 (first-group-referent subject)
-                                 (first-group-referent adjacent)
+                                 (when subject (first-group-referent subject))
+                                 (when adjacent (first-group-referent adjacent))
                                  :position position
                                  :use-bigger use-bigger
                                  :selector selector))))

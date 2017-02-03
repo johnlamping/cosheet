@@ -4,14 +4,17 @@
             (cosheet [utils :refer [parse-string-as-number]]
                      [store :as store]
                      [entity :as entity]
+                     [query :as query]
                      [reporters :refer [reporter? attended? data value
                                         valid? set-attendee!]]
+                     [orderable]
                      [expression-manager :refer [current-value]]
                      [entity-impl :as entity-impl]
                      store-utils
                      store-impl
                      mutable-store-impl
-                     [mutable-map :as mm])))
+                     [mutable-map :as mm])
+            (cosheet.server [order-utils :refer [order-items-R]])))
 
 (defn- function-name [f]
   (let [name (str f)
@@ -58,6 +61,8 @@
          (clojure.string/join ["Entity-" (simplify-for-print (:item-id item))]))
         (reporter? item)
         (list* "R" (simplify-for-print (reporter-computation item)))
+        (instance? cosheet.orderable.Orderable item)
+        "Orderable"
         (instance? clojure.lang.PersistentHashSet item)
         (set (map simplify-for-print item))
         (instance? clojure.lang.PersistentArrayMap item)
@@ -260,4 +265,52 @@
   (seq (for [env envs]
          (zipmap (keys env)
                  (map #(current-value (entity/to-list %)) (vals env))))))
+
+;;; Showing items in a file.
+
+(defn name-to-path [name]
+  (let [homedir (System/getProperty "user.home")]
+    (clojure.string/join "" [homedir  "/cosheet/" name ".cst"])))
+
+(defn read-store-file [name]
+  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
+    (store/read-store (store/new-element-store) stream)))
+
+(defn to-limited-list [entity depth width]
+  (if (entity/atom? entity)
+    (entity/atomic-value entity)
+    (let [content (entity/content entity)
+          elements (entity/elements entity)]
+      (if (empty? elements)
+        content
+        (if (= depth 0)
+          (cons content '("..."))
+          (let [elements (take width (try (order-items-R elements)
+                                          (catch Exception e elements)))]
+            (cons content
+                  (map #(to-limited-list % (- depth 1) width) elements))))))))
+
+(def show-state
+  (atom {:store nil
+         :name nil
+         :depth 3
+         :width 10}))
+
+(defn show [pattern & {:keys [store name depth width]
+                       :or {store (:store @show-state)
+                            name (:name @show-state)
+                            depth (:depth @show-state)
+                            width (:width @show-state)}
+                       :as state}]
+  (reset! show-state {:store store
+                      :name name
+                      :depth depth
+                      :width width})
+  (let [store (or store (read-store-file name))
+        results (vec (query/matching-items pattern store))
+        lists (vec (map #(-> %
+                             (to-limited-list depth width)
+                             simplify-for-print)
+                        (take width results)))]
+    (clojure.pprint/pprint lists)))
 

@@ -182,7 +182,9 @@
         (let [v-ref (virtual-referent
                      (cons "" new-tab-elements)
                      subject-referent
-                     (hierarchy-last-item-referent hierarchy))
+                     (hierarchy-last-item-referent hierarchy)
+                     ;; Avoid turning 'anything in the template into ""
+                     :selector :first-group)
               virtual-inherited (assoc inherited :template "")
               virtual-tab (virtual-tab-DOM v-ref nil
                                            virtual-inherited)]

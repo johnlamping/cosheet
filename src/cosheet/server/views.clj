@@ -111,11 +111,17 @@
 ;;; :selector-interpretation from the client's request.
 (def session-states (atom {}))
 
-(defn first-tab
+(defn tabs-holder-R
+  "Return the item that holds all the tabs."
+  [store]
+  (expr-let [holders (matching-items '(nil :tabs) store)]
+    (first holders)))
+
+(defn first-tab-R
   "Return the first tab, if there is one."
-  [immutable-store]
-  (let [tabs-holder (first (matching-items '(nil :tabs)  immutable-store))
-        tabs (order-items-R (label->elements tabs-holder :tab))]
+  [store]
+  (expr-let [holder (tabs-holder-R store)
+             tabs (expr order-items-R (label->elements holder :tab))]
     (first tabs)))
 
 (defn create-client-state
@@ -132,7 +138,7 @@
                                      referent immutable-store))]
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))
-            (let [tab (first-tab immutable-store)]
+            (let [tab (first-tab-R immutable-store)]
               [(when tab (item-referent tab)) nil]))]
     (new-state-map {:referent referent
                     :subject-referent subject-ref
@@ -143,13 +149,16 @@
   "Return a reporter giving the DOM specified by the client."
   [store client-state selector-category]
   (expr-let [referent (state-map-get client-state :referent)
+             _ (println "referent" (simplify-for-print referent))
              subject-referent (state-map-get client-state :subject-referent)
              immutable-item (call-dependent-on-id
                              store nil
                              (fn [immutable-store]
-                               (or (first (instantiate-to-items
-                                           referent immutable-store))
-                                   (first-tab immutable-store))))]
+                               (or (when referent
+                                     (first (instantiate-to-items
+                                             referent immutable-store)))
+                                   (first-tab-R immutable-store))))]
+    (println "!!!!! item" (simplify-for-print immutable-item))
     (if immutable-item
       (let [item (description->entity (:item-id immutable-item) store)
             inherited (cond-> starting-inherited
@@ -161,22 +170,23 @@
         (expr-let [tab-tags (matching-elements :tab item)
                    content (content item)]
           (if (empty? tab-tags)
+            ;; Show just the item.
             (top-level-item-DOM-R item referent inherited)
-            ;; Under the narrow interpretation of commands, we don't want to
-            ;; affect the item, only the selection of which item,
-            ;; so make the item referent have an empty first group.
+            ;; Show a selection of tabs.
             (expr-let [topic (expr first (label->elements item :tab-topic))
                        subject (cosheet.entity/subject item)]
-              (let [regrouped-referent (union-referent [(union-referent [])
-                                                        referent])]
-                [:div {:class "tabbed"}
-                 (make-component {:key [:tabs]}
-                                 [tabs-DOM-R subject item inherited])
-                 (make-component
-                  {:key [:tab (:item-id topic)]}
-                  [top-level-item-DOM-R topic nil
-                   (assoc inherited :key-prefix [:tab])])])))))
-      [:div])))
+              [:div {:class "tabbed"}
+               (make-component {:key [:tabs]}
+                               [tabs-DOM-R subject item inherited])
+               (make-component
+                {:key [:tab (:item-id topic)]}
+                [top-level-item-DOM-R topic nil
+                 (assoc inherited :key-prefix [:tab])])]))))
+      ;; Show a virtual tab.
+      (do (println "showig virtual")
+          (expr-let [holder (tabs-holder-R store)]
+            (make-component {:key [:tabs]}
+                            [tabs-DOM-R holder nil starting-inherited]))))))
 
 (defn create-tracker
   [store client-state selector-string]

@@ -185,8 +185,9 @@
       ;; Show a virtual tab.
       (do (println "showig virtual")
           (expr-let [holder (tabs-holder-R store)]
-            (make-component {:key [:tabs]}
-                            [tabs-DOM-R holder nil starting-inherited]))))))
+            [:div {:class "tabbed"}
+             (make-component {:key [:tabs]}
+                             [tabs-DOM-R holder nil starting-inherited])])))))
 
 (defn create-tracker
   [store client-state selector-string]

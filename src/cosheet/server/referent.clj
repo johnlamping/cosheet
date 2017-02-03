@@ -196,10 +196,14 @@
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
    depending on the subject."
-  [item subject]
-  (if (or (nil? subject) (item-referent? subject))
+  [item subject-referent]
+  (if (or (nil? subject-referent)
+          (and (item-referent? subject-referent)
+               (satisfies? cosheet.entity/StoredEntity item)
+               (if-let [subj (cosheet.entity/subject item)]
+                 (= (item-referent subj) subject-referent))) )
     (item-referent item)
-    (exemplar-referent item subject)))
+    (exemplar-referent item subject-referent)))
 
 (defn referent->exemplar-and-subject
   "Given a referent, return an exemplar and subject such that

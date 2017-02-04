@@ -131,6 +131,11 @@ body {
 
 /* --- tabs --- */
 
+.tabbed {
+    display: flex;
+    flex-direction: column;
+}
+
 .tabs-holder, .tab-sequence {
     flex: none;
     display: flex;
@@ -505,6 +510,7 @@ body {
 .table-main {
     margin-top: 2px;
     margin-left: 2px;
+    max-width: 100vw;
     flex: 0 1 auto;
     display: flex;
     flex-direction: column;

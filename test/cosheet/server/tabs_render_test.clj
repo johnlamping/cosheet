@@ -1,9 +1,9 @@
 (ns cosheet.server.tabs-render-test
   (:require [clojure.test :refer [deftest is]]
-            [clojure.pprint :refer [pprint]]
             (cosheet
              [orderable :as orderable]
              [entity :as entity  :refer [label->elements]]
+             [query :refer [matching-elements]]
              [expression :refer [expr expr-let expr-seq]]
              [expression-manager :refer [current-value]]
              [debug :refer [envs-to-list simplify-for-print]]
@@ -12,7 +12,7 @@
             (cosheet.server
              [referent :refer [item-referent union-referent exemplar-referent
                                query-referent elements-referent
-                               virtual-referent]]
+                               virtual-referent referent?]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R]]
              [tabs-render :refer :all])
@@ -32,24 +32,120 @@
 (deftest tabs-DOM-test
   (let [inherited {:priority 1
                    :width 3.0
-                   :key-prefix [:foo]}]
-    (let [tabs-list `(""
-                      ("" "foo"
-                       (:tab :non-semantic)
-                       ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                       (~o1 :order :non-semantic))
-                      ("" "foo" "bar"
-                       (:tab :non-semantic)
-                       ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                       (~o2 :order :non-semantic))
-                      ("" "baz"
-                       (:tab :non-semantic)
-                       ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                       (~o3 :order :non-semantic)))
-          [dom tabs t2] (let-mutated [tabs tabs-list]
-                          (expr-let [t2 (expr first (label->elements tabs o2))
-                                     dom (tabs-DOM-R tabs t2 inherited)]
-                            [dom tabs t2]))
-          t1 (first (current-value (label->elements tabs o1)))
-          t3 (first (current-value (label->elements tabs o3)))]
-      (println dom))))
+                   :key-prefix [:foo]}
+        tabs-list `(""
+                    ("" "foo"
+                     (:tab :non-semantic)
+                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
+                     (~o1 :order :non-semantic))
+                    ("" "foo" "bar"
+                     (:tab :non-semantic)
+                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
+                     (~o2 :order :non-semantic))
+                    ("" "baz" "bletch"
+                     (:tab :non-semantic)
+                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
+                     (~o3 :order :non-semantic)))
+        [dom tabs t1 t2 t3] (let-mutated [tabs tabs-list]
+                              (expr-let [t1s (label->elements tabs o1)
+                                         t2s (label->elements tabs o2)
+                                         t3s (label->elements tabs o3)
+                                         dom (tabs-DOM-R tabs (first t2s)
+                                                         inherited)]
+                                [dom tabs
+                                 (first t1s) (first t2s) (first t3s)]))
+        t1-foo  (first (current-value (matching-elements "foo" t1)))
+        t2-foo (first (current-value (matching-elements "foo" t2)))
+        t2-bar (first (current-value (matching-elements "bar" t2)))
+        t3-baz (first (current-value (matching-elements "baz" t3)))
+        t3-bletch (first (current-value (matching-elements "bletch" t3)))
+        new-tab-elements '((:tab :non-semantic)
+                           (""
+                            (:non-semantic :non-semantic)
+                            (:tab-topic :non-semantic)
+                            (:table :non-semantic)
+                            (anything (??? :tag)
+                                      (:row-condition :non-semantic)
+                                      (:non-semantic :non-semantic))
+                            (anything-immutable
+                             (??? :tag)
+                             (:column :non-semantic)
+                             (:non-semantic :non-semantic))))
+        virtual-tab-referent (fn [elements adjacent]
+                               (virtual-referent
+                                (cons "" elements)
+                                (item-referent tabs)
+                                (if (referent? adjacent)
+                                  adjacent
+                                  (item-referent adjacent))
+                                :selector :first-group))
+        items-referent (fn [& items] (union-referent (map item-referent items)))
+        starting-inherited {:priority 1
+                           :width 3.0
+                           :key-prefix [:foo]
+                           :template '(nil)}]
+    (is (check
+         dom
+         [:div {:class "tabs-holder"}
+          [:div {:class "editable tab virtualTab"
+                 :key [:foo :virtualTab]
+                 :target {:referent (virtual-referent
+                                     "" (virtual-tab-referent
+                                         new-tab-elements t3) nil)}}]
+          (let [inherited (assoc starting-inherited
+                                 :subject-referent (item-referent t3)
+                                 :selectable-attributes
+                                 {:add-column {:referent
+                                               (virtual-tab-referent
+                                                (cons "" new-tab-elements) t3)}
+                                  :selected {:referent (item-referent t3)
+                                             :special :tab}})]
+            [:div {:class "item-stack tab"}
+             [:component {:key [:foo (item-referent t3-baz)]}
+              [item-without-labels-DOM-R t3-baz nil inherited]]
+             [:component {:key [:foo (item-referent t3-bletch)]}
+              [item-without-labels-DOM-R t3-bletch nil inherited]]])
+          [:div {:class "tab-tree chosen"}
+           [:component {:key [:foo (item-referent t1-foo)] :class "multi-tab"}
+            [item-without-labels-DOM-R t1-foo nil
+             (assoc starting-inherited
+                    :subject-referent (items-referent t1 t2)
+                    :selectable-attributes
+                    {:add-column {:referent
+                                  (virtual-tab-referent
+                                   (cons "" new-tab-elements)
+                                   (items-referent t1 t2))}
+                     :delete {:referent (union-referent
+                                         [(item-referent t1)
+                                          (exemplar-referent
+                                           (item-referent t1-foo)
+                                           (item-referent t2))])}})]]
+           [:div {:class "tab-sequence"}
+            [:component {:key [:foo :nested (item-referent t2-bar)]
+                         :class "tab chosen"}
+             [item-without-labels-DOM-R  t2-bar nil
+              (assoc starting-inherited
+                     :key-prefix (conj (:key-prefix starting-inherited) :nested)
+                     :subject-referent (item-referent t2)
+                     :selectable-attributes
+                     {:add-column {:referent
+                                   (virtual-tab-referent
+                                    (concat [""] new-tab-elements ["foo"]) t2)}
+                      :delete {:referent (item-referent t2-bar)}
+                      :selected {:referent (item-referent t2)
+                                 :special :tab}})]]
+            [:div {:class "editable empty-child tab"
+                   :key [:foo :nested (item-referent t1)]
+                   :target {:referent (virtual-referent
+                                       '(nil) (item-referent t1)
+                                       (item-referent t1))}
+                   :add-column {:referent
+                                (virtual-tab-referent
+                                 (concat [""] new-tab-elements ["foo"])
+                                 (item-referent t1))}
+                   :selected {:referent (item-referent t1)
+                              :special :tab}
+                   :delete {:referent (item-referent t1)}}]]]]))))
+
+ 
+

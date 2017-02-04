@@ -21,31 +21,24 @@
                                 hierarchy-node-next-level
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
-             [render-utils :refer [make-component vertical-stack
-                                   virtual-item-DOM item-stack-DOM
-                                   condition-satisfiers-R]]
+             [render-utils :refer [virtual-item-DOM condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R]])))
 
 (def tabs-tree-DOM-R)
 
 (def base-tab-width 150)
 
-(defn new-tab-virtual-referent
-  [adjacent-referent inherited]
-  (virtual-referent (:template inherited)
-                    (:subject-referent inherited)
-                    adjacent-referent))
-
 (defn add-column-command
   [adjacent-referent inherited]
-  {:add-column {:referent (new-tab-virtual-referent
-                           adjacent-referent inherited)}})
+  {:add-column {:referent (virtual-referent (:template inherited)
+                                            (:subject-referent inherited)
+                                            adjacent-referent
+                                            :selector :first-group)}})
 
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM.
   tabs-referent gives the tab or tabs that these elements apply to."
   [tab-items tabs-elements example-elements tabs-referent inherited]
-  (println "inherited for " (count tab-items) (count example-elements))
   (let [subject-referent (:subject-referent inherited)
         ;; For tabs with just one element (or none), delete the tab.
         delete-referent
@@ -94,7 +87,7 @@
               (not (empty? (apply concat elements-elements)))
               (add-attributes {:class "complex"})))        
           (let [key (conj (:key-prefix inherited)
-                          (:item-id (:item node-or-member)))]
+                          (:item-id (first tab-items)))]
             (add-attributes
              (virtual-item-DOM key tabs-referent :after inherited-down)
              {:class "empty-child"})))))))
@@ -110,11 +103,16 @@
              ;; We have only one descendant; it must be the tab request.
              (add-attributes node-dom {:class "tab"})
              (let [properties-list (canonical-set-to-list (:properties node))
-                   inherited-down (update
-                                   inherited :template
-                                   #(list* (concat % properties-list)))]
+                   inherited-down
+                   (-> inherited
+                       (update :template
+                               #(list* (concat % properties-list)))
+                       ;; The child nodes can use the same tab in their keys
+                       ;; as their parent,  so add to the prefix to make their
+                       ;; keys distinct.
+                       (update :key-prefix #(conj % :nested)))]
                (expr-let
-                   [next-doms (expr-seq map #(tabs-tree-DOM-R % inherited)
+                   [next-doms (expr-seq map #(tabs-tree-DOM-R % inherited-down)
                                         next-level)]
                  [:div {:class "tab-tree"}
                   (add-attributes node-dom {:class "multi-tab"})
@@ -135,13 +133,9 @@
     (expr-let
         [dom (if (hierarchy-node? node-or-member)
                (tabs-subtree-DOM-R
-                node-or-member
-                ;; The child nodes might use the same item in their keys as
-                ;; their parent,  so add to the prefix to make their keys
-                ;; distinct.
-                (update inherited :key-prefix #(conj % :nested)))
-               (expr-let [dom (tabs-node-or-member-DOM-R node-or-member
-                                                         inherited)]
+                node-or-member inherited)
+               (expr-let [dom (tabs-node-or-member-DOM-R
+                               node-or-member inherited)]
                  (add-attributes dom {:class "tab"})))]
       (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
 

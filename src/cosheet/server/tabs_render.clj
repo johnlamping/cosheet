@@ -10,7 +10,7 @@
             (cosheet.server
              [referent :refer [item-referent? exemplar-referent?
                                item-referent virtual-referent
-                               union-referent-if-needed
+                               union-referent-if-needed union-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R]]
              [hierarchy :refer [hierarchy-by-all-elements
@@ -28,18 +28,16 @@
 
 (def base-tab-width 150)
 
-(defn add-column-command
-  [adjacent-referent inherited]
-  {:add-column {:referent (virtual-referent (:template inherited)
-                                            (:subject-referent inherited)
-                                            adjacent-referent
-                                            :selector :first-group)}})
-
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM.
   tabs-referent gives the tab or tabs that these elements apply to."
   [tab-items tabs-elements example-elements tabs-referent inherited]
   (let [subject-referent (:subject-referent inherited)
+        ;; Make sure the adjacent referent returns just one group, since
+        ;; the subject is just one group.
+        adjacent-referent (if (item-referent? tabs-referent)
+                            tabs-referent
+                            (union-referent [tabs-referent]))
         ;; For tabs with just one element (or none), delete the tab.
         delete-referent
         (when (<= (count example-elements) 1)
@@ -57,7 +55,12 @@
          :selectable-attributes
          #(into-attributes
            %
-           (cond-> (add-column-command tabs-referent inherited)
+           (cond-> {:add-column
+                    {:referent (virtual-referent
+                                (:template inherited)
+                                (:subject-referent inherited)
+                                adjacent-referent
+                                :selector :first-group)}}
              (= (count tab-items) 1)
              (assoc :selected {:referent tabs-referent
                                :special :tab})

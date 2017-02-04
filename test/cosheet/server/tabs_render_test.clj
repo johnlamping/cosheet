@@ -114,7 +114,7 @@
                     {:add-column {:referent
                                   (virtual-tab-referent
                                    (cons "" new-tab-elements)
-                                   (items-referent t1 t2))}
+                                   (union-referent [(items-referent t1 t2)]))}
                      :delete {:referent (union-referent
                                          [(item-referent t1)
                                           (exemplar-referent

@@ -140,7 +140,7 @@ body {
     flex: none;
     display: flex;
     align-items: stretch;
-    z-index: 1;  /* Make the :before and :after borders go in front */
+    z-index: 1;  /* Make the ::before and ::after borders go in front */
     position:relative;  /* Make the z-index effective */
     /* The tabs are give in reverse order, so the logically first tab will
        come on top in the stacking order. */
@@ -174,7 +174,7 @@ body {
     position: relative;
 }
 
-.tab:before, .tab:after{
+.tab::before, .tab::after{
     height: 100%;
     /* Make its background override edges of on other tabs, but not content. */
     width: 30px;
@@ -189,14 +189,14 @@ body {
     transform-origin: top;
 }
 
-.tab:before {
+.tab::before {
     border-width: 2px 0px 2px 2px;
     border-top-left-radius: 7px;
     left: -8px;
     transform:skewX(-15deg);
 }
 
-.tab:after {
+.tab::after {
     border-width: 2px 2px 2px 0px;
     border-top-right-radius: 7px;
     right: -8px;
@@ -213,7 +213,7 @@ body {
     width: 40px;
 }
 
-.tab.virtualTab, .tab.virtualTab:before, .tab.virtualTab:after { 
+.tab.virtualTab, .tab.virtualTab::before, .tab.virtualTab::after { 
      background-color: hsl(0, 0%, 95%);
 }
 
@@ -245,12 +245,12 @@ body {
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
 
-.tab.chosen:before {
+.tab.chosen::before {
     box-shadow: inset 2px 2px hsl(0, 0%, 80%);
     border-bottom: 0px;
 }
 
-.tab.chosen:after {
+.tab.chosen::after {
     box-shadow: inset -2px 2px hsl(0, 0%, 80%);
     border-bottom: 0px;
 }
@@ -555,6 +555,11 @@ body {
     margin-bottom: -2px;		    
 }
 
+.column-header {
+    /* Needed to make broad-interpretation box's absolution position work. */
+    position: relative;
+}
+
 .column-header:not(.merge-with-parent) {
     display: flex;
     flex-direction: column;
@@ -712,6 +717,20 @@ body {
 
 .narrow-interpretation .selector-scope .selectees.selectees {
     opacity: 1;
+}
+
+/* broad interpretation of columns */
+
+.column-header.broad-interpretation::before {
+    content: " ";
+    pointer-events: none;
+    width: 100%;
+    height: 1000000px;
+    position: absolute;
+    left: 0px;
+    top: 100%;
+    z-index: 1;
+    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
 
 /* --- toolbar --- */

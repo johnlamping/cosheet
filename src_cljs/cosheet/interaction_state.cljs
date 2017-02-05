@@ -58,6 +58,9 @@
               (or (second (rest text)) " "))
         (set! (.-className alternate-holder) "visible")))))
 
+;;; :broad or :narrow
+(def selector-interpretation (atom :broad))
+
 (def selected (atom nil)) ;; The currently selected dom.
 
 ;;; The selector-scope dom of the currently selected dom if it is a selector
@@ -65,26 +68,40 @@
 ;;; That dom will have the class "narrow-selection"
 (def narrow-selector-scope (atom nil))
 
-;;; :broad or :narrow
-(def selector-interpretation (atom :broad))
+;;; The dom of the header of the currently selected column if we are doing
+;;; the broad interpretation of selection scopes.
+;;; That dom will have the class "wide-selection"
+(def broad-selection-column (atom nil))
 
-(defn set-selector-scope
-  "Set the appropriate dom, if any, to reflect the current selector scope."
+(defn set-special-class
+  "Set a specific dom to have a specified class, and record which dom it is.
+   atom-with-current is an atom that records the dom, if any, that currently
+   has the class"
+  [dom atom-with-current class]
+  (let [old-dom @atom-with-current]
+    (when (not= dom old-dom)
+      (when old-dom
+        (.remove (.-classList old-dom) class))
+      (when dom
+        (.add (.-classList dom) class))
+      (reset! atom-with-current dom))))
+
+(defn set-selection-classes
+  "Set the appropriate dom classes, if any, to reflect the current selection."
   []
   (let [selection @selected
-        selectors (when selection
-                    (find-ancestor-with-class selection "selectors"))
-        new-scope (when (and selection
-                             selectors
-                             (= @selector-interpretation :narrow))
-                    (find-ancestor-with-class selectors "selector-scope"))
-        current-scope @narrow-selector-scope]
-    (when (not= new-scope current-scope)
-      (when current-scope
-        (.remove (.-classList current-scope) "narrow-interpretation"))
-      (when new-scope
-        (.add (.-classList new-scope) "narrow-interpretation"))
-      (reset! narrow-selector-scope new-scope))))
+        narrow-scope (when (and selection
+                                (= @selector-interpretation :narrow))
+                       (if-let [selectors (find-ancestor-with-class
+                                           selection "selectors")]
+                         (find-ancestor-with-class selectors "selector-scope")))
+        broad-column (when (and selection
+                                (= @selector-interpretation :broad))
+                       (find-ancestor-with-class selection "column-header"))]
+    (set-special-class
+     narrow-scope narrow-selector-scope "narrow-interpretation")
+    (set-special-class
+     broad-column broad-selection-column "broad-interpretation")))
 
 (defn interpretation-selector-dom
   "Return the dom choice button for the given interpretation of selectors."
@@ -107,7 +124,7 @@
   (.remove (.-classList (interpretation-selector-dom
                          (opposite-selector-interpretation interpretation)))
            "picked")
-  (set-selector-scope))
+  (set-selection-classes))
 
 (defn toggle-selector-interpretation
   []
@@ -122,7 +139,7 @@
       (gdom/appendChild  (js/document.getElementById "app")
                          (js/document.getElementById "select_holder"))
       (reset! selected nil)
-      (set-selector-scope))))
+      (set-selection-classes))))
 
 (defn select [target]
   (.log js/console (str "Selecting id " (.-id target) "."))
@@ -133,5 +150,5 @@
     (gdom/appendChild target (js/document.getElementById "select_holder"))
     (.log js/console (str "Selected id " (.-id target) "."))
     (reset! selected target)
-    (set-selector-scope)))
+    (set-selection-classes)))
 

@@ -306,7 +306,8 @@
         key (conj (:key-prefix inherited) (:item-id column-item))]
     (add-attributes
      (virtual-item-DOM key column-referent :after inherited-down)
-     (cond-> {:style {:width (str base-table-column-width "px")}}
+     (cond-> {:style {:width (str base-table-column-width "px")}
+              :class "column-header merge-with-parent"}
        (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
 
 (def table-header-subtree-DOM-R)

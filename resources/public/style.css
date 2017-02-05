@@ -555,7 +555,7 @@ body {
     margin-bottom: -2px;		    
 }
 
-.column-header {
+.column-header:not(.merge-with-parent) {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -592,7 +592,7 @@ body {
     margin-top: -2px;
 }
 
-.column-header.tag, .table-top.tag {
+.column-header:not(.merge-with-parent).tag, .table-top.tag {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),

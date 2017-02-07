@@ -344,10 +344,6 @@
                ;; If we have only one descendant, it must be the column request.
                node-dom
                (let [properties-list (canonical-set-to-list (:properties node))
-                     inherited (update inherited :template
-                                       #(list* (concat
-                                                (or % '(anything-immutable))
-                                                properties-list)))
                      sibling-nodes (filter hierarchy-node? next-level)]
                  (expr-let
                      [dom-seqs (expr-seq

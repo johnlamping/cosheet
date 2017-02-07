@@ -365,12 +365,12 @@ body {
 
 .horizontal-value-last {
     border-bottom-width: 2px;
-    width: 100%;
     display: flex;
     flex-direction: row;
 }
 
-.horizontal-value-last > .item-stack {
+.horizontal-value-last > .item-stack,
+.horizontal-value-last > .content-text{
     width: 100%;
 }
 

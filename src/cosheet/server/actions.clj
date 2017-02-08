@@ -41,7 +41,7 @@
   "Substitute into the key, instantiating patterns with the item.  A
   pattern is of the form [:pattern <template>], where template is
   either empty, or somewhere contains a variable named :v. An empty
-  pattery will be replaced by the item, while a non-empty pattern gets
+  pattern will be replaced by the item, while a non-empty pattern gets
   replaced by the id of the match for its variable."
   [key item]
   (vec (map (fn [part]
@@ -113,6 +113,23 @@
                                [store {}])]
         (add-select-request
          store added (conj target-key [:pattern]) target-key)))))
+
+(defn do-add-label
+  [store context attributes]
+  (let [{:keys [target-key select-pattern selector-category]} attributes]
+    (when-let [referent (:referent context)]
+      (let [items (instantiate-referent referent store)
+            sample-item (first (apply concat items))
+            is-tag (when sample-item
+                     (seq (matching-elements :tag sample-item)))]
+        (when (not is-tag)
+          (let [selector (when selector-category :first-group)
+                [added [store _]] (create-possible-selector-elements
+                                   '(anything :tag) items items
+                                   :after true selector [store {}])]
+            (add-select-request
+             store added (conj (subvec target-key 0 (- (count target-key) 1))
+                               :label [:pattern]) target-key)))))))
 
 (defn do-add-twin
   [store context attributes]
@@ -251,6 +268,7 @@
    might hold the information, return them in priority order."
   [action]
   ({:add-element [do-add-element :target]
+    :add-label [do-add-label :target]
     :add-twin [do-add-twin :target]
     :add-sibling [do-add-virtual :add-sibling]
     :add-row [do-add-virtual :add-row]

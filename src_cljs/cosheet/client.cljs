@@ -115,8 +115,9 @@
                   "redo" :redo}
                  id)
         contextual-keyword ({"expand" :expand
-                             "add-element" :add-element
                              "add-twin" :add-twin
+                             "add-element" :add-element
+                             "add-label" :add-label
                              "add-sibling" :add-sibling
                              "add-row" :add-row
                              "add-column" :add-column}
@@ -210,6 +211,7 @@
       (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
                           (= key-codes/NUM_PLUS key-code) [:add-twin] 
                           (= key-codes/PERIOD key-code) [:add-element]
+                          (= key-codes/L key-code) [:add-label]
                           (= key-codes/S key-code) [:add-sibling]
                           (= key-codes/HASH key-code) [:add-sibling]
                           (= key-codes/DASH key-code) [:add-row]

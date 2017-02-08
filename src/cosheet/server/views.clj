@@ -158,7 +158,6 @@
                                      (first (instantiate-to-items
                                              referent immutable-store)))
                                    (first-tab-R immutable-store))))]
-    (println "!!!!! item" (simplify-for-print immutable-item))
     (if immutable-item
       (let [item (description->entity (:item-id immutable-item) store)
             inherited (cond-> starting-inherited
@@ -267,16 +266,20 @@
        [:div#expand.tool
         [:img {:src "../icons/expand.gif"}]
         [:div.tooltip "expand"]]
-       [:div.toolgap] 
+       [:div.toolgap]
+       [:div#add-twin.tool
+        [:img {:src "../icons/add_twin.gif"}]
+        [:Div.tooltip "add twin"]]
        [:div#add-element.tool
         [:img {:src "../icons/add_element.gif"}]
         [:div.tooltip "add element"]]
-      [:div#add-twin.tool
-        [:img {:src "../icons/add_twin.gif"}]
-        [:Div.tooltip "add twin"]]
+       [:div#add-label.tool
+        [:img {:src "../icons/add_label.gif"}]
+        [:div.tooltip "add label"]]
        [:div#add-sibling.tool
         [:img {:src "../icons/add_sibling.gif"}]
         [:div.tooltip "add sibling below"]]
+       [:div.toolgap]
        [:div#add-row.tool
         [:img {:src "../icons/add_row.gif"}]
         [:div.tooltip "add row below"]]

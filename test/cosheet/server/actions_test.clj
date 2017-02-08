@@ -98,6 +98,18 @@
     (is (check (:select result)
                [["jane-age" (any)] [["jane-age"]]]))))
 
+(deftest do-add-label-test
+  (let [result (do-add-label
+                store
+                {:referent (item-referent jane-age)}
+                {:target-key ["jane-age"]})
+        new-store (:store result)]
+    (is (check (item->canonical-semantic
+                (to-list (description->entity (:item-id jane-age) new-store)))
+               (canonicalize-list '(45 ("age" :tag) ("" :tag)))))
+    (is (check (:select result)
+               [["jane-age" :label (any)] [["jane-age"]]]))))
+
 (deftest do-add-twin-test
   (let [result (do-add-twin
                 store

@@ -480,6 +480,7 @@ body {
     border-bottom-width: 0px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
+    min-width: 300px;
      /* Two less than the table row, because it's border is in its margin */
     margin-right: 54px;
 }

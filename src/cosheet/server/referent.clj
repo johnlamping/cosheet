@@ -7,7 +7,9 @@
                                      call-with-immutable description->entity
                                      StoredEntity]]
                      [canonical :refer [canonicalize-list]]
-                     [store :as store :refer [id-valid? StoredItemDescription]]
+                     [store :as store :refer [id-valid? StoredItemDescription
+                                              update-content]]
+                     [store-utils :refer [add-entity]]
                      [store-impl :refer [get-unique-id-number]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
@@ -553,14 +555,44 @@
                     (instantiate-to-items plus immutable-store))])
     :virtual []))
 
+(defn next-new-string
+  "Given a string, return the next string."
+  [string]
+  (if (empty? string)
+    "A"
+    (let [prefix (subs string 0 (dec (count string)))
+          end (last string)]
+      (if (>= (int end) (int \Z))
+        (str (next-new-string prefix) "A")
+        (str prefix (char (inc (int end))))))))
+
+(defn get-new-string
+  "Given an immutable store, return a new short string of all cap letters
+   that does not occur in the store, and an updated store that knows what
+   the last new string was."
+  [store]
+  (println "get new string" (simplify-for-print store))
+  (let [last-string-item (first (matching-items
+                                 '(nil :last-new-string) store))]
+    (loop [last-new (when last-string-item (content last-string-item))]
+      (let [next-new (next-new-string last-new)]
+      (println "last-new" last-new "next" next-new)
+        (if (seq (matching-items next-new store))
+          (recur next-new)
+          [next-new
+           (if last-string-item
+             (update-content
+              store (:item-id last-string-item) next-new)
+             (first (add-entity store nil `(~next-new :last-new-string))))])))))
+
 (defn specialize-template
   "Adjust a template or condition to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique symbol,
-  and each instance of '???x with the same new symbol or the value
-  from chosen-new-ids, if present. Allocating new symbols will require
+  element. Specifically, replace each '??? with a new unique string,
+  and each instance of '???x with the same new string or the value
+  from chosen-new-ids, if present. Allocating new strings will require
   updating the store, and those of the form '???x will be recorded in
   an updated chosen-new-ids with a key of \"x\".  Return the new
-  condition and a pair of the new store, and the chosen ids."
+  condition and a pair of the new store, and the chosen strings."
   [condition store-and-chosen]
   (thread-recursive-map
    (fn [item store-and-chosen]
@@ -570,11 +602,10 @@
                [store chosen-new-ids] store-and-chosen]
            (if-let [sym (chosen-new-ids suffix)]
              [sym store-and-chosen]
-             (let [[id new-store] (get-unique-id-number store)
-                   sym (symbol (str "??-" id))
+             (let [[string new-store] (get-new-string store)
                    new-chosen (cond-> chosen-new-ids
-                                (not= suffix "") (assoc suffix sym))]
-               [sym [new-store new-chosen]])))
+                                (not= suffix "") (assoc suffix string))]
+               [string [new-store new-chosen]])))
          [item store-and-chosen])))
    condition store-and-chosen))
 

@@ -159,8 +159,9 @@
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
-  :key-prefix of inherited must give a prefix for the doms of each element."
-  [elements inherited]
+  :key-prefix of inherited must give a prefix for the doms of each element.
+  must-show-empty-labels gets passed on to elements-DOM-R"
+  [elements must-show-empty-labels inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
@@ -175,7 +176,9 @@
                   (dissoc :template)
                   (assoc :element-attributes (:selectable-attributes
                                               inherited)))]
-          (expr-let [inner-dom (elements-DOM-R non-labels true nil inherited)]
+          (expr-let [inner-dom (elements-DOM-R
+                                non-labels must-show-empty-labels
+                                nil inherited)]
             (label-wrapper-DOM-R
              [:div {:class "item elements-wrapper"} inner-dom]
              (:subject-referent inherited) labels false inherited)))
@@ -193,7 +196,9 @@
                                     {:class "tag"} inherited-down)
               (> (count ordered-elements) 1) (add-attributes {:class "tag"}))))
         non-labels
-        (expr-let [elements-dom (elements-DOM-R non-labels true nil inherited)]
+        (expr-let [elements-dom (elements-DOM-R
+                                 non-labels must-show-empty-labels
+                                 nil inherited)]
           [:div {:class "elements-wrapper"} elements-dom])
         true
         [:div {:class "elements-wrapper"}]))))
@@ -261,7 +266,7 @@
                                    inherited)))
                              (update :key-prefix
                                      #(conj % :nested)))]
-      (condition-elements-DOM-R example-elements inherited-down))))
+      (condition-elements-DOM-R example-elements true inherited-down))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
@@ -611,7 +616,7 @@
                                                (seq (filter #{:tag} %)))
                                          conditions-as-lists)
                condition-dom (condition-elements-DOM-R
-                              condition-elements
+                              condition-elements :wide
                               (assoc
                                inherited
                                :selector-category :table-condition

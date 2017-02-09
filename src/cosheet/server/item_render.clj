@@ -283,7 +283,10 @@
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.
-   If implied-template is non-nil, don't show sub-elements implied by it."
+   If implied-template is non-nil, don't show sub-elements implied by it.
+   If must-show-empty-labels is true, show a space for labels, even if
+   there are none. If, additionally, it is :wide, show them with substantial
+   space, if there is any space available."
   [elements must-show-empty-labels implied-template inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
@@ -305,7 +308,8 @@
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)
                    hierarchy (hierarchy-by-canonical-info augmented)]
-          (if (or (< (:width inherited) 1.0) no-labels)
+          (if (or (< (:width inherited) 1.0)
+                  (and no-labels (not (= must-show-empty-labels :wide))))
             (tagged-items-one-column-DOM-R hierarchy inherited)
             (tagged-items-two-column-DOM-R hierarchy inherited)))))))
 

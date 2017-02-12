@@ -1,18 +1,23 @@
 (ns cosheet.server.render
   (:require (cosheet [query :refer [matching-elements]]
                      [debug :refer [simplify-for-print]]
+                     [store :refer [call-dependent-on-id]]
                      [store-impl :refer [id->string string->id]]
-                     [entity :refer [subject label->elements]]
+                     [entity :refer [subject content label->elements
+                                     description->entity]]
                      [expression :refer [expr expr-let expr-seq cache]]
                      [expression-manager :refer [current-value]]
                      [dom-utils :refer [add-attributes into-attributes]]
-                     [query :refer [matching-elements]])
+                     [query :refer [matching-elements]]
+                     [state-map :refer [state-map-get]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
-                               item-referent?]]
+                               item-referent? instantiate-to-items]]
+             [render-utils :refer [make-component]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R must-show-label-item-DOM-R]]
-             [table-render :refer [table-DOM-R]])))
+             [table-render :refer [table-DOM-R]]
+             [tabs-render :refer [tabs-DOM-R tabs-holder-item-R first-tab-R]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 
@@ -197,3 +202,47 @@
               (:selector-category inherited)
               (add-attributes {:class "selectors"}))))
         (table-DOM-R item inherited)))))
+
+;;; TODO: Add a unit test for this.
+(defn DOM-for-client-R
+  "Return a reporter giving the DOM specified by the client."
+  [store client-state selector-category]
+  (expr-let [referent (state-map-get client-state :referent)
+             _ (println "referent" (simplify-for-print referent))
+             subject-referent (state-map-get client-state :subject-referent)
+             immutable-item (call-dependent-on-id
+                             store nil
+                             (fn [immutable-store]
+                               (or (when referent
+                                     (first (instantiate-to-items
+                                             referent immutable-store)))
+                                   (first-tab-R immutable-store))))]
+    (if immutable-item
+      (let [item (description->entity (:item-id immutable-item) store)
+            inherited (cond-> starting-inherited
+                        subject-referent (assoc
+                                          :subject-referent subject-referent)
+                        selector-category (assoc
+                                           :selector-category selector-category
+                                           :alternate-target true))]
+        (expr-let [tab-tags (matching-elements :tab item)
+                   content (content item)]
+          (if (empty? tab-tags)
+            ;; Show just the item.
+            (top-level-item-DOM-R item referent inherited)
+            ;; Show a selection of tabs.
+            (expr-let [topic (expr first (label->elements item :tab-topic))
+                       subject (cosheet.entity/subject item)]
+              [:div {:class "tabbed"}
+               (make-component {:key [:tabs]}
+                               [tabs-DOM-R subject item inherited])
+               (make-component
+                {:key [:tab (:item-id topic)]}
+                [top-level-item-DOM-R topic nil
+                 (assoc inherited :key-prefix [:tab])])]))))
+      ;; Show a virtual tab.
+      (do (println "showing virtual")
+          (expr-let [holder (tabs-holder-item-R store)]
+            [:div {:class "tabbed"}
+             (make-component {:key [:tabs]}
+                             [tabs-DOM-R holder nil starting-inherited])])))))

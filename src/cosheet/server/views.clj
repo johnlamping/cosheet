@@ -7,14 +7,14 @@
     [utils :refer [swap-control-return! ensure-in-atom-map!]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store id-valid? call-dependent-on-id]]
+                   read-store write-store id-valid?]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
     [entity :refer [description->entity in-different-store
                     content label->elements]]
     entity-impl
     [store-utils :refer [add-entity]]
-    [query :refer [matching-items matching-elements]]
+    [query :refer [matching-elements]]
     [debug :refer [simplify-for-print]]
     query-impl
     [expression :refer [expr expr-let]]
@@ -24,8 +24,7 @@
     [dom-utils :refer [dom-attributes add-attributes]]
     [reporters :as reporter]
     [mutable-manager :refer [current-mutable-value]]
-    [state-map :refer [new-state-map state-map-get-current-value
-                       state-map-get state-map-reset!]]
+    [state-map :refer [new-state-map state-map-reset!]]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [referent :refer [item-referent union-referent
@@ -33,9 +32,10 @@
                       string->referent instantiate-to-items]]
     [render-utils :refer [make-component]]
     [order-utils :refer [order-items-R]]
-    [render :refer [top-level-item-DOM-R user-visible-item? starting-inherited]]
+    [render :refer [DOM-for-client-R
+                    user-visible-item? starting-inherited]]
     [item-render :refer [item-content-DOM]]
-    [tabs-render :refer [tabs-DOM-R]]
+    [tabs-render :refer [tabs-DOM-R first-tab-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
@@ -111,19 +111,6 @@
 ;;; :selector-interpretation from the client's request.
 (def session-states (atom {}))
 
-(defn tabs-holder-R
-  "Return the item that holds all the tabs."
-  [store]
-  (expr-let [holders (matching-items '(nil :tabs) store)]
-    (first holders)))
-
-(defn first-tab-R
-  "Return the first tab, if there is one."
-  [store]
-  (expr-let [holder (tabs-holder-R store)
-             tabs (expr order-items-R (label->elements holder :tab))]
-    (first tabs)))
-
 (defn create-client-state
   [store referent-string]
   (let [immutable-store (current-store store)
@@ -144,49 +131,6 @@
                     :subject-referent subject-ref
                     :last-action nil
                     :alternate nil})))
-
-(defn DOM-for-client-R
-  "Return a reporter giving the DOM specified by the client."
-  [store client-state selector-category]
-  (expr-let [referent (state-map-get client-state :referent)
-             _ (println "referent" (simplify-for-print referent))
-             subject-referent (state-map-get client-state :subject-referent)
-             immutable-item (call-dependent-on-id
-                             store nil
-                             (fn [immutable-store]
-                               (or (when referent
-                                     (first (instantiate-to-items
-                                             referent immutable-store)))
-                                   (first-tab-R immutable-store))))]
-    (if immutable-item
-      (let [item (description->entity (:item-id immutable-item) store)
-            inherited (cond-> starting-inherited
-                        subject-referent (assoc
-                                          :subject-referent subject-referent)
-                        selector-category (assoc
-                                           :selector-category selector-category
-                                           :alternate-target true))]
-        (expr-let [tab-tags (matching-elements :tab item)
-                   content (content item)]
-          (if (empty? tab-tags)
-            ;; Show just the item.
-            (top-level-item-DOM-R item referent inherited)
-            ;; Show a selection of tabs.
-            (expr-let [topic (expr first (label->elements item :tab-topic))
-                       subject (cosheet.entity/subject item)]
-              [:div {:class "tabbed"}
-               (make-component {:key [:tabs]}
-                               [tabs-DOM-R subject item inherited])
-               (make-component
-                {:key [:tab (:item-id topic)]}
-                [top-level-item-DOM-R topic nil
-                 (assoc inherited :key-prefix [:tab])])]))))
-      ;; Show a virtual tab.
-      (do (println "showig virtual")
-          (expr-let [holder (tabs-holder-R store)]
-            [:div {:class "tabbed"}
-             (make-component {:key [:tabs]}
-                             [tabs-DOM-R holder nil starting-inherited])])))))
 
 (defn create-tracker
   [store client-state selector-string]

@@ -1,5 +1,6 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :as entity]
+                     [query :refer [matching-items]]
                      [debug :refer [simplify-for-print]]
                      [dom-utils :refer [dom-attributes
                                         into-attributes add-attributes]]
@@ -191,3 +192,16 @@
                 ;; Then in the style, we say to lay them out in reverse
                 ;; row order.
                 (concat [virtual-tab] (reverse doms))))))))
+
+(defn tabs-holder-item-R
+  "Return the item that holds all the tabs."
+  [store]
+  (expr-let [holders (matching-items '(nil :tabs) store)]
+    (first holders)))
+
+(defn first-tab-R
+  "Return the first tab, if there is one."
+  [store]
+  (expr-let [holder (tabs-holder-item-R store)
+             tabs (expr order-items-R (entity/label->elements holder :tab))]
+    (first tabs)))

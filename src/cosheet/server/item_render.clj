@@ -421,6 +421,52 @@
       item referent content (remove (set excluded-elements) elements)
       inherited))))
 
+(defn condition-elements-DOM-R
+  "Generate the dom for a (subset of) a condition, given its elements.
+  :key-prefix of inherited must give a prefix for the doms of each element.
+  must-show-empty-labels gets passed on to elements-DOM-R"
+  [elements must-show-empty-labels inherited]
+  (expr-let
+      [tags (expr-seq map #(matching-elements :tag %) elements)]
+    (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
+                              tags elements))
+          non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
+                                                       [element]))
+                                  tags elements))]
+      (cond
+        (and labels non-labels)
+        (let [inherited-down
+              (-> inherited
+                  (dissoc :template)
+                  (assoc :element-attributes (:selectable-attributes
+                                              inherited)))]
+          (expr-let [inner-dom (elements-DOM-R
+                                non-labels must-show-empty-labels
+                                nil inherited)]
+            (label-wrapper-DOM-R
+             [:div {:class "item elements-wrapper"} inner-dom]
+             (:subject-referent inherited) labels false inherited)))
+        labels
+        (expr-let [ordered-elements (order-items-R elements)
+                   excludeds (expr-seq map #(matching-elements :tag %)
+                                       ordered-elements)]
+          (let [subject-ref (:subject-referent inherited)
+                inherited-down (update-in
+                                inherited [:selectable-attributes]
+                                #(assoc % :add-element
+                                        {:referent subject-ref}))]
+            (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                    ordered-elements excludeds
+                                    {:class "tag"} inherited-down)
+              (> (count ordered-elements) 1) (add-attributes {:class "tag"}))))
+        non-labels
+        (expr-let [elements-dom (elements-DOM-R
+                                 non-labels must-show-empty-labels
+                                 nil inherited)]
+          [:div {:class "elements-wrapper"} elements-dom])
+        true
+        [:div {:class "elements-wrapper"}]))))
+
 (defn item-DOM-impl-R
    "Make a dom for an item or exemplar of a group of items.
    If the item is a tag, the caller is responsible for tag formatting."

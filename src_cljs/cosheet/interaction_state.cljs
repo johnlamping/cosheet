@@ -32,6 +32,12 @@
     (let [select-holder (js/document.getElementById "select_holder")
           edit-input (js/document.getElementById "edit_input")]
       (set! (.-value edit-input) initial-content)
+      ;; Have to use setAttribute, as list is not a DOM field,
+      ;; only an HTML attribute.
+      (.setAttribute edit-input "list"
+                     (if (.contains (.-classList target) "tag")
+                       ":label-values"
+                       nil))
       (.add (.-classList select-holder) "editing")
       (.focus edit-input)
       (.select edit-input)

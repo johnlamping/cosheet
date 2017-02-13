@@ -35,7 +35,7 @@
     [render :refer [DOM-for-client-R
                     user-visible-item? starting-inherited]]
     [item-render :refer [item-content-DOM]]
-    [tabs-render :refer [tabs-DOM-R first-tab-R]]
+    [tabs-render :refer [first-tab-R]]
     [dom-tracker :refer [new-dom-tracker add-dom request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
@@ -230,9 +230,9 @@
        [:div#add-column.tool
         [:img {:src "../icons/add_column.gif"}]
         [:div.tooltip "add column right"]]]
-      [:div#app "Root"]
+      [:div#app "Root"] ;; Client will create a component with id "root".
       [:div#select_holder.select_holder
-       [:textarea#edit_input {"rows" 1}]
+       [:input#edit_input {"type" "text"}]
        [:div#scope_holder
         [:div#broad_selector_interpretation.tool
          [:img {:src "../icons/edit.gif"}]

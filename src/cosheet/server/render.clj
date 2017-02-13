@@ -1,5 +1,5 @@
 (ns cosheet.server.render
-  (:require (cosheet [query :refer [matching-elements]]
+  (:require (cosheet [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
                      [store :refer [call-dependent-on-id]]
                      [store-impl :refer [id->string string->id]]
@@ -8,7 +8,6 @@
                      [expression :refer [expr expr-let expr-seq cache]]
                      [expression-manager :refer [current-value]]
                      [dom-utils :refer [add-attributes into-attributes]]
-                     [query :refer [matching-elements]]
                      [state-map :refer [state-map-get]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
@@ -203,12 +202,27 @@
               (add-attributes {:class "selectors"}))))
         (table-DOM-R item inherited)))))
 
+(defn label-datalist-DOM-R
+  "Return dom for a datalist of the content of all labels."
+  [store]
+  ;; TODO: This requires building a reporter for every label, and visiting
+  ;;       them every time anything changes. Put support for gathering all
+  ;;       values in the store, so it can be more efficient by looking at
+  ;;       the changed items. (The store needs a way to tell a reporter
+  ;;       about which items changed, not just that something it cared about
+  ;;       changed.
+  (expr-let [labels (matching-items '(nil :tag) store)
+             contents (expr-seq map content labels)]
+    (let [content-names (map str contents)
+          sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
+                                                   content-names)
+                                              content-names)))]
+      (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
+
 ;;; TODO: Add a unit test for this.
-(defn DOM-for-client-R
-  "Return a reporter giving the DOM specified by the client."
+(defn top-level-DOM-R
   [store client-state selector-category]
   (expr-let [referent (state-map-get client-state :referent)
-             _ (println "referent" (simplify-for-print referent))
              subject-referent (state-map-get client-state :subject-referent)
              immutable-item (call-dependent-on-id
                              store nil
@@ -246,3 +260,10 @@
             [:div {:class "tabbed"}
              (make-component {:key [:tabs]}
                              [tabs-DOM-R holder nil starting-inherited])])))))
+
+(defn DOM-for-client-R
+  "Return a reporter giving the DOM specified by the client."
+  [store client-state selector-category]
+  (expr-let [dom (top-level-DOM-R store client-state selector-category)]
+    (into dom [(make-component {:key [:label-values]}
+                                [label-datalist-DOM-R store])])))

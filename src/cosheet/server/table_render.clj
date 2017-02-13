@@ -223,17 +223,19 @@
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
   (let [key (conj (:key-prefix inherited) :virtualColumn)
+        template (table-virtual-header-element-template hierarchy)
         inherited (assoc inherited
                          :subject-referent (virtual-referent
                                             (:template inherited)
                                             (:subject-referent inherited)
                                             adjacent-referent
                                             :selector :first-group)
-                         :template (table-virtual-header-element-template
-                                    hierarchy))]
+                         :template template)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
-     {:class "column-header"
+     {:class (cond-> "column-header"
+               (is-tag-template? template)
+               (str " tag"))
       :style {:width (str base-table-virtual-column-width "px")}})))
 
 (defn table-header-member-DOM

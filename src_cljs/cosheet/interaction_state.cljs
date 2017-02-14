@@ -19,6 +19,42 @@
           (find-ancestor-with-class
            parent class-name (when max-depth (dec max-depth))))))))
 
+(defn offset-parent-below-ancestor
+  "Return the offset parent of the node, as long as it is at or below
+  the ancestor."
+  [node ancestor]
+  (when-let [parent (.-offsetParent node)]
+    (loop [node (.-parentNode node)]
+      (if (= node parent)
+        node
+        (when (and node (exists? node) (not= node ancestor))
+          (recur (.-parentNode node)))))))
+
+(defn left-offset-in-ancestor
+  "Return the left offset of the node with respect to
+   the given ancestor."
+  [node ancestor]
+  (if (= node ancestor)
+    0
+    (let [offset-parent (offset-parent-below-ancestor node ancestor)]
+      (if offset-parent
+        (+ (.-offsetLeft node)
+           (left-offset-in-ancestor offset-parent ancestor))
+        0))))
+
+(defn scroll-horizontally-to-be-visible
+  "Horizontally scroll the node to be fully visible, assuming that the ancestor
+   is the node with the scrolling content."
+  [node ancestor]
+  (let [left (left-offset-in-ancestor node ancestor) 
+        right (+ left (.-offsetWidth node) 3)
+        available (.-clientWidth ancestor)
+        current (.-scrollLeft ancestor)]
+    (if (> (- right current) available)
+      (set! (.-scrollLeft ancestor) (max 0 (- right available)))
+      (if (< left current)
+        (set! (.-scrollLeft ancestor) left)))))
+
 ;;; These are the UI operations on the edit field, alternate interpretation
 ;;; field, and on selections. We
 ;;; put them in their own file so both client.cljs and ajax.cljs can
@@ -39,6 +75,8 @@
                        ":label-values"
                        nil))
       (.add (.-classList select-holder) "editing")
+      (when-let [table-main (find-ancestor-with-class target "table-main")]
+        (scroll-horizontally-to-be-visible select-holder table-main))
       (.focus edit-input)
       (.select edit-input)
       (reset! edit-field-open-on target))))

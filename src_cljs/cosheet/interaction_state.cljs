@@ -67,7 +67,10 @@
   (when (not= target @edit-field-open-on)
     (let [select-holder (js/document.getElementById "select_holder")
           edit-input (js/document.getElementById "edit_input")]
-      (set! (.-value edit-input) initial-content)
+      (set! (.-value edit-input) (if (= (first initial-content) \u00A0)
+                                   "" ;; System provided name; clear it
+                                      ;; so options appear.
+                                   initial-content))
       ;; Have to use setAttribute, as list is not a DOM field,
       ;; only an HTML attribute.
       (.setAttribute edit-input "list"

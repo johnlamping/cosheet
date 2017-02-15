@@ -587,12 +587,13 @@
 
 (defn specialize-template
   "Adjust a template or condition to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique string,
-  and each instance of '???x with the same new string or the value
-  from chosen-new-ids, if present. Allocating new strings will require
-  updating the store, and those of the form '???x will be recorded in
-  an updated chosen-new-ids with a key of \"x\".  Return the new
-  condition and a pair of the new store, and the chosen strings."
+  element. Specifically, replace each '??? with a new unique string
+  with a leading non-breaking space, and each instance of '???x with
+  the same new string or the value from chosen-new-ids, if
+  present. Allocating new strings will require updating the store, and
+  those of the form '???x will be recorded in an updated
+  chosen-new-ids with a key of \"x\".  Return the new condition and a
+  pair of the new store, and the chosen strings."
   [condition store-and-chosen]
   (thread-recursive-map
    (fn [item store-and-chosen]
@@ -603,6 +604,7 @@
            (if-let [sym (chosen-new-ids suffix)]
              [sym store-and-chosen]
              (let [[string new-store] (get-new-string store)
+                   string (str "\u00A0" string)
                    new-chosen (cond-> chosen-new-ids
                                 (not= suffix "") (assoc suffix string))]
                [string [new-store new-chosen]])))

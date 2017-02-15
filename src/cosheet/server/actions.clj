@@ -195,7 +195,7 @@
   (let [{:keys [from to immutable]} attributes
         referent (:referent context)]
     (when (and from to (not immutable))
-      (let [to (parse-string-as-number to)]
+      (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups [store _]] (instantiate-or-create-referent
                                   referent [store {}])
               items (apply concat groups)]

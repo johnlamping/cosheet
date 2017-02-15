@@ -201,10 +201,10 @@
                                        [(new-element-store) {}])
         [c2 [s2 m2]] (specialize-template '("x" (???1 "y") (???1 "22"))
                                        [s1 {}])]
-    (is (= c1  '("x" ("A" :a) ("B" 22))))
+    (is (= c1  '("x" ("\u00A0A" :a) ("\u00A0B" 22))))
     (is (= m1 {}))
-    (is (= c2  '("x" ("C" "y") ("C" "22"))))
-    (is (= m2 {"1" "C"}))))
+    (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0C" "22"))))
+    (is (= m2 {"1" "\u00A0C"}))))
 
 (deftest instantiate-or-create-referent-test
   (let [store-and-chosen [store {"1" '??-42}]]
@@ -305,7 +305,7 @@
             new-sym (semantic-to-list-R item)]
         (is (= (:store item) store))
         (is (= (entity/subject item) new-joe))
-        (is (= new-sym "A"))
+        (is (= new-sym "\u00A0A"))
         (is (= (canonicalize-list (semantic-to-list-R new-joe))
                (canonicalize-list
                 `("Joe" ~new-sym "male" "married" (45 ("age" ~'tag))
@@ -328,7 +328,7 @@
             new-sym (semantic-to-list-R item)]
         (is (= (:store item) store))
         (is (= (entity/subject (entity/subject item)) new-joe))
-        (is (= new-sym "A"))
+        (is (= new-sym "\u00A0A"))
         (is (check (canonicalize-list (semantic-to-list-R new-joe))
                (canonicalize-list
                 `("Joe" (~'??-42 ~new-sym) "male"  "married" (45 ("age" ~'tag))

@@ -508,9 +508,9 @@ body {
     margin-top: -48px;
     padding-top: 50px;
     /* Turn off pointer events for us so our padding won't hide the stuff
-       above us from getting clicks. (Removed, because it killed horizontal
-       scrolling, and doesn't seem necessary.) */
-    /* pointer-events: none; */
+       above us from getting clicks. Unfortunately, this kills horizontal
+       scrolling */
+    pointer-events: none;
     margin-left: 2px;
     /* So we can find the position of elements relative to this node 
     for horizontal scrolling */

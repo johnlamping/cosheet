@@ -65,17 +65,19 @@
    (java.net.URI. (clojure.string/join "" ["file://" path]))))
 
 (defn read-store-file [name]
-  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
-    (read-store (new-element-store) stream)))
+  (locking name
+    (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
+      (read-store (new-element-store) stream))))
 
 (defn write-store-file [immutable-store name]
-  (let [temp-path (name-to-path "_TEMP_")]
-    (clojure.java.io/delete-file temp-path true)
-    (with-open [stream (clojure.java.io/output-stream temp-path)]
-      (write-store immutable-store stream))
-    (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
-                (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
-                                        StandardCopyOption/ATOMIC_MOVE]))))
+  (locking name
+    (let [temp-path (name-to-path "_TEMP_")]
+      (clojure.java.io/delete-file temp-path true)
+      (with-open [stream (clojure.java.io/output-stream temp-path)]
+        (write-store immutable-store stream))
+      (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
+                  (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
+                                          StandardCopyOption/ATOMIC_MOVE])))))
 
 (defn ensure-store [name]
   (ensure-in-atom-map!

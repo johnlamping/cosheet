@@ -407,6 +407,7 @@
   [row-item row-key new-row-template column-descriptions inherited]
   (let [inherited (-> inherited
                       (assoc :key-prefix row-key)
+                      (update :priority inc)
                       (update-in [:subject-referent]
                                  #(item-or-exemplar-referent row-item %)))]
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
@@ -550,13 +551,15 @@
               rows-referent (query-referent
                              (list (item-referent row-condition-item)
                                    '(:top-level :non-semantic)))
-              headers-inherited (assoc
-                                 inherited
-                                 :subject-referent (item-referent
-                                                    table-item)
-                                 :template '(anything-immutable
-                                             (:column :non-semantic)
-                                             (:non-semantic :non-semantic)))]
+              headers-inherited (update
+                                 (assoc
+                                  inherited
+                                  :subject-referent (item-referent
+                                                     table-item)
+                                  :template '(anything-immutable
+                                              (:column :non-semantic)
+                                              (:non-semantic :non-semantic)))
+                                 :priority inc)]
           (expr-let
               [[row-template row-items] (row-template-and-items-R
                                          store row-condition-item)
@@ -602,7 +605,7 @@
                   rows (map #(table-row-DOM-component
                               % row-template (concat column-descriptions
                                                      [virtual-column-description])
-                              inherited)
+                              (update-in inherited [:priority] (partial + 2)))
                             row-items)
                   virtual-row (table-virtual-row-DOM-component
                                row-template

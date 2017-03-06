@@ -123,7 +123,7 @@
                             :class "tag column-header"
                             :style {:width "150px"}}
                 [item-without-labels-DOM-R single [single-tag-spec]
-                 {:priority 1
+                 {:priority 2
                   :width 0.75
                   :key-prefix (conj table-key :nested)
                   :subject-referent first-column-referent
@@ -189,7 +189,7 @@
                               (item-referent c6)
                               :selector :first-group)
                    :exclusions nil}]
-                 {:priority 1 :width 3.0 :key-prefix table-key}]]
+                 {:priority 3 :width 3.0 :key-prefix table-key}]]
                [:component {:key (conj table-key :virtualRow)
                             :class "table-row"}
                 [table-virtual-row-DOM
@@ -226,7 +226,7 @@
                                       (:item-id joe) (:item-id c2) (any))
                            :class "table-cell has-border"}
                [item-without-labels-DOM-R (any) [(any)]
-                {:priority 1
+                {:priority 4
                  :width 0.75
                  :key-prefix (conj table-key (:item-id joe) (any))
                  :subject-referent (item-referent joe)

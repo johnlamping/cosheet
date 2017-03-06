@@ -53,7 +53,8 @@
 
 ;;; Store management. Stores may be shared across sessions.
 
-;;; A map from name to stores that we have open.
+;;; A map from name to a map {:mutable <mutable-store>,
+;;;                             :saved <immutable store in file>
 (def stores (atom {}))
 
 (defn name-to-path [name]
@@ -82,9 +83,11 @@
 (defn ensure-store [name]
   (ensure-in-atom-map!
    stores name
-   #(new-mutable-store
-     (try (read-store-file %)
-          (catch java.io.FileNotFoundException e (starting-store))))))
+   #(let [immutable (try (read-store-file %)
+                         (catch java.io.FileNotFoundException e
+                           (starting-store)))]
+      {:mutable (new-mutable-store immutable)
+       :saved immutable})))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -172,7 +175,7 @@
 
 (defn create-session
   [name referent-string selector-string]
-  (let [store (ensure-store name)
+  (let [store (:mutable (ensure-store name))
         id (swap-control-return!
             session-states
             (fn [session-map]

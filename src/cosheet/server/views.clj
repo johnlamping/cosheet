@@ -4,7 +4,7 @@
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
    (cosheet
-    [utils :refer [swap-control-return! ensure-in-atom-map!]]
+    [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store id-valid?]]
@@ -53,9 +53,13 @@
 
 ;;; Store management. Stores may be shared across sessions.
 
-;;; A map from name to a map {:mutable <mutable-store>,
-;;;                             :saved <immutable store in file>
-(def stores (atom {}))
+;;; A map from name to a map
+;;;  {:mutable <mutable-store>,
+;;;   :agent <the agent responsible for saving the store. It's state is the
+;;;           last version of the store written. We write the store by doing
+;;;           a send to this agent, so that writes don't block interaction,
+;;;           and will skip intermediate values if they get behind.>
+(def store-info (atom {}))
 
 (defn name-to-path [name]
   (let [homedir (System/getProperty "user.home")]
@@ -66,28 +70,39 @@
    (java.net.URI. (clojure.string/join "" ["file://" path]))))
 
 (defn read-store-file [name]
-  (locking name
-    (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
-      (read-store (new-element-store) stream))))
+  (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
+    (read-store (new-element-store) stream)))
 
-(defn write-store-file [immutable-store name]
-  (locking name
-    (let [temp-path (name-to-path "_TEMP_")]
-      (clojure.java.io/delete-file temp-path true)
-      (with-open [stream (clojure.java.io/output-stream temp-path)]
-        (write-store immutable-store stream))
-      (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
-                  (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
-                                          StandardCopyOption/ATOMIC_MOVE])))))
+(defn write-store-file-if-different [written-store mutable-store name]
+  "Function for running in the :agent of store-info.
+   If the current immutable store is different from the written store,
+   writes the current value to a file of the given name. Always returns the
+   current-value."
+  ;; We write the latest value from the mutable store, rather than the value
+  ;; at the time the send was done, so that we will catch up if we get behind.
+  (with-latest-value [store (current-store mutable-store)]
+    (when (not= written-store store)
+      (let [temp-path (name-to-path "_TEMP_")]
+        (clojure.java.io/delete-file temp-path true)
+        (with-open [stream (clojure.java.io/output-stream temp-path)]
+          (write-store store stream))
+        (Files/move (path-to-Path temp-path) (path-to-Path (name-to-path name))
+                    (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
+                                            StandardCopyOption/ATOMIC_MOVE])))
+      store)))
+
+(defn update-store-file [name]
+  (when-let [info (@store-info name)]
+    (send (:agent info) write-store-file-if-different (:mutable info) name)))
 
 (defn ensure-store [name]
   (ensure-in-atom-map!
-   stores name
+   store-info name
    #(let [immutable (try (read-store-file %)
                          (catch java.io.FileNotFoundException e
                            (starting-store)))]
       {:mutable (new-mutable-store immutable)
-       :saved immutable})))
+       :agent (agent immutable)})))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -293,8 +308,7 @@
         params
         session-state (get-session-state id)]
     (if session-state
-      (let [{:keys [tracker name store client-state]} session-state
-            original_store (current-store store)]
+      (let [{:keys [tracker name store client-state]} session-state]
         (println "request" params)
         (when initialize
           (println "requesting client refresh")
@@ -311,9 +325,7 @@
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
-            (let [new-store (current-store store)]
-              (when (not= new-store store)
-                (write-store-file new-store name)))
+            (update-store-file name)
             (compute manager-data 4000)
             (check-propagation-if-quiescent tracker)
             ;; Note: We must get the doms after doing the actions, so we can

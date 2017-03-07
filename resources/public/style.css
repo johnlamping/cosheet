@@ -22,11 +22,11 @@ body {
 
 #root {
     width: 100vw;
-    overflow: hidden;
 }
 
 #root > .table {
     max-width: 100%;
+    padding-right: 10px;
 }
 
 #root.wrapped-element, #root.item {

@@ -503,14 +503,7 @@ body {
 }
 
 .table-main {
-    /* We combine negative margin with padding so the scope selector tool
-       can appear above this box, even though its overflow is invisible. */
-    margin-top: -48px;
-    padding-top: 50px;
-    /* Turn off pointer events for us so our padding won't hide the stuff
-       above us from getting clicks. Unfortunately, this kills horizontal
-       scrolling */
-    pointer-events: none;
+    margin-top: 2px;
     margin-left: 2px;
     /* So we can find the position of elements relative to this node 
     for horizontal scrolling */
@@ -699,36 +692,46 @@ body {
     overflow: visible;
 }
 
-.narrow-interpretation .selectors {
+.narrow-scope .selectors {
     box-shadow: 1px 0px 3px 3px hsl(0, 0%, 85%),
                 7px 9px 4px 2px hsla(0, 0%, 0%, .7);
 }
 
-.narrow-interpretation .selectors .tag,
-.narrow-interpretation .selectors.tag {
+.narrow-scope .selectors .tag,
+.narrow-scope .selectors.tag {
     background-color: hsl(194, 100%, 70%);
 }
 
-.narrow-interpretation .selectors .tag > .tag,
-.narrow-interpretation .selectors.tag > .tag{
+.narrow-scope .selectors .tag > .tag,
+.narrow-scope .selectors.tag > .tag{
     background-color: transparent;
 }
 
-.narrow-interpretation .selectees {
+.narrow-scope .selectees {
     opacity: 0.3;
 }
 
-.narrow-interpretation .selector-scope .selectors.selectors {
+.narrow-scope .selector-scope .selectors.selectors {
     box-shadow: 0px 0px transparent;
 }
 
-.narrow-interpretation .selector-scope .selectees.selectees {
+.narrow-scope .selector-scope .selectees.selectees {
     opacity: 1;
+}
+
+.narrow-scope.table-main, .broad-scope.table-main {
+    /* We combine negative margin with padding so the scope selector tool
+       can appear above this box, even though its overflow is invisible.
+       This makes stuff immediately above us not clickable, but only while
+       our selection is active. And clicking elsewhere above us will
+       turn off that selection. */
+    margin-top: -48px;
+    padding-top: 50px;
 }
 
 /* broad interpretation of columns */
 
-.column-header.broad-interpretation::before {
+.column-header.broad-column::before {
     content: " ";
     pointer-events: none;
     width: 100%;

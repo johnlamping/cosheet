@@ -112,12 +112,17 @@
 
 ;;; The selector-scope dom of the currently selected dom if it is a selector
 ;;; and we are doing the narrow interpretation of selection scopes.
-;;; That dom will have the class "narrow-selection"
+;;; That dom will have the class "narrow-scope"
 (def narrow-selector-scope (atom nil))
+
+;;; The selector-scope dom of the currently selected dom if it is a selector
+;;; and we are doing the broad interpretation of selection scopes.
+;;; That dom will have the class "broad-scope"
+(def broad-selector-scope (atom nil))
 
 ;;; The dom of the header of the currently selected column if we are doing
 ;;; the broad interpretation of selection scopes.
-;;; That dom will have the class "wide-selection"
+;;; That dom will have the class "broad-column"
 (def broad-selection-column (atom nil))
 
 (defn set-special-class
@@ -137,18 +142,23 @@
   "Set the appropriate dom classes, if any, to reflect the current selection."
   []
   (let [selection @selected
-        narrow-scope (when (and selection
-                                (= @selector-interpretation :narrow))
-                       (if-let [selectors (find-ancestor-with-class
-                                           selection "selectors")]
-                         (find-ancestor-with-class selectors "selector-scope")))
+        selector-scope (if-let [selectors (when selection
+                                            (find-ancestor-with-class
+                                             selection "selectors"))]
+                         (find-ancestor-with-class selectors "selector-scope"))
+        narrow-scope (when (= @selector-interpretation :narrow)
+                       selector-scope)
+        broad-scope (when (= @selector-interpretation :broad)
+                       selector-scope)
         broad-column (when (and selection
                                 (= @selector-interpretation :broad))
                        (find-ancestor-with-class selection "column-header"))]
     (set-special-class
-     narrow-scope narrow-selector-scope "narrow-interpretation")
+     narrow-scope narrow-selector-scope "narrow-scope")
     (set-special-class
-     broad-column broad-selection-column "broad-interpretation")))
+     broad-scope broad-selector-scope "broad-scope")
+    (set-special-class
+     broad-column broad-selection-column "broad-column")))
 
 (defn interpretation-selector-dom
   "Return the dom choice button for the given interpretation of selectors."

@@ -334,7 +334,7 @@
                      (assoc (select-keys inherited [:template])
                             :referent item-referent)
                      inherited)})
-     (cond anything "..."
+     (cond anything "\u00A0..."
            is-placeholder "???"                     
            true (str content))]))
 

@@ -69,8 +69,9 @@
             content (content item)]
         (println "from" from "content" content)
         (or (equivalent-atoms? from content)
-            ;; Probably a wildcard -- matches anything.
-            (= from "...")
+            ;; wildcard text matches 'anything.
+            ;; But leave it as 'anything if the new content is blank.
+            (and (= from "\u00A0...") (= content 'anything) (not= to ""))
             ;; Setting a new selector.
             (and (= from "") (= content 'anything))))
     (update-content store (:item-id item) (parse-string-as-number to))

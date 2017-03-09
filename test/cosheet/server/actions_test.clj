@@ -152,42 +152,28 @@
                 (to-list (description->entity jane-id new-store)))
                (canonicalize-list `("Jane" (~o1 :order :non-semantic)
                                     ("female" (~o2 :order :non-semantic)))))))
-  ;; Set up a store with some headers to test those special cases.
-  (let [[s1 column1-id] (add-entity store nil
+  ;; Set up a store with some headers to test the special cases.
+  (let [[store column1-id] (add-entity store nil
                                     `(~'anything
                                       ("name" :tag (~o1 :order :non-semantic))
                                       (~o1 :order :non-semantic)
                                       (:column :non-semantic)))
-        [s2 column2-id] (add-entity s1 nil
-                                    `(~'anything
-                                      ("age" :tag (~o1 :order :non-semantic))
-                                      (~'??-234 (~o2 :order :non-semantic))
-                                      (~o2 :order :non-semantic)
-                                      (:column :non-semantic)))
-        [store placeholder-id] (add-entity s2 nil '??-234)
         column1 (description->entity column1-id store)
-        name-header (first (matching-elements "name" column1))
-        column2 (description->entity column2-id store)]
-    ;; Test delete of the only element of a header
+        name-header (first (matching-elements "name" column1))]
+    ;; Test delete of the only element of a header.
     (let [new-store (do-delete
                      store
                      {:referent (item-referent column1)}
                      {:target-key "name"})]
       (is (not (id-valid? new-store column1-id))))
-    ;; Test when it is not in header position
+    ;; Test when it is not in header position.
     (let [new-store (do-delete
                      store
                      {:referent (union-referent
                                       [(item-referent joe)
                                        (item-referent name-header)])}
                      {:target-key "name"})]
-      (is (id-valid? new-store column1-id)))
-    ;; Test delete of placeholder in header.
-    (let [new-store (do-delete
-                     store
-                     {:referent (item-referent column2)}
-                     {:target-key "name"})]
-      (is (= (content (description->entity placeholder-id new-store)) "???")))))
+      (is (id-valid? new-store column1-id)))))
 
 (deftest do-set-content-test
   (is (= (content

@@ -72,10 +72,7 @@
             ;; Probably a wildcard -- matches anything.
             (= from "...")
             ;; Setting a new selector.
-            (and (= from "") (= content 'anything))
-            (and (= from "???")
-                 (symbol? content)
-                 (= (subs (str content) 0 3) "??-"))))
+            (and (= from "") (= content 'anything))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))
@@ -166,29 +163,11 @@
   (when-let [to-delete (:referent context)]
     (let [item-groups (instantiate-referent to-delete store)
           header (first (first item-groups))
-          placeholder (first
-                       (filter
-                        #(let [content (content %) ]
-                           (if-let [name (when (symbol? content) (str content))]
-                             (and (>= (count name) 3)
-                                  (= (subs name 0 3) "??-"))))
-                        (when (seq (matching-elements :column header))
-                          (elements header))))
           items (distinct ;; distinct should not be necessary, but is a
                           ;; safety measure to make sure we don't delete twice
                  (apply concat item-groups))]
       (println "total items:" (count items))
-      (when placeholder
-        (println "Also removing placeholder matches."))
-      (let [removed (reduce update-delete store items)]
-        ;; If we removed a placeholder from a header, there will be no way to
-        ;; reference the placeholder again, so change any instances of it
-        ;; to a simple "???".
-        (if placeholder
-          (reduce (fn [store item]
-                    (update-content store (:item-id item) "???"))
-                  removed (matching-items (content placeholder) removed))
-          removed)))))
+      (reduce update-delete store items))))
 
 (defn do-set-content
   [store context attributes]

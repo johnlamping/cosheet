@@ -43,17 +43,14 @@
 
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update
-  inherited to add an element adjacent to the sibling, if that would be
-  different than just adding a twin."
+  inherited to add an element adjacent to the sibling."
   [hierarchy-node inherited]
-  (if (empty? (:properties hierarchy-node))
-    inherited
-    (update-in
+  (update-in
      inherited [:selectable-attributes]
      #(into-attributes
        % {:add-sibling (add-alternate-to-target
                         (hierarchy-add-adjacent-target hierarchy-node inherited)
-                        inherited)}))))
+                        inherited)})))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM

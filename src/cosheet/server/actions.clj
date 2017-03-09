@@ -68,12 +68,15 @@
   (if (let [from (parse-string-as-number from)
             content (content item)]
         (println "from" from "content" content)
-        (or (equivalent-atoms? from content)
-            ;; wildcard text matches 'anything.
-            ;; But leave it as 'anything if the new content is blank.
-            (and (= from "\u00A0...") (= content 'anything) (not= to ""))
-            ;; Setting a new selector.
-            (and (= from "") (= content 'anything))))
+        (and
+         (or (equivalent-atoms? from content)
+             ;; Wildcard text matches 'anything.
+             (and (= from "\u00A0...") (= content 'anything))
+             ;; Setting a new selector.
+             (and (= from "") (= content 'anything)))
+         ;; Don't believe blank for anything where the UI sets the initial
+         ;; text to blank.
+         (not (and (= (first from) \u00A0) (= to "")))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))

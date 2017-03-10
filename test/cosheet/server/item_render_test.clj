@@ -205,7 +205,13 @@
                                        '(nil :tag) (item-referent none)
                                        nil
                                        :selector :first-group) 
-                            :alternate :some-alternate}}]
+                            :alternate :some-alternate}
+                   :add-sibling {:referent (virtual-referent
+                                             nil
+                                             (item-referent age)
+                                             (item-referent none)) 
+                                  :key-prefix age-key
+                                  :alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
               {:priority 1
@@ -214,7 +220,14 @@
                :subject-referent (item-referent age)
                :template '(nil)
                :selector-category :some-category
-               :alternate-target :some-alternate}]]]]]))))
+               :alternate-target :some-alternate
+               :selectable-attributes
+               {:add-sibling {:referent (virtual-referent
+                                         nil
+                                         (item-referent age)
+                                         (item-referent none)) 
+                              :key-prefix age-key
+                              :alternate :some-alternate}}}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.
@@ -391,7 +404,13 @@
                 :width 0.6875
                 :key-prefix age-key
                 :subject-referent (item-referent age)
-                :template '(nil ("confidence" :tag))}]]]]]]))))
+                :template '(nil ("confidence" :tag))
+                :selectable-attributes
+                {:add-sibling {:referent (virtual-referent
+                                          '(nil ("confidence" :tag))
+                                          (item-referent age)
+                                          (item-referent one)) 
+                               :key-prefix age-key}}}]]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels

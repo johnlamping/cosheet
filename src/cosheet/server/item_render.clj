@@ -355,9 +355,7 @@
                 (assoc :key-prefix key
                        :subject-referent item-referent
                        :template '(nil))
-                (assoc-if-non-empty
-                 :selectable-attributes (:element-attributes inherited))
-                (dissoc :element-attributes))]
+                (dissoc :selectable-attributes))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
           (if content-dom
@@ -432,17 +430,12 @@
                                   tags elements))]
       (cond
         (and labels non-labels)
-        (let [inherited-down
-              (-> inherited
-                  (dissoc :template)
-                  (assoc :element-attributes (:selectable-attributes
-                                              inherited)))]
-          (expr-let [inner-dom (elements-DOM-R
-                                non-labels must-show-empty-labels
-                                nil inherited)]
-            (label-wrapper-DOM-R
-             [:div {:class "item elements-wrapper"} inner-dom]
-             (:subject-referent inherited) labels false inherited)))
+        (expr-let [inner-dom (elements-DOM-R
+                              non-labels must-show-empty-labels
+                              nil (dissoc inherited :template))]
+          (label-wrapper-DOM-R
+           [:div {:class "item elements-wrapper"} inner-dom]
+           (:subject-referent inherited) labels false inherited))
         labels
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)

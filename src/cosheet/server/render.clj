@@ -131,7 +131,6 @@
 ;  :selectable-attributes  ; Attributes that the topmost selectable parts
                            ; of the dom should have, if any. Typically,
                            ; these are targets like row.
-;      :element-attributes ; Become :selectable-attributes of elements.
 ;       :selector-category ; In addition to giving the category of a selector,
                            ; this means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,

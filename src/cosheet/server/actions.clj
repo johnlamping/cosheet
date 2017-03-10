@@ -70,8 +70,9 @@
         (println "from" from "content" content)
         (and
          (or (equivalent-atoms? from content)
-             ;; Wildcard text matches 'anything.
-             (and (= from "\u00A0...") (= content 'anything))
+             ;; Wildcard text matches anything,
+             ;; because it has to match instances too
+             (= from "\u00A0...")
              ;; Setting a new selector.
              (and (= from "") (= content 'anything)))
          ;; Don't believe blank for anything where the UI sets the initial

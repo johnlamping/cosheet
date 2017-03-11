@@ -262,7 +262,7 @@ body {
     background-color: hsl(194, 100%, 88%);
 }
 
-.tag > .tag.tag.tag.tag {
+.tag > .tag.tag.tag {
     background-color: transparent;
 }
 
@@ -270,8 +270,8 @@ body {
     background-color: white;
 }
 
-.editable.tag.tag.tag.tag.tag.tag:not(.content-text),
-.tag.tag.tag.tag.tag.tag > .editable:not(.content-text) {
+.editable.tag.tag.tag.tag:not(.content-text),
+.tag.tag.tag.tag > .editable:not(.content-text) {
     background-color: hsl(194, 50%, 88%);
 }
 

@@ -1,5 +1,4 @@
-(ns cosheet.store
-  (:require [cosheet.entity :as entity]))
+(ns cosheet.store)
 
 ;;; All the information about non-primitive items is kept in the
 ;;; store: the elements of the item, their elements, complex values
@@ -27,6 +26,10 @@
 
 (defprotocol StoredItemDescription
   "A description of an Item recorded by a store"
+
+  (non-implicit-id [this]
+    "Traverse through ImplicitContentIds to get to the non-implicit id.")
+  
   (atom-description? [this]
     "True if this description refers to an atom. This is true only for
      content references, which are only created to refer to atoms.")

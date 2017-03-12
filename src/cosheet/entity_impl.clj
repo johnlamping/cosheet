@@ -197,6 +197,8 @@
   (description->entity [this store] this)
   cosheet.orderable.Orderable
   (description->entity [this store] this)
+  clojure.lang.ISeq
+  (description->entity [this store] this)
   nil
   (description->entity [this store] nil) ;; For convenience in null punning
 )

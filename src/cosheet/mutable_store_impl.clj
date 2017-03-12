@@ -14,17 +14,10 @@
                                     update-in-clean-up
                                     swap-control-return!]])))
 
-(defn non-implicit-id
-  "Traverse through ImplicitContentIds to get to the non-implicit id."
-  [id]
-  (if (instance? cosheet.store_impl.ImplicitContentId id)
-    (non-implicit-id (:containing-item-id id))
-    id))
-
 (defn item-ids-affected-by-id
   "Return a seq of item ids that might be affected by a change to the given id."
   [id old-store new-store]
-  (loop [item (non-implicit-id id)
+  (loop [item (when id (non-implicit-id id))
          affected nil]
     (if (not (nil? item))
       (recur (or (id->subject new-store item) (id->subject old-store item))
@@ -51,7 +44,7 @@
   "This does a get-or-make-reporter,
    after making any implicit ids non-implicit."
   [ids & args]
-  (apply get-or-make-reporter (map non-implicit-id ids) args))
+  (apply get-or-make-reporter (map #(when % (non-implicit-id %)) ids) args))
 
 (defrecord MutableStoreImpl
     ^{:doc
@@ -82,7 +75,7 @@
      [id] apply-to-store (:manager-data this) id->element-ids id))
 
   (id->content [this id]
-    (let [base-id (non-implicit-id id)]
+    (let [base-id (when id (non-implicit-id id))]
       (get-or-make-reporter-adjusting-ids
        [base-id] apply-to-store (:manager-data this) id->content id)))
 

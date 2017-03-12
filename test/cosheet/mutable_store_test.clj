@@ -45,7 +45,7 @@
     (is (= (get-value (candidate-matching-ids mutable-store 77))
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))
-    ;; Test that subscriptions track
+    ;; Test that subscriptions track.
     (let [content (id->content mutable-store element)
           content-ref (id->content-reference store element)
           implicit-content (id->content mutable-store content-ref)

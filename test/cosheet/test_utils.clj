@@ -1,12 +1,17 @@
 (ns cosheet.test-utils
   (require [clojure.test :refer [assert-expr do-report]]
-           (cosheet [entity :refer [mutable-entity? description->entity]]
+           (cosheet [entity :refer [content elements atom?
+                                    mutable-entity? description->entity]]
                     [entity-impl :as entity-impl]
                     [store :refer [new-element-store new-mutable-store
-                                   current-store]]
+                                   current-store update-content!]]
+                    store-impl
+                    mutable-store-impl
                     [expression-manager :as expression-manager
                      :refer [current-value]]
-                    [reporters :refer [value reporter?]])))
+                    [debug :refer [simplify-for-print]]
+                    [reporters :refer [value reporter?]]
+                    [store-utils :refer [add-entity]])))
 
 (def differences)
 
@@ -137,26 +142,35 @@
 (defn set-and-propagate
   "Support function for let-mutated. Given a function of n items
   and a list of n entities in list form, create an empty mutable
-  store, determine the ids the entities will get in the new store,
-  call the function with entities correspondin to those ids, evaluate
-  the resulting reporter, then add the entities to the store, and
-  recompute the reporter, returning its value."
+  store, give all the enities a content of the empty string,
+  call the function with those entities evaluate
+  the resulting reporter, then add the correct value and any elements
+  to the entities recompute the reporter, returning its value."
   [fun entities]
   (let [s (new-element-store)
+        [s ids contents]
+        (reduce
+         (fn [[store ids contents] entity]
+           (let [[new-store new-id] (add-entity store nil "")
+                 [new-store new-content] (let [cont (content entity)]
+                                           (if (atom? cont)
+                                             [new-store cont]
+                                             (add-entity new-store nil cont)))]
+             [new-store (conj ids new-id) (conj contents new-content)]))
+         [s [] []] entities)
         ms (new-mutable-store s)
         md (expression-manager/new-expression-manager-data)
-        [_ ids] (reduce
-                 (fn [[store ids] entity]
-                   (let [[new-store new-id] (cosheet.store-utils/add-entity
-                                             store nil entity)]
-                     [new-store (conj ids new-id)]))
-                 [s []] entities)
         mutable-entities (map #(cosheet.entity/description->entity % ms) ids)
         result (apply fun mutable-entities)]
     (expression-manager/request result md)
     (expression-manager/compute md)
-    (doseq [entity entities]
-      (cosheet.store-utils/add-entity! ms nil entity))
+    (doseq [[mutable-entity entity cont]
+            (map vector mutable-entities entities contents)]
+      (cosheet.store/update-content!
+       ms (:item-id mutable-entity) cont)
+      (doseq [element (elements entity)]
+        (cosheet.store-utils/add-entity!
+         ms (:item-id mutable-entity) element)))
     (expression-manager/compute md)
     (value result)))
 

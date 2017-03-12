@@ -24,6 +24,8 @@
 
   StoredItemDescription
 
+  (non-implicit-id [this] this)
+
   (atom-description? [this] false)
 
   (stored-item-id-string [this] (str id))
@@ -52,6 +54,8 @@
   [containing-item-id]
 
   StoredItemDescription
+
+  (non-implicit-id [this] (non-implicit-id containing-item-id))
 
   (atom-description? [this] true)
 
@@ -357,17 +361,17 @@
   (write-store [this stream]
     (with-open [writer (clojure.java.io/writer stream)]
       (binding [*out* writer]
-        (prn [(:next-id this)
-              (for [[id {:keys [subject content] :or {subject nil}}]
-                    (seq (:id->data this))]
-                [(:id id)
-                 (:id subject)
-                 (cond (instance? ItemId content)
-                       [:id (:id content)]
-                       (instance? cosheet.orderable.Orderable content)
-                       [:ord (:left content) (:right content)]
-                       true
-                       content)])]))))
+        (pr [(:next-id this)
+             (for [[id {:keys [subject content] :or {subject nil}}]
+                   (seq (:id->data this))]
+               [(:id id)
+                (:id subject)
+                (cond (instance? ItemId content)
+                      [:id (:id content)]
+                      (instance? cosheet.orderable.Orderable content)
+                      [:ord (:left content) (:right content)]
+                      true
+                      content)])]))))
 
   (read-store [this stream]
     (with-open [reader (java.io.PushbackReader.

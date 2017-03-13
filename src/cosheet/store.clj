@@ -108,8 +108,14 @@
     "Clear the record modified ids.
      Returns the new store, and the set of modified ids.")
 
+  (store-to-data [this]
+    "Convert the store to a clojure structure that can be serialized.")
+
   (write-store [this stream]
     "Write the store to the stream in a format that read-store expects.")
+
+  (data-to-store [this data]
+    "Converts the output of store-to-data back to a store.")
 
   (read-store [this stream]
     "Reades a store that was written by write-store."))

@@ -7,7 +7,7 @@
     [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store id-valid?]]
+                   read-store write-store store-to-data id-valid?]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
     [entity :refer [description->entity in-different-store
@@ -55,10 +55,13 @@
 
 ;;; A map from name to a map
 ;;;  {:mutable <mutable-store>,
-;;;   :agent <the agent responsible for saving the store. It's state is the
+;;;   :agent <the agent responsible for saving the store, and writing log
+;;;           entries. It's state is the
 ;;;           last version of the store written. We write the store by doing
 ;;;           a send to this agent, so that writes don't block interaction,
 ;;;           and will skip intermediate values if they get behind.>
+;;;   :log-agent <the agent responsible for writing log entries.
+;;;               its state is a writer opened to append to the log file.>
 (def store-info (atom {}))
 
 (defn name-to-path [name]
@@ -73,16 +76,17 @@
   (with-open [stream (clojure.java.io/input-stream (name-to-path name))]
     (read-store (new-element-store) stream)))
 
-(defn write-store-file-if-different [written-store mutable-store name]
+(defn write-store-file-if-different
   "Function for running in the :agent of store-info.
    If the current immutable store is different from the written store,
    writes the current value to a file of the given name. Always returns the
    current-value."
+   [written-store mutable-store name]
   ;; We write the latest value from the mutable store, rather than the value
   ;; at the time the send was done, so that we will catch up if we get behind.
   (with-latest-value [store (current-store mutable-store)]
     (when (not= written-store store)
-      (let [temp-path (name-to-path "_TEMP_")]
+      (let [temp-path (name-to-path (str name "_TEMP_"))]
         (clojure.java.io/delete-file temp-path true)
         (with-open [stream (clojure.java.io/output-stream temp-path)]
           (write-store store stream))
@@ -91,18 +95,48 @@
                                             StandardCopyOption/ATOMIC_MOVE])))
       store)))
 
+(defn write-log-entry
+  "Function for running in the log-agent of store-info. Adds the entry
+   to the log stream, and flushes the stream."
+  [log-writer entry]
+  (binding [*out* log-writer]
+    (prn entry)
+    (flush))
+  log-writer)
+
 (defn update-store-file [name]
   (when-let [info (@store-info name)]
     (send (:agent info) write-store-file-if-different (:mutable info) name)))
 
+(defn queue-to-log
+  "Add the entry to the queue to be written to the log."
+  [entry name]
+  (when-let [info (@store-info name)]
+    (when-let [agent (:log-agent info)]
+      (send agent write-log-entry entry))))
+
 (defn ensure-store [name]
-  (ensure-in-atom-map!
-   store-info name
-   #(let [immutable (try (read-store-file %)
-                         (catch java.io.FileNotFoundException e
-                           (starting-store)))]
-      {:mutable (new-mutable-store immutable)
-       :agent (agent immutable)})))
+  ;; If there were a race to create the store, the log stream might get
+  ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
+  ;; a global lock.
+  (locking store-info
+    (ensure-in-atom-map!
+     store-info name
+     #(let [immutable (try (read-store-file %)
+                           (catch java.io.FileNotFoundException e
+                             (starting-store)))
+            log-stream (try (java.io.FileOutputStream.
+                             (name-to-path (str name "_LOG_")) true)
+                            (catch java.io.FileNotFoundException e
+                              nil))
+            log-agent (when log-stream
+                        (agent (clojure.java.io/writer log-stream)))]
+        (when (and log-stream (= (.position (.getChannel log-stream)) 0))
+          (send log-agent write-log-entry [:store (store-to-data immutable)]))
+        (send log-agent write-log-entry [:opened])
+        {:mutable (new-mutable-store immutable)
+         :agent (agent immutable)
+         :log-agent log-agent}))))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -309,6 +343,8 @@
         session-state (get-session-state id)]
     (if session-state
       (let [{:keys [tracker name store client-state]} session-state]
+        (when (or actions initialize)
+          (queue-to-log (dissoc params :acknowledge) name))
         (println "request" params)
         (when initialize
           (println "requesting client refresh")

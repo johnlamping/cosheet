@@ -57,42 +57,45 @@
 (declare split)
 
 (defn- get-midpoint
-  "Internal function that picks the (earlier) midpoint between two intgers."
-  [left right preferred-side]
-  (case preferred-side
+  "Internal function that picks a midpoint between two intgers, biasing
+   so that most of the space is on one side, if requested. Left must be
+   less than right. The result might be equal to the left input,
+   but will always be less than the right one."
+  [left right larger-side]
+  (case larger-side
     nil (quot (+ right left) 2)
-    :before (if (> (- right left) 1024)
-                (- right 128)
+    :before (if (> (- right left) 1125899906842624)  ; 2^50
+                (- right 1099511627776)  ; 2^40
                 (quot (+ left (* 7 right)) 8))
-    :after (if (> (- right left) 1024)
-               (+ left 127)
+    :after (if (> (- right left) 1125899906842624)
+               (+ left 1099511627776)
                (quot (+ (* 7 left) right) 8))))
 
 (defn- split-sequence
   "Internal function that splits, given the sequence for the left."
-  [left preferred-side]
+  [left larger-side]
   (let [least (:left initial) most (:right initial)]
-    (split (->Orderable (conj left least) most) preferred-side)))
+    (split (->Orderable (conj left least) most) larger-side)))
 
 (defn split
   "Split the item into two, returning the earlier and later halves.
-   If preferred-side is non-nil, it must be
+   If larger-side is non-nil, it must be
    :before or :after, in which case the majority of the space
    is put on that side."
-  [a & preferred-side]
+  [a & larger-side]
   (let [left (:left a)
         right (:right a)
-        [preferred-side] preferred-side]
+        [larger-side] larger-side]
     (if (sequential? left)
       (let [last-left (peek left)]
         (if (== last-left right)
-          (split-sequence left preferred-side)
-          (let [m (get-midpoint last-left right preferred-side)]
+          (split-sequence left larger-side)
+          (let [m (get-midpoint last-left right larger-side)]
             [(->Orderable left m)
              (->Orderable (conj (pop left) (+ m 1)) right)])))
       (if (== left right)
-        (split-sequence [left] preferred-side)
-        (let [m (get-midpoint left right preferred-side)]
+        (split-sequence [left] larger-side)
+        (let [m (get-midpoint left right larger-side)]
           [(->Orderable left m) (->Orderable (+ m 1) right)])))))
 
 

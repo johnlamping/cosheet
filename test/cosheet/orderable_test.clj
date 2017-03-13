@@ -46,6 +46,6 @@
   (is (= (split (->Orderable 1 2) :after)
          [(->Orderable 1 1) (->Orderable 2 2)]))
   (is (= (split (->Orderable 2 2) :before)
-         [(->Orderable [2 0] 1152921504606846847)
-          (->Orderable [2 1152921504606846848] 1152921504606846975)])))
+         [(->Orderable [2 0] 1152920405095219199)
+          (->Orderable [2 1152920405095219200] 1152921504606846975)])))
 

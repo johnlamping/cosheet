@@ -345,12 +345,12 @@
       (let [{:keys [tracker name store client-state]} session-state]
         (when (or actions initialize)
           (queue-to-log (dissoc params :acknowledge) name))
-        (println "request" params)
+        (when (or actions initialize acknowledge)
+          (println "request" params))
         (when initialize
           (println "requesting client refresh")
           (request-client-refresh tracker)
           (state-map-reset! client-state :last-action nil))
-        (println "process acknowledgements" acknowledge)
         (process-acknowledgements tracker acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
           (when (and (not-any? #{[:alternate]} action-sequence)
@@ -363,12 +363,15 @@
                 client-info (do-actions store augmented-state action-sequence)]
             (update-store-file name)
             (compute manager-data 4000)
-            (check-propagation-if-quiescent tracker)
+            ;; Turn this on if there are questions about propagation, but it
+            ;; makes things really slow.
+            (when true
+              (check-propagation-if-quiescent tracker))
             ;; Note: We must get the doms after doing the actions, so we can
             ;; immediately show the response to the actions. Likewise, we
             ;; have to pass down select requests after the new dom has been
             ;; constructed, so the client has the dom we want it to select.
-            (let [doms (response-doms @tracker 10)
+            (let [doms (response-doms @tracker 100)
                   select (let [[select if-selected] (:select client-info)]
                            (when select
                              (let [select-key
@@ -381,11 +384,12 @@
                                 (filter identity
                                         (map (partial key->id tracker)
                                              if-selected))])))
-                  answer (cond-> (select-keys client-info [:open
-                                                           :alternate-text])
+                  answer (cond-> (select-keys client-info
+                                              [:open :alternate-text])
                            (> (count doms) 0) (assoc :doms doms)
                            select (assoc :select select)
                            actions (assoc :acknowledge (vec (keys actions))))]
-              (println "response" answer)
+              (when (not= (dissoc answer :alternate-text) {})
+                (println "response" answer))
               (response answer)))))
       (response {:reload true}))))

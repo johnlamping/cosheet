@@ -29,6 +29,8 @@
     (is (= (value ra) 3))
     (describe-and-swap! mm (fn [v] [(assoc v :a 5) [:b :c]]))
     (is (= (value ra) 3))
+    (reset-manager! mm {:a 6 :f 2})
+    (is (= (value ra) 6))
     (unrequest ra)
     (is (= (value ra) invalid))
     (is (= (:subscriptions @mm) {}))

@@ -63,6 +63,15 @@
         (doseq [reporter reporters]
           (compute-reporter value reporter))))))
 
+(defn recompute-all-reporters
+  "Update all reporters."
+  [manager-data]
+  (let [;; Avoid calling the same reporter twice.
+        reporters (set (apply concat (vals (:subscriptions @manager-data))))]
+    (with-latest-value [value (:value @manager-data)]
+      (doseq [reporter reporters]
+        (compute-reporter value reporter)))))
+
 (defn add-subscriptions
   "Given the current manager data, a reporter, and its keys,
   add subscriptions for all the keys."
@@ -125,6 +134,13 @@
     (or (get-in @manager-data [:application->attended-reporter application])
         (new-reporter :manager [manager-callback manager-data keys]
                       :application application))))
+
+(defn reset-manager!
+  "Set the value of the manager to a new value, informing all reporters
+  of the change."
+  [manager-data new-value]
+  (swap! manager-data (fn [data] (assoc data :value new-value)))
+  (recompute-all-reporters manager-data))
 
 (defn describe-and-swap-control-return!
   "Run the function on the current value. It must return a new value, 

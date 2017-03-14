@@ -7,7 +7,8 @@
     [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store store-to-data id-valid?]]
+                   read-store write-store store-to-data  data-to-store
+                   reset-store! id-valid?]]
     [store-impl :refer [->ItemId]]
     mutable-store-impl
     [entity :refer [description->entity in-different-store
@@ -300,11 +301,57 @@
        [:div " "]]
       [:script "cosheet.client.run();"]])))
 
+(defn read-item-sequence
+  "Return a lazy seq of the sequence of items from the reader."
+  [reader]
+  (when-let [item (try (clojure.edn/read reader)
+                       (catch java.io.EOFException e
+                         nil))]
+    (lazy-seq (cons item (read-item-sequence reader)))))
+
+(defn replay-request
+  [session-state request]
+  (let [{:keys [actions selector-interpretation]} request 
+        action-sequence (confirm-actions actions (:client-state session-state))
+        augmented-state (assoc session-state :selector-interpretation
+                               selector-interpretation)]
+    (do-actions (:store session-state) augmented-state action-sequence))
+  (compute manager-data 4000)
+  ;; Turn this on if there are questions about propagation, but it
+  ;; makes things really slow.
+  (when true
+    (check-propagation-if-quiescent (:tracker session-state))))
+
+(defn replay-item [session-state [type content]]
+  (case type
+    :store (let [store (:store session-state)]
+             (reset-store! store (data-to-store store content)))
+    :opened (state-map-reset! (:client-state session-state) :last-action 0)
+    :request (replay-request session-state content)))
+
+(defn do-replay [session-state]
+  (let [name (:name session-state)]
+    (when (clojure.string/ends-with? name ".history")
+      (let [log-name (str (subs name 0 (- (count name) 8)) "_LOG_")]
+        (try
+          (with-open [stream (clojure.java.io/input-stream
+                              (name-to-path log-name))]
+            (with-open [reader (java.io.PushbackReader.
+                                (java.io.InputStreamReader. stream))]
+              (let [items (read-item-sequence reader)]
+                (future (doseq [item items]
+                          (replay-item session-state item))
+                        (update-store-file name)))))
+          (catch java.io.FileNotFoundException e
+            nil))))))
+
 ;;; The parameters for the ajax request and response are:
 ;;; request:
 ;;;    :initialize If true, the server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
+;;;        :replay If true, the name should end in .history, and the
+;;;                history of the file withough .history will be replayed.
 ;;;            :id The session id of this client session. The initial html
 ;;;                returned to the client will have the session id
 ;;;                in its session-id metadata field.
@@ -344,7 +391,7 @@
     (if session-state
       (let [{:keys [tracker name store client-state]} session-state]
         (when (or actions initialize)
-          (queue-to-log (dissoc params :acknowledge) name))
+          (queue-to-log [:request (dissoc params :acknowledge)] name))
         (when (or actions initialize acknowledge)
           (println "request" params))
         (when initialize

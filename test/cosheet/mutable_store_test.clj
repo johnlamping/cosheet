@@ -28,7 +28,8 @@
   (let [[store element]
         (add-entity (new-element-store) nil '(77 ("test" :label)
                                                  ("Fred" ("by" :label))))
-        mutable-store (new-mutable-store store)]
+        mutable-store (new-mutable-store store)
+        modified-store (update-content store element 99)]
     ;; Test the accessors
     (is (get-value (id-valid? mutable-store element)))
     (is (not (get-value (id-valid? mutable-store (make-id "wrong")))))
@@ -62,6 +63,11 @@
       (set-attendee! candidate-ids :a callback "arg")
       (set-attendee! tracking-store :a callback "arg")
 
+      (is (= (value tracking-store) (track-modified-ids store)))
+      (reset-store! mutable-store modified-store)
+      (is (= (value tracking-store) (track-modified-ids modified-store)))
+      (is (= (value content) 99))
+
       (let [[store1 e] (add-simple-element store element "foo")
             [store2 _] (add-simple-element store1 e :label)
             revised-store  (update-content store2 element 88)
@@ -87,9 +93,9 @@
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
-        (is (= (value content) (id->content store element)))
+        (is (= (value content) (id->content modified-store element)))
         (is (= (value implicit-content)
-               (id->content store content-ref)))
+               (id->content modified-store content-ref)))
         (is (= (set (value element-ids))
                (set (id->element-ids store element))))
         (is (= (set (value label-ids))
@@ -97,7 +103,7 @@
         (is (= (set (value candidate-ids))
                (set (candidate-matching-ids store nil))))
         (is (= (value tracking-store)
-               (track-modified-ids store)))
+               (track-modified-ids modified-store)))
         (is (can-redo? mutable-store))
         (redo! mutable-store)
         (redo! mutable-store)

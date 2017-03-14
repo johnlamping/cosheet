@@ -4,7 +4,7 @@
                      [mutable-manager
                       :refer [new-mutable-manager-data
                               current-mutable-value
-                              get-or-make-reporter
+                              get-or-make-reporter reset-manager!
                               describe-and-swap!
                               describe-and-swap-control-return!]]
                      [reporters :as reporter
@@ -13,6 +13,22 @@
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]])))
+
+(defn store-to-manager-data
+  "Given an immutable store, create the map that we store in the manager data,
+  which adds a history to the store."
+  [immutable-store]
+  {:store (track-modified-ids immutable-store)
+   ;; :history is a list of [modified-ids, store] pairs,
+   ;; where store gives a previous state and modified-ids
+   ;; gives the ids that change from that state to the next
+   ;; one.
+   :history nil
+   ;; :future is a list of [modified-ids, store] pairs,
+   ;; where store gives a next state and modified-ids
+   ;; gives the ids that change from the current state to
+   ;; the next one.
+   :future nil})
 
 (defn item-ids-affected-by-id
   "Return a seq of item ids that might be affected by a change to the given id."
@@ -96,6 +112,9 @@
   (call-dependent-on-id [this id fun]
     (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) fun))
+
+  (reset-store! [this new-store]
+    (reset-manager! (:manager-data this) (store-to-manager-data new-store)))
 
   (do-update! [this update-fn]
     (do-update-control-return! this (fn [store] [(update-fn store) nil])))
@@ -181,14 +200,4 @@
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl
    {:manager-data (new-mutable-manager-data
-                   {:store (track-modified-ids immutable-store)
-                    ;; :history is a list of [modified-ids, store] pairs,
-                    ;; where store gives a previous state and modified-ids
-                    ;; gives the ids that change from that state to the next
-                    ;; one.
-                    :history nil
-                    ;; :future is a list of [modified-ids, store] pairs,
-                    ;; where store gives a next state and modified-ids
-                    ;; gives the ids that change from the current state to
-                    ;; the next one.
-                    :future nil})}))
+                   (store-to-manager-data immutable-store))}))

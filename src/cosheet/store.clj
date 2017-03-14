@@ -131,6 +131,9 @@
    the immutable store, which will update whenever anything about the
    entity with the given id changes.")
 
+  (reset-store! [this new-store]
+    "Set the store to the new store, updating all reporters.")
+
   (do-update! [this update-fn]
     "Run the update function on the current state of the store.
      Update the store with the result, and notify all reporters of

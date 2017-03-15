@@ -100,7 +100,18 @@
 ;;; path, while GC will get rid of change information for which there
 ;;; are no longer handles.
 
-;;; TODO: Priorities need to be implemented
+;;; TODO: Priorities need to be implemented. Specifically, the
+;;; priority of the arguments for a reporter must be higher (lower
+;;; value) than the priority of a reporter returned as its value. That
+;;; ensures that the arguments will be re-evaluated before the
+;;; returned reporter is, since they may cause the returned reporter
+;;; to become irrelevant. Further, propagation of invalid information
+;;; should also be done by priority, so that it won't propagate to a
+;;; reporter that ends up being irrelevant. That propagation still
+;;; needs to be higher than for recomputation of the otherwise same
+;;; priority, so that recomputations won't happen on stale
+;;; information. Also, mutable stores need to hook into the task queue
+;;; so their reporters work the same way.
 
 ;;; TODO: Approximations need to be implemented.
 ;;; They logically unfold the dependency graph, with only the last

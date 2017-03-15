@@ -30,7 +30,7 @@
    (cosheet.server
     [referent :refer [item-referent union-referent
                       referent->exemplar-and-subject
-                      string->referent instantiate-to-items]]
+                      string->referent referent->string instantiate-to-items]]
     [render-utils :refer [make-component]]
     [order-utils :refer [order-items-R]]
     [render :refer [DOM-for-client-R
@@ -310,12 +310,12 @@
     (lazy-seq (cons item (read-item-sequence reader)))))
 
 (defn replay-request
-  [session-state request]
+  [store session-state request]
   (let [{:keys [actions selector-interpretation]} request 
         action-sequence (confirm-actions actions (:client-state session-state))
         augmented-state (assoc session-state :selector-interpretation
                                selector-interpretation)]
-    (do-actions (:store session-state) augmented-state action-sequence))
+    (do-actions store augmented-state action-sequence))
   (compute manager-data 4000)
   ;; Turn this on if there are questions about propagation, but it
   ;; makes things really slow.
@@ -330,7 +330,12 @@
     :request (replay-request session-state content)))
 
 (defn do-replay [session-state]
-  (let [name (:name session-state)]
+  ;; First, make our own client state to run the replays in, so we get separate
+  ;; numbering of actions.
+  (let [{:keys [name store client-state]} session-state
+        client-state (create-client-state
+                      store (referent->string (:referent client-state)))
+        session-state (assoc session-state :client-state client-state)]
     (when (clojure.string/ends-with? name ".history")
       (let [log-name (str (subs name 0 (- (count name) 8)) "_LOG_")]
         (try

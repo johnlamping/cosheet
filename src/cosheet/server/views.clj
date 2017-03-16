@@ -345,6 +345,9 @@
                               (name-to-path log-name))]
             (with-open [reader (java.io.PushbackReader.
                                 (java.io.InputStreamReader. stream))]
+              ;; For some reason, the doall below is necessary. Otherwise,
+              ;; the future doesn't run. (Maybe a bad interaction with
+              ;; reading from the file?)
               (let [items (doall (read-item-sequence reader))]
                 (println "starting replay.")
                 (future (doseq [item items]

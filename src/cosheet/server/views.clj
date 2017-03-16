@@ -346,12 +346,12 @@
             (with-open [reader (java.io.PushbackReader.
                                 (java.io.InputStreamReader. stream))]
               ;; For some reason, the doall below is necessary. Otherwise,
-              ;; the future doesn't run. (Maybe a bad interaction with
-              ;; reading from the file?)
+              ;; the future doesn't run.
               (let [items (doall (read-item-sequence reader))]
                 (println "starting replay.")
-                (future (doseq [item items]
-                          (replay-item session-state item))))))
+                (let [done (future (doseq [item items]
+                                     (replay-item session-state item)))]
+                  (future (println "done replaying." @done))))))
           (catch java.io.FileNotFoundException e
             nil))))))
 

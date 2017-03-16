@@ -427,28 +427,29 @@
                               tags elements))
           non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
                                                        [element]))
-                                  tags elements))]
+                                  tags elements))
+          subject-ref (:subject-referent inherited)
+          inherited-for-labels (update-in
+                                inherited [:selectable-attributes]
+                                #(assoc % :add-element
+                                        {:referent subject-ref}))]
       (cond
         (and labels non-labels)
         (expr-let [inner-dom (elements-DOM-R
                               non-labels must-show-empty-labels
+                              ;; TODO: Is this dissoc needed?
                               nil (dissoc inherited :template))]
           (label-wrapper-DOM-R
            [:div {:class "item elements-wrapper"} inner-dom]
-           (:subject-referent inherited) labels false inherited))
+           subject-ref labels false inherited-for-labels))
         labels
         (expr-let [ordered-elements (order-items-R elements)
                    excludeds (expr-seq map #(matching-elements :tag %)
                                        ordered-elements)]
-          (let [subject-ref (:subject-referent inherited)
-                inherited-down (update-in
-                                inherited [:selectable-attributes]
-                                #(assoc % :add-element
-                                        {:referent subject-ref}))]
-            (cond-> (item-stack-DOM item-without-labels-DOM-R
+          (cond-> (item-stack-DOM item-without-labels-DOM-R
                                     ordered-elements excludeds
-                                    {:class "tag"} inherited-down)
-              (> (count ordered-elements) 1) (add-attributes {:class "tag"}))))
+                                    {:class "tag"} inherited-for-labels)
+              (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
         non-labels
         (expr-let [elements-dom (elements-DOM-R
                                  non-labels must-show-empty-labels

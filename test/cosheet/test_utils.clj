@@ -205,7 +205,6 @@
   "Given an item, return an immutable version of its current value."
   [item]
   (if (mutable-entity? item)
-    (do (assert (instance? cosheet.entity_impl.MutableStoredItem item))
-        (description->entity (:item-id item) (current-store (:store item))))
+    (description->entity (:item-id item) (current-store (:store item)))
     item))
 

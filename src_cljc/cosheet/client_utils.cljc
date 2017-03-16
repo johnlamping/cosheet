@@ -154,6 +154,11 @@
   [action]
   (swap! pending-for-server update-add-action action))
 
+(defn add-pending-replay
+  "Add a replay request to the pending information."
+  [replay]
+  (swap! pending-for-server #(assoc % :replay replay)))
+
 (defn process-response-for-pending
   "Do the processing for a response."
   [response]
@@ -165,8 +170,11 @@
    information."
   []
   (let [[pending _] (swap-returning-both! pending-for-server
-                                          #(assoc % :acknowledgments {}))
-        {:keys [actions acknowledgments]} pending]
+                                          #(-> %
+                                               (assoc :acknowledgments {})
+                                               (dissoc :replay)))
+        {:keys [actions acknowledgments replay]} pending]
     (cond-> {}
       (not= actions {}) (into {:actions actions})
+      replay (into {:replay replay})
       (not= acknowledgments {}) (into {:acknowledge acknowledgments}))))

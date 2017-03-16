@@ -4,6 +4,7 @@
             [cosheet.client-utils :refer
              [component components
               replace-in-struct into-atom-map add-pending-action
+              add-pending-replay
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
@@ -75,6 +76,12 @@
 (defn request-action
   [action]
   (add-pending-action action)
+  (reset-poll-delay)
+  (ajax-if-pending))
+
+(defn request-replay
+  [replay]
+  (add-pending-replay replay)
   (reset-poll-delay)
   (ajax-if-pending))
 

@@ -116,6 +116,12 @@
   (is (= @pending-for-server
          {:next-action-number 3 :actions {0 1 1 2 2 :doit}})))
 
+(deftest add-pending-replay-test
+  (reset! pending-for-server {:next-action-number 2 :actions {0 1 1 2}})
+  (add-pending-replay :doit)
+  (is (= @pending-for-server
+         {:next-action-number 2 :actions {0 1 1 2} :replay :doit})))
+
 (deftest process-response-for-pending-test
   (reset! pending-for-server {:next-action-number 2
                               :actions {0 1 2 3 4 5}
@@ -128,7 +134,6 @@
           :actions {4 5}
           :acknowledgments {1 2 3 4 5 6}})))
 
-
 (deftest take-pending-params-test
   (reset! pending-for-server
           {:next-action-number 2 :actions {} :acknowledgments {}})
@@ -136,10 +141,12 @@
          {}))
   (reset! pending-for-server {:next-action-number 2
                               :actions {0 1 2 3 4 5}
-                              :acknowledgments {1 2}})
+                              :acknowledgments {1 2}
+                              :replay :doit})
   (is (= (take-pending-params)
          {:actions {0 1 2 3 4 5}
-          :acknowledge {1 2}}))
+          :acknowledge {1 2}
+          :replay :doit}))
   (is (= @pending-for-server
          {:next-action-number 2
           :actions {0 1 2 3 4 5}

@@ -304,18 +304,16 @@
 (defn read-item-sequence
   "Return a lazy seq of the sequence of items from the reader."
   [reader]
-  (when-let [item (try (clojure.edn/read reader)
-                       (catch java.io.EOFException e
-                         nil))]
+  (when-let [item (clojure.edn/read {:eof nil} reader)]
     (lazy-seq (cons item (read-item-sequence reader)))))
 
 (defn replay-request
-  [store session-state request]
+  [session-state request]
   (let [{:keys [actions selector-interpretation]} request 
         action-sequence (confirm-actions actions (:client-state session-state))
         augmented-state (assoc session-state :selector-interpretation
                                selector-interpretation)]
-    (do-actions store augmented-state action-sequence))
+    (do-actions (:store session-state) augmented-state action-sequence))
   (compute manager-data 4000)
   ;; Turn this on if there are questions about propagation, but it
   ;; makes things really slow.
@@ -323,13 +321,17 @@
     (check-propagation-if-quiescent (:tracker session-state))))
 
 (defn replay-item [session-state [type content]]
+  (println "replaying item" type (when (not= type :store) content))
   (case type
     :store (let [store (:store session-state)]
-             (reset-store! store (data-to-store store content)))
+             (let [new-store (data-to-store (current-store store) content)]
+               (reset-store! store new-store))
+             (compute manager-data 4000))
     :opened (state-map-reset! (:client-state session-state) :last-action 0)
+    :initialize (state-map-reset! (:client-state session-state) :last-action 0)
     :request (replay-request session-state content)))
 
-(defn do-replay [session-state]
+(defn do-replay [session-state replay]
   ;; First, make our own client state to run the replays in, so we get separate
   ;; numbering of actions.
   (let [{:keys [name store client-state]} session-state
@@ -343,10 +345,10 @@
                               (name-to-path log-name))]
             (with-open [reader (java.io.PushbackReader.
                                 (java.io.InputStreamReader. stream))]
-              (let [items (read-item-sequence reader)]
+              (let [items (doall (read-item-sequence reader))]
+                (println "starting replay.")
                 (future (doseq [item items]
-                          (replay-item session-state item))
-                        (update-store-file name)))))
+                          (replay-item session-state item))))))
           (catch java.io.FileNotFoundException e
             nil))))))
 
@@ -390,19 +392,22 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [id actions acknowledge initialize selector-interpretation]}
+        {:keys [id actions replay initialize selector-interpretation
+                acknowledge]}
         params
         session-state (get-session-state id)]
     (if session-state
       (let [{:keys [tracker name store client-state]} session-state]
         (when (or actions initialize)
           (queue-to-log [:request (dissoc params :acknowledge)] name))
-        (when (or actions initialize acknowledge)
+        (when (or actions initialize replay acknowledge)
           (println "request" params))
         (when initialize
           (println "requesting client refresh")
           (request-client-refresh tracker)
           (state-map-reset! client-state :last-action nil))
+        (when replay
+          (do-replay session-state replay))
         (process-acknowledgements tracker acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
           (when (and (not-any? #{[:alternate]} action-sequence)

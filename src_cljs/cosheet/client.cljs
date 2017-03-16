@@ -7,10 +7,9 @@
             ;; Note: We seem to have to declare any closure packages used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
-            [cosheet.client-utils :refer
-             [component components add-pending-action]]
+            [cosheet.client-utils :refer [component components]]
             cosheet.dom-utils
-            [cosheet.ajax :refer [request-action ajax-request]]
+            [cosheet.ajax :refer [request-action request-replay ajax-request]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                find-ancestor-with-class
                                                set-selector-interpretation
@@ -207,6 +206,9 @@
                                      (when (not @edit-field-open-on)
                                        (do (.log js/console "redo")
                                            (request-action [:redo]))))))
+    (when (and alt meta)
+      (when (= key-codes/R key-code)
+        (request-replay :all)))
     (when (and alt (not (or ctrl meta)))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
                           (= key-codes/NUM_PLUS key-code) [:add-twin] 

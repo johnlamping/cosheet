@@ -18,6 +18,7 @@
     [query :refer [matching-items matching-elements template-matches]]
     query-impl)
    (cosheet.server
+    [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent instantiate-or-create-referent
                       instantiate-to-items
@@ -417,13 +418,18 @@
   to the client"
   [mutable-store session-state action-sequence]
   (let [for-client
-        (reduce (fn [client-info action]
-                  (let [for-client
-                        (do-action mutable-store session-state action)]
-                    (println "for client " (simplify-for-print for-client))
-                    (into client-info
-                          (select-keys for-client [:select :open]))))
-                {} action-sequence)]
+        (try
+          (reduce (fn [client-info action]
+                    (let [for-client
+                          (do-action mutable-store session-state action)]
+                      (println "for client " (simplify-for-print for-client))
+                      (into client-info
+                            (select-keys for-client [:select :open]))))
+                  {} action-sequence)
+          (catch Exception e
+            (queue-to-log [:error (str e)] (:name session-state))
+            (println "Error" (str e))
+            nil))]
     (if-let [alternate-text (:text (state-map-get-current-value
                                     (:client-state session-state) :alternate))]
       (assoc for-client :alternate-text alternate-text)

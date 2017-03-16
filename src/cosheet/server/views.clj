@@ -329,7 +329,8 @@
              (compute manager-data 4000))
     :opened (state-map-reset! (:client-state session-state) :last-action 0)
     :initialize (state-map-reset! (:client-state session-state) :last-action 0)
-    :request (replay-request session-state content)))
+    :request (replay-request session-state content))
+  (Thread/sleep 100))
 
 (defn do-replay [session-state replay]
   ;; First, make our own client state to run the replays in, so we get separate

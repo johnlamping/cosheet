@@ -437,8 +437,7 @@
         (and labels non-labels)
         (expr-let [inner-dom (elements-DOM-R
                               non-labels must-show-empty-labels
-                              ;; TODO: Is this dissoc needed?
-                              nil (dissoc inherited :template))]
+                              nil inherited)]
           (label-wrapper-DOM-R
            [:div {:class "item elements-wrapper"} inner-dom]
            subject-ref labels false inherited-for-labels))

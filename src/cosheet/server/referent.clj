@@ -547,7 +547,7 @@
                           groupses (map #(instantiate-referent
                                           % immutable-store)
                                         referents)]
-                      (apply map (fn [& groups] (apply concat groups))
+                      (apply mapcat (fn [& groups] (apply map vector groups))
                              groupses))
     :difference (let [[_ plus minus] referent]
                   [(remove
@@ -571,12 +571,10 @@
    that does not occur in the store, and an updated store that knows what
    the last new string was."
   [store]
-  (println "get new string" (simplify-for-print store))
   (let [last-string-item (first (matching-items
                                  '(nil :last-new-string) store))]
     (loop [last-new (when last-string-item (content last-string-item))]
       (let [next-new (next-new-string last-new)]
-      (println "last-new" last-new "next" next-new)
         (if (seq (matching-items next-new store))
           (recur next-new)
           [next-new
@@ -615,10 +613,15 @@
   "If there is one group of adjacents per subject, choose the one in
   each group the furthest in the direction of the position."
   [subject-groups adjacent-groups position]
-  (if (and (= (count subject-groups) 1)
-           (= (count adjacent-groups)
-              (count (first subject-groups))))
-    [(map #(furthest-item % position) adjacent-groups)]
+  (if (= (count adjacent-groups)
+         (apply + (map count subject-groups)))
+    ;; We have to find the correct adjacent in each group, then
+    ;; group those according to the number of items in each group
+    ;; of subjects.
+    (second (reduce (fn [[adjacents result] n]
+                      [(nthnext adjacents n) (conj result (take n adjacents))])
+                    [(map #(furthest-item % position) adjacent-groups) []]
+                    (map count subject-groups)))
     adjacent-groups))
 
 (defn create-elements-satisfying

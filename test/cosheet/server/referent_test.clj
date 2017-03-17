@@ -189,10 +189,10 @@
                (instantiate-referent (first-group-referent referent) store))))
   ;; Corresponding parallel union
   (let [union-ref (union-referent [(item-referent joe) (item-referent jane)])
-        referent (parallel-union-referent [(elements-referent 45 union-ref)
-                                           (elements-referent 39 union-ref)])]
+        referent (parallel-union-referent [union-ref
+                                           (elements-referent 45 union-ref)])]
     (is (check (instantiate-referent referent store)
-               [(as-set [joe-age joe-bogus-age]) [jane-age]]))
+               [(as-set [joe joe-age]) [jane jane-age]]))
     (is (check [(first (instantiate-referent referent store))]
                (instantiate-referent (first-group-referent referent) store)))))
 

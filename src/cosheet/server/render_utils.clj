@@ -44,8 +44,7 @@
 
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
-  inherited must specify a :selectable-attributes :target,
-  into which we will put the subject and template."
+  inherited must include a :template and :subject-referent."
   [key adjacent-referent position inherited]
   (assert (not (nil? (:subject-referent inherited))))
   [:div (into-attributes

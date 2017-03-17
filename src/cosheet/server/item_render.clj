@@ -446,8 +446,8 @@
                    excludeds (expr-seq map #(matching-elements :tag %)
                                        ordered-elements)]
           (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                    ordered-elements excludeds
-                                    {:class "tag"} inherited-for-labels)
+                                  ordered-elements excludeds
+                                  {:class "tag"} inherited-for-labels)
               (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
         non-labels
         (expr-let [elements-dom (elements-DOM-R
@@ -455,7 +455,10 @@
                                  nil inherited)]
           [:div {:class "elements-wrapper"} elements-dom])
         true
-        [:div {:class "elements-wrapper"}]))))
+        (add-attributes
+         (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
+                           nil :after (assoc inherited :template '(nil :tag)))
+         {:class "elements-wrapper"})))))
 
 (defn item-DOM-impl-R
    "Make a dom for an item or exemplar of a group of items.

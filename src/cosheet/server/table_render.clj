@@ -35,7 +35,6 @@
                                   item-DOM-R]])))
 
 (def base-table-column-width 150)
-(def base-table-virtual-column-width 35)
 
 (defn is-tag-template?
   "Return true if the template describes a label."
@@ -233,10 +232,9 @@
                          :template template)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
-     {:class (cond-> "column-header"
+     {:class (cond-> "column-header virtual-column"
                (is-tag-template? template)
-               (str " tag"))
-      :style {:width (str base-table-virtual-column-width "px")}})))
+               (str " tag"))})))
 
 (defn table-header-member-DOM
   "Generate the DOM for an member in a hierarchy that is not the only

@@ -690,10 +690,13 @@ body {
     margin: 0px -2px -2px 0px;
 }
 
-.table-cell.virtual-column {
+.virtual-column {
     width: 35px;
 }
 
+.virtual-column.selected {
+    width: 200px;
+}
 
 /* --- narrow interpretation --- */
 

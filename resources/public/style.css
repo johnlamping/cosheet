@@ -108,7 +108,7 @@ body {
 }
 
 .item-stack > .item + .item {
-    border-width: 2px 0px 0px 0px;
+    border-width: 1px 0px 0px 0px;
 }
 
 .for-multiple, .for-multiple > .item-stack {

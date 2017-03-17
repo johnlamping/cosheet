@@ -151,17 +151,19 @@
     (when (clojure.string/ends-with? name ".history")
       (let [log-name (str (subs name 0 (- (count name) 8)) "_LOG_")]
         (try
-          (with-open [stream (clojure.java.io/input-stream
-                              (name-to-path log-name))]
-            (with-open [reader (java.io.PushbackReader.
-                                (java.io.InputStreamReader. stream))]
-              ;; For some reason, the doall below is necessary. Otherwise,
-              ;; the future doesn't run.
-              (let [items (doall (read-item-sequence reader))]
-                (println "starting replay.")
-                (let [done (future (doseq [item items]
-                                     (replay-item session-state item)))]
-                  (future (println "done replaying." @done))))))
+          (let [items (with-open [stream (clojure.java.io/input-stream
+                                          (name-to-path log-name))]
+                        (with-open [reader (java.io.PushbackReader.
+                                            (java.io.InputStreamReader.
+                                             stream))]
+                          ;; We use a doall to force reading all the
+                          ;; items before the with-opens exit and
+                          ;; close the stream.
+                          (doall (read-item-sequence reader))))]
+            (println "starting replay.")
+            (let [done (future (doseq [item items]
+                                 (replay-item session-state item)))]
+              (future (println "done replaying." @done))))
           (catch java.io.FileNotFoundException e
             nil))))))
 

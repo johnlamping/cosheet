@@ -8,16 +8,29 @@
                    read-store write-store store-to-data  data-to-store]]
     mutable-store-impl
     [store-utils :refer [add-entity]]
+    [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     [expression-manager :refer [compute]]
     [state-map :refer [new-state-map]])
    (cosheet.server
+    [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
     [referent :refer [item-referent referent->exemplar-and-subject
-                      string->referent referent->string instantiate-to-items]]
+                      string->referent referent->string
+                      instantiate-to-items specialize-template]]
     [render :refer [DOM-for-client-R user-visible-item?]]
-    [tabs-render :refer [first-tab-R]]
-    [dom-tracker :refer [new-dom-tracker add-dom]]
-    [actions :refer [update-add-blank-table-view]])))
+    [tabs-render :refer [first-tab-R new-tab-elements]]
+    [dom-tracker :refer [new-dom-tracker add-dom]])))
+
+(defn update-add-blank-table-view
+  "Add a blank table view with the given name to the store, returning the
+  new store and the id of the new view."
+  [store view-name]
+  (let [generic (cons "" (cons view-name new-tab-elements))
+        [specialized [store _]] (specialize-template generic [store {}])
+        tabs-holder (first (matching-items '(nil :tabs) store))]
+    (update-add-entity-adjacent-to
+     store (:item-id tabs-holder) specialized (order-element-for-item nil store)
+     :after false)))
 
 (defn starting-store
   []

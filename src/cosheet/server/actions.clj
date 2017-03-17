@@ -15,7 +15,7 @@
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
     [dom-utils :refer [dom-attributes map-combiner]]
-    [query :refer [matching-items matching-elements template-matches]]
+    [query :refer [matching-elements template-matches]]
     query-impl)
    (cosheet.server
     [session-state :refer [queue-to-log]]
@@ -25,13 +25,11 @@
                       referent->string referent? virtual-referent?
                       referent->exemplar-and-subject
                       item-referent first-group-referent
-                      semantic-elements-R specialize-template
+                      semantic-elements-R
                       condition-to-template adjust-adjacents
                       create-possible-selector-elements
                       create-elements-satisfying]]
-    [order-utils :refer [update-add-entity-adjacent-to furthest-item
-                         order-element-for-item]]
-    [tabs-render :refer [new-tab-elements]])))
+    [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -448,15 +446,4 @@
        [(if (empty? later-times) last-action (last later-times))
         (map actions later-times)]))))
 
-;;; Used by views.clj.
-;;; TODO: Put someplace better?
-(defn update-add-blank-table-view
-  "Add a blank table view with the given name to the store, returning the
-  new store and the id of the new view."
-  [store view-name]
-  (let [generic (cons "" (cons view-name new-tab-elements))
-        [specialized [store _]] (specialize-template generic [store {}])
-        tabs-holder (first (matching-items '(nil :tabs) store))]
-    (update-add-entity-adjacent-to
-     store (:item-id tabs-holder) specialized (order-element-for-item nil store)
-     :after false)))
+

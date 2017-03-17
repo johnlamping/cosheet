@@ -122,13 +122,15 @@
   (do-update-control-return! [this update-fn]
     (describe-and-swap-control-return!
      (:manager-data this)
-     (fn [{:keys [store history]}]
+     (fn [{:keys [store history] :as state}]
        (let [[updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
                                        updated-store)]
-         [{:store new-store
-           :history (cons [modified-ids store] history)
-           :future nil}
+         [(if (not= new-store store)
+            {:store new-store
+             :history (cons [modified-ids store] history)
+             :future nil}
+            state)
           (keys-affected-by-ids modified-ids store new-store)
           result]))))
 
@@ -148,9 +150,11 @@
                    all-modified-ids (seq (clojure.set/union
                                           (set prev-modified-ids)
                                           (set new-modified-ids)))]
-               [{:store new-store
-                 :history (cons [new-modified-ids prev-store] prev-history)
-                 :future nil}
+               [(if (not= new-store store)
+                  {:store new-store
+                   :history (cons [new-modified-ids prev-store] prev-history)
+                   :future nil}
+                  state)
                 (keys-affected-by-ids all-modified-ids store new-store)
                 result])))))))
 

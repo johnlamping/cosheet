@@ -148,7 +148,7 @@
                (any)
                (any)
                [:div {:selector-category :table-header
-                      :class "editable column-header"
+                      :class "editable column-header virtual-column"
                       :key (conj table-key :virtualColumn)
                       :target {:referent
                                (virtual-referent
@@ -162,8 +162,7 @@
                                  :selector :first-group)
                                 (item-referent c6)
                                 :selector :first-group)
-                               :alternate true}
-                      :style {:width "35px"}}]]
+                               :alternate true}}]]
               [:div {:class "table-rows selectees"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}

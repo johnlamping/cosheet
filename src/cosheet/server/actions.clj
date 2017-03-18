@@ -183,8 +183,20 @@
                                   referent [store {}])
               items (apply concat groups)]
           (println "updating " (count items) " items")
-          (reduce (partial update-set-content-if-matching from to)
-                  store items))))))
+          (let [new-store (reduce (partial update-set-content-if-matching
+                                           from to)
+                                  store items)]
+            ;; If we have set the content of a new tab, tell the client to
+            ;; select it.
+            ;; TODO: Make this apply to any virtual item,
+            ;; by using the key prefix?
+            (println "target-key" (:target-key attributes))
+            (if (and (= (:target-key attributes) [:virtualTab])
+                     (seq items))
+              {:store new-store
+               :select [[(item-referent (first items))]
+                        [(:target-key attributes)]]}
+              new-store)))))))
 
 (defn do-expand
   [store context attributes]

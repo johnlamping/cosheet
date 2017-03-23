@@ -1,4 +1,5 @@
 (ns cosheet.server.routes
+  (:gen-class) ;; So we don't need lein ring.
   (:require [compojure.route :as route]
             ;; TODO: Get rid of next two lines?
             [compojure.handler :as handler]
@@ -8,6 +9,7 @@
             [ring.middleware.transit :refer [wrap-transit-response
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
+            [ring.adapter.jetty :refer [run-jetty]]
             [cosheet.server.views :refer [initial-page ajax-response]]))
 
 (defroutes main-routes
@@ -29,3 +31,8 @@
       (wrap-transit-params)
       (wrap-transit-response {:encoding :json, :opts {}})
       (wrap-base-url)))
+
+;; So we don't need lein ring.
+;; Pass the handler to Jetty on port 3000
+(defn -main []
+  (run-jetty app {:port 3000}))

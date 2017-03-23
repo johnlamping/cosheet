@@ -12,6 +12,3 @@
 ;;; Note, dom-utils is in src_cljx, so you need to run
 ;;; lein cljx once
 
-(defn -main
-  [& args]
-  (println "Hello, World!"))

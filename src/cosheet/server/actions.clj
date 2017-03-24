@@ -104,9 +104,9 @@
     (add-select-request store items select-pattern old-key)))
 
 (defn do-add-element
-  [store context attributes]
+  [store arguments attributes]
   (let [{:keys [target-key select-pattern selector-category]} attributes]
-    (when-let [referent (:referent context)]
+    (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
             [added [store _]] (create-possible-selector-elements
@@ -116,9 +116,9 @@
          store added (conj target-key [:pattern]) target-key)))))
 
 (defn do-add-label
-  [store context attributes]
+  [store arguments attributes]
   (let [{:keys [target-key select-pattern selector-category]} attributes]
-    (when-let [referent (:referent context)]
+    (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             sample-item (first (apply concat items))
             is-tag (when sample-item
@@ -133,10 +133,10 @@
                                :label [:pattern]) target-key)))))))
 
 (defn do-add-twin
-  [store context attributes]
+  [store arguments attributes]
   (let [{:keys [target-key selector-category]} attributes]
-    (when-let [referent (:referent context)]
-      (when-let [condition (:template context)]
+    (when-let [referent (:referent arguments)]
+      (when-let [condition (:template arguments)]
         (let [items (instantiate-referent referent store)
               subjects (map #(map subject %) items)
               selector (when selector-category :first-group)
@@ -150,8 +150,8 @@
            store added (conj (pop item-key) [:pattern]) target-key))))))
 
 (defn do-add-virtual
-  [store context attributes]
-  (let [{:keys [referent key-prefix select-pattern]} context
+  [store arguments attributes]
+  (let [{:keys [referent key-prefix select-pattern]} arguments
         select-pattern (or select-pattern (conj key-prefix [:pattern]))]
     (add-and-select-virtual-elements
      store referent select-pattern (:target-key attributes))))
@@ -163,8 +163,8 @@
 
 (defn do-delete
   "Remove item(s)." 
-  [store context attributes]
-  (when-let [to-delete (:referent context)]
+  [store arguments attributes]
+  (when-let [to-delete (:referent arguments)]
     (let [item-groups (instantiate-referent to-delete store)
           header (first (first item-groups))
           items (distinct ;; distinct should not be necessary, but is a
@@ -174,9 +174,9 @@
       (reduce update-delete store items))))
 
 (defn do-set-content
-  [store context attributes]
+  [store arguments attributes]
   (let [{:keys [from to immutable]} attributes
-        referent (:referent context)]
+        referent (:referent arguments)]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups [store _]] (instantiate-or-create-referent
@@ -199,9 +199,9 @@
               new-store)))))))
 
 (defn do-expand
-  [store context attributes]
+  [store arguments attributes]
   (let [{:keys [session-state selector-category]} attributes
-        target-referent (:referent context)]
+        target-referent (:referent arguments)]
     (when (referent? target-referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
@@ -223,10 +223,10 @@
                  (str "&selector=" (referent->string selector-category)))}))))
 
 (defn do-selected
- [session-state context]
- (when (= (:special context) :tab)
+ [session-state arguments]
+ (when (= (:special arguments) :tab)
    (state-map-reset! (:client-state session-state)
-                     :referent (:referent context))))
+                     :referent (:referent arguments))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client
@@ -259,8 +259,7 @@
 
 (defn get-contextual-handler
   "Return the handler for the command, and the key from the attributes
-   which holds the contextual information for the command. If several keys
-   might hold the information, return them in priority order."
+   which holds the arguments for the command."
   [action]
   ({:add-element [do-add-element :target]
     :add-label [do-add-label :target]
@@ -294,25 +293,25 @@
     :only-element-delete ["Column hidden."
                           "Delete the column data also."]}))
 
-(defn alternate-contexts
-  "Given the session state, action type and a context,
-  return a vector of the default context
-  to use, and the alternate context, if any. Also return the text to show the
-  user to give them the chance to ask for the alternate context"
-  [session-state action-type context attributes]
+(defn alternate-arguments
+  "Given the session state, action type and arguments,
+  return a vector of the default arguments
+  to use, and the alternate arguments, if any. Also return the text to show the
+  user to give them the chance to ask for the alternate arguments"
+  [session-state action-type arguments attributes]
   (or
-   (when-let [alternate (:alternate context)]
+   (when-let [alternate (:alternate arguments)]
      (when (not= action-type :expand)
        (println "alternate requested.")
        (when-let [selector-category (if (= alternate true)
                                       (:selector-category attributes)
                                       alternate)]
          (println "selector found" selector-category)
-         (let [context (dissoc context :alternate)
-               narrow-context (update-in context [:referent]
+         (let [arguments (dissoc arguments :alternate)
+               narrow-arguments (update-in arguments [:referent]
                                          #(first-group-referent %))
-               wide-referent (:referent context)
-               narrow-referent (:referent narrow-context)
+               wide-referent (:referent arguments)
+               narrow-referent (:referent narrow-arguments)
                store (current-store (:store session-state))]
            (when (if (virtual-referent? wide-referent)
                    (not= wide-referent narrow-referent)
@@ -320,23 +319,23 @@
                          (set (instantiate-to-items narrow-referent store))))
              (let [result
                    (if (= (:selector-interpretation session-state) :broad)
-                     [context narrow-context
+                     [arguments narrow-arguments
                       (broad-alternate-text selector-category)]
-                     [narrow-context context
+                     [narrow-arguments arguments
                       (narrow-alternate-text selector-category)])]
                (println "computed alternate" (simplify-for-print result))
                result))))))
-   [context nil nil]))
+   [arguments nil nil]))
 
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
-  on that cell. We will call a contextual action handler with a context
-  and with attributes. The context is the subset of the attributes focused
+  on that cell. We will call a contextual action handler with arguments
+  and with attributes. The arguments is the subset of the attributes focused
   on the particular command; its target. The attributes comprise
   all the attributes from the dom, any added by the client, plus
   :session-state and :target-key."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
-  (let [[handler context-key] (get-contextual-handler action-type) 
+  (let [[handler arguments-key] (get-contextual-handler action-type) 
         tracker (:tracker session-state)
         target-key (when client-id (id->key tracker client-id))
         dom-attributes (key->attributes tracker target-key)
@@ -345,9 +344,9 @@
                        (assoc :target-key target-key
                               :session-state session-state))]
     (if handler
-      (if-let [;; We take all attributes for the context and override any
+      (if-let [;; We take the arguments for the context key and override any
                ;; specific to the action type.
-               context (->> (map attributes [context-key action-type])
+               arguments (->> (map attributes [arguments-key action-type])
                             (remove nil?)
                             (apply merge-with (partial map-combiner nil)))]
         (do
@@ -356,22 +355,22 @@
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
           (if (= action-type :selected)
-            (handler session-state context)
-            (let [[context alternate-context text] (alternate-contexts
+            (handler session-state arguments)
+            (let [[arguments alternate-arguments text] (alternate-arguments
                                                     session-state action-type
-                                                    context attributes)
+                                                    arguments attributes)
                   result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
-                          handler context attributes)]
-              (when (or (not (:special context)) (= action-type :set-content))
+                          handler arguments attributes)]
+              (when (or (not (:special arguments)) (= action-type :set-content))
                 (state-map-reset!
                  (:client-state session-state) :alternate
-                 (when alternate-context
-                   (println "setting non-trivial alternate context." text)
+                 (when alternate-arguments
+                   (println "setting non-trivial alternate arguments." text)
                    {:new-store (first (fetch-and-clear-modified-ids
                                        (:store result)))
                     :action [handler
-                             alternate-context
+                             alternate-arguments
                              (dissoc attributes :session-state)]
                     :text text}))
                 (dissoc result :store)))))
@@ -387,11 +386,11 @@
                         (:client-state session-state) :alternate)]
     (println "doing alternate.")
     (let [{:keys [new-store action]} alternate
-          [handler context attributes] action
+          [handler arguments attributes] action
           result (apply do-storage-update-action
                   (partial revise-update-control-return!
                            mutable-store new-store)
-                  [handler context (assoc attributes
+                  [handler arguments (assoc attributes
                                           :session-state session-state)])]
       (dissoc result :store))))
 

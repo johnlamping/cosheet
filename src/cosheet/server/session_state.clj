@@ -57,20 +57,20 @@
 
 (defn url-path-to-file-path
   [url-path]
-  (let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
-                   (str (System/getProperty "user.home") url-path)
-                   (clojure.string/starts-with? url-path "//")
-                   (subs url-path 1)
-                   true nil)]
-    (when path (str path ".cst"))))
+  (when (not (clojure.string/ends-with? url-path "/"))
+    (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
+                          (str (System/getProperty "user.home") url-path)
+                          (clojure.string/starts-with? url-path "//")
+                          (subs url-path 1)
+                          true nil)]
+      (str path ".cst"))))
 
 (defn path-to-Path [path]
   (java.nio.file.Paths/get
    (java.net.URI. (clojure.string/join "" ["file://" path]))))
 
-(defn read-store-file [url-path]
-  (with-open [stream (clojure.java.io/input-stream
-                      (url-path-to-file-path url-path))]
+(defn read-store-file [path]
+  (with-open [stream (clojure.java.io/input-stream path)]
     (read-store (new-element-store) stream)))
 
 (defn write-store-file-if-different
@@ -104,7 +104,8 @@
 
 (defn update-store-file [url-path]
   (when-let [info (@store-info url-path)]
-    (send (:agent info) write-store-file-if-different (:mutable info) url-path)))
+    (send (:agent info)
+          write-store-file-if-different (:mutable info) url-path)))
 
 (defn queue-to-log
   "Add the entry to the queue to be written to the log."
@@ -117,24 +118,28 @@
   ;; If there were a race to create the store, the log stream might get
   ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
   ;; a global lock.
-  (locking store-info
-    (ensure-in-atom-map!
-     store-info url-path
-     #(let [immutable (try (read-store-file %)
-                           (catch java.io.FileNotFoundException e
-                             (starting-store)))
-            log-stream (try (java.io.FileOutputStream.
-                             (url-path-to-file-path (str url-path "_LOG_")) true)
-                            (catch java.io.FileNotFoundException e
-                              nil))
-            log-agent (when log-stream
-                        (agent (clojure.java.io/writer log-stream)))]
-        (when (and log-stream (= (.position (.getChannel log-stream)) 0))
-          (send log-agent write-log-entry [:store (store-to-data immutable)]))
-        (send log-agent write-log-entry [:opened])
-        {:mutable (new-mutable-store immutable)
-         :agent (agent immutable)
-         :log-agent log-agent}))))
+  (when-let [path (url-path-to-file-path url-path)]
+    (locking store-info
+      (ensure-in-atom-map!
+       store-info url-path
+       (fn [_]
+         (let [immutable (try (read-store-file path)
+                              (catch java.io.FileNotFoundException e
+                                (starting-store)))
+               log-stream (try (java.io.FileOutputStream.
+                                (url-path-to-file-path (str url-path "_LOG_"))
+                                true)
+                               (catch java.io.FileNotFoundException e
+                                 nil))
+               log-agent (when log-stream
+                           (agent (clojure.java.io/writer log-stream)))]
+           (when (and log-stream (= (.position (.getChannel log-stream)) 0))
+             (send log-agent
+                   write-log-entry [:store (store-to-data immutable)]))
+           (send log-agent write-log-entry [:opened])
+           {:mutable (new-mutable-store immutable)
+            :agent (agent immutable)
+            :log-agent log-agent}))))))
 
 ;;; Session management. There is a tracker for each session.
 

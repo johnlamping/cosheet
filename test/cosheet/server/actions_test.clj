@@ -221,7 +221,7 @@
   (is (check (do-expand store
                         {:referent (item-referent joe)}
                         {:target-key "joe"
-                         :session-state {:name "foo"}})
+                         :session-state {:url-path "foo"}})
              {:store store
               :open (str "foo?referent="
                          (referent->string (item-referent joe)))})))

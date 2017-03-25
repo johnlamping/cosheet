@@ -29,7 +29,8 @@
     [dom-tracker :refer [request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
-    [session-state :refer [create-session create-client-state name-to-path
+    [session-state :refer [create-session create-client-state
+                           url-path-to-file-path
                            get-session-state queue-to-log update-store-file]]
     [actions :refer [confirm-actions do-actions]])))
 
@@ -50,10 +51,10 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
-(defn initial-page [name referent-string selector-string]
-  (println "initial page" name referent-string selector-string)
+(defn initial-page [path referent-string selector-string]
+  (println "initial page" path referent-string selector-string)
   (let [session-id (create-session
-                    name referent-string manager-data selector-string)]
+                    path referent-string manager-data selector-string)]
     (html5
      [:head
       [:title "Hello World"]
@@ -144,15 +145,15 @@
 (defn do-replay [session-state replay]
   ;; First, make our own client state to run the replays in, so we get separate
   ;; numbering of actions.
-  (let [{:keys [name store client-state]} session-state
+  (let [{:keys [path store client-state]} session-state
         client-state (create-client-state
                       store (referent->string (:referent client-state)))
         session-state (assoc session-state :client-state client-state)]
-    (when (clojure.string/ends-with? name ".history")
-      (let [log-name (str (subs name 0 (- (count name) 8)) "_LOG_")]
+    (when (clojure.string/ends-with? path ".history")
+      (let [log-path (str (subs path 0 (- (count path) 8)) "_LOG_")]
         (try
           (let [items (with-open [stream (clojure.java.io/input-stream
-                                          (name-to-path log-name))]
+                                          (url-path-to-file-path log-path))]
                         (with-open [reader (java.io.PushbackReader.
                                             (java.io.InputStreamReader.
                                              stream))]
@@ -172,7 +173,7 @@
 ;;;    :initialize If true, the server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
-;;;        :replay If true, the name should end in .history, and the
+;;;        :replay If true, the path should end in .history, and the
 ;;;                history of the file withough .history will be replayed.
 ;;;            :id The session id of this client session. The initial html
 ;;;                returned to the client will have the session id
@@ -212,9 +213,9 @@
         params
         session-state (get-session-state id)]
     (if session-state
-      (let [{:keys [tracker name store client-state]} session-state]
+      (let [{:keys [tracker path store client-state]} session-state]
         (when (or actions initialize)
-          (queue-to-log [:request (dissoc params :acknowledge)] name))
+          (queue-to-log [:request (dissoc params :acknowledge)] path))
         (when (or actions initialize replay acknowledge)
           (println "request" params))
         (when initialize
@@ -233,7 +234,7 @@
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
-            (update-store-file name)
+            (update-store-file path)
             (compute manager-data 4000)
             ;; Turn this on if there are questions about propagation, but it
             ;; makes things really slow.

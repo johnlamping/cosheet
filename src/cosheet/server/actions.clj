@@ -217,7 +217,7 @@
                        subject-ref
                        target-referent)]
         {:store store
-         :open (cond-> (str (:name session-state)
+         :open (cond-> (str (:url-path session-state)
                             "?referent=" (referent->string referent))
                  selector-category
                  (str "&selector=" (referent->string selector-category)))}))))
@@ -436,7 +436,7 @@
                             (select-keys for-client [:select :open]))))
                   {} action-sequence)
           (catch Exception e
-            (queue-to-log [:error (str e)] (:name session-state))
+            (queue-to-log [:error (str e)] (:url-path session-state))
             (println "Error" (str e))
             nil))]
     (if-let [alternate-text (:text (state-map-get-current-value

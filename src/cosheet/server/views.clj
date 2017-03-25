@@ -53,8 +53,8 @@
 
 (defn initial-page [path referent-string selector-string]
   (println "initial page" path referent-string selector-string)
-  (let [session-id (create-session
-                    path referent-string manager-data selector-string)]
+  (if-let [session-id (create-session
+                       path referent-string manager-data selector-string)]
     (html5
      [:head
       [:title "Hello World"]
@@ -108,7 +108,14 @@
        [:div " "]
        [:div#alternate_interpretation " "]
        [:div " "]]
-      [:script "cosheet.client.run();"]])))
+      [:script "cosheet.client.run();"]])
+     (html5
+     [:head
+      [:title "Hello World"]
+      (include-js "../js/main.js")
+      (include-css "../style.css")]
+     [:body
+      [:div "Invalid path."]])))
 
 (defn read-item-sequence
   "Return a lazy seq of the sequence of items from the reader."

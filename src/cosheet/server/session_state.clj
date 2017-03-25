@@ -24,7 +24,6 @@
 (defn update-add-blank-table-view
   "Add a blank table view with the given url path to the store, returning the
   new store and the id of the new view."
-  ;; TODO: Get just the final name from the path.
   [store url-path]
   (let [name (last (clojure.string/split url-path #"/"))
         generic (cons "" (cons name new-tab-elements))
@@ -42,6 +41,33 @@
         [store _] (update-add-blank-table-view store "tab")]
     store))
 
+(defn path-to-Path [path]
+  (java.nio.file.Paths/get
+   (java.net.URI. (clojure.string/join "" ["file://" path]))))
+
+(defn url-path-to-file-path
+  "Turn a url path into a file path, returning nil if the url path is
+  syntactically ill formed."
+  [url-path]
+  (when (not (clojure.string/ends-with? url-path "/"))
+    (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
+                          (str (System/getProperty "user.home") url-path)
+                          (clojure.string/starts-with? url-path "//")
+                          (subs url-path 1)
+                          true nil)]
+      (str path ".cst"))))
+
+(defn is-valid-path?
+  "Return whether the file path refers to a name in an actual directory."
+  [path]
+  (and
+   path
+   (let [directory (clojure.string/join
+                    "/" (butlast (clojure.string/split path #"/")))]
+     (java.nio.file.Files/isDirectory
+      (path-to-Path directory)
+      (into-array java.nio.file.LinkOption [])))))
+
 ;;; Store management. Stores may be shared across sessions.
 
 ;;; A map from url path to a map
@@ -54,20 +80,6 @@
 ;;;   :log-agent <the agent responsible for writing log entries.
 ;;;               its state is a writer opened to append to the log file.>
 (def store-info (atom {}))
-
-(defn url-path-to-file-path
-  [url-path]
-  (when (not (clojure.string/ends-with? url-path "/"))
-    (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
-                          (str (System/getProperty "user.home") url-path)
-                          (clojure.string/starts-with? url-path "//")
-                          (subs url-path 1)
-                          true nil)]
-      (str path ".cst"))))
-
-(defn path-to-Path [path]
-  (java.nio.file.Paths/get
-   (java.net.URI. (clojure.string/join "" ["file://" path]))))
 
 (defn read-store-file [path]
   (with-open [stream (clojure.java.io/input-stream path)]
@@ -114,32 +126,44 @@
     (when-let [agent (:log-agent info)]
       (send agent write-log-entry entry))))
 
-(defn ensure-store [url-path]
+(defn ensure-store
+  "Return the store-info for the given url path, creating it if necessary,
+  returning nil if there is something wrong with the path."
+  [url-path]
   ;; If there were a race to create the store, the log stream might get
   ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
   ;; a global lock.
-  (when-let [path (url-path-to-file-path url-path)]
-    (locking store-info
-      (ensure-in-atom-map!
-       store-info url-path
-       (fn [_]
-         (let [immutable (try (read-store-file path)
-                              (catch java.io.FileNotFoundException e
-                                (starting-store)))
-               log-stream (try (java.io.FileOutputStream.
-                                (url-path-to-file-path (str url-path "_LOG_"))
-                                true)
-                               (catch java.io.FileNotFoundException e
-                                 nil))
-               log-agent (when log-stream
-                           (agent (clojure.java.io/writer log-stream)))]
-           (when (and log-stream (= (.position (.getChannel log-stream)) 0))
-             (send log-agent
-                   write-log-entry [:store (store-to-data immutable)]))
-           (send log-agent write-log-entry [:opened])
-           {:mutable (new-mutable-store immutable)
-            :agent (agent immutable)
-            :log-agent log-agent}))))))
+  (locking store-info
+    (or
+     (@store-info url-path)
+     ;; If the path is not valid, we don't want to put nil in the store-info,
+     ;; as that would preclude fixing the path. Rather, we leave store-info
+     ;; blank in that case.
+     (when-let
+         [info
+          (let [path (url-path-to-file-path url-path)]
+            (when (is-valid-path? path)
+              (let [immutable (try (read-store-file path)
+                                   (catch java.io.FileNotFoundException e
+                                     (starting-store)))
+                    log-stream (try (java.io.FileOutputStream.
+                                     (url-path-to-file-path
+                                      (str url-path "_LOG_"))
+                                     true)
+                                    (catch java.io.FileNotFoundException e
+                                      nil))
+                    log-agent (when log-stream
+                                (agent (clojure.java.io/writer log-stream)))]
+                (when log-agent
+                  (when (= (.position (.getChannel log-stream)) 0)
+                    (send log-agent
+                          write-log-entry [:store (store-to-data immutable)]))
+                  (send log-agent write-log-entry [:opened])
+                  {:mutable (new-mutable-store immutable)
+                   :agent (agent immutable)
+                   :log-agent log-agent}))))]
+       (swap! store-info #(assoc % url-path info))
+       info))))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -212,20 +236,21 @@
 
 (defn create-session
   [url-path referent-string manager-data selector-string]
-  (let [store (:mutable (ensure-store url-path))
-        id (swap-control-return!
-            session-states
-            (fn [session-map]
-              (let [id (new-id session-map)
-                    client-state (create-client-state store referent-string)]
-                [(assoc session-map id
-                        {:url-path url-path
-                         :store store
-                         :tracker (create-tracker store client-state
-                                                  manager-data selector-string)
-                         :client-state client-state})
-                 id])))]
-    (compute manager-data 1000)
-    (println "computed some")
-    id))
+  (when-let [store (:mutable (ensure-store url-path))]
+    (let [id (swap-control-return!
+              session-states
+              (fn [session-map]
+                (let [id (new-id session-map)
+                      client-state (create-client-state store referent-string)]
+                  [(assoc session-map id
+                          {:url-path url-path
+                           :store store
+                           :tracker (create-tracker
+                                     store client-state
+                                     manager-data selector-string)
+                           :client-state client-state})
+                   id])))]
+      (compute manager-data 1000)
+      (println "computed some")
+      id)))
 

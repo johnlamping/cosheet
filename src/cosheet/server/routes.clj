@@ -17,6 +17,8 @@
        (initial-page (str "/cosheet/" path) referent selector))
   (GET ".+//:path{.*}" [path referent selector]
        (initial-page (str "//" path) referent selector))
+  (GET "/~/:path{.*}" [path referent selector]
+       (initial-page (str "/~/" path) referent selector))
   (POST "/ajax-request/:id" request (ajax-response request))
   (route/resources "/")
   (route/not-found "Page not found"))

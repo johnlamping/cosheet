@@ -52,6 +52,9 @@
   (when (not (clojure.string/ends-with? url-path "/"))
     (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
                           (str (System/getProperty "user.home") url-path)
+                          (clojure.string/starts-with? url-path "/~/")
+                          (str (System/getProperty "user.home")
+                               (subs url-path 2))
                           (clojure.string/starts-with? url-path "//")
                           (subs url-path 1)
                           true nil)]

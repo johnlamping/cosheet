@@ -220,9 +220,9 @@
         params
         session-state (get-session-state id)]
     (if session-state
-      (let [{:keys [tracker path store client-state]} session-state]
+      (let [{:keys [tracker url-path store client-state]} session-state]
         (when (or actions initialize)
-          (queue-to-log [:request (dissoc params :acknowledge)] path))
+          (queue-to-log [:request (dissoc params :acknowledge)] url-path))
         (when (or actions initialize replay acknowledge)
           (println "request" params))
         (when initialize
@@ -241,7 +241,7 @@
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
-            (update-store-file path)
+            (update-store-file url-path)
             (compute manager-data 4000)
             ;; Turn this on if there are questions about propagation, but it
             ;; makes things really slow.

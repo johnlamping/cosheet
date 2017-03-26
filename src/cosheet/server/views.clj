@@ -51,13 +51,13 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
-(defn initial-page [path referent-string selector-string]
-  (println "initial page" path referent-string selector-string)
+(defn initial-page [url-path referent-string selector-string]
+  (println "initial page" url-path referent-string selector-string)
   (if-let [session-id (create-session
-                       path referent-string manager-data selector-string)]
+                       url-path referent-string manager-data selector-string)]
     (html5
      [:head
-      [:title "Hello World"]
+      [:title (last (clojure.string/split url-path #"/"))]
       [:meta {:itemprop "session-id"
               :content session-id}]
       (include-js "../js/main.js")

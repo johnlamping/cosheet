@@ -152,15 +152,16 @@
 (defn do-replay [session-state replay]
   ;; First, make our own client state to run the replays in, so we get separate
   ;; numbering of actions.
-  (let [{:keys [path store client-state]} session-state
+  (let [{:keys [url-path store client-state]} session-state
         client-state (create-client-state
                       store (referent->string (:referent client-state)))
         session-state (assoc session-state :client-state client-state)]
-    (when (clojure.string/ends-with? path ".history")
-      (let [log-path (str (subs path 0 (- (count path) 8)) "_LOG_")]
+    (when (clojure.string/ends-with? url-path ".history")
+      (let [original-path (subs url-path 0 (- (count url-path) 8))]
         (try
           (let [items (with-open [stream (clojure.java.io/input-stream
-                                          (url-path-to-file-path log-path))]
+                                          (url-path-to-file-path
+                                           original-path ".cosheetlog"))]
                         (with-open [reader (java.io.PushbackReader.
                                             (java.io.InputStreamReader.
                                              stream))]

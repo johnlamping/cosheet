@@ -48,7 +48,7 @@
 (defn url-path-to-file-path
   "Turn a url path into a file path, returning nil if the url path is
   syntactically ill formed."
-  [url-path]
+  [url-path suffix]
   (when (not (clojure.string/ends-with? url-path "/"))
     (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
                           (str (System/getProperty "user.home") url-path)
@@ -58,7 +58,7 @@
                           (clojure.string/starts-with? url-path "//")
                           (subs url-path 1)
                           true nil)]
-      (str path ".cst"))))
+      (str path suffix))))
 
 (defn is-valid-path?
   "Return whether the file path refers to a name in an actual directory."
@@ -98,12 +98,12 @@
   ;; at the time the send was done, so that we will catch up if we get behind.
   (with-latest-value [store (current-store mutable-store)]
     (when (not= written-store store)
-      (let [temp-path (url-path-to-file-path (str url-path "_TEMP_"))]
+      (let [temp-path (url-path-to-file-path url-path "_TEMP_.cosheet")]
         (clojure.java.io/delete-file temp-path true)
         (with-open [stream (clojure.java.io/output-stream temp-path)]
           (write-store store stream))
         (Files/move (path-to-Path temp-path)
-                    (path-to-Path (url-path-to-file-path url-path))
+                    (path-to-Path (url-path-to-file-path url-path ".cosheet"))
                     (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
                                             StandardCopyOption/ATOMIC_MOVE])))
       store)))
@@ -144,14 +144,14 @@
      ;; blank in that case.
      (when-let
          [info
-          (let [path (url-path-to-file-path url-path)]
+          (let [path (url-path-to-file-path url-path ".cosheet")]
             (when (is-valid-path? path)
               (let [immutable (try (read-store-file path)
                                    (catch java.io.FileNotFoundException e
                                      (starting-store)))
                     log-stream (try (java.io.FileOutputStream.
                                      (url-path-to-file-path
-                                      (str url-path "_LOG_"))
+                                      url-path ".cosheetlog")
                                      true)
                                     (catch java.io.FileNotFoundException e
                                       nil))

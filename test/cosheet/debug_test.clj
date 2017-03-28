@@ -10,8 +10,7 @@
                                                  request compute]]
                      [expression :refer [expr expr-let cache]]
                      [store :refer :all]
-                     [entity :refer :all]
-                     store-impl)
+                     [entity :refer :all])
             ; :reload
             ))
 

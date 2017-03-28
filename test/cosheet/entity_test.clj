@@ -7,8 +7,6 @@
                                     track-modified-ids
                                     update-content!]]
                      [entity :refer :all]
-                     store-impl
-                     mutable-store-impl
                      entity-impl
                      [expression-manager :refer [current-value]]
                      [test-utils :refer [check any as-set]])

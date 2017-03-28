@@ -1,6 +1,6 @@
 (ns cosheet.store-utils
-  (:require [cosheet.store :refer :all]
-            [cosheet.entity :as entity]))
+  (:require (cosheet [store :refer :all]
+                     [entity :as entity])))
 
 (defn- items-to-add
   "Return a seq of items, described as [subject content], to add

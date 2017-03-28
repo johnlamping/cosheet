@@ -3,10 +3,10 @@
             [clojure.data :refer [diff]]
             (cosheet
              [store :refer :all]
+             [store-impl :refer :all]
              [entity :refer [to-list description->entity]]
              entity-impl
              [orderable :as orderable]
-             [store-impl :refer :all]
              [test-utils :refer [check any as-set]])
             ; :reload
             ))

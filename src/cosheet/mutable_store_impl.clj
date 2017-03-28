@@ -1,6 +1,5 @@
 (ns cosheet.mutable-store-impl
   (:require (cosheet [store :refer :all]
-                     store-impl
                      [mutable-manager
                       :refer [new-mutable-manager-data
                               current-mutable-value

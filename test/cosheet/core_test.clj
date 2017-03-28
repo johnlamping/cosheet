@@ -15,4 +15,5 @@
             referent-test hierarchy-test order-utils-test
             render-utils-test render-test item-render-test table-render-test
             tabs-render-test dom-tracker-test actions-test)
-           :reload))
+           :reload
+           ))

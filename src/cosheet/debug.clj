@@ -11,8 +11,6 @@
                      [expression-manager :refer [current-value]]
                      [entity-impl :as entity-impl]
                      store-utils
-                     store-impl
-                     mutable-store-impl
                      [mutable-map :as mm])
             (cosheet.server [order-utils :refer [order-items-R]])))
 

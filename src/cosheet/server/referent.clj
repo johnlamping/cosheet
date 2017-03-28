@@ -10,7 +10,6 @@
                      [store :as store :refer [id-valid? StoredItemDescription
                                               update-content]]
                      [store-utils :refer [add-entity]]
-                     [store-impl :refer [get-unique-id-number]]
                      [store-impl :refer [->ItemId]]
                      [query :refer [matching-elements matching-items
                                     template-matches]])

@@ -180,7 +180,7 @@
   (let [content (get-in store [:id->data id :content])]
     (if (instance? ItemId content)
       (update-in-clean-up store [:id->data content :containers] #(disj % id))
-      store))  )
+      store)))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,

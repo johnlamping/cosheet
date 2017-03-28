@@ -1,9 +1,6 @@
 (ns cosheet.server.routes
   (:gen-class) ;; So we don't need lein ring.
   (:require [compojure.route :as route]
-            ;; TODO: Get rid of next two lines?
-            [compojure.handler :as handler]
-            [compojure.response :as response]
             [compojure.core :refer [GET POST defroutes]]
             [hiccup.middleware :refer [wrap-base-url]]
             [ring.middleware.transit :refer [wrap-transit-response

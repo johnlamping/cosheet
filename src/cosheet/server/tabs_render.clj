@@ -22,6 +22,7 @@
                                 hierarchy-node-next-level
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
+             [model-utils :refer [new-tab-elements]]
              [render-utils :refer [virtual-item-DOM condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R]])))
 
@@ -152,18 +153,6 @@
      (virtual-item-DOM key adjacent-referent :after inherited)
            {:class "tab virtualTab"})))
 
-(def new-tab-elements '((:tab :non-semantic)
-                        (""
-                         (:non-semantic :non-semantic)
-                         (:tab-topic :non-semantic)
-                         (:table :non-semantic)
-                         (anything (??? :tag)
-                                   (:row-condition :non-semantic)
-                                   (:non-semantic :non-semantic))
-                         (anything-immutable (??? :tag)
-                                             (:column :non-semantic)
-                                             (:non-semantic :non-semantic)))))
-
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."
   [tabs-subject chosen-tab inherited]
@@ -193,15 +182,3 @@
                 ;; row order.
                 (concat [virtual-tab] (reverse doms))))))))
 
-(defn tabs-holder-item-R
-  "Return the item that holds all the tabs."
-  [store]
-  (expr-let [holders (matching-items '(nil :tabs) store)]
-    (first holders)))
-
-(defn first-tab-R
-  "Return the first tab, if there is one."
-  [store]
-  (expr-let [holder (tabs-holder-item-R store)
-             tabs (expr order-items-R (entity/label->elements holder :tab))]
-    (first tabs)))

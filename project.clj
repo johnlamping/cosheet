@@ -11,6 +11,7 @@
                  [ring-transit "0.1.4"]
                  [compojure "1.3.4"]
                  [hiccup "1.0.5"]
+                 [clojure-csv/clojure-csv "2.0.1"]
                  ;; Client side
                  [org.clojure/clojurescript "1.8.40"]
                  [reagent "0.5.1"]

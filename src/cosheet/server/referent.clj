@@ -15,7 +15,8 @@
                                     template-matches]])
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
-                                  furthest-item]])))
+                                  furthest-item]]
+             [model-utils :refer [get-new-string]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -553,34 +554,6 @@
                     (set (instantiate-to-items minus immutable-store))
                     (instantiate-to-items plus immutable-store))])
     :virtual []))
-
-(defn next-new-string
-  "Given a string, return the next string."
-  [string]
-  (if (empty? string)
-    "A"
-    (let [prefix (subs string 0 (dec (count string)))
-          end (last string)]
-      (if (>= (int end) (int \Z))
-        (str (next-new-string prefix) "A")
-        (str prefix (char (inc (int end))))))))
-
-(defn get-new-string
-  "Given an immutable store, return a new short string of all cap letters
-   that does not occur in the store, and an updated store that knows what
-   the last new string was."
-  [store]
-  (let [last-string-item (first (matching-items
-                                 '(nil :last-new-string) store))]
-    (loop [last-new (when last-string-item (content last-string-item))]
-      (let [next-new (next-new-string last-new)]
-        (if (seq (matching-items next-new store))
-          (recur next-new)
-          [next-new
-           (if last-string-item
-             (update-content
-              store (:item-id last-string-item) next-new)
-             (first (add-entity store nil `(~next-new :last-new-string))))])))))
 
 (defn specialize-template
   "Adjust a template or condition to make it ready for adding as an

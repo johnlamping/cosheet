@@ -5,7 +5,7 @@
     [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store store-to-data  data-to-store]]
+                   read-store write-store store-to-data data-to-store]]
     mutable-store-impl
     [store-utils :refer [add-entity]]
     [query :refer [matching-items]]
@@ -14,11 +14,11 @@
     [state-map :refer [new-state-map]])
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
+    [model-utils :refer [first-tab-R new-tab-elements]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
                       instantiate-to-items specialize-template]]
     [render :refer [DOM-for-client-R user-visible-item?]]
-    [tabs-render :refer [first-tab-R new-tab-elements]]
     [dom-tracker :refer [new-dom-tracker add-dom]])))
 
 (defn update-add-blank-table-view
@@ -84,9 +84,18 @@
 ;;;               its state is a writer opened to append to the log file.>
 (def store-info (atom {}))
 
-(defn read-store-file [path]
-  (with-open [stream (clojure.java.io/input-stream path)]
-    (read-store (new-element-store) stream)))
+(defn read-store-file [url-path]
+  (or
+   (try
+     (with-open [stream (clojure.java.io/input-stream
+                         (url-path-to-file-path url-path ".cosheet"))]
+       (read-store (new-element-store) stream))
+     (catch java.io.FileNotFoundException e nil))
+   (comment (try
+              (with-open [stream (clojure.java.io/input-stream
+                                  (url-path-to-file-path url-path ".csv"))]
+                (convert-csv (new-element-store) stream))
+              (catch java.io.FileNotFoundException e nil)))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of store-info.
@@ -144,27 +153,25 @@
      ;; blank in that case.
      (when-let
          [info
-          (let [path (url-path-to-file-path url-path ".cosheet")]
-            (when (is-valid-path? path)
-              (let [immutable (try (read-store-file path)
-                                   (catch java.io.FileNotFoundException e
-                                     (starting-store)))
-                    log-stream (try (java.io.FileOutputStream.
-                                     (url-path-to-file-path
-                                      url-path ".cosheetlog")
-                                     true)
-                                    (catch java.io.FileNotFoundException e
-                                      nil))
-                    log-agent (when log-stream
-                                (agent (clojure.java.io/writer log-stream)))]
-                (when log-agent
-                  (when (= (.position (.getChannel log-stream)) 0)
-                    (send log-agent
-                          write-log-entry [:store (store-to-data immutable)]))
-                  (send log-agent write-log-entry [:opened])
-                  {:mutable (new-mutable-store immutable)
-                   :agent (agent immutable)
-                   :log-agent log-agent}))))]
+          (when (is-valid-path? (url-path-to-file-path url-path ".cosheet"))
+            (let [immutable (or (read-store-file url-path)
+                                (starting-store))
+                  log-stream (try (java.io.FileOutputStream.
+                                   (url-path-to-file-path
+                                    url-path ".cosheetlog")
+                                   true)
+                                  (catch java.io.FileNotFoundException e
+                                    nil))
+                  log-agent (when log-stream
+                              (agent (clojure.java.io/writer log-stream)))]
+              (when log-agent
+                (when (= (.position (.getChannel log-stream)) 0)
+                  (send log-agent
+                        write-log-entry [:store (store-to-data immutable)]))
+                (send log-agent write-log-entry [:opened])
+                {:mutable (new-mutable-store immutable)
+                 :agent (agent immutable)
+                 :log-agent log-agent})))]
        (swap! store-info #(assoc % url-path info))
        info))))
 

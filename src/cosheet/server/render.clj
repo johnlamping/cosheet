@@ -12,11 +12,12 @@
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
                                item-referent? instantiate-to-items]]
+             [model-utils :refer [ tabs-holder-item-R first-tab-R]]
              [render-utils :refer [make-component]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R must-show-label-item-DOM-R]]
              [table-render :refer [table-DOM-R]]
-             [tabs-render :refer [tabs-DOM-R tabs-holder-item-R first-tab-R]])))
+             [tabs-render :refer [tabs-DOM-R]])))
 
 ;;; Code to create hiccup style dom for a database entity.
 

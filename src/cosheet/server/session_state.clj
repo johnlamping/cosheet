@@ -14,10 +14,11 @@
     [state-map :refer [new-state-map]])
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
-    [model-utils :refer [first-tab-R new-tab-elements]]
+    [model-utils :refer [starting-store first-tab-R new-tab-elements
+                         specialize-template]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
-                      instantiate-to-items specialize-template]]
+                      instantiate-to-items]]
     [render :refer [DOM-for-client-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom]])))
 
@@ -32,14 +33,6 @@
     (update-add-entity-adjacent-to
      store (:item-id tabs-holder) specialized (order-element-for-item nil store)
      :after false)))
-
-(defn starting-store
-  []
-  (let [[store _] (add-entity (new-element-store) nil
-                              (list orderable/initial :unused-orderable))
-        [store _] (add-entity store nil '("tabs" (:tabs :non-semantic)))
-        [store _] (update-add-blank-table-view store "tab")]
-    store))
 
 (defn path-to-Path [path]
   (java.nio.file.Paths/get
@@ -155,7 +148,9 @@
          [info
           (when (is-valid-path? (url-path-to-file-path url-path ".cosheet"))
             (let [immutable (or (read-store-file url-path)
-                                (starting-store))
+                                (let [name (last (clojure.string/split
+                                                  url-path #"/"))]
+                                  (starting-store name)))
                   log-stream (try (java.io.FileOutputStream.
                                    (url-path-to-file-path
                                     url-path ".cosheetlog")

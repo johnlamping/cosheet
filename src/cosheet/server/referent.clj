@@ -16,7 +16,7 @@
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
                                   furthest-item]]
-             [model-utils :refer [get-new-string]])))
+             [model-utils :refer [specialize-template]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -554,32 +554,6 @@
                     (set (instantiate-to-items minus immutable-store))
                     (instantiate-to-items plus immutable-store))])
     :virtual []))
-
-(defn specialize-template
-  "Adjust a template or condition to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique string
-  with a leading non-breaking space, and each instance of '???x with
-  the same new string or the value from chosen-new-ids, if
-  present. Allocating new strings will require updating the store, and
-  those of the form '???x will be recorded in an updated
-  chosen-new-ids with a key of \"x\".  Return the new condition and a
-  pair of the new store, and the chosen strings."
-  [condition store-and-chosen]
-  (thread-recursive-map
-   (fn [item store-and-chosen]
-     (let [name (when (symbol? item) (str item))]
-       (if (and name (>= (count name) 3) (= (subs name 0 3) "???"))
-         (let [suffix (subs name 3)
-               [store chosen-new-ids] store-and-chosen]
-           (if-let [sym (chosen-new-ids suffix)]
-             [sym store-and-chosen]
-             (let [[string new-store] (get-new-string store)
-                   string (str "\u00A0" string)
-                   new-chosen (cond-> chosen-new-ids
-                                (not= suffix "") (assoc suffix string))]
-               [string [new-store new-chosen]])))
-         [item store-and-chosen])))
-   condition store-and-chosen))
 
 (defn adjust-adjacents
   "If there is one group of adjacents per subject, choose the one in

@@ -1,9 +1,15 @@
 (ns cosheet.server.model-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [store :refer [new-element-store]]
+                     [query :refer [matching-items matching-elements]]
+                     [entity :refer [to-list]]
                      [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
-            (cosheet.server [model-utils :refer :all])
+            (cosheet.server
+             [model-utils :refer :all]
+             [order-utils :refer [order-items-R]]
+             [referent :refer [item->canonical-semantic
+                               immutable-semantic-to-ordered-list]])
             ; :reload
             ))
 
@@ -16,3 +22,37 @@
     (is (= m1 {}))
     (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0C" "22"))))
     (is (= m2 {"1" "\u00A0C"}))))
+
+(deftest add-table-test
+  (let [s (starting-store "hi")
+        s1 (add-table s "there" [["a" "b"] [1 2] [3]])
+        tabs (matching-items '("there" (:tab :non-semantic)
+                               (nil
+                                (:non-semantic :non-semantic)
+                                (:tab-topic :non-semantic)
+                                (:table :non-semantic)))
+                             s1)
+        tab (first tabs)
+        rows (matching-items
+              '(nil (:top-level :non-semantic)) s1)
+        table (first (matching-elements
+                              '(nil (:table :non-semantic))
+                              tab))
+        row-condition (first (matching-elements
+                              '(nil (:row-condition :non-semantic)
+                                    (:non-semantic :non-semantic))
+                              table))
+        headers (matching-elements
+                 '(nil (:column :non-semantic)
+                       (:non-semantic :non-semantic))
+                 table)]
+    (is (= (count tabs) 1))
+    (is (= (immutable-semantic-to-ordered-list tab) "there"))
+    (is (check (map immutable-semantic-to-ordered-list (order-items-R rows))
+               ['("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag)))
+                '("" ("there" :tag) (3 ("a" :tag)))]))
+    (is (check (immutable-semantic-to-list row-condition)
+               '(anything ("there" :tag))))
+    (is (check (map immutable-semantic-to-ordered-list (order-items-R headers))
+               ['(anything-immutable ("a" :tag))
+                '(anything-immutable ("b" :tag))]))))

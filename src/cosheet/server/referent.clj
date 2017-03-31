@@ -15,7 +15,7 @@
                                     template-matches]])
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
-                                  furthest-item]]
+                                  order-items-R furthest-item]]
              [model-utils :refer [specialize-template]])))
 
 ;;; Commands are typically run with respect to a referent, which
@@ -381,6 +381,8 @@
 ;;; elements. Non-semantic elements will always themselves have an
 ;;; element with :non-semantic as content.
 
+;;; TODO: move these to model_utils.
+
 (defn semantic-element?-R
   "Return true if an element counts as semantic information for its subject.
   (Doesn't have a :non-semantic element.)"
@@ -398,12 +400,26 @@
 
 (defn immutable-semantic-to-list
   "Given an immutable item, make a list representation of the
-  semantic information of the item."
+  semantic information of the item, respecting order information."
   [item]
   (if (atom? item)
     (content item)
     (let [content (content item)
           elements (semantic-elements-R item)
+          content-semantic (immutable-semantic-to-list content)
+          element-semantics (map immutable-semantic-to-list elements)]
+      (if (empty? element-semantics)
+        content-semantic
+        (apply list (into [content-semantic] element-semantics))))))
+
+(defn immutable-semantic-to-ordered-list
+  "Given an immutable item, make a list representation of the
+  semantic information of the item, respecting order information."
+  [item]
+  (if (atom? item)
+    (content item)
+    (let [content (content item)
+          elements (order-items-R (semantic-elements-R item))
           content-semantic (immutable-semantic-to-list content)
           element-semantics (map immutable-semantic-to-list elements)]
       (if (empty? element-semantics)

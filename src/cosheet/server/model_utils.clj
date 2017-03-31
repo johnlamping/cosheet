@@ -161,39 +161,40 @@
         order-element (order-element-for-item nil store)]
     [(reduce
       (fn [store row]
-        (println (simplify-for-print [store row row-template order-element]))
-         (let [[store row-id] (update-add-entity-adjacent-to
-                               store nil row-template
-                               order-element :before false)]
-           (reduce
-            (fn [store [header-value cell-value]]
-              (first (update-add-entity-adjacent-to
-                      store row-id `(~cell-value (~header-value :tag))
-                      order-element :before false))
-              store
-              (map vector headers row)))))
-       store
-       rows)
+        (let [[store row-id] (update-add-entity-adjacent-to
+                              store nil row-template
+                              order-element :before false)]
+          (reduce
+           (fn [store [header-value cell-value]]
+             (first (update-add-entity-adjacent-to
+                     store row-id `(~cell-value (~header-value :tag))
+                     order-element :before false)))
+           store
+           (map vector headers row))))
+      store
+      data-rows)
      headers]))
 
-(defn add-table
+(defn add-table-tab
   "Given a sequence of header names, add a tab with a table consisting of those
   headers."
   [store table-name headers]
   (let [tabs-holder (tabs-holder-item-R store)
         last-tab (last (matching-items '(nil :tabs) store))
-        order-item (order-element-for-item last-tab)
         [store new-tab] (update-add-entity-adjacent-to
                          store tabs-holder
                          (cons table-name
-                               (new-tab-elements
+                               (new-tab-table-elements
                                 [`(~table-name :tag)]
-                                (map (fn [header] [`(~header :tag)])))))]))
+                                (map (fn [header] [`(~header :tag)])
+                                     headers)))
+                         last-tab :after true)]
+    store))
 
-(defn add-csv
+(defn add-table
   "Given a sequence of rows, each a sequence of values,
   add a table corresponding to them to the store, with its own tab."
   [store table-name rows]
-  (let [rows-template `("" (~table-name :tag))
+  (let [rows-template `("" (~table-name :tag) (:top-level :non-semantic))
         [store headers] (add-rows store rows rows-template)]
-    (add-table store table-name headers)))
+    (add-table-tab store table-name headers)))

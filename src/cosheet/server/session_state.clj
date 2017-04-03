@@ -85,7 +85,11 @@
   (try
     (with-open [reader (clojure.java.io/reader path)]
       (let [csved (parse-csv reader)
-            parsed-rows (map #(map parse-string-as-number %) csved)]
+            parsed-rows (map (fn [csv] (map #(-> %
+                                                 clojure.string/trim
+                                                 parse-string-as-number)
+                                            csv))
+                             csved)]
         (add-table (starting-store nil) name parsed-rows)))
     (catch java.io.FileNotFoundException e nil)))
 

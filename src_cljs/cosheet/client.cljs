@@ -209,7 +209,7 @@
     (when (and alt meta)
       (when (= key-codes/R key-code)
         (request-replay :all)))
-    (when (and alt (not (or ctrl meta)))
+    (when (and ctrl (not alt) (not meta))
       (let [command (cond (= key-codes/EQUALS key-code) [:add-twin]
                           (= key-codes/NUM_PLUS key-code) [:add-twin] 
                           (= key-codes/PERIOD key-code) [:add-element]

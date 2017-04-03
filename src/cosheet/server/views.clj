@@ -66,34 +66,34 @@
       [:div#toolbar.toolbar
        [:div#undo.tool
         [:img {:src "../icons/undo.gif"}]
-        [:div.tooltip "undo"]]
+        [:div.tooltip "undo (C-Z)"]]
        [:div#redo.tool
         [:img {:src "../icons/redo.gif"}]
-        [:div.tooltip "redo"]]
+        [:div.tooltip "redo (C-Y)"]]
        [:div.toolgap]
        [:div#expand.tool
         [:img {:src "../icons/expand.gif"}]
-        [:div.tooltip "expand"]]
+        [:div.tooltip "expand (C-E)"]]
        [:div.toolgap]
        [:div#add-twin.tool
         [:img {:src "../icons/add_twin.gif"}]
-        [:Div.tooltip "add twin"]]
+        [:Div.tooltip "add twin (C-=)"]]
        [:div#add-element.tool
         [:img {:src "../icons/add_element.gif"}]
-        [:div.tooltip "add element"]]
+        [:div.tooltip "add element (C->)"]]
        [:div#add-label.tool
         [:img {:src "../icons/add_label.gif"}]
-        [:div.tooltip "add label"]]
+        [:div.tooltip "add label (C-L)"]]
        [:div#add-sibling.tool
         [:img {:src "../icons/add_sibling.gif"}]
-        [:div.tooltip "add sibling below"]]
+        [:div.tooltip "add sibling below (C-S)"]]
        [:div.toolgap]
        [:div#add-row.tool
         [:img {:src "../icons/add_row.gif"}]
-        [:div.tooltip "add row below"]]
+        [:div.tooltip "add row below (C-_)"]]
        [:div#add-column.tool
         [:img {:src "../icons/add_column.gif"}]
-        [:div.tooltip "add column right"]]]
+        [:div.tooltip "add column right (C-|)"]]]
       [:div#app "Root"] ;; Client will create a component with id "root".
       [:div#select_holder.select_holder
        [:input#edit_input {"type" "text"}]

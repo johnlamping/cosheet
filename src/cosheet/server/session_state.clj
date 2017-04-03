@@ -1,8 +1,10 @@
 (ns cosheet.server.session-state
   (:import [java.nio.file Files CopyOption StandardCopyOption])
   (:require
+   [clojure-csv.core :refer [parse-csv]]
    (cosheet
-    [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value]]
+    [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value
+                   parse-string-as-number]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store]]
@@ -14,7 +16,7 @@
     [state-map :refer [new-state-map]])
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
-    [model-utils :refer [starting-store first-tab-R new-tab-elements
+    [model-utils :refer [starting-store add-table first-tab-R new-tab-elements
                          specialize-template]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
@@ -77,6 +79,16 @@
 ;;;               its state is a writer opened to append to the log file.>
 (def store-info (atom {}))
 
+(defn read-csv
+  "Read a csv file, turning it into a store."
+  [path name]
+  (try
+    (with-open [reader (clojure.java.io/reader path)]
+      (let [csved (parse-csv reader)
+            parsed-rows (map #(map parse-string-as-number %) csved)]
+        (add-table (starting-store nil) name parsed-rows)))
+    (catch java.io.FileNotFoundException e nil)))
+
 (defn read-store-file [url-path]
   (or
    (try
@@ -84,11 +96,10 @@
                          (url-path-to-file-path url-path ".cosheet"))]
        (read-store (new-element-store) stream))
      (catch java.io.FileNotFoundException e nil))
-   (comment (try
-              (with-open [stream (clojure.java.io/input-stream
-                                  (url-path-to-file-path url-path ".csv"))]
-                (convert-csv (new-element-store) stream))
-              (catch java.io.FileNotFoundException e nil)))))
+   (let [store
+         (read-csv (url-path-to-file-path url-path ".csv")
+                   (last (clojure.string/split url-path #"/")))]
+     store)))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of store-info.

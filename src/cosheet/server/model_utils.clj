@@ -1,6 +1,5 @@
 (ns cosheet.server.model-utils
-  (:require [clojure-csv.core :refer [parse-csv]]
-            (cosheet [debug :refer [simplify-for-print]]
+  (:require (cosheet [debug :refer [simplify-for-print]]
                      [utils :refer [thread-recursive-map]]
                      [orderable :as orderable]
                      [expression :refer [expr expr-let expr-seq]]
@@ -119,24 +118,24 @@
 (def new-tab-elements (new-tab-table-elements ['(??? :tag)] [['(??? :tag)]]))
 
 (defn starting-store
-  "Return an initial store for a file with the given name. It will have
-  a single tab with that name and a table with that name."
-  [name]
+  "Return an initial store. If a tab name is provided, the store
+  will have a single tab with that name and a table with that name."
+  [tab-name]
   (let [[store orderable-id] (add-entity
                               (new-element-store) nil
                               (list orderable/initial :unused-orderable))
         [store tabs-holder-id] (add-entity store nil
-                                           '("tabs" (:tabs :non-semantic)))
-        [initial-tab [store _]] (specialize-template
-                                 (cons "" (cons name (new-tab-table-elements
-                                                      [`(~name :tag)]
+                                           '("tabs" (:tabs :non-semantic)))]
+    (if tab-name
+      (let [[tab [store _]] (specialize-template
+                             (cons "" (cons tab-name (new-tab-table-elements
+                                                      [`(~tab-name :tag)]
                                                       [['(??? :tag)]])))
-                                 [store {}])
-        [store _] (update-add-entity-adjacent-to
-                   store tabs-holder-id initial-tab                   
-                   (description->entity orderable-id store) :after false)]
-    store))
-
+                             [store {}])]
+        (first (update-add-entity-adjacent-to
+                store tabs-holder-id tab                   
+                (description->entity orderable-id store) :after false)))
+      store)))
 
 ;;; CSV file importing
 
@@ -182,12 +181,12 @@
   (let [tabs-holder (tabs-holder-item-R store)
         last-tab (last (matching-items '(nil :tabs) store))
         [store new-tab] (update-add-entity-adjacent-to
-                         store tabs-holder
-                         (cons table-name
-                               (new-tab-table-elements
-                                [`(~table-name :tag)]
-                                (map (fn [header] [`(~header :tag)])
-                                     headers)))
+                         store (:item-id tabs-holder)
+                         (cons "" (cons table-name
+                                        (new-tab-table-elements
+                                         [`(~table-name :tag)]
+                                         (map (fn [header] [`(~header :tag)])
+                                              headers))))
                          last-tab :after true)]
     store))
 

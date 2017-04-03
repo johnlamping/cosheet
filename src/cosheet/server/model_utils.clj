@@ -94,9 +94,9 @@
              tabs (expr order-items-R (label->elements holder :tab))]
     (first tabs)))
 
-(defn new-tab-table-elements
-  "Return the elements for a new tab for a table with the given row condition
-  and column conditions."
+(defn table-tab-non-semantic-elements
+  "Return the non-semantic elements for a new tab for a table
+  with the given row condition and column conditions."
   [row-condition-elements header-conditions-elements]
   `((:tab :non-semantic)
     ~(concat
@@ -115,7 +115,8 @@
                                   '(:non-semantic :non-semantic)])))
            header-conditions-elements))))
 
-(def new-tab-elements (new-tab-table-elements ['(??? :tag)] [['(??? :tag)]]))
+(def new-tab-elements
+  (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))
 
 (defn starting-store
   "Return an initial store. If a tab name is provided, the store
@@ -128,9 +129,10 @@
                                            '("tabs" (:tabs :non-semantic)))]
     (if tab-name
       (let [[tab [store _]] (specialize-template
-                             (cons "" (cons tab-name (new-tab-table-elements
-                                                      [`(~tab-name :tag)]
-                                                      [['(??? :tag)]])))
+                             (cons "" (cons tab-name
+                                            (table-tab-non-semantic-elements
+                                             [`(~tab-name :tag)]
+                                             [['(??? :tag)]])))
                              [store {}])]
         (first (update-add-entity-adjacent-to
                 store tabs-holder-id tab                   
@@ -183,7 +185,7 @@
         [store new-tab] (update-add-entity-adjacent-to
                          store (:item-id tabs-holder)
                          (cons "" (cons table-name
-                                        (new-tab-table-elements
+                                        (table-tab-non-semantic-elements
                                          [`(~table-name :tag)]
                                          (map (fn [header] [`(~header :tag)])
                                               headers))))

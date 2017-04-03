@@ -26,7 +26,7 @@
 (deftest add-table-test
   (let [s (starting-store "hi")
         s1 (add-table s "there" [["a" "b"] [1 2] [3]])
-        tabs (matching-items '("there" (:tab :non-semantic)
+        tabs (matching-items '(nil "there" (:tab :non-semantic)
                                (nil
                                 (:non-semantic :non-semantic)
                                 (:tab-topic :non-semantic)
@@ -47,7 +47,7 @@
                        (:non-semantic :non-semantic))
                  table)]
     (is (= (count tabs) 1))
-    (is (= (immutable-semantic-to-ordered-list tab) "there"))
+    (is (= (immutable-semantic-to-ordered-list tab) '("" "there")))
     (is (check (map immutable-semantic-to-ordered-list (order-items-R rows))
                ['("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag)))
                 '("" ("there" :tag) (3 ("a" :tag)))]))

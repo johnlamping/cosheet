@@ -45,7 +45,9 @@
         (when (<= (count example-elements) 1)
           (union-referent-if-needed
            (map (fn [tab-item tab-elements]
-                  (if (= (count tab-elements) 1)
+                  (if (or (= (count tab-elements) 1)
+                          ;; This case can come up while responding to a change.
+                          (empty? example-elements))
                     (item-referent tab-item)
                     (item-or-exemplar-referent
                      (first example-elements) (item-referent tab-item))))

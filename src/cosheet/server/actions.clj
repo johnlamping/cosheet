@@ -96,13 +96,6 @@
                select-pattern (description->entity (:item-id first-item) store))
               [old-key]]))))
 
-(defn add-and-select-virtual-elements
-  "Create actual elements for the virtual element, and select the first."
-  [store virtual-referent select-pattern old-key]
-  (let [[items [store _]] (instantiate-or-create-referent
-                           virtual-referent [store {}])]
-    (add-select-request store items select-pattern old-key)))
-
 (defn do-add-element
   [store arguments attributes]
   (let [{:keys [target-key select-pattern selector-category]} attributes]
@@ -152,9 +145,10 @@
 (defn do-add-virtual
   [store arguments attributes]
   (let [{:keys [referent key-prefix select-pattern]} arguments
-        select-pattern (or select-pattern (conj key-prefix [:pattern]))]
-    (add-and-select-virtual-elements
-     store referent select-pattern (:target-key attributes))))
+        select-pattern (or select-pattern (conj key-prefix [:pattern]))
+        [items [store _]] (instantiate-or-create-referent
+                           referent [store {}])]
+    (add-select-request store items select-pattern (:target-key attributes))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"

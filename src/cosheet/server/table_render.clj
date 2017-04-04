@@ -135,6 +135,7 @@
                             (~elements-template :condition)
                             (true :reference))
         select-pattern (conj (:key-prefix inherited)
+                             :nested
                              [:pattern `(nil ~element-variable)])
         adjacent-referent (hierarchy-node-parallel-items-referent
                            node-or-member subject-ref)]

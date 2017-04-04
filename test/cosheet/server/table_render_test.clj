@@ -141,7 +141,9 @@
                                             [(item-referent table)])
                                            (item-referent c1)
                                            :selector :first-group) 
-                                :select-pattern (conj table-key tag-pattern)}
+                                :select-pattern (conj table-key
+                                                      :nested
+                                                      tag-pattern)}
                    :delete {:referent delete-referent}
                    :add-element {:referent first-column-referent}}}]]
                (any)

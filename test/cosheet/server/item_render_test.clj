@@ -205,7 +205,8 @@
                                        '(nil :tag) (item-referent none)
                                        nil
                                        :selector :first-group) 
-                            :alternate :some-alternate}
+                            :alternate :some-alternate
+                            :key-prefix (conj age-key :label)}
                    :add-sibling {:referent (virtual-referent
                                              nil
                                              (item-referent age)
@@ -318,7 +319,8 @@
                                        '(nil ("confidence" :tag))
                                        (item-referent age)
                                        (item-referent pair)
-                                       :position :before)}
+                                       :position :before)
+                            :key-prefix age-key}
                    :add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
                                             all-elements-parallel-referent) 
@@ -466,7 +468,8 @@
                                              '(nil :tag)
                                              (item-referent item)
                                              nil
-                                             :position :after)}}]
+                                             :position :after)
+                                  :key-prefix item-key}}]
                   [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
                            :target {:referent (item-referent item)}

@@ -164,7 +164,8 @@
                                  :selector :first-group)
                                 (item-referent c6)
                                 :selector :first-group)
-                               :alternate true}}]]
+                               :alternate true
+                               :key-prefix table-key}}]]
               [:div {:class "table-rows selectees"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
@@ -221,7 +222,9 @@
                                          '(nil ("single" :tag))
                                          (item-referent joe)
                                          (item-referent joe)
-                                         :position :after)}
+                                         :position :after)
+                              :key-prefix (conj table-key
+                                                (:item-id joe) (:item-id c1))}
                      :delete {:referent (item-referent joe)}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))
@@ -254,4 +257,5 @@
                                 (item-referent c6)
                                 :selector :first-group)
                                (item-referent joe)
-                               (item-referent joe))}}]]))))))
+                               (item-referent joe))
+                              :key-prefix (conj table-key (:item-id joe))}}]]))))))

@@ -169,8 +169,8 @@
 
 (defn do-set-content
   [store arguments attributes]
-  (let [{:keys [from to immutable]} attributes
-        referent (:referent arguments)]
+  (let [{:keys [from to immutable target-key]} attributes
+        {:keys [referent key-prefix]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups [store _]] (instantiate-or-create-referent
@@ -180,16 +180,10 @@
           (let [new-store (reduce (partial update-set-content-if-matching
                                            from to)
                                   store items)]
-            ;; If we have set the content of a new tab, tell the client to
-            ;; select it.
-            ;; TODO: Make this apply to any virtual item,
-            ;; by using the key prefix?
-            (println "target-key" (:target-key attributes))
-            (if (and (= (:target-key attributes) [:virtualTab])
-                     (seq items))
-              {:store new-store
-               :select [[(item-referent (first items))]
-                        [(:target-key attributes)]]}
+            ;; If we have set a virtual item, tell the client to select it.
+            (if (and (virtual-referent? referent) key-prefix (seq items))
+              (add-select-request
+               new-store groups (conj key-prefix [:pattern]) target-key)
               new-store)))))))
 
 (defn do-expand
@@ -334,6 +328,7 @@
         target-key (when client-id (id->key tracker client-id))
         dom-attributes (key->attributes tracker target-key)
         attributes (-> dom-attributes
+                       ;; TODO: Move client-args to arguments.
                        (into client-args)
                        (assoc :target-key target-key
                               :session-state session-state))]

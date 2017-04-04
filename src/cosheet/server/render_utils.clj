@@ -60,7 +60,8 @@
                                :position position
                                :selector (when (:selector-category
                                                 inherited)
-                                           :first-group))}
+                                           :first-group))
+                    :key-prefix (:key-prefix inherited)}
                    inherited)})])
 
 (defn make-component

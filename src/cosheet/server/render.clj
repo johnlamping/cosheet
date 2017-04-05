@@ -55,7 +55,6 @@
                ; :referent        Item(s) referred to
                ; :select-pattern  The pattern to use to generate the key to
                ;                  select part of a new item.
-               ;                  Will have at most one of this and :key-prefix
                ; :alternate       If true, this target has an alternate
                ;                  interpretation, by narrowing the referent.
                ;                  :selector-category must be present.

@@ -38,21 +38,25 @@
 
 (defn substitute-in-key
   "Substitute into the key, instantiating patterns with the item.  A
-  pattern is of the form [:pattern <template>], where template is
+  pattern is of the form [:pattern :subject? <template>?], where template is
   either empty, or somewhere contains a variable named :v. An empty
   pattern will be replaced by the item, while a non-empty pattern gets
-  replaced by the id of the match for its variable."
+  replaced by the id of the match for its variable. If :subject is present,
+  the result of the pattern is the subject of the match."
   [key item]
   (vec (map (fn [part]
               (if (and (sequential? part)
                        (= (first part) :pattern))
-                (let [pattern (second part)]
-                  (if pattern
-                    (let [matches (template-matches pattern item)
-                          value (:v (first matches))]
-                      (assert value)
-                      (:item-id value))
-                    (:item-id item)))
+                (let [[subject? pattern] (if (= (second part) :subject)
+                                           [true (first (nnext part))]
+                                           [false (second part)])
+                      match (if pattern
+                              (let [matches (template-matches pattern item)
+                                    value (:v (first matches))]
+                                (assert value)
+                                value)
+                              item)]
+                  (:item-id (if subject? (subject match) match)))
                 part))
             key)))
 

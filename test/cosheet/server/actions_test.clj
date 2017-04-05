@@ -79,12 +79,18 @@
              [:pattern '(nil (:variable (:v :name)
                                         ("male" :condition)
                                         (:true :reference)))]
+             [:pattern :subject '(nil (39 (:variable (:v :name)
+                                                     ("age" :condition)
+                                                     (:true :reference))))]
              :foo "bar"]]
-    (is (check  (substitute-in-key key joe)
-                [(:item-id joe)
-                 (:item-id joe-bogus-age)
-                 (:item-id joe-male)
-                 :foo "bar"]))))
+    (is (check (substitute-in-key key joe)
+               [(:item-id joe)
+                (:item-id joe-bogus-age)
+                (:item-id joe-male)
+                (:item-id joe-bogus-age)
+                :foo "bar"]))
+    (is (check (substitute-in-key [[:pattern :subject]] joe-age)
+               [(:item-id joe)]))))
 
 (deftest do-add-element-test
   (let [result (do-add-element

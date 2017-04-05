@@ -428,7 +428,13 @@
   [adjacent-referent
    {:keys [column-id template exclusions]} ;; A column header description
    inherited]
-  (let [inherited (assoc inherited :template template)
+  (let [select (conj (vec (butlast (:key-prefix inherited)))
+                     [:pattern :subject] ;; The new row's id
+                     column-id
+                     [:pattern])
+        inherited (assoc inherited
+                         :template template
+                         :select-pattern select)
         key (conj (:key-prefix inherited) column-id)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)

@@ -131,7 +131,7 @@
                {:add-sibling {:referent (virtual-referent
                                          'nil (item-referent age)
                                          one-another-two-parallel-referent) 
-                              :key-prefix age-key
+                              :select-pattern (conj age-key [:pattern])
                               :alternate :some-alternate}}
                :selector-category :some-category
                :alternate-target :some-alternate}]]
@@ -151,7 +151,7 @@
                   {:add-sibling {:referent (virtual-referent
                                             'nil (item-referent age)
                                             one-another-two-parallel-referent) 
-                                 :key-prefix age-key
+                                 :select-pattern (conj age-key [:pattern])
                                  :alternate :some-alternate}}
                   :selector-category :some-category
                   :alternate-target :some-alternate}]]
@@ -174,7 +174,7 @@
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
                                             (item-referent two)) 
-                                 :key-prefix age-key
+                                 :select-pattern (conj age-key [:pattern])
                                  :alternate :some-alternate}}
                   :selector-category :some-category
                   :alternate-target :some-alternate}]]
@@ -192,7 +192,7 @@
                                              '(nil ("confidence" :tag))
                                              (item-referent age)
                                              (item-referent two)) 
-                                  :key-prefix age-key
+                                  :select-pattern (conj age-key [:pattern])
                                   :alternate :some-alternate}}
                    :selector-category :some-category
                    :alternate-target :some-alternate}]]]]]]]
@@ -206,12 +206,12 @@
                                        nil
                                        :selector :first-group) 
                             :alternate :some-alternate
-                            :key-prefix (conj age-key :label)}
+                            :select-pattern (conj age-key :label [:pattern])}
                    :add-sibling {:referent (virtual-referent
                                              nil
                                              (item-referent age)
                                              (item-referent none)) 
-                                  :key-prefix age-key
+                                  :select-pattern (conj age-key [:pattern])
                                   :alternate :some-alternate}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
@@ -227,7 +227,7 @@
                                          nil
                                          (item-referent age)
                                          (item-referent none)) 
-                              :key-prefix age-key
+                              :select-pattern (conj age-key [:pattern])
                               :alternate :some-alternate}}}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
@@ -312,7 +312,7 @@
                 {:add-sibling {:referent (virtual-referent
                                           nil (item-referent age)
                                           all-elements-parallel-referent) 
-                               :key-prefix age-key}}}]]]
+                               :select-pattern (conj age-key [:pattern])}}}]]]
             [:div {:class "editable"
                    :key (conj age-key :example-element (:item-id confidence1))
                    :target {:referent (virtual-referent
@@ -320,11 +320,11 @@
                                        (item-referent age)
                                        (item-referent pair)
                                        :position :before)
-                            :key-prefix age-key}
+                            :select-pattern (conj age-key [:pattern])}
                    :add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
                                             all-elements-parallel-referent) 
-                                 :key-prefix age-key}}]]
+                                 :select-pattern (conj age-key [:pattern])}}]]
            ;; Group for confidence and likelihood.
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent"}
@@ -342,7 +342,7 @@
                                            '(nil ("confidence" :tag))
                                            (item-referent age)
                                            likelihoods-parallel-referent) 
-                                :key-prefix age-key}}}]]]]
+                                :select-pattern (conj age-key [:pattern])}}}]]]]
             [:div {:class "item-stack"}
              ;; Pair
              [:component {:key (conj age-key (:item-id pair))}
@@ -358,7 +358,7 @@
                                           '(nil ("confidence" :tag))
                                           (item-referent age)
                                           likelihoods-parallel-referent) 
-                               :key-prefix age-key}}}]]
+                               :select-pattern (conj age-key [:pattern])}}}]]
              ;; Double
              [:component {:key (conj age-key (:item-id double))}
               [item-without-labels-DOM-R double (any)
@@ -380,7 +380,7 @@
                                            '(nil ("confidence" :tag))
                                            (item-referent age)
                                            (item-referent two)) 
-                                :key-prefix age-key}}}]]]]
+                                :select-pattern (conj age-key [:pattern])}}}]]]]
             [:component {:key (conj age-key (:item-id two))}
              [item-without-labels-DOM-R two (as-set [confidence2 probability])
               {:priority 1
@@ -394,7 +394,7 @@
                                          '(nil ("confidence" :tag))
                                          (item-referent age)
                                          (item-referent two)) 
-                              :key-prefix age-key}}}]]]
+                              :select-pattern (conj age-key [:pattern])}}}]]]
            ;; Group for confidence
            [:div {:class "horizontal-tags-element wide"}
             [:div {:class "tag horizontal-header indent bottom-border"}
@@ -412,7 +412,7 @@
                                           '(nil ("confidence" :tag))
                                           (item-referent age)
                                           (item-referent one)) 
-                               :key-prefix age-key}}}]]]]]]))))
+                               :select-pattern (conj age-key [:pattern])}}}]]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels
@@ -469,7 +469,7 @@
                                              (item-referent item)
                                              nil
                                              :position :after)
-                                  :key-prefix item-key}}]
+                                  :select-pattern (conj item-key [:pattern])}}]
                   [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
                            :target {:referent (item-referent item)}

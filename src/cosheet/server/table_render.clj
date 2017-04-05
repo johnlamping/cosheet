@@ -369,8 +369,8 @@
       (add-attributes dom {:class "table-cell has-border"}))))
 
 (defn table-virtual-column-cell-DOM
-  [row-item new-row-template
-   {:keys [column-id template exclusions]}
+  [row-item
+   {:keys [column-id template]} ;; A column header description
    inherited]
   (let [inherited (assoc inherited :template template)
         key (conj (:key-prefix inherited) column-id)]
@@ -389,7 +389,7 @@
                               :template template)]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM
-       row-item new-row-template header-description inherited)
+       row-item header-description inherited)
       (expr-let [matches (matching-elements template row-item)
                  do-not-show (when exclusions
                                (expr-seq map #(matching-elements

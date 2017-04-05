@@ -61,7 +61,9 @@
                                :selector (when (:selector-category
                                                 inherited)
                                            :first-group))
-                    :key-prefix (:key-prefix inherited)}
+                    :select-pattern (or (:select-pattern inherited)
+                                        (conj (:key-prefix inherited)
+                                              [:pattern]))}
                    inherited)})])
 
 (defn make-component

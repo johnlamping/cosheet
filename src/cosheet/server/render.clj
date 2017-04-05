@@ -53,7 +53,6 @@
                ; :special         A keyword indicating a special action
                ;                  to perform on commands.
                ; :referent        Item(s) referred to
-               ; :key-prefix      A prefix for the key of a virtual new item.
                ; :select-pattern  The pattern to use to generate the key to
                ;                  select part of a new item.
                ;                  Will have at most one of this and :key-prefix

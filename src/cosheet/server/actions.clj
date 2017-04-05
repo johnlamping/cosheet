@@ -144,8 +144,7 @@
 
 (defn do-add-virtual
   [store arguments attributes]
-  (let [{:keys [referent key-prefix select-pattern]} arguments
-        select-pattern (or select-pattern (conj key-prefix [:pattern]))
+  (let [{:keys [referent select-pattern]} arguments
         [items [store _]] (instantiate-or-create-referent
                            referent [store {}])]
     (add-select-request store items select-pattern (:target-key attributes))))
@@ -170,7 +169,7 @@
 (defn do-set-content
   [store arguments attributes]
   (let [{:keys [from to immutable target-key]} attributes
-        {:keys [referent key-prefix]} arguments]
+        {:keys [referent select-pattern]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups [store _]] (instantiate-or-create-referent
@@ -181,9 +180,8 @@
                                            from to)
                                   store items)]
             ;; If we have set a virtual item, tell the client to select it.
-            (if (and (virtual-referent? referent) key-prefix (seq items))
-              (add-select-request
-               new-store groups (conj key-prefix [:pattern]) target-key)
+            (if (and (virtual-referent? referent) select-pattern (seq items))
+              (add-select-request new-store groups select-pattern target-key)
               new-store)))))))
 
 (defn do-expand

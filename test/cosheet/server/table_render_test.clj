@@ -165,7 +165,7 @@
                                 (item-referent c6)
                                 :selector :first-group)
                                :alternate true
-                               :key-prefix table-key}}]]
+                               :select-pattern (conj table-key [:pattern])}}]]
               [:div {:class "table-rows selectees"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
@@ -223,8 +223,9 @@
                                          (item-referent joe)
                                          (item-referent joe)
                                          :position :after)
-                              :key-prefix (conj table-key
-                                                (:item-id joe) (:item-id c1))}
+                              :select-pattern (conj table-key
+                                                    (:item-id joe) (:item-id c1)
+                                                    [:pattern])}
                      :delete {:referent (item-referent joe)}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))
@@ -258,4 +259,6 @@
                                 :selector :first-group)
                                (item-referent joe)
                                (item-referent joe))
-                              :key-prefix (conj table-key (:item-id joe))}}]]))))))
+                              :select-pattern (conj table-key
+                                                    (:item-id joe)
+                                                    [:pattern])}}]]))))))

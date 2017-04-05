@@ -92,7 +92,7 @@
                  :target {:referent (virtual-referent
                                      "" (virtual-tab-referent
                                          new-tab-elements t3) nil)
-                          :key-prefix [:foo]}}]
+                          :select-pattern [:foo [:pattern]]}}]
           (let [inherited (assoc starting-inherited
                                  :subject-referent (item-referent t3)
                                  :selectable-attributes
@@ -140,7 +140,7 @@
                    :target {:referent (virtual-referent
                                        '(nil) (item-referent t1)
                                        (item-referent t1))
-                            :key-prefix [:foo :nested]}
+                            :select-pattern [:foo :nested [:pattern]]}
                    :add-column {:referent
                                 (virtual-tab-referent
                                  (concat [""] new-tab-elements ["foo"])

@@ -67,7 +67,7 @@
 ;;;                  refers to the sequence of groups
 ;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
 ;;;                            <adjacent-referent> position use-bigger selector]
-;;;                  For each group of items refered to by sequence-referent
+;;;                  For each group of items refered to by subject-referent,
 ;;;                  refers to a group of new items matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
 ;;;                  and may be a template, with 'anything or refer to an

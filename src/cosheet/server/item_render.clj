@@ -39,7 +39,7 @@
                 subject-ref
                 (hierarchy-node-parallel-items-referent
                  hierarchy-node subject-ref))
-     :key-prefix (:key-prefix inherited)}))
+     :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update

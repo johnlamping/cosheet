@@ -13,3 +13,5 @@ pom.xml.asc
 test/cosheet/.DS_Store
 
 test/.DS_Store
+
+*.command

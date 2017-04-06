@@ -149,7 +149,7 @@
 (defn do-add-virtual
   [store arguments attributes]
   (let [{:keys [referent select-pattern]} arguments
-        [items store] (instantiate-or-create-referent referent store)]
+        [items new-ids store] (instantiate-or-create-referent referent store)]
     (add-select-request store items select-pattern (:target-key attributes))))
 
 (defn update-delete
@@ -175,7 +175,8 @@
         {:keys [referent select-pattern]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
-        (let [[groups store] (instantiate-or-create-referent referent store)
+        (let [[groups new-ids store] (instantiate-or-create-referent
+                                        referent store)
               items (apply concat groups)]
           (println "updating " (count items) " items")
           (let [new-store (reduce (partial update-set-content-if-matching

@@ -199,12 +199,14 @@
 (deftest instantiate-or-create-referent-test
   (let [referent (exemplar-referent joe-age (item-referent jane))]
     (is (= (instantiate-or-create-referent referent store)
-           [[[jane-age]] store])))
+           [[[jane-age]] nil store])))
   ;; The simplest virtual referent.
   (let [referent (virtual-referent "male" (item-referent jane)
                                    (item-referent jane-age))
-        [groups store0] (instantiate-or-create-referent referent store)]
+        [groups new-ids store0] (instantiate-or-create-referent
+                                 referent store)]
     (is (check groups [[(any)]]))
+    (is (= new-ids [(:item-id (first (first groups)))]))
     (let [[[item]] groups
           new-jane (in-different-store jane item)]
       (is (= (:store item) store0))
@@ -214,16 +216,17 @@
              (canonicalize-list
               '("Jane" "female" (45 ("age" tag)) "male")))))
     ;; Check first-group-referent on virtuals
-    (let [[groups1 store1] (instantiate-or-create-referent
-                            (first-group-referent referent) store)]
+    (let [[groups1 new-ids store1] (instantiate-or-create-referent
+                                    (first-group-referent referent) store)]
       (is (= groups1 groups))
       (is (= store1 store0))))
   ;; A referent for the exemplar.
   (let [referent (virtual-referent joe-male (item-referent jane)
                                    (item-referent jane-age))
-        [groups store] (instantiate-or-create-referent
-                                 referent store)]
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
     (is (check groups [[(any)]]))
+    (is (= new-ids [(:item-id (first (first groups)))]))
     (let [[[item]] groups
           new-jane (in-different-store jane item)]
       (is (= (:store item) store))
@@ -237,9 +240,10 @@
                                    (query-referent '(nil (nil "age")))
                                    (query-referent '(nil (nil "age")))
                                    :position :before)
-        [groups store] (instantiate-or-create-referent
-                                 referent store)]
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
     (is (check groups [[(any) (any)]]))
+    (is (= new-ids [(:item-id (first (first groups)))]))
     (let [[[item1 item2]] groups
           new-joe (in-different-store joe item1)
           new-jane (in-different-store jane item1)]
@@ -256,37 +260,21 @@
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
               '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))))
-  ;; Exemplar is virtual.
+  ;; Exemplar is virtual, and needs adjusting
   (let [referent (virtual-referent
                   (virtual-referent '??? (item-referent jane)
                                     (item-referent jane))
                   (item-referent joe) (item-referent joe))
-        [groups store] (instantiate-or-create-referent referent store)]
-    (is (check groups [[(any)]]))
-    (let [[[item]] groups
-          new-joe (in-different-store joe item)
-          new-jane (in-different-store jane item)]
-      (is (= (:store item) store))
-      (is (= (entity/subject item) new-joe))
-      (is (= (semantic-to-list-R item) "\u00A0A"))
-      (is (= (canonicalize-list (semantic-to-list-R new-joe))
-             (canonicalize-list
-              '("Joe" "\u00A0A" "male" (45 ("age" tag))
-                (39 ("age" tag) ("doubtful" "confidence")) "married"))))
-      (is (= (canonicalize-list (semantic-to-list-R new-jane))
-             (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) "\u00A0A"))))))
-  ;; Exemplar needs adjusting
-  (let [referent (virtual-referent
-                  (virtual-referent '??? (item-referent jane)
-                                    (item-referent jane))
-                  (item-referent joe) (item-referent joe))
-        [groups store] (instantiate-or-create-referent referent store)]
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
     (is (check groups [[(any)]]))
     (let [[[item]] groups
           new-joe (in-different-store joe item)
           new-jane (in-different-store jane item)
           new-sym (semantic-to-list-R item)]
+      (is (check new-ids [(:item-id (first (first groups))) (any)]))
+      (is (= (semantic-to-list-R (description->entity (second new-ids) store))
+             new-sym))
       (is (= (:store item) store))
       (is (= (entity/subject item) new-joe))
       (is (= new-sym "\u00A0A"))
@@ -303,13 +291,18 @@
                   (virtual-referent '??? (item-referent joe)
                                     (item-referent joe))
                   (item-referent joe))
-        [groups store] (instantiate-or-create-referent
-                                 referent store)]
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
     (is (check groups [[(any)]]))
     (let [[[item]] groups
           new-joe (in-different-store joe item)
           new-jane (in-different-store jane item)
           new-sym (semantic-to-list-R item)]
+      (is (check new-ids [(:item-id (first (first groups))) (any) (any)]))
+      (is (= (semantic-to-list-R (description->entity (second new-ids) store))
+             `("\u00A0B" ~new-sym)))
+      (is (= (semantic-to-list-R (description->entity (nth new-ids 2) store))
+             new-sym))
       (is (= (:store item) store))
       (is (= (entity/subject (entity/subject item)) new-joe))
       (is (= new-sym "\u00A0A"))

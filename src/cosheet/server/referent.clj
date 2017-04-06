@@ -645,35 +645,38 @@
   "Run instantiate-or-create-referent on all referents in the exemplar."
   [exemplar store]
   (cond (referent? exemplar)
-        (let [[groups store]
+        (let [[groups new-ids store]
               (instantiate-or-create-referent exemplar store)]
-          [(semantic-to-list-R (first (first groups))) store])
+          [(semantic-to-list-R (first (first groups))) new-ids store])
         (seq? exemplar)
-        (thread-recursive-map
-         (fn [exemplar store]
-           (if (referent? exemplar)
-             (let [[groups store]
-                   (instantiate-or-create-referent exemplar store)]
-               [(semantic-to-list-R (first (first groups))) store])
-             [exemplar store]))
-         exemplar
-         store)
+        (let [[exemplar [new-ids store]]
+              (thread-recursive-map
+               (fn [exemplar [new-ids store]]
+                 (if (referent? exemplar)
+                   (let [[groups newest-ids store]
+                         (instantiate-or-create-referent exemplar store)]
+                     [(semantic-to-list-R (first (apply concat groups)))
+                      [(concat new-ids newest-ids) store]])
+                   [exemplar [nil store]]))
+               exemplar [nil store])]
+          [exemplar new-ids store])
         true
-        [exemplar store]))
+        [exemplar nil store]))
 
 (defn create-virtual-referent
   "Create items for virtual referents. Return the groups
-  of new items, and the updated store."
+  of new items,  a seq of ids of the first item created for this referent
+  and each nested virtual referent, and the updated store."
   [referent store]
   (assert (virtual-referent? referent))
   (let [[_ exemplar subject-referent adjacent-referent
          position use-bigger selector]
         referent
-        [template store]
+        [template new-template-ids store]
         (instantiate-or-create-exemplar exemplar store)
-        [subject-groups store]
+        [subject-groups new-subject-ids store]
         (if (nil? subject-referent)
-          [nil store]
+          [nil nil store]
           (instantiate-or-create-referent subject-referent store))
         adjacent-groups (if (nil? adjacent-referent)
                           subject-groups
@@ -683,18 +686,24 @@
           [(map-map (constantly nil) adjacent-groups)]
           subject-groups)
         adjacent-groups (adjust-adjacents
-                         subject-groups adjacent-groups position)]
-    (create-possible-selector-elements
-     template subject-groups adjacent-groups
-     position use-bigger selector store)))
+                         subject-groups adjacent-groups position)
+        [groups store] (create-possible-selector-elements
+                        template subject-groups adjacent-groups
+                        position use-bigger selector store)]
+    [groups
+     (concat [(:item-id (first (apply concat groups)))]
+             new-subject-ids new-template-ids)
+     store]))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
-  for virtual referents. Return the groups, and the updated store."
+  for virtual referents. Return the groups, a seq of the ids of first item
+  created for this referent and each nested virtual referent, 
+  and the updated store."
   [referent store]
   (if (virtual-referent? referent)
     (create-virtual-referent referent store)
-    [(instantiate-referent referent store) store]))
+    [(instantiate-referent referent store) nil store]))
 
 
 

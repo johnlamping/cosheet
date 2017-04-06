@@ -230,6 +230,9 @@
                                             (:subject-referent inherited)
                                             adjacent-referent
                                             :selector :first-group)
+                         :select-pattern (conj (:key-prefix inherited)
+                                               :nested
+                                               [:pattern])
                          :template template)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
@@ -327,10 +330,9 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [hierarchy rows-referent inherited]
-  (let [inherited-down (assoc
-                        inherited
-                        :selector-category :table-header
-                        :alternate-target true)
+  (let [inherited-down (assoc inherited
+                              :selector-category :table-header
+                              :alternate-target true)
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)
                               (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
@@ -372,8 +374,8 @@
   [row-item
    {:keys [column-id template]} ;; A column header description
    inherited]
-  (let [inherited (assoc inherited :template template)
-        key (conj (:key-prefix inherited) column-id)]
+  (let [key (conj (:key-prefix inherited) column-id)
+        inherited (assoc inherited :template template)]
     (add-attributes
      (virtual-item-DOM key (:subject-referent inherited) :after inherited)
      {:class "table-cell virtual-column has-border"})))

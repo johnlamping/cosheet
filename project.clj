@@ -1,4 +1,4 @@
-(defproject cosheet "0.1.0-SNAPSHOT"
+(defproject cosheet "0.1.0"
   :description "Free form spreadsheet"
   :url ""
   :license {:name "Eclipse Public License"

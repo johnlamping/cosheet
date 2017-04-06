@@ -317,23 +317,18 @@
   ;; more interaction and UI design work to deal with the distinction
   ;; between elements of an item and elements on its content.
   (assert (entity/atom? content))
-  (let [is-placeholder (and (symbol? content)
-                            (= (subs (str content) 0 3) "??-"))
-        anything (#{'anything 'anything-immutable} content)]
+  (let [anything (#{'anything 'anything-immutable} content)]
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
            (into-attributes (select-keys inherited [:selector-category])
                             (:selectable-attributes inherited))
-           {:class (cond-> "content-text editable"
-                     is-placeholder (str " placeholder"))
+           {:class "content-text editable"
             :target (add-alternate-to-target
                      (assoc (select-keys inherited [:template])
                             :referent item-referent)
                      inherited)})
-     (cond anything "\u00A0..."
-           is-placeholder "???"                     
-           true (str content))]))
+     (if anything "\u00A0..." (str content))]))
 
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of non-label elements,

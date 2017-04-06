@@ -614,12 +614,11 @@
 (defn create-possible-selector-elements
   "Given that the first group of the subject may describe a selector, and
   the rest its selected, create appropriate elements both for the
-  selector and its selected. Return the new items and new store and chosen
-  specilized ids."
+  selector and its selected. Return the new items and new store."
   [template subject-groups adjacent-groups position use-bigger selector
-   store-and-chosen]
-  (let [[specialized-template [store chosen]]
-        (specialize-template template store-and-chosen)
+   store]
+  (let [[specialized-template store]
+        (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
         ;; The template for a non-selector
         template (-> flattened-template
@@ -634,49 +633,48 @@
             [items2 store] (create-elements-satisfying
                             template (rest subject-groups)
                             (rest adjacent-groups) position use-bigger store)]
-        [(concat items1 items2) [store chosen]])
+        [(concat items1 items2) store])
       (let [[items store] (create-elements-satisfying
                            template subject-groups adjacent-groups
                            position use-bigger store)]
-        [items [store chosen]]))))
+        [items store]))))
 
 (def instantiate-or-create-referent)
 
 (defn instantiate-or-create-exemplar
   "Run instantiate-or-create-referent on all referents in the exemplar."
-  [exemplar store-and-chosen]
+  [exemplar store]
   (cond (referent? exemplar)
-        (let [[groups store-and-chosen]
-              (instantiate-or-create-referent exemplar store-and-chosen)]
-          [(semantic-to-list-R (first (first groups))) store-and-chosen])
+        (let [[groups store]
+              (instantiate-or-create-referent exemplar store)]
+          [(semantic-to-list-R (first (first groups))) store])
         (seq? exemplar)
         (thread-recursive-map
-         (fn [exemplar store-and-chosen]
+         (fn [exemplar store]
            (if (referent? exemplar)
-             (let [[groups store-and-chosen]
-                   (instantiate-or-create-referent exemplar store-and-chosen)]
-               [(semantic-to-list-R (first (first groups))) store-and-chosen])
-             [exemplar store-and-chosen]))
+             (let [[groups store]
+                   (instantiate-or-create-referent exemplar store)]
+               [(semantic-to-list-R (first (first groups))) store])
+             [exemplar store]))
          exemplar
-         store-and-chosen)
+         store)
         true
-        [exemplar store-and-chosen]))
+        [exemplar store]))
 
 (defn create-virtual-referent
-  "Create items for virtual referents. The second argument is a pair
-  of an immutable store and a map of chosen new ids. Return the groups
-  of new items, and the updated second argument."
-  [referent store-and-chosen]
+  "Create items for virtual referents. Return the groups
+  of new items, and the updated store."
+  [referent store]
   (assert (virtual-referent? referent))
   (let [[_ exemplar subject-referent adjacent-referent
          position use-bigger selector]
         referent
-        [template [store chosen]]
-        (instantiate-or-create-exemplar exemplar store-and-chosen)
-        [subject-groups store-and-chosen]
+        [template store]
+        (instantiate-or-create-exemplar exemplar store)
+        [subject-groups store]
         (if (nil? subject-referent)
-          [nil [store chosen]]
-          (instantiate-or-create-referent subject-referent [store chosen]))
+          [nil store]
+          (instantiate-or-create-referent subject-referent store))
         adjacent-groups (if (nil? adjacent-referent)
                           subject-groups
                           (instantiate-referent adjacent-referent store))
@@ -688,17 +686,15 @@
                          subject-groups adjacent-groups position)]
     (create-possible-selector-elements
      template subject-groups adjacent-groups
-     position use-bigger selector store-and-chosen)))
+     position use-bigger selector store)))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
-  for virtual referents. The second argument is a pair of an immutable store
-  and a map of chosen new ids. Return the groups, and the updated
-  second argument."
-  [referent store-and-chosen]
+  for virtual referents. Return the groups, and the updated store."
+  [referent store]
   (if (virtual-referent? referent)
-    (create-virtual-referent referent store-and-chosen)
-    [(instantiate-referent referent (first store-and-chosen)) store-and-chosen]))
+    (create-virtual-referent referent store)
+    [(instantiate-referent referent store) store]))
 
 
 

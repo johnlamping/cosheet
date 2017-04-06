@@ -14,14 +14,12 @@
             ))
 
 (deftest specialize-template-test
-  (let [[c1 [s1 m1]] (specialize-template '("x" (??? :a) (??? 22))
-                                       [(new-element-store) {}])
-        [c2 [s2 m2]] (specialize-template '("x" (???1 "y") (???1 "22"))
-                                       [s1 {}])]
+  (let [[c1 s1] (specialize-template '("x" (??? :a) (??? 22))
+                                     (new-element-store))
+        [c2 s2] (specialize-template '("x" (??? "y") (??? "22"))
+                                     s1)]
     (is (= c1  '("x" ("\u00A0A" :a) ("\u00A0B" 22))))
-    (is (= m1 {}))
-    (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0C" "22"))))
-    (is (= m2 {"1" "\u00A0C"}))))
+    (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
 
 (deftest add-table-test
   (let [s (starting-store "hi")
@@ -51,7 +49,7 @@
     (is (check (map immutable-semantic-to-ordered-list (order-items-R rows))
                ['("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag)))
                 '("" ("there" :tag) (3 ("a" :tag)))]))
-    (is (check (immutable-semantic-to-list row-condition)
+    (is (check (immutable-semantic-to-ordered-list row-condition)
                '(anything ("there" :tag))))
     (is (check (map immutable-semantic-to-ordered-list (order-items-R headers))
                ['(anything-immutable ("a" :tag))

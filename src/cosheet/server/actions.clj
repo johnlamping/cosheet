@@ -106,9 +106,9 @@
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
-            [added [store _]] (create-possible-selector-elements
+            [added store] (create-possible-selector-elements
                                nil items items :after true selector
-                               [store {}])]
+                               store)]
         (add-select-request
          store added (conj target-key [:pattern]) target-key)))))
 
@@ -122,9 +122,9 @@
                      (seq (matching-elements :tag sample-item)))]
         (when (not is-tag)
           (let [selector (when selector-category :first-group)
-                [added [store _]] (create-possible-selector-elements
-                                   '(anything :tag) items items
-                                   :after true selector [store {}])]
+                [added store] (create-possible-selector-elements
+                               '(anything :tag) items items
+                               :after true selector store)]
             (add-select-request
              store added (conj (subvec target-key 0 (- (count target-key) 1))
                                :label [:pattern]) target-key)))))))
@@ -137,9 +137,9 @@
         (let [items (instantiate-referent referent store)
               subjects (map #(map subject %) items)
               selector (when selector-category :first-group)
-              [added [store _]] (create-possible-selector-elements
-                                 condition subjects items :after true selector
-                                 [store {}])
+              [added store] (create-possible-selector-elements
+                             condition subjects items :after true selector
+                             store)
               item-key (if (= (last target-key) :content)
                          (pop target-key)
                          target-key)]
@@ -149,8 +149,7 @@
 (defn do-add-virtual
   [store arguments attributes]
   (let [{:keys [referent select-pattern]} arguments
-        [items [store _]] (instantiate-or-create-referent
-                           referent [store {}])]
+        [items store] (instantiate-or-create-referent referent store)]
     (add-select-request store items select-pattern (:target-key attributes))))
 
 (defn update-delete
@@ -176,8 +175,7 @@
         {:keys [referent select-pattern]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
-        (let [[groups [store _]] (instantiate-or-create-referent
-                                  referent [store {}])
+        (let [[groups store] (instantiate-or-create-referent referent store)
               items (apply concat groups)]
           (println "updating " (count items) " items")
           (let [new-store (reduce (partial update-set-content-if-matching

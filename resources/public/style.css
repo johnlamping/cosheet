@@ -78,13 +78,6 @@ body {
     min-height: 15px; /* Make no-content cells have minimum height */
 }
 
-/* For ??? in column headers */
-.placeholder {
-    font-size: smaller;
-    font-style: oblique;
-    color: rgba(0, 0, 0, 0.4);
-}
-
 .content-text {
     min-height: 20px;
     overflow-wrap: break-word;

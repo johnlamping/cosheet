@@ -126,25 +126,20 @@
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
-        ;; TODO: This doesn't handle header items that are below other
-        ;; header items, as there is no query that can pick out the
-        ;; new item as opposed to copied template items. The solution is to
-        ;; have the variables in the select pattern navigate relative to the
-        ;; new item, not relative to whatever it is now.
-        element-variable `(:variable
-                            (:v :name)
-                            (~elements-template :condition)
-                            (true :reference))
-        select-pattern (conj (:key-prefix inherited)
-                             :nested
-                             [:pattern `(nil ~element-variable)])
         adjacent-referent (hierarchy-node-parallel-items-referent
-                           node-or-member subject-ref)]
-    {:referent
-     (virtual-referent (new-header-template elements-template inherited)
-                       (union-referent [subject-ref])
-                       adjacent-referent :position :after
-                       :selector :first-group)
+                           node-or-member subject-ref)
+        new-column-ref (virtual-referent (:template inherited)
+                                         (union-referent [subject-ref])
+                                         adjacent-referent
+                                         :position :after
+                                         :selector :first-group)
+        new-element-ref (virtual-referent (cons '??? (rest elements-template))
+                                          new-column-ref
+                                          nil
+                                          :position :after
+                                          :selector :first-group)
+        select-pattern (conj (:key-prefix inherited) :nested [:pattern])]
+    {:referent new-element-ref
      :select-pattern select-pattern}))
 
 (defn attributes-for-header-add-column-command

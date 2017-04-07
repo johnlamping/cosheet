@@ -133,19 +133,23 @@
                   :selectable-attributes
                   {:expand {:referent first-column-referent}
                    :add-column {:referent (virtual-referent
-                                           '(anything-immutable
-                                             (:column :non-semantic)
-                                             (:non-semantic :non-semantic)
-                                             (??? :tag))
-                                           (union-referent
-                                            [(item-referent table)])
-                                           (item-referent c1)
+                                           '(??? :tag)
+                                           (virtual-referent
+                                            '(anything-immutable
+                                              (:column :non-semantic)
+                                              (:non-semantic :non-semantic))
+                                            (union-referent
+                                             [(item-referent table)])
+                                            (item-referent c1)
+                                            :selector :first-group)
+                                           nil
                                            :selector :first-group) 
                                 :select-pattern (conj table-key
-                                                      :nested
-                                                      tag-pattern)}
+                                                      :nested [:pattern])}
                    :delete {:referent delete-referent}
-                   :add-element {:referent first-column-referent}}}]]
+                   :add-element {:referent first-column-referent
+                                 :select-pattern (conj table-key
+                                                       :nested [:pattern])}}}]]
                (any)
                (any)
                (any)

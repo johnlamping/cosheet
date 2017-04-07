@@ -216,7 +216,9 @@
               [:div {:add-row {:referent (virtual-referent
                                           '("" ("" ("age" :tag))
                                             (:top-level :non-semantic))
-                                          nil (item-referent joe)) }
+                                          nil (item-referent joe))
+                               :select-pattern (conj table-key
+                                                     [:pattern] (:item-id c1))}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
                      :target {:referent (virtual-referent
@@ -241,7 +243,9 @@
                  {:add-row {:referent (virtual-referent
                                        '("" ("" ("age" :tag))
                                          (:top-level :non-semantic))
-                                       nil (item-referent joe)) }}}]]
+                                       nil (item-referent joe))
+                            :select-pattern (conj table-key
+                                                  [:pattern] (:item-id c2))}}}]]
               (any)
               (any)
               (any)

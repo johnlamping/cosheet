@@ -102,16 +102,17 @@
   "Add a selection request to a response, given the sequence of items
   to use for substituting in the pattern."
   [response items select-pattern old-key]
-  (println "add-select-request" (simplify-for-print [items select-pattern old-key]))
-  (let [response (if (satisfies? cosheet.store/Store response)
-                   {:store response}
-                   response)
-        store (:store response)
-        first-item (first (apply concat items))]
-    (assoc response :select
-           (when (not-empty items)
-             [(substitute-in-key select-pattern items)
-              [old-key]]))))
+  (if select-pattern
+    (let [response (if (satisfies? cosheet.store/Store response)
+                     {:store response}
+                     response)
+          store (:store response)
+          first-item (first (apply concat items))]
+      (assoc response :select
+             (when (not-empty items)
+               [(substitute-in-key select-pattern items)
+                [old-key]])))
+    response))
 
 (defn do-add-element
   [store arguments attributes]

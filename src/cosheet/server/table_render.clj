@@ -347,16 +347,21 @@
 (defn table-cell-items-DOM-R
   "Return the dom for one cell of a table, given its items.
   Inherited gives the context of each item in the cell."
-  [items new-row-template inherited]
-  (let [inherited (-> inherited
-                      (assoc :width 0.75)
-                      (update-in
-                       [:selectable-attributes]
-                       #(into-attributes
-                         % {:add-row {:referent
-                                      (virtual-referent
-                                       new-row-template nil
-                                       (:subject-referent inherited))}})))]
+  [items column-id new-row-template inherited]
+  (let [inherited
+        (-> inherited
+            (assoc :width 0.75)
+            (update-in
+             [:selectable-attributes]
+             #(into-attributes
+               % {:add-row
+                  {:referent
+                   (virtual-referent new-row-template nil
+                                     (:subject-referent inherited))
+                   :select-pattern (conj (vec (butlast
+                                               (butlast
+                                                (:key-prefix inherited))))
+                                         [:pattern] column-id)}})))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
@@ -400,7 +405,8 @@
         (let [elements (seq (clojure.set/difference
                              (set matches)
                              (set (apply concat do-not-show))))]
-          (table-cell-items-DOM-R elements new-row-template inherited-down))))))
+          (table-cell-items-DOM-R
+           elements column-id new-row-template inherited-down))))))
 
 (defn table-row-DOM-R
   "Generate dom for a table row."

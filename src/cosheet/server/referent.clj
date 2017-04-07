@@ -587,7 +587,7 @@
     adjacent-groups))
 
 (defn create-elements-satisfying
-  "Make a series of element satisfying the template.
+  "Make a series of elements satisfying the template.
   Return the new elements and the updated store.
   subjects and adjacent-items must be seqs of groups of items, with
   corresponding entries.
@@ -605,8 +605,7 @@
             (map vector subject-group adjacent-group)
             store))
          (map vector subject-groups adjacent-groups)
-         store)
-        ]
+         store)]
     [(map (fn [group] (map #(description->entity % store) group))
           id-groups)
      store]))

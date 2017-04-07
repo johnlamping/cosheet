@@ -262,4 +262,5 @@
                                (item-referent joe))
                               :select-pattern (conj table-key
                                                     (:item-id joe)
+                                                    [:pattern 1]
                                                     [:pattern])}}]]))))))

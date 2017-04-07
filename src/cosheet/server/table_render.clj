@@ -371,14 +371,14 @@
       (add-attributes dom {:class "table-cell has-border"}))))
 
 (defn table-virtual-column-cell-DOM
-  [row-item
-   {:keys [column-id template]} ;; A column header description
-   inherited]
-  (let [key (conj (:key-prefix inherited) column-id)
-        inherited (assoc inherited :template template)]
-    (add-attributes
-     (virtual-item-DOM key (:subject-referent inherited) :after inherited)
-     {:class "table-cell virtual-column has-border"})))
+  [row-item inherited]
+  (add-attributes
+   (virtual-item-DOM (:key-prefix inherited)
+                     (:subject-referent inherited) :after
+                     (assoc inherited :select-pattern
+                            (conj (vec (butlast (:key-prefix inherited)))
+                                  [:pattern 1] [:pattern])))
+   {:class "table-cell virtual-column has-border"}))
 
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
@@ -390,8 +390,7 @@
                                                 column-id)
                               :template template)]
     (if (= column-id :virtualColumn)
-      (table-virtual-column-cell-DOM
-       row-item header-description inherited)
+      (table-virtual-column-cell-DOM row-item inherited-down)
       (expr-let [matches (matching-elements template row-item)
                  do-not-show (when exclusions
                                (expr-seq map #(matching-elements

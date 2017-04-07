@@ -99,19 +99,18 @@
         store)))
 
 (defn add-select-request
-  "Add a selection request to a response, given a group of items, the first
-  of which should be selected."
+  "Add a selection request to a response, given the sequence of items
+  to use for substituting in the pattern."
   [response items select-pattern old-key]
+  (println "add-select-request" (simplify-for-print [items select-pattern old-key]))
   (let [response (if (satisfies? cosheet.store/Store response)
                    {:store response}
                    response)
         store (:store response)
         first-item (first (apply concat items))]
     (assoc response :select
-           (when (not (nil? first-item))
-             [(substitute-in-key
-               select-pattern
-               [(description->entity (:item-id first-item) store)])
+           (when (not-empty items)
+             [(substitute-in-key select-pattern items)
               [old-key]]))))
 
 (defn do-add-element
@@ -121,10 +120,11 @@
       (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
             [added store] (create-possible-selector-elements
-                               nil items items :after true selector
-                               store)]
+                           nil items items :after true selector
+                           store)]
         (add-select-request
-         store added (conj target-key [:pattern]) target-key)))))
+         store [(first (apply concat added))]
+         (conj target-key [:pattern]) target-key)))))
 
 (defn do-add-label
   [store arguments attributes]
@@ -140,8 +140,9 @@
                                '(anything :tag) items items
                                :after true selector store)]
             (add-select-request
-             store added (conj (subvec target-key 0 (- (count target-key) 1))
-                               :label [:pattern]) target-key)))))))
+             store [(first (apply concat added))]
+             (conj (subvec target-key 0 (- (count target-key) 1))
+                   :label [:pattern]) target-key)))))))
 
 (defn do-add-twin
   [store arguments attributes]
@@ -158,13 +159,15 @@
                          (pop target-key)
                          target-key)]
           (add-select-request
-           store added (conj (pop item-key) [:pattern]) target-key))))))
+           store [(first (apply concat added))]
+           (conj (pop item-key) [:pattern]) target-key))))))
 
 (defn do-add-virtual
   [store arguments attributes]
   (let [{:keys [referent select-pattern]} arguments
         [items new-ids store] (instantiate-or-create-referent referent store)]
-    (add-select-request store items select-pattern (:target-key attributes))))
+    (add-select-request store (map #(description->entity % store) new-ids)
+                        select-pattern (:target-key attributes))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -190,7 +193,7 @@
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups new-ids store] (instantiate-or-create-referent
-                                        referent store)
+                                      referent store)
               items (apply concat groups)]
           (println "updating " (count items) " items")
           (let [new-store (reduce (partial update-set-content-if-matching
@@ -198,7 +201,9 @@
                                   store items)]
             ;; If we have set a virtual item, tell the client to select it.
             (if (and (virtual-referent? referent) select-pattern (seq items))
-              (add-select-request new-store groups select-pattern target-key)
+              (add-select-request
+               new-store (map #(description->entity % new-store) new-ids)
+               select-pattern target-key)
               new-store)))))))
 
 (defn do-expand

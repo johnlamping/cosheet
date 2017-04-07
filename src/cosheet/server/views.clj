@@ -130,7 +130,7 @@
         augmented-state (assoc session-state :selector-interpretation
                                selector-interpretation)]
     (do-actions (:store session-state) augmented-state action-sequence))
-  (compute manager-data 4000)
+  (compute manager-data 100000)
   ;; Turn this on if there are questions about propagation, but it
   ;; makes things really slow.
   (when true
@@ -142,7 +142,7 @@
     :store (let [store (:store session-state)]
              (let [new-store (data-to-store (current-store store) content)]
                (reset-store! store new-store))
-             (compute manager-data 4000))
+             (compute manager-data 100000))
     :opened (state-map-reset! (:client-state session-state) :last-action 0)
     :initialize (state-map-reset! (:client-state session-state) :last-action 0)
     :request (replay-request session-state content)
@@ -243,7 +243,7 @@
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
             (update-store-file url-path)
-            (compute manager-data 4000)
+            (compute manager-data 100000)
             ;; Turn this on if there are questions about propagation, but it
             ;; makes things really slow.
             (when true

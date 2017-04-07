@@ -107,7 +107,7 @@
                       element-ref (conj element-ref)))))
 
 (defn new-header-template
-  "Return the template for a new header. elements-template gives
+  "Return the template for a new header. new-elements-template gives
   the template for new elements in the header, while inherited gives
   the environment of the header."
   [new-elements-template inherited]
@@ -214,8 +214,7 @@
                               [:selectable-attributes]
                               #(into-attributes
                                 % (attributes-for-header-add-column-command
-                                   node elements-template
-                                   inherited)))
+                                   node elements-template inherited)))
                              (update :key-prefix
                                      #(conj % :nested)))]
       (condition-elements-DOM-R example-elements true inherited-down))))
@@ -305,12 +304,15 @@
                ;; If we have only one descendant, it must be the column request.
                node-dom
                (let [properties-list (canonical-set-to-list (:properties node))
-                     sibling-nodes (filter hierarchy-node? next-level)]
+                     sibling-nodes (filter hierarchy-node? next-level)
+                     inherited-down (update inherited :template
+                                            #(apply list (concat
+                                                          % properties-list)))]
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
                                       % sibling-nodes rows-referent
-                                      elements-template inherited)
+                                      elements-template inherited-down)
                                 next-level)]
                    [:div (cond-> {}
                            top-level (into-attributes {:class "top-level"}))

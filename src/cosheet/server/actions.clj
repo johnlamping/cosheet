@@ -36,27 +36,40 @@
 
 ;;; TODO: Replace the asserts with log messages, so things are robust.
 
+(defn substitute-for-pattern
+  "Given a pattern and a list of items, replace the pattern by the id of the
+  appropriate item.
+  A pattern is of the form [:pattern <number>? :subject? <template>?]
+    number indicates which of the items in the list to use, defaulting to 0.
+    :subject, if present, indicates that the result of the pattern is the
+      subject of the match, rather than the match, itself.
+    template, if present, must contains a variable named :v, and will return
+      the part of the item matching that variable. An empty; otherwise, the
+      entire item is used."
+  [pattern items]
+  (let [[_ & args] pattern
+        [item args] (if (number? (first args))
+                      [(nth items (first args)) (rest args)]
+                      [(first items) args])
+        [subject? args] (if (= (first args) :subject)
+                          [true (rest args)]
+                          [false args])
+        template (first args)
+        match (if template
+                (let [matches (template-matches template item)
+                      value (:v (first matches))]
+                  (assert value)
+                  value)
+                item)]
+    (:item-id (if subject? (subject match) match))))
+
 (defn substitute-in-key
-  "Substitute into the key, instantiating patterns with the item.  A
-  pattern is of the form [:pattern :subject? <template>?], where template is
-  either empty, or somewhere contains a variable named :v. An empty
-  pattern will be replaced by the item, while a non-empty pattern gets
-  replaced by the id of the match for its variable. If :subject is present,
-  the result of the pattern is the subject of the match."
-  [key item]
+  "Substitute into the sequence of possible patterns, instantiating patterns
+  from the items."
+  [key items]
   (vec (map (fn [part]
-              (if (and (sequential? part)
-                       (= (first part) :pattern))
-                (let [[subject? pattern] (if (= (second part) :subject)
-                                           [true (first (nnext part))]
-                                           [false (second part)])
-                      match (if pattern
-                              (let [matches (template-matches pattern item)
-                                    value (:v (first matches))]
-                                (assert value)
-                                value)
-                              item)]
-                  (:item-id (if subject? (subject match) match)))
+              (if (and (sequential? part) (= (first part) :pattern))
+                (substitute-for-pattern part items)
                 part))
             key)))
 
@@ -97,7 +110,8 @@
     (assoc response :select
            (when (not (nil? first-item))
              [(substitute-in-key
-               select-pattern (description->entity (:item-id first-item) store))
+               select-pattern
+               [(description->entity (:item-id first-item) store)])
               [old-key]]))))
 
 (defn do-add-element

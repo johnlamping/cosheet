@@ -83,13 +83,13 @@
                                                      ("age" :condition)
                                                      (:true :reference))))]
              :foo "bar"]]
-    (is (check (substitute-in-key key joe)
+    (is (check (substitute-in-key key [joe])
                [(:item-id joe)
                 (:item-id joe-bogus-age)
                 (:item-id joe-male)
                 (:item-id joe-bogus-age)
                 :foo "bar"]))
-    (is (check (substitute-in-key [[:pattern :subject]] joe-age)
+    (is (check (substitute-in-key [[:pattern :subject]] [joe-age])
                [(:item-id joe)]))))
 
 (deftest do-add-element-test

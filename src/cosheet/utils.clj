@@ -225,14 +225,19 @@
 
 (defn canonical-atom-form
   "Convert a value to its canonical form, so that equivalent atoms will have
-  equal canonical forms. (This means lower case strings.)"
+  equal canonical forms. (This means trimmed lower case strings.)"
   [value]
-  (if (string? value) (clojure.string/lower-case value) value))
+  (if (string? value)
+    (loop [result (clojure.string/trim (clojure.string/lower-case value))]
+      (if (and (not= result "") (= (nth result 0) \u00A0))
+        (recur (subs result 1))
+        result))
+    value))
 
 (defn equivalent-atoms?
   "Return true if the atoms are equal, ignoring case for strings."
   [a1 a2]
   (or (= a1 a2)
       (and (string? a1) (string? a2)
-           (= (clojure.string/lower-case a1) (clojure.string/lower-case a2)))))
+           (= (canonical-atom-form a1) (canonical-atom-form a2)))))
 

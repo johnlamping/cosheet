@@ -116,7 +116,8 @@
 
 (defn do-add-element
   [store arguments attributes]
-  (let [{:keys [target-key select-pattern selector-category]} attributes]
+  (let [{:keys [target-key selector-category]} attributes
+        {:keys [select-pattern]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
@@ -125,11 +126,12 @@
                            store)]
         (add-select-request
          store [(first (apply concat added))]
-         (conj target-key [:pattern]) target-key)))))
+         (or select-pattern (conj target-key [:pattern])) target-key)))))
 
 (defn do-add-label
   [store arguments attributes]
-  (let [{:keys [target-key select-pattern selector-category]} attributes]
+  (let [{:keys [target-key selector-category]} attributes
+        {:keys [select-pattern]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             sample-item (first (apply concat items))
@@ -142,8 +144,9 @@
                                :after true selector store)]
             (add-select-request
              store [(first (apply concat added))]
-             (conj (subvec target-key 0 (- (count target-key) 1))
-                   :label [:pattern]) target-key)))))))
+             (or select-pattern
+                 (conj (subvec target-key 0 (- (count target-key) 1))
+                       :label [:pattern])) target-key)))))))
 
 (defn do-add-twin
   [store arguments attributes]

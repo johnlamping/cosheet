@@ -413,8 +413,8 @@
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
-  :key-prefix of inherited must give a prefix for the doms of each element.
-  must-show-empty-labels gets passed on to elements-DOM-R"
+  :key-prefix of inherited must give a prefix for the doms corresponding to
+  the elements. must-show-empty-labels gets passed on to elements-DOM-R"
   [elements must-show-empty-labels inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
@@ -427,7 +427,10 @@
           inherited-for-labels (update-in
                                 inherited [:selectable-attributes]
                                 #(assoc % :add-element
-                                        {:referent subject-ref}))]
+                                        {:referent subject-ref
+                                         :select-pattern
+                                         (conj (:key-prefix inherited)
+                                               [:pattern])}))]
       (cond
         (and labels non-labels)
         (expr-let [inner-dom (elements-DOM-R

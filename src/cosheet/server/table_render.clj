@@ -1,5 +1,6 @@
 (ns cosheet.server.table-render
-  (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by]]
+  (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by
+                                    add-elements-to-entity-list]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
@@ -306,8 +307,8 @@
                (let [properties-list (canonical-set-to-list (:properties node))
                      sibling-nodes (filter hierarchy-node? next-level)
                      inherited-down (update inherited :template
-                                            #(apply list (concat
-                                                          % properties-list)))]
+                                            #(add-elements-to-entity-list
+                                              % properties-list))]
                  (expr-let
                      [dom-seqs (expr-seq
                                 map #(table-header-node-or-element-DOM-R
@@ -471,11 +472,6 @@
       row-key new-row-template adjacent-referent column-descriptions
       inherited])))
 
-(defn add-element-to-entity-list
-  [entity element]
-  (concat (if (sequential? entity) entity (list entity))
-          element))
-
 (defn table-hierarchy-node-condition
   "Given a hierarchy node, return the condition that all elements
   under the node satisfy."
@@ -517,7 +513,7 @@
   and the items for the rows, in order."
   [store row-condition-item]
   (expr-let [row-condition (semantic-to-list-R row-condition-item)
-             row-query (add-element-to-entity-list
+             row-query (add-elements-to-entity-list
                         (pattern-to-condition row-condition)
                         ['(:top-level :non-semantic)])
              ;; Avoid the (nil :order :non-semantic) added by

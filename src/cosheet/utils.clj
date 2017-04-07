@@ -241,3 +241,8 @@
       (and (string? a1) (string? a2)
            (= (canonical-atom-form a1) (canonical-atom-form a2)))))
 
+(defn add-elements-to-entity-list
+  [entity elements]
+  (concat (if (sequential? entity) entity (list entity))
+          elements))
+

@@ -256,7 +256,9 @@
                                %
                                (attributes-for-header-add-column-command
                                 {:item column-item}
-                                elements-template inherited))
+                                elements-template
+                                (update inherited :key-prefix
+                                        (fn [pref] (conj pref :nested)))))
                               {:delete {:referent column-referent}
                                :expand {:referent column-referent}})))
         key (conj (:key-prefix inherited) (:item-id column-item))]

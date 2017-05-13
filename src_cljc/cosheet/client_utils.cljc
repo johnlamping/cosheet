@@ -78,21 +78,21 @@
   ;; TODO: If performance is a problem, try adding a :key property
   ;;       that matches the id. The React documentation claims
   ;;       that speeds up re-rendering of sequences of many items.  
-  [amap update]
+  [a-map update]
   (swap!
-   amap
-   (fn [amap]
+   a-map
+   (fn [a-map]
      (reduce
-      (fn [amap dom]
+      (fn [a-map dom]
         (let [{:keys [id version]} (second dom)]
-          (if (contains? amap id)
-            (let [old-dom @(amap id)
+          (if (contains? a-map id)
+            (let [old-dom @(a-map id)
                   old-version (:version (second old-dom))]
               (if (> version old-version)
                 (let [old-subcomponents (set (subcomponent-ids old-dom))
                       subcomponents (set (subcomponent-ids dom))]
-                  (do (reset! (amap id) dom)
-                      (-> amap
+                  (do (reset! (a-map id) dom)
+                      (-> a-map
                           (remove-keys
                            (set-difference old-subcomponents
                                            subcomponents))
@@ -100,9 +100,16 @@
                            (set-difference subcomponents
                                            old-subcomponents)
                            #(special-atom/atom [:div {:id % :version -1}])))))
-                amap))
-            amap)))
-      amap update))))
+                a-map))
+            a-map)))
+      a-map update))))
+
+(defn reset-atom-map-versions!
+  "Given an atom of a map of atoms containing doms,
+  set the version of each of the doms to 0" 
+  [a-map]
+  (doseq [atom (vals @a-map)]
+    (swap! atom (fn [old-dom] (assoc-in old-dom [1 :version] 0)))))
 
 ;;; The next code deals with the information we need to send to the server.
 

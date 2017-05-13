@@ -76,8 +76,6 @@
         ;; Optimized case to not build reporters for all the subsidiary tests. 
         (expr-let [matches (store/call-dependent-on-id
                             store nil #(query-matches template %))]
-          (doall matches)
-          (println "!!!Got matching items." condition)
           (map #(-> %
                     :v  ;; item that is the value of variable :v
                     :item-id  ;; its item id

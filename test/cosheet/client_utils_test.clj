@@ -84,6 +84,18 @@
     (= @(@am :tick) [:div {:id :message :version 2} "tock"]))
   )
 
+(deftest reset-atom-map-versions-test
+  (let [a1 (atom [:div {:id :a1 :version 1} 1])
+        a2 (atom [:div {:id :a2 :version 3} 2])
+        a3 (atom [:div {:id :a3 :version 1} 3])
+        am (atom {:a1 a1
+                  :a2 a2
+                  :a3 a3})]
+    (reset-atom-map-versions! am)
+    (is (= @(:a1 @am) [:div {:id :a1 :version 0} 1]))
+    (is (= @(:a2 @am) [:div {:id :a2 :version 0} 2]))
+    (is (= @(:a3 @am) [:div {:id :a3 :version 0} 3]))))
+
 (deftest update-add-action-test
   (is (= (update-add-action {:next-action-number 2 :actions {0 1 1 2}} :doit)
          {:next-action-number 3 :actions {0 1 1 2 2 :doit}})))

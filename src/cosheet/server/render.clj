@@ -203,8 +203,7 @@
 (defn label-datalist-DOM-R
   "Return dom for a datalist of the content of all labels."
   [store]
-  ;; TODO: This requires building a reporter for every label, and visiting
-  ;;       them every time anything changes. Put support for gathering all
+  ;; TODO: This reruns anytime anything changes. Put support for gathering all
   ;;       values in the store, so it can be more efficient by looking at
   ;;       the changed items. (The store needs a way to tell a reporter
   ;;       about which items changed, not just that something it cared about

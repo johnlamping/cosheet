@@ -43,11 +43,10 @@
       (let [reporters (->> (vals (:components tracker-data))
                            (map :reporter)
                            (filter reporter/reporter?))]
-        ;; TODO: Eventually, this needs to be turned off, both
-        ;; because it is too expensive, visiting all dependencies,
-        ;; and because if a second request comes in while we are checking,
-        ;; the checks are likely to fail.
-        (check-propagation reporters)
+        ;; This can be uncommented to check the propagation links.
+        ;; It is O(n^2), though, so it will be very slow on decent sized
+        ;; stores.
+        (comment (check-propagation reporters))
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
@@ -266,11 +265,15 @@
                                         (map (partial key->id tracker)
                                              if-selected))])))
                   answer (cond-> (select-keys client-info
-                                              [:open :alternate-text])
+                                              [:open :set-url :alternate-text])
                            (> (count doms) 0) (assoc :doms doms)
                            select (assoc :select select)
                            actions (assoc :acknowledge (vec (keys actions))))]
               (when (not= (dissoc answer :alternate-text) {})
-                (println "response" answer))
+                (let [stripped (update
+                                answer :doms
+                                #(map (fn [dom] (:id (dom-attributes dom)))
+                                      %))]
+                  (println "response" stripped)))
               (response answer)))))
       (response {:reload true}))))

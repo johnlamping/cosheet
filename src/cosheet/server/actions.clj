@@ -234,11 +234,13 @@
                  selector-category
                  (str "&selector=" (referent->string selector-category)))}))))
 
-(defn do-selected
- [session-state arguments]
- (when (= (:special arguments) :tab)
-   (state-map-reset! (:client-state session-state)
-                     :referent (:referent arguments))))
+(defn do-selected [session-state arguments]
+  (when (= (:special arguments) :tab)
+    (let [referent (:referent arguments)]
+      (state-map-reset! (:client-state session-state)
+                        :referent referent)
+      {:set-url (str (:url-path session-state)
+                     "?referent=" (referent->string referent))})))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client
@@ -254,7 +256,8 @@
   The extra information can be:
         :select  The key of the dom to be selected, and a list of keys,
                  one of which should already be selected.
-        :expand  The key of an item to appear in a new tab."
+          :open  The key of an item to appear in a new tab.
+       :set-url  The new url for the client."
   [store-modifier handler & args]
   (store-modifier
    (fn [store]
@@ -446,7 +449,7 @@
                           (do-action mutable-store session-state action)]
                       (println "for client " (simplify-for-print for-client))
                       (into client-info
-                            (select-keys for-client [:select :open]))))
+                            (select-keys for-client [:select :open :set-url]))))
                   {} action-sequence)
           (catch Exception e
             (queue-to-log [:error (str e)] (:url-path session-state))

@@ -1,6 +1,5 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :as entity]
-                     [query :refer [matching-items]]
                      [debug :refer [simplify-for-print]]
                      [dom-utils :refer [dom-attributes
                                         into-attributes add-attributes]]

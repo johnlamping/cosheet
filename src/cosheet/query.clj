@@ -66,23 +66,24 @@
   ([query env store] (query-matches-m query env store)))
 
 (defn matching-items
-  "Return all items in the store that match the condition (which
-  must be immutable.)"
+  "Return all items in the store that match the condition."
   [condition store]
-  (assert (not (entity/mutable-entity? condition)))
-  (let [template `(:variable (:v :name)
-                             (~condition :condition)
-                             (true :reference))]
-    (if (satisfies? store/MutableStore store)
-      ;; Optimized case to not build reporters for all the subsidiary tests. 
-      (expr-let [matches (store/call-dependent-on-id
-                          store nil #(query-matches template %))]
-        (map #(-> %
-                  :v  ;; item that is the value of variable :v
-                  :item-id  ;; its item id
-                  (entity/description->entity store)) 
-             matches))
-      (expr-let [matches (query-matches template store)]
-        (map :v matches)))))
+  (expr-let [condition condition]
+    (let [template `(:variable (:v :name)
+                               (~condition :condition)
+                               (true :reference))]
+      (if (satisfies? store/MutableStore store)
+        ;; Optimized case to not build reporters for all the subsidiary tests. 
+        (expr-let [matches (store/call-dependent-on-id
+                            store nil #(query-matches template %))]
+          (doall matches)
+          (println "!!!Got matching items." condition)
+          (map #(-> %
+                    :v  ;; item that is the value of variable :v
+                    :item-id  ;; its item id
+                    (entity/description->entity store)) 
+               matches))
+        (expr-let [matches (query-matches template store)]
+          (map :v matches))))))
 
   

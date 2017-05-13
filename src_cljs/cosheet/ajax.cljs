@@ -117,14 +117,13 @@
 
 (defn handle-ajax-doms
   [response]
-  (let [doms (:doms response)]
-    (when doms
-      (deselect-if-contained doms)
-      (close-edit-field-if-contained doms)
-      (into-atom-map components
-                     ;; Turn [:component {attributes} <id>]
-                     ;; into [cosheet.client/component {attributes} id]
-                     (replace-in-struct {:component component} (vec doms))))))
+  (when-let [doms (:doms response)]
+    (deselect-if-contained doms)
+    (close-edit-field-if-contained doms)
+    (into-atom-map components
+                   ;; Turn [:component {attributes} <id>]
+                   ;; into [cosheet.client/component {attributes} id]
+                   (replace-in-struct {:component component} (vec doms)))))
 
 (defn handle-ajax-select
   "Do the selection requested by the ajax response, or if none,
@@ -147,9 +146,14 @@
 (defn handle-ajax-open
   "Handle an open window request in an ajax response."
   [response]
-  (let [path (:open response)]
-    (when path
-      (.open js/window path "CosheetExpandPopup"))))
+  (when-let [path (:open response)]
+    (.open js/window path "CosheetExpandPopup")))
+
+(defn handle-ajax-set-url
+  "Handle a request to set the url in an ajax response"
+  [response]
+  (when-let [url (:set-url response)]
+    (js/history.replaceState  "" "" url)))
 
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
@@ -165,6 +169,7 @@
         (handle-ajax-select response previously-selected-id)
         (set-alternate-field (:alternate-text response))
         (handle-ajax-open response)
+        (handle-ajax-set-url response)
         (process-response-for-pending response)
         (ajax-if-pending))))
   (schedule-poll-task))

@@ -7,9 +7,11 @@
             ;; Note: We seem to have to declare any closure packages used
             ;; by our libraries in order for them to be visible to
             ;; Chrome.
-            [cosheet.client-utils :refer [component components]]
+            [cosheet.client-utils :refer [component components
+                                          add-pending-clean]]
             cosheet.dom-utils
-            [cosheet.ajax :refer [request-action request-replay ajax-request]]
+            [cosheet.ajax :refer [request-action request-replay
+                                  ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                find-ancestor-with-class
                                                set-selector-interpretation
@@ -269,7 +271,8 @@
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
     (set-selector-interpretation :broad))
-  (ajax-request {:initialize true}))
+  (add-pending-clean)
+  (ajax-if-pending)) 
 
 ;;; TODO: Get rid of this eventually; It's just something cute.
 (comment

@@ -134,11 +134,6 @@
       (assoc-in [:actions (:next-action-number pending)] action)
       (update-in [:next-action-number] inc)))
 
-(defn update-remove-actions-acknowledged
-  "Remove actions that are in the list of acknowledged ids."
-  [pending acknowledged]
-  (update-in pending [:actions] #(remove-keys % acknowledged)))
-
 (defn update-add-dom-acknowledgments
   "Add dom id -> version pairs that we need to acknowledge to the server"
   [pending doms]
@@ -152,9 +147,10 @@
    remove outgoing actions that were acknowledged."
   [pending response]
   (let [{:keys [acknowledge doms]} response]
-    (-> pending
+    (-> (cond-> pending
+          doms (dissoc :clean))
         (update-add-dom-acknowledgments doms)
-        (update-remove-actions-acknowledged acknowledge))))
+        (update-in [:actions] #(remove-keys % acknowledge)))))
 
 (defn add-pending-action
   "Add the action to the pending actions."
@@ -165,6 +161,12 @@
   "Add a replay request to the pending information."
   [replay]
   (swap! pending-for-server #(assoc % :replay replay)))
+
+(defn add-pending-clean
+  "Add a request to tell the server that we are clean (any doms we have
+  carry a 0 version number, so will be overridden."
+  []
+  (swap! pending-for-server #(assoc % :clean true)))
 
 (defn process-response-for-pending
   "Do the processing for a response."
@@ -180,8 +182,7 @@
                                           #(-> %
                                                (assoc :acknowledgments {})
                                                (dissoc :replay)))
-        {:keys [actions acknowledgments replay]} pending]
-    (cond-> {}
+        {:keys [actions acknowledgments]} pending]
+    (cond-> (select-keys pending [:replay :clean])
       (not= actions {}) (into {:actions actions})
-      replay (into {:replay replay})
       (not= acknowledgments {}) (into {:acknowledge acknowledgments}))))

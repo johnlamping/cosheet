@@ -3,8 +3,8 @@
             [reagent.core :as reagent]
             [cosheet.client-utils :refer
              [component components
-              replace-in-struct into-atom-map add-pending-action
-              add-pending-replay
+              replace-in-struct into-atom-map reset-atom-map-versions!
+              add-pending-action add-pending-replay add-pending-clean
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
@@ -155,6 +155,13 @@
   (when-let [url (:set-url response)]
     (js/history.replaceState  "" "" url)))
 
+(defn handle-ajax-reset-versions
+  "Handle a request to reset the client version information."
+  [response]
+  (when (:reset-versions response)
+    (reset-atom-map-versions! components)
+    (add-pending-clean)))
+
 (defn ajax-handler [response]
   (reset! ajax-request-pending false)
   (when (not= response {})
@@ -164,6 +171,7 @@
     (if (:reload response)
       (js/location.reload)
       (let [previously-selected-id (and @selected (.-id @selected))]
+        (handle-ajax-reset-versions)
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.
         (handle-ajax-select response previously-selected-id)

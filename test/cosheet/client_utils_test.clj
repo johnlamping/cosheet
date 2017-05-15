@@ -100,11 +100,6 @@
   (is (= (update-add-action {:next-action-number 2 :actions {0 1 1 2}} :doit)
          {:next-action-number 3 :actions {0 1 1 2 2 :doit}})))
 
-(deftest update-remove-actions-acknowledged-test
-  (is (= (update-remove-actions-acknowledged
-          {:next-action-number 2 :actions {0 1 2 3 4 5}} [0 2 9])
-         {:next-action-number 2 :actions {4 5}})))
-
 (deftest update-add-dom-acknowledgments-test
   (is (= (update-add-dom-acknowledgments {:acknowledgments {1 2}}
                                          [[:div {:id 3 :version 4} "hi"]
@@ -114,7 +109,8 @@
 (deftest update-for-response-test
   (is (= (update-for-response {:next-action-number 2
                                :actions {0 1 2 3 4 5}
-                               :acknowledgments {1 2}}
+                               :acknowledgments {1 2}
+                               :clean true}
                               {:doms [[:div {:id 3 :version 4} "hi"]
                                       [:div {:id 5 :version 6}]]
                                :acknowledge [0 2 9]})

@@ -130,10 +130,7 @@
                                selector-interpretation)]
     (do-actions (:store session-state) augmented-state action-sequence))
   (compute manager-data 100000)
-  ;; Turn this on if there are questions about propagation, but it
-  ;; makes things really slow.
-  (when true
-    (check-propagation-if-quiescent (:tracker session-state))))
+  (check-propagation-if-quiescent (:tracker session-state)))
 
 (defn replay-item [session-state [type content]]
   (println "replaying item" type (when (not= type :store) content))
@@ -177,7 +174,7 @@
 
 ;;; The parameters for the ajax request and response are:
 ;;; request:
-;;;    :initialize If true, the server should assume the client is
+;;;         :clean If true, the server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
 ;;;        :replay If true, the path should end in .history, and the
@@ -198,6 +195,8 @@
 ;;; response:
 ;;;         :reload The server has no record of the session. The page
 ;;;                 should request a reload.
+;;; :reset-versions The server has no record of the session. The page
+;;;                 should reset its version information.
 ;;;           :doms A list of hiccup encoded doms of components. Their
 ;;;                 attributes will include a unique :id and a :version
 ;;;                 number that will increase for each change of the dom
@@ -215,15 +214,15 @@
 
 (defn ajax-response [request]
   (let [params (:params request)
-        {:keys [id actions replay initialize selector-interpretation
+        {:keys [id actions replay initialize clean selector-interpretation
                 acknowledge]}
         params
         session-state (get-session-state id)]
     (if session-state
       (let [{:keys [tracker url-path store client-state]} session-state]
-        (when (or actions initialize)
+        (when (or actions initialize clean)
           (queue-to-log [:request (dissoc params :acknowledge)] url-path))
-        (when (or actions initialize replay acknowledge)
+        (when (or actions replay initialize clean acknowledge)
           (println "request" params))
         (when initialize
           (println "requesting client refresh")
@@ -243,10 +242,7 @@
                 client-info (do-actions store augmented-state action-sequence)]
             (update-store-file url-path)
             (compute manager-data 100000)
-            ;; Turn this on if there are questions about propagation, but it
-            ;; makes things really slow.
-            (when true
-              (check-propagation-if-quiescent tracker))
+            (check-propagation-if-quiescent tracker)
             ;; Note: We must get the doms after doing the actions, so we can
             ;; immediately show the response to the actions. Likewise, we
             ;; have to pass down select requests after the new dom has been

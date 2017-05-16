@@ -271,7 +271,7 @@
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
     (set-selector-interpretation :broad))
-  (add-pending-clean)
+  (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 
 
 ;;; TODO: Get rid of this eventually; It's just something cute.

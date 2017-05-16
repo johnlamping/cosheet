@@ -7,7 +7,7 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page ajax-response]]))
+            [cosheet.server.views :refer [initial-page handle-ajax]]))
 
 (defroutes main-routes
   (GET "/cosheet/:path{.*}" [path referent selector]
@@ -16,7 +16,7 @@
        (initial-page (str "//" path) referent selector))
   (GET "/~/:path{.*}" [path referent selector]
        (initial-page (str "/~/" path) referent selector))
-  (POST "/ajax-request/:id" request (ajax-response request))
+  (POST "/ajax-request/:id" request (handle-ajax request))
   (route/resources "/")
   (route/not-found "Page not found"))
 

@@ -16,7 +16,7 @@
 (declare ajax-handler)
 (declare ajax-error-handler)
 
-(def ajax-request-pending (atom false))
+(def ajax-request-open (atom false))
 
 (defn session-id []
   (-> (->> (array-seq (js/document.getElementsByTagName "meta"))
@@ -32,7 +32,7 @@
          :handler ajax-handler
          :error-handler ajax-error-handler
          :timeout 5000})
-  (reset! ajax-request-pending true))
+  (reset! ajax-request-open true))
 
 ;;; A handle to the current pending ajax poll task.
 (def pending-poll-task (atom nil))
@@ -53,7 +53,7 @@
   []
   (swap! poll-delay #(min (* % 10) 3600000))
   (schedule-poll-task)
-  (when (not @ajax-request-pending)
+  (when (not @ajax-request-open)
     (ajax-request (take-pending-params))))
 
 (defn schedule-poll-task
@@ -68,7 +68,7 @@
   "Send an ajax request if we have pending information to send the server
    and there isn't a request already in flight."
   []
-  (when (not @ajax-request-pending)
+  (when (not @ajax-request-open)
     (let [params (take-pending-params)]
       (when (not= params {})
         (ajax-request params)))))
@@ -160,10 +160,10 @@
   [response]
   (when (:reset-versions response)
     (reset-atom-map-versions! components)
-    (add-pending-clean)))
+    (add-pending-clean js/window.location.href)))
 
 (defn ajax-handler [response]
-  (reset! ajax-request-pending false)
+  (reset! ajax-request-open false)
   (when (not= response {})
     (.log js/console (str response))
     (when (not= (dissoc response :alternate-text) {})
@@ -171,7 +171,7 @@
     (if (:reload response)
       (js/location.reload)
       (let [previously-selected-id (and @selected (.-id @selected))]
-        (handle-ajax-reset-versions)
+        (handle-ajax-reset-versions response)
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.
         (handle-ajax-select response previously-selected-id)
@@ -183,6 +183,6 @@
   (schedule-poll-task))
 
 (defn ajax-error-handler [{:keys [status status-text]}]
-  (reset! ajax-request-pending false)
+  (reset! ajax-request-open false)
   (.log js/console (str "ajax-error: " status " " status-text))
   (schedule-poll-task))

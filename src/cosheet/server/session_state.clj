@@ -193,7 +193,9 @@
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
-;;;                 :referent  The referent for the root of the display
+;;;                  :in-sync  True if the client is ready to accept doms.
+;;;                 :referent  The referent for the root of the display or
+;;;                            selected tab.
 ;;;         :subject-referent  The referent, if any for the subject of the
 ;;;                            root of the display.
 ;;;              :last-action  The id of the last action we did.
@@ -231,7 +233,8 @@
     (new-state-map {:referent referent
                     :subject-referent subject-ref
                     :last-action nil
-                    :alternate nil})))
+                    :alternate nil
+                    :in-sync false})))
 
 (defn create-tracker
   [store client-state manager-data selector-string]
@@ -255,12 +258,13 @@
   (@session-states session-id))
 
 (defn create-session
-  [url-path referent-string manager-data selector-string]
+  "Create a session with the given id, or with a new id if none is given."
+  [session-id url-path referent-string manager-data selector-string]
   (when-let [store (:mutable (ensure-store url-path))]
     (let [id (swap-control-return!
               session-states
               (fn [session-map]
-                (let [id (new-id session-map)
+                (let [id (or session-id (new-id session-map))
                       client-state (create-client-state store referent-string)]
                   [(assoc session-map id
                           {:url-path url-path
@@ -273,4 +277,12 @@
       (compute manager-data 1000)
       (println "computed some")
       id)))
+
+(defn ensure-session
+  "Make sure there is a session with the given id, and rturn its state."
+  [session-id url-path referent-string manager-data selector-string]
+  (or (get-session-state session-id)
+      (do (create-session
+           session-id url-path referent-string manager-data selector-string)
+          (get-session-state session-id))))
 

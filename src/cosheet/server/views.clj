@@ -19,7 +19,7 @@
     [dom-utils :refer [dom-attributes add-attributes]]
     [reporters :as reporter]
     [mutable-manager :refer [current-mutable-value]]
-    [state-map :refer [state-map-reset!]]
+    [state-map :refer [state-map-reset! state-map-get]]
     [debug :refer [profile-and-print-reporters]])
    (cosheet.server
     [referent :refer [union-referent referent->string]]
@@ -29,7 +29,7 @@
     [dom-tracker :refer [request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
-    [session-state :refer [create-session create-client-state
+    [session-state :refer [create-session ensure-session create-client-state
                            url-path-to-file-path
                            get-session-state queue-to-log update-store-file]]
     [actions :refer [confirm-actions do-actions]])))
@@ -52,8 +52,8 @@
 
 (defn initial-page [url-path referent-string selector-string]
   (println "initial page" url-path referent-string selector-string)
-  (if-let [session-id (create-session
-                       url-path referent-string manager-data selector-string)]
+  (if-let [session-id (create-session nil url-path referent-string
+                                      manager-data selector-string)]
     (html5
      [:head
       [:title (last (clojure.string/split url-path #"/"))]
@@ -212,21 +212,67 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
-(defn ajax-response [request]
+(defn ajax-response [tracker client-state actions client-info]
+  ;; Note: We must get the doms after doing the actions, so we can
+  ;; immediately show the response to the actions. Likewise, we
+  ;; want to have done some computation so if we need to send back
+  ;; a select request, the dom we want to select will be going to
+  ;; the client.
+  (let [in-sync (state-map-get client-state :in-sync)
+        doms (when in-sync (response-doms @tracker 100))
+        select (let [[select if-selected] (:select client-info)]
+                 (when select
+                   (let [select-key
+                         (first (filter
+                                 #(dom-for-key? tracker %)
+                                 [(conj select :content) select]))
+                         select-id (when select-key
+                                     (key->id tracker select-key))]
+                     [select-id
+                      (filter identity
+                              (map (partial key->id tracker)
+                                   if-selected))])))
+        answer (cond-> (select-keys client-info
+                                    [:open :set-url :alternate-text])
+                 (seq doms) (assoc :doms doms)
+                 (not in-sync) (assoc :reset-versions true)
+                 select (assoc :select select)
+                 actions (assoc :acknowledge (vec (keys actions))))]
+    (when (not= (dissoc answer :alternate-text) {})
+      (let [stripped (update
+                      answer :doms
+                      #(map (fn [dom] (:id (dom-attributes dom)))
+                            %))]
+        (println "response" stripped)))
+    (response answer)))
+
+(defn ensure-session-state
+  [params]
+  (let [{:keys [id clean]} params]
+    (or (get-session-state id)
+        (when-let [url clean]
+          (let [referent-string (second (re-find #"\?.*referent=([^&]*)" url))
+                selector-string (second (re-find #"\?.*selector=([^&]*)" url))
+                url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))]
+            (ensure-session
+             id url-path referent-string manager-data selector-string))))))
+
+(defn handle-ajax [request]
   (let [params (:params request)
-        {:keys [id actions replay initialize clean selector-interpretation
+        {:keys [actions replay clean selector-interpretation
                 acknowledge]}
         params
-        session-state (get-session-state id)]
+        session-state (ensure-session-state params)]    
     (if session-state
       (let [{:keys [tracker url-path store client-state]} session-state]
-        (when (or actions initialize clean)
+        (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] url-path))
-        (when (or actions replay initialize clean acknowledge)
-          (println "request" params))
-        (when initialize
-          (println "requesting client refresh")
+        (when (or actions replay clean acknowledge)
+          (println "Request" params))
+        (when clean
+          (println "Client is clean.")
           (request-client-refresh tracker)
+          (state-map-reset! client-state :in-sync true)
           (state-map-reset! client-state :last-action nil))
         (when replay
           (do-replay session-state replay))
@@ -241,35 +287,7 @@
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
             (update-store-file url-path)
-            (compute manager-data 100000)
+            (compute manager-data 10000)
             (check-propagation-if-quiescent tracker)
-            ;; Note: We must get the doms after doing the actions, so we can
-            ;; immediately show the response to the actions. Likewise, we
-            ;; have to pass down select requests after the new dom has been
-            ;; constructed, so the client has the dom we want it to select.
-            (let [doms (response-doms @tracker 100)
-                  select (let [[select if-selected] (:select client-info)]
-                           (when select
-                             (let [select-key
-                                   (first (filter
-                                           #(dom-for-key? tracker %)
-                                           [(conj select :content) select]))
-                                   select-id (when select-key
-                                               (key->id tracker select-key))]
-                               [select-id
-                                (filter identity
-                                        (map (partial key->id tracker)
-                                             if-selected))])))
-                  answer (cond-> (select-keys client-info
-                                              [:open :set-url :alternate-text])
-                           (> (count doms) 0) (assoc :doms doms)
-                           select (assoc :select select)
-                           actions (assoc :acknowledge (vec (keys actions))))]
-              (when (not= (dissoc answer :alternate-text) {})
-                (let [stripped (update
-                                answer :doms
-                                #(map (fn [dom] (:id (dom-attributes dom)))
-                                      %))]
-                  (println "response" stripped)))
-              (response answer)))))
-      (response {:reload true}))))
+            (ajax-response tracker client-state actions client-info))))
+      (response (if clean {} {:reset-versions true})))))

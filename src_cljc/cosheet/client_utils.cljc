@@ -164,9 +164,10 @@
 
 (defn add-pending-clean
   "Add a request to tell the server that we are clean (any doms we have
-  carry a 0 version number, so will be overridden."
-  []
-  (swap! pending-for-server #(assoc % :clean true)))
+  carry a 0 version number, so will be overridden, giving it the id of the
+  referent we are currently focused on."
+  [url]
+  (swap! pending-for-server #(assoc % :clean url)))
 
 (defn process-response-for-pending
   "Do the processing for a response."

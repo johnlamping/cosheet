@@ -4,6 +4,8 @@
             [clojure.pprint :refer [pprint]]
             [clojure.data.priority-map :as priority-map]
             (cosheet
+             [debug :refer [simplify-for-print]]
+             orderable
              [utils :refer [dissoc-in]]
              [test-utils :refer [check any as-set let-mutated]]
              [entity :as entity :refer [to-list description->entity]]
@@ -11,13 +13,17 @@
              [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [envs-to-list]]
              entity-impl
-             [store :refer [update-content!]]
+             [store :refer [update-content!
+                            new-element-store new-mutable-store]]
              store-impl
              mutable-store-impl)
             (cosheet.server
              [dom-tracker :refer :all]
+             [render :refer [DOM-for-client-R]]
              [item-render :refer [item-DOM-R]]
-             [referent :refer [item-referent]])
+             [order-utils :refer [update-add-entity-with-order]]
+             [referent :refer [item-referent referent->string]]
+             [session-state :refer [create-client-state]])
             ; :reload
             ))
 
@@ -338,6 +344,28 @@
                        "Joe"]}))
       (is (= (:next-version data) 3))
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]})))))
+
+(deftest remove-all-doms-test
+  (let [md (new-expression-manager-data)
+        tracker (new-dom-tracker md)
+        [store joe _] (update-add-entity-with-order
+                       (new-element-store) nil '("Joe" (39 ("age" :tag)))
+                       cosheet.orderable/initial :after true)
+        ms (new-mutable-store store)
+        client-state (create-client-state ms (referent->string joe))]
+    (add-dom tracker "root" [:root]
+             [DOM-for-client-R ms client-state nil])
+    (compute md)
+    (is (>= (count (:subscriptions @(:manager-data ms))) 4))
+    (let [reporters (keep :reporter (vals (:components @tracker)))]
+      (assert (= (count reporters) 4))
+      (doseq [reporter reporters]
+        (= (count (:attendees @(:data reporter))) 1))
+      (remove-all-doms tracker)
+      (doseq [reporter reporters]
+        (= (count (:attendees @(:data reporter))) 0))
+      (is (= (count (vals (:components @tracker)))  0))
+      (is (= (count (:subscriptions @(:manager-data ms))) 0)))))
 
 (deftest request-client-refresh-test
   (let [md (new-expression-manager-data)

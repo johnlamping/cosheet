@@ -11,7 +11,7 @@
                                           add-pending-clean]]
             cosheet.dom-utils
             [cosheet.ajax :refer [request-action request-replay
-                                  ajax-if-pending]]
+                                  ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                find-ancestor-with-class
                                                set-selector-interpretation
@@ -240,7 +240,8 @@
                                            [:delete (.-id @selected)]))
           (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
                                              (when @selected
-                                               (.log js/console (str [:backspace]))
+                                               (.log js/console
+                                                     (str [:backspace]))
                                                (request-action
                                                 [:delete (.-id @selected)]))
                                              ;; Prevent navigating to prev page.
@@ -250,6 +251,12 @@
                      (not (is-immutable? @selected))
                      (not @edit-field-open-on))
             (open-edit-field @selected (str (.-charCode event))))))))
+
+(defn unload-handler
+  [event]
+  (.log js/console "Unloading.")
+  (ajax-request {:unload true} 100)
+  nil)
 
 (defn ^:export run []
   (let [app (js/document.getElementById "app")
@@ -270,6 +277,7 @@
     (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
+    (gevents/listen js/window gevents/EventType.UNLOAD unload-handler)
     (set-selector-interpretation :broad))
   (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 

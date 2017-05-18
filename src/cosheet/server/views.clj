@@ -29,8 +29,8 @@
     [dom-tracker :refer [request-client-refresh
                          process-acknowledgements response-doms
                          key->id dom-for-key?]]
-    [session-state :refer [create-session ensure-session create-client-state
-                           url-path-to-file-path
+    [session-state :refer [create-session ensure-session forget-session
+                           create-client-state url-path-to-file-path
                            get-session-state queue-to-log update-store-file]]
     [actions :refer [confirm-actions do-actions]])))
 
@@ -174,6 +174,8 @@
 
 ;;; The parameters for the ajax request and response are:
 ;;; request:
+;;;        :unload If true, the client page is about to be unloaded, and
+;;;                the server should drop its state.
 ;;;         :clean If true, the server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
@@ -259,16 +261,19 @@
 
 (defn handle-ajax [request]
   (let [params (:params request)
-        {:keys [actions replay clean selector-interpretation
+        {:keys [actions replay unload clean selector-interpretation
                 acknowledge]}
         params
-        session-state (ensure-session-state params)]    
+        session-state (ensure-session-state params)]
     (if session-state
       (let [{:keys [tracker url-path store client-state]} session-state]
         (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] url-path))
-        (when (or actions replay clean acknowledge)
+        (when (= (dissoc request :id :selector-interpretation) {})
           (println "Request" params))
+        (when unload
+          (println "Unloading session.")
+          (forget-session (:id params)))
         (when clean
           (println "Client is clean.")
           (request-client-refresh tracker)

@@ -24,15 +24,18 @@
       first
       (.getAttribute "content")))
 
-(defn ajax-request [params]
-  (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
-        {:params (assoc params
-                        :selector-interpretation @selector-interpretation)
-         :response-format (transit-response-format)
-         :handler ajax-handler
-         :error-handler ajax-error-handler
-         :timeout 5000})
-  (reset! ajax-request-open true))
+(defn ajax-request
+  ([params]
+   (ajax-request params 5000))
+  ([params timeout]
+   (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
+         {:params (assoc params
+                         :selector-interpretation @selector-interpretation)
+          :response-format (transit-response-format)
+          :handler ajax-handler
+          :error-handler ajax-error-handler
+          :timeout timeout})
+   (reset! ajax-request-open true)))
 
 ;;; A handle to the current pending ajax poll task.
 (def pending-poll-task (atom nil))

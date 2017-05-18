@@ -403,6 +403,15 @@
         (assoc-in [:id->key client-id] key)
         (update-set-component {:definition definition :key key}))))
 
+(defn remove-all-doms
+  "Remove all the doms from the tracker. This will cause it to release
+  all its reporters."
+  [tracker]
+  (swap-and-act
+   tracker
+   (fn [data] (reduce (fn [data key] (update-clear-component data key))
+                      data (vals (:id->key data))))))
+
 (defn id->key
   "Return the hiccup key for the client id."
   [tracker id]

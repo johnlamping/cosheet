@@ -22,7 +22,9 @@
                       string->referent referent->string
                       instantiate-to-items]]
     [render :refer [DOM-for-client-R user-visible-item?]]
-    [dom-tracker :refer [new-dom-tracker add-dom]])))
+    [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
+
+;;; TODO: This needs a unit test.
 
 (defn update-add-blank-table-view
   "Add a blank table view with the given url path to the store, returning the
@@ -187,7 +189,7 @@
 
 ;;; Session management. There is a tracker for each session.
 
-;;; A map from url path to session state.
+;;; A map from id to session state.
 ;;; Session state consists of a map
 ;;;       :url-path  The url path corresponding to the store.
 ;;;          :store  The store that holds the data.
@@ -220,7 +222,6 @@
         [referent subject-ref]
         (or (when referent-string
               (let [referent (string->referent referent-string)]
-                (println "item referent" (simplify-for-print referent))
                 (when referent
                   (let [[_ subject-ref]
                         (referent->exemplar-and-subject referent)
@@ -247,7 +248,7 @@
     tracker))
 
 (defn new-id [session-map]
-  (let [id (str (rand-int 1000000))]
+  (let [id (str (rand-int 1000000000))]
     (if (contains? session-map id)
       (new-id session-map)
       id)))
@@ -279,10 +280,21 @@
       id)))
 
 (defn ensure-session
-  "Make sure there is a session with the given id, and rturn its state."
+  "Make sure there is a session with the given id, and return its state."
   [session-id url-path referent-string manager-data selector-string]
   (or (get-session-state session-id)
       (do (create-session
            session-id url-path referent-string manager-data selector-string)
           (get-session-state session-id))))
+
+(defn forget-session
+  "The session is no longer needed. Forget about it."
+  [session-id]
+  (swap! session-states
+         (fn [session-map]
+           (if-let [state (session-map session-id)]
+             (do (remove-all-doms (:tracker state))
+                 (Thread/sleep 100)
+                 (dissoc session-map session-id))
+             session-map))))
 

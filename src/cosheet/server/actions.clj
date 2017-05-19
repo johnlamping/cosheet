@@ -91,9 +91,9 @@
              (= from "\u00A0...")
              ;; Setting a new selector.
              (and (= from "") (= content 'anything)))
-         ;; Don't believe blank for anything where the UI sets the initial
+         ;; Don't match blank to anything where the UI sets the initial
          ;; text to blank.
-         (not (and (= (first from) \u00A0) (= to "")))))
+         (not (and (string? from) (= (first from) \u00A0) (= to "")))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))

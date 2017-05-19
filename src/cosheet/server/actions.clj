@@ -91,8 +91,10 @@
              (= from "\u00A0...")
              ;; Setting a new selector.
              (and (= from "") (= content 'anything)))
-         ;; Don't match blank to anything where the UI sets the initial
-         ;; text to blank.
+         ;; When the user edits a heading whose value was filled in
+         ;; automatically, the UI clears the text to blank. Don't match
+         ;; in that case, as we don't want to remove the original heading
+         ;; if the user didn't type anything.
          (not (and (string? from) (= (first from) \u00A0) (= to "")))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))

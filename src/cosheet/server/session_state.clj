@@ -13,7 +13,8 @@
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     [expression-manager :refer [compute]]
-    [state-map :refer [new-state-map]])
+    [state-map :refer [new-state-map
+                       state-map-get-current-value state-map-reset!]])
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
     [model-utils :refer [starting-store add-table first-tab-R new-tab-elements
@@ -68,31 +69,43 @@
       (path-to-Path directory)
       (into-array java.nio.file.LinkOption [])))))
 
-;;; Store management. Stores may be shared across sessions.
+;;; The map holding all session state. Sessions are keyed by an id assigned
+;;; to the client when it first loads. Stores may be shared across sessions,
+;;; so there is a separate map holding them, keyed by the path to the store
+;;; file.
+;;; The contents of each map are further detailed below.
+(def session-info (atom {:sessions {}
+                         :stores {}}))
 
-;;; A map from url path to a map
-;;;  {:mutable <mutable-store>,
-;;;   :agent <the agent responsible for saving the store, and writing log
-;;;           entries. It's state is the
-;;;           last version of the store written. We write the store by doing
-;;;           a send to this agent, so that writes don't block interaction,
-;;;           and will skip intermediate values if they get behind.>
-;;;   :log-agent <the agent responsible for writing log entries.
-;;;               its state is a writer opened to append to the log file.>
-(def store-info (atom {}))
+;;; Store management
+
+;;; (:stores @session-info) is a map from url path to a map:
+;;;  {   :store The mutable-store
+;;;      :agent The agent responsible for saving the store, and writing log
+;;;             entries. It's state is the
+;;;             last version of the store written. We write the store by doing
+;;;             a send to this agent, so that writes don't block interaction,
+;;;             and will skip intermediate values if they get behind.
+;;;  :log-agent The agent responsible for writing log entries.
+;;;             its state is a writer opened to append to the log file.
+
+(defn read-csv-reader
+  "parse a csv stream, turning it into a store."
+  [reader name]
+  (let [csved (parse-csv reader)
+        parsed-rows (map (fn [csv] (map #(-> %
+                                             clojure.string/trim
+                                             parse-string-as-number)
+                                        csv))
+                         csved)]
+    (add-table (starting-store nil) name parsed-rows)))
 
 (defn read-csv
   "Read a csv file, turning it into a store."
   [path name]
   (try
     (with-open [reader (clojure.java.io/reader path)]
-      (let [csved (parse-csv reader)
-            parsed-rows (map (fn [csv] (map #(-> %
-                                                 clojure.string/trim
-                                                 parse-string-as-number)
-                                            csv))
-                             csved)]
-        (add-table (starting-store nil) name parsed-rows)))
+      (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
 (defn read-store-file [url-path]
@@ -102,13 +115,11 @@
                          (url-path-to-file-path url-path ".cosheet"))]
        (read-store (new-element-store) stream))
      (catch java.io.FileNotFoundException e nil))
-   (let [store
-         (read-csv (url-path-to-file-path url-path ".csv")
-                   (last (clojure.string/split url-path #"/")))]
-     store)))
+   (read-csv (url-path-to-file-path url-path ".csv")
+                   (last (clojure.string/split url-path #"/")))))
 
 (defn write-store-file-if-different
-  "Function for running in the :agent of store-info.
+  "Function for running in the :agent of (:stores @session-info).
    If the current immutable store is different from the written store,
    writes the current value to a file of the given url path. Always returns
    the current-value."
@@ -128,8 +139,8 @@
       store)))
 
 (defn write-log-entry
-  "Function for running in the log-agent of store-info. Adds the entry
-   to the log stream, and flushes the stream."
+  "Function for running in the log-agent of (:stores @session-info).
+  Adds the entry to the log stream, and flushes the stream."
   [log-writer entry]
   (binding [*out* log-writer]
     (prn entry)
@@ -137,30 +148,30 @@
   log-writer)
 
 (defn update-store-file [url-path]
-  (when-let [info (@store-info url-path)]
+  (when-let [info ((:stores @session-info) url-path)]
     (send (:agent info)
-          write-store-file-if-different (:mutable info) url-path)))
+          write-store-file-if-different (:store info) url-path)))
 
 (defn queue-to-log
   "Add the entry to the queue to be written to the log."
   [entry url-path]
-  (when-let [info (@store-info url-path)]
+  (when-let [info ((:stores @session-info) url-path)]
     (when-let [agent (:log-agent info)]
       (send agent write-log-entry entry))))
 
 (defn ensure-store
-  "Return the store-info for the given url path, creating it if necessary,
+  "Return the store info for the given url path, creating it if necessary,
   returning nil if there is something wrong with the path."
   [url-path]
-  ;; If there were a race to create the store, the log stream might get
-  ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
-  ;; a global lock.
-  (locking store-info
-    (or
-     (@store-info url-path)
-     ;; If the path is not valid, we don't want to put nil in the store-info,
-     ;; as that would preclude fixing the path. Rather, we leave store-info
-     ;; blank in that case.
+  (or
+   ((:stores @session-info) url-path)
+   ;; If there were a race to create the store, the log stream might get
+   ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
+   ;; a global lock.
+   (locking session-info
+     ;; If the path is not valid, we don't want to put nil in
+     ;; (:stores @session-info), as that would preclude fixing the path.
+     ;; Rather, we leave (:stores @session-info) blank in that case.
      (when-let
          [info
           (when (is-valid-path? (url-path-to-file-path url-path ".cosheet"))
@@ -181,20 +192,21 @@
                   (send log-agent
                         write-log-entry [:store (store-to-data immutable)]))
                 (send log-agent write-log-entry [:opened])
-                {:mutable (new-mutable-store immutable)
+                {:store (new-mutable-store immutable)
                  :agent (agent immutable)
                  :log-agent log-agent})))]
-       (swap! store-info #(assoc % url-path info))
+       (swap! session-info #(assoc-in % [:stores url-path] info))
        info))))
 
 ;;; Session management. There is a tracker for each session.
 
-;;; A map from id to session state.
+;;; (:sessions @session-info) is a map from id to session state.
 ;;; Session state consists of a map
 ;;;       :url-path  The url path corresponding to the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
+;;;                :last-time  The last time we accessed this session.
 ;;;                  :in-sync  True if the client is ready to accept doms.
 ;;;                 :referent  The referent for the root of the display or
 ;;;                            selected tab.
@@ -212,9 +224,8 @@
 ;;;                        :action  The alternate storage update action,
 ;;;                                 with the store missing.
 ;;;                          :text  The text shown to the user.
-;;; When we process client commands, we add to session-state
+;;; When we process client commands, we add to the session state
 ;;; :selector-interpretation from the client's request.
-(def session-states (atom {}))
 
 (defn create-client-state
   [store referent-string]
@@ -231,7 +242,8 @@
                       [referent subject-ref])))))
             (let [tab (first-tab-R immutable-store)]
               [(when tab (item-referent tab)) nil]))]
-    (new-state-map {:referent referent
+    (new-state-map {:last-time (System/currentTimeMillis)
+                    :referent referent
                     :subject-referent subject-ref
                     :last-action nil
                     :alternate nil
@@ -253,28 +265,65 @@
       (new-id session-map)
       id)))
 
-;;; TODO: We should keep track of how old sessions are, and dump them when
-;;;       they get too old.
 (defn get-session-state [session-id]
-  (@session-states session-id))
+  (when-let [state ((:sessions @session-info) session-id)]
+    (state-map-reset! (:client-state state) :last-time
+                      (System/currentTimeMillis))
+    state))
+
+(defn prune-old-sessions [delay-millis]
+  (swap!
+   session-info
+   (fn [session-info]
+     (let [last-time-to-keep (- (System/currentTimeMillis) delay-millis)]
+       (assoc session-info :sessions
+              (reduce-kv (fn [accum id state]
+                           (if (< (state-map-get-current-value
+                                   (:client-state state) :last-time)
+                                  last-time-to-keep)
+                             accum
+                             (assoc accum id state)))
+                         {} (:sessions session-info)))))))
+
+(defn prune-unused-stores []
+  ;; We need to close the log streams of any stores we close. But we can't
+  ;; do that inside a swap!, as that may be run several times, needing to
+  ;; close different stores different times. Instead, we use
+  ;; swap-control-return! to inform us which log streams need closing.
+  (let [writers-to-close
+        (swap-control-return!
+         session-info
+         (fn [session-info]
+           (let [store-infos (:stores session-info)
+                 in-use (set (map :store (vals (:sessions session-info))))
+                 need-pruning (filter #(not (in-use (:store (store-infos %))))
+                                      (keys store-infos))]
+             [(assoc session-info :stores
+                     (apply dissoc store-infos need-pruning))
+              (map #(:log-agent (store-infos %)) need-pruning)])))]
+    (doseq [to-close writers-to-close]
+      (send to-close #(.close %)))))
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
   [session-id url-path referent-string manager-data selector-string]
-  (when-let [store (:mutable (ensure-store url-path))]
+  (prune-old-sessions (* 60 60 1000))
+  (when-let [store (:store (ensure-store url-path))]
     (let [id (swap-control-return!
-              session-states
-              (fn [session-map]
-                (let [id (or session-id (new-id session-map))
+              session-info
+              (fn [session-info]
+                (let [session-map (:sessions session-info)
+                      id (or session-id (new-id session-map))
                       client-state (create-client-state store referent-string)]
-                  [(assoc session-map id
-                          {:url-path url-path
-                           :store store
-                           :tracker (create-tracker
-                                     store client-state
-                                     manager-data selector-string)
-                           :client-state client-state})
+                  [(assoc-in session-info [:sessions id]
+                             {:url-path url-path
+                              :store store
+                              :tracker (create-tracker
+                                        store client-state
+                                        manager-data selector-string)
+                              :client-state client-state})
                    id])))]
+      (prune-unused-stores)
       (compute manager-data 1000)
       (println "computed some")
       id)))
@@ -283,18 +332,20 @@
   "Make sure there is a session with the given id, and return its state."
   [session-id url-path referent-string manager-data selector-string]
   (or (get-session-state session-id)
-      (do (create-session
-           session-id url-path referent-string manager-data selector-string)
+      (let [session-id (create-session session-id url-path referent-string
+                                       manager-data selector-string)]
           (get-session-state session-id))))
 
 (defn forget-session
   "The session is no longer needed. Forget about it."
   [session-id]
-  (swap! session-states
-         (fn [session-map]
-           (if-let [state (session-map session-id)]
-             (do (remove-all-doms (:tracker state))
-                 (Thread/sleep 100)
-                 (dissoc session-map session-id))
-             session-map))))
+  (swap! session-info
+         (fn [session-info]
+           (let [session-map (:sessions session-info)]
+             (assoc session-info :sessions
+                    (if-let [state (session-map session-id)]
+                      (do (remove-all-doms (:tracker state))
+                          (Thread/sleep 100)
+                          (dissoc session-map session-id))
+                      session-map))))))
 

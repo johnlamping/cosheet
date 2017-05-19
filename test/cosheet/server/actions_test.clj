@@ -184,11 +184,12 @@
 (deftest do-set-content-test
   (is (= (content
           (description->entity
-           joe-id (do-set-content store
-                                  {:referent (item-referent joe)}
-                                  {:target-key "joe"
-                                   :from "Joe" :to "Jim"})))
-         "Jim"))
+           (:item-id joe-age)
+           (do-set-content store
+                           {:referent (item-referent joe-age)}
+                           {:target-key "joe"
+                            :from "45" :to "46"})))
+         46))
   (is (= (content
           (description->entity
            joe-id (do-set-content store

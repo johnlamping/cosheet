@@ -143,8 +143,9 @@
       (when select-target
         (.log js/console "doing select.")
         (select select-target)
-        ;; Tell the server that their selection request went through.
-        (add-pending-action [:selected target-id])))))
+        (when request-id
+          ;; Tell the server that their selection request went through.
+          (add-pending-action [:selected target-id]))))))
 
 (defn handle-ajax-open
   "Handle an open window request in an ajax response."

@@ -92,7 +92,8 @@
                  :target {:referent (virtual-referent
                                      "" (virtual-tab-referent
                                          new-tab-elements t3) nil)
-                          :select-pattern [:foo [:pattern]]}}]
+                          :select-pattern [:foo [:pattern]]}
+                 :selected {:special :new-tab}}]
           (let [inherited (assoc starting-inherited
                                  :subject-referent (item-referent t3)
                                  :selectable-attributes

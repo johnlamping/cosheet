@@ -108,8 +108,7 @@
     (let [response (if (satisfies? cosheet.store/Store response)
                      {:store response}
                      response)
-          store (:store response)
-          first-item (first (apply concat items))]
+          store (:store response)]
       (assoc response :select
              (when (not-empty items)
                [(substitute-in-key select-pattern items)
@@ -236,13 +235,18 @@
                  selector-category
                  (str "&selector=" (referent->string selector-category)))}))))
 
-(defn do-selected [session-state arguments]
-  (when (= (:special arguments) :tab)
+(defn do-selected [session-state store arguments attributes]
+  (cond
+    (= (:special arguments) :tab)
     (let [referent (:referent arguments)]
       (state-map-reset! (:client-state session-state)
                         :referent referent)
-      {:set-url (str (:url-path session-state)
-                     "?referent=" (referent->string referent))})))
+      {:store store
+       :set-url (str (:url-path session-state)
+                     "?referent=" (referent->string referent))})
+    (= (:special arguments) :new-tab)
+    (do-set-content
+     store (:target attributes) (into attributes {:from "" :to ""}))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client
@@ -372,26 +376,28 @@
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
           (println "dom attributes: " (simplify-for-print dom-attributes))
-          (if (= action-type :selected)
-            (handler session-state arguments)
-            (let [[arguments alternate-arguments text] (alternate-arguments
-                                                    session-state action-type
-                                                    arguments attributes)
-                  result (do-storage-update-action
+          (let [[arguments alternate-arguments text] (alternate-arguments
+                                                      session-state action-type
+                                                      arguments attributes)
+                ;; do-selected gets the session-state in addition.
+                handler (if (= action-type :selected)
+                          (partial handler session-state)
+                          handler)
+                result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
                           handler arguments attributes)]
-              (when (or (not (:special arguments)) (= action-type :set-content))
-                (state-map-reset!
-                 (:client-state session-state) :alternate
-                 (when alternate-arguments
-                   (println "setting non-trivial alternate arguments." text)
-                   {:new-store (first (fetch-and-clear-modified-ids
-                                       (:store result)))
-                    :action [handler
-                             alternate-arguments
-                             (dissoc attributes :session-state)]
-                    :text text}))
-                (dissoc result :store)))))
+            (when (or (not (:special arguments)) (= action-type :set-content))
+                  (state-map-reset!
+                   (:client-state session-state) :alternate
+                   (when alternate-arguments
+                     (println "setting non-trivial alternate arguments." text)
+                     {:new-store (first (fetch-and-clear-modified-ids
+                                         (:store result)))
+                      :action [handler
+                               alternate-arguments
+                               (dissoc attributes :session-state)]
+                      :text text})))
+            (dissoc result :store)))
         (println "No context for action:" action-type
                  (dissoc attributes :session-state)))
       (do 

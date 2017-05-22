@@ -152,7 +152,8 @@
         inherited (assoc inherited :subject-referent subject-referent)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
-           {:class "tab virtualTab"})))
+     {:class "tab virtualTab"
+      :selected {:special :new-tab}})))
 
 (defn tabs-DOM-R
   "Return a reporter giving the DOM for the elements of the given item as tabs."

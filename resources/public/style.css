@@ -726,6 +726,7 @@ body {
        turn off that selection. */
     margin-top: -48px;
     padding-top: 50px;
+    background-color: transparent;
 }
 
 /* broad interpretation of columns */

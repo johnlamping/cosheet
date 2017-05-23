@@ -99,10 +99,10 @@
        [:div#scope_holder
         [:div#narrow_selector_interpretation.tool
          [:img {:src "../icons/select.gif"}]
-         [:div.tooltip "choosing selection"]]
+         [:div.tooltip "select data"]]
         [:div#broad_selector_interpretation.tool
          [:img {:src "../icons/edit.gif"}]
-         [:div.tooltip "editing data"]]]]
+         [:div.tooltip "change data"]]]]
       [:div#alternate_interpretation_holder {}
        [:div " "]
        [:div#alternate_interpretation " "]

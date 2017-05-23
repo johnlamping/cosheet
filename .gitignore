@@ -15,3 +15,11 @@ test/cosheet/.DS_Store
 test/.DS_Store
 
 *.command
+
+resources/public/icons/select_broad.psd
+
+resources/public/icons/select_broad.gif
+
+resources/public/icons/select_narrow.gif
+
+resources/public/icons/select_narrow.psd

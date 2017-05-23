@@ -106,7 +106,7 @@
         (set! (.-className alternate-holder) "visible")))))
 
 ;;; :broad or :narrow
-(def selector-interpretation (atom :broad))
+(def selector-interpretation (atom nil))
 
 (def selected (atom nil)) ;; The currently selected dom.
 
@@ -121,7 +121,7 @@
 (def broad-selector-scope (atom nil))
 
 ;;; The dom of the header of the currently selected column if we are doing
-;;; the broad interpretation of selection scopes.
+;;; the broad interpretation of selection scopes and have a column selected.
 ;;; That dom will have the class "broad-column"
 (def broad-selection-column (atom nil))
 
@@ -146,19 +146,51 @@
                                             (find-ancestor-with-class
                                              selection "selectors"))]
                          (find-ancestor-with-class selectors "selector-scope"))
-        narrow-scope (when (= @selector-interpretation :narrow)
-                       selector-scope)
-        broad-scope (when (= @selector-interpretation :broad)
-                       selector-scope)
-        broad-column (when (and selection
-                                (= @selector-interpretation :broad))
-                       (find-ancestor-with-class selection "column-header"))]
+        interpretation @selector-interpretation
+        narrow-scope (when (= interpretation :narrow) selector-scope)
+        broad-scope (when (= interpretation :broad) selector-scope)
+        broad-column (and selection
+                          (= interpretation :broad)
+                          (find-ancestor-with-class selection "column-header"))]
     (set-special-class
      narrow-scope narrow-selector-scope "narrow-scope")
     (set-special-class
      broad-scope broad-selector-scope "broad-scope")
     (set-special-class
      broad-column broad-selection-column "broad-column")))
+
+(defn set-selector-interpretation
+  [interpretation]
+  (when (not= interpretation @selector-interpretation)
+    (.log js/console
+          (str "setting selector interpretation " interpretation "."))
+    (reset! selector-interpretation interpretation)
+    (.add (.-classList (interpretation-selector-dom interpretation))
+          "picked")
+    (.remove (.-classList (interpretation-selector-dom
+                           (opposite-selector-interpretation interpretation)))
+             "picked")
+    (set-selection-classes)))
+
+;;; The last version of broad-selector-scope that was the result of a user
+;;; selection action. This is used only by adjust-selection-interpretation.
+;;; We can have deselections for various random reasons,
+;;; like doms changing. Those shouldn't affect the current selection
+;;; interpretation.
+(def last-chosen-broad-selector-scope (atom nil))
+
+(defn adjust-selection-interpretation
+  "Change the selection interpretation to narrow if it was broad and we are
+  now in a different selector scope."
+  [new-selection]
+  (let [selector-scope (when-let [selectors (when new-selection
+                                              (find-ancestor-with-class
+                                               new-selection "selectors"))]
+                         (find-ancestor-with-class
+                          selectors "selector-scope"))]
+    (when (not= selector-scope @last-chosen-broad-selector-scope)
+      (set-selector-interpretation :narrow)
+      (reset! last-chosen-broad-selector-scope selector-scope))))
 
 (defn interpretation-selector-dom
   "Return the dom choice button for the given interpretation of selectors."
@@ -172,21 +204,11 @@
   ({:broad :narrow
     :narrow :broad} interpretation))
 
-(defn set-selector-interpretation
-  [interpretation]
-  (.log js/console (str "setting selector interpretation " interpretation "."))
-  (reset! selector-interpretation interpretation)
-  (.add (.-classList (interpretation-selector-dom interpretation))
-        "picked")
-  (.remove (.-classList (interpretation-selector-dom
-                         (opposite-selector-interpretation interpretation)))
-           "picked")
-  (set-selection-classes))
-
 (defn toggle-selector-interpretation
   []
   (set-selector-interpretation
-   (opposite-selector-interpretation @selector-interpretation)))
+   (opposite-selector-interpretation @selector-interpretation))
+  (set-selection-classes))
 
 (defn deselect []
   (let [target @selected]
@@ -202,6 +224,7 @@
   (.log js/console (str "Selecting id " (.-id target) "."))
   (.log js/console (str "current selection " @selected))
   (when (not= target @selected)
+    (adjust-selection-interpretation target)
     (deselect)
     (.add (.-classList target) "selected")
     (gdom/appendChild target (js/document.getElementById "select_holder"))

@@ -278,7 +278,7 @@
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
     (gevents/listen js/window gevents/EventType.UNLOAD unload-handler)
-    (set-selector-interpretation :broad))
+    (set-selector-interpretation :narrow))
   (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 
 

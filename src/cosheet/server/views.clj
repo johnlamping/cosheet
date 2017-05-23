@@ -97,12 +97,12 @@
       [:div#select_holder.select_holder
        [:input#edit_input {"type" "text"}]
        [:div#scope_holder
-        [:div#broad_selector_interpretation.tool
-         [:img {:src "../icons/edit.gif"}]
-         [:div.tooltip "editing data"]]
         [:div#narrow_selector_interpretation.tool
          [:img {:src "../icons/select.gif"}]
-         [:div.tooltip "choosing selection"]]]]
+         [:div.tooltip "choosing selection"]]
+        [:div#broad_selector_interpretation.tool
+         [:img {:src "../icons/edit.gif"}]
+         [:div.tooltip "editing data"]]]]
       [:div#alternate_interpretation_holder {}
        [:div " "]
        [:div#alternate_interpretation " "]

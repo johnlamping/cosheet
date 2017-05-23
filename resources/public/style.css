@@ -706,16 +706,6 @@ body {
                 7px 9px 4px 2px hsla(0, 0%, 0%, .7);
 }
 
-.narrow-scope .selectors .tag,
-.narrow-scope .selectors.tag {
-    background-color: hsl(194, 100%, 70%);
-}
-
-.narrow-scope .selectors .tag > .tag,
-.narrow-scope .selectors.tag > .tag{
-    background-color: transparent;
-}
-
 .narrow-scope .selectees {
     opacity: 0.3;
 }
@@ -750,6 +740,7 @@ body {
     top: 100%;
     z-index: 1;
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    background-color: hsla(220, 100%, 55%, .12);
 }
 
 /* --- toolbar --- */

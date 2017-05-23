@@ -544,6 +544,8 @@ body {
     flex: none;
     display: flex;
     align-items: stretch;
+    position: relative; /* So we can set up a highlight ::before element
+                           with top: 100%; */
 }
 
 .table-main > .column-header-sequence {
@@ -694,7 +696,7 @@ body {
     width: 200px;
 }
 
-/* --- narrow interpretation --- */
+/* --- narrow and broad interpretations --- */
 
 .selectors {
     /* Allow the box shadow to overlap the selected. */
@@ -729,7 +731,19 @@ body {
     background-color: transparent;
 }
 
-/* broad interpretation of columns */
+.broad-scope.table > .table-body > .table-main
+                   > .column-header-sequence:first-child::before {
+    content: " ";
+    pointer-events: none;
+    width: 100%;
+    height: 1000000px;
+    position: absolute;
+    left: 0px;
+    top: 100%;
+    z-index: 1;
+    box-shadow: inset 0 0 6px 3px hsla(220, 100%, 55%, .5);
+    background-color: hsla(220, 100%, 55%, .12);
+}
 
 .column-header.broad-column::before {
     content: " ";
@@ -740,7 +754,7 @@ body {
     left: 0px;
     top: 100%;
     z-index: 1;
-    box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    box-shadow: inset 0 0 6px 3px hsla(220, 100%, 55%, .5);
     background-color: hsla(220, 100%, 55%, .12);
 }
 

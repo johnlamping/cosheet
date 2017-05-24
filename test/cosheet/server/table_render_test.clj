@@ -225,6 +225,7 @@
                                           nil (item-referent joe))
                                :select-pattern (conj table-key
                                                      [:pattern] (:item-id c1))}
+                     :delete-row {:referent (item-referent joe)}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
                      :target {:referent (virtual-referent
@@ -234,8 +235,7 @@
                                          :position :after)
                               :select-pattern (conj table-key
                                                     (:item-id joe) (:item-id c1)
-                                                    [:pattern])}
-                     :delete {:referent (item-referent joe)}}]
+                                                    [:pattern])}}]
               [:component {:key (conj table-key
                                       (:item-id joe) (:item-id c2) (any))
                            :class "table-cell has-border"}
@@ -251,7 +251,8 @@
                                          (:top-level :non-semantic))
                                        nil (item-referent joe))
                             :select-pattern (conj table-key
-                                                  [:pattern] (:item-id c2))}}}]]
+                                                  [:pattern] (:item-id c2))}
+                  :delete-row {:referent (item-referent joe)}}}]]
               (any)
               (any)
               (any)

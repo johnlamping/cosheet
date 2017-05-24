@@ -353,7 +353,8 @@
   "Return the dom for one cell of a table, given its items.
   Inherited gives the context of each item in the cell."
   [items column-id new-row-template inherited]
-  (let [inherited
+  (let [row-referent (:subject-referent inherited)
+        inherited
         (-> inherited
             (assoc :width 0.75)
             (update-in
@@ -361,22 +362,19 @@
              #(into-attributes
                % {:add-row
                   {:referent
-                   (virtual-referent new-row-template nil
-                                     (:subject-referent inherited))
+                   (virtual-referent new-row-template nil row-referent)
                    :select-pattern (conj (vec (butlast
                                                (butlast
                                                 (:key-prefix inherited))))
-                                         [:pattern] column-id)}})))]
+                                         [:pattern] column-id)}
+                  :delete-row {:referent row-referent}})))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
                (virtual-item-DOM
                 (:key-prefix inherited) (:subject-referent inherited) :after
-                (into-attributes
-                 inherited
-                 {:selectable-attributes
-                  {:delete {:referent (:subject-referent inherited)}}}))
+                inherited)
                (elements-DOM-R items false (:template inherited) inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 

@@ -102,9 +102,9 @@
           first-column-referent (union-referent
                                  [(item-referent c1)
                                   (elements-referent c1 rows-referent)])
-          delete-referent (union-referent
-                           [(item-referent c1)
-                            (elements-referent c1 rows-referent)])
+          delete-column-referent (union-referent
+                                  [(item-referent c1)
+                                   (elements-referent c1 rows-referent)])
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
                                                  (true :reference)))]]
@@ -146,7 +146,9 @@
                                            :selector :first-group) 
                                 :select-pattern (conj table-key
                                                       :nested [:pattern])}
-                   :delete {:referent delete-referent}
+                   :delete-column {:referent delete-column-referent
+                                   :alternate true}
+                   :delete {:referent nil}
                    :add-element {:referent first-column-referent
                                  :select-pattern (conj table-key
                                                        :nested [:pattern])}}}]]

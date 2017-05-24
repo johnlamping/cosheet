@@ -121,7 +121,9 @@
                              "add-label" :add-label
                              "add-sibling" :add-sibling
                              "add-row" :add-row
-                             "add-column" :add-column}
+                             "add-column" :add-column
+                             "delete-column" :delete-column
+                             "delete-row" :delete-row}
                            id)
         selection @selected]
     (.log js/console (str "menu click " id))

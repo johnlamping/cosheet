@@ -65,47 +65,40 @@
 
 (defn table-node-delete-referent
   "Generate the referent for the elements to be deleted when the only
-  item of a table header node is deleted. The arguments are the node,
-  a referent to the rows of the table, and to the subject of the
-  header requests.
+  item of a table header node is deleted. If we have no descendants,
+  then deletion is not allowed, and we return nil. Otherwise, we
+  return a referent to the columns of all descendants that have more than just
+  the node does.
+  The arguments are the node, a referent to the rows of the table,
+  and to the subject of the header requests.
   When the referent is instantiated, the first group must be all the elements
   in table requests, while subsequent groups contain elements in rows brought
   up by the header."
   [node rows-referent header-subject]
-  (let [exemplar-item (first (hierarchy-node-example-elements node))
-        [members deeper-descendants]
-        (separate-by #(= (multiset (:property-canonicals %))
-                         (:cumulative-properties node))
-                     (hierarchy-node-descendants node))
-        referent-for-member #(item-or-exemplar-referent
-                              (:item %) header-subject)
-        header-ref (union-referent-if-needed
-                    (concat (when members
-                              ;; We delete columns for our own members.
-                              [(union-referent-if-needed
-                                 (map referent-for-member members))])
-                            (when deeper-descendants
-                              ;; We just delete an element for descendant nodes.
-                              [(item-or-exemplar-referent
-                                exemplar-item
-                                (union-referent-if-needed
-                                 (map referent-for-member
-                                      deeper-descendants)))])))
-        sub-nodes (filter hierarchy-node? (hierarchy-node-next-level node))
-        ;; The element added by this header to the elements in the columns.
-        matches-ref (when (seq sub-nodes)
-                      (exemplar-referent
-                       exemplar-item
-                       (table-node-row-elements-referent node rows-referent)))
-        ;; The elements of the columns that are members of the node.
-        element-ref (when (seq members)
-                      (table-node-no-siblings-row-elements-referent
-                       (first members) sub-nodes rows-referent))]
-    ;; We always return a union, to guarantee that instantition will
-    ;; return the header elements in the first group.
-    (union-referent (cond-> [header-ref]
-                      matches-ref (conj matches-ref)
-                      element-ref (conj element-ref)))))
+  (let [deeper-descendants (filter #(not= (multiset (:property-canonicals %))
+                                          (:cumulative-properties node))
+                                   (hierarchy-node-descendants node))]
+    (when (seq deeper-descendants)
+      (let [exemplar-item (first (hierarchy-node-example-elements node))
+            referent-for-member #(item-or-exemplar-referent
+                                  (:item %) header-subject)
+            header-ref (item-or-exemplar-referent
+                        exemplar-item
+                        (union-referent-if-needed
+                         (map referent-for-member deeper-descendants)))
+            sub-nodes (filter hierarchy-node? (hierarchy-node-next-level node))
+            deeper-columns-elements-referent (union-referent-if-needed
+                                              (map #(elements-referent
+                                                     (:item %) rows-referent)
+                                                   (hierarchy-nodes-extent
+                                                    sub-nodes)))
+            ;; The element corresponding to this header element in
+            ;; the elements in the columns.
+            matches-ref (exemplar-referent
+                         exemplar-item deeper-columns-elements-referent)]
+        ;; We always return a union, to guarantee that instantition will
+        ;; return the header elements in the first group.
+        (union-referent [header-ref matches-ref])))))
 
 (defn new-header-template
   "Return the template for a new header. new-elements-template gives
@@ -184,8 +177,8 @@
   "Generate the dom for a node of a table header hierarchy. The
   rows-referent should specify all the row items from which this
   header selects elements. The elements template describes new elements
-  of the column request(s), in contrast to inherited, which describe the
-  request(s) overall."
+  of the column request(s), in contrast to inherited, which describes the
+  overall column request(s)."
   [node top-level rows-referent elements-template inherited]
   (let [subject-ref (:subject-referent inherited)
         column-referent (union-referent [(hierarchy-node-items-referent
@@ -193,12 +186,23 @@
                                          (table-node-row-elements-referent
                                           node rows-referent)])
         example-elements (hierarchy-node-example-elements node)
+        descendants (hierarchy-node-descendants node)
+        one-element (= (count example-elements) 1)
         selectable-attributes
-        (when (= (count example-elements) 1)
-          (cond-> {:expand {:referent column-referent}}
-            top-level (assoc :delete {:referent (table-node-delete-referent
-                               node rows-referent subject-ref)})))
-        descendants (hierarchy-node-descendants node)]
+        (cond-> {}
+          one-element
+          (assoc :expand {:referent column-referent})
+          ;; If we are a child, it is OK to delete our last element, as
+          ;; our parent will still contribute an element. But if we
+          ;; are a top level node, we can't, in general, delete our
+          ;; last element, or there would be nothing left in the node.
+          (and one-element top-level)
+          (assoc :delete
+                 {:referent (table-node-delete-referent
+                             node rows-referent subject-ref)})
+          (<= (count descendants) 1)
+          (assoc :delete-column {:referent column-referent
+                                 :alternate true}))]
     (let [inherited-down (-> (if selectable-attributes
                                (assoc inherited :selectable-attributes
                                       selectable-attributes)
@@ -259,7 +263,8 @@
                                 elements-template
                                 (update inherited :key-prefix
                                         (fn [pref] (conj pref :nested)))))
-                              {:delete {:referent column-referent}
+                              {:delete-column {:referent column-referent
+                                               :alternate true}
                                :expand {:referent column-referent}})))
         key (conj (:key-prefix inherited) (:item-id column-item))]
     (add-attributes

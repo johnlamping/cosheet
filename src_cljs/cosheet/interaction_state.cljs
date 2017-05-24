@@ -159,6 +159,13 @@
     (set-special-class
      broad-column broad-selection-column "broad-column")))
 
+(defn interpretation-selector-dom
+  "Return the dom choice button for the given interpretation of selectors."
+  [interpretation]
+  (js/document.getElementById ({:narrow "narrow_selector_interpretation"
+                                :broad "broad_selector_interpretation"}
+                               interpretation)))
+
 (defn set-selector-interpretation
   [interpretation]
   (when (not= interpretation @selector-interpretation)
@@ -191,13 +198,6 @@
     (when (not= selector-scope @last-chosen-broad-selector-scope)
       (set-selector-interpretation :narrow)
       (reset! last-chosen-broad-selector-scope selector-scope))))
-
-(defn interpretation-selector-dom
-  "Return the dom choice button for the given interpretation of selectors."
-  [interpretation]
-  (js/document.getElementById ({:narrow "narrow_selector_interpretation"
-                                :broad "broad_selector_interpretation"}
-                               interpretation)))
 
 (defn opposite-selector-interpretation
   [interpretation]

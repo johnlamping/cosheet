@@ -182,5 +182,8 @@
                 ;; tab will have priority in the stacking order.
                 ;; Then in the style, we say to lay them out in reverse
                 ;; row order.
-                (concat [virtual-tab] (reverse doms))))))))
+                ;; We put an empty div at the end, so clicks beyond the
+                ;; virtual tab won't be referred to the virtual tab, which
+                ;; would otherwise be the closest element.
+                (concat [[:div] virtual-tab] (reverse doms))))))))
 

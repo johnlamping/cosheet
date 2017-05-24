@@ -87,6 +87,7 @@
     (is (check
          dom
          [:div {:class "tabs-holder"}
+          [:div]
           [:div {:class "editable tab virtualTab"
                  :key [:foo :virtualTab]
                  :target {:referent (virtual-referent

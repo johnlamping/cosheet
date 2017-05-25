@@ -21,13 +21,13 @@
 
 (deftest url-path-to-file-path-test
   (let [home (System/getProperty "user.home")]
-    (is (= (url-path-to-file-path "foo/" ".bar") nil))
-    (is (= (url-path-to-file-path "/cosheet/foo" ".bar")
-           (str home "/cosheet/foo.bar")))
-    (is (= (url-path-to-file-path "/~/foo" ".bar")
-           (str home "/foo.bar")))
-    (is (= (url-path-to-file-path "//foo" ".bar")
-           "/foo.bar"))))
+    (is (= (url-path-to-file-path "foo/") nil))
+    (is (= (url-path-to-file-path "/cosheet/foo")
+           (str home "/cosheet/foo")))
+    (is (= (url-path-to-file-path "/~/foo")
+           (str home "/foo")))
+    (is (= (url-path-to-file-path "//foo")
+           "/foo"))))
 
 (deftest read-csv-reader-test
   (let [store (read-csv-reader (new java.io.StringReader "a, b
@@ -118,7 +118,7 @@
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "/foo" nil md nil)]
+    (let [state (ensure-session nil "//foo" nil md nil)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))

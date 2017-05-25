@@ -17,25 +17,13 @@
                        state-map-get-current-value state-map-reset!]])
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
-    [model-utils :refer [starting-store add-table first-tab-R new-tab-elements
+    [model-utils :refer [starting-store add-table first-tab-R
                          specialize-template]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
                       instantiate-to-items]]
     [render :refer [DOM-for-client-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
-
-(defn update-add-blank-table-view
-  "Add a blank table view with the given url path to the store, returning the
-  new store and the id of the new view."
-  [store url-path]
-  (let [name (last (clojure.string/split url-path #"/"))
-        generic (cons "" (cons name new-tab-elements))
-        [specialized [store _]] (specialize-template generic [store {}])
-        tabs-holder (first (matching-items '(nil :tabs) store))]
-    (update-add-entity-adjacent-to
-     store (:item-id tabs-holder) specialized (order-element-for-item nil store)
-     :after false)))
 
 (defn path-to-Path [path]
   (java.nio.file.Paths/get
@@ -44,17 +32,16 @@
 (defn url-path-to-file-path
   "Turn a url path into a file path, returning nil if the url path is
   syntactically ill formed."
-  [url-path suffix]
+  [url-path]
   (when (not (clojure.string/ends-with? url-path "/"))
-    (when-let [path (cond (clojure.string/starts-with? url-path "/cosheet/")
-                          (str (System/getProperty "user.home") url-path)
-                          (clojure.string/starts-with? url-path "/~/")
-                          (str (System/getProperty "user.home")
-                               (subs url-path 2))
-                          (clojure.string/starts-with? url-path "//")
-                          (subs url-path 1)
-                          true nil)]
-      (str path suffix))))
+    (cond (clojure.string/starts-with? url-path "/cosheet/")
+          (str (System/getProperty "user.home") url-path)
+          (clojure.string/starts-with? url-path "/~/")
+          (str (System/getProperty "user.home")
+               (subs url-path 2))
+          (clojure.string/starts-with? url-path "//")
+          (subs url-path 1)
+          true nil)))
 
 (defn has-valid-directory?
   "Return whether the file path refers to an actual directory."
@@ -104,12 +91,12 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn interpret-url-path
-  "Given the url path, return the path without the suffix,
+(defn interpret-file-path
+  "Given the file path, return the path without the suffix,
   the name, and the suffix, using appropriate defaults.
   Return nil if the path is not well formed."
-  [url-path]
-  (let [parts (clojure.string/split url-path #"/")
+  [file-path]
+  (let [parts (clojure.string/split file-path #"/")
         directory-path (clojure.string/join "/" (butlast parts))
         filename (last parts)
         name-parts (clojure.string/split filename #"\.")
@@ -123,16 +110,14 @@
           [without-suffix name (str "." (second name-parts))])))
 
 (defn get-store
-  "Read the initial store if possible; otherwise create one.
-  Return a map with the store and the url-path to use for accessing it.
+  "Read the store if possible; otherwise create one.
+  Return a map with the store and the file-path to use for accessing it.
   (If there was a format conversion, the access path will be different from
   the initial path.)
   If the store can't be made, return nil."
   [without-suffix name suffix]
-  (when (and without-suffix
-             (has-valid-directory?
-              (url-path-to-file-path without-suffix "")))
-    (let [file-path (url-path-to-file-path without-suffix suffix)]
+  (when (and without-suffix (has-valid-directory? without-suffix))
+    (let [file-path (str without-suffix suffix)]
       (cond (= suffix ".cosheet")
             (try
               (with-open [stream (clojure.java.io/input-stream file-path)]
@@ -148,17 +133,17 @@
    If the current immutable store is different from the written store,
    writes the current value to a file of the given url path. Always returns
    the current-value."
-   [written-store mutable-store url-path]
+   [written-store mutable-store file-path]
   ;; We write the latest value from the mutable store, rather than the value
   ;; at the time the send was done, so that we will catch up if we get behind.
   (with-latest-value [store (current-store mutable-store)]
     (when (not= written-store store)
-      (let [temp-path (url-path-to-file-path url-path "_TEMP_.cosheet")]
+      (let [temp-path (str file-path "_TEMP_.cosheet")]
         (clojure.java.io/delete-file temp-path true)
         (with-open [stream (clojure.java.io/output-stream temp-path)]
           (write-store store stream))
         (Files/move (path-to-Path temp-path)
-                    (path-to-Path (url-path-to-file-path url-path ".cosheet"))
+                    (path-to-Path (str file-path ".cosheet"))
                     (into-array CopyOption [StandardCopyOption/REPLACE_EXISTING,
                                             StandardCopyOption/ATOMIC_MOVE])))
       store)))
@@ -172,25 +157,25 @@
     (flush))
   log-writer)
 
-(defn update-store-file [url-path]
-  (when-let [info ((:stores @session-info) url-path)]
+(defn update-store-file [file-path]
+  (when-let [info ((:stores @session-info) file-path)]
     (send (:agent info)
-          write-store-file-if-different (:store info) url-path)))
+          write-store-file-if-different (:store info) file-path)))
 
 (defn queue-to-log
   "Add the entry to the queue to be written to the log."
-  [entry url-path]
-  (when-let [info ((:stores @session-info) url-path)]
+  [entry file-path]
+  (when-let [info ((:stores @session-info) file-path)]
     (when-let [agent (:log-agent info)]
       (send agent write-log-entry entry))))
 
 (defn ensure-store
-  "Return the store info for the given url path, creating it if necessary.
+  "Return the store info for the given file path, creating it if necessary.
   Also add :without-suffix to the store info returned, giving the
   url path that the store is indexed under.
   Return nil if there is something wrong with the path."
-  [url-path]
-  (let [[without-suffix name suffix] (interpret-url-path url-path)]
+  [file-path]
+  (let [[without-suffix name suffix] (interpret-file-path file-path)]
     (or
      ((:stores @session-info) without-suffix)
      ;; If there were a race to create the store, the log stream might get
@@ -202,9 +187,7 @@
        ;; Rather, we leave (:stores @session-info) blank in that case.
        (when-let [immutable-store (get-store without-suffix name suffix)]
          (let [log-stream (try (java.io.FileOutputStream.
-                                (url-path-to-file-path
-                                 without-suffix ".cosheetlog")
-                                true)
+                                (str without-suffix ".cosheetlog") true)
                                (catch java.io.FileNotFoundException e
                                  nil))
                log-agent (when log-stream
@@ -225,7 +208,7 @@
 
 ;;; (:sessions @session-info) is a map from id to session state.
 ;;; Session state consists of a map
-;;;       :url-path  The url path corresponding to the store.
+;;;      :file-path  The file path corresponding to the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
@@ -331,26 +314,27 @@
   "Create a session with the given id, or with a new id if none is given."
   [session-id url-path referent-string manager-data selector-string]
   (prune-old-sessions (* 60 60 1000))
-  (when-let [store-info (ensure-store url-path)]
-    (let [store (:store store-info)
-          id (swap-control-return!
-              session-info
-              (fn [session-info]
-                (let [session-map (:sessions session-info)
-                      id (or session-id (new-id session-map))
-                      client-state (create-client-state store referent-string)]
-                  [(assoc-in session-info [:sessions id]
-                             {:url-path (:without-suffix store-info)
-                              :store store
-                              :tracker (create-tracker
-                                        store client-state
-                                        manager-data selector-string)
-                              :client-state client-state})
-                   id])))]
-      (prune-unused-stores)
-      (compute manager-data 1000)
-      (println "computed some")
-      id)))
+  (when-let [file-path (url-path-to-file-path url-path)]
+    (when-let [store-info (ensure-store file-path)]
+      (let [store (:store store-info)
+            id (swap-control-return!
+                session-info
+                (fn [session-info]
+                  (let [session-map (:sessions session-info)
+                        id (or session-id (new-id session-map))
+                        client-state (create-client-state store referent-string)]
+                    [(assoc-in session-info [:sessions id]
+                               {:file-path (:without-suffix store-info)
+                                :store store
+                                :tracker (create-tracker
+                                          store client-state
+                                          manager-data selector-string)
+                                :client-state client-state})
+                     id])))]
+        (prune-unused-stores)
+        (compute manager-data 1000)
+        (println "computed some")
+        id))))
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
@@ -358,7 +342,7 @@
   (or (get-session-state session-id)
       (let [session-id (create-session session-id url-path referent-string
                                        manager-data selector-string)]
-          (get-session-state session-id))))
+        (get-session-state session-id))))
 
 (defn forget-session
   "The session is no longer needed. Forget about it."

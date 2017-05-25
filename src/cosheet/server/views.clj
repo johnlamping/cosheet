@@ -273,9 +273,9 @@
         params
         session-state (ensure-session-state params)]
     (if session-state
-      (let [{:keys [tracker url-path store client-state]} session-state]
+      (let [{:keys [tracker file-path store client-state]} session-state]
         (when (or actions clean)
-          (queue-to-log [:request (dissoc params :acknowledge)] url-path))
+          (queue-to-log [:request (dissoc params :acknowledge)] file-path))
         (when (= (dissoc request :id :selector-interpretation) {})
           (println "Request" params))
         (when unload
@@ -298,7 +298,7 @@
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
                 client-info (do-actions store augmented-state action-sequence)]
-            (update-store-file url-path)
+            (update-store-file file-path)
             (compute manager-data 10000)
             (check-propagation-if-quiescent tracker)
             (ajax-response tracker client-state actions client-info))))

@@ -29,6 +29,12 @@
     (is (= (url-path-to-file-path "//foo")
            "/foo"))))
 
+(deftest remove-url-file-extension-test
+  (is (= (remove-url-file-extension "a/b.c/c.foo?bar=1&baz=2?baz")
+         "a/b.c/c?bar=1&baz=2?baz"))
+  (is (= (remove-url-file-extension "a/b.c/c?bar=1&baz=2?baz")
+         "a/b.c/c?bar=1&baz=2?baz")))
+
 (deftest read-csv-reader-test
   (let [store (read-csv-reader (new java.io.StringReader "a, b
                                                           1, 2

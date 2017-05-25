@@ -31,6 +31,7 @@
                          key->id dom-for-key?]]
     [session-state :refer [create-session ensure-session forget-session
                            create-client-state url-path-to-file-path
+                           remove-url-file-extension
                            get-session-state queue-to-log update-store-file]]
     [actions :refer [confirm-actions do-actions]])))
 
@@ -183,7 +184,8 @@
 ;;; request:
 ;;;        :unload If true, the client page is about to be unloaded, and
 ;;;                the server should drop its state.
-;;;         :clean If true, the server should assume the client is
+;;;         :clean If present, the value is the location part of the url.
+;;;                The server should assume the client is
 ;;;                starting from scratch. No other parameters
 ;;;                should be present.
 ;;;        :replay If true, the path should end in .history, and the
@@ -297,7 +299,10 @@
             (state-map-reset! client-state :alternate nil))
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
-                client-info (do-actions store augmented-state action-sequence)]
+                client-info (cond-> (do-actions
+                                     store augmented-state action-sequence)
+                              clean (assoc :set-url
+                                           (remove-url-file-extension clean)))]
             (update-store-file file-path)
             (compute manager-data 10000)
             (check-propagation-if-quiescent tracker)

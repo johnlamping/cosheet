@@ -43,6 +43,18 @@
           (subs url-path 1)
           true nil)))
 
+(defn remove-url-file-extension
+  "If the url has a file extension, remove it."
+  [url]
+  (let [parts (clojure.string/split url #"\?")
+        path-parts (clojure.string/split (first parts) #"/")
+        file-parts (clojure.string/split (last path-parts) #"\.")]
+    (if (> (count file-parts) 1)
+      (let [path (clojure.string/join
+                  "/" (concat (butlast path-parts) [(first file-parts)]))]
+        (clojure.string/join "?" (concat [path] (rest parts))))
+      url)))
+
 (defn has-valid-directory?
   "Return whether the file path refers to an actual directory."
   [path]

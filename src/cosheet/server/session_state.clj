@@ -25,8 +25,6 @@
     [render :refer [DOM-for-client-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
 
-;;; TODO: This needs a unit test.
-
 (defn update-add-blank-table-view
   "Add a blank table view with the given url path to the store, returning the
   new store and the id of the new view."
@@ -58,16 +56,15 @@
                           true nil)]
       (str path suffix))))
 
-(defn is-valid-path?
-  "Return whether the file path refers to a name in an actual directory."
+(defn has-valid-directory?
+  "Return whether the file path refers to an actual directory."
   [path]
-  (and
-   path
-   (let [directory (clojure.string/join
-                    "/" (butlast (clojure.string/split path #"/")))]
-     (java.nio.file.Files/isDirectory
-      (path-to-Path directory)
-      (into-array java.nio.file.LinkOption [])))))
+  (and path
+       (let [directory (clojure.string/join
+                        "/" (butlast (clojure.string/split path #"/")))]
+         (java.nio.file.Files/isDirectory
+          (path-to-Path directory)
+          (into-array java.nio.file.LinkOption [])))))
 
 ;;; The map holding all session state. Sessions are keyed by an id assigned
 ;;; to the client when it first loads. Stores may be shared across sessions,
@@ -80,9 +77,8 @@
 ;;; Store management
 
 ;;; (:stores @session-info) is a map from url path to a map:
-;;;  {   :store The mutable-store
-;;;      :agent The agent responsible for saving the store, and writing log
-;;;             entries. It's state is the
+;;;  {   :store The mutable-store.
+;;;      :agent The agent responsible for saving the store. It's state is the
 ;;;             last version of the store written. We write the store by doing
 ;;;             a send to this agent, so that writes don't block interaction,
 ;;;             and will skip intermediate values if they get behind.
@@ -90,7 +86,7 @@
 ;;;             its state is a writer opened to append to the log file.
 
 (defn read-csv-reader
-  "parse a csv stream, turning it into a store."
+  "parse a reader over a csv file, turning it into a store."
   [reader name]
   (let [csved (parse-csv reader)
         parsed-rows (map (fn [csv] (map #(-> %
@@ -108,15 +104,44 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn read-store-file [url-path]
-  (or
-   (try
-     (with-open [stream (clojure.java.io/input-stream
-                         (url-path-to-file-path url-path ".cosheet"))]
-       (read-store (new-element-store) stream))
-     (catch java.io.FileNotFoundException e nil))
-   (read-csv (url-path-to-file-path url-path ".csv")
-                   (last (clojure.string/split url-path #"/")))))
+(defn interpret-url-path
+  "Given the url path, return the path without the suffix,
+  the name, and the suffix, using appropriate defaults.
+  Return nil if the path is not well formed."
+  [url-path]
+  (let [parts (clojure.string/split url-path #"/")
+        directory-path (clojure.string/join "/" (butlast parts))
+        filename (last parts)
+        name-parts (clojure.string/split filename #"\.")
+        name (first name-parts)
+        without-suffix (str directory-path "/" name)]
+    (cond (= (count name-parts) 1)
+          ;; If there was no extension, we default to "cosheet"
+          [without-suffix name ".cosheet"]
+          (and (= (count name-parts) 2)
+               (#{"cosheet" "csv"} (second name-parts)))
+          [without-suffix name (str "." (second name-parts))])))
+
+(defn get-store
+  "Read the initial store if possible; otherwise create one.
+  Return a map with the store and the url-path to use for accessing it.
+  (If there was a format conversion, the access path will be different from
+  the initial path.)
+  If the store can't be made, return nil."
+  [without-suffix name suffix]
+  (when (and without-suffix
+             (has-valid-directory?
+              (url-path-to-file-path without-suffix "")))
+    (let [file-path (url-path-to-file-path without-suffix suffix)]
+      (cond (= suffix ".cosheet")
+            (try
+              (with-open [stream (clojure.java.io/input-stream file-path)]
+                (read-store (new-element-store) stream))
+              ;; We return the default starting store only if the
+              ;; default extension was asked for.
+              (catch java.io.FileNotFoundException e (starting-store name)))
+            (= suffix ".csv")
+            (read-csv file-path name)))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).
@@ -160,43 +185,41 @@
       (send agent write-log-entry entry))))
 
 (defn ensure-store
-  "Return the store info for the given url path, creating it if necessary,
-  returning nil if there is something wrong with the path."
+  "Return the store info for the given url path, creating it if necessary.
+  Also add :without-suffix to the store info returned, giving the
+  url path that the store is indexed under.
+  Return nil if there is something wrong with the path."
   [url-path]
-  (or
-   ((:stores @session-info) url-path)
-   ;; If there were a race to create the store, the log stream might get
-   ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
-   ;; a global lock.
-   (locking session-info
-     ;; If the path is not valid, we don't want to put nil in
-     ;; (:stores @session-info), as that would preclude fixing the path.
-     ;; Rather, we leave (:stores @session-info) blank in that case.
-     (when-let
-         [info
-          (when (is-valid-path? (url-path-to-file-path url-path ".cosheet"))
-            (let [immutable (or (read-store-file url-path)
-                                (let [name (last (clojure.string/split
-                                                  url-path #"/"))]
-                                  (starting-store name)))
-                  log-stream (try (java.io.FileOutputStream.
-                                   (url-path-to-file-path
-                                    url-path ".cosheetlog")
-                                   true)
-                                  (catch java.io.FileNotFoundException e
-                                    nil))
-                  log-agent (when log-stream
-                              (agent (clojure.java.io/writer log-stream)))]
-              (when log-agent
-                (when (= (.position (.getChannel log-stream)) 0)
-                  (send log-agent
-                        write-log-entry [:store (store-to-data immutable)]))
-                (send log-agent write-log-entry [:opened])
-                {:store (new-mutable-store immutable)
-                 :agent (agent immutable)
-                 :log-agent log-agent})))]
-       (swap! session-info #(assoc-in % [:stores url-path] info))
-       info))))
+  (let [[without-suffix name suffix] (interpret-url-path url-path)]
+    (or
+     ((:stores @session-info) without-suffix)
+     ;; If there were a race to create the store, the log stream might get
+     ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
+     ;; a global lock.
+     (locking session-info
+       ;; If the path is not valid, we don't want to put nil in
+       ;; (:stores @session-info), as that would preclude fixing the path.
+       ;; Rather, we leave (:stores @session-info) blank in that case.
+       (when-let [immutable-store (get-store without-suffix name suffix)]
+         (let [log-stream (try (java.io.FileOutputStream.
+                                (url-path-to-file-path
+                                 without-suffix ".cosheetlog")
+                                true)
+                               (catch java.io.FileNotFoundException e
+                                 nil))
+               log-agent (when log-stream
+                           (agent (clojure.java.io/writer log-stream)))
+               info {:store (new-mutable-store immutable-store)
+                     :agent (agent immutable-store)
+                     :log-agent log-agent}]
+           (when log-agent
+             (when (= (.position (.getChannel log-stream)) 0)
+               (send log-agent
+                     write-log-entry
+                     [:store (store-to-data immutable-store)]))
+             (send log-agent write-log-entry [:opened]))
+           (swap! session-info #(assoc-in % [:stores without-suffix] info))
+           (assoc info :without-suffix without-suffix)))))))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -308,15 +331,16 @@
   "Create a session with the given id, or with a new id if none is given."
   [session-id url-path referent-string manager-data selector-string]
   (prune-old-sessions (* 60 60 1000))
-  (when-let [store (:store (ensure-store url-path))]
-    (let [id (swap-control-return!
+  (when-let [store-info (ensure-store url-path)]
+    (let [store (:store store-info)
+          id (swap-control-return!
               session-info
               (fn [session-info]
                 (let [session-map (:sessions session-info)
                       id (or session-id (new-id session-map))
                       client-state (create-client-state store referent-string)]
                   [(assoc-in session-info [:sessions id]
-                             {:url-path url-path
+                             {:url-path (:without-suffix store-info)
                               :store store
                               :tracker (create-tracker
                                         store client-state

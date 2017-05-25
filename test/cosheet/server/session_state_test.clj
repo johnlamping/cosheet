@@ -41,6 +41,18 @@
     (is (= (immutable-semantic-to-list row2)
            '("" ("Hello" :tag) (3 ("a" :tag)))))))
 
+(deftest interpret-url-path-test
+  (is (= (interpret-url-path "foo/bar/baz")
+         ["foo/bar/baz" "baz" ".cosheet"]))
+  (is (= (interpret-url-path "foo/bar/baz.cosheet")
+         ["foo/bar/baz" "baz" ".cosheet"]))
+  (is (= (interpret-url-path "foo/bar/baz.csv")
+         ["foo/bar/baz" "baz" ".csv"]))
+  (is (= (interpret-url-path "foo/bar/baz.wrong")
+         nil))
+  (is (= (interpret-url-path "foo/bar/baz.wrong.csv")
+         nil)))
+
 (deftest create-client-state-test
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state-map (create-client-state
@@ -104,9 +116,9 @@
         ms (new-mutable-store store)
         md (new-expression-manager-data)]
     (reset! session-info {:sessions {}
-                          :stores {"foo" {:store ms
+                          :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "foo" nil md nil)]
+    (let [state (ensure-session nil "/foo" nil md nil)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))

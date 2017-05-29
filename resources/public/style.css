@@ -552,6 +552,10 @@ body {
     border-bottom-width: 2px;
 }
 
+.table-main > .column-header-sequence {
+    border-bottom-width: 2px;
+}
+
 .column-header-sequence > * {
     flex: 0 0 auto;
 }
@@ -566,6 +570,10 @@ body {
 .column-header {
     /* Needed to make broad-interpretation box's absolution position work. */
     position: relative;
+}
+
+.column-header:not(.tag):not(.virtual-column) {
+    background-color: white;
 }
 
 .column-header:not(.merge-with-parent) {

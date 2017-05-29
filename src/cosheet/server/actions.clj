@@ -36,6 +36,11 @@
 
 ;;; TODO: Replace the asserts with log messages, so things are robust.
 
+(defn pop-content-from-key
+  "If the last item of the key is :content, remove it."
+  [key]
+  (if (= (last key) :content) (pop key) key))
+
 (defn substitute-for-pattern
   "Given a pattern and a list of items, replace the pattern by the id of the
   appropriate item.
@@ -127,7 +132,9 @@
                            store)]
         (add-select-request
          store [(first (apply concat added))]
-         (or select-pattern (conj target-key [:pattern])) target-key)))))
+         (or select-pattern
+             (conj (pop-content-from-key target-key) [:pattern]))
+         target-key)))))
 
 (defn do-add-label
   [store arguments attributes]
@@ -160,9 +167,7 @@
               [added store] (create-possible-selector-elements
                              condition subjects items :after true selector
                              store)
-              item-key (if (= (last target-key) :content)
-                         (pop target-key)
-                         target-key)]
+              item-key (pop-content-from-key target-key)]
           (add-select-request
            store [(first (apply concat added))]
            (conj (pop item-key) [:pattern]) target-key))))))
@@ -468,7 +473,9 @@
     (if-let [alternate-text (:text (state-map-get-current-value
                                     (:client-state session-state) :alternate))]
       (assoc for-client :alternate-text alternate-text)
-      for-client)))
+      for-client)
+    ;; Remove this to re-enable alternate text.
+    for-client))
 
 (defn confirm-actions
   "Check that the actions have not already been done, update the

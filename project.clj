@@ -34,6 +34,7 @@
   :ring {:handler cosheet.server.routes/app
          ;; Keep lein ring from reloading tests.
          :reload-paths ["src" "src_cljc"]}
+  :bin {:name "cosheet"}
   ;; :target-path "target/%s" ;; breaks: lein ring uberjar
   )
 
@@ -42,3 +43,9 @@
 ;;; To make an executable jar file (requires that Java is installed)
 ;;;    lein bin
 ;;;    Then, for mac OS, chmod a+x; add .command to name
+
+;;; This should work, but doesn't:
+;;; To make a standalone (no need for java) mac executable
+;;;    lein uberjar
+;;;    javapackager -deploy -native image -outdir target -outfile cosheet.app -srcfiles target/cosheet-*-standalone.jar -appclass cosheet.server.routes -name "Cosheet" -title "Cosheet"
+

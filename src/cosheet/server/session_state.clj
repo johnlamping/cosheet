@@ -27,21 +27,26 @@
 
 (defn path-to-Path [path]
   (java.nio.file.Paths/get
-   (java.net.URI. (clojure.string/join "" ["file://" path]))))
+   (java.net.URI. (str "file://" path))))
 
 (defn url-path-to-file-path
   "Turn a url path into a file path, returning nil if the url path is
   syntactically ill formed."
   [url-path]
   (when (not (clojure.string/ends-with? url-path "/"))
-    (cond (clojure.string/starts-with? url-path "/cosheet/")
-          (str (System/getProperty "user.home") url-path)
-          (clojure.string/starts-with? url-path "/~/")
-          (str (System/getProperty "user.home")
-               (subs url-path 2))
-          (clojure.string/starts-with? url-path "//")
-          (subs url-path 1)
-          true nil)))
+    ;; We need to get the home directory, but with /, not \, even on Windows.
+    ;; We do that by turning it into a URI, then replacing the prefix with "/".
+    (let [home (-> (new java.io.File (System/getProperty "user.home"))
+                   (.toURI)
+                   (.toString)
+                   (clojure.string/replace-first #"[^:]*:/*" "/"))]
+      (cond (clojure.string/starts-with? url-path "/cosheet/")
+            (str home (subs url-path 1))
+            (clojure.string/starts-with? url-path "/~/")
+            (str home (subs url-path 3))
+            (clojure.string/starts-with? url-path "//")
+            (subs url-path 1)
+            true nil))))
 
 (defn remove-url-file-extension
   "If the url has a file extension, remove it."

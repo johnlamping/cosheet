@@ -107,7 +107,21 @@
                                    (elements-referent c1 rows-referent)])
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
-                                                 (true :reference)))]]
+                                                 (true :reference)))]
+          first-column-add {:referent (virtual-referent
+                                       '(??? :tag)
+                                       (virtual-referent
+                                        '(anything-immutable
+                                          (:column :non-semantic)
+                                          (:non-semantic :non-semantic))
+                                        (union-referent
+                                         [(item-referent table)])
+                                        (item-referent c1)
+                                        :selector :first-group)
+                                       nil
+                                       :selector :first-group) 
+                            :select-pattern (conj table-key
+                                                  :nested [:pattern])}]
       (is (check
            dom
            [:div {:class "table selector-scope"}
@@ -118,40 +132,40 @@
              [:div {:class "table-indent"}]
              [:div {:class "table-main selectees selector-scope"}
               [:div {:class "column-header-sequence selectors"}
-               [:component {:key (conj table-key
-                                       :nested (:item-id single))
-                            :class "tag column-header"
-                            :style {:width "150px"}}
-                [item-without-labels-DOM-R single [single-tag-spec]
-                 {:priority 2
-                  :width 0.75
-                  :key-prefix (conj table-key :nested)
-                  :subject-referent first-column-referent
-                  :template '(nil :tag)
-                  :selector-category :table-header
-                  :alternate-target true
-                  :selectable-attributes
-                  {:expand {:referent first-column-referent}
-                   :add-column {:referent (virtual-referent
-                                           '(??? :tag)
-                                           (virtual-referent
-                                            '(anything-immutable
-                                              (:column :non-semantic)
-                                              (:non-semantic :non-semantic))
-                                            (union-referent
-                                             [(item-referent table)])
-                                            (item-referent c1)
-                                            :selector :first-group)
-                                           nil
-                                           :selector :first-group) 
-                                :select-pattern (conj table-key
-                                                      :nested [:pattern])}
-                   :delete-column {:referent delete-column-referent
-                                   :alternate true}
-                   :delete {:referent nil}
-                   :add-element {:referent first-column-referent
-                                 :select-pattern (conj table-key
-                                                       :nested [:pattern])}}}]]
+               [:div {:class "wrapped-element tag column-header"
+                      :style {:width "150px"}} 
+                [:component {:class "tag"
+                             :key (conj table-key :nested (:item-id single))}
+                 [item-without-labels-DOM-R single [single-tag-spec]
+                  {:priority 2
+                   :width 0.75
+                   :key-prefix (conj table-key :nested)
+                   :subject-referent first-column-referent
+                   :template '(nil :tag)
+                   :selector-category :table-header
+                   :alternate-target true
+                   :selectable-attributes
+                   {:expand {:referent first-column-referent}
+                    :add-column first-column-add
+                    :delete-column {:referent delete-column-referent
+                                    :alternate true}
+                    :delete {:referent nil}
+                    :add-element {:referent first-column-referent
+                                  :select-pattern (conj table-key
+                                                        :nested [:pattern])}}}]]
+                [:div {:class "indent-wrapper tag"}
+                 [:div {:selector-category :table-header
+                        :expand (any)
+                        :delete {:referent nil}
+                        :delete-column {:referent delete-column-referent
+                                        :alternate true},
+                        :add-column first-column-add
+                        :class "placeholder content-text editable item"
+                        :target {:template '(nil :tag)
+                                 :referent first-column-referent
+                                 :alternate true}
+                        :key (conj table-key :nested (:item-id c1) :content)}
+                  " ..."]]]
                (any)
                (any)
                (any)

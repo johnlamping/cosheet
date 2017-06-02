@@ -323,7 +323,8 @@
     [:div (into-attributes
            (into-attributes (select-keys inherited [:selector-category])
                             (:selectable-attributes inherited))
-           {:class "content-text editable"
+           {:class (cond-> "content-text editable"
+                     (= content 'anything-immutable) (str " immutable"))
             :target (add-alternate-to-target
                      (assoc (select-keys inherited [:template])
                             :referent item-referent)
@@ -332,22 +333,20 @@
 
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of non-label elements,
-  all of the same item. Don't show a content of 'anything-immutable"
-  [item item-referent content elements inherited]
-  (let [key (conj (:key-prefix inherited) (:item-id item))
-        content-dom (when (not= content 'anything-immutable)
-                      (add-attributes
-                       (item-content-DOM item-referent content inherited)
-                       ;; Give it a unique key.
-                       ;; This will be overridden to the item's key
-                       ;; if the item has nothing but this content.
-                       {:key (conj key :content)}))]
+  all of the same item."
+  [item-key item-referent content elements inherited]
+  (let [content-dom (add-attributes
+                     (item-content-DOM item-referent content inherited)
+                     ;; Give it a unique key.
+                     ;; This will be overridden to the item's key
+                     ;; if the item has nothing but this content.
+                     {:key (conj item-key :content)})]
     (if (empty? elements)
       (add-attributes (or content-dom [:div]) {:class "item"})
       (let [inherited-down
             (-> inherited
                 (update-in [:priority] inc)
-                (assoc :key-prefix key
+                (assoc :key-prefix item-key
                        :subject-referent item-referent
                        :template '(nil))
                 (dissoc :selectable-attributes))]
@@ -408,14 +407,17 @@
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
      (item-content-and-elements-DOM-R
-      item referent content (remove (set excluded-elements) elements)
+      (conj (:key-prefix inherited) (:item-id item))
+      referent content (remove (set excluded-elements) elements)
       inherited))))
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
   :key-prefix of inherited must give a prefix for the doms corresponding to
-  the elements. must-show-empty-labels gets passed on to elements-DOM-R"
-  [elements must-show-empty-labels inherited]
+  the elements. must-show-empty-labels gets passed on to elements-DOM-R.
+  If content-item is present, also show its content at the content position
+  with the given added attributes."
+  [elements must-show-empty-labels content-item content-attributes inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
@@ -423,40 +425,48 @@
           non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
                                                        [element]))
                                   tags elements))
-          subject-ref (:subject-referent inherited)
-          inherited-for-labels (update-in
-                                inherited [:selectable-attributes]
+          subject-referent (:subject-referent inherited)
+          inherited-for-labels (update inherited :selectable-attributes
                                 #(assoc % :add-element
-                                        {:referent subject-ref
+                                        {:referent subject-referent
                                          :select-pattern
                                          (conj (:key-prefix inherited)
                                                [:pattern])}))]
-      (cond
-        (and labels non-labels)
-        (expr-let [inner-dom (elements-DOM-R
-                              non-labels must-show-empty-labels
-                              nil inherited)]
+      (expr-let [content (when content-item (entity/content content-item))
+                 content-and-elements-dom
+                 (cond content
+                       (item-content-and-elements-DOM-R
+                        (conj (:key-prefix inherited) (:item-id content-item))
+                        subject-referent content
+                        non-labels
+                        (update inherited :selectable-attributes
+                                #(into-attributes % content-attributes)))
+                       non-labels
+                       (expr-let [elements-dom
+                                  (elements-DOM-R
+                                   non-labels must-show-empty-labels
+                                   nil inherited)]
+                         [:div {:class "item elements-wrapper"} elements-dom]))]
+        (cond
+          (and labels content-and-elements-dom)
           (label-wrapper-DOM-R
-           [:div {:class "item elements-wrapper"} inner-dom]
-           subject-ref labels false inherited-for-labels))
-        labels
-        (expr-let [ordered-elements (order-items-R elements)
-                   excludeds (expr-seq map #(matching-elements :tag %)
-                                       ordered-elements)]
-          (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                  ordered-elements excludeds
-                                  {:class "tag"} inherited-for-labels)
+           content-and-elements-dom
+           subject-referent labels false inherited-for-labels)
+          labels
+          (expr-let [ordered-elements (order-items-R elements)
+                     excludeds (expr-seq map #(matching-elements :tag %)
+                                         ordered-elements)]
+            (cond-> (item-stack-DOM item-without-labels-DOM-R
+                                    ordered-elements excludeds
+                                    {:class "tag"} inherited-for-labels)
               (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
-        non-labels
-        (expr-let [elements-dom (elements-DOM-R
-                                 non-labels must-show-empty-labels
-                                 nil inherited)]
-          [:div {:class "elements-wrapper"} elements-dom])
-        true
-        (add-attributes
-         (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
-                           nil :after (assoc inherited :template '(nil :tag)))
-         {:class "elements-wrapper"})))))
+          non-labels
+          content-and-elements-dom
+          true
+          (add-attributes
+           (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
+                             nil :after (assoc inherited :template '(nil :tag)))
+           {:class "elements-wrapper"}))))))
 
 (defn item-DOM-impl-R
    "Make a dom for an item or exemplar of a group of items.

@@ -33,7 +33,7 @@
                                    virtual-item-DOM item-stack-DOM
                                    condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R
-                                  item-DOM-R]])))
+                                  item-DOM-R item-content-DOM]])))
 
 (def base-table-column-width 150)
 
@@ -179,7 +179,7 @@
   header selects elements. The elements template describes new elements
   of the column request(s), in contrast to inherited, which describes the
   overall column request(s)."
-  [node top-level rows-referent elements-template inherited]
+  [node top-level is-leaf rows-referent elements-template inherited]
   (let [subject-ref (:subject-referent inherited)
         column-referent (union-referent [(hierarchy-node-items-referent
                                           node subject-ref)
@@ -217,7 +217,10 @@
                                    node elements-template inherited)))
                              (update :key-prefix
                                      #(conj % :nested)))]
-      (condition-elements-DOM-R example-elements true inherited-down))))
+      (condition-elements-DOM-R example-elements true
+                                (when is-leaf (:item (first (:members node))))
+                                {:class "placeholder"}
+                                inherited-down))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
@@ -267,11 +270,19 @@
                                                :alternate true}
                                :expand {:referent column-referent}})))
         key (conj (:key-prefix inherited) (:item-id column-item))]
-    (add-attributes
-     (virtual-item-DOM key column-referent :after inherited-down)
-     (cond-> {:style {:width (str base-table-column-width "px")}
-              :class "column-header merge-with-parent"}
-       (is-tag-template? elements-template) (into-attributes {:class "tag"})))))
+    ;; TODO: This needs to check for not being a tag, and doing something
+    ;;       different in that case.
+    [:div {:style {:width (str base-table-column-width "px")}
+           :class "column-header tag wrapped-element merge-with-parent"}
+     (cond-> (virtual-item-DOM (conj key :label) column-referent :after
+                               inherited-down)
+       (is-tag-template? elements-template)
+       (add-attributes {:class "tag content-text"}))
+     [:div {:class "indent-wrapper tag"}
+      (add-attributes
+       (item-content-DOM column-referent 'anything-immutable inherited-down)
+       {:key key
+        :class "placeholder item"})]]))
 
 (def table-header-subtree-DOM-R)
 
@@ -296,15 +307,18 @@
   header selects elements. Inherited describes the column requests."
   [node top-level rows-referent inherited]
   (let [elements-template (table-header-element-template
-                           (keys (:cumulative-properties node)))]
+                           (keys (:cumulative-properties node)))
+        next-level (hierarchy-node-next-level node)
+        ;; If we have only one descendant, it must be our column request.
+        is-leaf (= (count next-level) 1)
+        is-tag (is-tag-template? elements-template)
+        num-columns (count (hierarchy-node-descendants node))
+        width (+ (* num-columns (- base-table-column-width 2)) 2)]
     (expr-let
         [node-dom (table-header-node-DOM-R
-                   node top-level rows-referent elements-template inherited)]
-      (let [next-level (hierarchy-node-next-level node)]
-        (expr-let
-            [dom
-             (if (= (count next-level) 1)
-               ;; If we have only one descendant, it must be the column request.
+                   node top-level is-leaf rows-referent elements-template
+                   inherited)
+         dom (if is-leaf
                node-dom
                (let [properties-list (canonical-set-to-list (:properties node))
                      sibling-nodes (filter hierarchy-node? next-level)
@@ -322,12 +336,9 @@
                     (add-attributes node-dom {:class "with-children"})
                     (into [:div {:class "column-header-sequence"}]
                           dom-seqs)])))]
-          (let [is-tag (is-tag-template? elements-template)
-                num-columns (count (hierarchy-node-descendants node))
-                width (+ (* num-columns (- base-table-column-width 2)) 2)]
-            (add-attributes dom {:class (cond-> "column-header"
-                                          is-tag (str " tag"))
-                                 :style {:width (str width "px")}})))))))
+      (add-attributes dom {:class (cond-> "column-header"
+                                    is-tag (str " tag"))
+                           :style {:width (str width "px")}}))))
 
 (defn table-header-DOM-R
   "Generate DOM for column headers given the hierarchy. elements-template
@@ -583,7 +594,7 @@
                                                (seq (filter #{:tag} %)))
                                          conditions-as-lists)
                condition-dom (condition-elements-DOM-R
-                              condition-elements :wide
+                              condition-elements :wide false nil
                               (assoc
                                inherited
                                :selector-category :table-condition

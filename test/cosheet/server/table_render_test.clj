@@ -149,10 +149,7 @@
                     :add-column first-column-add
                     :delete-column {:referent delete-column-referent
                                     :alternate true}
-                    :delete {:referent nil}
-                    :add-element {:referent first-column-referent
-                                  :select-pattern (conj table-key
-                                                        :nested [:pattern])}}}]]
+                    :delete {:referent nil}}}]]
                 [:div {:class "indent-wrapper tag"}
                  [:div {:selector-category :table-header
                         :expand (any)

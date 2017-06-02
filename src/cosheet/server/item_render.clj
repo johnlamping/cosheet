@@ -426,12 +426,16 @@
                                                        [element]))
                                   tags elements))
           subject-referent (:subject-referent inherited)
-          inherited-for-labels (update inherited :selectable-attributes
-                                #(assoc % :add-element
-                                        {:referent subject-referent
-                                         :select-pattern
-                                         (conj (:key-prefix inherited)
-                                               [:pattern])}))]
+          ;; TODO: Get rid of this once the overall table header
+          ;; gets its new look.
+          inherited-for-labels (if content-item
+                                 inherited
+                                 (update inherited :selectable-attributes
+                                         #(assoc % :add-element
+                                                 {:referent subject-referent
+                                                  :select-pattern
+                                                  (conj (:key-prefix inherited)
+                                                        [:pattern])})))]
       (expr-let [content (when content-item (entity/content content-item))
                  content-and-elements-dom
                  (cond content

@@ -540,11 +540,7 @@
                   {:priority 0 :key-prefix element-key
                    :subject-referent (item-referent element)
                    :width 1.0
-                   :template '(nil :tag)
-                   :selectable-attributes
-                   {:add-element {:referent element-referent
-                                  :select-pattern (conj element-key
-                                                        [:pattern])}}}]]
+                   :template '(nil :tag)}]]
                 [:div {:class "indent-wrapper tag"}
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"

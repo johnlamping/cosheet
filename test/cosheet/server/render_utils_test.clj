@@ -6,6 +6,7 @@
              [entity :as entity  :refer [to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
+             [dom-utils :refer [add-attributes]]
              [debug :refer [envs-to-list simplify-for-print]]
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])
@@ -58,3 +59,26 @@
                                         {:alternate-target :some-alternate})
                {:item-referent ref
                 :alternate :some-alternate}))))
+
+(deftest transform-inherited-attributes-test
+  (is (check (transform-inherited-attributes
+              {:attributes [{:a 1}
+                            [#{:label} {:b 2}]
+                            [#{:label :element :recursive} #{:content} {:c 3}]
+                            [#{:content} {:d 4}]]
+               :x 9}
+              :label)
+             {:attributes [{:b 2}
+                           [#{:label :element :recursive} #{:content} {:c 3}]
+                           [#{:content} {:c 3}]]
+              :x 9})))
+
+(deftest add-inherited-attributes-test
+  (is (check (add-inherited-attributes
+              [:div {:class "bar"}]
+              {:attributes [{:class "foo"}
+                            {:other "hi"}
+                            [#{:label} {:b 2}]]
+               :x 9})
+             [:div {:class "bar foo"
+                    :other "hi"}])))

@@ -42,13 +42,109 @@
     (assoc target :alternate alternate)
     target))
 
+;;; These next functions handle inherited attributes.
+;;; In inherited, :attributes is a vector of descriptors.
+;;; A descriptor is either:
+;;;   <attributes>
+;;;       A map of attribute->value pairs to add
+;;;   (<step>* <attributes>)
+;;;      Add the attributes to descendant doms following the sequence of steps, 
+;;;      where <step> is a set that can contain any of
+;;;         :label
+;;;            Apply to label elements
+;;;         :element
+;;;            Apply to non-label elements
+;;;         :content
+;;;            Apply to the content of the item (which may be the overall item)
+;;;         :recursive
+;;;            Apply to any repetition of the path
+;;;         : optional
+;;;            May be skipped 
+
+
+(defn advance-along-descriptor
+  "Advance one step along an inherited descriptor. Return a seq of possible
+  successor descriptors"
+  [descriptor motion]
+  (when (sequential? descriptor)
+    (let [step (first descriptor)
+          remainder (rest descriptor)
+          following (if (empty? (rest remainder))
+                      (first remainder)
+                      remainder)]
+      (concat (when (step motion)
+                [(if (:recursive step)
+                   (vec (concat [(conj step :optional)] remainder))
+                   following)])
+              (when (:optional step)
+                (advance-along-descriptor following motion))))))
+
+(defn transform-inherited-attributes
+  "Transform any attributes specified by inherited as appropriate
+  for moving down to a :content :label or :element.
+  In inherited, :attributes is a vector of descriptors.
+  A descriptor is either:
+     <attributes>
+        A map of attribute->value pairs to add
+     (<step>* <attributes>)
+        Add the attributes to descendant doms following the sequence of steps, 
+        where <step> is a set that can contain any of
+           :label
+              Apply to label elements
+           :element
+              Apply to non-label elements
+           :content
+              Apply to the content of the item (which may be the overall item)
+           :recursive
+              Apply to any repetition of the path
+           : optional
+              May be skipped"
+  [inherited motion]
+  (if-let [attributes (:attributes inherited)]
+    (let [revised (mapcat #(advance-along-descriptor % motion) attributes)]
+      (if (seq revised)
+        (assoc inherited :attributes revised)
+        (dissoc inherited :attributes)))
+    inherited))
+
+(defn inherited-attributes
+  "Return a map of all attributes specified by inherited for the current dom.
+  The attributes are specified as in the comment at
+  transform-inherited-attribute."
+  [inherited]
+  (reduce (fn [attributes descriptor]
+            (cond
+              (map? descriptor)
+              (into-attributes attributes descriptor)
+              (every? :optional (butlast descriptor))
+              (into-attributes attributes (last descriptor))
+              true
+              attributes))
+          {} (:attributes inherited)))
+
+(defn content-attributes
+  "Return the attributes for the current item or content."
+  [inherited]
+  (inherited-attributes
+   (transform-inherited-attributes inherited :content)))
+
+(defn item-or-content-attributes
+  "Return the attributes for the current item or content."
+  [inherited]
+  (inherited-attributes
+   {:attributes
+    (concat (:attributes inherited)
+            (:attributes (transform-inherited-attributes
+                          inherited :content)))}))
+
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must include a :template and a :subject-referent."
   [key adjacent-referent position inherited]
   (assert (not (nil? (:subject-referent inherited))))
   [:div (into-attributes
-         (into-attributes (:selectable-attributes inherited)
+         (into-attributes (into-attributes (:selectable-attributes inherited)
+                                           (item-or-content-attributes inherited))
                           (select-keys inherited [:selector-category]))
          {:class "editable"
           :key key
@@ -106,4 +202,6 @@
         (if (sequential? attributes) attributes (repeat attributes))
         (if (sequential? inherited) inherited (repeat inherited)))
    :class "item-stack"))
+
+
 

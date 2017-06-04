@@ -42,10 +42,12 @@
 (defn add-attributes
   "Add attributes to a hiccup dom descriptor."
   [dom attributes]
-  (let [[dom-tag second & remainder] dom
-        [attr remainder] (if (map? second)
-                           [second remainder]
-                           [{} (rest dom)])]
-    (into [(or dom-tag :div)
-           (into-attributes attr attributes)]
-          remainder)))
+  (if attributes
+    (let [dom (if (sequential? dom) dom [:div dom])
+          [dom-tag second & remainder] dom
+          [attr remainder] (if (map? second)
+                             [second remainder]
+                             [{} (rest dom)])]
+      (into [dom-tag (into-attributes attr attributes)]
+            remainder))
+    dom))

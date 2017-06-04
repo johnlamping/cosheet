@@ -97,12 +97,13 @@
                  :selected {:special :new-tab}}]
           (let [inherited (assoc starting-inherited
                                  :subject-referent (item-referent t3)
-                                 :selectable-attributes
-                                 {:add-column {:referent
-                                               (virtual-tab-referent
-                                                (cons "" new-tab-elements) t3)}
-                                  :selected {:referent (item-referent t3)
-                                             :special :tab}})]
+                                 :attributes
+                                 [[#{:label :optional} #{:content}
+                                   {:add-column {:referent
+                                                 (virtual-tab-referent
+                                                  (cons "" new-tab-elements) t3)}
+                                    :selected {:referent (item-referent t3)
+                                               :special :tab}}]])]
             [:div {:class "item-stack tab"}
              [:component {:key [:foo (item-referent t3-baz)]}
               [item-without-labels-DOM-R t3-baz nil inherited]]
@@ -113,16 +114,17 @@
             [item-without-labels-DOM-R t1-foo nil
              (assoc starting-inherited
                     :subject-referent (items-referent t1 t2)
-                    :selectable-attributes
-                    {:add-column {:referent
-                                  (virtual-tab-referent
-                                   (cons "" new-tab-elements)
-                                   (union-referent [(items-referent t1 t2)]))}
-                     :delete {:referent (union-referent
-                                         [(item-referent t1)
-                                          (exemplar-referent
-                                           (item-referent t1-foo)
-                                           (item-referent t2))])}})]]
+                    :attributes
+                    [[#{:label :optional} #{:content}
+                      {:add-column {:referent
+                                    (virtual-tab-referent
+                                     (cons "" new-tab-elements)
+                                     (union-referent [(items-referent t1 t2)]))}
+                       :delete {:referent (union-referent
+                                           [(item-referent t1)
+                                            (exemplar-referent
+                                             (item-referent t1-foo)
+                                             (item-referent t2))])}}]])]]
            [:div {:class "tab-sequence"}
             [:component {:key [:foo :nested (item-referent t2-bar)]
                          :class "tab chosen"}
@@ -130,13 +132,14 @@
               (assoc starting-inherited
                      :key-prefix (conj (:key-prefix starting-inherited) :nested)
                      :subject-referent (item-referent t2)
-                     :selectable-attributes
-                     {:add-column {:referent
-                                   (virtual-tab-referent
-                                    (concat [""] new-tab-elements ["foo"]) t2)}
-                      :delete {:referent (item-referent t2-bar)}
-                      :selected {:referent (item-referent t2)
-                                 :special :tab}})]]
+                     :attributes
+                     [[#{:label :optional} #{:content}
+                       {:add-column {:referent
+                                     (virtual-tab-referent
+                                      (concat [""] new-tab-elements ["foo"]) t2)}
+                        :delete {:referent (item-referent t2-bar)}
+                        :selected {:referent (item-referent t2)
+                                   :special :tab}}]])]]
             [:div {:class "editable empty-child tab"
                    :key [:foo :nested (item-referent t1)]
                    :target {:referent (virtual-referent

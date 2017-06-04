@@ -188,39 +188,36 @@
         example-elements (hierarchy-node-example-elements node)
         descendants (hierarchy-node-descendants node)
         one-element (= (count example-elements) 1)
-        selectable-attributes
-        (cond-> {}
+        attributes
+        (cond-> [[#{:label :element :recursive :optional} #{:content}
+                   (cond-> (attributes-for-header-add-column-command
+                            node elements-template inherited)
+                     (<= (count descendants) 1)
+                     (assoc :delete-column {:referent column-referent
+                                            :alternate true}))]
+                 [#{:content} {:delete {:referent nil}}]]
           one-element
-          (assoc :expand {:referent column-referent})
-          ;; If we are a child, it is OK to delete our last element, as
-          ;; our parent will still contribute an element. But if we
-          ;; are a top level node, we can't, in general, delete our
-          ;; last element, or there would be nothing left in the node.
-          (and one-element top-level)
-          (assoc :delete
-                 {:referent (table-node-delete-referent
-                             node rows-referent subject-ref)})
-          (<= (count descendants) 1)
-          (assoc :delete-column {:referent column-referent
-                                 :alternate true}))]
-    (let [inherited-down (-> (if selectable-attributes
-                               (assoc inherited :selectable-attributes
-                                      selectable-attributes)
-                               (dissoc inherited :selectable-attributes))
-                             (assoc :width (* 0.75 (count descendants))
-                                    :template elements-template
-                                    :subject-referent column-referent)
-                             (update-in
-                              [:selectable-attributes]
-                              #(into-attributes
-                                % (attributes-for-header-add-column-command
-                                   node elements-template inherited)))
-                             (update :key-prefix
-                                     #(conj % :nested)))]
-      (condition-elements-DOM-R example-elements true
-                                (when is-leaf (:item (first (:members node))))
-                                {:class "placeholder"}
-                                inherited-down))))
+          (conj [#{:label :element} #{:content}
+                 (cond-> {:expand {:referent column-referent}}
+                   ;; If we are a child, it is OK to delete our last element, as
+                   ;; our parent will still contribute an element. But if we
+                   ;; are a top level node, we can't, in general, delete our
+                   ;; last element, or there would be nothing left in the node.
+                   top-level
+                   (assoc :delete
+                          {:referent (table-node-delete-referent
+                                      node rows-referent subject-ref)}))]))
+        inherited-down (-> inherited
+                           (assoc :attributes attributes
+                                  :width (* 0.75 (count descendants))
+                                  :template elements-template
+                                  :subject-referent column-referent)
+                           (update :key-prefix
+                                   #(conj % :nested)))]
+    (condition-elements-DOM-R example-elements true
+                              (when is-leaf (:item (first (:members node))))
+                              {:class "placeholder"}
+                              inherited-down)))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
@@ -256,19 +253,21 @@
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
-                           (update-in
-                            [:selectable-attributes]
-                            #(into-attributes
-                              (into-attributes
-                               %
-                               (attributes-for-header-add-column-command
-                                {:item column-item}
-                                elements-template
-                                (update inherited :key-prefix
-                                        (fn [pref] (conj pref :nested)))))
-                              {:delete-column {:referent column-referent
-                                               :alternate true}
-                               :expand {:referent column-referent}})))
+                           (update
+                            :attributes
+                            #(conj (or % [])
+                                   [#{:label :optional} #{:content}
+                                    (assoc
+                                     (attributes-for-header-add-column-command
+                                      {:item column-item}
+                                      elements-template
+                                      (update inherited :key-prefix
+                                              (fn [pref] (conj pref :nested))))
+                                     :delete-column {:referent column-referent
+                                                     :alternate true}
+                                     :expand {:referent column-referent})]
+                                   [#{:content}
+                                    {:delete {:referent nil}}])))
         key (conj (:key-prefix inherited) (:item-id column-item))]
     ;; TODO: This needs to check for not being a tag, and doing something
     ;;       different in that case.
@@ -368,17 +367,18 @@
         inherited
         (-> inherited
             (assoc :width 0.75)
-            (update-in
-             [:selectable-attributes]
-             #(into-attributes
-               % {:add-row
-                  {:referent
-                   (virtual-referent new-row-template nil row-referent)
-                   :select-pattern (conj (vec (butlast
-                                               (butlast
-                                                (:key-prefix inherited))))
-                                         [:pattern] column-id)}
-                  :delete-row {:referent row-referent}})))]
+            (update
+             :attributes
+             #(conj (or % [])
+                    [#{:label :element :recursive :optional} #{:content}
+                     {:add-row
+                      {:referent
+                       (virtual-referent new-row-template nil row-referent)
+                       :select-pattern (conj (vec (butlast
+                                                   (butlast
+                                                    (:key-prefix inherited))))
+                                             [:pattern] column-id)}
+                      :delete-row {:referent row-referent}}])))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
@@ -428,8 +428,8 @@
   (let [inherited (-> inherited
                       (assoc :key-prefix row-key)
                       (update :priority inc)
-                      (update-in [:subject-referent]
-                                 #(item-or-exemplar-referent row-item %)))]
+                      (update :subject-referent
+                              #(item-or-exemplar-referent row-item %)))]
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
                                column-descriptions)]
@@ -466,9 +466,9 @@
   [row-key new-row-template adjacent-referent column-descriptions inherited]
   (let [inherited (-> inherited
                       (assoc :key-prefix row-key)
-                      (update-in [:subject-referent]
-                                 #(virtual-referent
-                                   new-row-template % adjacent-referent)))
+                      (update :subject-referent
+                              #(virtual-referent
+                                new-row-template % adjacent-referent)))
         cells (map #(table-virtual-row-cell-DOM
                      adjacent-referent % inherited) column-descriptions)]
     (into [:div {}] cells)))
@@ -626,7 +626,7 @@
                   rows (map #(table-row-DOM-component
                               % row-template (concat column-descriptions
                                                      [virtual-column-description])
-                              (update-in inherited [:priority] (partial + 2)))
+                              (update inherited :priority (partial + 2)))
                             row-items)
                   virtual-row (table-virtual-row-DOM-component
                                row-template

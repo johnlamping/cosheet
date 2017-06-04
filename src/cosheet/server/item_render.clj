@@ -20,7 +20,10 @@
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM add-alternate-to-target
                                    vertical-stack item-stack-DOM
-                                   condition-satisfiers-R]])))
+                                   condition-satisfiers-R
+                                   transform-inherited-attributes
+                                   inherited-attributes
+                                   content-attributes]])))
 
 (def item-without-labels-DOM-R)
 
@@ -44,13 +47,29 @@
 (defn add-adjacent-sibling-command
   "Given a node from a hierarchy over elements and inherited, update
   inherited to add an element adjacent to the sibling."
-  [hierarchy-node inherited]
-  (update-in
-     inherited [:selectable-attributes]
-     #(into-attributes
-       % {:add-sibling (add-alternate-to-target
-                        (hierarchy-add-adjacent-target hierarchy-node inherited)
-                        inherited)})))
+  [inherited hierarchy-node]
+  (update
+     inherited :attributes
+     #(let [filtered (vec (keep (fn [description]
+                                  (let [attributes (if (map? description)
+                                                     description
+                                                     (last description))]
+                                    (if (:add-sibling attributes)
+                                      (let [smaller (dissoc attributes
+                                                            :add-sibling)]
+                                        (when (not-empty smaller)
+                                          (if (map? description)
+                                            smaller
+                                            (conj (vec (butlast description))
+                                                  smaller))))
+                                      description)))
+                                %))]
+           (conj filtered
+                 [#{:label :optional} #{:content}
+                  {:add-sibling (add-alternate-to-target
+                                 (hierarchy-add-adjacent-target
+                                  hierarchy-node inherited)
+                                 inherited)}]))))
 
 (defn hierarchy-members-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -108,11 +127,12 @@
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
         tags-key-prefix (conj (:key-prefix inherited) :label)
-        inherited-for-tags (assoc (add-adjacent-sibling-command
-                                   hierarchy-node inherited)
-                                  :key-prefix tags-key-prefix
-                                  :template '(nil :tag)
-                                  :subject-referent items-referent)]
+        inherited-for-tags (-> inherited
+                               (transform-inherited-attributes :label)
+                               (add-adjacent-sibling-command hierarchy-node)
+                               (assoc :key-prefix tags-key-prefix
+                                      :template '(nil :tag)
+                                      :subject-referent items-referent)) ]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-item-DOM (conj tags-key-prefix
@@ -130,10 +150,10 @@
 (def tagged-items-one-column-subtree-DOM-R)
 
 (defn tagged-items-one-column-descendants-DOM-R
-   "Return DOM for all descendants of the hierarchy node, as a single column."
+  "Return DOM for all descendants of the hierarchy node, as a single column."
   [hierarchy-node inherited]
   (let [members (hierarchy-node-members hierarchy-node)
-        nested-inherited (add-adjacent-sibling-command hierarchy-node inherited)
+        nested-inherited (add-adjacent-sibling-command inherited hierarchy-node)
         items-dom (when (not (empty? members))
                     (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
@@ -252,10 +272,10 @@
   "Return a sequence of DOMs for the given hierarchy node and its descendants,
   as two columns."
   [hierarchy-node header-wrapper member-wrapper inherited]
-  (let [tags-inherited (update-in inherited [:width] #(* % 0.25))
-        items-inherited (update-in
-                         (add-adjacent-sibling-command hierarchy-node inherited)
-                         [:width] #(* % 0.6875))
+  (let [tags-inherited (update inherited :width #(* % 0.25))
+        items-inherited (update
+                         (add-adjacent-sibling-command inherited hierarchy-node)
+                         :width #(* % 0.6875))
         members-dom (hierarchy-members-DOM hierarchy-node items-inherited)
         no-children (empty? (:children hierarchy-node))]
     (expr-let [properties-dom (tagged-items-properties-DOM-R
@@ -322,7 +342,8 @@
     ;; but nothing else.
     [:div (into-attributes
            (into-attributes (select-keys inherited [:selector-category])
-                            (:selectable-attributes inherited))
+                            (into-attributes (:selectable-attributes inherited)
+                                             (content-attributes inherited)))
            {:class (cond-> "content-text editable"
                      (= content 'anything-immutable) (str " immutable"))
             :target (add-alternate-to-target
@@ -344,8 +365,8 @@
     (if (empty? elements)
       (add-attributes (or content-dom [:div]) {:class "item"})
       (let [inherited-down
-            (-> inherited
-                (update-in [:priority] inc)
+            (-> (transform-inherited-attributes inherited :element)
+                (update :priority inc)
                 (assoc :key-prefix item-key
                        :subject-referent item-referent
                        :template '(nil))
@@ -363,31 +384,34 @@
   make a dom that includes any necessary labels wrapping the item. The
   :key-prefix of inherited must give a unique prefix for the labels."
   [dom item-referent label-elements must-show-empty-labels inherited]
-  (if (and (empty? label-elements) (not must-show-empty-labels))
-    dom
-    (let [inherited-for-tags (-> inherited
-                                 (assoc :template '(nil :tag)
-                                        :subject-referent item-referent))]
-      (if (empty? label-elements)
-        [:div {:class "horizontal-tags-element narrow"}
-         (add-attributes
-          (virtual-item-DOM (conj (:key-prefix inherited) :tags)
-                            nil :after inherited-for-tags)
-          {:class "tag"})
-         dom]
-        (expr-let [ordered-labels (order-items-R label-elements)
-                   tags (expr-seq
-                         map #(condition-satisfiers-R % '(nil :tag))
-                         ordered-labels)]
-          ;; We need "tag" in the class to make any margin
-          ;; after the tags also have tag coloring.
-          [:div {:class "wrapped-element tag"}
-           (add-attributes
-            (item-stack-DOM item-without-labels-DOM-R
-                            ordered-labels tags {:class "tag"}
-                            inherited-for-tags)
-            {:class "tag"})
-           [:div {:class "indent-wrapper tag"} dom]])))))
+  (expr-let
+      [dom
+       (if (and (empty? label-elements) (not must-show-empty-labels))
+         dom
+         (let [inherited-for-tags (-> inherited
+                                      (assoc :template '(nil :tag)
+                                             :subject-referent item-referent))]
+           (if (empty? label-elements)
+             [:div {:class "horizontal-tags-element narrow"}
+              (add-attributes
+               (virtual-item-DOM (conj (:key-prefix inherited) :tags)
+                                 nil :after inherited-for-tags)
+               {:class "tag"})
+              dom]
+             (expr-let [ordered-labels (order-items-R label-elements)
+                        tags (expr-seq
+                              map #(condition-satisfiers-R % '(nil :tag))
+                              ordered-labels)]
+               ;; We need "tag" in the class to make any margin
+               ;; after the tags also have tag coloring.
+               [:div {:class "wrapped-element tag"}
+                (add-attributes
+                 (item-stack-DOM item-without-labels-DOM-R
+                                 ordered-labels tags {:class "tag"}
+                                 inherited-for-tags)
+                 {:class "tag"})
+                [:div {:class "indent-wrapper tag"} dom]]))))]
+    (add-attributes dom (inherited-attributes inherited))))
 
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
@@ -426,16 +450,20 @@
                                                        [element]))
                                   tags elements))
           subject-referent (:subject-referent inherited)
+          inherited-for-labels (transform-inherited-attributes
+                                inherited :label)
           ;; TODO: Get rid of this once the overall table header
           ;; gets its new look.
           inherited-for-labels (if content-item
-                                 inherited
-                                 (update inherited :selectable-attributes
-                                         #(assoc % :add-element
-                                                 {:referent subject-referent
-                                                  :select-pattern
-                                                  (conj (:key-prefix inherited)
-                                                        [:pattern])})))]
+                                 inherited-for-labels
+                                 (update inherited-for-labels :attributes
+                                         #(conj (or % [])
+                                                [#{:content}
+                                                 {:add-element
+                                                  {:referent subject-referent
+                                                   :select-pattern
+                                                   (conj (:key-prefix inherited)
+                                                         [:pattern])}}])))]
       (expr-let [content (when content-item (entity/content content-item))
                  content-and-elements-dom
                  (cond content
@@ -483,7 +511,7 @@
                       item referent excluded inherited)]
         (label-wrapper-DOM-R
          dom referent labels must-show-empty-label
-         (-> inherited
+         (-> (transform-inherited-attributes inherited :label)
              ;; Keep :add-column, and :add-row commands and their data.
              (update :selectable-attributes
                      #(assoc (select-keys % [:column :row])

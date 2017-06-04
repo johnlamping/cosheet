@@ -144,18 +144,19 @@
                    :template '(nil :tag)
                    :selector-category :table-header
                    :alternate-target true
-                   :selectable-attributes
-                   {:expand {:referent first-column-referent}
-                    :add-column first-column-add
-                    :delete-column {:referent delete-column-referent
-                                    :alternate true}
-                    :delete {:referent nil}}}]]
+                   :attributes
+                   [[#{:label :element :recursive :optional} #{:content}
+                     {:add-column first-column-add
+                      :delete-column {:referent delete-column-referent
+                                      :alternate true}}]
+                    [#{:content}
+                     {:expand {:referent first-column-referent}
+                      :delete {:referent nil}}]]}]]
                 [:div {:class "indent-wrapper tag"}
                  [:div {:selector-category :table-header
-                        :expand (any)
-                        :delete {:referent nil}
                         :delete-column {:referent delete-column-referent
                                         :alternate true},
+                        :delete {:referent nil}
                         :add-column first-column-add
                         :class "placeholder content-text editable item"
                         :target {:template '(nil :tag)
@@ -256,14 +257,15 @@
                  :key-prefix (conj table-key (:item-id joe) (any))
                  :subject-referent (item-referent joe)
                  :template '(nil ("name" :tag))
-                 :selectable-attributes
-                 {:add-row {:referent (virtual-referent
-                                       '("" ("" ("age" :tag))
-                                         (:top-level :non-semantic))
-                                       nil (item-referent joe))
-                            :select-pattern (conj table-key
-                                                  [:pattern] (:item-id c2))}
-                  :delete-row {:referent (item-referent joe)}}}]]
+                 :attributes
+                 [[#{:label :element :recursive :optional} #{:content}
+                   {:add-row {:referent (virtual-referent
+                                         '("" ("" ("age" :tag))
+                                           (:top-level :non-semantic))
+                                         nil (item-referent joe))
+                              :select-pattern (conj table-key
+                                                    [:pattern] (:item-id c2))}
+                    :delete-row {:referent (item-referent joe)}}]]}]]
               (any)
               (any)
               (any)

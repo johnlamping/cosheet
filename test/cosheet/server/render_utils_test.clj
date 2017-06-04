@@ -65,20 +65,49 @@
               {:attributes [{:a 1}
                             [#{:label} {:b 2}]
                             [#{:label :element :recursive} #{:content} {:c 3}]
-                            [#{:content} {:d 4}]]
+                            [#{:content} {:d 4}]
+                            [#{:element :optional} #{:label} {:e 5}]
+                            [#{:label :optional :recursive} #{:label} {:f 6}]]
                :x 9}
               :label)
              {:attributes [{:b 2}
-                           [#{:label :element :recursive} #{:content} {:c 3}]
-                           [#{:content} {:c 3}]]
+                           [#{:label :element :recursive :optional} #{:content}
+                            {:c 3}]
+                           {:e 5}
+                           [#{:label :optional :recursive} #{:label} {:f 6}]
+                           {:f 6}]
               :x 9})))
 
-(deftest add-inherited-attributes-test
-  (is (check (add-inherited-attributes
-              [:div {:class "bar"}]
+(deftest inherited-attributes-test
+  (is (check (inherited-attributes
               {:attributes [{:class "foo"}
+                            {:class "bar"}
                             {:other "hi"}
-                            [#{:label} {:b 2}]]
+                            [#{:label} {:b 2}]
+                            [#{:label :optional} {:more "there"}]]
                :x 9})
-             [:div {:class "bar foo"
-                    :other "hi"}])))
+             {:class "foo bar"
+              :other "hi"
+              :more "there"})))
+
+(deftest content-attributes-test
+  (is (check (content-attributes
+              {:attributes [{:class "foo"}
+                            {:class "bar"}
+                            {:other "hi"}
+                            [#{:label} {:b 2}]
+                            [#{:content} {:class "baz"}]]
+               :x 9})
+             {:class "baz"})))
+
+(deftest item-or-content-attributes-test
+  (is (check (item-or-content-attributes
+              {:attributes [{:class "foo"}
+                            {:class "bar"}
+                            {:other "hi"}
+                            [#{:label} {:b 2}]
+                            [#{:content} {:class "baz"}]]
+               :x 9})
+             {:class "foo bar baz"
+              :other "hi"})))
+

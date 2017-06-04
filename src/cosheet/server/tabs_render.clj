@@ -55,20 +55,20 @@
         (assoc :subject-referent tabs-referent
                :template '(nil))
         (update
-         :selectable-attributes
-         #(into-attributes
-           %
-           (cond-> {:add-column
-                    {:referent (virtual-referent
-                                (:template inherited)
-                                (:subject-referent inherited)
-                                adjacent-referent
-                                :selector :first-group)}}
-             (= (count tab-items) 1)
-             (assoc :selected {:referent tabs-referent
-                               :special :tab})
-             delete-referent
-             (assoc :delete  {:referent delete-referent}))))
+         :attributes
+         #(conj (or % [])
+                [#{:label :optional} #{:content}
+                 (cond-> {:add-column
+                          {:referent (virtual-referent
+                                      (:template inherited)
+                                      (:subject-referent inherited)
+                                      adjacent-referent
+                                      :selector :first-group)}}
+                   (= (count tab-items) 1)
+                   (assoc :selected {:referent tabs-referent
+                                     :special :tab})
+                   delete-referent
+                   (assoc :delete  {:referent delete-referent}))]))
         (dissoc :chosen-tab))))
 
 (defn tabs-node-or-member-DOM-R

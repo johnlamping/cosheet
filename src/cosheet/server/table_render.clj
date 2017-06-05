@@ -30,7 +30,7 @@
                                 hierarchy-last-item-referent]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
-                                   virtual-item-DOM item-stack-DOM
+                                   virtual-item-DOM
                                    condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))

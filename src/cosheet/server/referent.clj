@@ -227,7 +227,7 @@
                 (elements-referent condition (first-group-referent subject)))
     :query referent
     :union (let [[_ & referents] referent]
-             (first referents))
+             (union-referent [(first referents)]))
     :parallel-union (let [[_ & referents] referent]
                       (parallel-union-referent
                        (map first-group-referent referents)))

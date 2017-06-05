@@ -260,7 +260,8 @@
           alternate (state-map-get-current-value
                      (:client-state session-state) :alternate)
           alternate-target (-> (:target attributes)
-                               (assoc :referent (item-referent jane))
+                               (assoc :referent (union-referent
+                                                 [(item-referent jane)]))
                                (dissoc :alternate))]
       (is (check alternate
                  {:new-store new-store

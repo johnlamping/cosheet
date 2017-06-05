@@ -342,8 +342,7 @@
     ;; but nothing else.
     [:div (into-attributes
            (into-attributes (select-keys inherited [:selector-category])
-                            (into-attributes (:selectable-attributes inherited)
-                                             (content-attributes inherited)))
+                            (content-attributes inherited))
            {:class (cond-> "content-text editable"
                      (= content 'anything-immutable) (str " immutable"))
             :target (add-alternate-to-target
@@ -369,8 +368,7 @@
                 (update :priority inc)
                 (assoc :key-prefix item-key
                        :subject-referent item-referent
-                       :template '(nil))
-                (dissoc :selectable-attributes))]
+                       :template '(nil)))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
           (if content-dom
@@ -441,7 +439,7 @@
   the elements. must-show-empty-labels gets passed on to elements-DOM-R.
   If content-item is present, also show its content at the content position
   with the given added attributes."
-  [elements must-show-empty-labels content-item content-attributes inherited]
+  [elements must-show-empty-labels content-item inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
@@ -469,10 +467,7 @@
                  (cond content
                        (item-content-and-elements-DOM-R
                         (conj (:key-prefix inherited) (:item-id content-item))
-                        subject-referent content
-                        non-labels
-                        (update inherited :selectable-attributes
-                                #(into-attributes % content-attributes)))
+                        subject-referent content non-labels inherited)
                        non-labels
                        (expr-let [elements-dom
                                   (elements-DOM-R
@@ -512,10 +507,9 @@
         (label-wrapper-DOM-R
          dom referent labels must-show-empty-label
          (-> (transform-inherited-attributes inherited :label)
-             ;; Keep :add-column, and :add-row commands and their data.
-             (update :selectable-attributes
-                     #(assoc (select-keys % [:column :row])
-                             :expand (or (:expand %) {:referent referent})))
+             (update :attributes
+                     #(conj (or % [])
+                            [#{:content} {:expand {:referent referent}}]))
              (update :key-prefix #(conj % (:item-id item) ))))))))
 
 (defn item-DOM-R

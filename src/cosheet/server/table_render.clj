@@ -195,7 +195,8 @@
                      (<= (count descendants) 1)
                      (assoc :delete-column {:referent column-referent
                                             :alternate true}))]
-                 [#{:content} {:delete {:referent nil}}]]
+                 [#{:content} {:delete {:referent nil}
+                               :class "placeholder"}]]
           one-element
           (conj [#{:label :element} #{:content}
                  (cond-> {:expand {:referent column-referent}}
@@ -216,7 +217,6 @@
                                    #(conj % :nested)))]
     (condition-elements-DOM-R example-elements true
                               (when is-leaf (:item (first (:members node))))
-                              {:class "placeholder"}
                               inherited-down)))
 
 (defn table-virtual-header-node-DOM
@@ -594,7 +594,7 @@
                                                (seq (filter #{:tag} %)))
                                          conditions-as-lists)
                condition-dom (condition-elements-DOM-R
-                              condition-elements :wide false nil
+                              condition-elements :wide false
                               (assoc
                                inherited
                                :selector-category :table-condition

@@ -451,8 +451,9 @@
                      :subject-referent (item-referent element)
                      :width 1.0
                      :template '(nil :tag)
-                     :selectable-attributes
-                     {:expand {:referent (item-referent element)}}}]]
+                     :attributes [[#{:content}
+                                   {:expand {:referent
+                                             (item-referent element)}}]]}]]
                   [:div {:class "indent-wrapper tag"}
                    [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
@@ -515,13 +516,14 @@
         inherited  (assoc base-inherited
                           :width 1.0
                           :key-prefix element-key
-                          :subject-referent element-referent)
+                          :subject-referent element-referent
+                          :attributes [[#{:content} {:class "placeholder"}]])
         dom1 (current-value
               (condition-elements-DOM-R
-               [age qualifier] false false false inherited))
+               [age qualifier] false false inherited))
         dom2 (current-value
               (condition-elements-DOM-R
-               [age qualifier] false age {:class "placeholder"} inherited))]
+               [age qualifier] false age inherited))]
     (is (check dom1
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}

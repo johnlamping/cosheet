@@ -127,9 +127,10 @@
 ;               :template  ; The template that the twins of this dom,
                            ; must satisfy. If not present, then twins
                            ; may not be created.
-;  :selectable-attributes  ; Attributes that the topmost selectable parts
-                           ; of the dom should have, if any. Typically,
-                           ; these are targets like row.
+;             :attributes  ; A set of attribute descriptions that parts
+                           ; of the dom should have. Typically,
+                           ; these are targets like row. See the comment in
+                           ; render_utils for the exact format.
 ;       :selector-category ; In addition to giving the category of a selector,
                            ; this means that new elements should get 'anything
                            ; rather than "", if they are part of the selector,
@@ -186,10 +187,11 @@
                                         (item-referent subject))))))
               inherited (cond-> inherited
                           subject-ref
-                          (update-in
-                           [:selectable-attributes]
-                           #(into-attributes
-                             % {:expand {:referent subject-ref}})))
+                          (update
+                           :attributes
+                           #(conj (or % [])
+                                  [#{:label :optional} #{:content}
+                                   {:expand {:referent subject-ref}}])))
               dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
                    item referent tags inherited)]
           (expr-let [dom dom]

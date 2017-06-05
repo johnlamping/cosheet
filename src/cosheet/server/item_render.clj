@@ -351,7 +351,7 @@
                      inherited)})
      (if anything "\u00A0..." (str content))]))
 
-(defn item-content-and-elements-DOM-R
+(defn item-content-and-non-label-elements-DOM-R
   "Make a dom for a content and a group of non-label elements,
   all of the same item."
   [item-key item-referent content elements inherited]
@@ -411,6 +411,28 @@
                 [:div {:class "indent-wrapper tag"} dom]]))))]
     (add-attributes dom (inherited-attributes inherited))))
 
+(defn item-content-and-elements-DOM-R
+  "Make a dom for a content and a group of elements, all of the same item."
+  [item-key item-referent content elements inherited]
+  (expr-let [tags (expr-seq map #(matching-elements :tag %) elements)]
+    (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
+                              tags elements))
+          non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
+                                                       [element]))
+                                  tags elements))]
+      (expr-let [content-and-elements-dom
+                 (item-content-and-non-label-elements-DOM-R
+                  item-key item-referent
+                  content non-labels inherited)]
+        (if labels
+          (let [inherited-for-labels (-> inherited
+                                         (transform-inherited-attributes :label)
+                                         (assoc :key-prefix item-key))]
+            (label-wrapper-DOM-R
+             content-and-elements-dom
+             item-referent labels false inherited-for-labels))
+          content-and-elements-dom)))))
+
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
@@ -428,7 +450,7 @@
     (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
-     (item-content-and-elements-DOM-R
+     (item-content-and-non-label-elements-DOM-R
       (conj (:key-prefix inherited) (:item-id item))
       referent content (remove (set excluded-elements) elements)
       inherited))))
@@ -439,7 +461,7 @@
   the elements. must-show-empty-labels gets passed on to elements-DOM-R.
   If content-item is present, also show its content at the content position
   with the given added attributes."
-  [elements must-show-empty-labels content-item inherited]
+  [elements must-show-empty-labels inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
@@ -449,36 +471,18 @@
                                   tags elements))
           subject-referent (:subject-referent inherited)
           inherited-for-labels (transform-inherited-attributes
-                                inherited :label)
-          ;; TODO: Get rid of this once the overall table header
-          ;; gets its new look.
-          inherited-for-labels (if content-item
-                                 inherited-for-labels
-                                 (update inherited-for-labels :attributes
-                                         #(conj (or % [])
-                                                [#{:content}
-                                                 {:add-element
-                                                  {:referent subject-referent
-                                                   :select-pattern
-                                                   (conj (:key-prefix inherited)
-                                                         [:pattern])}}])))]
-      (expr-let [content (when content-item (entity/content content-item))
-                 content-and-elements-dom
-                 (cond content
-                       (item-content-and-elements-DOM-R
-                        (conj (:key-prefix inherited) (:item-id content-item))
-                        subject-referent content non-labels inherited)
-                       non-labels
-                       (expr-let [elements-dom
-                                  (elements-DOM-R
-                                   non-labels must-show-empty-labels
-                                   nil inherited)]
-                         [:div {:class "item elements-wrapper"} elements-dom]))]
+                                inherited :label)]
+      (expr-let [elements-dom
+                 (when non-labels
+                   (expr-let [elements-dom
+                              (elements-DOM-R
+                               non-labels must-show-empty-labels
+                               nil inherited)]
+                     [:div {:class "item elements-wrapper"} elements-dom]))]
         (cond
-          (and labels content-and-elements-dom)
+          (and labels elements-dom)
           (label-wrapper-DOM-R
-           content-and-elements-dom
-           subject-referent labels false inherited-for-labels)
+           elements-dom subject-referent labels false inherited-for-labels)
           labels
           (expr-let [ordered-elements (order-items-R elements)
                      excludeds (expr-seq map #(matching-elements :tag %)
@@ -488,7 +492,7 @@
                                     {:class "tag"} inherited-for-labels)
               (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
           non-labels
-          content-and-elements-dom
+          elements-dom
           true
           (add-attributes
            (virtual-item-DOM (conj (:key-prefix inherited) :virtual)

@@ -495,7 +495,6 @@
                       [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
 
 (deftest condition-elements-DOM-R-test
-  ;; First, test when there is a label.
   (let [element-as-list `(39
                           ("age" :tag (~o1 :order :non-semantic))
                           ("Ke"
@@ -518,25 +517,17 @@
                           :key-prefix element-key
                           :subject-referent element-referent
                           :attributes [[#{:content} {:class "placeholder"}]])
-        dom1 (current-value
+        dom (current-value
               (condition-elements-DOM-R
-               [age qualifier] false false inherited))
-        dom2 (current-value
-              (condition-elements-DOM-R
-               [age qualifier] false age inherited))]
-    (is (check dom1
+               [age qualifier] false inherited))]
+    (is (check dom
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}
                  [item-without-labels-DOM-R age [age-tag]
                   {:priority 0 :key-prefix element-key
                    :subject-referent (item-referent element)
                    :width 1.0
-                   :template '(nil :tag)
-                   :attributes
-                   [[#{:content}
-                      {:add-element {:referent element-referent
-                                     :select-pattern (conj element-key
-                                                           [:pattern])}}]]}]]
+                   :template '(nil :tag)}]]
                 [:div {:class "indent-wrapper tag"}
                  [:div {:class "item elements-wrapper"}
                   [:div {:class "horizontal-tags-element wide"}
@@ -548,8 +539,37 @@
                       according-to [(any)] (any)]]]
                    [:component {:key (conj element-key (:item-id qualifier))}
                     [item-without-labels-DOM-R
-                     qualifier [(any)] (any)]]]]]]))
-    (is (check dom2
+                     qualifier [(any)] (any)]]]]]]))))
+
+
+(deftest item-content-and-elements-DOM-R-test
+  (let [element-as-list `(39
+                          ("age" :tag (~o1 :order :non-semantic))
+                          ("Ke"
+                           ("according-to" :tag (~o1 :order :non-semantic))
+                           (~o1 :order :non-semantic)))
+
+        element (let-mutated [element element-as-list]
+                  element)
+        element-key [:root (:item-id element)]
+        element-referent (item-referent element)
+        age (first (current-value (matching-elements "age" element)))
+        age-tag (first (current-value (matching-elements :tag age)))
+        age-key (conj element-key (:item-id age))
+        qualifier (first (current-value (matching-elements "Ke" element)))
+        according-to (first (current-value (matching-elements
+                                            "according-to" qualifier)))
+        according-to-id (:item-id according-to)
+        inherited  (assoc base-inherited
+                          :width 1.0
+                          :key-prefix element-key
+                          :subject-referent element-referent
+                          :attributes [[#{:content} {:class "placeholder"}]])
+        dom (current-value
+             (item-content-and-elements-DOM-R
+              element-key (item-referent element)
+              39 [age qualifier] inherited))]
+    (is (check dom
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}
                  [item-without-labels-DOM-R age [age-tag]
@@ -561,17 +581,16 @@
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"
                          :target {:referent element-referent}
-                         :key (conj element-key (:item-id age) :content)}
-                   "age"]
+                         :key (conj element-key :content)}
+                   "39"]
                   [:div {:class "horizontal-tags-element wide"}
                    [:div {:class
                           "tag horizontal-header top-border bottom-border"}
-                    [:component {:key (conj element-key (:item-id age)
+                    [:component {:key (conj element-key
                                             :label according-to-id)
                                  :class "tag"}
                      [item-without-labels-DOM-R
                       according-to [(any)] (any)]]]
-                   [:component {:key (conj element-key
-                                           (:item-id age) (:item-id qualifier))}
+                   [:component {:key (conj element-key (:item-id qualifier))}
                     [item-without-labels-DOM-R
                      qualifier [(any)] (any)]]]]]]))))

@@ -33,6 +33,7 @@
                                    virtual-item-DOM
                                    condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R
+                                  item-content-and-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))
 
 (def base-table-column-width 150)
@@ -215,9 +216,13 @@
                                   :subject-referent column-referent)
                            (update :key-prefix
                                    #(conj % :nested)))]
-    (condition-elements-DOM-R example-elements true
-                              (when is-leaf (:item (first (:members node))))
-                              inherited-down)))
+    (if is-leaf
+      (let [item (:item (first (:members node)))]
+        (expr-let [content (entity/content item)]
+          (item-content-and-elements-DOM-R
+           (conj (:key-prefix inherited-down) (:item-id item)) column-referent
+           content example-elements inherited-down)))
+      (condition-elements-DOM-R example-elements true inherited-down))))
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
@@ -594,7 +599,7 @@
                                                (seq (filter #{:tag} %)))
                                          conditions-as-lists)
                condition-dom (condition-elements-DOM-R
-                              condition-elements :wide false
+                              condition-elements :wide
                               (assoc
                                inherited
                                :selector-category :table-condition

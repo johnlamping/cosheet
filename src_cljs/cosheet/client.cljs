@@ -9,7 +9,7 @@
             ;; Chrome.
             [cosheet.client-utils :refer [component components
                                           add-pending-clean]]
-            cosheet.dom-utils
+            cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on

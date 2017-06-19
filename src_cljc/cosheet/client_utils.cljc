@@ -1,7 +1,7 @@
 (ns cosheet.client-utils
   (:require #?(:cljs [reagent.core :as special-atom]
                :clj [clojure.core :as special-atom]) 
-            [cosheet.dom-utils :refer [into-attributes]])
+            [cosheet.hiccup-utils :refer [into-attributes]])
   )
 
 (defn set-difference

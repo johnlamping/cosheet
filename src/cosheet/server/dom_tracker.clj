@@ -5,8 +5,8 @@
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]
                      [debug :refer [simplify-for-print]]
-                     [dom-utils :refer [dom-attributes add-attributes
-                                        into-attributes]]
+                     [hiccup-utils :refer [dom-attributes add-attributes
+                                           into-attributes]]
                      [expression-manager :refer [manage]])
             
             (cosheet.server [render :refer [server-specific-attributes

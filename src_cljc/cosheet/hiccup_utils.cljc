@@ -1,4 +1,4 @@
-(ns cosheet.dom-utils
+(ns cosheet.hiccup-utils
   (:require [clojure.string :as string]))
 
 (defn combine-maps

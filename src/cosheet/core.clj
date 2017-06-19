@@ -1,5 +1,5 @@
 (ns cosheet.core
-  (:require (cosheet utils orderable dom-utils mutable-manager 
+  (:require (cosheet utils orderable hiccup-utils mutable-manager 
                      reporters expression store store-impl mutable-store-impl
                      entity entity-impl canonical query query-impl
                      state-map mutable-map task-queue expression-manager
@@ -9,6 +9,6 @@
             :reload)
   (:gen-class))
 
-;;; Note, dom-utils is in src_cljx, so you need to run
+;;; Note, hiccup-utils is in src_cljx, so you need to run
 ;;; lein cljx once
 

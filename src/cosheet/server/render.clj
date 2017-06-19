@@ -7,7 +7,7 @@
                                      description->entity]]
                      [expression :refer [expr expr-let expr-seq cache]]
                      [expression-manager :refer [current-value]]
-                     [dom-utils :refer [add-attributes into-attributes]]
+                     [hiccup-utils :refer [add-attributes into-attributes]]
                      [state-map :refer [state-map-get]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject

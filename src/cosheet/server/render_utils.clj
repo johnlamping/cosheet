@@ -4,7 +4,7 @@
                                     replace-in-seqs]]
                      [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
-                     [dom-utils
+                     [hiccup-utils
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server

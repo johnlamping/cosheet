@@ -14,7 +14,7 @@
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
-    [dom-utils :refer [dom-attributes map-combiner]]
+    [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements template-matches]]
     query-impl)
    (cosheet.server

@@ -4,8 +4,8 @@
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
-                     [dom-utils :refer [dom-attributes
-                                        into-attributes add-attributes]]
+                     [hiccup-utils :refer [dom-attributes
+                                           into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq]]
                      [canonical :refer [canonicalize-list canonical-to-list
                                         canonical-set-to-list

@@ -4,7 +4,7 @@
                      [query :refer [matching-elements]]
                      [utils :refer [multiset-diff assoc-if-non-empty]]
                      [debug :refer [simplify-for-print]]
-                     [dom-utils
+                     [hiccup-utils
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server

@@ -2,7 +2,7 @@
   (require (cosheet
             core
             debug-test test-utils-test
-            client-utils-test dom-utils-test
+            client-utils-test hiccup-utils-test
             utils-test orderable-test
             reporters-test expression-test
             canonical-test

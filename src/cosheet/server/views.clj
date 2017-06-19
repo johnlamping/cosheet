@@ -16,7 +16,7 @@
     [expression-manager :refer [new-expression-manager-data compute]]
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
-    [dom-utils :refer [dom-attributes add-attributes]]
+    [hiccup-utils :refer [dom-attributes add-attributes]]
     [reporters :as reporter]
     [mutable-manager :refer [current-mutable-value]]
     [state-map :refer [state-map-reset! state-map-get]]

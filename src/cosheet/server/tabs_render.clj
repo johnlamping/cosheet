@@ -1,8 +1,8 @@
 (ns cosheet.server.tabs-render
   (:require (cosheet [entity :as entity]
                      [debug :refer [simplify-for-print]]
-                     [dom-utils :refer [dom-attributes
-                                        into-attributes add-attributes]]
+                     [hiccup-utils :refer [dom-attributes
+                                           into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]]
                      [canonical :refer [canonicalize-list canonical-to-list
                                         canonical-set-to-list

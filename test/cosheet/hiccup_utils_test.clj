@@ -1,8 +1,8 @@
-(ns cosheet.dom-utils-test
+(ns cosheet.hiccup-utils-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            [cosheet.dom-utils :refer :all]
+            [cosheet.hiccup-utils :refer :all]
             ; :reload
             ))
 

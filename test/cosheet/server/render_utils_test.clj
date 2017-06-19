@@ -6,7 +6,6 @@
              [entity :as entity  :refer [to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
-             [dom-utils :refer [add-attributes]]
              [debug :refer [envs-to-list simplify-for-print]]
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])

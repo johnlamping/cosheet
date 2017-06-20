@@ -11,7 +11,8 @@
             [cosheet.dom-utils :refer [is-editable? is-immutable?
                                        descendant-with-editable find-editable
                                        dom-text find-ancestor-with-class
-                                       next-mutable-editable]]
+                                       next-mutable-editable
+                                       scroll-horizontally-to-be-visible]]
             cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
@@ -144,16 +145,9 @@
           (str "keydown "
                (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
                key-code))
-    (when (= total-shift 0)
+    (when 
       (cond
-        (= key-codes/TAB key-code)
-        (do (.preventDefault event)
-            (when @edit-field-open-on
-              (store-edit-field)
-              (close-edit-field))
-            (when-let [selection @selected]
-              (when (not (find-ancestor-with-class selection "tabs-holder"))
-                (select (next-mutable-editable selection)))))))
+        ))
     (when (= total-shift 1)
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.
@@ -186,24 +180,37 @@
           (when (= (first command) :expand) (open-expand-popup))
           (request-action
            (apply vector (first command) (.-id @selected) (rest command))))))
-    (when (not (or ctrl alt meta))
+    (when (= total-shift 0)
       (cond
-          (= key-code key-codes/ESC) (close-edit-field)
-          (= key-code key-codes/ENTER) (do (store-edit-field)
-                                           (close-edit-field))
-          (= key-code key-codes/DELETE) (when (and @selected
-                                                   (not @edit-field-open-on))
-                                          (.log js/console (str [:delete]))
-                                          (request-action
-                                           [:delete (.-id @selected)]))
-          (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
-                                             (when @selected
-                                               (.log js/console
-                                                     (str [:backspace]))
-                                               (request-action
-                                                [:delete (.-id @selected)]))
-                                             ;; Prevent navigating to prev page.
-                                             (.preventDefault event))
+        (= key-code key-codes/ESC) (close-edit-field)
+        (= key-code key-codes/ENTER) (do (store-edit-field)
+                                         (close-edit-field))
+        (= key-code key-codes/DELETE) (when (and @selected
+                                                 (not @edit-field-open-on))
+                                        (.log js/console (str [:delete]))
+                                        (request-action
+                                         [:delete (.-id @selected)]))
+        (= key-code key-codes/BACKSPACE) (when (not @edit-field-open-on)
+                                           (when @selected
+                                             (.log js/console
+                                                   (str [:backspace]))
+                                             (request-action
+                                              [:delete (.-id @selected)]))
+                                           ;; Prevent navigating to prev page.
+                                           (.preventDefault event))
+        (= key-codes/TAB key-code)
+        (do (.preventDefault event)
+            (when @edit-field-open-on
+              (store-edit-field)
+              (close-edit-field))
+            (when-let [selection @selected]
+              (when (not (find-ancestor-with-class selection "tabs-holder"))
+                (let [next (next-mutable-editable selection)]
+                  (select next)
+                  (when-let [table-main (when next (find-ancestor-with-class
+                                                    next "table-main"))]
+                    (.log js/console (str "scrolling " (.-id next) " : " table-main))
+                    (scroll-horizontally-to-be-visible next table-main))))))
           (key-codes/isCharacterKey key-code)
           (when (and @selected
                      (not (is-immutable? @selected))

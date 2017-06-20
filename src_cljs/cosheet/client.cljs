@@ -10,7 +10,8 @@
                                           add-pending-clean]]
             [cosheet.dom-utils :refer [is-editable? is-immutable?
                                        descendant-with-editable find-editable
-                                       dom-text find-ancestor-with-class]]
+                                       dom-text find-ancestor-with-class
+                                       next-mutable-editable]]
             cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
@@ -138,12 +139,21 @@
         meta (.-metaKey event)
         alt (.-altKey event)
         key-code (or (.-key event) (.-keyCode event))
-        ]
+        total-shift (count (filter identity [ctrl alt meta]))]
     (.log js/console
           (str "keydown "
                (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
                key-code))
-    (when (= (count (filter identity [ctrl alt meta])) 1)
+    (when (= total-shift 0)
+      (cond
+        (= key-codes/TAB key-code) (do (.preventDefault event)
+                                       (if @edit-field-open-on
+                                         (store-edit-field)
+                                         (close-edit-field))
+                                       (when-let [selection @selected]
+                                         (select (next-mutable-editable
+                                                  selection))))))
+    (when (= total-shift 1)
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.
         (= key-codes/Z key-code) (do (.preventDefault event)

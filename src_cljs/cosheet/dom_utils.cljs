@@ -11,20 +11,52 @@
       (when (and classes (exists? classes))
         (.contains classes class-name)))))
 
-(defn is-editable? [dom]
-  (has-class? dom "editable"))
+(defn is-editable? [node]
+  (has-class? node "editable"))
 
-(defn is-immutable? [dom]
-  (has-class? dom "immutable"))
+(defn is-immutable? [node]
+  (has-class? node "immutable"))
+
+(defn element-index-in-parent
+  "Return the index of the child among the elements of its parent."
+  [child]
+  (.indexOf (js/Array.from (.-children (.-parentNode child))) child))
+
+(declare first-mutable-editable-descendant)
+
+(defn first-mutable-editable-element-starting-at-position
+  "Given a node and an element index, return the next editable element after
+  the position, or nil if there is none."
+  [node index]
+  (first (keep first-mutable-editable-descendant
+               (nthrest (js/Array.from (.-children node)) index))))
+
+(defn first-mutable-editable-descendant
+  "Given a node, return that node if it is editable, otherwise first editable
+  descendant of the node, or nil if there is none."
+  [node]
+  (if (and (is-editable? node) (not (is-immutable? node)))
+    node
+    (first-mutable-editable-element-starting-at-position node 0)))
+
+(defn next-mutable-editable
+  "Given an editable dom element, return the next editable element
+  in tab order, or nil if there is none."
+  [node]
+  (let [parent (.-parentNode node)]
+    (when (and parent (exists? parent))
+      (or (first-mutable-editable-element-starting-at-position
+           parent (inc (element-index-in-parent node)))
+          (next-mutable-editable parent)))))
 
 (defn descendant-with-editable
-  "Given a dom, if it has editable children, return it. If a unique
+  "Given a node, if it has editable children, return it. If a unique
   descendant  does, return it. If none do, return nil, while if more
   than one does, return false."
-  [dom]
-  (let [children (array-seq (.-childNodes dom))]
+  [node]
+  (let [children (array-seq (.-childNodes node))]
     (if (some is-editable? children)
-      dom
+      node
       (let [candidates (filter #(not (nil? %))
                                (map descendant-with-editable children))]
         (cond (empty? candidates) nil

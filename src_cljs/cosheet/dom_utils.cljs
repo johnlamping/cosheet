@@ -1,16 +1,21 @@
 (ns cosheet.dom-utils)
 
-(defn is-editable? [dom]
-  (when (and dom (exists? dom))
-    (let [classes (.-classList dom)]
+(defn dom-text [target]
+  (let [child (.-firstChild target)]
+    (or (and child (.-nodeValue child)) "")))
+
+(defn has-class?
+  [node class-name]
+  (when (and node (exists? node))
+    (let [classes (.-classList node)]
       (when (and classes (exists? classes))
-        (.contains classes "editable")))))
+        (.contains classes class-name)))))
+
+(defn is-editable? [dom]
+  (has-class? dom "editable"))
 
 (defn is-immutable? [dom]
-  (when (and dom (exists? dom))
-    (let [classes (.-classList dom)]
-      (when (and classes (exists? classes))
-        (.contains classes "immutable")))))
+  (has-class? dom "immutable"))
 
 (defn descendant-with-editable
   "Given a dom, if it has editable children, return it. If a unique
@@ -51,16 +56,6 @@
                         (array-seq (.-childNodes holder)))]
             (when (is-editable? closest-child)
               closest-child)))))))
-
-(defn dom-text [target]
-  (let [child (.-firstChild target)]
-    (or (and child (.-nodeValue child)) "")))
-
-(defn has-class?
-  [node class-name]
-  (let [classes (.-classList node)]
-    (when (exists? classes)
-      (.contains classes class-name))))
 
 (defn find-ancestor-with-class
   "Return the first ancestor with the given class,

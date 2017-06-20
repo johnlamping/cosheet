@@ -146,13 +146,14 @@
                key-code))
     (when (= total-shift 0)
       (cond
-        (= key-codes/TAB key-code) (do (.preventDefault event)
-                                       (if @edit-field-open-on
-                                         (store-edit-field)
-                                         (close-edit-field))
-                                       (when-let [selection @selected]
-                                         (select (next-mutable-editable
-                                                  selection))))))
+        (= key-codes/TAB key-code)
+        (do (.preventDefault event)
+            (when @edit-field-open-on
+              (store-edit-field)
+              (close-edit-field))
+            (when-let [selection @selected]
+              (when (not (find-ancestor-with-class selection "tabs-holder"))
+                (select (next-mutable-editable selection)))))))
     (when (= total-shift 1)
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.

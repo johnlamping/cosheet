@@ -205,11 +205,10 @@
               (close-edit-field))
             (when-let [selection @selected]
               (when (not (find-ancestor-with-class selection "tabs-holder"))
-                (let [next (next-mutable-editable selection)]
+                (when-let [next (next-mutable-editable selection)]
                   (select next)
                   (when-let [table-main (when next (find-ancestor-with-class
                                                     next "table-main"))]
-                    (.log js/console (str "scrolling " (.-id next) " : " table-main))
                     (scroll-horizontally-to-be-visible next table-main))))))
           (key-codes/isCharacterKey key-code)
           (when (and @selected

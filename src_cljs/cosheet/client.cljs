@@ -1,6 +1,5 @@
 (ns cosheet.client
   (:require [reagent.core :as reagent]
-            [goog.dom :as gdom]
             [goog.events :as gevents]
             [goog.events.KeyCodes :as key-codes]
             [goog.events.KeyHandler :as key-handler]
@@ -9,11 +8,13 @@
             ;; Chrome.
             [cosheet.client-utils :refer [component components
                                           add-pending-clean]]
+            [cosheet.dom-utils :refer [is-editable? is-immutable?
+                                       descendant-with-editable find-editable
+                                       dom-text find-ancestor-with-class]]
             cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
-                                               find-ancestor-with-class
                                                set-selector-interpretation
                                                toggle-selector-interpretation
                                                open-edit-field close-edit-field
@@ -21,62 +22,6 @@
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
-
-(defn is-editable? [dom]
-  (when (and dom (exists? dom))
-    (let [classes (.-classList dom)]
-      (when (and classes (exists? classes))
-        (.contains classes "editable")))))
-
-(defn is-immutable? [dom]
-  (when (and dom (exists? dom))
-    (let [classes (.-classList dom)]
-      (when (and classes (exists? classes))
-        (.contains classes "immutable")))))
-
-(defn descendant-with-editable
-  "Given a dom, if it has editable children, return it. If a unique
-  descendant  does, return it. If none do, return nil, while if more
-  than one does, return false."
-  [dom]
-  (let [children (array-seq (.-childNodes dom))]
-    (if (some is-editable? children)
-      dom
-      (let [candidates (filter #(not (nil? %))
-                               (map descendant-with-editable children))]
-        (cond (empty? candidates) nil
-              (empty? (rest candidates)) (first candidates)
-              true false)))))
-
-(defn find-editable
-  "Given a target and click event, return the target if it is editable,
-   or the nearest child to the click event, if that child is editable."
-  [target event]
-  (when target
-    (if (is-editable? target)
-      target
-      (let [holder (descendant-with-editable target)]
-        (when holder
-          (let [x (.-clientX event)
-                y (.-clientY event)
-                [closest-child _]
-                (reduce (fn [[closest best-distance] child]
-                          (let [rect (.getBoundingClientRect child)
-                                dist (+ (max 0 (- (.-left rect) x))
-                                        (max 0 (- x (.-right rect)))
-                                        (max 0 (- (.-top rect) y))
-                                        (max 0 (- y (.-bottom rect))))]
-                            (if (< dist best-distance)
-                              [child dist]
-                              [closest best-distance])))
-                        [nil 1e10]
-                        (array-seq (.-childNodes holder)))]
-            (when (is-editable? closest-child)
-              closest-child)))))))
-
-(defn dom-text [target]
-  (let [child (.-firstChild target)]
-    (or (and child (.-nodeValue child)) "")))
 
 (defn store-edit-field
   []

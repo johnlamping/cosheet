@@ -49,7 +49,7 @@
   []
   (reset! poll-delay 500))
 
-(def schedule-poll-task)
+(declare schedule-poll-task)
 
 (defn poll-task
   "The task to run when it is time to poll for server changes."

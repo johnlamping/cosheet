@@ -112,23 +112,24 @@
         (when (and node (exists? node) (not= node ancestor))
           (recur (.-parentNode node)))))))
 
-(defn left-offset-in-ancestor
-  "Return the left offset of the node with respect to
+(defn offsets-in-ancestor
+  "Return the left offset and top offset of the node with respect to
    the given ancestor."
   [node ancestor]
   (if (= node ancestor)
-    0
+    [0 0]
     (let [offset-parent (offset-parent-below-ancestor node ancestor)]
       (if offset-parent
-        (+ (.-offsetLeft node)
-           (left-offset-in-ancestor offset-parent ancestor))
-        0))))
+        (let [[left top] (offsets-in-ancestor offset-parent ancestor)]
+          [(+ (.-offsetLeft node) left)
+           (+ (.-offsetTop node) top)])
+        [0 0]))))
 
 (defn scroll-horizontally-to-be-visible
   "Horizontally scroll the node to be fully visible, assuming that the ancestor
    is the node with the scrolling content."
   [node ancestor]
-  (let [left (left-offset-in-ancestor node ancestor) 
+  (let [[left top] (offsets-in-ancestor node ancestor) 
         right (+ left (.-offsetWidth node) 3)
         available (.-clientWidth ancestor)
         current (.-scrollLeft ancestor)]
@@ -136,3 +137,16 @@
       (set! (.-scrollLeft ancestor) (max 0 (- right available)))
       (if (< left current)
         (set! (.-scrollLeft ancestor) left)))))
+
+(defn scroll-vertically-to-be-visible
+  "Vertically scroll the node to be fully visible, assuming that the ancestor
+   is the node with the scrolling content."
+  [node ancestor]
+  (let [[left top] (offsets-in-ancestor node ancestor) 
+        bottom (+ top (.-offsetHeight node) 3)
+        available (.-clientHeight ancestor)
+        current (.-scrollTop ancestor)]
+    (if (> (- bottom current) available)
+      (set! (.-scrollTop ancestor) (max 0 (- bottom available)))
+      (if (< top current)
+        (set! (.-scrollTop ancestor) top)))))

@@ -543,6 +543,9 @@ body {
     overflow-x: hidden;
     overflow-y: scroll;
     padding-right: 2px; /* Room for the column's margin. */
+    /* So we can find the position of elements relative to this node 
+    for vertical scrolling */
+    position: relative; 
 }
 
 .table-rows > :first-child {

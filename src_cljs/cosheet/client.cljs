@@ -12,7 +12,8 @@
                                        descendant-with-editable find-editable
                                        dom-text find-ancestor-with-class
                                        next-mutable-editable
-                                       scroll-horizontally-to-be-visible]]
+                                       scroll-horizontally-to-be-visible
+                                       scroll-vertically-to-be-visible]]
             cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
@@ -209,7 +210,10 @@
                   (select next)
                   (when-let [table-main (when next (find-ancestor-with-class
                                                     next "table-main"))]
-                    (scroll-horizontally-to-be-visible next table-main))))))
+                    (scroll-horizontally-to-be-visible next table-main))
+                  (when-let [table-rows (when next (find-ancestor-with-class
+                                                    next "table-rows"))]
+                    (scroll-vertically-to-be-visible next table-rows))))))
           (key-codes/isCharacterKey key-code)
           (when (and @selected
                      (not (is-immutable? @selected))

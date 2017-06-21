@@ -11,9 +11,7 @@
             [cosheet.dom-utils :refer [is-editable? is-immutable?
                                        descendant-with-editable find-editable
                                        dom-text find-ancestor-with-class
-                                       next-mutable-editable
-                                       scroll-horizontally-to-be-visible
-                                       scroll-vertically-to-be-visible]]
+                                       next-mutable-editable]]
             cosheet.hiccup-utils
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
@@ -207,13 +205,7 @@
             (when-let [selection @selected]
               (when (not (find-ancestor-with-class selection "tabs-holder"))
                 (when-let [next (next-mutable-editable selection)]
-                  (select next)
-                  (when-let [table-main (when next (find-ancestor-with-class
-                                                    next "table-main"))]
-                    (scroll-horizontally-to-be-visible next table-main))
-                  (when-let [table-rows (when next (find-ancestor-with-class
-                                                    next "table-rows"))]
-                    (scroll-vertically-to-be-visible next table-rows))))))
+                  (select next)))))
           (key-codes/isCharacterKey key-code)
           (when (and @selected
                      (not (is-immutable? @selected))

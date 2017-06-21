@@ -150,3 +150,12 @@
       (set! (.-scrollTop ancestor) (max 0 (- bottom available)))
       (if (< top current)
         (set! (.-scrollTop ancestor) top)))))
+
+(defn scroll-to-be-visible
+  "Scroll the node horizontally and vertically to be visible,
+  if it is in a table."
+  [node]
+  (when-let [table-main (find-ancestor-with-class node "table-main")]
+    (scroll-horizontally-to-be-visible node table-main))
+  (when-let [table-rows (find-ancestor-with-class node "table-rows")]
+    (scroll-vertically-to-be-visible node table-rows)))

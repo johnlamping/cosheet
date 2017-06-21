@@ -1,7 +1,7 @@
 (ns cosheet.interaction-state
   (:require [goog.dom :as gdom]
             [cosheet.dom-utils :refer [find-ancestor-with-class
-                                       scroll-horizontally-to-be-visible]]))
+                                       scroll-to-be-visible]]))
 
 ;;; These are the UI operations on the edit field, alternate interpretation
 ;;; field, and on selections. We
@@ -27,7 +27,7 @@
                        nil))
       (.add (.-classList select-holder) "editing")
       (when-let [table-main (find-ancestor-with-class target "table-main")]
-        (scroll-horizontally-to-be-visible select-holder table-main))
+        (scroll-to-be-visible select-holder table-main))
       (.focus edit-input)
       (.select edit-input)
       (reset! edit-field-open-on target))))
@@ -178,5 +178,6 @@
     (gdom/appendChild target (js/document.getElementById "select_holder"))
     (.log js/console (str "Selected id " (.-id target) "."))
     (reset! selected target)
-    (set-selection-classes)))
+    (set-selection-classes)
+    (scroll-to-be-visible target)))
 

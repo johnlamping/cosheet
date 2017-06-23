@@ -373,7 +373,8 @@ body {
 }
 
 .horizontal-value-last > .item-stack,
-.horizontal-value-last > .content-text{
+.horizontal-value-last > .content-text,
+.horizontal-value-last > .horizontal-value-last {
     width: 100%;
 }
 

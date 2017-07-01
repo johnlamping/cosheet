@@ -22,7 +22,6 @@
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
-                                hierarchy-by-canonical-info
                                 hierarchy-by-all-elements
                                 hierarchy-node-example-elements
                                 hierarchy-node-items-referent

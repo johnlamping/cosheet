@@ -400,26 +400,12 @@
 
 (defn immutable-semantic-to-list
   "Given an immutable item, make a list representation of the
-  semantic information of the item, respecting order information."
+  semantic information of the item."
   [item]
   (if (atom? item)
     (content item)
     (let [content (content item)
           elements (semantic-elements-R item)
-          content-semantic (immutable-semantic-to-list content)
-          element-semantics (map immutable-semantic-to-list elements)]
-      (if (empty? element-semantics)
-        content-semantic
-        (apply list (into [content-semantic] element-semantics))))))
-
-(defn immutable-semantic-to-ordered-list
-  "Given an immutable item, make a list representation of the
-  semantic information of the item, respecting order information."
-  [item]
-  (if (atom? item)
-    (content item)
-    (let [content (content item)
-          elements (order-items-R (semantic-elements-R item))
           content-semantic (immutable-semantic-to-list content)
           element-semantics (map immutable-semantic-to-list elements)]
       (if (empty? element-semantics)
@@ -437,6 +423,11 @@
   Only works on immutable items."
   [item]
   (canonicalize-list (immutable-semantic-to-list item)))
+
+(defn item->canonical-semantic-R
+  "Return the canonical form of the semantic information for the item."
+  [item]
+  (call-with-immutable item item->canonical-semantic))
 
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into

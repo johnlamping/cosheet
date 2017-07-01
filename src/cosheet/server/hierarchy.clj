@@ -28,9 +28,10 @@
 ;;;                        except for coming after other non-members.
 ;;;          :child-nodes  An optional vector of child nodes.
 ;;;
-;;; Many of the functions below also work on non-hierarchy nodes,
-;;; which are assumed to be members of the hierarchy. These are interpreted
-;;; as nodes with just themselves as a member, and no properties or children.
+;;; All the functions below that take a node-or-member argument also work
+;;; on non-hierarchy nodes, which are assumed to be members of the hierarchy.
+;;; These are interpreted as nodes with just themselves as a member,
+;;; and no properties or children.
 
 (defn hierarchy-node?
   [node]
@@ -117,15 +118,15 @@
     (:properties node-or-member)))
 
 (defn hierarchy-node-cumulative-properties
-  "Return the local properties of the hierarchy node."
+  "Return the cumulative properties of the hierarchy node."
   [node-or-member]
   (when (hierarchy-node? node-or-member)
     (:cumulative-properties node-or-member)))
 
 (def hierarchy-nodes-extent)
 
-;;; TODO: This code should be aware of refinements of conditions, not just
-;;; added conditions.
+;;; TODO: This code should be aware of refinements of properties, not just
+;;; added properties.
 (defn hierarchy-node-extent
   "Return a seq of descendants of the node that is just big enough that
   the properties of each descendant of the node are a superset

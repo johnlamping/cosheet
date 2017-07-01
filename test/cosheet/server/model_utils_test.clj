@@ -9,7 +9,7 @@
              [model-utils :refer :all]
              [order-utils :refer [order-items-R]]
              [referent :refer [item->canonical-semantic
-                               immutable-semantic-to-ordered-list]])
+                               immutable-semantic-to-list]])
             ; :reload
             ))
 
@@ -45,12 +45,12 @@
                        (:non-semantic :non-semantic))
                  table)]
     (is (= (count tabs) 1))
-    (is (= (immutable-semantic-to-ordered-list tab) '("" "there")))
-    (is (check (map immutable-semantic-to-ordered-list (order-items-R rows))
-               ['("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag)))
-                '("" ("there" :tag) (3 ("a" :tag)))]))
-    (is (check (immutable-semantic-to-ordered-list row-condition)
+    (is (= (immutable-semantic-to-list tab) '("" "there")))
+    (is (check (map immutable-semantic-to-list (order-items-R rows))
+               [(as-set '("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag))))
+                (as-set '("" ("there" :tag) (3 ("a" :tag))))]))
+    (is (check (immutable-semantic-to-list row-condition)
                '(anything ("there" :tag))))
-    (is (check (map immutable-semantic-to-ordered-list (order-items-R headers))
+    (is (check (map immutable-semantic-to-list (order-items-R headers))
                ['(anything-immutable ("a" :tag))
                 '(anything-immutable ("b" :tag))]))))

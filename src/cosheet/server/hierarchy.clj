@@ -11,27 +11,26 @@
                                item-referent parallel-union-referent
                                item-or-exemplar-referent]])))
 
-;;; A hierarchy organizes a sequence of "members"
-;;; into a hierarchy, based on a multiset of "properties" associated with
-;;; each member.
+;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,
+;;; based on a multiset of "properties" associated with each leaf.
 ;;; The hierarchy consists of a vector of nodes, each of which is a map that
 ;;; has:
 ;;;       :hierarchy-node  true (used to identify hierarchy nodes)
 ;;;           :properties  A multiset of the properties added by this node.
 ;;; :cumulatve-properties  The multiset union of the properties of this node
 ;;;                        all all its ancestors.
-;;;              :members  A vector of members whose properties exactly
+;;;               :leaves  A vector of leaves whose properties exactly
 ;;;                        match the cumulative-properties of this node.
-;;;                        All members must come before all children in the
+;;;                        All leaves must come before all children in the
 ;;;                        order from which the hierarchy was built. This means 
-;;;                        that some children may contain members that would
-;;;                        have qualified to be members of the node,
-;;;                        except for coming after other non-members.
+;;;                        that some children may contain leaves that would
+;;;                        have qualified to be leaves of the node,
+;;;                        except for coming after other non-leaves.
 ;;;          :child-nodes  An optional vector of child nodes.
 ;;;
-;;; All the functions below that take a node-or-member argument also work
-;;; on non-hierarchy nodes, which are assumed to be members of the hierarchy.
-;;; These are interpreted as nodes with just themselves as a member,
+;;; All the functions below that take a node-or-leaf argument also work
+;;; on non-hierarchy nodes, which are assumed to be leaves of the hierarchy.
+;;; These are interpreted as nodes with just themselves as a leaf,
 ;;; and no properties or children.
 
 (defn hierarchy-node?
@@ -40,26 +39,26 @@
        (contains? node :hierarchy-node)))
 
 (defn append-to-hierarchy
-  "Given a member and its properties, add them to the hierarchy.
+  "Given a leaf and its properties, add them to the hierarchy.
   If the node has a parent, its ancestor properties must be provided.
   Don't merge items with empty properties at the top level."
-  [hierarchy member properties ancestor-properties]
-  (let [make-node (fn [members properties]
+  [hierarchy leaf properties ancestor-properties]
+  (let [make-node (fn [leaves properties]
                     {:hierarchy-node true
-                     :members members
+                     :leaves leaves
                      :properties properties
                      :cumulative-properties (multiset-union
                                              properties ancestor-properties)})]
     (if (empty? hierarchy)
-      [(make-node [member] properties)]
+      [(make-node [leaf] properties)]
       (let [last-entry (last hierarchy)]
-        (if (and ;; Don't merge a member with empty properties.
+        (if (and ;; Don't merge a leaf with empty properties.
              (or (empty? (:properties last-entry)) (empty? properties))
              ;; Unless both are empty and we are not at top level.
              (not (and (not (empty? ancestor-properties))
                        (empty? (:properties last-entry))
                        (empty? properties)))) 
-          (conj hierarchy (make-node [member] properties))
+          (conj hierarchy (make-node [leaf] properties))
           (let [[old-only new-only both] (multiset-diff
                                           (:properties last-entry) properties)]
             (if (empty? old-only)
@@ -67,62 +66,62 @@
                hierarchy
                (if (and (empty? new-only)
                         (not (contains? last-entry :child-nodes)))
-                 (fn [last] (update-in last [:members]
-                                       #((fnil conj []) % member)))
+                 (fn [last] (update-in last [:leaves]
+                                       #((fnil conj []) % leaf)))
                  (fn [last] (update-in
                              last [:child-nodes]
                              #(append-to-hierarchy
-                               % member new-only
+                               % leaf new-only
                                (multiset-union both ancestor-properties))))))
               (if (empty? both)
-                (conj hierarchy (make-node [member] properties))
+                (conj hierarchy (make-node [leaf] properties))
                 (append-to-hierarchy
                  (update-last hierarchy
                               (fn [last]
                                 (assoc (make-node [] both)
                                        :child-nodes
                                        [(assoc last :properties old-only)])))
-                 member properties ancestor-properties)))))))))
+                 leaf properties ancestor-properties)))))))))
 
 (defn hierarchy-node-descendants
-  "Return all members at or below the node."
-  [node-or-member]
-  (if (hierarchy-node? node-or-member)
-    (concat (:members node-or-member)
-            (mapcat hierarchy-node-descendants (:child-nodes node-or-member)))
-    [node-or-member]))
+  "Return all leaves at or below the node."
+  [node-or-leaf]
+  (if (hierarchy-node? node-or-leaf)
+    (concat (:leaves node-or-leaf)
+            (mapcat hierarchy-node-descendants (:child-nodes node-or-leaf)))
+    [node-or-leaf]))
 
 (defn hierarchy-node-next-level
-  "Return the concatenation of the members and children of the node.
-  If any children have empty :properties, splice in their members."
-  [node-or-member]
-  (if (hierarchy-node? node-or-member)
-    (concat (:members node-or-member)
+  "Return the concatenation of the leaves and children of the node.
+  If any children have empty :properties, splice in their leaves."
+  [node-or-leaf]
+  (if (hierarchy-node? node-or-leaf)
+    (concat (:leaves node-or-leaf)
             (mapcat #(if (empty? (:properties %))
                        (do (assert (empty? (:child-nodes %)))
-                           (:members %))
+                           (:leaves %))
                        [%])
-                    (:child-nodes node-or-member)))
-    [node-or-member]))
+                    (:child-nodes node-or-leaf)))
+    [node-or-leaf]))
 
-(defn hierarchy-node-members
-  "Return the members at the level of the hierarchy node."
-  [node-or-member]
-  (if (hierarchy-node? node-or-member)
-    (:members node-or-member)
-    [node-or-member]))
+(defn hierarchy-node-leaves
+  "Return the leaves at the level of the hierarchy node."
+  [node-or-leaf]
+  (if (hierarchy-node? node-or-leaf)
+    (:leaves node-or-leaf)
+    [node-or-leaf]))
 
 (defn hierarchy-node-properties
   "Return the local properties of the hierarchy node."
-  [node-or-member]
-  (when (hierarchy-node? node-or-member)
-    (:properties node-or-member)))
+  [node-or-leaf]
+  (when (hierarchy-node? node-or-leaf)
+    (:properties node-or-leaf)))
 
 (defn hierarchy-node-cumulative-properties
   "Return the cumulative properties of the hierarchy node."
-  [node-or-member]
-  (when (hierarchy-node? node-or-member)
-    (:cumulative-properties node-or-member)))
+  [node-or-leaf]
+  (when (hierarchy-node? node-or-leaf)
+    (:cumulative-properties node-or-leaf)))
 
 (def hierarchy-nodes-extent)
 
@@ -131,27 +130,27 @@
 (defn hierarchy-node-extent
   "Return a seq of descendants of the node that is just big enough that
   the properties of each descendant of the node are a superset
-  of the properties of some member of the extent."
+  of the properties of some leaf of the extent."
   [node]
-  (if (seq (:members node))
-    [(first (:members node))]
-    ;; Check for a child with no properties. Its members work as extents.
-    (if-let [child-members (seq (filter #(and (not (empty? (:members %)))
+  (if (seq (:leaves node))
+    [(first (:leaves node))]
+    ;; Check for a child with no properties. Its leaves work as extents.
+    (if-let [child-leaves (seq (filter #(and (not (empty? (:leaves %)))
                                               (empty? (:properties %)))
                                         (:child-nodes node)))]
-      [(first (:members (first child-members)))]
+      [(first (:leaves (first child-leaves)))]
       (hierarchy-nodes-extent (:child-nodes node)))))
 
 (defn hierarchy-nodes-extent
   "Return a seq of descendants the nodes that is just big enough that
   the properties of each descendant of the nodes are a superset
-  of the properties of some member of the extent."
+  of the properties of some leaf of the extent."
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-;;; The following code assumes that the members of a hierarchy are info maps,
+;;; The following code assumes that the leaves of a hierarchy are info maps,
 ;;; containing at least the following:
-;;;                :item  The item that is the member.
+;;;                :item  The item that is the leaf.
 ;;;   :property-elements  The elements of the item that contribute
 ;;;                       to the cumulative properties of this node
 ;;;                       in the hierarchy.
@@ -194,28 +193,28 @@
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements
   for its properties."
-  [node-or-member]
-  (when (hierarchy-node? node-or-member)
-    (let [example (first (hierarchy-node-descendants node-or-member))]
+  [node-or-leaf]
+  (when (hierarchy-node? node-or-leaf)
+    (let [example (first (hierarchy-node-descendants node-or-leaf))]
       (multiset-to-generating-values
-       (:properties node-or-member)
+       (:properties node-or-leaf)
        (:property-canonicals example)
        (:property-elements example)))))
 
 (defn hierarchy-node-items-referent
-  "Given a hierarchy node or member, return a referent to all its descendants."
-  [hierarchy-node-or-member subject-referent]
+  "Given a hierarchy node or leaf, return a referent to all its descendants."
+  [hierarchy-node-or-leaf subject-referent]
   (union-referent-if-needed
    (map #(item-or-exemplar-referent (:item %) subject-referent)
-        (hierarchy-node-descendants hierarchy-node-or-member))))
+        (hierarchy-node-descendants hierarchy-node-or-leaf))))
 
 (defn hierarchy-node-parallel-items-referent
-  "Given a hierarchy node or member, return a referent to all its descendants,
+  "Given a hierarchy node or leaf, return a referent to all its descendants,
   returning one group per group the subject returns."
-  [hierarchy-node-or-member subject-referent]
+  [hierarchy-node-or-leaf subject-referent]
   (parallel-union-referent
    (map #(item-or-exemplar-referent (:item %) subject-referent)
-        (hierarchy-node-descendants hierarchy-node-or-member))))
+        (hierarchy-node-descendants hierarchy-node-or-leaf))))
 
 (defn hierarchy-last-item-referent
   "Return a referent to the last item of the hierarchy, if any."

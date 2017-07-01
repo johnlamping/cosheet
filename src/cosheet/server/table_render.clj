@@ -19,7 +19,7 @@
                                semantic-elements-R semantic-to-list-R
                                pattern-to-condition condition-to-template]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
-                                hierarchy-node-members
+                                hierarchy-node-leaves
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
                                 hierarchy-by-all-elements-R
@@ -45,15 +45,15 @@
 
 (defn table-node-row-elements-referent
   "Generate a referent for the elements in rows affected by a table header."
-  [node-or-member rows-referent]
+  [node-or-leaf rows-referent]
   (union-referent-if-needed (map #(elements-referent (:item %) rows-referent)
-                                 (hierarchy-node-descendants node-or-member))))
+                                 (hierarchy-node-descendants node-or-leaf))))
 
 (defn table-node-no-siblings-row-elements-referent
   "Generate a referent for the elements in rows affected
   by a table header, but by no sibling header."
-  [member sibling-nodes rows-referent]
-  (let [positive-ref (table-node-row-elements-referent member rows-referent)
+  [leaf sibling-nodes rows-referent]
+  (let [positive-ref (table-node-row-elements-referent leaf rows-referent)
         negative-refs (map
                        #(elements-referent (:item %) rows-referent)
                        (hierarchy-nodes-extent sibling-nodes))] 
@@ -80,12 +80,12 @@
                                    (hierarchy-node-descendants node))]
     (when (seq deeper-descendants)
       (let [exemplar-item (first (hierarchy-node-example-elements node))
-            referent-for-member #(item-or-exemplar-referent
+            referent-for-leaf #(item-or-exemplar-referent
                                   (:item %) header-subject)
             header-ref (item-or-exemplar-referent
                         exemplar-item
                         (union-referent-if-needed
-                         (map referent-for-member deeper-descendants)))
+                         (map referent-for-leaf deeper-descendants)))
             sub-nodes (filter hierarchy-node? (hierarchy-node-next-level node))
             deeper-columns-elements-referent (union-referent-if-needed
                                               (map #(elements-referent
@@ -113,14 +113,14 @@
   request items that the column spans. elements-template gives
   the template for new elements in the header, while inherited gives
   the environment of the header."
-  [node-or-member elements-template inherited]
+  [node-or-leaf elements-template inherited]
   (assert (:template inherited))
   (let [subject-ref (:subject-referent inherited)
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
         adjacent-referent (hierarchy-node-parallel-items-referent
-                           node-or-member subject-ref)
+                           node-or-leaf subject-ref)
         new-column-ref (virtual-referent (:template inherited)
                                          (union-referent [subject-ref])
                                          adjacent-referent
@@ -140,9 +140,9 @@
   request items that gave rise to the column. elements-template gives
   the template for new elements, while inherited gives the environment
   of the header."
-  [node-or-member elements-template inherited]
+  [node-or-leaf elements-template inherited]
   {:add-column (target-for-header-add-column-command
-                node-or-member elements-template inherited)})
+                node-or-leaf elements-template inherited)})
 
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include
@@ -216,7 +216,7 @@
                            (update :key-prefix
                                    #(conj % :nested)))]
     (if is-leaf
-      (let [item (:item (first (:members node)))]
+      (let [item (:item (first (:leaves node)))]
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
            (conj (:key-prefix inherited-down) (:item-id item)) column-referent
@@ -243,17 +243,17 @@
                (is-tag-template? template)
                (str " tag"))})))
 
-(defn table-header-member-DOM
-  "Generate the DOM for an member in a hierarchy that is not the only
+(defn table-header-leaf-DOM
+  "Generate the DOM for an leaf in a hierarchy that is not the only
   descendant of its parent. It will be displayed under its parent but
   has no elements of its own to show."
-  [column-member sibling-nodes rows-referent elements-template inherited]
-  (let [column-item (:item column-member)
+  [column-leaf sibling-nodes rows-referent elements-template inherited]
+  (let [column-item (:item column-leaf)
         column-referent (union-referent
                          [(item-or-exemplar-referent
                            column-item (:subject-referent inherited))
                           (table-node-no-siblings-row-elements-referent
-                           column-member sibling-nodes rows-referent)])
+                           column-leaf sibling-nodes rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
@@ -300,7 +300,7 @@
      ;; The child nodes might use the same item in their keys as their parent,
      ;; so add to the prefix to make their keys distinct.
      (update inherited :key-prefix #(conj % :nested)))
-    (table-header-member-DOM
+    (table-header-leaf-DOM
      node-or-element sibling-nodes rows-referent elements-template
      inherited)))
 

@@ -11,7 +11,7 @@
              [referent :refer [item-or-exemplar-referent virtual-referent
                                semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [hierarchy-node-descendants
-                                hierarchy-node-members
+                                hierarchy-node-leaves
                                 hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R
@@ -70,13 +70,13 @@
                                   hierarchy-node inherited)
                                  inherited)}]))))
 
-(defn hierarchy-members-DOM
+(defn hierarchy-leaves-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
-  for the members. The members of the node may contain an additional
+  for the leaves. The leaves of the node may contain an additional
   :exclude-elements field that gives more of their elements not to
   show, typically the ones that satisfy the :template of inherited."
   [hierarchy-node inherited]
-  (let [members (hierarchy-node-members hierarchy-node)
+  (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
         inherited-down (if (not (empty? property-list))
@@ -84,7 +84,7 @@
                                 (concat (or (:template inherited) '(nil))
                                         property-list))
                          inherited)]
-    (if (empty? members)
+    (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
             adjacent-referent (item-or-exemplar-referent
@@ -94,10 +94,10 @@
                       :example-element
                       (:item-id (first example-elements)))]
         (virtual-item-DOM key adjacent-referent :before inherited-down))
-      (let [items (map :item members)
+      (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
-                           members)]
+                           leaves)]
         (item-stack-DOM
          item-without-labels-DOM-R items excludeds {} inherited-down)))))
 
@@ -151,10 +151,10 @@
 (defn tagged-items-one-column-descendants-DOM-R
   "Return DOM for all descendants of the hierarchy node, as a single column."
   [hierarchy-node inherited]
-  (let [members (hierarchy-node-members hierarchy-node)
+  (let [leaves (hierarchy-node-leaves hierarchy-node)
         nested-inherited (add-adjacent-sibling-command inherited hierarchy-node)
-        items-dom (when (not (empty? members))
-                    (hierarchy-members-DOM hierarchy-node nested-inherited))]
+        items-dom (when (not (empty? leaves))
+                    (hierarchy-leaves-DOM hierarchy-node nested-inherited))]
     (expr-let
         [child-doms (when (:child-nodes hierarchy-node)
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
@@ -275,7 +275,7 @@
         items-inherited (update
                          (add-adjacent-sibling-command inherited hierarchy-node)
                          :width #(* % 0.6875))
-        members-dom (hierarchy-members-DOM hierarchy-node items-inherited)
+        leaves-dom (hierarchy-leaves-DOM hierarchy-node items-inherited)
         no-children (empty? (:child-nodes hierarchy-node))]
     (expr-let [properties-dom (tagged-items-properties-DOM-R
                                hierarchy-node tags-inherited) 
@@ -284,7 +284,7 @@
                            inherited)]
       (cons [:div {:class "horizontal-tags-element wide"}
              (header-wrapper properties-dom true no-children)
-             (member-wrapper members-dom true no-children)]
+             (member-wrapper leaves-dom true no-children)]
             child-doms))))
 
 (defn tagged-items-two-column-DOM-R

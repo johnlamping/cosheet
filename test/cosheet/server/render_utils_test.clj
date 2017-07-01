@@ -47,17 +47,17 @@
                               (condition-satisfiers-R test '(nil :a :a :b)))))
              [:a])))
 
-(deftest add-alternate-to-target-test
+(deftest copy-alternate-request-to-target-test
   (let [ia (make-id "a")
         ib (make-id "b")
         ref (union-referent [ia ib])
         subject (elements-referent '(nil :x) ref)]
-    (is (check (add-alternate-to-target {:item-referent ref} {})
+    (is (check (copy-alternate-request-to-target {:item-referent ref} {})
                {:item-referent ref}))
-    (is (check (add-alternate-to-target {:item-referent ref}
-                                        {:alternate-target :some-alternate})
+    (is (check (copy-alternate-request-to-target {:item-referent ref}
+                                        {:alternate-target true})
                {:item-referent ref
-                :alternate :some-alternate}))))
+                :alternate true}))))
 
 (deftest transform-inherited-attributes-test
   (is (check (transform-inherited-attributes

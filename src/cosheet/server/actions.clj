@@ -328,12 +328,10 @@
   user to give them the chance to ask for the alternate arguments"
   [session-state action-type arguments attributes]
   (or
-   (when-let [alternate (:alternate arguments)]
+   (when (:alternate arguments)
      (when (not= action-type :expand)
        (println "alternate requested.")
-       (when-let [selector-category (if (= alternate true)
-                                      (:selector-category attributes)
-                                      alternate)]
+       (when-let [selector-category (:selector-category attributes)]
          (println "selector found" selector-category)
          (let [arguments (dissoc arguments :alternate)
                narrow-arguments (update-in arguments [:referent]

@@ -107,6 +107,23 @@
         (dissoc inherited :attributes)))
     inherited))
 
+(defn remove-attribute-from-inherited
+  "Given inherited and an attribute key, remove that attribute from all paths."
+  [inherited attribute-key]
+  (update inherited :attributes
+          #(vec (keep (fn [description]
+                        (let [attributes (if (map? description)
+                                           description
+                                           (last description))]
+                          (if (attribute-key attributes)
+                            (let [smaller (dissoc attributes attribute-key)]
+                              (when (not-empty smaller)
+                                (if (map? description)
+                                  smaller
+                                  (conj (vec (butlast description)) smaller))))
+                            description)))
+                      %))))
+
 (defn inherited-attributes
   "Return a map of all attributes specified by inherited for the current dom.
   The attributes are specified as in the comment at

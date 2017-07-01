@@ -77,6 +77,17 @@
                            {:f 6}]
               :x 9})))
 
+(deftest remove-attribute-from-inherited-test
+  (is (check (remove-attribute-from-inherited
+              {:attributes [{:a 1 :b 2}
+                            [#{:label} {:b 5}]
+                            [#{:label :element :recursive} #{:content} {:a 3}]]
+               :x 9}
+              :a)
+             {:attributes [{:b 2}
+                            [#{:label} {:b 5}]]
+              :x 9})))
+
 (deftest inherited-attributes-test
   (is (check (inherited-attributes
               {:attributes [{:class "foo"}

@@ -21,12 +21,13 @@
                                    copy-alternate-request-to-target
                                    vertical-stack condition-satisfiers-R
                                    transform-inherited-attributes
+                                   remove-attribute-from-inherited
                                    inherited-attributes
                                    content-attributes]])))
 
 (def item-without-labels-DOM-R)
 
-(defn hierarchy-add-adjacent-target
+(defn hierarchy-adjacent-virtual-target
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
@@ -44,31 +45,17 @@
      :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
 (defn add-adjacent-sibling-command
-  "Given a node from a hierarchy over elements and inherited, update
-  inherited to add an element adjacent to the sibling."
+  "Given inherited, and a node from a hierarchy over elements, update
+  inherited to have a command to adjacent sibling element."
   [inherited hierarchy-node]
-  (update
-     inherited :attributes
-     #(let [filtered (vec (keep (fn [description]
-                                  (let [attributes (if (map? description)
-                                                     description
-                                                     (last description))]
-                                    (if (:add-sibling attributes)
-                                      (let [smaller (dissoc attributes
-                                                            :add-sibling)]
-                                        (when (not-empty smaller)
-                                          (if (map? description)
-                                            smaller
-                                            (conj (vec (butlast description))
-                                                  smaller))))
-                                      description)))
-                                %))]
-           (conj filtered
-                 [#{:label :optional} #{:content}
-                  {:add-sibling (copy-alternate-request-to-target
-                                 (hierarchy-add-adjacent-target
-                                  hierarchy-node inherited)
-                                 inherited)}]))))
+  (-> inherited
+      (remove-attribute-from-inherited :add-sibling)
+      (update :attributes
+              #(conj % [#{:label :optional} #{:content}
+                        {:add-sibling (copy-alternate-request-to-target
+                                       (hierarchy-adjacent-virtual-target
+                                        hierarchy-node inherited)
+                                       inherited)}]))))
 
 (defn hierarchy-leaves-DOM
   "Given a hierarchy node with tags as the properties, generate DOM

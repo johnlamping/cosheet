@@ -271,63 +271,6 @@
   (is (check (hierarchy-node-next-level :foo)
              [:foo])))
 
-(deftest flatten-hierarchy-test
-  (is (check (flatten-hierarchy
-              [{:hierarchy-node true
-                :properties {:a 1}
-                :cumulative-properties {:a 1}
-                :members [:i]
-                :child-nodes [{:hierarchy-node true
-                               :properties {:b 1}
-                               :cumulative-properties {:a 1 :b 1}
-                               :members [:j]
-                               :child-nodes [{:hierarchy-node true
-                                              :properties {:c 1}
-                                              :cumulative-properties {:a 1 :b 1
-                                                                      :c 1}
-                                              :members [:l]}]}
-                              {:hierarchy-node true
-                               :properties {:c 1}
-                               :cumulative-properties {:a 1 :c 1}
-                               :members [:k]}]}]
-              0)
-             [{:hierarchy-node true
-               :properties {:a 1}
-               :cumulative-properties {:a 1}
-               :depth 0
-               :members [:i]
-               :child-nodes [{:hierarchy-node true
-                              :properties {:b 1}
-                              :cumulative-properties {:a 1 :b 1}
-                              :members [:j]
-                              :child-nodes [{:hierarchy-node true
-                                             :properties {:c 1}
-                                             :cumulative-properties {:a 1 :b 1
-                                                                     :c 1}
-                                             :members [:l]}]}
-                             {:hierarchy-node true
-                              :properties {:c 1}
-                              :cumulative-properties {:a 1 :c 1}
-                              :members [:k]}]}
-              {:hierarchy-node true
-               :properties {:b 1}
-               :cumulative-properties {:a 1 :b 1}
-               :depth 1
-               :members [:j]
-               :child-nodes [{:hierarchy-node true
-                              :properties {:c 1}
-                              :cumulative-properties {:a 1 :b 1 :c 1}
-                              :members [:l]}]}
-              {:hierarchy-node true
-               :properties {:c 1}
-               :cumulative-properties {:a 1 :b 1 :c 1}
-               :depth 2 :members [:l]}
-              {:hierarchy-node true
-               :properties {:c 1}
-               :cumulative-properties {:a 1 :c 1}
-               :depth 1
-               :members [:k]}])))
-
 (def jane-list `("Jane" (1 :order :non-semantic) "plain" "plain"))
 (def joe-list `("Joe"
                (2 :order :non-semantic)

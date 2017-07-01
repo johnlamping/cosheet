@@ -39,7 +39,7 @@
 
 (defn append-to-hierarchy
   "Given a member and its properties, add them to the hierarchy.
-  If the node has an parent, its ancestor properties must be provided.
+  If the node has a parent, its ancestor properties must be provided.
   Don't merge items with empty properties at the top level."
   [hierarchy member properties ancestor-properties]
   (let [make-node (fn [members properties]
@@ -81,21 +81,6 @@
                                        :child-nodes
                                        [(assoc last :properties old-only)])))
                  member properties ancestor-properties)))))))))
-
-(def flatten-hierarchy)
-
-(defn flatten-hierarchy-node
-  "Given a hierarchy node, and a depth, return the sequence of
-  all descendant nodes in pre-order. Add :depth to the returned nodes."
-  [node depth]
-  (cons (assoc node :depth depth)
-        (flatten-hierarchy (:child-nodes node) (inc depth))))
-
-(defn flatten-hierarchy
-  "Given a hierarchy and a depth, return the sequence of all descendant nodes
-  in pre-order. Add :depth to the returned nodes."
-  [hierarchy depth]
-  (mapcat #(flatten-hierarchy-node % depth) hierarchy))
 
 (defn hierarchy-node-descendants
   "Return all members at or below the node."

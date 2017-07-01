@@ -13,7 +13,7 @@
                                union-referent-if-needed union-referent
                                item-or-exemplar-referent
                                semantic-elements-R semantic-to-list-R]]
-             [hierarchy :refer [hierarchy-by-all-elements
+             [hierarchy :refer [hierarchy-by-all-elements-R
                                 hierarchy-node?
                                 hierarchy-node-descendants
                                 hierarchy-node-items-referent
@@ -165,7 +165,7 @@
                               :chosen-tab chosen-tab)]
     (expr-let [tabs (expr order-items-R
                       (entity/label->elements tabs-subject :tab))
-               hierarchy (hierarchy-by-all-elements tabs)]
+               hierarchy (hierarchy-by-all-elements-R tabs)]
       (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % tabs-inherited)
                                 hierarchy)]
         (let [v-ref (virtual-referent

@@ -22,7 +22,7 @@
                                 hierarchy-node-members
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
-                                hierarchy-by-all-elements
+                                hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements
                                 hierarchy-node-items-referent
                                 hierarchy-node-parallel-items-referent
@@ -590,7 +590,7 @@
                                          store row-condition-item)
                columns (expr order-items-R
                          (entity/label->elements table-item :column))
-               hierarchy (hierarchy-by-all-elements columns)
+               hierarchy (hierarchy-by-all-elements-R columns)
                condition-elements (semantic-elements-R row-condition-item)
                conditions-as-lists (expr-seq map semantic-to-list-R
                                              condition-elements)

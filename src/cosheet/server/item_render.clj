@@ -15,7 +15,7 @@
                                 hierarchy-node-items-referent
                                 hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
-                                item-maps-by-elements
+                                item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM add-alternate-to-target
@@ -320,7 +320,7 @@
       (if (and no-labels (not must-show-empty-labels))
         (item-stack-DOM
          item-without-labels-DOM-R ordered-elements excludeds {} inherited)
-        (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
+        (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)

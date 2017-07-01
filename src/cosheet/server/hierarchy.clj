@@ -26,7 +26,7 @@
 ;;;                        that some children may contain members that would
 ;;;                        have qualified to be members of the node,
 ;;;                        except for coming after other non-members.
-;;;             :children  An optional vector of child nodes.
+;;;          :child-nodes  An optional vector of child nodes.
 ;;;
 ;;; Many of the functions below also work on non-hierarchy nodes,
 ;;; which are assumed to be members of the hierarchy. These are interpreted
@@ -64,11 +64,11 @@
               (update-last
                hierarchy
                (if (and (empty? new-only)
-                        (not (contains? last-entry :children)))
+                        (not (contains? last-entry :child-nodes)))
                  (fn [last] (update-in last [:members]
                                        #((fnil conj []) % member)))
                  (fn [last] (update-in
-                             last [:children]
+                             last [:child-nodes]
                              #(append-to-hierarchy
                                % member new-only
                                (multiset-union both ancestor-properties))))))
@@ -78,7 +78,7 @@
                  (update-last hierarchy
                               (fn [last]
                                 (assoc (make-node [] both)
-                                       :children
+                                       :child-nodes
                                        [(assoc last :properties old-only)])))
                  member properties ancestor-properties)))))))))
 
@@ -89,7 +89,7 @@
   all descendant nodes in pre-order. Add :depth to the returned nodes."
   [node depth]
   (cons (assoc node :depth depth)
-        (flatten-hierarchy (:children node) (inc depth))))
+        (flatten-hierarchy (:child-nodes node) (inc depth))))
 
 (defn flatten-hierarchy
   "Given a hierarchy and a depth, return the sequence of all descendant nodes
@@ -102,7 +102,7 @@
   [node-or-member]
   (if (hierarchy-node? node-or-member)
     (concat (:members node-or-member)
-            (mapcat hierarchy-node-descendants (:children node-or-member)))
+            (mapcat hierarchy-node-descendants (:child-nodes node-or-member)))
     [node-or-member]))
 
 (defn hierarchy-node-next-level
@@ -112,10 +112,10 @@
   (if (hierarchy-node? node-or-member)
     (concat (:members node-or-member)
             (mapcat #(if (empty? (:properties %))
-                       (do (assert (empty? (:children %)))
+                       (do (assert (empty? (:child-nodes %)))
                            (:members %))
                        [%])
-                    (:children node-or-member)))
+                    (:child-nodes node-or-member)))
     [node-or-member]))
 
 (defn hierarchy-node-members
@@ -151,9 +151,9 @@
     ;; Check for a child with no properties. Its members work as extents.
     (if-let [child-members (seq (filter #(and (not (empty? (:members %)))
                                               (empty? (:properties %)))
-                                        (:children node)))]
+                                        (:child-nodes node)))]
       [(first (:members (first child-members)))]
-      (hierarchy-nodes-extent (:children node)))))
+      (hierarchy-nodes-extent (:child-nodes node)))))
 
 (defn hierarchy-nodes-extent
   "Return a seq of descendants the nodes that is just big enough that

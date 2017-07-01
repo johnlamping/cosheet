@@ -157,10 +157,10 @@
         items-dom (when (not (empty? members))
                     (hierarchy-members-DOM hierarchy-node nested-inherited))]
     (expr-let
-        [child-doms (when (:children hierarchy-node)
+        [child-doms (when (:child-nodes hierarchy-node)
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                       % false nested-inherited)
-                                (:children hierarchy-node)))]
+                                (:child-nodes hierarchy-node)))]
       (vertical-stack (if items-dom (cons items-dom child-doms) child-doms)))))
 
 (defn tagged-items-one-column-subtree-DOM-R
@@ -253,7 +253,7 @@
   "Return a seq of doms for the children of the hierarchy node,
   as two columns."
   [hierarchy-node header-wrapper member-wrapper inherited]
-  (let [children (:children hierarchy-node)]
+  (let [children (:child-nodes hierarchy-node)]
     (when children
       (expr-let [child-lists
                  (expr-seq
@@ -277,7 +277,7 @@
                          (add-adjacent-sibling-command inherited hierarchy-node)
                          :width #(* % 0.6875))
         members-dom (hierarchy-members-DOM hierarchy-node items-inherited)
-        no-children (empty? (:children hierarchy-node))]
+        no-children (empty? (:child-nodes hierarchy-node))]
     (expr-let [properties-dom (tagged-items-properties-DOM-R
                                hierarchy-node tags-inherited) 
                child-doms (tagged-items-two-column-children-DOMs-R

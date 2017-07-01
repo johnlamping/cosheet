@@ -50,10 +50,10 @@
                :members [:i]
                :properties {:a 1}
                :cumulative-properties {:a 1}
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:j]}]}]))
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:j]}]}]))
   ;; New element has fewer properties.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1 :b 1}
@@ -64,14 +64,14 @@
                :properties {:a 1}
                :cumulative-properties {:a 1}
                :members []
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:i]}
-                          {:hierarchy-node true
-                           :properties {}
-                           :cumulative-properties {:a 1}
-                           :members [:j]}]}]))
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:i]}
+                             {:hierarchy-node true
+                              :properties {}
+                              :cumulative-properties {:a 1}
+                              :members [:j]}]}]))
   ;; Old and new have some in common.
 
   (is (check
@@ -84,85 +84,87 @@
          :properties {:a 1}
          :cumulative-properties {:a 1 :d 2}
          :members []
-         :children [{:hierarchy-node true
-                     :properties {:b 1}
-                     :cumulative-properties {:a 1 :b 1 :d 2}
-                     :members [:i]}
-                    {:hierarchy-node true
-                     :properties {:c 1}
-                     :cumulative-properties {:a 1 :c 1 :d 2}
-                     :members [:j]}]}]))
+         :child-nodes [{:hierarchy-node true
+                        :properties {:b 1}
+                        :cumulative-properties {:a 1 :b 1 :d 2}
+                        :members [:i]}
+                       {:hierarchy-node true
+                        :properties {:c 1}
+                        :cumulative-properties {:a 1 :c 1 :d 2}
+                        :members [:j]}]}]))
   ;; Must add to child of last element.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1}
                                     :cumulative-properties {:a 1}
                                     :members [:i]
-                                    :children [{:hierarchy-node true
-                                                :properties {:b 1}
-                                                :cumulative-properties {:a 1
-                                                                        :b 1}
-                                                :members [:j]}]}]
+                                    :child-nodes [{:hierarchy-node true
+                                                   :properties {:b 1}
+                                                   :cumulative-properties {:a 1
+                                                                           :b 1}
+                                                   :members [:j]}]}]
                                   :k {:a 1 :b 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
                :members [:i]
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:j]
-                           :children [{:hierarchy-node true
-                                       :properties {:c 1}
-                                       :cumulative-properties {:a 1 :b 1 :c 1}
-                                       :members [:k]}]}]}]))
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:j]
+                              :child-nodes [{:hierarchy-node true
+                                             :properties {:c 1}
+                                             :cumulative-properties {:a 1 :b 1
+                                                                     :c 1}
+                                             :members [:k]}]}]}]))
   ;; Must close off child of last element.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1}
                                     :cumulative-properties {:a 1}
                                     :members [:i]
-                                    :children [{:hierarchy-node true
-                                                :properties {:b 1}
-                                                :cumulative-properties {:a 1
-                                                                        :b 1}
-                                                :members [:j]}]}]
+                                    :child-nodes [{:hierarchy-node true
+                                                   :properties {:b 1}
+                                                   :cumulative-properties {:a 1
+                                                                           :b 1}
+                                                   :members [:j]}]}]
                                   :k {:a 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
                :members [:i]
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:j]}
-                          {:hierarchy-node true
-                           :properties {}
-                           :cumulative-properties {:a 1}
-                           :members [:k]}]}]))
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:j]}
+                             {:hierarchy-node true
+                              :properties {}
+                              :cumulative-properties {:a 1}
+                              :members [:k]}]}]))
   ;; Partial sharing with last element that has children.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1 :b 1}
                                     :cumulative-properties {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:properties {:c 1}
-                                                :cumulative-properties
-                                                {:a 1 :b 1 :c 1}
-                                                :members [:j]}]}]
+                                    :child-nodes [{:properties {:c 1}
+                                                   :cumulative-properties
+                                                   {:a 1 :b 1 :c 1}
+                                                   :members [:j]}]}]
                                   :k {:a 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
                :members []
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:i]
-                           :children [{:properties {:c 1}
-                                       :cumulative-properties {:a 1 :b 1 :c 1}
-                                       :members [:j]}]}
-                          {:hierarchy-node true
-                           :properties {:c 1}
-                           :cumulative-properties {:a 1 :c 1}
-                           :members [:k]}]}]))
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:i]
+                              :child-nodes [{:properties {:c 1}
+                                             :cumulative-properties {:a 1 :b 1
+                                                                     :c 1}
+                                             :members [:j]}]}
+                             {:hierarchy-node true
+                              :properties {:c 1}
+                              :cumulative-properties {:a 1 :c 1}
+                              :members [:k]}]}]))
   ;; Append two empty properties.
   (is (check
        (append-to-hierarchy [{:hierarchy-node true
@@ -184,60 +186,60 @@
                               :properties {:a 1 :b 1}
                               :cumulative-properties {:a 1 :b 1}
                               :members [:i]
-                              :children [{:hierarchy-node true
-                                          :properties {:c 1}
-                                          :cumulative-properties
-                                          {:a 1 :b 1 :c 1}
-                                          :members [:j]}
-                                         {:hierarchy-node true
-                                          :properties {}
-                                          :cumulative-properties {:a 1 :b 1}
-                                          :members [:k]}]}]
+                              :child-nodes [{:hierarchy-node true
+                                             :properties {:c 1}
+                                             :cumulative-properties
+                                             {:a 1 :b 1 :c 1}
+                                             :members [:j]}
+                                            {:hierarchy-node true
+                                             :properties {}
+                                             :cumulative-properties {:a 1 :b 1}
+                                             :members [:k]}]}]
                             :l {:a 1 :b 1} {})
        [{:hierarchy-node true
          :properties {:a 1 :b 1}
          :cumulative-properties {:a 1 :b 1}
          :members [:i]
-         :children [{:hierarchy-node true
-                     :properties {:c 1}
-                     :cumulative-properties {:a 1 :b 1 :c 1}
-                     :members [:j]}
-                    {:hierarchy-node true
-                     :properties {}
-                     :cumulative-properties {:a 1 :b 1}
-                     :members [:k :l]}]}]))
+         :child-nodes [{:hierarchy-node true
+                        :properties {:c 1}
+                        :cumulative-properties {:a 1 :b 1 :c 1}
+                        :members [:j]}
+                       {:hierarchy-node true
+                        :properties {}
+                        :cumulative-properties {:a 1 :b 1}
+                        :members [:k :l]}]}]))
   ;; Append non-empty group after empty group.
   (is (check (append-to-hierarchy [{:hierarchy-node true
                                     :properties {:a 1 :b 1}
                                     :cumulative-properties {:a 1 :b 1}
                                     :members [:i]
-                                    :children [{:hierarchy-node true
-                                                :properties {:c 1}
-                                                :cumulative-properties
-                                                {:a 1 :b 1 :c 1}
-                                                :members [:j]}
-                                               {:hierarchy-node true
-                                                :properties {}
-                                                :cumulative-properties
-                                                {:a 1 :b 1}
-                                                :members [:k]}]}]
+                                    :child-nodes [{:hierarchy-node true
+                                                   :properties {:c 1}
+                                                   :cumulative-properties
+                                                   {:a 1 :b 1 :c 1}
+                                                   :members [:j]}
+                                                  {:hierarchy-node true
+                                                   :properties {}
+                                                   :cumulative-properties
+                                                   {:a 1 :b 1}
+                                                   :members [:k]}]}]
                                   :l {:a 1 :b 1 :c 1} {})
              [{:hierarchy-node true
                :properties {:a 1 :b 1}
                :cumulative-properties {:a 1 :b 1}
                :members [:i]
-               :children [{:hierarchy-node true
-                           :properties {:c 1}
-                           :cumulative-properties {:a 1 :b 1 :c 1}
-                           :members [:j]}
-                          {:hierarchy-node true
-                           :properties {}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:k]}
-                          {:hierarchy-node true
-                           :properties {:c 1}
-                           :cumulative-properties {:a 1 :b 1 :c 1}
-                           :members [:l]}]
+               :child-nodes [{:hierarchy-node true
+                              :properties {:c 1}
+                              :cumulative-properties {:a 1 :b 1 :c 1}
+                              :members [:j]}
+                             {:hierarchy-node true
+                              :properties {}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:k]}
+                             {:hierarchy-node true
+                              :properties {:c 1}
+                              :cumulative-properties {:a 1 :b 1 :c 1}
+                              :members [:l]}]
                }])))
 
 (deftest hierarchy-node-descendants-test
@@ -245,9 +247,9 @@
                    {:hierarchy-node true
                     :properties {:a 1}
                     :members [:i]
-                    :children [{:hierarchy-node true
-                                :properties {:b 1}
-                                :members [:j]}]}))
+                    :child-nodes [{:hierarchy-node true
+                                   :properties {:b 1}
+                                   :members [:j]}]}))
              #{:i :j}))
   (is (check (hierarchy-node-descendants :foo)
              [:foo])))
@@ -257,8 +259,12 @@
               {:hierarchy-node true
                :properties {:a 1 :b 1}
                :members [:i]
-               :children [{:hierarchy-node true :properties {:c 1} :members [:j :k]}
-                          {:hierarchy-node true :properties {} :members [:l :m ]}]})
+               :child-nodes [{:hierarchy-node true
+                              :properties {:c 1}
+                              :members [:j :k]}
+                             {:hierarchy-node true
+                              :properties {}
+                              :members [:l :m ]}]})
              [:i
               {:hierarchy-node true :properties {:c 1} :members [:j :k]}
               :l :m]))
@@ -271,45 +277,47 @@
                 :properties {:a 1}
                 :cumulative-properties {:a 1}
                 :members [:i]
-                :children [{:hierarchy-node true
-                            :properties {:b 1}
-                            :cumulative-properties {:a 1 :b 1}
-                            :members [:j]
-                            :children [{:hierarchy-node true
-                                        :properties {:c 1}
-                                        :cumulative-properties {:a 1 :b 1 :c 1}
-                                        :members [:l]}]}
-                           {:hierarchy-node true
-                            :properties {:c 1}
-                            :cumulative-properties {:a 1 :c 1}
-                            :members [:k]}]}]
+                :child-nodes [{:hierarchy-node true
+                               :properties {:b 1}
+                               :cumulative-properties {:a 1 :b 1}
+                               :members [:j]
+                               :child-nodes [{:hierarchy-node true
+                                              :properties {:c 1}
+                                              :cumulative-properties {:a 1 :b 1
+                                                                      :c 1}
+                                              :members [:l]}]}
+                              {:hierarchy-node true
+                               :properties {:c 1}
+                               :cumulative-properties {:a 1 :c 1}
+                               :members [:k]}]}]
               0)
              [{:hierarchy-node true
                :properties {:a 1}
                :cumulative-properties {:a 1}
                :depth 0
                :members [:i]
-               :children [{:hierarchy-node true
-                           :properties {:b 1}
-                           :cumulative-properties {:a 1 :b 1}
-                           :members [:j]
-                           :children [{:hierarchy-node true
-                                       :properties {:c 1}
-                                       :cumulative-properties {:a 1 :b 1 :c 1}
-                                       :members [:l]}]}
-                          {:hierarchy-node true
-                           :properties {:c 1}
-                           :cumulative-properties {:a 1 :c 1}
-                           :members [:k]}]}
+               :child-nodes [{:hierarchy-node true
+                              :properties {:b 1}
+                              :cumulative-properties {:a 1 :b 1}
+                              :members [:j]
+                              :child-nodes [{:hierarchy-node true
+                                             :properties {:c 1}
+                                             :cumulative-properties {:a 1 :b 1
+                                                                     :c 1}
+                                             :members [:l]}]}
+                             {:hierarchy-node true
+                              :properties {:c 1}
+                              :cumulative-properties {:a 1 :c 1}
+                              :members [:k]}]}
               {:hierarchy-node true
                :properties {:b 1}
                :cumulative-properties {:a 1 :b 1}
                :depth 1
                :members [:j]
-               :children [{:hierarchy-node true
-                           :properties {:c 1}
-                           :cumulative-properties {:a 1 :b 1 :c 1}
-                           :members [:l]}]}
+               :child-nodes [{:hierarchy-node true
+                              :properties {:c 1}
+                              :cumulative-properties {:a 1 :b 1 :c 1}
+                              :members [:l]}]}
               {:hierarchy-node true
                :properties {:c 1}
                :cumulative-properties {:a 1 :b 1 :c 1}
@@ -352,15 +360,15 @@
          :cumulative-properties {:a 1}
          :members [{:property-canonicals [:a]
                     :item `(:i (1 :order :non-semantic))}]
-         :children [{:hierarchy-node true
-                     :properties {:b 1}
-                     :cumulative-properties {:b 1 :a 1}
-                     :members [{:property-canonicals [:a :b]
-                                :item `(:j (2 :order :non-semantic))}]}
-                    {:hierarchy-node true
-                     :properties {:c 1}
-                     :cumulative-properties {:c 1 :a 1}
-                     :members [{:property-canonicals [:a :c]
-                                :item `(:k (3 :order :non-semantic))}]}]}])))
+         :child-nodes [{:hierarchy-node true
+                        :properties {:b 1}
+                        :cumulative-properties {:b 1 :a 1}
+                        :members [{:property-canonicals [:a :b]
+                                   :item `(:j (2 :order :non-semantic))}]}
+                       {:hierarchy-node true
+                        :properties {:c 1}
+                        :cumulative-properties {:c 1 :a 1}
+                        :members [{:property-canonicals [:a :c]
+                                   :item `(:k (3 :order :non-semantic))}]}]}])))
 
 

@@ -8,8 +8,8 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq cache]])
             (cosheet.server
-             [hierarchy :refer [canonical-info]]
-             [referent :refer [virtual-referent]])))
+             [referent :refer [virtual-referent item->canonical-semantic
+                               item->canonical-semantic-R]])))
 
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
@@ -25,10 +25,11 @@
                 entity
                 (fn [entity]
                   (let [elements (entity/elements entity)
-                        canonical-elements (expr-seq map canonical-info
-                                                     elements)]
+                        canonical-elements (expr-seq
+                                            map item->canonical-semantic-R
+                                            elements)]
                     (multiset-to-generating-values
-                     (multiset (map #(canonical-info
+                     (multiset (map #(item->canonical-semantic
                                       (replace-in-seqs % nil ""))
                                     (rest condition)))
                      canonical-elements elements))))]

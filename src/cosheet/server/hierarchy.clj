@@ -3,13 +3,14 @@
              [utils :refer [multiset multiset-diff multiset-union
                             multiset-to-generating-values update-last]]
              [debug :refer [simplify-for-print]]
-             [expression :refer [expr-let expr-seq]]
-             [canonical :refer [canonicalize-list]])
+             [expression :refer [expr-let expr-seq]])
             (cosheet.server
              [referent :refer [semantic-elements-R semantic-to-list-R
+                               item->canonical-semantic-R
                                union-referent-if-needed
                                item-referent parallel-union-referent
                                item-or-exemplar-referent]])))
+
 ;;; A hierarchy organizes a sequence of "members"
 ;;; into a hierarchy, based on a multiset of "properties" associated with
 ;;; each member.
@@ -157,18 +158,6 @@
 ;;; :property-canonicals  A list of canonical-info for each element in
 ;;;                       :property-elements.
 
-(defn canonical-info
-  [entity]
-  (expr-let [semantic (semantic-to-list-R entity)]
-    (canonicalize-list semantic)))
-
-(defn canonical-info-set
-  "Given a seq of items, return a canonical representation of the items,
-   treated as a multi-set."
-  [entities]
-  (expr-let [canonicals (expr-seq map canonical-info entities)]
-    (multiset canonicals)))
-
 (defn hierarchy-by-canonical-info
   "Given a sequence of item info maps, return a hierarchy."
   [item-info-maps]
@@ -182,7 +171,7 @@
   "Given an item and a seq of elements of the item that characterize how
    it should fit in a hierarchy, return an item info map."
   [item elements]
-  (expr-let [canonicals (expr-seq map canonical-info elements)]
+  (expr-let [canonicals (expr-seq map item->canonical-semantic-R elements)]
        {:item item
         :property-elements elements
         :property-canonicals canonicals}))

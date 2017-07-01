@@ -12,7 +12,6 @@
                                semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [hierarchy-node-descendants
                                 hierarchy-node-members
-                                hierarchy-node-items-referent
                                 hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R

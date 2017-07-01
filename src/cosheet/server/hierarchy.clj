@@ -203,8 +203,7 @@
        (:property-elements example)))))
 
 (defn hierarchy-node-items-referent
-  "Given a hierarchy node or member, return a referent to all its descendants,
-  returning one group per group the subject returns."
+  "Given a hierarchy node or member, return a referent to all its descendants."
   [hierarchy-node-or-member subject-referent]
   (union-referent-if-needed
    (map #(item-or-exemplar-referent (:item %) subject-referent)

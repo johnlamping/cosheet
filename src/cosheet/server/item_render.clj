@@ -17,9 +17,9 @@
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
-             [render-utils :refer [virtual-item-DOM add-alternate-to-target
-                                   vertical-stack item-stack-DOM
-                                   condition-satisfiers-R
+             [render-utils :refer [virtual-item-DOM item-stack-DOM
+                                   copy-alternate-request-to-target
+                                   vertical-stack condition-satisfiers-R
                                    transform-inherited-attributes
                                    inherited-attributes
                                    content-attributes]])))
@@ -65,7 +65,7 @@
                                 %))]
            (conj filtered
                  [#{:label :optional} #{:content}
-                  {:add-sibling (add-alternate-to-target
+                  {:add-sibling (copy-alternate-request-to-target
                                  (hierarchy-add-adjacent-target
                                   hierarchy-node inherited)
                                  inherited)}]))))
@@ -344,7 +344,7 @@
                             (content-attributes inherited))
            {:class (cond-> "content-text editable"
                      (= content 'anything-immutable) (str " immutable"))
-            :target (add-alternate-to-target
+            :target (copy-alternate-request-to-target
                      (assoc (select-keys inherited [:template])
                             :referent item-referent)
                      inherited)})

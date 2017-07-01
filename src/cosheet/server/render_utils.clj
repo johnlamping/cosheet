@@ -35,13 +35,12 @@
                      canonical-elements elements))))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
-(defn add-alternate-to-target
+(defn copy-alternate-request-to-target
   "Given the map for a target, and inherited information, change the target
   to have a :alternate if the inherited information says to."
   [target inherited]
-  (if-let [alternate (:alternate-target inherited)]
-    (assoc target :alternate alternate)
-    target))
+  (cond-> target
+    (:alternate-target inherited) (assoc :alternate true)))
 
 ;;; These next functions handle inherited attributes.
 ;;; In inherited, :attributes is a vector of descriptors.
@@ -149,7 +148,7 @@
                           (select-keys inherited [:selector-category]))
          {:class "editable"
           :key key
-          :target (add-alternate-to-target
+          :target (copy-alternate-request-to-target
                    {:referent (virtual-referent
                                (:template inherited)
                                (:subject-referent inherited)

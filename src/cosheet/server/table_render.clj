@@ -213,8 +213,7 @@
                                   :width (* 0.75 (count descendants))
                                   :template elements-template
                                   :subject-referent column-referent)
-                           (update :key-prefix
-                                   #(conj % :nested)))]
+                           (update :key-prefix #(conj % :nested)))]
     (if is-leaf
       (let [item (:item (first (:leaves node)))]
         (expr-let [content (entity/content item)]

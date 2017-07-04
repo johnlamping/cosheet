@@ -127,6 +127,7 @@
            [:div {:class "table selector-scope"}
             [:div {:class "table-top selectors"}
              [:div {:class "table-corner"}]
+             ;; TODO: Add test here too.
              (any)]
             [:div {:class "table-body"}
              [:div {:class "table-indent"}]
@@ -160,8 +161,7 @@
                         :delete {:referent nil}
                         :add-column first-column-add
                         :class "placeholder content-text editable item"
-                        :target {:template '(nil :tag)
-                                 :referent first-column-referent
+                        :target {:referent first-column-referent
                                  :alternate true}
                         :key (conj table-key :nested (:item-id c1) :content)}
                   " ..."]]]

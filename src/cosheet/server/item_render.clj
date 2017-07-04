@@ -455,22 +455,21 @@
 
 (defn item-content-and-non-label-elements-DOM-R
   "Make a dom for a content and a group of non-label elements,
-  all of the same item."
-  [item-key item-referent content elements inherited]
+  all of the same item. Inherited should be half way to the children."
+  [content elements inherited]
   (let [content-dom (add-attributes
-                     (item-content-DOM item-referent content inherited)
+                     (item-content-DOM
+                      (:subject-referent inherited) content inherited)
                      ;; Give it a unique key.
                      ;; This will be overridden to the item's key
                      ;; if the item has nothing but this content.
-                     {:key (conj item-key :content)})]
+                     {:key (conj (:key-prefix inherited) :content)})]
     (if (empty? elements)
       (add-attributes (or content-dom [:div]) {:class "item"})
       (let [inherited-down
             (-> (transform-inherited-attributes inherited :element)
                 (update :priority inc)
-                (assoc :key-prefix item-key
-                       :subject-referent item-referent
-                       :template '(nil)))]
+                (assoc :template '(nil)))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil inherited-down)]
           (if content-dom
@@ -492,7 +491,6 @@
                                   inherited item-key item-referent)]
       (expr-let [content-and-elements-dom
                  (item-content-and-non-label-elements-DOM-R
-                  item-key item-referent
                   content non-labels inherited-for-children)]
         (if labels
           (labels-wrapper-DOM-R
@@ -517,9 +515,10 @@
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
      (item-content-and-non-label-elements-DOM-R
-      (conj (:key-prefix inherited) (:item-id item))
-      referent content (remove (set excluded-elements) elements)
-      inherited))))
+      content (remove (set excluded-elements) elements)
+      (transform-inherited-for-children
+       inherited (conj (:key-prefix inherited) (:item-id item))
+       referent)))))
 
 (defn item-DOM-impl-R
    "Make a dom for an item or exemplar of a group of items.

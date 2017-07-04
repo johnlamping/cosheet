@@ -93,59 +93,48 @@
 (declare item-without-labels-DOM-R)
 (declare elements-DOM-R)
 
+(defn label-stack-DOM-R
+  "Given a non-empty list of label elements, return a stack of their doms."
+  [label-elements inherited]
+  (expr-let [ordered-labels (order-items-R label-elements)
+             tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
+                            ordered-labels)]
+    (item-stack-DOM item-without-labels-DOM-R
+                    ordered-labels tags {:class "tag"} inherited)))
+
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item.
-  Inherited must give the information for the labels.
-  The :key-prefix of inherited must give a unique prefix for the labels."
+  Inherited should be half way to the children."
   [inner-dom label-elements inherited]
-  (expr-let [ordered-labels (order-items-R label-elements)
-             tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
-                            ordered-labels)
-             dom [:div {:class "wrapped-element tag"}
-                  (add-attributes
-                   (item-stack-DOM item-without-labels-DOM-R
-                                   ordered-labels tags {:class "tag"}
-                                   inherited)
-                   ;; We need "tag" in the class to make any margin
-                   ;; after the tags also have tag coloring.
-                   {:class "tag"})
-                  [:div {:class "indent-wrapper tag"} inner-dom]]]
-    (add-attributes dom (inherited-attributes inherited))))
+  (expr-let [stack (label-stack-DOM-R
+                    label-elements (transform-inherited-for-labels inherited))]
+    (-> [:div {:class "wrapped-element tag"}
+         (cond-> stack
+           ;; We need "tag" in the class to make any margin
+           ;; after the tags also have tag coloring.
+           (> (count label-elements) 1)
+           (add-attributes {:class "tag"}))
+         [:div {:class "indent-wrapper tag"} inner-dom]]
+        (add-attributes (inherited-attributes inherited)))))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
-  make a dom that includes any necessary labels wrapping the item. The
-  key-prefix must give a unique prefix for the labels. inherited should
-  apply to the elements, except that it's attributes should
-  be for the item's dom."
+  make a dom that includes any necessary labels wrapping the item.
+  inherited should be half way to the children."
   [dom label-elements must-show-empty-labels inherited]
-  (expr-let
-      [dom
-       (if (and (empty? label-elements) (not must-show-empty-labels))
-         dom
-         (let [inherited-for-tags (transform-inherited-for-labels inherited)]
-           (if (empty? label-elements)
-             [:div {:class "horizontal-tags-element narrow"}
-              (add-attributes
-               (virtual-item-DOM (conj (:key-prefix inherited) :tags)
-                                 nil :after inherited-for-tags)
-               {:class "tag"})
-              dom]
-             (expr-let [ordered-labels (order-items-R label-elements)
-                        tags (expr-seq
-                              map #(condition-satisfiers-R % '(nil :tag))
-                              ordered-labels)]
-               ;; We need "tag" in the class to make any margin
-               ;; after the tags also have tag coloring.
-               [:div {:class "wrapped-element tag"}
-                (add-attributes
-                 (item-stack-DOM item-without-labels-DOM-R
-                                 ordered-labels tags {:class "tag"}
-                                 inherited-for-tags)
-                 {:class "tag"})
-                [:div {:class "indent-wrapper tag"} dom]]))))]
-    (add-attributes dom (inherited-attributes inherited))))
+  (if (not (empty? label-elements))
+    (non-empty-labels-wrapper-DOM-R dom label-elements inherited)
+    (let [dom (if (not must-show-empty-labels)
+                dom
+                [:div {:class "horizontal-tags-element narrow"}
+                 (add-attributes
+                  (virtual-item-DOM (conj (:key-prefix inherited) :tags)
+                                    nil :after
+                                    (transform-inherited-for-labels inherited))
+                  {:class "tag"})
+                 dom])]
+      (add-attributes dom (inherited-attributes inherited)))))
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
@@ -169,8 +158,7 @@
                      [:div {:class "item elements-wrapper"} elements-dom]))]
         (cond
           (and labels non-labels)
-          (labels-wrapper-DOM-R
-           elements-dom labels false inherited)
+          (non-empty-labels-wrapper-DOM-R elements-dom labels inherited)
           labels
           (expr-let [ordered-elements (order-items-R elements)
                      excludeds (expr-seq map #(matching-elements :tag %)

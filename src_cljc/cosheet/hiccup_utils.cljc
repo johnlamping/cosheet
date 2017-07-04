@@ -42,7 +42,7 @@
 (defn add-attributes
   "Add attributes to a hiccup dom descriptor."
   [dom attributes]
-  (if attributes
+  (if (seq attributes)
     (let [dom (if (sequential? dom) dom [:div dom])
           [dom-tag second & remainder] dom
           [attr remainder] (if (map? second)

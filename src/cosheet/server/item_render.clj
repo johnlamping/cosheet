@@ -23,7 +23,8 @@
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    transform-inherited-attributes
-                                   remove-attribute-from-inherited
+                                   add-inherited-attribute
+                                   remove-inherited-attribute
                                    inherited-attributes
                                    content-attributes]])))
 
@@ -51,13 +52,13 @@
   inherited to have a command to adjacent sibling element."
   [inherited hierarchy-node]
   (-> inherited
-      (remove-attribute-from-inherited :add-sibling)
-      (update :attributes
-              #(conj % [#{:label :optional} #{:content}
-                        {:add-sibling (copy-alternate-request-to-target
-                                       (hierarchy-adjacent-virtual-target
-                                        hierarchy-node inherited)
-                                       inherited)}]))))
+      (remove-inherited-attribute :add-sibling)
+      (add-inherited-attribute
+       [#{:label :optional} #{:content}
+        {:add-sibling (copy-alternate-request-to-target
+                       (hierarchy-adjacent-virtual-target
+                        hierarchy-node inherited)
+                       inherited)}])))
 
 (defn hierarchy-leaf-items-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -88,7 +89,7 @@
                                     (:exclude-elements %))
                            leaves)]
         (item-stack-DOM
-         item-without-labels-DOM-R items excludeds {} inherited-down)))))
+         item-without-labels-DOM-R items excludeds inherited-down)))))
 
 (declare item-without-labels-DOM-R)
 (declare elements-DOM-R)
@@ -100,7 +101,8 @@
              tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
                             ordered-labels)]
     (item-stack-DOM item-without-labels-DOM-R
-                    ordered-labels tags {:class "tag"} inherited)))
+                    ordered-labels tags
+                    (add-inherited-attribute inherited {:class "tag"}))))
 
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
@@ -164,8 +166,11 @@
                      excludeds (expr-seq map #(matching-elements :tag %)
                                          ordered-elements)]
             (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                    ordered-elements excludeds {:class "tag"}
-                                    (transform-inherited-for-labels inherited))
+                                    ordered-elements excludeds
+                                    (-> inherited
+                                        transform-inherited-for-labels
+                                        (add-inherited-attribute
+                                         {:class "tag"})))
               (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
           non-labels
           elements-dom
@@ -179,14 +184,14 @@
   "Return DOM for example elements that give rise to the properties
   of one hierarchy node. Inherited describes the context of the properties.
   dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn hierarchy-node attributes inherited]
+  [dom-fn hierarchy-node inherited]
   (let [example-elements (hierarchy-node-example-elements hierarchy-node)]
     (expr-let [ordered-elements (order-items-R example-elements)
                satisfiers (expr-seq
                            map #(condition-satisfiers-R % (:template inherited))
                            ordered-elements)]
       (item-stack-DOM
-       dom-fn ordered-elements satisfiers attributes inherited))))
+       dom-fn ordered-elements satisfiers inherited))))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements
@@ -215,8 +220,8 @@
                                        :virtual)
                                  nil :after inherited-for-tags)
                (hierarchy-properties-DOM-R
-                item-without-labels-DOM-R
-                hierarchy-node {:class "tag"} inherited-for-tags))]
+                item-without-labels-DOM-R hierarchy-node
+                (add-inherited-attribute inherited-for-tags  {:class "tag"})))]
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
 
@@ -392,7 +397,7 @@
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
         (item-stack-DOM
-         item-without-labels-DOM-R ordered-elements excludeds {} inherited)
+         item-without-labels-DOM-R ordered-elements excludeds inherited)
         (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
@@ -505,10 +510,9 @@
                       item referent excluded inherited)]
         (labels-wrapper-DOM-R
          dom labels must-show-empty-label
-         (update inherited-for-children :attributes
-                 #(conj (or % [])
-                        [#{:label} #{:content}
-                         {:expand {:referent referent}}])))))))
+         (add-inherited-attribute
+          inherited-for-children
+          [#{:label} #{:content} {:expand {:referent referent}}]))))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

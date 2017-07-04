@@ -82,7 +82,7 @@
         (assoc-in map keys result))))
 
 (defn assoc-if-non-empty
-  "Like assoc, but does a dissoc if the value is nil"
+  "Like assoc, but does a dissoc if the value is empty."
   [m k value]
   (if (empty? value)
     (dissoc m k)

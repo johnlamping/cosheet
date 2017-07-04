@@ -59,7 +59,29 @@
 ;;;         :recursive
 ;;;            Apply to any repetition of the path
 ;;;         : optional
-;;;            May be skipped 
+;;;            May be skipped
+
+(defn add-inherited-attribute
+  "Add an attribute, specified with a descriptor, to inherited."
+  [inherited descriptor]
+  (update inherited :attributes #(conj (or % []) descriptor)))
+
+(defn remove-inherited-attribute
+  "Given inherited and an attribute key, remove that attribute from all paths."
+  [inherited attribute-key]
+  (update inherited :attributes
+          #(vec (keep (fn [description]
+                        (let [attributes (if (map? description)
+                                           description
+                                           (last description))]
+                          (if (attribute-key attributes)
+                            (let [smaller (dissoc attributes attribute-key)]
+                              (when (not-empty smaller)
+                                (if (map? description)
+                                  smaller
+                                  (conj (vec (butlast description)) smaller))))
+                            description)))
+                      %))))
 
 (defn advance-along-descriptor
   "Advance one step along an inherited descriptor. Return a seq of possible
@@ -92,23 +114,6 @@
     (assoc-if-non-empty inherited :attributes
                         (transform-descriptors descriptors motion))
     inherited))
-
-(defn remove-attribute-from-inherited
-  "Given inherited and an attribute key, remove that attribute from all paths."
-  [inherited attribute-key]
-  (update inherited :attributes
-          #(vec (keep (fn [description]
-                        (let [attributes (if (map? description)
-                                           description
-                                           (last description))]
-                          (if (attribute-key attributes)
-                            (let [smaller (dissoc attributes attribute-key)]
-                              (when (not-empty smaller)
-                                (if (map? description)
-                                  smaller
-                                  (conj (vec (butlast description)) smaller))))
-                            description)))
-                      %))))
 
 (defn split-descriptors-by-currency
   "Return a map of all attributes specified by the desciptors as applying
@@ -219,20 +224,23 @@
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
-  generate DOM for a vertical list of a component for each item.  The
-  excludeds, attributes and inherited can be either a single value to
-  be used for all items, or a sequence of values, one per item.
+  generate DOM for a vertical list of a component for each item.
+  Any attributes that should apply to the immediate dom will get
+  applied to each component, plus to the stack if there is more
+  than one component.
+  The excludeds can be either a single value to be used for all items,
+  or a sequence of values, one per item.
   dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn items excludeds attributes inherited]
-  (vertical-stack
-   (map (fn [item excluded attributes inherited]
-          (add-attributes (item-component dom-fn item excluded inherited)
-                          attributes))
-        items
-        (if (sequential? excludeds) excludeds (repeat excludeds))
-        (if (sequential? attributes) attributes (repeat attributes))
-        (if (sequential? inherited) inherited (repeat inherited)))
-   :class "item-stack"))
-
-
-
+  [dom-fn items excludeds inherited]
+  (let [descriptors (:attributes inherited)
+        [local remaining] (split-descriptors-by-currency descriptors)
+        inherited (assoc-if-non-empty inherited :attributes remaining)]
+    (cond-> (vertical-stack
+             (map (fn [item excluded]
+                    (add-attributes
+                     (item-component dom-fn item excluded inherited) local))
+                  items
+                  (if (sequential? excludeds) excludeds (repeat excludeds)))
+             :class "item-stack")
+      (> (count items) 1)
+      (add-attributes local))))

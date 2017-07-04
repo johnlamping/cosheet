@@ -97,7 +97,6 @@
   or label."
   [inherited item-key item-referent]
   (-> inherited
-      (dissoc :template)
       (assoc :subject-referent item-referent
              :key-prefix item-key)))
 
@@ -170,7 +169,6 @@
   to the item containing the elements.
   must-show-empty-labels gets passed on to elements-DOM-R."
   [elements must-show-empty-labels inherited]
-  (println "condition-elements" (simplify-for-print inherited))
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))

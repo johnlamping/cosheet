@@ -162,7 +162,8 @@
                         :add-column first-column-add
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
-                                 :alternate true}
+                                 :alternate true
+                                 :template '(nil :tag)}
                         :key (conj table-key :nested (:item-id c1) :content)}
                   " ..."]]]
                (any)

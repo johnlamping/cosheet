@@ -123,7 +123,7 @@
 ;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
-;               :template  ; The template that the twins of this dom,
+;               :template  ; The template that the twins of this dom
                            ; must satisfy. If not present, then twins
                            ; may not be created.
 ;             :attributes  ; A set of attribute descriptions that parts
@@ -139,6 +139,10 @@
 ;        :alternate-target ; If true, there is an alternate interpretation
                            ; of the item. :selector-category must be present.
    })
+;;; In some cases, the inherited information is halfway between being about
+;;; an item and its children. In this case, :template and :attributes are
+;;; about the item, while :key-prefix and :subject-referent are about
+;;; the children.
 
 (defn key->string
   "Return a string representation of the key that can be passed to the client."

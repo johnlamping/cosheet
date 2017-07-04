@@ -88,6 +88,16 @@
                             [#{:label} {:b 5}]]
               :x 9})))
 
+(deftest split-descriptors-by-currency-test
+  (is (check (split-descriptors-by-currency
+              [{:a 1 :b 2}
+               [#{:label :optional} {:b 5}]
+               [#{:label :element :recursive} #{:content} {:a 3}]
+               {:c 3}])
+             [{:a 1 :b 2 :c 3}
+              [[#{:label :optional} {:b 5}]
+               [#{:label :element :recursive} #{:content} {:a 3}]]])))
+
 (deftest inherited-attributes-test
   (is (check (inherited-attributes
               {:attributes [{:class "foo"}

@@ -1,7 +1,7 @@
 (ns cosheet.server.render-utils
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset multiset-to-generating-values
-                                    replace-in-seqs]]
+                                    replace-in-seqs assoc-if-non-empty]]
                      [debug :refer [simplify-for-print]]
                      [orderable :as orderable]
                      [hiccup-utils
@@ -61,7 +61,6 @@
 ;;;         : optional
 ;;;            May be skipped 
 
-
 (defn advance-along-descriptor
   "Advance one step along an inherited descriptor. Return a seq of possible
   successor descriptors"
@@ -79,32 +78,19 @@
               (when (:optional step)
                 (advance-along-descriptor following motion))))))
 
+(defn transform-descriptors
+  "Transform the descriptors as appropriate
+  for moving down to a :content :label or :element."
+  [descriptors motion]
+  (mapcat #(advance-along-descriptor % motion) descriptors))
+
 (defn transform-inherited-attributes
   "Transform any attributes specified by inherited as appropriate
-  for moving down to a :content :label or :element.
-  In inherited, :attributes is a vector of descriptors.
-  A descriptor is either:
-     <attributes>
-        A map of attribute->value pairs to add
-     (<step>* <attributes>)
-        Add the attributes to descendant doms following the sequence of steps, 
-        where <step> is a set that can contain any of
-           :label
-              Apply to label elements
-           :element
-              Apply to non-label elements
-           :content
-              Apply to the content of the item (which may be the overall item)
-           :recursive
-              Apply to any repetition of the path
-           : optional
-              May be skipped"
+  for moving down to a :content :label or :element."
   [inherited motion]
-  (if-let [attributes (:attributes inherited)]
-    (let [revised (mapcat #(advance-along-descriptor % motion) attributes)]
-      (if (seq revised)
-        (assoc inherited :attributes revised)
-        (dissoc inherited :attributes)))
+  (if-let [descriptors (:attributes inherited)]
+    (assoc-if-non-empty inherited :attributes
+                        (transform-descriptors descriptors motion))
     inherited))
 
 (defn remove-attribute-from-inherited
@@ -123,6 +109,17 @@
                                   (conj (vec (butlast description)) smaller))))
                             description)))
                       %))))
+
+(defn split-descriptors-by-currency
+  "Return a map of all attributes specified by the desciptors as applying
+  only for the current dom and a descriptor of all the remaining attributes,
+  some of which may also apply to the current dom."
+  [descriptor]
+  (reduce (fn [[current-only others] descriptor]
+            (if (map? descriptor)
+              [(into-attributes current-only descriptor) others]
+              [current-only (conj others descriptor)]))
+          [{} []] descriptor))
 
 (defn inherited-attributes
   "Return a map of all attributes specified by inherited for the current dom.
@@ -159,25 +156,25 @@
   inherited must include a :template and a :subject-referent."
   [key adjacent-referent position inherited]
   (assert (not (nil? (:subject-referent inherited))))
-  [:div (into-attributes
-         (into-attributes (into-attributes (:selectable-attributes inherited)
-                                           (item-or-content-attributes inherited))
-                          (select-keys inherited [:selector-category]))
-         {:class "editable"
-          :key key
-          :target (copy-alternate-request-to-target
-                   {:referent (virtual-referent
-                               (:template inherited)
-                               (:subject-referent inherited)
-                               adjacent-referent
-                               :position position
-                               :selector (when (:selector-category
-                                                inherited)
-                                           :first-group))
-                    :select-pattern (or (:select-pattern inherited)
-                                        (conj (:key-prefix inherited)
-                                              [:pattern]))}
-                   inherited)})])
+  [:div (-> (:selectable-attributes inherited)
+            (into-attributes (item-or-content-attributes inherited))
+            (into-attributes (select-keys inherited [:selector-category]))
+            (into-attributes
+             {:class "editable"
+              :key key
+              :target (copy-alternate-request-to-target
+                       {:referent (virtual-referent
+                                   (:template inherited)
+                                   (:subject-referent inherited)
+                                   adjacent-referent
+                                   :position position
+                                   :selector (when (:selector-category
+                                                    inherited)
+                                               :first-group))
+                        :select-pattern (or (:select-pattern inherited)
+                                            (conj (:key-prefix inherited)
+                                                  [:pattern]))}
+                       inherited)}))])
 
 (defn make-component
   "Make a component dom with the given attributes and definition."

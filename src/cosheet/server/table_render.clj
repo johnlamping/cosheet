@@ -30,7 +30,8 @@
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component vertical-stack
                                    virtual-item-DOM
-                                   condition-satisfiers-R]]
+                                   condition-satisfiers-R
+                                   transform-inherited-for-children]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))
@@ -218,8 +219,11 @@
       (let [item (:item (first (:leaves node)))]
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
-           (conj (:key-prefix inherited-down) (:item-id item)) column-referent
-           content example-elements inherited-down)))
+           content example-elements
+           (transform-inherited-for-children
+            inherited-down
+            (conj (:key-prefix inherited-down) (:item-id item))
+            column-referent))))
       (condition-elements-DOM-R example-elements true inherited-down))))
 
 (defn table-virtual-header-node-DOM

@@ -567,7 +567,6 @@
                           :attributes [[#{:content} {:class "placeholder"}]])
         dom (current-value
              (item-content-and-elements-DOM-R
-              element-key (item-referent element)
               39 [age qualifier] inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}

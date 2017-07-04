@@ -151,6 +151,23 @@
             (:attributes (transform-inherited-attributes
                           inherited :content)))}))
 
+(defn transform-inherited-for-children
+  "Given an inherited, modify it to apply to children of the item.
+  Do not alter the attributes, since the child could be either an element
+  or label."
+  [inherited item-key item-referent]
+  (-> inherited
+      (assoc :subject-referent item-referent
+             :key-prefix item-key)))
+
+(defn transform-inherited-for-labels
+  "Given an inherited that has been transformed for children,
+  modify it to apply to labels."
+  [inherited]
+  (-> inherited
+      (transform-inherited-attributes :label)
+      (assoc :template '(nil :tag))))
+
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must include a :template and a :subject-referent."

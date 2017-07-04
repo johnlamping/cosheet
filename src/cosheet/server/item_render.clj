@@ -20,6 +20,8 @@
              [render-utils :refer [virtual-item-DOM item-stack-DOM
                                    copy-alternate-request-to-target
                                    vertical-stack condition-satisfiers-R
+                                   transform-inherited-for-children
+                                   transform-inherited-for-labels
                                    transform-inherited-attributes
                                    remove-attribute-from-inherited
                                    inherited-attributes
@@ -90,23 +92,6 @@
 
 (declare item-without-labels-DOM-R)
 (declare elements-DOM-R)
-
-(defn transform-inherited-for-children
-  "Given an inherited, modify it to apply to children of the item.
-  Do not alter the attributes, since the child could be either an element
-  or label."
-  [inherited item-key item-referent]
-  (-> inherited
-      (assoc :subject-referent item-referent
-             :key-prefix item-key)))
-
-(defn transform-inherited-for-labels
-  "Given an inherited that has been transformed for children,
-  modify it to apply to labels."
-  [inherited]
-  (-> inherited
-      (transform-inherited-attributes :label)
-      (assoc :template '(nil :tag))))
 
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
@@ -479,22 +464,21 @@
              elements-dom]))))))
 
 (defn item-content-and-elements-DOM-R
-  "Make a dom for a content and a group of elements, all of the same item."
-  [item-key item-referent content elements inherited]
+  "Make a dom for a content and a group of elements, all of the same item.
+  Inherited should be half way to the children."
+  [content elements inherited]
   (expr-let [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
                               tags elements))
           non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
                                                        [element]))
-                                  tags elements))
-          inherited-for-children (transform-inherited-for-children
-                                  inherited item-key item-referent)]
+                                  tags elements))]
       (expr-let [content-and-elements-dom
                  (item-content-and-non-label-elements-DOM-R
-                  content non-labels inherited-for-children)]
+                  content non-labels inherited)]
         (if labels
           (labels-wrapper-DOM-R
-           content-and-elements-dom labels false inherited-for-children)
+           content-and-elements-dom labels false inherited)
           content-and-elements-dom)))))
 
 (defn item-without-labels-DOM-R

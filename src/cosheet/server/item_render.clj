@@ -149,9 +149,7 @@
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
-  :key-prefix and :subject of inherited must give information for the doms
-  corresponding to the elements. But attributes must be specified relative
-  to the item containing the elements.
+  inherited must be half way to the children.
   must-show-empty-labels gets passed on to elements-DOM-R."
   [elements must-show-empty-labels inherited]
   (expr-let

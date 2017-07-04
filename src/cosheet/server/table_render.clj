@@ -189,6 +189,7 @@
         example-elements (hierarchy-node-example-elements node)
         descendants (hierarchy-node-descendants node)
         one-element (= (count example-elements) 1)
+        item (:item (first descendants))
         attributes
         (cond-> [[#{:label :element :recursive :optional} #{:content}
                    (cond-> (attributes-for-header-add-column-command
@@ -214,16 +215,12 @@
                                   :width (* 0.75 (count descendants))
                                   :template elements-template
                                   :subject-referent column-referent)
-                           (update :key-prefix #(conj % :nested)))]
+                           (update :key-prefix
+                                   #(conj % :nested (:item-id item))))]
     (if is-leaf
-      (let [item (:item (first (:leaves node)))]
-        (expr-let [content (entity/content item)]
-          (item-content-and-elements-DOM-R
-           content example-elements
-           (transform-inherited-for-children
-            inherited-down
-            (conj (:key-prefix inherited-down) (:item-id item))
-            column-referent))))
+      (expr-let [content (entity/content item)]
+        (item-content-and-elements-DOM-R
+         content example-elements inherited-down))
       (condition-elements-DOM-R example-elements true inherited-down))))
 
 (defn table-virtual-header-node-DOM

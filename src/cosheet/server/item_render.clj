@@ -145,19 +145,19 @@
   [elements must-show-empty-labels inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
-    (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
-                              tags elements))
-          non-labels (seq (mapcat (fn [tags element] (when (empty? tags)
-                                                       [element]))
-                                  tags elements))]
+    (let [pairs (map vector tags elements)
+          labels (seq (keep (fn [[tags elem]] (when (seq tags) elem))
+                            pairs))
+          non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
+                                pairs))]
       (expr-let [elements-dom
                  (when non-labels
-                   (expr-let [elements-dom
+                   (expr-let [inner-dom
                               (elements-DOM-R
                                non-labels must-show-empty-labels nil
                                (transform-inherited-attributes
                                 inherited :element))]
-                     [:div {:class "item elements-wrapper"} elements-dom]))]
+                     [:div {:class "item elements-wrapper"} inner-dom]))]
         (cond
           (and labels non-labels)
           (non-empty-labels-wrapper-DOM-R elements-dom labels inherited)

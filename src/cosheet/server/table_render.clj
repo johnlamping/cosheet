@@ -28,8 +28,7 @@
                                 hierarchy-node-parallel-items-referent
                                 hierarchy-last-item-referent]]
              [order-utils :refer [order-items-R]]
-             [render-utils :refer [make-component vertical-stack
-                                   virtual-item-DOM
+             [render-utils :refer [make-component virtual-item-DOM
                                    condition-satisfiers-R
                                    transform-inherited-for-children]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R

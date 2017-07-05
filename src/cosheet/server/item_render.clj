@@ -165,13 +165,11 @@
           (expr-let [ordered-elements (order-items-R elements)
                      excludeds (expr-seq map #(matching-elements :tag %)
                                          ordered-elements)]
-            (cond-> (item-stack-DOM item-without-labels-DOM-R
-                                    ordered-elements excludeds
-                                    (-> inherited
-                                        transform-inherited-for-labels
-                                        (add-inherited-attribute
-                                         {:class "tag"})))
-              (> (count ordered-elements) 1) (add-attributes {:class "tag"})))
+            (item-stack-DOM item-without-labels-DOM-R
+                            ordered-elements excludeds
+                            (-> inherited
+                                transform-inherited-for-labels
+                                (add-inherited-attribute {:class "tag"}))))
           non-labels
           elements-dom
           true

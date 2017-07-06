@@ -16,7 +16,6 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
-             [hierarchy-render :refer [hierarchy-properties-DOM-R]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM item-stack-DOM
                                    copy-alternate-request-to-target
@@ -202,9 +201,9 @@
                                        (:item-id (:item example-descendant))
                                        :virtual)
                                  nil :after inherited-for-tags)
-               (hierarchy-properties-DOM-R
-                item-without-labels-DOM-R hierarchy-node
-                (add-inherited-attribute inherited-for-tags  {:class "tag"})))]
+               (label-stack-DOM-R
+                (hierarchy-node-example-elements hierarchy-node)
+                inherited-for-tags))]
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
 

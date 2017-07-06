@@ -16,6 +16,7 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
+             [hierarchy-render :refer [hierarchy-properties-DOM-R]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM item-stack-DOM
                                    copy-alternate-request-to-target
@@ -104,6 +105,14 @@
                     ordered-labels tags
                     (add-inherited-attribute inherited {:class "tag"}))))
 
+(defn wrapped-element-DOM
+  "Given a label stack and an inner dom, make a wrapper for the two."
+  [labels-dom inner-dom inherited]
+  (-> [:div {:class "wrapped-element tag"}
+       labels-dom
+       [:div {:class "indent-wrapper tag"} inner-dom]]
+      (add-attributes (inherited-attributes inherited))))
+
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item.
@@ -111,14 +120,7 @@
   [inner-dom label-elements inherited]
   (expr-let [stack (label-stack-DOM-R
                     label-elements (transform-inherited-for-labels inherited))]
-    (-> [:div {:class "wrapped-element tag"}
-         (cond-> stack
-           ;; We need "tag" in the class to make any margin
-           ;; after the tags also have tag coloring.
-           (> (count label-elements) 1)
-           (add-attributes {:class "tag"}))
-         [:div {:class "indent-wrapper tag"} inner-dom]]
-        (add-attributes (inherited-attributes inherited)))))
+    (wrapped-element-DOM stack inner-dom inherited)))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -162,14 +164,10 @@
           (and labels non-labels)
           (non-empty-labels-wrapper-DOM-R elements-dom labels inherited)
           labels
-          (expr-let [ordered-elements (order-items-R elements)
-                     excludeds (expr-seq map #(matching-elements :tag %)
-                                         ordered-elements)]
-            (item-stack-DOM item-without-labels-DOM-R
-                            ordered-elements excludeds
-                            (-> inherited
-                                transform-inherited-for-labels
-                                (add-inherited-attribute {:class "tag"}))))
+          (label-stack-DOM-R elements
+                             (-> inherited
+                                 transform-inherited-for-labels
+                                 (add-inherited-attribute {:class "tag"})))
           non-labels
           elements-dom
           true
@@ -177,19 +175,6 @@
            (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
                              nil :after (assoc inherited :template '(nil :tag)))
            {:class "elements-wrapper"}))))))
-
-(defn hierarchy-properties-DOM-R
-  "Return DOM for example elements that give rise to the properties
-  of one hierarchy node. Inherited describes the context of the properties.
-  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn hierarchy-node inherited]
-  (let [example-elements (hierarchy-node-example-elements hierarchy-node)]
-    (expr-let [ordered-elements (order-items-R example-elements)
-               satisfiers (expr-seq
-                           map #(condition-satisfiers-R % (:template inherited))
-                           ordered-elements)]
-      (item-stack-DOM
-       dom-fn ordered-elements satisfiers inherited))))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements

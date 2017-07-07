@@ -30,7 +30,8 @@
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component virtual-item-DOM
                                    condition-satisfiers-R
-                                   transform-inherited-for-children]]
+                                   transform-inherited-for-children
+                                   add-inherited-attribute]]
              [item-render :refer [elements-DOM-R condition-elements-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))
@@ -233,8 +234,7 @@
                                             adjacent-referent
                                             :selector :first-group)
                          :select-pattern (conj (:key-prefix inherited)
-                                               :nested
-                                               [:pattern])
+                                               :nested [:pattern])
                          :template template)]
     (add-attributes
      (virtual-item-DOM key adjacent-referent :after inherited)
@@ -256,21 +256,20 @@
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
-                           (update
-                            :attributes
-                            #(conj (or % [])
-                                   [#{:label :optional} #{:content}
-                                    (assoc
-                                     (attributes-for-header-add-column-command
-                                      {:item column-item}
-                                      elements-template
-                                      (update inherited :key-prefix
-                                              (fn [pref] (conj pref :nested))))
-                                     :delete-column {:referent column-referent
-                                                     :alternate true}
-                                     :expand {:referent column-referent})]
-                                   [#{:content}
-                                    {:delete {:referent nil}}])))
+                           (add-inherited-attribute
+                            [#{:label :optional} #{:content}
+                             (assoc
+                              (attributes-for-header-add-column-command
+                               {:item column-item}
+                               elements-template
+                               (update inherited :key-prefix
+                                       (fn [pref] (conj pref :nested))))
+                              :delete-column {:referent column-referent
+                                              :alternate true}
+                              :expand {:referent column-referent})])
+                           (add-inherited-attribute
+                            [#{:content}
+                             {:delete {:referent nil}}]))
         key (conj (:key-prefix inherited) (:item-id column-item))]
     ;; TODO: This needs to check for not being a tag, and doing something
     ;;       different in that case.
@@ -370,18 +369,16 @@
         inherited
         (-> inherited
             (assoc :width 0.75)
-            (update
-             :attributes
-             #(conj (or % [])
-                    [#{:label :element :recursive :optional} #{:content}
-                     {:add-row
-                      {:referent
-                       (virtual-referent new-row-template nil row-referent)
-                       :select-pattern (conj (vec (butlast
-                                                   (butlast
-                                                    (:key-prefix inherited))))
-                                             [:pattern] column-id)}
-                      :delete-row {:referent row-referent}}])))]
+            (add-inherited-attribute
+             [#{:label :element :recursive :optional} #{:content}
+              {:add-row
+               {:referent
+                (virtual-referent new-row-template nil row-referent)
+                :select-pattern (conj (vec (-> (:key-prefix inherited)
+                                               butlast
+                                               butlast))
+                                      [:pattern] column-id)}
+               :delete-row {:referent row-referent}}]))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it

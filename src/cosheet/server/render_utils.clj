@@ -173,6 +173,21 @@
       (transform-inherited-attributes :label)
       (assoc :template '(nil :tag))))
 
+(defn make-component
+  "Make a component dom with the given attributes and definition."
+  [attributes definition]
+  (assert (map? attributes))
+  (assert (:key attributes))
+  [:component attributes definition])
+
+(defn item-component
+  "Make a component dom for the given item.
+  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
+  [dom-fn item exclude-elements inherited]
+  (let [key (conj (:key-prefix inherited) (:item-id item))
+        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
+    (make-component {:key key} [dom-fn item excluded inherited])))
+
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must include a :template and a :subject-referent."
@@ -198,24 +213,9 @@
                                                   [:pattern]))}
                        inherited)}))])
 
-(defn make-component
-  "Make a component dom with the given attributes and definition."
-  [attributes definition]
-  (assert (map? attributes))
-  (assert (:key attributes))
-  [:component attributes definition])
-
-(defn item-component
-  "Make a component dom for the given item.
-  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn item exclude-elements inherited]
-  (let [key (conj (:key-prefix inherited) (:item-id item))
-        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
-    (make-component {:key key} [dom-fn item excluded inherited])))
-
-(defn vertical-stack
-  "If there is only one item in the doms, return it. Otherwise, return
-  a vertical stack of the items, with the given class."
+(defn nest-if-multiple-DOM
+  "If there is only one dom in the doms, return it. Otherwise, return
+  a dom with the given class, and with each of the doms as children."
   [doms & {:keys [class] :or {class "stack"}}]
   (if (= (count doms) 1)
        (first doms)
@@ -235,7 +235,7 @@
   (let [descriptors (:attributes inherited)
         [local remaining] (split-descriptors-by-currency descriptors)
         inherited (assoc-if-non-empty inherited :attributes remaining)]
-    (cond-> (vertical-stack
+    (cond-> (nest-if-multiple-DOM
              (map (fn [item excluded]
                     (add-attributes
                      (item-component dom-fn item excluded inherited) local))

@@ -19,7 +19,7 @@
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-item-DOM item-stack-DOM
                                    copy-alternate-request-to-target
-                                   vertical-stack condition-satisfiers-R
+                                   nest-if-multiple-DOM condition-satisfiers-R
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    transform-inherited-attributes
@@ -221,7 +221,8 @@
                       (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                       % false nested-inherited)
                                 (:child-nodes hierarchy-node)))]
-      (vertical-stack (if items-dom (cons items-dom child-doms) child-doms)))))
+      (nest-if-multiple-DOM
+       (if items-dom (cons items-dom child-doms) child-doms)))))
 
 (defn tagged-items-one-column-subtree-DOM-R
   "Return DOM for the given hierarchy node and its descendants,
@@ -249,7 +250,7 @@
   (expr-let [doms (expr-seq map #(tagged-items-one-column-subtree-DOM-R
                                   % true inherited)
                             hierarchy)]
-    (vertical-stack doms)))
+    (nest-if-multiple-DOM doms)))
 
 ;;; Wrappers are used when one logical entity is broken into several
 ;;; adjacent divs. This typically means that the first and last of the
@@ -356,7 +357,7 @@
                               horizontal-tag-wrapper horizontal-value-wrapper
                               inherited)
                         hierarchy)]
-    (vertical-stack (apply concat dom-lists))))
+    (nest-if-multiple-DOM (apply concat dom-lists))))
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.

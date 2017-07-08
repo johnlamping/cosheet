@@ -242,6 +242,94 @@
                               :leaves [:l]}]
                }])))
 
+(deftest replace-hierarchy-leaves-by-nodes-test
+  (let [hierarchy
+        [{:hierarchy-node true
+          :properties {:a 1 :b 1}
+          :cumulative-properties {:a 1 :b 1}
+          :leaves [:i]
+          :child-nodes [;; Only one leaf, and no children
+                        {:hierarchy-node true
+                         :properties {:c 1}
+                         :cumulative-properties {:a 1 :b 1 :c 1}
+                         :leaves [:j]}
+                        ;; Children with no properties
+                        {:hierarchy-node true
+                         :properties {:d 1}
+                         :cumulative-properties {:a 1 :b 1 :d 1}
+                         :leaves [:k]
+                         :child-nodes [{:hierarchy-node true
+                                        :properties {:e 1}
+                                        :cumulative-properties {:a 1 :b 1
+                                                                :d 1 :e 1}
+                                        :leaves [:j]}
+                                       {:hierarchy-node true
+                                        :properties {}
+                                        :cumulative-properties {:a 1 :b 1 :d 1}
+                                        :leaves [:l :m]}]}
+                        ;; A child with no leaves.
+                        {:hierarchy-node true
+                         :properties {:e 1}
+                         :cumulative-properties {:a 1 :b 1 :e 1}
+                         :child-nodes [{:hierarchy-node true
+                                        :properties {:f 1}
+                                        :cumulative-properties {:a 1 :b 1
+                                                                :d 1 :f 1}
+                                        :leaves [:n]}
+                                       {:hierarchy-node true
+                                        :properties {:g 1}
+                                        :cumulative-properties {:a 1 :b 1
+                                                                :d 1 :g 1}
+                                        :leaves [:q :r]}]}]}]]
+    (is (check
+         (replace-hierarchy-leaves-by-nodes hierarchy)
+         [{:hierarchy-node true
+           :properties {:a 1 :b 1}
+           :cumulative-properties {:a 1 :b 1}
+           :child-nodes [{:hierarchy-node true
+                          :leaves [:i]
+                          :cumulative-properties {:a 1 :b 1}}
+                         {:hierarchy-node true
+                          :properties {:c 1}
+                          :cumulative-properties {:a 1 :b 1 :c 1}
+                          :leaves [:j]}
+                         {:hierarchy-node true
+                          :properties {:d 1}
+                          :cumulative-properties {:a 1 :b 1 :d 1}
+                          :child-nodes
+                          [{:hierarchy-node true
+                            :leaves [:k]
+                            :cumulative-properties {:a 1 :b 1 :d 1}}
+                           {:hierarchy-node true
+                            :properties {:e 1}
+                            :cumulative-properties {:a 1 :b 1 :d 1 :e 1}
+                            :leaves [:j]}
+                           {:hierarchy-node true
+                            :leaves [:l]
+                            :cumulative-properties {:a 1 :b 1 :d 1}}
+                           {:hierarchy-node true
+                            :leaves [:m]
+                            :cumulative-properties {:a 1 :b 1 :d 1}}]}
+                         {:hierarchy-node true
+                          :properties {:e 1}
+                          :cumulative-properties {:a 1 :b 1 :e 1}
+                          :child-nodes
+                          [{:hierarchy-node true
+                            :properties {:f 1}
+                            :cumulative-properties {:a 1 :b 1 :d 1 :f 1}
+                            :leaves [:n]}
+                           {:hierarchy-node true
+                            :properties {:g 1}
+                            :cumulative-properties {:a 1 :b 1 :d 1 :g 1}
+                            :child-nodes
+                            [{:hierarchy-node true
+                              :leaves [:q]
+                              :cumulative-properties {:a 1 :b 1 :d 1 :g 1}}
+                             {:hierarchy-node true
+                              :leaves [:r]
+                              :cumulative-properties {:a 1 :b 1 :d 1 :g 1}}
+                             ]}]}]}]))))
+
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
                    {:hierarchy-node true

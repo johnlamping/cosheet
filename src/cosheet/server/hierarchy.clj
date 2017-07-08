@@ -83,6 +83,34 @@
                                        [(assoc last :properties old-only)])))
                  leaf properties ancestor-properties)))))))))
 
+(defn replace-hierarchy-leaves-by-nodes
+  "Given a hierarchy, add nodes as necessary so that if a node has leaves,
+  it has only one leaf, and no children."
+  [hierarchy]
+  (vec
+   (mapcat
+    (fn [node]
+      (let [leaves (:leaves node)
+            cum-props (:cumulative-properties node)
+            children (when-let [children (:child-nodes node)]
+                       (replace-hierarchy-leaves-by-nodes children))]
+        (if (and (seq leaves)
+                 (or (> (count leaves) 1) (:child-nodes node)))
+          (let [children (vec (concat
+                               (map (fn [leaf]
+                                      {:hierarchy-node true
+                                       :leaves [leaf]
+                                       :cumulative-properties cum-props})
+                                    (:leaves node))
+                               children))]
+            (if (empty? (:properties node))
+              children
+              [(-> node
+                   (dissoc :leaves)
+                   (assoc :child-nodes children))]))
+          [(if children (assoc node :child-nodes children) node)])))
+    hierarchy)))
+
 (defn hierarchy-node-descendants
   "Return all leaves at or below the node."
   [node-or-leaf]

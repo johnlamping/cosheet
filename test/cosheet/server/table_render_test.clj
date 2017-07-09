@@ -133,8 +133,7 @@
              [:div {:class "table-indent"}]
              [:div {:class "table-main selectees selector-scope"}
               [:div {:class "column-header-sequence selectors"}
-               [:div {:class "wrapped-element tag column-header"
-                      :style {:width "150px"}} 
+               [:div {:class "wrapped-element tag column-header leaf"} 
                 [:component {:class "tag"
                              :key (conj table-key :nested
                                         (:item-id c1) (:item-id single))}

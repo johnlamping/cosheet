@@ -274,8 +274,7 @@
         ;; If we have only one descendant, it must be our column request.
         is-leaf (empty? children)
         is-tag (is-tag-template? elements-template)
-        num-columns (count (hierarchy-node-descendants node))
-        width (+ (* num-columns (- base-table-column-width 2)) 2)]
+        num-columns (count (hierarchy-node-descendants node))]
     (if (empty? (:properties node))
       (table-header-node-without-properties-DOM
        node shadowing-nodes rows-referent elements-template inherited)
@@ -303,8 +302,8 @@
                       (into [:div {:class "column-header-sequence"}]
                             dom-seqs)])))]
         (add-attributes dom {:class (cond-> "column-header"
-                                      is-tag (str " tag"))
-                             :style {:width (str width "px")}})))))
+                                      is-tag (str " tag")
+                                      is-leaf (str " leaf"))})))))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."
@@ -339,7 +338,7 @@
   in the hierarchy."
   [hierarchy rows-referent inherited]
   (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-inherited-down (assoc inherited
+        inherited-down (assoc inherited
                               :selector-category :table-header
                               :alternate-target true)
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)

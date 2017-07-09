@@ -576,13 +576,6 @@ body {
 .column-header > .column-header-sequence
    > .editable.editable.editable.editable.editable:not(.content-text) {
     background-color: transparent;
-    margin-right: -2px;
-    margin-bottom: -2px;		    
-}
-
-.column-header {
-    /* Needed to make broad-interpretation box's absolution position work. */
-    position: relative;
 }
 
 .column-header:not(.tag):not(.virtual-column) {
@@ -590,10 +583,17 @@ body {
 }
 
 .column-header {
+    /* Needed to make broad-interpretation box's absolution position work. */
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     text-align: center;
+    margin-right: -2px;
+}
+
+.column-header.leaf {
+    width: 150px;
 }
 
 .column-header:not(.merge-with-parent) {

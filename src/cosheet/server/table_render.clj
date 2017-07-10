@@ -46,24 +46,19 @@
         template))
 
 (defn table-node-row-elements-referent
-  "Generate a referent for the elements in rows affected by a table header."
-  [node-or-leaf rows-referent]
-  (union-referent-if-needed (map #(elements-referent (:item %) rows-referent)
-                                 (hierarchy-node-descendants node-or-leaf))))
-
-(defn table-node-no-siblings-row-elements-referent
-  "Generate a referent for the elements in rows affected
-  by a table header, but by no sibling header."
-  [leaf sibling-nodes rows-referent]
-  (let [positive-ref (table-node-row-elements-referent leaf rows-referent)
-        negative-refs (map
-                       #(elements-referent (:item %) rows-referent)
-                       (hierarchy-nodes-extent sibling-nodes))] 
-    (if (empty? negative-refs)
-      positive-ref
-      (difference-referent
-       positive-ref
-       (union-referent-if-needed negative-refs)))))
+  "Generate a referent for the elements in rows covered by the conditions
+  of a table header, but by no shadow node, if any are present."
+  ([node rows-referent]
+   (table-node-row-elements-referent node nil rows-referent))
+  ([node shadowing-nodes rows-referent]
+   (cond-> (union-referent-if-needed
+            (map #(elements-referent (:item %) rows-referent)
+                 (hierarchy-node-descendants node)))
+     (seq shadowing-nodes)
+     (difference-referent
+      (union-referent-if-needed
+       (map #(elements-referent (:item %) rows-referent)
+            (hierarchy-nodes-extent shadowing-nodes)))))))
 
 (defn table-node-delete-referent
   "Generate the referent for the elements to be deleted when the only
@@ -83,7 +78,7 @@
     (when (seq deeper-descendants)
       (let [exemplar-item (first (hierarchy-node-example-elements node))
             referent-for-leaf #(item-or-exemplar-referent
-                                  (:item %) header-subject)
+                                (:item %) header-subject)
             header-ref (item-or-exemplar-referent
                         exemplar-item
                         (union-referent-if-needed
@@ -115,14 +110,14 @@
   request items that the column spans. elements-template gives
   the template for new elements in the header, while inherited gives
   the environment of the header."
-  [node-or-leaf elements-template inherited]
+  [node elements-template inherited]
   (assert (:template inherited))
   (let [subject-ref (:subject-referent inherited)
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
         adjacent-referent (hierarchy-node-parallel-items-referent
-                           node-or-leaf subject-ref)
+                           node subject-ref)
         new-column-ref (virtual-referent (:template inherited)
                                          (union-referent [subject-ref])
                                          adjacent-referent
@@ -142,9 +137,9 @@
   request items that gave rise to the column. elements-template gives
   the template for new elements, while inherited gives the environment
   of the header."
-  [node-or-leaf elements-template inherited]
+  [node elements-template inherited]
   {:add-column (target-for-header-add-column-command
-                node-or-leaf elements-template inherited)})
+                node elements-template inherited)})
 
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include
@@ -224,11 +219,11 @@
   [node sibling-nodes rows-referent elements-template inherited]
   (let [column-leaf (first (:leaves node))
         column-item (:item column-leaf)
-        column-referent (union-referent
-                         [(item-or-exemplar-referent
-                           column-item (:subject-referent inherited))
-                          (table-node-no-siblings-row-elements-referent
-                           column-leaf sibling-nodes rows-referent)])
+        subject-ref (:subject-referent inherited)
+        column-referent (union-referent [(hierarchy-node-items-referent
+                                          node subject-ref)
+                                         (table-node-row-elements-referent
+                                          node sibling-nodes rows-referent)])
         inherited-down (-> inherited
                            (assoc :subject-referent column-referent
                                   :template elements-template)
@@ -236,8 +231,7 @@
                             [#{:label :optional} #{:content}
                              (assoc
                               (attributes-for-header-add-column-command
-                               {:item column-item}
-                               elements-template
+                               node elements-template
                                (update inherited :key-prefix
                                        (fn [pref] (conj pref :nested))))
                               :delete-column {:referent column-referent
@@ -286,7 +280,7 @@
                  node-dom
                  (let [properties-list (canonical-set-to-list
                                         (:properties node))
-                       shadowing-nodes (filter :properties children)
+                       shadowing-nodes (filter #(seq (:properties %)) children)
                        inherited-down (update inherited :template
                                               #(add-elements-to-entity-list
                                                 % properties-list))]
@@ -304,6 +298,184 @@
         (add-attributes dom {:class (cond-> "column-header"
                                       is-tag (str " tag")
                                       is-leaf (str " leaf"))})))))
+
+(defn table-header-some-properties-DOM-R
+  "Generate the dom for the properties of a node of a table header hierarchy.
+  The rows-referent should specify all the row items from which this
+  header selects elements. The elements template describes new elements
+  of the column request(s), in contrast to inherited, which describes the
+  overall column request(s)."
+  [node {:keys [top-level rows-referent elements-template]} inherited]
+  (let [is-leaf (empty? (:child-nodes node))
+        subject-ref (:subject-referent inherited)
+        column-referent (union-referent [(hierarchy-node-items-referent
+                                          node subject-ref)
+                                         (table-node-row-elements-referent
+                                          node rows-referent)])
+        example-elements (hierarchy-node-example-elements node)
+        descendants (hierarchy-node-descendants node)
+        one-element (= (count example-elements) 1)
+        item (:item (first descendants))
+        attributes
+        (cond-> [[#{:label :element :recursive :optional} #{:content}
+                   (cond-> (attributes-for-header-add-column-command
+                            node elements-template inherited)
+                     (<= (count descendants) 1)
+                     (assoc :delete-column {:referent column-referent
+                                            :alternate true}))]
+                 [#{:content} {:delete {:referent nil}
+                               :class "placeholder"}]]
+          one-element
+          (conj [#{:label :element} #{:content}
+                 (cond-> {:expand {:referent column-referent}}
+                   ;; If we are a child, it is OK to delete our last element, as
+                   ;; our parent will still contribute an element. But if we
+                   ;; are a top level node, we can't, in general, delete our
+                   ;; last element, or there would be nothing left in the node.
+                   top-level
+                   (assoc :delete
+                          {:referent (table-node-delete-referent
+                                      node rows-referent subject-ref)}))]))
+        inherited-down (-> inherited
+                           (assoc :attributes attributes
+                                  :width (* 0.75 (count descendants))
+                                  :template elements-template
+                                  :subject-referent column-referent)
+                           (update :key-prefix
+                                   #(conj % :nested (:item-id item))))]
+    (if is-leaf
+      (expr-let [content (entity/content item)]
+        (item-content-and-elements-DOM-R
+         content example-elements inherited-down))
+      (condition-elements-DOM-R example-elements true inherited-down))))
+
+(defn table-header-no-properties-DOM
+  "Generate the DOM for a node in the hierarchy with no properties. It
+  will also have no children, and thus be a leaf."
+  [node {:keys [shadowing-nodes top-level rows-referent elements-template]}
+   inherited]
+  (assert (empty? (:child-nodes node)))
+  (let [column-item (:item (first (:leaves node)))
+        column-referent (union-referent
+                         [(item-or-exemplar-referent
+                           column-item (:subject-referent inherited))
+                          (table-node-row-elements-referent
+                           node shadowing-nodes rows-referent)])
+        inherited-down (-> inherited
+                           (assoc :subject-referent column-referent
+                                  :template elements-template)
+                           (add-inherited-attribute
+                            [#{:label :optional} #{:content}
+                             (assoc
+                              (attributes-for-header-add-column-command
+                               node elements-template
+                               (update inherited :key-prefix
+                                       (fn [pref] (conj pref :nested))))
+                              :delete-column {:referent column-referent
+                                              :alternate true}
+                              :expand {:referent column-referent})])
+                           (add-inherited-attribute
+                            [#{:content}
+                             {:delete {:referent nil}}]))
+        key (conj (:key-prefix inherited) (:item-id column-item))]
+    ;; TODO: This needs to check for not being a tag, and doing something
+    ;;       different in that case.
+    [:div {:style {:width (str base-table-column-width "px")}
+           :class "column-header tag wrapped-element merge-with-parent"}
+     (cond-> (virtual-item-DOM (conj key :label) column-referent :after
+                               inherited-down)
+       (is-tag-template? elements-template)
+       (add-attributes {:class "tag content-text"}))
+     [:div {:class "indent-wrapper tag"}
+      (add-attributes
+       (item-content-DOM column-referent 'anything-immutable inherited-down)
+       {:key key
+        :class "placeholder item"})]]))
+
+(defn table-header-properties-DOM
+  "Generate the DOM for the properties of a node in the hierarchy."
+  [node {:keys [shadowing-nodes top-level rows-referent elements-template]}
+   inherited]
+  (let [subject-ref (:subject-referent inherited)
+        column-referent (union-referent [(hierarchy-node-items-referent
+                                          node subject-ref)
+                                         (table-node-row-elements-referent
+                                          node rows-referent)])
+        descendants (hierarchy-node-descendants node)
+        item (:item (first descendants))
+        inherited-down (-> inherited
+                           (assoc :subject-referent column-referent
+                                  :template elements-template)
+                           (add-inherited-attribute
+                            [#{:label :optional} #{:content}
+                             (assoc
+                              (attributes-for-header-add-column-command
+                               node elements-template
+                               (update inherited :key-prefix
+                                       (fn [pref] (conj pref :nested))))
+                              :delete-column {:referent column-referent
+                                              :alternate true}
+                              :expand {:referent column-referent})])
+                           (add-inherited-attribute
+                            [#{:content}
+                             {:delete {:referent nil}}]))
+        key (conj (:key-prefix inherited) (:item-id item))]
+    ;; TODO: This needs to check for not being a tag, and doing something
+    ;;       different in that case.
+    [:div {:style {:width (str base-table-column-width "px")}
+           :class "column-header tag wrapped-element merge-with-parent"}
+     (cond-> (virtual-item-DOM (conj key :label) column-referent :after
+                               inherited-down)
+       (is-tag-template? elements-template)
+       (add-attributes {:class "tag content-text"}))
+     [:div {:class "indent-wrapper tag"}
+      (add-attributes
+       (item-content-DOM column-referent 'anything-immutable inherited-down)
+       {:key key
+        :class "placeholder item"})]]))
+
+(defn table-header-child-info
+  "Generate the function-info and inherited for children of
+  a hierarchy node.
+  The function-info is a map with
+     :shadowing-nodes    The column shouldn't match elements that also match
+                         these
+     :top-level          If this is a top level node
+     :rows-referent      all the row items from which this header selects
+                         elements
+     :elements-template  The template that new elements of the column request
+                         must satisfy
+  Inherited describes the column requests."
+  [node function-info inherited]
+  (let [elements-template (table-header-element-template
+                           (keys (:cumulative-properties node)))
+        children (:child-nodes node)
+        is-tag (is-tag-template? elements-template)]
+    [(assoc function-info
+            :shadowing-nodes (filter #(seq (:properties %)) children)
+            :top-level false)
+     (update inherited :template
+             #(add-elements-to-entity-list
+               % (canonical-set-to-list (:properties node))))]))
+
+(defn table-header-node-wrapper-DOM
+  "Generate the dom for a subtree of a table header hierarchy, given
+  the dom particular the node, and doms for all the children."
+  [node properties-dom child-doms function-info inherited]
+  (let [is-leaf (empty? child-doms)
+        elements-template (table-header-element-template
+                           (keys (:cumulative-properties node)))
+        is-tag (is-tag-template? elements-template)
+        class (cond-> "column-header"
+                (:top-level function-info) (str "top-level")
+                is-leaf (str " leaf"))]
+    (if child-doms
+      [:div {:class (cond-> class
+                      is-tag (str " tag"))}
+       (add-attributes properties-dom {:class "with-children"})
+       (into [:div {:class "column-header-sequence"}]
+             child-doms)]
+      (add-attributes properties-dom {:class class}))))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

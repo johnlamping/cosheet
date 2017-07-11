@@ -135,12 +135,12 @@
               [:div {:class "column-header-sequence selectors"}
                [:div {:class "wrapped-element tag column-header leaf"} 
                 [:component {:class "tag"
-                             :key (conj table-key :nested
+                             :key (conj table-key
                                         (:item-id c1) (:item-id single))}
                  [item-without-labels-DOM-R single [single-tag-spec]
                   {:priority 2
                    :width 0.75
-                   :key-prefix (conj table-key :nested (:item-id c1))
+                   :key-prefix (conj table-key (:item-id c1))
                    :subject-referent first-column-referent
                    :template '(nil :tag)
                    :selector-category :table-header
@@ -163,7 +163,7 @@
                         :target {:referent first-column-referent
                                  :alternate true
                                  :template '(nil :tag)}
-                        :key (conj table-key :nested (:item-id c1) :content)}
+                        :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
                (any)
                (any)

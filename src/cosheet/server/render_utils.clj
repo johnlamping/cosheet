@@ -262,16 +262,16 @@
   [node properties-f child-info-f node-f
    function-info inherited]
   (expr-let
-      [properties-dom (properties-f function-info inherited)
+      [properties-dom (properties-f node function-info inherited)
        child-doms (when-let [children (:child-nodes node)]
                     (expr-let [child-info (child-info-f
                                            node function-info inherited)]
                       (let [[child-function-info child-inherited] child-info]
                         (expr-seq map #(hierarchy-node-DOM-R
-                                        % properties-f node-f child-info-f
+                                        % properties-f child-info-f node-f
                                         child-function-info child-inherited)
                                   children))))]
-    (node-f properties-dom child-doms function-info inherited)))
+    (node-f node properties-dom child-doms function-info inherited)))
 
 
 

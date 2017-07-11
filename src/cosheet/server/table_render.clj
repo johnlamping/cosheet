@@ -129,7 +129,8 @@
                                           nil
                                           :position :after
                                           :selector :first-group)
-        select-pattern (conj (:key-prefix inherited) [:pattern])]
+        select-pattern (conj (:key-prefix inherited)
+                             [:pattern :subject] [:pattern])]
     {:referent new-element-ref
      :select-pattern select-pattern}))
 

@@ -121,7 +121,8 @@
                                        nil
                                        :selector :first-group) 
                             :select-pattern (conj table-key
-                                                  :nested [:pattern])}]
+                                                  [:pattern :subject]
+                                                  [:pattern])}]
       (is (check
            dom
            [:div {:class "table selector-scope"}

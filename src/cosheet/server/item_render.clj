@@ -26,9 +26,10 @@
                                    add-inherited-attribute
                                    remove-inherited-attribute
                                    inherited-attributes
-                                   content-attributes]])))
+                                   content-attributes
+                                   hierarchy-node-DOM-R]])))
 
-(def item-without-labels-DOM-R)
+(declare item-without-labels-DOM-R)
 
 (defn hierarchy-adjacent-virtual-target
   "Given a hierarchy node, generate attributes for the target of
@@ -91,7 +92,6 @@
         (item-stack-DOM
          item-without-labels-DOM-R items excludeds inherited-down)))))
 
-(declare item-without-labels-DOM-R)
 (declare elements-DOM-R)
 
 (defn label-stack-DOM-R
@@ -245,10 +245,36 @@
            (add-attributes properties-dom {:class "tag"})
            [:div {:class "indent-wrapper"} descendants-dom]]))))
 
+(defn tagged-items-one-column-node-DOM-R
+  [node child-doms must-show-empty-labels inherited]
+  (expr-let [properties-dom (when (or (seq (:properties node))
+                                      must-show-empty-labels)
+                              (tagged-items-properties-DOM-R
+                               node inherited))]
+    (let [descendants-doms (nest-if-multiple-DOM
+                            (if (empty? (hierarchy-node-leaves node))
+                              child-doms
+                              (let [inherited (add-adjacent-sibling-command
+                                               inherited node)]
+                                (cons (hierarchy-leaf-items-DOM node inherited)
+                                      child-doms))))]
+      (if (empty? (:properties node))
+        (if must-show-empty-labels
+          [:div {:class "horizontal-tags-element narrow"}
+           properties-dom descendants-doms]
+          descendants-doms)
+        [:div {:class "wrapped-element tag"}
+         ;; If the properties-dom is an item-stack, we need to mark it as tag.
+         (add-attributes properties-dom {:class "tag"})
+         [:div {:class "indent-wrapper"} descendants-doms]]))))
+
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]
-  (expr-let [doms (expr-seq map #(tagged-items-one-column-subtree-DOM-R
-                                  % true inherited)
+  (expr-let [doms (expr-seq map #(hierarchy-node-DOM-R
+                                  % tagged-items-one-column-node-DOM-R
+                                  (fn [node must-show-empty-labels inherited]
+                                    [false inherited])
+                                  true inherited)
                             hierarchy)]
     (nest-if-multiple-DOM doms)))
 

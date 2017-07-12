@@ -207,44 +207,6 @@
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
 
-(declare tagged-items-one-column-subtree-DOM-R)
-
-(defn tagged-items-one-column-descendants-DOM-R
-  "Return DOM for all descendants of the hierarchy node, as a single column."
-  [hierarchy-node inherited]
-  (let [leaves (hierarchy-node-leaves hierarchy-node)
-        nested-inherited (add-adjacent-sibling-command inherited hierarchy-node)
-        items-dom (when (not (empty? leaves))
-                    (hierarchy-leaf-items-DOM hierarchy-node nested-inherited))]
-    (expr-let
-        [child-doms (when (:child-nodes hierarchy-node)
-                      (expr-seq map #(tagged-items-one-column-subtree-DOM-R
-                                      % false nested-inherited)
-                                (:child-nodes hierarchy-node)))]
-      (nest-if-multiple-DOM
-       (if items-dom (cons items-dom child-doms) child-doms)))))
-
-(defn tagged-items-one-column-subtree-DOM-R
-  "Return DOM for the given hierarchy node and its descendants,
-  as a single column."
-  [hierarchy-node must-show-empty-labels inherited]
-  (expr-let
-      [descendants-dom (tagged-items-one-column-descendants-DOM-R
-                        hierarchy-node inherited)]
-    (if (empty? (:properties hierarchy-node))
-        (if must-show-empty-labels
-          (expr-let [properties-dom (tagged-items-properties-DOM-R
-                                     hierarchy-node inherited)]
-            [:div {:class "horizontal-tags-element narrow"}
-             properties-dom descendants-dom])
-          descendants-dom)
-        (expr-let [properties-dom (tagged-items-properties-DOM-R
-                                   hierarchy-node inherited)]
-          [:div {:class "wrapped-element tag"}
-           ;; If the properties-dom is an item-stack, we need to mark it as tag.
-           (add-attributes properties-dom {:class "tag"})
-           [:div {:class "indent-wrapper"} descendants-dom]]))))
-
 (defn tagged-items-one-column-node-DOM-R
   [node child-doms must-show-empty-labels inherited]
   (expr-let [properties-dom (when (or (seq (:properties node))

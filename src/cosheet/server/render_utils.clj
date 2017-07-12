@@ -250,28 +250,23 @@
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls
-     (properties-f node function-info inherited)
-  and, calls
-     (node-f node properties-dom child-doms function-info inherited)
-  where properties-dom is the result of calling properties-f, and child-doms
-  are the results of calling node-f for all the child nodes.
-  Before doing calls for a child, calls
+     (node-f node child-doms function-info inherited)
+  where child-doms are the results of calling node-f for all the child
+  nodes.  Before doing calls for a child, calls
      (child-information-f node function-info inherited)
   It must return the function-info and inherited to be used for the children.
-  Any of the functions may return reporters."
-  [node properties-f child-info-f node-f
-   function-info inherited]
+  Either of the functions may return reporters."
+  [node node-f child-info-f function-info inherited]
   (expr-let
-      [properties-dom (properties-f node function-info inherited)
-       child-doms (when-let [children (:child-nodes node)]
+      [child-doms (when-let [children (:child-nodes node)]
                     (expr-let [child-info (child-info-f
                                            node function-info inherited)]
                       (let [[child-function-info child-inherited] child-info]
                         (expr-seq map #(hierarchy-node-DOM-R
-                                        % properties-f child-info-f node-f
+                                        % node-f child-info-f
                                         child-function-info child-inherited)
                                   children))))]
-    (node-f node properties-dom child-doms function-info inherited)))
+    (node-f node child-doms function-info inherited)))
 
 
 

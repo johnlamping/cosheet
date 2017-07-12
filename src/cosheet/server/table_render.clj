@@ -267,23 +267,25 @@
                  #(add-elements-to-entity-list
                    % (canonical-set-to-list (:properties node)))))]))
 
-(defn table-header-node-wrapper-DOM
+(defn table-header-node-DOM-R
   "Generate the dom for a subtree of a table header hierarchy, given
   the dom particular the node, and doms for all the children."
-  [node properties-dom child-doms function-info inherited]
-  (let [is-leaf (empty? child-doms)
-        elements-template (table-header-element-template
-                           (keys (:cumulative-properties node)))
-        is-tag (is-tag-template? elements-template)
-        class (cond-> "column-header"
-                is-leaf (str " leaf"))]
-    (if child-doms
-      [:div {:class (cond-> class
-                      is-tag (str " tag"))}
-       (add-attributes properties-dom {:class "with-children"})
-       (into [:div {:class "column-header-sequence"}]
-             child-doms)]
-      (add-attributes properties-dom {:class class}))))
+  [node child-doms function-info inherited]
+  (expr-let [properties-dom (table-header-properties-DOM-R
+                             node function-info inherited)]
+    (let [is-leaf (empty? child-doms)
+          elements-template (table-header-element-template
+                             (keys (:cumulative-properties node)))
+          is-tag (is-tag-template? elements-template)
+          class (cond-> "column-header"
+                  is-leaf (str " leaf"))]
+      (if child-doms
+        [:div {:class (cond-> class
+                        is-tag (str " tag"))}
+         (add-attributes properties-dom {:class "with-children"})
+         (into [:div {:class "column-header-sequence"}]
+               child-doms)]
+        (add-attributes properties-dom {:class class})))))
 
 (defn table-header-top-level-subtree-DOM-R
   "Generate the dom for a top level subtree of a table header hierarchy.
@@ -293,10 +295,7 @@
   header selects elements. Inherited describes the column requests."
   [node rows-referent inherited]
   (hierarchy-node-DOM-R
-   node
-   table-header-properties-DOM-R
-   table-header-child-info
-   table-header-node-wrapper-DOM
+   node table-header-node-DOM-R table-header-child-info
    {:shadowing-nodes nil
     :top-level true
     :rows-referent rows-referent}

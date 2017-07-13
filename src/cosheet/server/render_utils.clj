@@ -247,6 +247,7 @@
       (> (count items) 1)
       (add-attributes local))))
 
+;;; TODO: Make a version where function-info and child-info-f are optional.
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls

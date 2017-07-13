@@ -190,6 +190,14 @@
   [fun x]
   (map #(map fun %) x))
 
+(defn map-with-first-last
+  "Map, but also call the function with whether or not the item
+  is first in the list and whether or not it is last."
+  [fun x]
+  (when (seq x)
+    (let [falses (repeat (- (count x) 1) false)]
+      (map fun x (concat [true] falses) (concat falses [true])))))
+
 (defn replace-in-seqs
   "Replace from with to recursively through the sequence."
   [x from to]

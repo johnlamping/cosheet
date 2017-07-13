@@ -110,6 +110,14 @@
   (is (= (map-map inc [[1 2] [5 7]])
          [[2 3] [6 8]])))
 
+(deftest map-with-first-last-test
+  (is (= (map-with-first-last vector [:a :b :c])
+         [[:a true false] [:b false false] [:c false true]]))
+  (is (= (map-with-first-last vector [:a])
+         [[:a true true]]))
+  (is (= (map-with-first-last vector [])
+         nil)))
+
 (deftest replace-in-seqs-test
   (is (= (replace-in-seqs [1 [2 [1 2]]] 2 3)
          [1 [3 [1 3]]])))

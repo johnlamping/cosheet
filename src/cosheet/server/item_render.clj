@@ -2,7 +2,8 @@
   (:require (cosheet [canonical :refer [canonical-set-to-list]]
                      [entity :as entity]
                      [query :refer [matching-elements]]
-                     [utils :refer [multiset-diff assoc-if-non-empty]]
+                     [utils :refer [multiset-diff assoc-if-non-empty
+                                    map-with-first-last]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils
                       :refer [into-attributes add-attributes]]
@@ -249,20 +250,19 @@
 (defn nest-wrapper
   "Return a wrapper that nests one level more deeply. This is used
   when a logical entity has been broken into several pieces and one of
-  those pieces has been further subdivided.
-  We are given an outer wrapper and the position of our sub-entity in
-  the larger entity. We may get further subdivided. So we return a new
-  wrapper that itself expects to be called several times, each time
-  given the position of the call with respect to all calls of the
-  sub-entity. For each call, call inner-wrapper with the dom and the
-  position of the call with respect to all calls of our logical cell,
-  then call the outer wrapper with the revised dom and the position
-  with respect to the all the doms of the larger entity."
-  [outer-wrapper inner-wrapper generated-first generated-last]
-  (fn [body called-first called-last]
-    (outer-wrapper (inner-wrapper body called-first called-last)
-                   (and generated-first called-first)
-                   (and generated-last called-last))))
+  those pieces has been further subdivided.  We are given an outer
+  wrapper and the position of the sub-entity in the larger entity. We
+  return a new wrapper that itself expects to be called several times,
+  each time given the position of each sub-sub-entity with respect to
+  the sub-entity. For each call, call inner-wrapper with the dom and
+  the position of the dom with respect to the sub-dom, then call the
+  outer wrapper with the revised dom and the position with respect to
+  the all the doms of the larger entity."
+  [outer-wrapper inner-wrapper outer-first outer-last]
+  (fn [body inner-first inner-last]
+    (outer-wrapper (inner-wrapper body inner-first inner-last)
+                   (and outer-first inner-first)
+                   (and outer-last inner-last))))
 
 (defn nest-wrappers-for-children
   "Generate a sequence of nested wrappers, one for each child,
@@ -280,7 +280,7 @@
 
 (defn horizontal-tag-wrapper
   "Return a modifier for a horizontal tag dom that is logically part of
-  a larger entity."
+  a possibly larger entity."
   [body is-first is-last]
   [:div {:class (cond-> "tag horizontal-header"
                   is-first (str " top-border")
@@ -337,8 +337,29 @@
              (member-wrapper leaves-dom true no-children)]
             child-doms))))
 
+(defn tagged-items-two-column-items-DOMs-R
+  "Return the item doms for the node and all its children."
+  [node child-doms function-info inherited]
+  (let [inherited-for-items (update
+                             (add-adjacent-sibling-command inherited node)
+                             :width #(* % 0.6875))
+        leaves-dom (hierarchy-leaf-items-DOM node inherited-for-items)]
+    (map-with-first-last
+     horizontal-value-wrapper
+     (cons leaves-dom (apply concat child-doms)))))
+
+(defn tagged-items-two-column-label-DOMs-R
+  "Return the label doms for the node and all its children."
+  [node child-doms function-info inherited]
+  (expr-let [properties-dom (tagged-items-properties-DOM-R
+                             node inherited)]
+    (map-with-first-last
+     horizontal-tag-wrapper
+     (cons properties-dom (apply concat child-doms)))))
+
 (defn tagged-items-two-column-DOM-R
   [hierarchy inherited]
+  (assert false)
   (expr-let [dom-lists (expr-seq
                         map #(tagged-items-two-column-subtree-DOMs-R
                               %
@@ -346,6 +367,32 @@
                               inherited)
                         hierarchy)]
     (nest-if-multiple-DOM (apply concat dom-lists))))
+
+(defn tagged-items-two-column-DOM-R
+  [hierarchy inherited]
+  ;; TODO: Should inherited-for-tags adjust attributes for label?
+  (let [inherited-for-tags (update inherited :width #(* % 0.25))]
+    (expr-let [label-doms (expr-seq
+                           map #(hierarchy-node-DOM-R
+                                 % tagged-items-two-column-label-DOMs-R
+                                 (fn [node function-info inherited]
+                                   [function-info inherited])
+                                 nil inherited-for-tags)
+                           hierarchy)
+               items-doms (expr-seq
+                           map #(hierarchy-node-DOM-R
+                                 % tagged-items-two-column-items-DOMs-R
+                                 (fn [node function-info inherited]
+                                   [function-info inherited])
+                                 nil inherited)
+                           hierarchy)]
+      (nest-if-multiple-DOM
+       (map
+        (fn [label-dom items-dom]
+          [:div {:class "horizontal-tags-element wide"}
+           label-dom
+           items-dom])
+        (apply concat label-doms) (apply concat items-doms))))))
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.

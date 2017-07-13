@@ -26,8 +26,6 @@
              [render-utils :refer [virtual-item-DOM condition-satisfiers-R]]
              [item-render :refer [elements-DOM-R]])))
 
-(def tabs-tree-DOM-R)
-
 (def base-tab-width 150)
 
 (defn inherited-for-tab-elements
@@ -119,7 +117,8 @@
                        ;; keys distinct.
                        (update :key-prefix #(conj % :nested)))]
                (expr-let
-                   [next-doms (expr-seq map #(tabs-tree-DOM-R % inherited-down)
+                   [next-doms (expr-seq map #(tabs-subtree-DOM-R
+                                              % inherited-down)
                                         next-level)]
                  [:div {:class "tab-tree"}
                   (add-attributes node-dom {:class "multi-tab"})
@@ -129,22 +128,9 @@
                         ;; the stacking order.  Then in the style, we
                         ;; say to lay them out in reverse row order.
                         (reverse next-doms))])))]
-        dom))))
-
-(defn tabs-tree-DOM-R
-  "Given something that is either a hieararchy node or element,
-  generate its DOM."
-  [node-or-member inherited]
-  (let [is-chosen (seq (filter #(= (:item %) (:chosen-tab inherited))
-                               (hierarchy-node-descendants node-or-member)))]
-    (expr-let
-        [dom (if (hierarchy-node? node-or-member)
-               (tabs-subtree-DOM-R
-                node-or-member inherited)
-               (expr-let [dom (tabs-node-or-member-DOM-R
-                               node-or-member inherited)]
-                 (add-attributes dom {:class "tab"})))]
-      (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
+        (let [is-chosen (seq (filter #(= (:item %) (:chosen-tab inherited))
+                                     (hierarchy-node-descendants node)))]
+          (cond-> dom is-chosen (add-attributes {:class "chosen"})))))))
 
 (defn virtual-tab-DOM
   [subject-referent hierarchy inherited]
@@ -173,17 +159,18 @@
     (expr-let [tabs (expr order-items-R
                       (entity/label->elements tabs-subject :tab))
                hierarchy (hierarchy-by-all-elements-R tabs)]
-      (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % tabs-inherited)
-                                hierarchy)]
-        (let [virtual-tab (virtual-tab-DOM
-                           subject-referent hierarchy inherited)]
-          (into [:div {:class "tabs-holder"}]
-                ;; We list the tabs in reverse order, so the logically first
-                ;; tab will have priority in the stacking order.
-                ;; Then in the style, we say to lay them out in reverse
-                ;; row order.
-                ;; We put an empty div at the end, so clicks beyond the
-                ;; virtual tab won't be referred to the virtual tab, which
-                ;; would otherwise be the closest element.
-                (concat [[:div] virtual-tab] (reverse doms))))))))
+      (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)]
+        (expr-let [doms (expr-seq map #(tabs-subtree-DOM-R % tabs-inherited)
+                                  hierarchy)]
+          (let [virtual-tab (virtual-tab-DOM
+                             subject-referent hierarchy inherited)]
+            (into [:div {:class "tabs-holder"}]
+                  ;; We list the tabs in reverse order, so the logically first
+                  ;; tab will have priority in the stacking order.
+                  ;; Then in the style, we say to lay them out in reverse
+                  ;; row order.
+                  ;; We put an empty div at the end, so clicks beyond the
+                  ;; virtual tab won't be referred to the virtual tab, which
+                  ;; would otherwise be the closest element.
+                  (concat [[:div] virtual-tab] (reverse doms)))))))))
 

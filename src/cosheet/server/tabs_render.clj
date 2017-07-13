@@ -19,7 +19,8 @@
                                 hierarchy-node-items-referent
                                 hierarchy-last-item-referent
                                 hierarchy-node-next-level
-                                hierarchy-node-example-elements]]
+                                hierarchy-node-example-elements
+                                replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
              [model-utils :refer [new-tab-elements]]
              [render-utils :refer [virtual-item-DOM condition-satisfiers-R]]
@@ -145,13 +146,19 @@
                  (add-attributes dom {:class "tab"})))]
       (cond-> dom is-chosen (add-attributes {:class "chosen"})))))
 
-;;; TODO: Put more of the work here.
 (defn virtual-tab-DOM
-  [subject-referent adjacent-referent inherited]
+  [subject-referent hierarchy inherited]
   (let [key (conj (:key-prefix inherited) :virtualTab)
-        inherited (assoc inherited :subject-referent subject-referent)]
+        v-ref (virtual-referent
+                     (cons "" new-tab-elements)
+                     subject-referent
+                     (hierarchy-last-item-referent hierarchy)
+                     ;; Avoid turning 'anything in the template into ""
+                     :selector :first-group)
+        inherited (assoc inherited :subject-referent v-ref)
+        virtual-inherited (assoc inherited :template "")]
     (add-attributes
-     (virtual-item-DOM key adjacent-referent :after inherited)
+     (virtual-item-DOM key nil :after virtual-inherited)
      {:class "tab virtualTab"
       :selected {:special :new-tab}})))
 
@@ -168,15 +175,8 @@
                hierarchy (hierarchy-by-all-elements-R tabs)]
       (expr-let [doms (expr-seq map #(tabs-tree-DOM-R % tabs-inherited)
                                 hierarchy)]
-        (let [v-ref (virtual-referent
-                     (cons "" new-tab-elements)
-                     subject-referent
-                     (hierarchy-last-item-referent hierarchy)
-                     ;; Avoid turning 'anything in the template into ""
-                     :selector :first-group)
-              virtual-inherited (assoc inherited :template "")
-              virtual-tab (virtual-tab-DOM v-ref nil
-                                           virtual-inherited)]
+        (let [virtual-tab (virtual-tab-DOM
+                           subject-referent hierarchy inherited)]
           (into [:div {:class "tabs-holder"}]
                 ;; We list the tabs in reverse order, so the logically first
                 ;; tab will have priority in the stacking order.

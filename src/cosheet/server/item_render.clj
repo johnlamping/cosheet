@@ -241,43 +241,6 @@
                             hierarchy)]
     (nest-if-multiple-DOM doms)))
 
-;;; Wrappers are used when one logical entity is broken into several
-;;; adjacent divs. This typically means that the first and last of the
-;;; divs need to be styled differently from the others. A wrapper will
-;;; be called with the div to wrap and with whether it is the first
-;;; and/or last div of the logical entity.
-
-(defn nest-wrapper
-  "Return a wrapper that nests one level more deeply. This is used
-  when a logical entity has been broken into several pieces and one of
-  those pieces has been further subdivided.  We are given an outer
-  wrapper and the position of the sub-entity in the larger entity. We
-  return a new wrapper that itself expects to be called several times,
-  each time given the position of each sub-sub-entity with respect to
-  the sub-entity. For each call, call inner-wrapper with the dom and
-  the position of the dom with respect to the sub-dom, then call the
-  outer wrapper with the revised dom and the position with respect to
-  the all the doms of the larger entity."
-  [outer-wrapper inner-wrapper outer-first outer-last]
-  (fn [body inner-first inner-last]
-    (outer-wrapper (inner-wrapper body inner-first inner-last)
-                   (and outer-first inner-first)
-                   (and outer-last inner-last))))
-
-(defn nest-wrappers-for-children
-  "Generate a sequence of nested wrappers, one for each child,
-  with the last one knowing that it is the last."
-  [outer-wrapper inner-wrapper children]
-  (let [middle-wrapper (nest-wrapper outer-wrapper inner-wrapper false false)
-        last-wrapper (nest-wrapper outer-wrapper inner-wrapper false true)]
-    (concat (repeat (- (count children) 1) middle-wrapper)
-            [last-wrapper])))
-
-(defn identity-wrapper
-  "Return a wrapper that does no wrapping -- just returns the body."
-  [body called-first called-last]
-  body)
-
 (defn horizontal-tag-wrapper
   "Return a modifier for a horizontal tag dom that is logically part of
   a possibly larger entity."
@@ -295,47 +258,6 @@
   (if (and is-last (not is-first))
     [:div {:class "horizontal-value-last"} body]
     body))
-
-(declare tagged-items-two-column-subtree-DOMs-R)
-
-(defn tagged-items-two-column-children-DOMs-R
-  "Return a seq of doms for the children of the hierarchy node,
-  as two columns."
-  [hierarchy-node header-wrapper member-wrapper inherited]
-  (let [children (:child-nodes hierarchy-node)]
-    (when children
-      (expr-let [child-lists
-                 (expr-seq
-                  map (fn [child-node header-wrapper member-wrapper]
-                        (tagged-items-two-column-subtree-DOMs-R
-                         child-node header-wrapper member-wrapper
-                         inherited))
-                  children
-                  (nest-wrappers-for-children
-                   header-wrapper horizontal-tag-wrapper children)
-                  (nest-wrappers-for-children
-                   member-wrapper horizontal-value-wrapper children))]
-        (apply concat child-lists)))))
-
-(defn tagged-items-two-column-subtree-DOMs-R
-  "Return a sequence of DOMs for the given hierarchy node and its descendants,
-  as two columns."
-  [hierarchy-node header-wrapper member-wrapper inherited]
-  (let [tags-inherited (update inherited :width #(* % 0.25))
-        items-inherited (update
-                         (add-adjacent-sibling-command inherited hierarchy-node)
-                         :width #(* % 0.6875))
-        leaves-dom (hierarchy-leaf-items-DOM hierarchy-node items-inherited)
-        no-children (empty? (:child-nodes hierarchy-node))]
-    (expr-let [properties-dom (tagged-items-properties-DOM-R
-                               hierarchy-node tags-inherited) 
-               child-doms (tagged-items-two-column-children-DOMs-R
-                           hierarchy-node header-wrapper member-wrapper
-                           inherited)]
-      (cons [:div {:class "horizontal-tags-element wide"}
-             (header-wrapper properties-dom true no-children)
-             (member-wrapper leaves-dom true no-children)]
-            child-doms))))
 
 (defn tagged-items-two-column-items-DOMs-R
   "Return the item doms for the node and all its children."
@@ -356,17 +278,6 @@
     (map-with-first-last
      horizontal-tag-wrapper
      (cons properties-dom (apply concat child-doms)))))
-
-(defn tagged-items-two-column-DOM-R
-  [hierarchy inherited]
-  (assert false)
-  (expr-let [dom-lists (expr-seq
-                        map #(tagged-items-two-column-subtree-DOMs-R
-                              %
-                              horizontal-tag-wrapper horizontal-value-wrapper
-                              inherited)
-                        hierarchy)]
-    (nest-if-multiple-DOM (apply concat dom-lists))))
 
 (defn tagged-items-two-column-DOM-R
   [hierarchy inherited]

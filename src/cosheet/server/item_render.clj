@@ -261,7 +261,7 @@
 
 (defn tagged-items-two-column-items-DOMs-R
   "Return the item doms for the node and all its children."
-  [node child-doms function-info inherited]
+  [node child-doms inherited]
   (let [inherited-for-items (update
                              (add-adjacent-sibling-command inherited node)
                              :width #(* % 0.6875))
@@ -272,7 +272,7 @@
 
 (defn tagged-items-two-column-label-DOMs-R
   "Return the label doms for the node and all its children."
-  [node child-doms function-info inherited]
+  [node child-doms inherited]
   (expr-let [properties-dom (tagged-items-properties-DOM-R
                              node inherited)]
     (map-with-first-last
@@ -286,16 +286,12 @@
     (expr-let [label-doms (expr-seq
                            map #(hierarchy-node-DOM-R
                                  % tagged-items-two-column-label-DOMs-R
-                                 (fn [node function-info inherited]
-                                   [function-info inherited])
-                                 nil inherited-for-tags)
+                                 inherited-for-tags)
                            hierarchy)
                items-doms (expr-seq
                            map #(hierarchy-node-DOM-R
                                  % tagged-items-two-column-items-DOMs-R
-                                 (fn [node function-info inherited]
-                                   [function-info inherited])
-                                 nil inherited)
+                                 inherited)
                            hierarchy)]
       (nest-if-multiple-DOM
        (map

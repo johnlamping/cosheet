@@ -247,7 +247,6 @@
       (> (count items) 1)
       (add-attributes local))))
 
-;;; TODO: Make a version where function-info and child-info-f are optional.
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls
@@ -256,18 +255,28 @@
   nodes.  Before doing calls for a child, calls
      (child-information-f node function-info inherited)
   It must return the function-info and inherited to be used for the children.
-  Either of the functions may return reporters."
-  [node node-f child-info-f function-info inherited]
-  (expr-let
-      [child-doms (when-let [children (:child-nodes node)]
-                    (expr-let [child-info (child-info-f
-                                           node function-info inherited)]
-                      (let [[child-function-info child-inherited] child-info]
-                        (expr-seq map #(hierarchy-node-DOM-R
-                                        % node-f child-info-f
-                                        child-function-info child-inherited)
-                                  children))))]
-    (node-f node child-doms function-info inherited)))
+  Either of the functions may return reporters.
+  child-information-f and function-info may be left out, in which case
+  node-f is called without function-info, and always with the same value
+  of inherited."
+  ([node node-f inherited]
+   (hierarchy-node-DOM-R node
+                         (fn [node child-doms function-info inherited]
+                           (node-f node child-doms inherited)) 
+                         (fn [node function-info inherited]
+                           [function-info inherited])
+                         nil inherited))
+  ([node node-f child-info-f function-info inherited]
+   (expr-let
+       [child-doms (when-let [children (:child-nodes node)]
+                     (expr-let [child-info (child-info-f
+                                            node function-info inherited)]
+                       (let [[child-function-info child-inherited] child-info]
+                         (expr-seq map #(hierarchy-node-DOM-R
+                                         % node-f child-info-f
+                                         child-function-info child-inherited)
+                                   children))))]
+     (node-f node child-doms function-info inherited))))
 
 
 

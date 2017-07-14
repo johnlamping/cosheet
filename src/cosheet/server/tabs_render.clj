@@ -31,25 +31,25 @@
 (defn inherited-for-tab-elements
   "Return the information to be inherited down to the elements of a tabs DOM.
   tabs-referent gives the tab or tabs that these elements apply to."
-  [tab-items tabs-elements example-elements tabs-referent inherited]
+  [tab-items tabs-element-counts example-elements tabs-referent inherited]
   (let [subject-referent (:subject-referent inherited)
         ;; Make sure the adjacent referent returns just one group, since
         ;; the subject is just one group.
         adjacent-referent (if (item-referent? tabs-referent)
                             tabs-referent
                             (union-referent [tabs-referent]))
-        ;; For tabs with just one element (or none), delete the tab.
+        ;; For tabs with just one element (or none), delete deletes the tab.
         delete-referent
         (when (<= (count example-elements) 1)
           (union-referent-if-needed
-           (map (fn [tab-item tab-elements]
-                  (if (or (= (count tab-elements) 1)
+           (map (fn [tab-item tab-element-count]
+                  (if (or (= tab-element-count 1)
                           ;; This case can come up while responding to a change.
                           (empty? example-elements))
                     (item-referent tab-item)
                     (item-or-exemplar-referent
                      (first example-elements) (item-referent tab-item))))
-                tab-items tabs-elements)))]
+                tab-items tabs-element-counts)))]
     (-> inherited
         (assoc :subject-referent tabs-referent
                :template '(nil))
@@ -67,23 +67,23 @@
                    (assoc :selected {:referent tabs-referent
                                      :special :tab})
                    delete-referent
-                   (assoc :delete  {:referent delete-referent}))]))
+                   (assoc :delete {:referent delete-referent}))]))
         (dissoc :chosen-tab))))
 
-(defn tabs-node-or-member-DOM-R
-  [node-or-member inherited]
+(defn tab-elements-DOM-R
+  [node inherited]
   "Generate the dom for a node of the tabs hierarchy, but not any of its
   children."
   (let [subject-referent (:subject-referent inherited)
         tabs-referent (hierarchy-node-items-referent
-                       node-or-member subject-referent)
-        tab-items (map :item (hierarchy-node-descendants node-or-member))]
-    (expr-let [example-elements (hierarchy-node-example-elements node-or-member)
+                       node subject-referent)
+        tab-items (map :item (hierarchy-node-descendants node))]
+    (expr-let [example-elements (hierarchy-node-example-elements node)
                tabs-elements (expr-seq map semantic-elements-R tab-items)]
       (let [inherited-down (inherited-for-tab-elements
-                            tab-items tabs-elements example-elements
-                            tabs-referent inherited)]
-        (if (hierarchy-node? node-or-member)
+                            tab-items (map count tabs-elements)
+                            example-elements tabs-referent inherited)]
+        (if (seq (:properties node))
           (expr-let [dom (elements-DOM-R example-elements false nil
                                          inherited-down)
                      elements-elements (expr-seq map semantic-elements-R
@@ -100,7 +100,7 @@
 (defn tabs-subtree-DOM-R
   ;; :template in inherited gives the template for a new tab.
   [node inherited]
-  (expr-let [node-dom (tabs-node-or-member-DOM-R node inherited)]
+  (expr-let [node-dom (tab-elements-DOM-R node inherited)]
     (let [next-level (hierarchy-node-next-level node)]
       (expr-let
           [dom
@@ -113,7 +113,7 @@
                        (update :template
                                #(list* (concat % properties-list)))
                        ;; The child nodes can use the same tab in their keys
-                       ;; as their parent,  so add to the prefix to make their
+                       ;; as their parent, so add to the prefix to make their
                        ;; keys distinct.
                        (update :key-prefix #(conj % :nested)))]
                (expr-let

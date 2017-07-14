@@ -50,7 +50,7 @@
 
 (defn apply-to-store
   "Return the result of the operation on the store
-  of the state. Using this lets callers creating thunks as
+  of the state. Using this lets callers avoid creating thunks as
   arguments to get-or-make-reporter, which would break caching."
   [state operation & args]
   (apply operation (:store state) args))

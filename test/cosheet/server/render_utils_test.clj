@@ -47,6 +47,26 @@
                               (condition-satisfiers-R test '(nil :a :a :b)))))
              [:a])))
 
+(deftest non-implied-matching-elements-R-test
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (non-implied-matching-elements-R
+                               test '(nil 1) '(nil :a :c)))))
+             [(canonicalize-list '(:b 1))]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (non-implied-matching-elements-R
+                               test '(nil 1) '(nil :b)))))
+             [(canonicalize-list '(:b 1))]))
+  (is (check (map canonicalize-list
+                  (let-mutated [test '("age" :a (:b 1) :c)]
+                    (expr-seq map to-list
+                              (non-implied-matching-elements-R
+                               test '(nil 1) '(nil (:b 1))))))
+             [])))
+
 (deftest copy-alternate-request-to-target-test
   (let [ia (make-id "a")
         ib (make-id "b")

@@ -3,13 +3,15 @@
                      [utils :refer [multiset multiset-to-generating-values
                                     replace-in-seqs assoc-if-non-empty]]
                      [debug :refer [simplify-for-print]]
+                     [query :refer [matching-elements]]
                      [orderable :as orderable]
                      [hiccup-utils
                       :refer [into-attributes add-attributes]]
-                     [expression :refer [expr expr-let expr-seq cache]])
+                     [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [virtual-referent item->canonical-semantic
-                               item->canonical-semantic-R]])))
+                               item->canonical-semantic-R
+                               semantic-element?-R]])))
 
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
@@ -34,6 +36,19 @@
                                     (rest condition)))
                      canonical-elements elements))))]
       (map #(entity/in-different-store % entity) satisfiers))))
+
+(defn non-implied-matching-elements-R
+  "Given an item, a template, and an implied template, return all semantic
+  elements matching the template, but throwing out enough elements to exactly
+  match the implied template."
+  [item template implied-template]
+  (expr-let [elements (expr-filter semantic-element?-R
+                                   (matching-elements template item))
+             excludeds (when implied-template
+                         (condition-satisfiers-R item implied-template))]
+    (if excludeds
+      (seq (clojure.set/difference (set elements) (set excludeds)))
+      elements)))
 
 (defn copy-alternate-request-to-target
   "Given the map for a target, and inherited information, change the target

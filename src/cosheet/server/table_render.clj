@@ -522,6 +522,31 @@
                          (matching-items row-query store))]
     [row-template row-items]))
 
+(defn table-top-DOM-R
+  "Return a hiccup representation for the top of a table, the part that
+  holds its condition. Also return whether the condition is all tags."
+  [row-condition-item rows-referent inherited]
+  (expr-let [condition-elements (semantic-elements-R row-condition-item)
+             conditions-as-lists (expr-seq map semantic-to-list-R
+                                           condition-elements)
+             condition-is-tags (every? #(and (sequential? %)
+                                             (seq (filter #{:tag} %)))
+                                       conditions-as-lists)
+             dom (condition-elements-DOM-R
+                  condition-elements :wide
+                  (assoc inherited
+                         :selector-category :table-condition
+                         :subject-referent (union-referent
+                                            [(item-referent row-condition-item)
+                                             rows-referent])
+                         :template (if condition-is-tags '(nil :tag) '(nil))
+                         :alternate-target true))]
+    [[:div {:class (cond-> "table-top selectors"
+                      condition-is-tags (str " tag"))}
+       [:div {:class "table-corner"}]
+      (add-attributes dom {:class "table-condition"})]
+     condition-is-tags]))
+
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
@@ -575,26 +600,12 @@
                columns (expr order-items-R
                          (entity/label->elements table-item :column))
                hierarchy (hierarchy-by-all-elements-R columns)
-               condition-elements (semantic-elements-R row-condition-item)
-               conditions-as-lists (expr-seq map semantic-to-list-R
-                                             condition-elements)
-               condition-is-tags (every? #(and (sequential? %)
-                                               (seq (filter #{:tag} %)))
-                                         conditions-as-lists)
-               condition-dom (condition-elements-DOM-R
-                              condition-elements :wide
-                              (assoc
-                               inherited
-                               :selector-category :table-condition
-                               :subject-referent (union-referent
-                                                  [(item-referent
-                                                    row-condition-item)
-                                                   rows-referent])
-                               :template (if condition-is-tags
-                                           '(nil :tag) '(nil))
-                               :alternate-target true))
                headers (table-header-DOM-R
-                        hierarchy rows-referent headers-inherited)]
+                        hierarchy rows-referent headers-inherited)
+               
+               [condition-dom
+                condition-is-tags] (table-top-DOM-R
+                                    row-condition-item rows-referent inherited)]
             (let [column-descriptions (mapcat
                                        table-hierarchy-node-column-descriptions
                                        hierarchy)
@@ -621,11 +632,7 @@
                                (item-referent (or (last row-items) table-item))
                                column-descriptions inherited)]
               [:div {:class "table selector-scope"}
-               [:div {:class (cond-> "table-top selectors"
-                               condition-is-tags (str " tag"))}
-                [:div {:class "table-corner"}]
-                (add-attributes condition-dom
-                                {:class "table-condition"})]
+               condition-dom
                [:div {:class "table-body"}
                 [:div {:class (cond-> "table-indent"
                                 condition-is-tags (str " tag"))}]

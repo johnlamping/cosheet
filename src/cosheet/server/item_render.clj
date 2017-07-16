@@ -310,9 +310,9 @@
   [elements must-show-empty-labels implied-template inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
-       all-labels (expr-filter semantic-element?-R
-                               (expr-seq map #(matching-elements '(nil :tag) %)
-                                         ordered-elements))
+       all-labels (expr-seq map #(expr-filter semantic-element?-R
+                                              (matching-elements '(nil :tag) %))
+                            ordered-elements)
        excludeds (expr-seq map #(when implied-template
                                   (condition-satisfiers-R % implied-template))
                            ordered-elements)]

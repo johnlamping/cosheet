@@ -42,17 +42,19 @@
   must be immutable.)"
   [condition target]
   (assert (not (entity/mutable-entity? condition)))
-  (let [template `(nil (:variable (:v :name)
-                                  (~condition :condition)
-                                  (true :reference)))]
-    (if (and (entity/mutable-entity? target)
-             (satisfies? entity/StoredEntity target))
-      ;; Optimized case to not build reporters for all the subsidiary tests. 
-      (expr-let [matches (entity/call-with-immutable
-                          target #(template-matches template %))]
-        (map #(entity/in-different-store (:v %) target) matches))
-      (expr-let [matches (template-matches template target)]
-        (map :v matches)))))
+  (if (or (nil? condition) (= condition '()))
+    (entity/elements target)
+    (let [template `(nil (:variable (:v :name)
+                                    (~condition :condition)
+                                    (true :reference)))]
+      (if (and (entity/mutable-entity? target)
+               (satisfies? entity/StoredEntity target))
+        ;; Optimized case to not build reporters for all the subsidiary tests. 
+        (expr-let [matches (entity/call-with-immutable
+                            target #(template-matches template %))]
+          (map #(entity/in-different-store (:v %) target) matches))
+        (expr-let [matches (template-matches template target)]
+          (map :v matches))))))
   
 (defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given

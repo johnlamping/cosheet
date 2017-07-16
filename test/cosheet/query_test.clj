@@ -287,8 +287,14 @@
                    [store s0 mutator]
                    (matching-elements '(nil ("A"))
                                       (entity/description->entity ia store)))]
-      (= (map #(current-value (entity/to-list %)) matches)
-         ['(1 (2 3))]))))
+      (is (= (map #(current-value (entity/to-list %)) matches)
+             ['(1 ("a" 3))])))
+    (let [matches (let-mutated-store
+                   [store s0 mutator]
+                   (matching-elements nil
+                                      (entity/description->entity ia store)))]
+      (is (= (map #(current-value (entity/to-list %)) matches)
+             ['(1 ("a" 3)) '(3 (4 5))])))))
 
 (deftest query-matches-test
   (let [s0 (store/new-element-store)

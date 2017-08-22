@@ -95,8 +95,9 @@
 (deftest do-add-element-test
   (let [result (do-add-element
                 store
-                {:referent (item-referent jane-age)}
-                {:target-key ["jane-age"]})
+                {:referent (item-referent jane-age)
+                 :target-key ["jane-age"]}
+                {})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -107,8 +108,9 @@
 (deftest do-add-label-test
   (let [result (do-add-label
                 store
-                {:referent (item-referent jane-age)}
-                {:target-key ["jane-age"]})
+                {:referent (item-referent jane-age)
+                 :target-key ["jane-age"]}
+                {})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -120,8 +122,9 @@
   (let [result (do-add-twin
                 store
                 {:referent (item-referent jane-age)
-                 :template '(nil ("age" :tag))}
-                {:target-key ["jane" "jane-age"]})
+                 :template '(nil ("age" :tag))
+                 :target-key ["jane" "jane-age"]}
+                {})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane) new-store)))
@@ -138,8 +141,9 @@
                  (virtual-referent '(nil ("age" :tag))
                                    (union-referent [(item-referent jane)])
                                    (item-referent jane) :position :after)
-                 :select-pattern ["jane" [:pattern]]}
-                {:target-key ["jane" "jane-age"]})]
+                 :select-pattern ["jane" [:pattern]]
+                 :target-key ["jane" "jane-age"]}
+                {})]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane) (:store result))))
                (canonicalize-list '("Jane"
@@ -152,8 +156,9 @@
 (deftest do-delete-test
   (let [new-store (do-delete
                    store
-                   {:referent (item-referent jane-age)}
-                   {:target-key "jane"})]
+                   {:referent (item-referent jane-age)
+                    :target-key "jane"}
+                   {})]
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
                (canonicalize-list `("Jane" (~o1 :order :non-semantic)
@@ -186,25 +191,28 @@
           (description->entity
            (:item-id joe-age)
            (do-set-content store
-                           {:referent (item-referent joe-age)}
-                           {:target-key "joe"
-                            :from "45" :to "46"})))
+                           {:referent (item-referent joe-age)
+                            :target-key "joe"
+                            :from "45" :to "46"}
+                           {})))
          46))
   (is (= (content
           (description->entity
            joe-id (do-set-content store
-                                  {:referent (item-referent joe)}
-                                  {:target-key "joe"
-                                   :from "Wrong" :to "Jim"})))
+                                  {:referent (item-referent joe)
+                                   :target-key "joe"
+                                   :from "Wrong" :to "Jim"}
+                                  {})))
          "Joe"))
   ;; Now, try calling it when there is a parallel referent.
   (let [modified (do-set-content
                   store
                   {:referent (union-referent
                                    [(item-referent joe-age-tag)
-                                    (item-referent jane-age-tag)])}
-                  {:target-key "both"
-                   :from "age" :to "oldness"})]
+                                    (item-referent jane-age-tag)])
+                   :target-key "both"
+                   :from "age" :to "oldness"}
+                  {})]
     (is (= (item->canonical-semantic
             (description->entity (:item-id joe-age-tag) modified))
            (canonicalize-list '("oldness" :tag))))
@@ -215,20 +223,21 @@
     (let [result (do-set-content
                   store
                   {:referent (virtual-referent
-                                   '(nil :tag) (item-referent joe-male)
-                                    (item-referent joe-male) :position :after)}
-                  {:target-key ["joe-male"]
-                   :from ""
-                   :to "gender"})]
+                              '(nil :tag) (item-referent joe-male)
+                              (item-referent joe-male) :position :after)
+                   :target-key ["joe-male"]
+                   :from "" :to "gender"}
+                  {})]
       (is (= (immutable-semantic-to-list
               (description->entity (:item-id joe-male) result))
              ["male" ["gender" :tag]]))))
 
 (deftest do-expand-test
   (is (check (do-expand store
-                        {:referent (item-referent joe)}
-                        {:target-key "joe"
-                         :session-state {:url-path "foo"}})
+                        {:referent (item-referent joe)
+                         :target-key "joe"
+                         :session-state {:url-path "foo"}}
+                        {})
              {:store store
               :open (str "foo?referent="
                          (referent->string (item-referent joe)))})))
@@ -259,17 +268,14 @@
           new-id (last (first select))
           alternate (state-map-get-current-value
                      (:client-state session-state) :alternate)
-          alternate-target (-> (:target attributes)
-                               (assoc :referent (union-referent
-                                                 [(item-referent jane)]))
-                               (dissoc :alternate))]
+          alternate-arguments (-> (:target attributes)
+                                  (assoc :referent (union-referent
+                                                    [(item-referent jane)]))
+                                  (assoc :target-key [:jane])
+                                  (dissoc :alternate))]
       (is (check alternate
                  {:new-store new-store
-                  :action [do-add-element
-                           alternate-target
-                           (-> attributes
-                               (assoc :target-key [:jane])
-                               (dissoc :alternate))]
+                  :action [do-add-element alternate-arguments attributes]
                   :text ["Column's description changed."
                          "Change selection instead."]}))
       (is (= select [[:jane new-id] [[:jane]]]))

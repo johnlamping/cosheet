@@ -122,8 +122,8 @@
 
 (defn do-add-element
   [store arguments attributes]
-  (let [{:keys [target-key selector-category]} attributes
-        {:keys [select-pattern]} arguments]
+  (let [{:keys [selector-category]} attributes
+        {:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             selector (when selector-category :first-group)
@@ -138,8 +138,8 @@
 
 (defn do-add-label
   [store arguments attributes]
-  (let [{:keys [target-key selector-category]} attributes
-        {:keys [select-pattern]} arguments]
+  (let [{:keys [select-pattern target-key]} arguments
+        {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             sample-item (first (apply concat items))
@@ -158,7 +158,8 @@
 
 (defn do-add-twin
   [store arguments attributes]
-  (let [{:keys [target-key selector-category]} attributes]
+  (let [{:keys [target-key]} arguments
+        {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
         (let [items (instantiate-referent referent store)
@@ -177,7 +178,7 @@
   (let [{:keys [referent select-pattern]} arguments
         [items new-ids store] (instantiate-or-create-referent referent store)]
     (add-select-request store (map #(description->entity % store) new-ids)
-                        select-pattern (:target-key attributes))))
+                        select-pattern (:target-key arguments))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -198,8 +199,8 @@
 
 (defn do-set-content
   [store arguments attributes]
-  (let [{:keys [from to immutable target-key]} attributes
-        {:keys [referent select-pattern]} arguments]
+  (let [{:keys [immutable]} attributes
+        {:keys [from to referent select-pattern target-key]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups new-ids store] (instantiate-or-create-referent
@@ -218,14 +219,14 @@
 
 (defn do-expand
   [store arguments attributes]
-  (let [{:keys [session-state selector-category]} attributes
-        target-referent (:referent arguments)]
-    (when (referent? target-referent)
+  (let [{:keys [selector-category]} attributes
+        {:keys [referent session-state]} arguments]
+    (when (referent? referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
-      (let [items (apply concat (instantiate-referent target-referent store))
+      (let [items (apply concat (instantiate-referent referent store))
             item (first items)
-            [_ subject-ref] (referent->exemplar-and-subject target-referent)
+            [_ subject-ref] (referent->exemplar-and-subject referent)
             subject-ref (or subject-ref
                             (when-let [subject (subject item)]
                               (item-referent subject)))
@@ -233,7 +234,7 @@
                                       (semantic-elements-R item))
                               subject-ref)
                        subject-ref
-                       target-referent)]
+                       referent)]
         {:store store
          :open (cond-> (str (:url-path session-state)
                             "?referent=" (referent->string referent))
@@ -365,32 +366,37 @@
         tracker (:tracker session-state)
         target-key (when client-id (id->key tracker client-id))
         dom-attributes (key->attributes tracker target-key)
-        attributes (-> dom-attributes
-                       ;; TODO: Move client-args to arguments.
-                       (into client-args)
-                       (assoc :target-key target-key
-                              :session-state session-state))]
+        ;; We take the arguments for the context key and override any
+        ;; specific to the action type,
+        dom-arguments (->> (map dom-attributes [arguments-key action-type])
+                           (remove nil?)
+                           (apply merge-with (partial map-combiner nil)))
+        ;; We augment the arguments from the dom with anything provided
+        ;; by the client, and also provide the target key and session
+        ;; state.
+        arguments (-> dom-arguments
+                      (into client-args)
+                      (assoc :target-key target-key
+                             :session-state session-state))]
     (if handler
-      (if-let [;; We take the arguments for the context key and override any
-               ;; specific to the action type.
-               arguments (->> (map attributes [arguments-key action-type])
-                            (remove nil?)
-                            (apply merge-with (partial map-combiner nil)))]
+      (if dom-arguments
         (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
-          (println "dom attributes: " (simplify-for-print dom-attributes))
+          (println "arguments: " (simplify-for-print
+                                  (dissoc arguments :session-state)))
           (let [[arguments alternate-arguments text] (alternate-arguments
                                                       session-state action-type
-                                                      arguments attributes)
+                                                      arguments dom-attributes)
                 ;; do-selected gets the session-state in addition.
+                ;; TODO: Have it get that from the arguments.
                 handler (if (= action-type :selected)
                           (partial handler session-state)
                           handler)
                 result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
-                          handler arguments attributes)]
+                          handler arguments dom-attributes)]
             (when (or (not (:special arguments)) (= action-type :set-content))
                   (state-map-reset!
                    (:client-state session-state) :alternate
@@ -399,12 +405,12 @@
                      {:new-store (first (fetch-and-clear-modified-ids
                                          (:store result)))
                       :action [handler
-                               alternate-arguments
-                               (dissoc attributes :session-state)]
+                               (dissoc alternate-arguments :session-state)
+                               dom-attributes]
                       :text text})))
             (dissoc result :store)))
         (println "No context for action:" action-type
-                 (dissoc attributes :session-state)))
+                 dom-attributes))
       (do 
         (println "unhandled action type:" action-type)))))
 

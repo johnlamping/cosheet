@@ -52,7 +52,7 @@
     "Returns true if the id is a valid id for the store.")
   
   (id-label->element-ids [this id label]
-    "Returns a seq the ids of all ids that have the given subject and label.")
+    "Returns a seq of all ids that have the given subject and label.")
 
   (id->element-ids [this id]
     "Returns a seq of all ids that have the id as a subject.")

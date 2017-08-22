@@ -23,8 +23,7 @@
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
              [model-utils :refer [new-tab-elements]]
-             [render-utils :refer [virtual-item-DOM condition-satisfiers-R
-                                   hierarchy-node-DOM-R]]
+             [render-utils :refer [virtual-item-DOM hierarchy-node-DOM-R]]
              [item-render :refer [elements-DOM-R]])))
 
 (def base-tab-width 150)

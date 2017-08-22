@@ -4,6 +4,7 @@
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
+                     [expression-manager :refer [current-value]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq]]
@@ -30,7 +31,6 @@
                                 hierarchy-last-item-referent]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component virtual-item-DOM
-                                   condition-satisfiers-R
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    add-inherited-attribute
@@ -526,26 +526,35 @@
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. Also return whether the condition is all tags."
   [row-condition-item rows-referent inherited]
-  (expr-let [condition-elements (semantic-elements-R row-condition-item)
-             conditions-as-lists (expr-seq map semantic-to-list-R
-                                           condition-elements)
-             condition-is-tags (every? #(and (sequential? %)
-                                             (seq (filter #{:tag} %)))
-                                       conditions-as-lists)
-             dom (condition-elements-DOM-R
-                  condition-elements :wide
-                  (assoc inherited
-                         :selector-category :table-condition
-                         :subject-referent (union-referent
-                                            [(item-referent row-condition-item)
-                                             rows-referent])
-                         :template (if condition-is-tags '(nil :tag) '(nil))
-                         :alternate-target true))]
-    [[:div {:class (cond-> "table-top selectors"
-                      condition-is-tags (str " tag"))}
-       [:div {:class "table-corner"}]
-      (add-attributes dom {:class "table-condition"})]
-     condition-is-tags]))
+  (let [subject-referent (union-referent [(item-referent row-condition-item)
+                                          rows-referent])]
+    (expr-let [condition-elements (semantic-elements-R row-condition-item)
+               conditions-as-lists (expr-seq map semantic-to-list-R
+                                             condition-elements)
+               condition-tags (filter #(and (sequential? %)
+                                            (seq (filter #{:tag} %)))
+                                      conditions-as-lists)
+               condition-is-all-tags (= (count conditions-as-lists)
+                                        (count condition-tags))
+               dom (condition-elements-DOM-R
+                    condition-elements :wide
+                    (assoc inherited
+                           :selector-category :table-condition
+                           :subject-referent subject-referent
+                           :template (if condition-is-all-tags
+                                       '(nil :tag)
+                                       '(nil))
+                           :alternate-target true
+                           ;; TODO: Do only when all tags?
+                           :attributes [[#{:label} #{:content}
+                                          {:add-element
+                                           {:referent subject-referent}}]]))]
+      [[:div {:class (cond-> "table-top selectors"
+                       condition-is-all-tags (str " tag"))}
+        [:div {:class "table-corner"}]
+        (add-attributes dom {:class "table-condition"})]
+       condition-tags
+       condition-is-all-tags])))
 
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
@@ -604,8 +613,10 @@
                         hierarchy rows-referent headers-inherited)
                
                [condition-dom
-                condition-is-tags] (table-top-DOM-R
-                                    row-condition-item rows-referent inherited)]
+                condition-tags
+                condition-is-all-tags] (table-top-DOM-R
+                                        row-condition-item rows-referent
+                                        inherited)]
             (let [column-descriptions (mapcat
                                        table-hierarchy-node-column-descriptions
                                        hierarchy)
@@ -635,7 +646,7 @@
                condition-dom
                [:div {:class "table-body"}
                 [:div {:class (cond-> "table-indent"
-                                condition-is-tags (str " tag"))}]
+                                condition-is-all-tags (str " tag"))}]
                 [:div {:class "table-main selectees selector-scope"}
                  (add-attributes headers {:class "selectors"})
                  (into [:div {:class "table-rows selectees"}]

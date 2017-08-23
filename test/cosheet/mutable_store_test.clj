@@ -6,7 +6,7 @@
              [store :refer :all]
              [store-utils :refer :all]
              [entity :refer [to-list description->entity]]
-             [reporters :refer [set-attendee! value invalid]]
+             [reporter :refer [set-attendee! value invalid]]
              [expression-manager :refer [new-expression-manager-data
                                          manage compute]]
              entity-impl

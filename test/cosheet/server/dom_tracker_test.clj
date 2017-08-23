@@ -9,7 +9,7 @@
              [utils :refer [dissoc-in]]
              [test-utils :refer [check any as-set let-mutated]]
              [entity :as entity :refer [to-list description->entity]]
-             [reporters :as reporter :refer [new-reporter]]
+             [reporter :as reporter :refer [new-reporter]]
              [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [envs-to-list]]
              entity-impl
@@ -153,7 +153,7 @@
                               [])))))
 
 (deftest update-attending-test
-  (let [r (reporter/new-reporter)
+  (let [r (new-reporter)
         component-map {:key :a :reporter r}
         a (atom {})]
     (swap-and-act a #(-> %

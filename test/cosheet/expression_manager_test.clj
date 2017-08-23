@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
                      [task-queue :as task-queue]
-                     [reporters :as reporter]
+                     [reporter :as reporter]
                      [expression :refer [expr expr-seq expr-let cache invalid]]
                      [utils :refer :all]
                      [expression-manager :refer :all])

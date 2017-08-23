@@ -13,7 +13,6 @@
              [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [profile-and-print-reporters
                             simplify-for-print]]
-             [reporters :as reporter]
              entity-impl
              [query :refer [matching-elements]]
              [store :refer [new-element-store new-mutable-store

@@ -5,7 +5,7 @@
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
                      [test-utils :refer [check as-set]]
-                     [reporters :refer [new-reporter set-value! data-atom]]
+                     [reporter :refer [new-reporter set-value! data-atom]]
                      [expression-manager :refer [new-expression-manager-data
                                                  request compute]]
                      [expression :refer [expr expr-let cache]]
@@ -42,7 +42,7 @@
     (is (= (count-ones (trace-current fib6)) 13))))
 
 (defn deep-node [reporter]
-  (let [data (cosheet.reporters/data reporter)
+  (let [data (cosheet.reporter/data reporter)
         source (:value-source data)
         required (distinct (concat (:needed-values data)
                                    (keys (:subordinate-values data))
@@ -58,7 +58,7 @@
     (request fib6 md)
     (set-value! state 1)
     (compute md)
-    (is (= (map #(map cosheet.reporters/value %)
+    (is (= (map #(map cosheet.reporter/value %)
                 (generate-backtrace (deep-node fib6))))
         [[+ 1 1]
          [+ 3 2]

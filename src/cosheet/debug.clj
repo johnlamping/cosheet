@@ -5,7 +5,7 @@
                      [store :as store]
                      [entity :as entity]
                      [query :as query]
-                     [reporters :refer [reporter? attended? data value
+                     [reporter :refer [reporter? attended? data value
                                         valid? set-attendee!]]
                      [orderable]
                      [expression-manager :refer [current-value]]

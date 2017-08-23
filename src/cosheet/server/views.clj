@@ -17,7 +17,7 @@
     [expression-manager-test :refer [check-propagation]]
     [task-queue :refer [finished-all-tasks?]]
     [hiccup-utils :refer [dom-attributes add-attributes]]
-    [reporters :as reporter]
+    [reporter :as reporter]
     [mutable-manager :refer [current-mutable-value]]
     [state-map :refer [state-map-reset! state-map-get]]
     [debug :refer [profile-and-print-reporters]])

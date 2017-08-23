@@ -1,6 +1,6 @@
 (ns cosheet.server.dom-tracker
   (:require [clojure.data.priority-map :as priority-map]
-            (cosheet [reporters :as reporter]
+            (cosheet [reporter :as reporter]
                      [expression :refer [new-expression]]
                      [utils :refer [swap-control-return!
                                     call-with-latest-value]]

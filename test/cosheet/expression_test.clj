@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet [reporters :as reporter]
+            (cosheet [reporter :as reporter]
                      [expression :refer :all]
                      [expression-manager :refer [current-value]]
                      [debug :refer [trace-current]])

@@ -1,4 +1,4 @@
-(ns cosheet.reporters
+(ns cosheet.reporter
   (:require (cosheet [utils :refer [dissoc-in swap-returning-both!]])))
 
 (defn- check-callback [callback]

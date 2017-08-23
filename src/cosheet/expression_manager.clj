@@ -6,7 +6,7 @@
                                     swap-returning-both!
                                     swap-control-return!
                                     with-latest-value]]
-                     [reporters :as reporter]
+                     [reporter :as reporter]
                      [mutable-map :as mm])))
 
 ;;; Trivial scheduler that just runs everything and returns the

@@ -1,7 +1,7 @@
 (ns cosheet.mutable-manager-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet
-             [reporters :as reporter :refer [set-attendee! value invalid]]
+             [reporter :refer [set-attendee! value invalid]]
              [mutable-manager :refer :all])
             ; :reload
             ))

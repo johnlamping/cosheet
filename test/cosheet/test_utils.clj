@@ -10,7 +10,7 @@
                     [expression-manager :as expression-manager
                      :refer [current-value]]
                     [debug :refer [simplify-for-print]]
-                    [reporters :refer [value reporter?]]
+                    [reporter :refer [value reporter?]]
                     [store-utils :refer [add-entity]])))
 
 (def differences)

@@ -1,7 +1,7 @@
 (ns cosheet.entity-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [orderable :as orderable]
-                     [reporters :refer [set-attendee! value]]
+                     [reporter :refer [set-attendee! value]]
                      [store :refer [add-simple-element make-id
                                     new-element-store new-mutable-store
                                     track-modified-ids

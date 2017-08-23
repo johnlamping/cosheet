@@ -1,5 +1,6 @@
 (ns cosheet.mutable-manager
-  (:require (cosheet [reporters :as reporter
+  (:require (cosheet [reporter
+                      :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
                      [utils :refer [with-latest-value

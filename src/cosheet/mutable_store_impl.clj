@@ -6,7 +6,7 @@
                               get-or-make-reporter reset-manager!
                               describe-and-swap!
                               describe-and-swap-control-return!]]
-                     [reporters :as reporter
+                     [reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter]]
                      [utils :refer [call-with-latest-value

@@ -1,5 +1,5 @@
 (ns cosheet.expression
-  (:require (cosheet [reporters :as reporter])))
+  (:require (cosheet [reporter :as reporter])))
 
 ;;; Code for creating expression reporters.
 

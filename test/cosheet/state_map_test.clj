@@ -1,7 +1,7 @@
 (ns cosheet.state-map-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet
-             [reporters :as reporter :refer [set-attendee! value invalid]]
+             [reporter :refer [set-attendee! value invalid]]
              [state-map :refer :all])
             ; :reload
             ))

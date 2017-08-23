@@ -167,6 +167,10 @@
     "Change the content of the item with the  given id to be the
      specified content.")
 
+  (declare-transient-id! [this id]
+    "Declare the id to be transient. It and all its descendant elements
+     will not be written.")
+
   (can-undo? [this]
     "Return true if an undo step can be done on the store.")
 

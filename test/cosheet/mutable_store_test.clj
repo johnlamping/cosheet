@@ -70,9 +70,11 @@
 
       (let [[store1 e] (add-simple-element store element "foo")
             [store2 _] (add-simple-element store1 e :label)
-            revised-store  (update-content store2 element 88)
+            store3 (declare-transient-id store2 e)
+            revised-store (update-content store3 element 88)
             me (add-simple-element! mutable-store element "foo")
             me1 (add-simple-element! mutable-store me :label)
+            _ (declare-transient-id! mutable-store me)
             _ (update-content! mutable-store element 88)]
         (is (= (value content) (id->content revised-store element)))
         (is (= (value implicit-content)
@@ -90,6 +92,7 @@
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (undo! mutable-store)
+        (undo! mutable-store)
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
@@ -105,6 +108,7 @@
         (is (= (value tracking-store)
                (track-modified-ids modified-store)))
         (is (can-redo? mutable-store))
+        (redo! mutable-store)
         (redo! mutable-store)
         (redo! mutable-store)
         (is (can-redo? mutable-store))
@@ -126,6 +130,7 @@
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
+        (undo! mutable-store)
         (undo! mutable-store)
         (undo! mutable-store)
         (is (can-redo? mutable-store))

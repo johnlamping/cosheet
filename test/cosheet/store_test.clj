@@ -20,10 +20,13 @@
     (make-id "4") {:containers #{(make-id "1")} :content (make-id "6")}
     (make-id "5") {:subject (make-id "4") :content "bar"}
     (make-id "6") {:containers #{(make-id "4")} :content 5}
-    (make-id "7") {:subject (make-id "1") :content "second"}}
+    (make-id "7") {:subject (make-id "1") :content "second"}
+    (make-id "8") {:subject (make-id "3") :content "Bar"}}
+   #{}
    {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
-    (make-id "2") {nil [(make-id "3")]}
+    (make-id "2") {"bar" [(make-id "3")]}
+    (make-id "3") {nil [(make-id "8")]}
     (make-id "4") {nil [(make-id "5")]}}
    8
    nil))
@@ -114,7 +117,7 @@
         (reduce (fn [store id]
                   (index-in-subject (index-subject store id) id))
                 missing-store
-                (keys (:id->data missing-store)))]
+                (sort-by :id (keys (:id->data missing-store))))]
     (is (= indexed-store test-store))))
 
 (deftest index-content-test
@@ -227,16 +230,48 @@
 (deftest candidate-matching-ids-test
   (is (= (set (candidate-matching-ids test-store nil))
          #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-           (make-id "4") (make-id "5") (make-id "6") (make-id "7")}))
+           (make-id "4") (make-id "5") (make-id "6") (make-id "7")
+           (make-id "8")}))
   (is (= (set (candidate-matching-ids test-store '(1)))
          #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-           (make-id "4") (make-id "5") (make-id "6") (make-id "7")}))
+           (make-id "4") (make-id "5") (make-id "6") (make-id "7")
+           (make-id "8")}))
   (is (= (set (candidate-matching-ids test-store '(1 2)))
-         #{(make-id "0") (make-id "1") (make-id "2") (make-id "4")})))
+         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
+           (make-id "4")})))
+
+(deftest declare-transient-id-test
+  (is (= (:transient-ids test-store) #{}))
+  (let [transient-store (-> test-store
+                            (declare-transient-id (make-id "2"))
+                            (add-simple-element (make-id "1") "hi")
+                            first
+                            (declare-transient-id (make-id "7")))]
+    (is (= (:transient-ids transient-store)
+           #{(make-id "2") (make-id "7")}))
+    (is (= (all-transient-ids transient-store)
+           #{(make-id "2") (make-id "7")
+             (make-id "3") (make-id "8")}))))
 
 (deftest new-element-store-test
   (let [store (new-element-store)]
     (is (= (candidate-matching-ids store nil) nil))))
+
+(deftest serialization-test
+  (is (= test-store (data-to-store (new-element-store)
+                                   (store-to-data test-store))))
+  ;; Now try it with some items not serialized
+  (let [transient-store (-> test-store
+                            (declare-transient-id (make-id "2"))
+                            (declare-transient-id (make-id "7")))
+        smaller-store (-> test-store
+                          (remove-simple-id (make-id "8"))
+                          (remove-simple-id (make-id "3"))
+                          (remove-simple-id (make-id "2"))
+                          (remove-simple-id (make-id "7")))]
+    (is (= smaller-store
+           (data-to-store (new-element-store)
+                          (store-to-data transient-store))))))
 
 (deftest get-unique-id-number-test
   (let [s0 (new-element-store)

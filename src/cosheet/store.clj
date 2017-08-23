@@ -75,7 +75,7 @@
 (defprotocol ElementStore
   "Methods that element stores implement,
    that rely on all items being explicitly known,
-  and each having just one subject."
+   and each having just one subject."
   
   (id->subject [this id]
     "Given an item, return its subject. Assumes that the subject of an entity
@@ -107,6 +107,10 @@
   (fetch-and-clear-modified-ids [this]
     "Clear the record modified ids.
      Returns the new store, and the set of modified ids.")
+
+  (declare-transient-id [this id]
+    "Declare the id to be transient. It and all its descendant elements
+     will not be written. Returns the new store.")
 
   (store-to-data [this]
     "Convert the store to a clojure structure that can be serialized.")

@@ -223,6 +223,14 @@
          (index-content item-id)
          (add-modified-id item-id))))
 
+(defn descendant-ids [store id]
+  "Return a seq of the id and ids of all its descendant elements."
+  (cons id (mapcat #(descendant-ids store %) (id->element-ids store id))))
+
+(defn all-transient-ids [store]
+  "Return a set of all declared transient ids and their descendant elements."
+  (set (mapcat #(descendant-ids store %) (:transient-ids store))))
+
 (defn add-or-defer-triple
   ;; Utility function for read-store.
   ;; The triples may have been written out in any order, but we cannot
@@ -256,6 +264,9 @@
    ;;;   :containers, a set of the items that this item is the content
    ;;;   of. This is redundant information.
    id->data
+
+   ;;; A set of ids that have been declared transient.
+   transient-ids
    
    ;;; Index from item then label to all elements that belong to the
    ;;; item and have the label.
@@ -358,18 +369,24 @@
     [(assoc this :modified-ids #{})
      (:modified-ids this)])
 
+  (declare-transient-id [this id]
+    (assert (:id->data this))
+    (update this :transient-ids #(conj % id)))
+
   (store-to-data [this]
-    [(:next-id this)
-     (for [[id {:keys [subject content] :or {subject nil}}]
-           (seq (:id->data this))]
-       [(:id id)
-        (:id subject)
-        (cond (instance? ItemId content)
-              [:id (:id content)]
-              (instance? cosheet.orderable.Orderable content)
-              [:ord (:left content) (:right content)]
-              true
-              content)])])
+    (let [transient-ids (all-transient-ids this)]
+      [(:next-id this)
+       (for [[id {:keys [subject content] :or {subject nil}}]
+             (seq (:id->data this))
+             :when (not (transient-ids id))]
+         [(:id id)
+          (:id subject)
+          (cond (instance? ItemId content)
+                [:id (:id content)]
+                (instance? cosheet.orderable.Orderable content)
+                [:ord (:left content) (:right content)]
+                true
+                content)])]))
 
   (write-store [this stream]
     (with-open [writer (clojure.java.io/writer stream)]
@@ -406,6 +423,7 @@
 
 (defmethod new-element-store true []
   (map->ElementStoreImpl {:id->data {}
+                          :transient-ids #{}
                           :subject->label->ids {}
                           :next-id 0
                           :modified-ids nil}))

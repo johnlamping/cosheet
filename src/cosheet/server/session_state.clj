@@ -7,7 +7,9 @@
                    parse-string-as-number]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
-                   read-store write-store store-to-data data-to-store]]
+                   read-store write-store store-to-data data-to-store
+                   declare-transient-id]]
+    store-impl
     mutable-store-impl
     [store-utils :refer [add-entity]]
     [query :refer [matching-items]]
@@ -81,13 +83,15 @@
 ;;; Store management
 
 ;;; (:stores @session-info) is a map from url path to a map:
-;;;  {   :store The mutable-store.
-;;;      :agent The agent responsible for saving the store. It's state is the
-;;;             last version of the store written. We write the store by doing
-;;;             a send to this agent, so that writes don't block interaction,
-;;;             and will skip intermediate values if they get behind.
-;;;  :log-agent The agent responsible for writing log entries.
-;;;             its state is a writer opened to append to the log file.
+;;;  {        :store The mutable-store.
+;;;    :transient-id The id of the root transient item in the store.
+;;;           :agent The agent responsible for saving the store. It's state
+;;;                  is the last version of the store written. We write
+;;;                  the store by doing a send to this agent, so that
+;;;                  writes don't block interaction, and will skip
+;;;                  intermediate values if they get behind.
+;;;       :log-agent The agent responsible for writing log entries.
+;;;                  its state is a writer opened to append to the log file.
 
 (defn read-csv-reader
   "parse a reader over a csv file, turning it into a store."
@@ -126,24 +130,35 @@
                (#{"cosheet" "csv"} (second name-parts)))
           [without-suffix name (str "." (second name-parts))])))
 
+(defn add-transient-element
+  "Add the root transient element to an immutable store.
+   Return the revised store and the id of the element."
+  [store]
+  (let [[store id] (add-entity store nil '("" :transient ("" :query)))]
+    [(declare-transient-id store id) id]))
+
 (defn get-store
   "Read the store if possible; otherwise create one.
+  Return the store and the id of the transient root.
   Return a map with the store and the file-path to use for accessing it.
   (If there was a format conversion, the access path will be different from
-  the initial path.)
-  If the store can't be made, return nil."
+  the initial path.)  If the store can't be made, return nil."
   [without-suffix name suffix]
   (when (and without-suffix (has-valid-directory? without-suffix))
     (let [file-path (str without-suffix suffix)]
-      (cond (= suffix ".cosheet")
-            (try
-              (with-open [stream (clojure.java.io/input-stream file-path)]
-                (read-store (new-element-store) stream))
-              ;; We return the default starting store only if the
-              ;; default extension was asked for.
-              (catch java.io.FileNotFoundException e (starting-store name)))
-            (= suffix ".csv")
-            (read-csv file-path name)))))
+      (when-let
+        [store (cond (= suffix ".cosheet")
+                     (try
+                       (with-open [stream (clojure.java.io/input-stream
+                                           file-path)]
+                         (read-store (new-element-store) stream))
+                       ;; We return the default starting store only if the
+                       ;; default extension was asked for.
+                       (catch java.io.FileNotFoundException e
+                         (starting-store name)))
+                     (= suffix ".csv")
+                     (read-csv file-path name))]
+        (add-transient-element store)))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).
@@ -202,7 +217,8 @@
        ;; If the path is not valid, we don't want to put nil in
        ;; (:stores @session-info), as that would preclude fixing the path.
        ;; Rather, we leave (:stores @session-info) blank in that case.
-       (when-let [immutable-store (get-store without-suffix name suffix)]
+       (when-let [[immutable-store transient-id]
+                  (get-store without-suffix name suffix)]
          (let [log-stream (try (java.io.FileOutputStream.
                                 (str without-suffix ".cosheetlog") true)
                                (catch java.io.FileNotFoundException e
@@ -210,6 +226,7 @@
                log-agent (when log-stream
                            (agent (clojure.java.io/writer log-stream)))
                info {:store (new-mutable-store immutable-store)
+                     :transient-id transient-id
                      :agent (agent immutable-store)
                      :log-agent log-agent}]
            (when log-agent
@@ -225,6 +242,7 @@
 
 ;;; (:sessions @session-info) is a map from id to session state.
 ;;; Session state consists of a map
+;;;             :id  The session id identifying the client.
 ;;;      :file-path  The file path corresponding to the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
@@ -312,7 +330,7 @@
   ;; We need to close the log streams of any stores we close. But we can't
   ;; do that inside a swap!, as that may be run several times, needing to
   ;; close different stores different times. Instead, we use
-  ;; swap-control-return! to inform us which log streams need closing.
+  ;; swap-control-return! and have it inform us which log streams need closing.
   (let [writers-to-close
         (swap-control-return!
          session-info
@@ -342,6 +360,7 @@
                         client-state (create-client-state store referent-string)]
                     [(assoc-in session-info [:sessions id]
                                {:file-path (:without-suffix store-info)
+                                :id id
                                 :store store
                                 :tracker (create-tracker
                                           store client-state

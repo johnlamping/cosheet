@@ -134,7 +134,7 @@
   "Add the root transient element to an immutable store.
    Return the revised store and the id of the element."
   [store]
-  (let [[store id] (add-entity store nil '("" :transient ("" :query)))]
+  (let [[store id] (add-entity store nil '("" :transient (anything :query)))]
     [(declare-transient-id store id) id]))
 
 (defn get-store
@@ -257,7 +257,13 @@
 ;;;                            This keeps us from repeating an action if the
 ;;;                            client gets impatient and repeats actions while
 ;;;                            we are working on them.
-;;;               :alternate   Either nil or a map indicating an alternate
+;;;            :batch-editing  If true, we are batch editing, and showing
+;;;                            the batch edit window, rather than whatever
+;;;                            referent says we should show.
+;;;   :selected-batch-edit-id  The id, if any, of the selected item in batch
+;;;                            editing query. It will be shown in the batch
+;;;                            editing subwindow.
+;;;                :alternate  Either nil or a map indicating an alternate
 ;;;                            interpretation of the last command. the map
 ;;;                            contains
 ;;;                     :new-store  The state of the immutable store after
@@ -287,14 +293,17 @@
                     :referent referent
                     :subject-referent subject-ref
                     :last-action nil
+                    :batch-editing false
+                    :selected-batch-edit-id nil
                     :alternate nil
                     :in-sync false})))
 
 (defn create-tracker
-  [store client-state manager-data selector-string]
+  [store transient-id client-state manager-data selector-string]
   (let [selector-category (when selector-string
                             (string->referent selector-string))
-        definition [DOM-for-client-R store client-state selector-category]
+        definition [DOM-for-client-R store transient-id client-state
+                    selector-category]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println "created tracker" (simplify-for-print definition))
@@ -363,7 +372,8 @@
                                 :id id
                                 :store store
                                 :tracker (create-tracker
-                                          store client-state
+                                          store (:transient-id store-info)
+                                          client-state
                                           manager-data selector-string)
                                 :client-state client-state})
                      id])))]

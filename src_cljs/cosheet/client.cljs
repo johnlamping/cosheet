@@ -69,7 +69,8 @@
                              "add-row" :add-row
                              "add-column" :add-column
                              "delete-column" :delete-column
-                             "delete-row" :delete-row}
+                             "delete-row" :delete-row
+                             "batch-edit" :batch-edit}
                            id)
         selection @selected]
     (.log js/console (str "menu click " id))

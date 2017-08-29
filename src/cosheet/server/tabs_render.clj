@@ -163,13 +163,18 @@
                                   hierarchy)]
           (let [virtual-tab (virtual-tab-DOM
                              subject-referent hierarchy inherited)]
-            (into [:div {:class "tabs-holder"}]
-                  ;; We list the tabs in reverse order, so the logically first
-                  ;; tab will have priority in the stacking order.
-                  ;; Then in the style, we say to lay them out in reverse
-                  ;; row order.
-                  ;; We put an empty div at the end, so clicks beyond the
-                  ;; virtual tab won't be referred to the virtual tab, which
-                  ;; would otherwise be the closest element.
-                  (concat [[:div] virtual-tab] (reverse doms)))))))))
+            [:div {:class "tabs-wrapper"}
+             [:div#batch-edit.tool
+              [:img {:src "../icons/edit.gif"}]
+              [:div.tooltip "batch edit (C-B)"]]
+             [:div.toolgap]
+             (into [:div {:class "tabs-holder"}]
+                   ;; We list the tabs in reverse order, so the logically first
+                   ;; tab will have priority in the stacking order.
+                   ;; Then in the style, we say to lay them out in reverse
+                   ;; row order.
+                   ;; We put an empty div at the end, so clicks beyond the
+                   ;; virtual tab won't be referred to the virtual tab, which
+                   ;; would otherwise be the closest element.
+                   (concat [[:div] virtual-tab] (reverse doms)))]))))))
 

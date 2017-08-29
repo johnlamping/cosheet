@@ -138,9 +138,14 @@ body {
     flex-direction: column;
 }
 
+.tabs-wrapper {
+    display: block;
+}
+
 .tabs-holder, .tab-sequence {
+    vertical-align: bottom;
     flex: none;
-    display: flex;
+    display: inline-flex;
     align-items: stretch;
     z-index: 1;  /* Make the ::before and ::after borders go in front */
     position:relative;  /* Make the z-index effective */
@@ -151,7 +156,6 @@ body {
 }
 
 .tabs-holder {
-    margin-bottom: 2px;
     margin-left: 3px; /* For left end of first tab */
 }
 

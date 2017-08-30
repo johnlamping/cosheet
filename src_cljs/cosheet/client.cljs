@@ -73,12 +73,14 @@
                              "batch-edit" :batch-edit}
                            id)
         selection @selected]
-    (.log js/console (str "menu click " id))
+    (.log js/console (str "menu click " id
+                          " with selection " (when selection (.-id selection))))
     (cond local-command
           (apply (first local-command) (rest local-command))
           keyword
           (request-action [keyword])
-          (and contextual-keyword selection)
+          (and contextual-keyword
+               (or selection (= contextual-keyword :batch-edit)))
           (do (when (= contextual-keyword :expand) (open-expand-popup))
               (request-action [contextual-keyword (.-id selection)])))))
 

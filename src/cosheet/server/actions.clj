@@ -224,7 +224,7 @@
     (when (referent? referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
-      (let [items (apply concat (instantiate-referent referent store))
+      (let [items (instantiate-to-items referent store)
             item (first items)
             [_ subject-ref] (referent->exemplar-and-subject referent)
             subject-ref (or subject-ref
@@ -241,18 +241,28 @@
                  selector-category
                  (str "&selector=" (referent->string selector-category)))}))))
 
-(defn do-selected [session-state store arguments attributes]
-  (cond
-    (= (:special arguments) :tab)
-    (let [referent (:referent arguments)]
-      (state-map-reset! (:client-state session-state)
-                        :referent referent)
-      {:store store
-       :set-url (str (:url-path session-state)
-                     "?referent=" (referent->string referent))})
-    (= (:special arguments) :new-tab)
-    (do-set-content
-     store (:target attributes) (into attributes {:from "" :to ""}))))
+(defn do-selected [store arguments attributes]
+  (let [referent (:referent arguments)
+        client-state (:client-state (:session-state arguments))]
+    (cond
+      (= (:special arguments) :tab)
+      (do (state-map-reset! client-state :referent referent)
+          {:store store
+           :set-url (str (:url-path (:session-state arguments))
+                         "?referent=" (referent->string referent))})
+      (= (:special arguments) :new-tab)
+      (do-set-content
+       store (:target attributes) (into attributes {:from "" :to ""}))
+      (and (state-map-get-current-value client-state :batch-editing)
+           (= (:selector-category attributes) :batch-query))
+      (let [items (instantiate-to-items referent store)]
+        (state-map-reset! client-state :selected-batch-edit-id
+                          (:item-id (first items)))))))
+
+(defn do-batch-edit
+  [store arguments attributes]
+  (let [client-state (:client-state (:session-state arguments))]
+    (state-map-reset! client-state :batch-editing true)))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client
@@ -299,7 +309,8 @@
     :delete-column [do-delete :delete-column]
     :set-content [do-set-content :target]
     :expand [do-expand :target]
-    :selected [do-selected :selected]}
+    :selected [do-selected :target]
+    :batch-edit [do-batch-edit :target]}
    action))
 
 (defn broad-alternate-text
@@ -386,14 +397,10 @@
                                            (map concat (seq client-args)))))
           (println "arguments: " (simplify-for-print
                                   (dissoc arguments :session-state)))
+          (println "attributes: " (simplify-for-print dom-attributes))
           (let [[arguments alternate-arguments text] (alternate-arguments
                                                       session-state action-type
                                                       arguments dom-attributes)
-                ;; do-selected gets the session-state in addition.
-                ;; TODO: Have it get that from the arguments.
-                handler (if (= action-type :selected)
-                          (partial handler session-state)
-                          handler)
                 result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
                           handler arguments dom-attributes)]

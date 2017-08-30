@@ -28,9 +28,11 @@
   (let [row-condition (list (item-referent query-item) :row-condition)]
     (if (= (:id query-item) (:id selected-batch-item))
       (union-referent
-       [;; All rows matching the query
+       [;; The item, itself.
+        (item-referent query-item)
+        ;; All rows matching the query.
         (top-level-items-referent query-item)
-        ;; All table conditions matching the query
+        ;; All table conditions matching the query.
         (query-referent row-condition)])
       (when-let [subject (entity/subject selected-batch-item)]
         (let [subject-referent (selected-batch-referent query-item subject)
@@ -62,18 +64,18 @@
                               ;; items, instead.
                               (= query-item selected-batch-item)
                               (add-inherited-attribute
-                               [[#{:content}
-                                 {:delete
-                                  {:referent
-                                   (top-level-items-referent query-item)}}]]))
-        selected-referent (selected-batch-referent
-                           query-item selected-batch-item)]
+                               [#{:content}
+                                {:delete
+                                 {:referent
+                                  (top-level-items-referent query-item)}}]))]
     (expr-let [query-dom (must-show-label-item-DOM-R
                           query-item nil inherited-for-query)
-               batch-dom (if selected-referent
+               batch-dom (if selected-batch-item
                            (must-show-label-item-DOM-R
-                            selected-batch-item selected-referent nil
-                            inherited-for-batch)
+                            selected-batch-item
+                            (selected-batch-referent
+                             query-item selected-batch-item)
+                            nil inherited-for-batch)
                            [:div])]
       [:div {:class "batch-holder"}
        (add-attributes query-dom {:class "batch-query"})

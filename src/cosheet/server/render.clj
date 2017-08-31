@@ -236,7 +236,7 @@
           (batch-edit-DOM-R query
                             (when selected-valid
                               (description->entity selected-id store))
-                            starting-inherited)))
+                            store starting-inherited)))
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)
              immutable-item (call-dependent-on-id

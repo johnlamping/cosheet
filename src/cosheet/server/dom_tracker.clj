@@ -253,8 +253,10 @@
               (assert (= (:definition stored-map)
                          (:definition subcomponent))
                       (str "differing definitions for " key
-                           "\ndom" (:definition subcomponent)
-                           "\nstored" (:definition stored-map))))))))))
+                           "\ndom" (simplify-for-print
+                                    (:definition subcomponent))
+                           "\nstored" (simplify-for-print
+                                       (:definition stored-map)))))))))))
 
 (defn update-next-version
   "Increment the version number of the data, returning the updated data

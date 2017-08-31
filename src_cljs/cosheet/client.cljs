@@ -59,7 +59,8 @@
                         [set-selector-interpretation :broad]}
                        id)
         keyword ({"undo" :undo
-                  "redo" :redo}
+                  "redo" :redo
+                  "quit-batch-edit" :quit-batch-edit}
                  id)
         contextual-keyword ({"expand" :expand
                              "add-twin" :add-twin
@@ -73,8 +74,7 @@
                              "batch-edit" :batch-edit}
                            id)
         selection @selected]
-    (.log js/console (str "menu click " id
-                          " with selection " (when selection (.-id selection))))
+    (.log js/console (str "menu click " id))
     (cond local-command
           (apply (first local-command) (rest local-command))
           keyword
@@ -82,7 +82,8 @@
           (and contextual-keyword
                (or selection (= contextual-keyword :batch-edit)))
           (do (when (= contextual-keyword :expand) (open-expand-popup))
-              (request-action [contextual-keyword (.-id selection)])))))
+              (request-action [contextual-keyword
+                               (when selection (.-id selection))])))))
 
 (defn alternate-interpretation-click-handler
   [event]

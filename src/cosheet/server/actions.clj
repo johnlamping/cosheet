@@ -255,9 +255,12 @@
        store (:target attributes) (into attributes {:from "" :to ""}))
       (and (state-map-get-current-value client-state :batch-editing)
            (= (:selector-category attributes) :batch-query))
-      (let [items (instantiate-to-items referent store)]
+      (let [item (let [item (first (instantiate-to-items referent store))]
+                   (if (and item (seq (matching-elements :tag item)))
+                     (subject item)
+                     item))]
         (state-map-reset! client-state :selected-batch-edit-id
-                          (:item-id (first items)))))))
+                          (:item-id item))))))
 
 (defn do-batch-edit
   [store arguments attributes]
@@ -390,7 +393,7 @@
                       (assoc :target-key target-key
                              :session-state session-state))]
     (if handler
-      (if dom-arguments
+      (if (or dom-arguments (= action-type :batch-edit))
         (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
@@ -446,6 +449,11 @@
   (redo! mutable-store)
   nil)
 
+(defn do-quit-batch-edit
+  [mutable-store session-state]
+  (let [client-state (:client-state session-state)]
+    (state-map-reset! client-state :batch-editing false)))
+
 (defn do-action
   [mutable-store session-state action]
   (let [[action-type & additional-args] action]
@@ -453,6 +461,7 @@
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo
+                       :quit-batch-edit do-quit-batch-edit
                        :alternate do-alternate-contextual-action
                        nil)]
       (do (println "command: " (map simplify-for-print action))

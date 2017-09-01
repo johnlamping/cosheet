@@ -17,46 +17,29 @@
   [query-item]
   (query-referent (list (item-referent query-item) :top-level)))
 
+(defn query-items-referent
+  [query-item]
+  (union-referent
+   [;; The item, itself.
+    (item-referent query-item)
+    ;; All rows matching the query.
+    (top-level-items-referent query-item)
+    ;; All table conditions matching the query.
+    (query-referent (list (item-referent query-item) :row-condition))]))
+
 (defn selected-batch-referent
   "Return the referent for the selected batch item and everything affected
-  by it."
-  [query-item selected-batch-item]
-  (let [row-condition (list (item-referent query-item) :row-condition)]
-    (if (= query-item selected-batch-item)
-      (union-referent
-       [;; The item, itself.
-        (item-referent query-item)
-        ;; All rows matching the query.
-        (top-level-items-referent query-item)
-        ;; All table conditions matching the query.
-        (query-referent row-condition)])
-      (when-let [subject (when selected-batch-item
-                           (entity/subject selected-batch-item))]
-        (let [subject-referent (selected-batch-referent query-item subject)
-              referent (elements-referent (item-referent selected-batch-item)
-                                          subject-referent)]
-          (if (= subject query-item)
-            (union-referent [referent
-                             ;; All table headers where the row condition
-                             ;; matches the query and the header matches the
-                             ;; selected batch item.
-                             (elements-referent
-                              (list (item-referent selected-batch-item) :column)
-                              (query-referent
-                               (list nil :table row-condition)))])
-            referent))))))
-
-(defn selected-batch-non-header-referent
-  "Return the referent for every non-header affected by a selected batch item."
-  [query-item selected-batch-item]
-  (let [row-condition (list (item-referent query-item) :row-condition)]
-    (if (= (:id query-item) (:id selected-batch-item))
-      (top-level-items-referent query-item)
-      (when-let [subject (entity/subject selected-batch-item)]
-        (let [subject-referent (selected-batch-non-header-referent
-                                query-item subject)]
-          (elements-referent (item-referent selected-batch-item)
-                             subject-referent))))))
+  by it, given the query item and a referent for everything relevant
+  to the query."
+  [selected-batch-item query-item query-referent]
+  (if (= query-item selected-batch-item)
+    query-referent
+    (when-let [subject (when selected-batch-item
+                         (entity/subject selected-batch-item))]
+      (let [subject-referent (selected-batch-referent
+                              subject query-item query-referent)]
+        (elements-referent (item-referent selected-batch-item)
+                           subject-referent)))))
 
 (defn batch-edit-DOM-R
   "Return the DOM for batch editing, given the item specifying the query,
@@ -71,10 +54,12 @@
          remaining-dom
          (when selected-batch-item
            (let [selected-referent (selected-batch-referent
-                                    query-item selected-batch-item)
+                                    selected-batch-item query-item
+                                    (query-items-referent query-item))
                  selected-non-header-referent
-                 (selected-batch-non-header-referent
-                  query-item selected-batch-item)
+                 (selected-batch-referent
+                  selected-batch-item query-item
+                  (top-level-items-referent query-item))
                  inherited-for-batch
                  (cond->
                      (-> inherited
@@ -94,6 +79,7 @@
                  [batch-dom (must-show-label-item-DOM-R
                              selected-batch-item selected-referent nil
                              inherited-for-batch)
+                  to-print (entity/to-list selected-batch-item)
                   count-dom
                   (call-dependent-on-id
                    store nil

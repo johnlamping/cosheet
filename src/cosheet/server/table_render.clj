@@ -597,7 +597,7 @@
                                  (assoc
                                   inherited
                                   :subject-referent (item-referent
-                                                     table-item)
+                                                     row-condition-item)
                                   :template '(anything-immutable
                                               (:column :non-semantic)
                                               (:non-semantic :non-semantic)))
@@ -606,7 +606,7 @@
               [[row-template row-items] (row-template-and-items-R
                                          store row-condition-item)
                columns (expr order-items-R
-                         (entity/label->elements table-item :column))
+                         (entity/label->elements row-condition-item :column))
                hierarchy (hierarchy-by-all-elements-R columns)
                headers (table-header-DOM-R
                         hierarchy rows-referent headers-inherited)

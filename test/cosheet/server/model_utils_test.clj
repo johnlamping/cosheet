@@ -43,7 +43,7 @@
         headers (matching-elements
                  '(nil (:column :non-semantic)
                        (:non-semantic :non-semantic))
-                 table)]
+                 row-condition)]
     (is (= (count tabs) 1))
     (is (= (immutable-semantic-to-list tab) '("" "there")))
     (is (check (map immutable-semantic-to-list (order-items-R rows))

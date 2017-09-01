@@ -15,6 +15,8 @@
                                virtual-referent referent?]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R]]
+             
+             [model-utils :refer [new-tab-elements]]
              [tabs-render :refer :all])
              ; :reload
             ))
@@ -59,18 +61,6 @@
         t2-bar (first (current-value (matching-elements "bar" t2)))
         t3-baz (first (current-value (matching-elements "baz" t3)))
         t3-bletch (first (current-value (matching-elements "bletch" t3)))
-        new-tab-elements '((:tab :non-semantic)
-                           (""
-                            (:non-semantic :non-semantic)
-                            (:tab-topic :non-semantic)
-                            (:table :non-semantic)
-                            (anything (??? :tag)
-                                      (:row-condition :non-semantic)
-                                      (:non-semantic :non-semantic))
-                            (anything-immutable
-                             (??? :tag)
-                             (:column :non-semantic)
-                             (:non-semantic :non-semantic))))
         virtual-tab-referent (fn [elements adjacent]
                                (virtual-referent
                                 (cons "" elements)

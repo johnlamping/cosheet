@@ -21,6 +21,7 @@
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
     [model-utils :refer [starting-store add-table first-tab-R
                          specialize-template]]
+    [format-convert :refer [convert-to-current]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
                       instantiate-to-items]]
@@ -159,7 +160,7 @@
                          (starting-store name)))
                      (= suffix ".csv")
                      (read-csv file-path name))]
-        (add-transient-element store)))))
+        (add-transient-element (convert-to-current store))))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).

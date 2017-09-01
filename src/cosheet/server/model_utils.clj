@@ -91,16 +91,18 @@
         (:non-semantic :non-semantic)
         (:tab-topic :non-semantic)
         (:table :non-semantic)
-        ~(apply list (concat ['anything]
-                             row-condition-elements
-                             ['(:row-condition :non-semantic)
-                              '(:non-semantic :non-semantic)])))
-      (map (fn [header-condition-elements]
-             (apply list (concat ['anything-immutable]
-                                 header-condition-elements
-                                 ['(:column :non-semantic)
-                                  '(:non-semantic :non-semantic)])))
-           header-conditions-elements))))
+        ~(apply list (concat
+                      ['anything]
+                      row-condition-elements
+                      (map (fn [header-condition-elements]
+                             (apply list (concat
+                                          ['anything-immutable]
+                                          header-condition-elements
+                                          ['(:column :non-semantic)
+                                           '(:non-semantic :non-semantic)])))
+                           header-conditions-elements)
+                      ['(:row-condition :non-semantic)
+                       '(:non-semantic :non-semantic)]))))))
 
 (def new-tab-elements
   (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))

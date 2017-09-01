@@ -38,14 +38,13 @@
   (let [age-as-list `(39 ("high"
                           ("confidence" :tag (~o1 :order :non-semantic))
                           (~o2 :order :non-semantic)))
-        age (let-mutated [age age-as-list] age)]
+        age (let-mutated [age age-as-list] age)
+        store (:store age)]
     (let [high (first (current-value (matching-elements "high" age)))
           confidence (first (current-value
                              (matching-elements "confidence" high)))]
-      (println "ZZZ "(simplify-for-print high))
+      ;; TODO: Add some tests of the results here.
       (current-value
-       (expr-let [dom (batch-edit-DOM-R age nil base-inherited)]
-         (println "XXX" (simplify-for-print dom))))
+       (expr-let [dom (batch-edit-DOM-R age nil store base-inherited)]))
       (current-value
-       (expr-let [dom (batch-edit-DOM-R age high base-inherited)]
-         (println "YYY" (simplify-for-print dom)))))))
+       (expr-let [dom (batch-edit-DOM-R age high store base-inherited)])))))

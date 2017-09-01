@@ -21,8 +21,7 @@
           (fn [store column]
             (first (add-entity (remove-entity-by-id store (:item-id column))
                                (:item-id condition)
-                               (concat (to-list column)
-                                       '[(:non-semantic :non-semantic)]))))
+                               (to-list column))))
           store columns)))
      (first (add-entity store nil '(1 :format)))
      tables)))

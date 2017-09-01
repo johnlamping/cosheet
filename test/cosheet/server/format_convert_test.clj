@@ -37,10 +37,12 @@
                         (:row-condition :non-semantic))
                        (~'anything ("single" :tag (~o1 :order :non-semantic))
                         (~o1 :order :non-semantic)
-                        (:column :non-semantic))
+                        (:column :non-semantic)
+                        (:non-semantic :non-semantic))
                        (~'anything ("name" :tag (~o1 :order :non-semantic))
                         (~o2 :order :non-semantic)
-                        (:column :non-semantic)))
+                        (:column :non-semantic)
+                        (:non-semantic :non-semantic)))
         table-list-1 `("table"
                        :table
                        (~'anything (~'anything ("age" :tag))

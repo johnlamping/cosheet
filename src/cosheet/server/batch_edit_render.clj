@@ -41,6 +41,55 @@
         (elements-referent (item-referent selected-batch-item)
                            subject-referent)))))
 
+(defn batch-edit-stack-DOM-R
+  "Return the dom for the edit stack part of the batch edit display."
+  [query-item selected-batch-item store inherited]
+  (expr-let
+      [doms
+       (when selected-batch-item
+         (let [selected-referent (selected-batch-referent
+                                  selected-batch-item query-item
+                                  (query-items-referent query-item))
+               selected-non-header-referent
+               (selected-batch-referent
+                selected-batch-item query-item
+                (top-level-items-referent query-item))
+               inherited-for-batch
+               (cond->
+                   (-> inherited
+                       (assoc :selector-category :batch-selected)
+                       ;; Make its doms have different keys.
+                       (update :key-prefix #(conj % :batch)))
+                 ;; If the selected item is the whole query,
+                 ;; then a delete could remove the whole condition
+                 ;; of a table. Have it just remove top level
+                 ;; items, instead.
+                 (= query-item selected-batch-item)
+                 (add-inherited-attribute
+                  [#{:content}
+                   {:delete
+                    {:referent selected-non-header-referent}}]))]
+           (expr-let
+               [batch-dom (must-show-label-item-DOM-R
+                           selected-batch-item selected-referent nil
+                           inherited-for-batch)
+                to-print (entity/to-list selected-batch-item)
+                count-dom
+                (call-dependent-on-id
+                 store nil
+                 (fn [store]
+                   (let [total (count (instantiate-to-items
+                                       selected-referent store))
+                         non-header (count (instantiate-to-items
+                                            selected-non-header-referent
+                                            store))]
+                     [:div {:class "batch-query-match-counts"}
+                      (str non-header " data matches. "
+                           (- total non-header 1) " header matches.")])))]
+             [count-dom
+              (add-attributes batch-dom {:class "batch-selected"})])))]
+    (into [:div {:class "batch-stack-wrapper"}] doms)))
+
 (defn batch-edit-DOM-R
   "Return the DOM for batch editing, given the item specifying the query,
   and the item, if any, giving the sub-part of the query to operate on
@@ -51,53 +100,10 @@
     (expr-let
         [query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)
-         stack-dom
-         (when selected-batch-item
-           (let [selected-referent (selected-batch-referent
-                                    selected-batch-item query-item
-                                    (query-items-referent query-item))
-                 selected-non-header-referent
-                 (selected-batch-referent
-                  selected-batch-item query-item
-                  (top-level-items-referent query-item))
-                 inherited-for-batch
-                 (cond->
-                     (-> inherited
-                         (assoc :selector-category :batch-selected)
-                         ;; Make its doms have different keys.
-                         (update :key-prefix #(conj % :batch)))
-                   ;; If the selected item is the whole query,
-                   ;; then a delete could remove the whole condition
-                   ;; of a table. Have it just remove top level
-                   ;; items, instead.
-                   (= query-item selected-batch-item)
-                   (add-inherited-attribute
-                    [#{:content}
-                     {:delete
-                      {:referent selected-non-header-referent}}]))]
-             (expr-let
-                 [batch-dom (must-show-label-item-DOM-R
-                             selected-batch-item selected-referent nil
-                             inherited-for-batch)
-                  to-print (entity/to-list selected-batch-item)
-                  count-dom
-                  (call-dependent-on-id
-                   store nil
-                   (fn [store]
-                     (let [total (count (instantiate-to-items
-                                         selected-referent store))
-                           non-header (count (instantiate-to-items
-                                              selected-non-header-referent
-                                              store))]
-                       [:div {:class "batch-query-match-counts"}
-                        (str non-header " data matches. "
-                             (- total non-header 1) " header matches.")])))]
-               [count-dom
-                (add-attributes batch-dom {:class "batch-selected"})])))]
+         stack-dom (batch-edit-stack-DOM-R
+                    query-item selected-batch-item store inherited)]
       [:div {:class "batch-holder"}
        [:div#quit-batch-edit {:class "quit-batch-edit tool"}
         "Return to tabs"]
        (add-attributes query-dom {:class "batch-query"})
-       (into
-        [:div {:class "batch-stack-wrapper"}]
-        stack-dom)])))
+       stack-dom])))

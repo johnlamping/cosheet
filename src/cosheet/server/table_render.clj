@@ -242,7 +242,7 @@
       (if (empty? (:child-nodes node))
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
-           content example-elements inherited-down))
+           content example-elements false inherited-down))
         (condition-elements-DOM-R example-elements true inherited-down)))))
 
 (defn table-header-child-info

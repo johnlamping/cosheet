@@ -125,11 +125,11 @@
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
   make a dom that includes any necessary labels wrapping the item.
-  inherited should be half way to the children."
-  [dom label-elements must-show-empty-labels inherited]
+  inherited should be half way to the children." 
+  [dom label-elements must-show-empty-label inherited]
   (if (not (empty? label-elements))
     (non-empty-labels-wrapper-DOM-R dom label-elements inherited)
-    (let [dom (if (not must-show-empty-labels)
+    (let [dom (if (not must-show-empty-label)
                 dom
                 [:div {:class "horizontal-tags-element narrow"}
                  (add-attributes
@@ -382,7 +382,7 @@
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of elements, all of the same item.
   Inherited should be half way to the children."
-  [content elements inherited]
+  [content elements must-show-empty-label inherited]
   (expr-let [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [labels (seq (mapcat (fn [tags element] (when (seq tags) [element]))
                               tags elements))
@@ -392,10 +392,8 @@
       (expr-let [content-and-elements-dom
                  (item-content-and-non-label-elements-DOM-R
                   content non-labels inherited)]
-        (if labels
-          (labels-wrapper-DOM-R
-           content-and-elements-dom labels false inherited)
-          content-and-elements-dom)))))
+        (labels-wrapper-DOM-R
+           content-and-elements-dom labels must-show-empty-label inherited)))))
 
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
@@ -421,23 +419,21 @@
        referent)))))
 
 (defn item-DOM-impl-R
-   "Make a dom for an item or exemplar of a group of items.
+  "Make a dom for an item or exemplar of a group of items.
    If the item is a tag, the caller is responsible for tag formatting."
   [item referent excluded-elements must-show-empty-label inherited]
-  (expr-let [labels (entity/label->elements item :tag)]
-    (let [labels (remove (set excluded-elements) labels)
-          excluded (concat labels excluded-elements)
-          inherited-for-children (transform-inherited-for-children
-                                  inherited
-                                  (conj (:key-prefix inherited) (:item-id item))
-                                  referent)]
-      (expr-let [dom (item-without-labels-DOM-R
-                      item referent excluded inherited)]
-        (labels-wrapper-DOM-R
-         dom labels must-show-empty-label
+  (println
+   "Generating DOM for"
+   (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
+  (expr-let [content (entity/content item)
+             elements (semantic-elements-R item)]
+    (item-content-and-elements-DOM-R
+     content (remove (set excluded-elements) elements) must-show-empty-label
+     (-> inherited
+         (transform-inherited-for-children
+          (conj (:key-prefix inherited) (:item-id item)) referent)
          (add-inherited-attribute
-          inherited-for-children
-          [#{:label} #{:content} {:expand {:referent referent}}]))))))
+          [#{:label} #{:content} {:expand {:referent referent}}])))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

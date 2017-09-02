@@ -51,7 +51,7 @@
     (expr-let
         [query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)
-         remaining-dom
+         stack-dom
          (when selected-batch-item
            (let [selected-referent (selected-batch-referent
                                     selected-batch-item query-item
@@ -94,8 +94,10 @@
                              (- total non-header 1) " header matches.")])))]
                [count-dom
                 (add-attributes batch-dom {:class "batch-selected"})])))]
-      (into [:div {:class "batch-holder"}
-             [:div#quit-batch-edit {:class "quit-batch-edit tool"}
-              "Return to tabs"]
-             (add-attributes query-dom {:class "batch-query"})]
-            remaining-dom))))
+      [:div {:class "batch-holder"}
+       [:div#quit-batch-edit {:class "quit-batch-edit tool"}
+        "Return to tabs"]
+       (add-attributes query-dom {:class "batch-query"})
+       (into
+        [:div {:class "batch-stack-wrapper"}]
+        stack-dom)])))

@@ -364,7 +364,7 @@
                       (broad-alternate-text selector-category)]
                      [narrow-arguments arguments
                       (narrow-alternate-text selector-category)])]
-               (println "computed alternate" (simplify-for-print result))
+               (println "computed alternate")
                result))))))
    [arguments nil nil]))
 

@@ -2,8 +2,8 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet
-             [store :refer [make-id]]
-             [entity :as entity  :refer [to-list]]
+             [store :refer [make-id new-element-store]]
+             [entity :as entity  :refer [to-list description->entity]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
              [debug :refer [envs-to-list simplify-for-print]]
@@ -124,11 +124,16 @@
                             {:class "bar"}
                             {:other "hi"}
                             [#{:label} {:b 2}]
-                            [#{:label :optional} {:more "there"}]]
-               :x 9})
+                            [#{:label :optional} {:more "there"}]
+                            [(make-id "a") {:item "yup"}]
+                            [(make-id "a") #{:label :optional} {:item "nope"}]
+                            [(make-id "b") {:item "nope"}]]
+               :x 9}
+              (description->entity (make-id "a") (new-element-store)))
              {:class "foo bar"
               :other "hi"
-              :more "there"})))
+              :more "there"
+              :item "yup"})))
 
 (deftest content-attributes-test
   (is (check (content-attributes

@@ -3,6 +3,7 @@
                      [utils :refer [multiset multiset-to-generating-values
                                     replace-in-seqs assoc-if-non-empty]]
                      [debug :refer [simplify-for-print]]
+                     [store :refer [StoredItemDescription]]
                      [query :refer [matching-elements]]
                      [orderable :as orderable]
                      [hiccup-utils
@@ -64,7 +65,8 @@
 ;;;       A map of attribute->value pairs to add
 ;;;   (<step>* <attributes>)
 ;;;      Add the attributes to descendant doms following the sequence of steps, 
-;;;      where <step> is a set that can contain any of
+;;;      where <step> is either the id of an item to which the rest of the
+;;       descriptor should apply, or a set that can contain any of
 ;;;         :label
 ;;;            Apply to label elements
 ;;;         :element
@@ -73,8 +75,10 @@
 ;;;            Apply to the content of the item (which may be the overall item)
 ;;;         :recursive
 ;;;            Apply to any repetition of the path
-;;;         : optional
+;;;         :optional
 ;;;            May be skipped
+;;;     NOTE: Currently, if step is an id, the rest of the descriptor must be
+;;;           only a map.
 
 (defn add-inherited-attribute
   "Add an attribute, specified with a descriptor, to inherited."
@@ -100,7 +104,7 @@
 
 (defn advance-along-descriptor
   "Advance one step along an inherited descriptor. Return a seq of possible
-  successor descriptors"
+  successor descriptors."
   [descriptor motion]
   (when (sequential? descriptor)
     (let [step (first descriptor)
@@ -108,12 +112,14 @@
           following (if (empty? (rest remainder))
                       (first remainder)
                       remainder)]
-      (concat (when (step motion)
-                [(if (:recursive step)
-                   (vec (concat [(conj step :optional)] remainder))
-                   following)])
-              (when (:optional step)
-                (advance-along-descriptor following motion))))))
+      (if (set? step)
+        (concat (when (step motion)
+                  [(if (:recursive step)
+                     (vec (concat [(conj step :optional)] remainder))
+                     following)])
+                (when (:optional step)
+                  (advance-along-descriptor following motion)))
+        descriptor))))
 
 (defn transform-descriptors
   "Transform the descriptors as appropriate
@@ -145,22 +151,27 @@
   "Return a map of all attributes specified by inherited for the current dom.
   The attributes are specified as in the comment at
   transform-inherited-attribute."
-  [inherited]
-  (reduce (fn [attributes descriptor]
-            (cond
-              (map? descriptor)
-              (into-attributes attributes descriptor)
-              (every? :optional (butlast descriptor))
-              (into-attributes attributes (last descriptor))
-              true
-              attributes))
-          {} (:attributes inherited)))
+  [inherited item]
+  (let [id (:item-id item)]
+    (reduce (fn [attributes descriptor]
+              (cond
+                (map? descriptor)
+                (into-attributes attributes descriptor)
+                (satisfies? StoredItemDescription (first descriptor))
+                (cond-> attributes (and (= (first descriptor) id)
+                                        (= (count descriptor) 2))
+                        (into-attributes (last descriptor)))
+                (every? :optional (butlast descriptor))
+                (into-attributes attributes (last descriptor))
+                true
+                attributes))
+            {} (:attributes inherited))))
 
 (defn content-attributes
-  "Return the attributes for the current item or content."
+  "Return the attributes for the content of the current item."
   [inherited]
   (inherited-attributes
-   (transform-inherited-attributes inherited :content)))
+   (transform-inherited-attributes inherited :content) nil))
 
 (defn item-or-content-attributes
   "Return the attributes for the current item or content."
@@ -169,7 +180,8 @@
    {:attributes
     (concat (:attributes inherited)
             (:attributes (transform-inherited-attributes
-                          inherited :content)))}))
+                          inherited :content)))}
+   nil))
 
 (defn transform-inherited-for-children
   "Given an inherited, modify it to apply to children of the item.

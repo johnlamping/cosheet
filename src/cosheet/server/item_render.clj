@@ -411,7 +411,7 @@
        (transform-inherited-for-children
         inherited (conj (:key-prefix inherited) (:item-id item))
         referent))
-      (inherited-attributes inherited)))))
+      (inherited-attributes inherited item)))))
 
 (defn item-DOM-impl-R
   "Make a dom for an item or exemplar of a group of items.
@@ -430,7 +430,7 @@
            (conj (:key-prefix inherited) (:item-id item)) referent)
           (add-inherited-attribute
            [#{:label} #{:content} {:expand {:referent referent}}])))
-      (inherited-attributes inherited))))
+      (inherited-attributes inherited item))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

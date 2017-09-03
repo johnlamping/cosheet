@@ -105,14 +105,6 @@
                     ordered-labels tags
                     (add-inherited-attribute inherited {:class "tag"}))))
 
-(defn wrapped-element-DOM
-  "Given a label stack and an inner dom, make a wrapper for the two."
-  [labels-dom inner-dom inherited]
-  (-> [:div {:class "wrapped-element tag"}
-       labels-dom
-       [:div {:class "indent-wrapper tag"} inner-dom]]
-      (add-attributes (inherited-attributes inherited))))
-
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item.
@@ -120,7 +112,9 @@
   [inner-dom label-elements inherited]
   (expr-let [stack (label-stack-DOM-R
                     label-elements (transform-inherited-for-labels inherited))]
-    (wrapped-element-DOM stack inner-dom inherited)))
+    [:div {:class "wrapped-element tag"}
+       stack
+       [:div {:class "indent-wrapper tag"} inner-dom]]))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -129,16 +123,15 @@
   [dom label-elements must-show-empty-label inherited]
   (if (not (empty? label-elements))
     (non-empty-labels-wrapper-DOM-R dom label-elements inherited)
-    (let [dom (if (not must-show-empty-label)
-                dom
-                [:div {:class "horizontal-tags-element narrow"}
-                 (add-attributes
-                  (virtual-item-DOM (conj (:key-prefix inherited) :tags)
-                                    nil :after
-                                    (transform-inherited-for-labels inherited))
-                  {:class "tag"})
-                 dom])]
-      (add-attributes dom (inherited-attributes inherited)))))
+    (if (not must-show-empty-label)
+      dom
+      [:div {:class "horizontal-tags-element narrow"}
+       (add-attributes
+        (virtual-item-DOM (conj (:key-prefix inherited) :tags)
+                          nil :after
+                          (transform-inherited-for-labels inherited))
+        {:class "tag"})
+       dom])))
 
 (defn condition-elements-DOM-R
   "Generate the dom for a (subset of) a condition, given its elements.
@@ -412,11 +405,13 @@
     (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
    (expr-let [content (entity/content item)
               elements (semantic-elements-R item)]
-     (item-content-and-non-label-elements-DOM-R
-      content (remove (set excluded-elements) elements)
-      (transform-inherited-for-children
-       inherited (conj (:key-prefix inherited) (:item-id item))
-       referent)))))
+     (add-attributes
+      (item-content-and-non-label-elements-DOM-R
+       content (remove (set excluded-elements) elements)
+       (transform-inherited-for-children
+        inherited (conj (:key-prefix inherited) (:item-id item))
+        referent))
+      (inherited-attributes inherited)))))
 
 (defn item-DOM-impl-R
   "Make a dom for an item or exemplar of a group of items.
@@ -427,13 +422,15 @@
    (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
   (expr-let [content (entity/content item)
              elements (semantic-elements-R item)]
-    (item-content-and-elements-DOM-R
-     content (remove (set excluded-elements) elements) must-show-empty-label
-     (-> inherited
-         (transform-inherited-for-children
-          (conj (:key-prefix inherited) (:item-id item)) referent)
-         (add-inherited-attribute
-          [#{:label} #{:content} {:expand {:referent referent}}])))))
+    (add-attributes
+     (item-content-and-elements-DOM-R
+      content (remove (set excluded-elements) elements) must-show-empty-label
+      (-> inherited
+          (transform-inherited-for-children
+           (conj (:key-prefix inherited) (:item-id item)) referent)
+          (add-inherited-attribute
+           [#{:label} #{:content} {:expand {:referent referent}}])))
+      (inherited-attributes inherited))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

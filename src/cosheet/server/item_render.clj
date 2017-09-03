@@ -403,15 +403,18 @@
    (println
     "Generating DOM for"
     (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
-   (expr-let [content (entity/content item)
-              elements (semantic-elements-R item)]
-     (add-attributes
-      (item-content-and-non-label-elements-DOM-R
-       content (remove (set excluded-elements) elements)
-       (transform-inherited-for-children
-        inherited (conj (:key-prefix inherited) (:item-id item))
-        referent))
-      (inherited-attributes inherited item)))))
+   (let [inherited-down
+         (transform-inherited-for-children
+          inherited
+          (conj (:key-prefix inherited) (:item-id item)) referent)]
+     (expr-let [content (entity/content item)
+                elements (semantic-elements-R item)
+                dom (item-content-and-non-label-elements-DOM-R
+                     content (remove (set excluded-elements) elements)
+                     inherited-down)]
+       (add-attributes
+        dom
+        (inherited-attributes inherited item))))))
 
 (defn item-DOM-impl-R
   "Make a dom for an item or exemplar of a group of items.
@@ -420,17 +423,20 @@
   (println
    "Generating DOM for"
    (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
-  (expr-let [content (entity/content item)
-             elements (semantic-elements-R item)]
-    (add-attributes
-     (item-content-and-elements-DOM-R
-      content (remove (set excluded-elements) elements) must-show-empty-label
-      (-> inherited
-          (transform-inherited-for-children
-           (conj (:key-prefix inherited) (:item-id item)) referent)
-          (add-inherited-attribute
-           [#{:label} #{:content} {:expand {:referent referent}}])))
-      (inherited-attributes inherited item))))
+  (let [inherited-down
+        (-> inherited
+            (transform-inherited-for-children
+             (conj (:key-prefix inherited) (:item-id item)) referent)
+            (add-inherited-attribute
+             [#{:label} #{:content} {:expand {:referent referent}}]))]
+    (expr-let [content (entity/content item)
+               elements (semantic-elements-R item)
+               dom (item-content-and-elements-DOM-R
+                    content (remove (set excluded-elements) elements)
+                    must-show-empty-label inherited-down)]
+      (add-attributes
+       dom
+       (inherited-attributes inherited item)))))
 
 (defn item-DOM-R
    "Make a dom for an item or exemplar for a group of items.

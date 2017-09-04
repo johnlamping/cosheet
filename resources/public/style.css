@@ -281,8 +281,8 @@ body {
 /* Three copies, so our definition of margin wins out. */
 .batch-selected.batch-selected.batch-selected {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
-                4px 4px white, 6px 6px hsl(220, 100%, 60%),
-                8px 8px white, 10px 10px hsl(220, 100%, 50%);
+                4px 4px white, 6px 6px hsl(220, 70%, 65%),
+                8px 8px white, 10px 10px hsl(220, 40%, 60%);
     margin: 0px 10px 10px 0px;
     z-index: 1;
 }

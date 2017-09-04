@@ -162,7 +162,11 @@
         (= key-codes/Y key-code) (do (.preventDefault event)
                                      (when (not @edit-field-open-on)
                                        (do (.log js/console "redo")
-                                           (request-action [:redo]))))))
+                                           (request-action [:redo]))))
+        (= key-codes/Q key-code) (do (.preventDefault event)
+                                     (.log js/console "quit-batch-edit")
+                                     (close-edit-field)
+                                     (request-action [:quit-batch-edit]))))
     (when (and alt meta)
       (when (= key-codes/R key-code)
         (request-replay :all)))
@@ -177,12 +181,15 @@
                           (= key-codes/R key-code) [:add-row]
                           (= key-codes/BACKSLASH key-code) [:add-column]
                           (= key-codes/C key-code) [:add-column]
-                          (= key-codes/E key-code) [:expand])]
-        (when (and command @selected (not @edit-field-open-on))
+                          (= key-codes/E key-code) [:expand]
+                          (= key-codes/B key-code) [:batch-edit])
+            id (when @selected (.-id @selected))]
+        (when (and command (not @edit-field-open-on)
+                   (or id (#{:batch-edit :quit-batch-edit} (first command))))
           (.log js/console (str command))
           (when (= (first command) :expand) (open-expand-popup))
           (request-action
-           (apply vector (first command) (.-id @selected) (rest command))))))
+           (apply vector (first command) id (rest command))))))
     (when (= total-shift 0)
       (cond
         (= key-code key-codes/ESC) (close-edit-field)

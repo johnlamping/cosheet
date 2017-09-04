@@ -106,7 +106,8 @@
          stack-dom (batch-edit-stack-DOM-R
                     query-item selected-batch-item store inherited)]
       [:div {:class "batch-holder"}
-       [:div#quit-batch-edit {:class "quit-batch-edit tool"}
-        "Return to tabs"]
+       [:div#quit-batch-edit.tool
+              [:img {:src "../icons/exit.gif"}]
+        [:div.tooltip "exit batch edit (C-B)"]]
        (add-attributes query-dom {:class "batch-query"})
        stack-dom])))

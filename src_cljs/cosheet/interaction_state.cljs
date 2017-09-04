@@ -26,8 +26,7 @@
                        ":label-values"
                        nil))
       (.add (.-classList select-holder) "editing")
-      (when-let [table-main (find-ancestor-with-class target "table-main")]
-        (scroll-to-be-visible select-holder table-main))
+      (scroll-to-be-visible select-holder)
       (.focus edit-input)
       (.select edit-input)
       (reset! edit-field-open-on target))))

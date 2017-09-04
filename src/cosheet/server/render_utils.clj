@@ -119,7 +119,7 @@
                      following)])
                 (when (:optional step)
                   (advance-along-descriptor following motion)))
-        descriptor))))
+        [descriptor]))))
 
 (defn transform-descriptors
   "Transform the descriptors as appropriate
@@ -140,12 +140,12 @@
   "Return a map of all attributes specified by the desciptors as applying
   only for the current dom and a descriptor of all the remaining attributes,
   some of which may also apply to the current dom."
-  [descriptor]
+  [descriptors]
   (reduce (fn [[current-only others] descriptor]
             (if (map? descriptor)
               [(into-attributes current-only descriptor) others]
               [current-only (conj others descriptor)]))
-          [{} []] descriptor))
+          [{} []] descriptors))
 
 (defn inherited-attributes
   "Return a map of all attributes specified by inherited for the current dom.
@@ -158,9 +158,10 @@
                 (map? descriptor)
                 (into-attributes attributes descriptor)
                 (satisfies? StoredItemDescription (first descriptor))
-                (cond-> attributes (and (= (first descriptor) id)
-                                        (= (count descriptor) 2))
-                        (into-attributes (last descriptor)))
+                (cond-> attributes
+                  (and (= (first descriptor) id)
+                       (= (count descriptor) 2))
+                  (into-attributes (last descriptor)))
                 (every? :optional (butlast descriptor))
                 (into-attributes attributes (last descriptor))
                 true

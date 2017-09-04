@@ -86,7 +86,8 @@
                             [#{:label :element :recursive} #{:content} {:c 3}]
                             [#{:content} {:d 4}]
                             [#{:element :optional} #{:label} {:e 5}]
-                            [#{:label :optional :recursive} #{:label} {:f 6}]]
+                            [#{:label :optional :recursive} #{:label} {:f 6}]
+                            [(make-id "a") {:item "yup"}]]
                :x 9}
               :label)
              {:attributes [{:b 2}
@@ -94,7 +95,8 @@
                             {:c 3}]
                            {:e 5}
                            [#{:label :optional :recursive} #{:label} {:f 6}]
-                           {:f 6}]
+                           {:f 6}
+                           [(make-id "a") {:item "yup"}]]
               :x 9})))
 
 (deftest remove-inherited-attribute=test

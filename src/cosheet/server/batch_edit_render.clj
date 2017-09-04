@@ -73,7 +73,6 @@
                [batch-dom (must-show-label-item-DOM-R
                            selected-batch-item selected-referent nil
                            inherited-for-batch)
-                to-print (entity/to-list selected-batch-item)
                 count-dom
                 (call-dependent-on-id
                  store nil
@@ -95,8 +94,12 @@
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
   [query-item selected-batch-item store inherited]
-  (let [inherited-for-query (assoc inherited
-                                   :selector-category :batch-query)]
+  (let [inherited-for-query
+        (-> inherited
+            (assoc :selector-category :batch-query)
+            (add-inherited-attribute
+             [(:item-id selected-batch-item) {:class "batch-selected-item"}])
+            )]
     (expr-let
         [query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)

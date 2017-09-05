@@ -108,6 +108,6 @@
       [:div {:class "batch-holder"}
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]
-        [:div.tooltip "exit batch edit (C-B)"]]
+        [:div.tooltip "exit batch edit (C-Q)"]]
        (add-attributes query-dom {:class "batch-query"})
        stack-dom])))

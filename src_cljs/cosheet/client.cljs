@@ -148,9 +148,6 @@
           (str "keydown "
                (if ctrl "ctrl " "") (if alt "alt " "") (if meta "meta " "")
                key-code))
-    (when 
-      (cond
-        ))
     (when (= total-shift 1)
       (cond  ; We can't use a case statement,
              ; as it doesn't work right with key-codes.

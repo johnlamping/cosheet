@@ -24,6 +24,7 @@
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    transform-inherited-attributes
+                                   remove-inherited-for-item
                                    add-inherited-attribute
                                    remove-inherited-attribute
                                    inherited-attributes
@@ -203,26 +204,38 @@
 
 (defn tagged-items-one-column-node-DOM-R
   [node child-doms must-show-empty-labels inherited]
-  (expr-let [properties-dom (when (or (seq (:properties node))
-                                      must-show-empty-labels)
-                              (tagged-items-properties-DOM-R
-                               node inherited))]
-    (let [descendants-doms (nest-if-multiple-DOM
-                            (if (empty? (hierarchy-node-leaves node))
-                              child-doms
-                              (let [inherited (add-adjacent-sibling-command
-                                               inherited node)]
-                                (cons (hierarchy-leaf-items-DOM node inherited)
-                                      child-doms))))]
-      (if (empty? (:properties node))
-        (if must-show-empty-labels
-          [:div {:class "horizontal-tags-element narrow"}
-           properties-dom descendants-doms]
-          descendants-doms)
-        [:div {:class "wrapped-element tag"}
-         ;; If the properties-dom is an item-stack, we need to mark it as tag.
-         (add-attributes properties-dom {:class "tag"})
-         [:div {:class "indent-wrapper"} descendants-doms]]))))
+  (let [leaves (hierarchy-node-leaves node)
+        only-item (when (and (empty? child-doms) (= (count leaves) 1))
+                    (first leaves))
+        ;; If there is only one item, we put any item specific attributes
+        ;; on the overall item including labels, while if there are several
+        ;; items, we can only put item specific attributes on each item.
+        inherited-for-leaves (cond-> (add-adjacent-sibling-command
+                                      inherited node)
+                               only-item
+                               (remove-inherited-for-item only-item))
+        descendants-doms (nest-if-multiple-DOM
+                          (if (empty? leaves)
+                            child-doms
+                            (cons (hierarchy-leaf-items-DOM
+                                   node inherited-for-leaves)
+                                  child-doms)))]
+    (expr-let [properties-dom (when (or (seq (:properties node))
+                                        must-show-empty-labels)
+                                (tagged-items-properties-DOM-R
+                                 node inherited))]
+      (cond-> (if (empty? (:properties node))
+                (if must-show-empty-labels
+                  [:div {:class "horizontal-tags-element narrow"}
+                   properties-dom descendants-doms]
+                  descendants-doms)
+                [:div {:class "wrapped-element tag"}
+                 ;; If the properties-dom is an item-stack,
+                 ;; we need to mark it as tag.
+                 (add-attributes properties-dom {:class "tag"})
+                 [:div {:class "indent-wrapper"} descendants-doms]])
+        only-item
+        (add-attributes (inherited-attributes inherited only-item))))))
 
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]
@@ -274,25 +287,44 @@
 
 (defn tagged-items-two-column-DOM-R
   [hierarchy inherited]
-  ;; TODO: Should inherited-for-tags adjust attributes for label?
-  (let [inherited-for-tags (update inherited :width #(* % 0.25))]
+  (let [inherited-for-tags (-> inherited
+                               (transform-inherited-attributes :label)
+                               (update :width #(* % 0.25)))
+        ;; If there is only one item below a top level node,
+        ;; we put any item specific attributes on the overall node,
+        ;; including labels, while if there are several
+        ;; items, we can only put item specific attributes on each item.
+        only-items (map #(let [leaves (hierarchy-node-leaves %)]
+                           (when (and (empty? (:child-nodes %))
+                                      (= (count leaves) 1))
+                             (:item (first leaves))))
+                        hierarchy)]
     (expr-let [label-doms (expr-seq
                            map #(hierarchy-node-DOM-R
                                  % tagged-items-two-column-label-DOMs-R
                                  inherited-for-tags)
                            hierarchy)
                items-doms (expr-seq
-                           map #(hierarchy-node-DOM-R
-                                 % tagged-items-two-column-items-DOMs-R
-                                 inherited)
-                           hierarchy)]
+                           map (fn [node only-item]
+                                 (hierarchy-node-DOM-R
+                                   node tagged-items-two-column-items-DOMs-R
+                                   (cond-> inherited
+                                     only-item
+                                     (remove-inherited-for-item only-item))))
+                           hierarchy only-items)]
       (nest-if-multiple-DOM
        (map
-        (fn [label-dom items-dom]
-          [:div {:class "horizontal-tags-element wide"}
-           label-dom
-           items-dom])
-        (apply concat label-doms) (apply concat items-doms))))))
+        (fn [label-dom items-dom only-item]
+          (cond-> [:div {:class "horizontal-tags-element wide"}
+                   label-dom
+                   items-dom]
+            only-item
+            (add-attributes (inherited-attributes inherited only-item))))
+        (apply concat label-doms)
+        (apply concat items-doms)
+        (apply concat (map (fn [doms only-item]
+                             (map (constantly only-item) doms))
+                           items-doms only-items)))))))
 
 (defn elements-DOM-R
   "Make a dom for a stack of elements.

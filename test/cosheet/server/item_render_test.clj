@@ -56,6 +56,7 @@
                       :expand {:referent (item-referent fred)}}
                 "Fred"]))))
 
+;;; TODO: add test of placement of item specific attributes.
 (deftest item-DOM-R-test-one-column
   ;; Test a one-column element hierarchy
   (let [age-as-list `(39 (:root :non-semantic)
@@ -237,6 +238,7 @@
                                  :select-pattern (conj age-key [:pattern])
                                  :alternate true}}]]}]]]]]))))
 
+;;; TODO: add test of placement of item specific attributes.
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.
   (let [age-as-list `(39 (:root :non-semantic)

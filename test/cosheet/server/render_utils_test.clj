@@ -99,6 +99,19 @@
                            [(make-id "a") {:item "yup"}]]
               :x 9})))
 
+(deftest remove-inherited-for-item-test
+  (is (check (remove-inherited-for-item
+              {:attributes [{:a 1}
+                            [#{:label} {:b 2}]
+                            [(make-id "a") {:item "yup"}]
+                            [(make-id "b") {:item "nope"}]]
+               :x 9}
+              (description->entity (make-id "a") (new-element-store)))
+             {:attributes [{:a 1}
+                            [#{:label} {:b 2}]
+                            [(make-id "b") {:item "nope"}]]
+              :x 9})))
+
 (deftest remove-inherited-attribute=test
   (is (check (remove-inherited-attribute
               {:attributes [{:a 1 :b 2}

@@ -136,6 +136,16 @@
                         (transform-descriptors descriptors motion))
     inherited))
 
+(defn remove-inherited-for-item
+  "Remove any inherited attributes specified as being for the specific item."
+  [inherited item]
+  (if-let [descriptors (:attributes inherited)]
+    (let [id (:item-id item)]
+      (assoc-if-non-empty inherited :attributes
+                          (remove #(and (sequential? %) (= (first %) id))
+                                   descriptors)))
+    inherited))
+
 (defn split-descriptors-by-currency
   "Return a map of all attributes specified by the desciptors as applying
   only for the current dom and a descriptor of all the remaining attributes,

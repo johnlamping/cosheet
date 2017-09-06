@@ -312,6 +312,14 @@ body {
     margin-bottom: 0px;
 }
 
+.horizontal-tags-element.narrow.narrow.narrow.batch-selected > * {
+    margin-bottom: 0px;
+}
+
+.horizontal-tags-element.narrow.narrow.narrow.batch-selected > :last-child {
+    margin-right: 0px;
+}
+
 .horizontal-tags-element.wide.batch-selected-item {
     z-index: 1;
     position: relative; /* To make z-index work. */

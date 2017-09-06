@@ -8,8 +8,6 @@
               process-response-for-pending take-pending-params]]
             [cosheet.interaction-state :refer [close-edit-field
                                                edit-field-open-on
-                                               selector-interpretation
-                                               set-alternate-field
                                                select selected deselect]]
             ))
 
@@ -29,8 +27,8 @@
    (ajax-request params 5000))
   ([params timeout]
    (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
-         {:params (assoc params
-                         :selector-interpretation @selector-interpretation)
+         ;; TODO: Get rid of interpretation :narrow once the server is fixed.
+         {:params (assoc params :selector-interpretation :narrow)
           :response-format (transit-response-format)
           :handler ajax-handler
           :error-handler ajax-error-handler
@@ -179,7 +177,6 @@
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.
         (handle-ajax-select response previously-selected-id)
-        (set-alternate-field (:alternate-text response))
         (handle-ajax-open response)
         (handle-ajax-set-url response)
         (process-response-for-pending response)

@@ -16,8 +16,6 @@
             [cosheet.ajax :refer [request-action request-replay
                                   ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
-                                               set-selector-interpretation
-                                               toggle-selector-interpretation
                                                open-edit-field close-edit-field
                                                selected select deselect]]
             ))
@@ -53,11 +51,6 @@
 (defn menu-click-handler
   [logical-target]
   (let [id (.-id logical-target)
-        local-command ({"narrow_selector_interpretation"
-                        [set-selector-interpretation :narrow]
-                        "broad_selector_interpretation"
-                        [set-selector-interpretation :broad]}
-                       id)
         keyword ({"undo" :undo
                   "redo" :redo
                   "quit-batch-edit" :quit-batch-edit}
@@ -75,20 +68,13 @@
                            id)
         selection @selected]
     (.log js/console (str "menu click " id))
-    (cond local-command
-          (apply (first local-command) (rest local-command))
-          keyword
+    (cond keyword
           (request-action [keyword])
           (and contextual-keyword
                (or selection (= contextual-keyword :batch-edit)))
           (do (when (= contextual-keyword :expand) (open-expand-popup))
               (request-action [contextual-keyword
                                (when selection (.-id selection))])))))
-
-(defn alternate-interpretation-click-handler
-  [event]
-  (toggle-selector-interpretation)
-  (request-action [:alternate]))
 
 (defn click-handler
   [event]
@@ -238,15 +224,11 @@
         ]
     (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
-    (gevents/listen app gevents/EventType.CLICK click-handler)
-    (gevents/listen (js/document.getElementById "alternate_interpretation")
-                    gevents/EventType.CLICK
-                    alternate-interpretation-click-handler)    
+    (gevents/listen app gevents/EventType.CLICK click-handler)    
     (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
-    (gevents/listen js/window gevents/EventType.UNLOAD unload-handler)
-    (set-selector-interpretation :narrow))
+    (gevents/listen js/window gevents/EventType.UNLOAD unload-handler))
   (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 
 

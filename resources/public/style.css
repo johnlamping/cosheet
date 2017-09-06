@@ -783,68 +783,6 @@ body {
     width: 200px;
 }
 
-/* --- narrow and broad interpretations --- */
-
-.selectors {
-    /* Allow the box shadow to overlap the selected. */
-    overflow: visible;
-}
-
-.narrow-scope .selectors {
-    box-shadow: 1px 0px 3px 3px hsl(0, 0%, 85%),
-                7px 9px 4px 2px hsla(0, 0%, 0%, .7);
-}
-
-.narrow-scope .selectees {
-    opacity: 0.3;
-}
-
-.narrow-scope .selector-scope .selectors.selectors {
-    box-shadow: 0px 0px transparent;
-}
-
-.narrow-scope .selector-scope .selectees.selectees {
-    opacity: 1;
-}
-
-.narrow-scope.table-main, .broad-scope.table-main {
-    /* We combine negative margin with padding so the scope selector tool
-       can appear above this box, even though its overflow is invisible.
-       This makes stuff immediately above us not clickable, but only while
-       our selection is active. And clicking elsewhere above us will
-       turn off that selection. */
-    margin-top: -48px;
-    padding-top: 50px;
-    background-color: transparent;
-}
-
-.broad-scope.table > .table-body > .table-main
-                   > .column-header-sequence:first-child::before {
-    content: " ";
-    pointer-events: none;
-    width: 100%;
-    height: 1000000px;
-    position: absolute;
-    left: 0px;
-    top: 100%;
-    z-index: 1;
-    box-shadow: inset 0 0 6px 3px hsla(220, 100%, 55%, .5);
-    background-color: hsla(220, 100%, 55%, .12);
-}
-
-.column-header.broad-column::before {
-    content: " ";
-    pointer-events: none;
-    width: 100%;
-    height: 1000000px;
-    position: absolute;
-    left: 0px;
-    top: 100%;
-    z-index: 1;
-    box-shadow: inset 0 0 6px 3px hsla(220, 100%, 55%, .5);
-    background-color: hsla(220, 100%, 55%, .12);
-}
-
 /* --- toolbar --- */
 
 .toolbar {

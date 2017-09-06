@@ -103,18 +103,7 @@
         [:div.tooltip "delete column"]]]
       [:div#app "Root"] ;; Client will create a component with id "root".
       [:div#select_holder.select_holder
-       [:input#edit_input {"type" "text"}]
-       [:div#scope_holder
-        [:div#narrow_selector_interpretation.tool
-         [:img {:src "../icons/select.gif"}]
-         [:div.tooltip "select data"]]
-        [:div#broad_selector_interpretation.tool
-         [:img {:src "../icons/edit.gif"}]
-         [:div.tooltip "change data"]]]]
-      [:div#alternate_interpretation_holder {}
-       [:div " "]
-       [:div#alternate_interpretation " "]
-       [:div " "]]
+       [:input#edit_input {"type" "text"}]]
       [:script "cosheet.client.run();"]])
      (html5
      [:head

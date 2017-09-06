@@ -289,12 +289,13 @@ body {
 
 .batch-query-match-counts {
     margin-top: 4px;
+    margin-bottom: 2px;
     text-align: center;
 }
 
 .batch-stack-wrapper {
     border-width: 2px;
-    padding: 3px;
+    padding: 3px 3px 3px 6px;
     margin-right: -2px;
     background-color: hsl(0, 0%, 93%);
 }

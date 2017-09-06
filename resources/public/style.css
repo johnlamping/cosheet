@@ -303,6 +303,20 @@ body {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%);
 }
 
+.wrapped-element.batch-selected-item {
+    z-index: 1;
+    position: relative; /* To make z-index work. */
+}
+
+.horizontal-tags-element.wide.wide.wide.batch-selected-item > * {
+    margin-bottom: 0px;
+}
+
+.horizontal-tags-element.wide.batch-selected-item {
+    z-index: 1;
+    position: relative; /* To make z-index work. */
+}
+
 /* --- tags --- */
 
 .tag {
@@ -408,7 +422,7 @@ body {
 .horizontal-tags-element.wide > :last-child {
     width: 70%;
     border-width: 2px;
-    margin: 0px -2px -2px 0px;
+    margin: 0px 0px -2px 0px;
 }
 
 .horizontal-value-last {

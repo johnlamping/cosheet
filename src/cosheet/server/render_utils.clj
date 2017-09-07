@@ -256,22 +256,23 @@
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
   a dom with the given class, and with each of the doms as children."
-  [doms & {:keys [class] :or {class "stack"}}]
+  [doms & {:keys [stack-class] :or {stack-class "stack"}}]
   (if (= (count doms) 1)
        (first doms)
-       (into [:div (if (empty? doms) {} {:class class})] doms)))
+       (into [:div (if (empty? doms) {} {:class stack-class})] doms)))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
-  generate DOM for a vertical list of a component for each item.
+  generate DOM for a list of a component for each item.
+  If there is more than one item, add stack-class to the stack.
   Any attributes that should apply to the immediate dom will get
   applied to each component, plus to the stack if there is more
   than one component.
   The excludeds can be either a single value to be used for all items,
   or a sequence of values, one per item.
   dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn items excludeds inherited]
+  [dom-fn items excludeds stack-class inherited]
   (let [descriptors (:attributes inherited)
         [local remaining] (split-descriptors-by-currency descriptors)
         inherited (assoc-if-non-empty inherited :attributes remaining)]
@@ -281,7 +282,7 @@
                      (item-component dom-fn item excluded inherited) local))
                   items
                   (if (sequential? excludeds) excludeds (repeat excludeds)))
-             :class "item-stack")
+             :stack-class stack-class)
       (> (count items) 1)
       (add-attributes local))))
 

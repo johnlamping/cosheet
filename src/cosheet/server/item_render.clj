@@ -93,7 +93,8 @@
                                     (:exclude-elements %))
                            leaves)]
         (item-stack-DOM
-         item-without-labels-DOM-R items excludeds inherited-down)))))
+         item-without-labels-DOM-R items excludeds "vertical-item-stack"
+         inherited-down)))))
 
 (declare elements-DOM-R)
 
@@ -105,6 +106,7 @@
                             ordered-labels)]
     (item-stack-DOM item-without-labels-DOM-R
                     ordered-labels tags
+                    "vertical-item-stack"
                     (add-inherited-attribute inherited {:class "tag"}))))
 
 (defn non-empty-labels-wrapper-DOM-R
@@ -348,7 +350,8 @@
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
         (item-stack-DOM
-         item-without-labels-DOM-R ordered-elements excludeds inherited)
+         item-without-labels-DOM-R ordered-elements excludeds
+         "vertical-item-stack" inherited)
         (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))

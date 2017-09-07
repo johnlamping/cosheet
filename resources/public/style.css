@@ -291,6 +291,7 @@ body {
     margin-top: 4px;
     margin-bottom: 2px;
     text-align: center;
+    color: hsl(220, 100%, 45%);
 }
 
 .batch-stack-wrapper {
@@ -302,7 +303,17 @@ body {
 
 .batch-selected-item {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%);
+    z-index: 1;
+    position: relative; /* To make z-index work. */
 }
+
+.batch-selected-item.selected {
+    box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
+                inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    z-index: 1;
+    position: relative; /* To make z-index work. */
+}
+
 
 .wrapped-element.batch-selected-item {
     z-index: 1;

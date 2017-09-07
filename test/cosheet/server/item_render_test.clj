@@ -151,7 +151,7 @@
             [:div {:class "indent-wrapper"}
              [:div {:class "stack"}
               ;; One Another
-              [:div {:class "item-stack"}
+              [:div {:class "vertical-item-stack"}
                ;; One
                [:component {:key (conj age-key (:item-id one))}
                 [item-without-labels-DOM-R one [confidence1]
@@ -394,7 +394,7 @@
                                              (item-referent age)
                                              likelihoods-parallel-referent) 
                                   :select-pattern (conj age-key [:pattern])}}]]}]]]]
-            [:div {:class "item-stack"}
+            [:div {:class "vertical-item-stack"}
              ;; Pair
              [:component {:key (conj age-key (:item-id pair))}
               [item-without-labels-DOM-R pair (as-set [confidence1 likelihood])

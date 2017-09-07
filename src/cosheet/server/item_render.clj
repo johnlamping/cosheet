@@ -47,12 +47,13 @@
                 (when (seq conditions) (list* nil conditions))
                 subject-ref
                 (hierarchy-node-parallel-items-referent
-                 hierarchy-node subject-ref))
+                 hierarchy-node subject-ref)
+                :selector (when (:selector-category inherited) :first-group))
      :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
 (defn add-adjacent-sibling-command
   "Given inherited, and a node from a hierarchy over elements, update
-  inherited to have a command to adjacent sibling element."
+  inherited to have a command to add an adjacent sibling element."
   [inherited hierarchy-node]
   (-> inherited
       (remove-inherited-attribute :add-sibling)

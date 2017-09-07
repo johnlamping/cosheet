@@ -142,7 +142,8 @@
                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             'nil (item-referent age)
-                                            one-another-two-parallel-referent) 
+                                            one-another-two-parallel-referent
+                                            :selector :first-group) 
                                  :select-pattern (conj age-key [:pattern])
                                  :alternate true}}]]
                :selector-category :some-category
@@ -166,7 +167,8 @@
                      {:add-sibling {:referent
                                     (virtual-referent
                                      'nil (item-referent age)
-                                     one-another-two-parallel-referent) 
+                                     one-another-two-parallel-referent
+                                    :selector :first-group) 
                                     :select-pattern (conj age-key [:pattern])
                                     :alternate true}}]]
                   :selector-category :some-category
@@ -192,7 +194,8 @@
                      {:add-sibling {:referent (virtual-referent
                                                '(nil ("confidence" :tag))
                                                (item-referent age)
-                                               (item-referent two)) 
+                                               (item-referent two)
+                                               :selector :first-group) 
                                     :select-pattern (conj age-key [:pattern])
                                     :alternate true}}]]
                   :selector-category :some-category
@@ -213,7 +216,8 @@
                       {:add-sibling {:referent (virtual-referent
                                                 '(nil ("confidence" :tag))
                                                 (item-referent age)
-                                                (item-referent two)) 
+                                                (item-referent two)
+                                                :selector :first-group) 
                                      :select-pattern (conj age-key [:pattern])
                                      :alternate true}}]]
                    :selector-category :some-category
@@ -232,9 +236,10 @@
                    :add-sibling {:referent (virtual-referent
                                              nil
                                              (item-referent age)
-                                             (item-referent none)) 
-                                  :select-pattern (conj age-key [:pattern])
-                                  :alternate true}}]
+                                             (item-referent none)
+                                             :selector :first-group) 
+                                 :select-pattern (conj age-key [:pattern])
+                                 :alternate true}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
               {:priority 1
@@ -250,7 +255,8 @@
                   {:add-sibling {:referent (virtual-referent
                                             nil
                                             (item-referent age)
-                                            (item-referent none)) 
+                                            (item-referent none)
+                                            :selector :first-group) 
                                  :select-pattern (conj age-key [:pattern])
                                  :alternate true}}]]}]]]]]))))
 

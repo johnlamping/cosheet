@@ -206,7 +206,7 @@
   [node child-doms must-show-empty-labels inherited]
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
-                    (first leaves))
+                    (:item (first leaves)))
         ;; If there is only one item, we put any item specific attributes
         ;; on the overall item including labels, while if there are several
         ;; items, we can only put item specific attributes on each item.

@@ -56,7 +56,6 @@
                       :expand {:referent (item-referent fred)}}
                 "Fred"]))))
 
-;;; TODO: add test of placement of item specific attributes.
 (deftest item-DOM-R-test-one-column
   ;; Test a one-column element hierarchy
   (let [age-as-list `(39 (:root :non-semantic)
@@ -77,15 +76,23 @@
                           (~o3 :order :non-semantic))
                          ("none" ; No tag.
                           (~o4 :order :non-semantic)))
-        inherited (into base-inherited
-                        {:width 0.5
-                         :template "foo"
-                         :attributes [[#{:content} {:added-by-test {1 2}}]]
-                         :selector-category :some-category
-                         :alternate-target true})
         [dom age] (let-mutated [age age-as-list]
-                    (expr-let [dom (item-DOM-R age [] inherited)]
-                      [dom age]))
+                    (expr-let [ae (matching-elements "another" age)
+                               ne (matching-elements "none" age)
+                               another (first ae)
+                               none (first ne)
+                               inherited
+                               (into base-inherited
+                                     {:width 0.5
+                                      :template "foo"
+                                      :selector-category :some-category
+                                      :alternate-target true
+                                      :attributes
+                                      [[#{:content} {:added-by-test {1 2}}]
+                                       [(:item-id another) {:class "added1"}]
+                                       [(:item-id none) {:class "added2"}]]})]
+                      (expr-let [dom (item-DOM-R age [] inherited)]
+                        [dom age])))
         one (first (current-value (matching-elements "one" age)))
         confidence1 (first (current-value
                             (matching-elements "confidence" one)))
@@ -130,7 +137,9 @@
                :subject-referent one-another-two-parallel-referent
                :template '(nil :tag)
                :attributes
-               [[#{:label :optional} #{:content}
+               [[(:item-id another) {:class "added1"}]
+                [(:item-id none) {:class "added2"}]
+                [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             'nil (item-referent age)
                                             one-another-two-parallel-referent) 
@@ -151,7 +160,9 @@
                   :subject-referent (item-referent age)
                   :template '(nil ("confidence" :tag))
                   :attributes
-                  [[#{:label :optional} #{:content}
+                  [[(:item-id another) {:class "added1"}]
+                   [(:item-id none) {:class "added2"}]
+                   [#{:label :optional} #{:content}
                      {:add-sibling {:referent
                                     (virtual-referent
                                      'nil (item-referent age)
@@ -175,7 +186,9 @@
                   :subject-referent (item-referent two)
                   :template '(nil :tag)
                   :attributes
-                  [[#{:label :optional} #{:content}
+                  [[(:item-id another) {:class "added1"}]
+                   [(:item-id none) {:class "added2"}]
+                   [#{:label :optional} #{:content}
                      {:add-sibling {:referent (virtual-referent
                                                '(nil ("confidence" :tag))
                                                (item-referent age)
@@ -194,7 +207,9 @@
                    :template (as-set '(nil ("confidence" :tag)
                                            ("probability" :tag)))
                    :attributes
-                   [[#{:label :optional} #{:content}
+                   [[(:item-id another) {:class "added1"}]                    
+                    [(:item-id none) {:class "added2"}]
+                    [#{:label :optional} #{:content}
                       {:add-sibling {:referent (virtual-referent
                                                 '(nil ("confidence" :tag))
                                                 (item-referent age)
@@ -204,7 +219,7 @@
                    :selector-category :some-category
                    :alternate-target true}]]]]]]]
            ;; None
-           [:div {:class "horizontal-tags-element narrow"}
+           [:div {:class "horizontal-tags-element narrow added2"}
             [:div {:class "editable tag"
                    :key (conj (conj age-key :label (:item-id none)) :virtual)
                    :selector-category :some-category
@@ -230,7 +245,8 @@
                :selector-category :some-category
                :alternate-target true
                :attributes
-               [[#{:label :optional} #{:content}
+               [[(:item-id another) {:class "added1"}]
+                [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             nil
                                             (item-referent age)
@@ -238,7 +254,6 @@
                                  :select-pattern (conj age-key [:pattern])
                                  :alternate true}}]]}]]]]]))))
 
-;;; TODO: add test of placement of item specific attributes.
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.
   (let [age-as-list `(39 (:root :non-semantic)
@@ -264,11 +279,24 @@
                          ("one"
                           ("confidence"
                            :tag (~o1 :order :non-semantic))
-                          (~o4 :order :non-semantic)))
-        inherited (assoc base-inherited :width 1.0)
+                          (~o4 :order :non-semantic))
+                         ("unique"
+                          ("certainty"
+                           :tag (~o1 :order :non-semantic))
+                          (~o5 :order :non-semantic)))
         [dom age] (let-mutated [age age-as-list]
-                    (expr-let [dom (item-DOM-R age [] inherited)]
-                      [dom age]))
+                    (expr-let [de (matching-elements "double" age)
+                               ue (matching-elements "unique" age)
+                               double (first de)
+                               unique (first ue)
+                               inherited
+                               (assoc base-inherited
+                                      :width 1.0
+                                      :attributes
+                                      [[(:item-id double) {:class "added1"}]
+                                       [(:item-id unique) {:class "added2"}]])]
+                      (expr-let [dom (item-DOM-R age [] inherited)]
+                        [dom age])))
         pair (first (current-value (matching-elements "pair" age)))
         confidence1 (first (current-value
                             (matching-elements "confidence" pair)))
@@ -293,6 +321,8 @@
         age-key [:root (:item-id age)]
         tags-key (conj age-key :label)
         one-key (conj age-key (:item-id one))
+        unique (first (current-value (matching-elements "unique" age)))
+        certainty (first (current-value (matching-elements "certainty" unique)))
         likelihoods-parallel-referent (parallel-union-referent
                                        [(item-referent pair)
                                         (item-referent double)])
@@ -318,7 +348,9 @@
                 :subject-referent all-elements-parallel-referent
                 :template '(nil :tag)
                 :attributes
-                [[#{:label :optional} #{:content}
+                [[(:item-id double) {:class "added1"}]
+                 [(:item-id unique) {:class "added2"}]
+                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
                                             all-elements-parallel-referent) 
@@ -348,7 +380,9 @@
                  :subject-referent likelihoods-parallel-referent
                  :template '(nil :tag)
                  :attributes
-                 [[#{:label :optional} #{:content}
+                 [[(:item-id double) {:class "added1"}]
+                  [(:item-id unique) {:class "added2"}]
+                  [#{:label :optional} #{:content}
                    {:add-sibling {:referent (virtual-referent
                                              '(nil ("confidence" :tag))
                                              (item-referent age)
@@ -365,7 +399,9 @@
                 :template (as-set '(nil ("confidence" :tag)
                                         ("likelihood" :tag)))
                 :attributes
-                [[#{:label :optional} #{:content}
+                [[(:item-id double) {:class "added1"}]
+                 [(:item-id unique) {:class "added2"}]
+                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
@@ -388,7 +424,9 @@
                  :subject-referent (item-referent two)
                  :template '(nil :tag)
                  :attributes
-                 [[#{:label :optional} #{:content}
+                 [[(:item-id double) {:class "added1"}]
+                  [(:item-id unique) {:class "added2"}]
+                  [#{:label :optional} #{:content}
                    {:add-sibling {:referent (virtual-referent
                                              '(nil ("confidence" :tag))
                                              (item-referent age)
@@ -403,7 +441,9 @@
                :template (as-set '(nil ("confidence" :tag)
                                        ("probability" :tag)))
                :attributes
-               [[#{:label :optional} #{:content}
+               [[(:item-id double) {:class "added1"}]
+                [(:item-id unique) {:class "added2"}]
+                [#{:label :optional} #{:content}
                  {:add-sibling {:referent (virtual-referent
                                            '(nil ("confidence" :tag))
                                            (item-referent age)
@@ -422,12 +462,49 @@
                 :subject-referent (item-referent age)
                 :template '(nil ("confidence" :tag))
                 :attributes
-                [[#{:label :optional} #{:content}
+                [[(:item-id double) {:class "added1"}]
+                 [(:item-id unique) {:class "added2"}]
+                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
                                             (item-referent one)) 
-                                 :select-pattern (conj age-key [:pattern])}}]]}]]]]]]))))
+                                 :select-pattern (conj age-key [:pattern])}}]]}]]]]
+           ;; Group for unique
+           [:div {:class "horizontal-tags-element wide added2"}
+            [:div {:class "tag horizontal-header top-border bottom-border"}
+             [:component {:key (conj age-key :label (:item-id certainty))
+                          :class "tag"}
+              [item-without-labels-DOM-R certainty (any)
+               {:priority 1
+                :key-prefix (conj age-key :label)
+                :subject-referent (item-referent unique)
+                :width 0.25
+                :attributes
+                [[(:item-id double) {:class "added1"}]
+                 [(:item-id unique) {:class "added2"}]
+                 [#{:label :optional} #{:content}
+                  {:add-sibling {:referent (virtual-referent
+                                            nil
+                                            (item-referent age)
+                                            (item-referent unique)) 
+                                 :select-pattern (conj age-key [:pattern])}}]]
+                :template '(nil :tag)}]]]
+            [:component {:key (conj age-key (:item-id unique))}
+             [item-without-labels-DOM-R unique [certainty]
+              {:priority 1
+               :key-prefix age-key
+               :subject-referent (item-referent age)
+               :width 0.6875
+               :attributes
+               [[(:item-id double) {:class "added1"}]
+                [#{:label :optional} #{:content}
+                 {:add-sibling {:referent (virtual-referent
+                                           nil
+                                           (item-referent age)
+                                           (item-referent unique)) 
+                                :select-pattern (conj age-key [:pattern])}}]]
+               :template '(nil ("certainty" :tag))}]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels
@@ -474,7 +551,7 @@
         [dom item] (let-mutated [item item-as-list]
                      (expr-let [dom (must-show-label-item-DOM-R
                                      item (item-referent item) [] inherited)]
-                          [dom item]))]
+                       [dom item]))]
     (let [item-key [:root (:item-id item)]]
       (is (check dom
                  [:div {:class "horizontal-tags-element narrow"}
@@ -487,14 +564,14 @@
                                              :position :after)
                                   :select-pattern (conj item-key [:pattern])}}]
                   [:div {:class "item with-elements"}
-                    [:div {:class "content-text editable"
-                           :target {:referent (item-referent item)}
-                           :key (conj item-key :content)}
-                     "39"]
-                    [:div {:class "horizontal-tags-element wide"}
-                     (any)
-                     [:component {:key (any)}
-                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
+                   [:div {:class "content-text editable"
+                          :target {:referent (item-referent item)}
+                          :key (conj item-key :content)}
+                    "39"]
+                   [:div {:class "horizontal-tags-element wide"}
+                    (any)
+                    [:component {:key (any)}
+                     [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
 
 (deftest condition-elements-DOM-R-test
   (let [element-as-list `(39

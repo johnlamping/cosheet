@@ -205,8 +205,11 @@
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
 
-(defn tagged-items-one-column-node-DOM-R
-  [node child-doms must-show-empty-labels inherited]
+(defn tagged-items-whole-hierarchy-node-DOM-R
+  "Return the dom for all of a tagged items hierarchy node.
+  direction gives which way to lay out the contained items."
+  [node child-doms [must-show-empty-labels direction] inherited]
+  (assert (#{:horizontal :vertical} direction))
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))
@@ -222,7 +225,10 @@
                             child-doms
                             (cons (hierarchy-leaf-items-DOM
                                    node inherited-for-leaves)
-                                  child-doms)))]
+                                  child-doms))
+                          :stack-class (case direction
+                                         :vertical "stack"
+                                         :horizontal "horizontal-stack"))]
     (expr-let [properties-dom (when (or (seq (:properties node))
                                         must-show-empty-labels)
                                 (tagged-items-properties-DOM-R
@@ -236,17 +242,19 @@
                  ;; If the properties-dom is an item-stack,
                  ;; we need to mark it as tag.
                  (add-attributes properties-dom {:class "tag"})
-                 [:div {:class "indent-wrapper"} descendants-doms]])
+                 (case direction
+                   :vertical [:div {:class "indent-wrapper"} descendants-doms]
+                   :horizontal descendants-doms)])
         only-item
         (add-attributes (inherited-attributes inherited only-item))))))
 
 (defn tagged-items-one-column-DOM-R
   [hierarchy inherited]
   (expr-let [doms (expr-seq map #(hierarchy-node-DOM-R
-                                  % tagged-items-one-column-node-DOM-R
-                                  (fn [node must-show-empty-labels inherited]
-                                    [false inherited])
-                                  true inherited)
+                                  % tagged-items-whole-hierarchy-node-DOM-R
+                                  (fn [node _ inherited]
+                                    [[false :vertical] inherited])
+                                  [true :vertical] inherited)
                             hierarchy)]
     (nest-if-multiple-DOM doms)))
 

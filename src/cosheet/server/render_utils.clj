@@ -256,7 +256,7 @@
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
   a dom with the given class, and with each of the doms as children."
-  [doms & {:keys [stack-class] :or {stack-class "stack"}}]
+  [doms & {:keys [stack-class] :or {stack-class "vertical-stack"}}]
   (if (= (count doms) 1)
        (first doms)
        (into [:div (if (empty? doms) {} {:class stack-class})] doms)))

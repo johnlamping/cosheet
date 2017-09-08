@@ -97,19 +97,19 @@ body {
     background-color: hsl(0, 0%, 95%);
 }
 
-.vertical-item-stack > .item {
+.vertical-stack > .item {
     margin: 0px 3px 0px 3px;
 }
 
-.vertical-item-stack > .item.editable, .vertical-item-stack > .item > .editable { 
+.vertical-item-stack > .item.editable, .vertical-stack > .item > .editable { 
     padding: 3px 0px 3px 0px;
 }
 
-.vertical-item-stack > .item.with-elements > :last-child {
+.vertical-stack > .item.with-elements > :last-child {
     margin: 0px 2px 5px 3px;
 }
 
-.vertical-item-stack > .item + .item {
+.vertical-stack > .item + .item {
     border-width: 1px 0px 0px 0px;
 }
 
@@ -117,7 +117,7 @@ body {
     vertical-align: middle;
 }
 
-.vertical-item-stack {
+.vertical-stack {
     vertical-align: top;
 }
 
@@ -210,7 +210,7 @@ body {
     transform:skewX(15deg);
 }
 
-.tab.vertical-item-stack {
+.tab.vertical-stack {
     /* Leave room for selection box-shadow. */
     padding-top: 2px;
 }
@@ -348,7 +348,7 @@ body {
     background-color: transparent;
 }
 
-.item:not(.tag), .vertical-item-stack:not(.tag) {
+.item:not(.tag), .vertical-stack:not(.tag) {
     background-color: white;
 }
 
@@ -408,11 +408,11 @@ body {
                     hsla(0, 0%, 100%, 0));
 }
 
-.stack.has-border > .wrapped-element {
+.vertical-stack.has-border > .wrapped-element {
     margin-left: -2px;
 }
 
-.stack.has-border > .wrapped-element:first-child {
+.vertical-stack.has-border > .wrapped-element:first-child {
     margin-top: -2px;
 }
 
@@ -421,15 +421,13 @@ body {
 }
 
 .wrapped-element > .indent-wrapper > .item,
-.wrapped-element > .indent-wrapper > .vertical-item-stack,
-.wrapped-element > .indent-wrapper > .stack > .item,
-.wrapped-element > .indent-wrapper > .stack > .vertical-item-stack {
+.wrapped-element > .indent-wrapper > .vertical-stack {
     border-width: 2px;
     margin-bottom: -2px;
     margin-right: -2px;
 }
 
-.stack > .wrapped-element:last-child {
+.vertical-stack > .wrapped-element:last-child {
     display: flex;
     flex-direction: column;
 }
@@ -452,7 +450,7 @@ body {
     flex-direction: row;
 }
 
-.horizontal-value-last > .vertical-item-stack,
+.horizontal-value-last > .vertical-stack,
 .horizontal-value-last > .content-text,
 .horizontal-value-last > .horizontal-value-last {
     width: 100%;
@@ -462,11 +460,11 @@ body {
     border-bottom-width: 4px;
 }
 
-.stack.has-border > .horizontal-tags-element {
+.vertical-stack.has-border > .horizontal-tags-element {
     margin-left: -2px;
 }
 
-.stack.has-border > .horizontal-tags-element:first-child {
+.vertical-stack.has-border > .horizontal-tags-element:first-child {
     margin-top: -2px;
 }
 

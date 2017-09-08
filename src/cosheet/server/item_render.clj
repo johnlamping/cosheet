@@ -93,7 +93,7 @@
                                     (:exclude-elements %))
                            leaves)]
         (item-stack-DOM
-         item-without-labels-DOM-R items excludeds "vertical-item-stack"
+         item-without-labels-DOM-R items excludeds "vertical-stack"
          inherited-down)))))
 
 (declare elements-DOM-R)
@@ -106,7 +106,7 @@
                             ordered-labels)]
     (item-stack-DOM item-without-labels-DOM-R
                     ordered-labels tags
-                    "vertical-item-stack"
+                    "vertical-stack"
                     (add-inherited-attribute inherited {:class "tag"}))))
 
 (defn non-empty-labels-wrapper-DOM-R
@@ -227,7 +227,7 @@
                                    node inherited-for-leaves)
                                   child-doms))
                           :stack-class (case direction
-                                         :vertical "stack"
+                                         :vertical "vertical-stack"
                                          :horizontal "horizontal-stack"))]
     (expr-let [properties-dom (when (or (seq (:properties node))
                                         must-show-empty-labels)
@@ -239,7 +239,7 @@
                    properties-dom descendants-doms]
                   descendants-doms)
                 [:div {:class "wrapped-element tag"}
-                 ;; If the properties-dom is an item-stack,
+                 ;; If the properties-dom is a stack,
                  ;; we need to mark it as tag.
                  (add-attributes properties-dom {:class "tag"})
                  (case direction
@@ -359,7 +359,7 @@
       (if (and no-labels (not must-show-empty-labels))
         (item-stack-DOM
          item-without-labels-DOM-R ordered-elements excludeds
-         "vertical-item-stack" inherited)
+         "vertical-stack" inherited)
         (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))

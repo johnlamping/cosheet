@@ -635,8 +635,6 @@ body {
     flex: none;
     display: flex;
     align-items: stretch;
-    position: relative; /* So we can set up a highlight ::before element
-                           with top: 100%; */
 }
 
 .table-main > .column-header-sequence {
@@ -661,8 +659,6 @@ body {
 }
 
 .column-header {
-    /* Needed to make broad-interpretation box's absolution position work. */
-    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -682,6 +678,13 @@ body {
     min-height: 25px;
 }
 
+.column-header.merge-with-parent {
+    padding: 2px; /* positions inside stuff as if there were a border */
+    margin: 0px -2px -2px 0px;
+    min-height: 25px;
+}
+
+
 /* Make the header fill all the available space, for a better selection box. */
 .column-header > :first-child.content-text {
     display: flex;
@@ -694,7 +697,6 @@ body {
 .column-header.with-children {
     border-bottom-width: 0px;
 }
-
  
 .column-header > .column-header,
 .column-header > .wrapped-element,

@@ -255,11 +255,16 @@
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
-  a dom with the given class, and with each of the doms as children."
-  [doms & {:keys [stack-class] :or {stack-class "vertical-stack"}}]
-  (if (= (count doms) 1)
-       (first doms)
-       (into [:div (if (empty? doms) {} {:class stack-class})] doms)))
+  a dom with all of the doms as children and with class for
+  the stack direction."
+  [doms direction]
+  (cond
+    (empty? doms) [:div {}]
+    (= (count doms) 1)  (first doms)
+    true (let [class (case direction
+                       :vertical "vertical-stack"
+                       :horizontal "horizontal-stack")]
+           (into [:div {:class class}] doms))))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -272,7 +277,7 @@
   The excludeds can be either a single value to be used for all items,
   or a sequence of values, one per item.
   dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn items excludeds stack-class inherited]
+  [dom-fn items excludeds direction inherited]
   (let [descriptors (:attributes inherited)
         [local remaining] (split-descriptors-by-currency descriptors)
         inherited (assoc-if-non-empty inherited :attributes remaining)]
@@ -282,7 +287,7 @@
                      (item-component dom-fn item excluded inherited) local))
                   items
                   (if (sequential? excludeds) excludeds (repeat excludeds)))
-             :stack-class stack-class)
+             direction)
       (> (count items) 1)
       (add-attributes local))))
 

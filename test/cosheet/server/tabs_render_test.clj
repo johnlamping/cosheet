@@ -99,7 +99,7 @@
                                                    (cons "" new-tab-elements) t3)}
                                      :selected {:referent (item-referent t3)
                                                 :special :tab}}]])]
-             [:div {:class "vertical-item-stack tab"}
+             [:div {:class "vertical-stack tab"}
               [:component {:key [:foo (item-referent t3-baz)]}
                [item-without-labels-DOM-R t3-baz nil inherited]]
               [:component {:key [:foo (item-referent t3-bletch)]}

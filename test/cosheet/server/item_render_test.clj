@@ -125,7 +125,7 @@
                           :alternate true}
                  :added-by-test {1 2}}
            "39"]
-          [:div {:class "stack"}
+          [:div {:class "vertical-stack"}
            ;; Everything with "confidence"
            [:div {:class "wrapped-element tag"}
             [:component {:key (conj tags-key (:item-id confidence1))
@@ -149,9 +149,9 @@
                :selector-category :some-category
                :alternate-target true}]]
             [:div {:class "indent-wrapper"}
-             [:div {:class "stack"}
+             [:div {:class "vertical-stack"}
               ;; One Another
-              [:div {:class "vertical-item-stack"}
+              [:div {:class "vertical-stack"}
                ;; One
                [:component {:key (conj age-key (:item-id one))}
                 [item-without-labels-DOM-R one [confidence1]
@@ -341,7 +341,7 @@
          dom
          [:div {:class "item with-elements"}
           [:div (any map?) "39"]
-          [:div {:class "stack"}
+          [:div {:class "vertical-stack"}
            [:div {:class "horizontal-tags-element wide"}
             ;; Group with empty item.
             [:div {:class "tag horizontal-header top-border"}
@@ -394,7 +394,7 @@
                                              (item-referent age)
                                              likelihoods-parallel-referent) 
                                   :select-pattern (conj age-key [:pattern])}}]]}]]]]
-            [:div {:class "vertical-item-stack"}
+            [:div {:class "vertical-stack"}
              ;; Pair
              [:component {:key (conj age-key (:item-id pair))}
               [item-without-labels-DOM-R pair (as-set [confidence1 likelihood])

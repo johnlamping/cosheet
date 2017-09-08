@@ -792,8 +792,14 @@ body {
     width: 150px;
     min-height: 20px;
     flex: none;
+    display: flex;
+    flex-direction: column;
     border-width: 2px;
     margin: 0px -2px -2px 0px;
+}
+
+.wrapped-element.table-cell > .indent-wrapper {
+    flex-grow: 1;
 }
 
 .virtual-column {

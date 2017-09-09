@@ -119,9 +119,9 @@
       :vertical [:div {:class "wrapped-element tag"}
                  stack
                  [:div {:class "indent-wrapper tag"} inner-dom]]
-      :horizontal [:div {:class "horizontal-tagged-elements"}
+      :horizontal [:div {:class "horizontal-tags-element"}
                    stack
-                   [:div [:class "elements-holder"] inner-dom]])))
+                   inner-dom])))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -424,18 +424,15 @@
                      ;; if the item has nothing but this content.
                      {:key (conj (:key-prefix inherited) :content)})]
     (if (empty? elements)
-      (add-attributes (or content-dom [:div]) {:class "item"})
+      (add-attributes content-dom {:class "item"})
       (let [inherited-down
             (-> (transform-inherited-attributes inherited :element)
                 (update :priority inc)
                 (assoc :template '(nil)))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil :vertical inherited-down)]
-          (if content-dom
-            [:div {:class "item with-elements"}
-             content-dom elements-dom]
-            [:div {:class "item elements-wrapper"}
-             elements-dom]))))))
+          [:div {:class "item with-elements"}
+           content-dom elements-dom])))))
 
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of elements, all of the same item.

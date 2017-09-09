@@ -126,9 +126,15 @@ body {
 }
 
 .elements-wrapper {
-    /* The boxes inside have margins of -2px all around, so this gives
-       three pixels, except for 6 on the left. */
-    padding: 5px 5px 5px 8px;
+    padding: 3px 3px 3px 5px;
+}
+
+.horizontal-stack {
+    display: flex; /* horizontal is default */
+}
+
+.horizontal-stack > *:not(:last-child) {
+    margin-right: 2px;
 }
 
 /* --- tabs --- */
@@ -545,6 +551,22 @@ body {
                     hsla(0, 0%, 100%, .7),
                     hsla(0, 0%, 100%, 0) 7px,
                     hsla(0, 0%, 100%, 0));
+}
+
+/* Label pairs, horizontal format */
+
+.vertical-tags-element {
+    border-width: 2px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+}
+
+.vertical-tags-element > :first-child {
+    border-bottom-width: 2px;
+}
+
+.horizontal-tags-element > .elements-wrapper {
+    border-left-width: 2px;
 }
 
 /* --- tables --- */

@@ -538,7 +538,7 @@
                condition-is-all-tags (= (count conditions-as-lists)
                                         (count condition-tags))
                dom (condition-elements-DOM-R
-                    condition-elements :wide :vertical
+                    condition-elements :wide :horizontal
                     (assoc inherited
                            :selector-category :table-condition
                            :subject-referent subject-referent
@@ -552,7 +552,7 @@
                                            {:referent subject-referent}}]]))]
       [[:div {:class (cond-> "table-top selectors"
                        condition-is-all-tags (str " tag"))}
-        [:div {:class "table-corner"}]
+        [:div {:class "table-corner tag"}]
         (add-attributes dom {:class "table-condition"})]
        condition-tags
        condition-is-all-tags])))
@@ -646,7 +646,7 @@
               [:div {:class "table selector-scope"}
                condition-dom
                [:div {:class "table-body"}
-                [:div {:class (cond-> "table-indent"
+                [:div {:class (cond-> "table-indent tag"
                                 condition-is-all-tags (str " tag"))}]
                 [:div {:class "table-main selectees selector-scope"}
                  (add-attributes headers {:class "selectors"})

@@ -152,7 +152,7 @@
                  (when non-labels
                    (expr-let [inner-dom
                               (elements-DOM-R
-                               non-labels must-show-empty-labels nil
+                               non-labels must-show-empty-labels nil :vertical
                                (transform-inherited-attributes
                                 inherited :element))]
                      [:div {:class "item elements-wrapper"} inner-dom]))]
@@ -355,7 +355,7 @@
    If must-show-empty-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is any space available."
-  [elements must-show-empty-labels implied-template inherited]
+  [elements must-show-empty-labels implied-template direction inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
        all-labels (expr-seq map #(expr-filter semantic-element?-R
@@ -370,17 +370,21 @@
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-empty-labels))
         (item-stack-DOM
-         item-without-labels-DOM-R ordered-elements excludeds :vertical
+         item-without-labels-DOM-R ordered-elements excludeds direction
          inherited)
         (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)
                    hierarchy (hierarchy-by-canonical-info augmented)]
-          (if (or (< (:width inherited) 1.0)
-                  (and no-labels (not (= must-show-empty-labels :wide))))
-            (tagged-items-one-column-DOM-R hierarchy inherited)
-            (tagged-items-two-column-DOM-R hierarchy inherited)))))))
+          (case direction
+            :vertical
+            (if (or (< (:width inherited) 1.0)
+                    (and no-labels (not (= must-show-empty-labels :wide))))
+              (tagged-items-one-column-DOM-R hierarchy inherited)
+              (tagged-items-two-column-DOM-R hierarchy inherited))
+            :horizontal
+            (tagged-items-horizontal-DOM-R hierarchy inherited)))))))
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
@@ -421,7 +425,7 @@
                 (update :priority inc)
                 (assoc :template '(nil)))]
         (expr-let [elements-dom (elements-DOM-R
-                                 elements true nil inherited-down)]
+                                 elements true nil :vertical inherited-down)]
           (if content-dom
             [:div {:class "item with-elements"}
              content-dom elements-dom]

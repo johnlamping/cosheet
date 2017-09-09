@@ -373,7 +373,8 @@
                (virtual-item-DOM
                 (:key-prefix inherited) (:subject-referent inherited) :after
                 inherited)
-               (elements-DOM-R items false (:template inherited) inherited))]
+               (elements-DOM-R items false (:template inherited) :vertical
+                               inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
 
 (defn table-virtual-column-cell-DOM

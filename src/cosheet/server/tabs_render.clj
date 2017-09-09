@@ -85,7 +85,7 @@
                             example-elements tabs-referent inherited)]
         (if (seq (:properties node))
           (expr-let [dom (elements-DOM-R example-elements false nil
-                                         inherited-down)
+                                         :vertical inherited-down)
                      elements-elements (expr-seq map semantic-elements-R
                                                  example-elements)]
             (cond-> dom

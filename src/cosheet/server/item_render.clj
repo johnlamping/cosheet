@@ -112,12 +112,16 @@
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item.
   Inherited should be half way to the children."
-  [inner-dom label-elements inherited]
+  [inner-dom label-elements direction inherited]
   (expr-let [stack (label-stack-DOM-R
                     label-elements (transform-inherited-for-labels inherited))]
-    [:div {:class "wrapped-element tag"}
-       stack
-       [:div {:class "indent-wrapper tag"} inner-dom]]))
+    (case direction
+      :vertical [:div {:class "wrapped-element tag"}
+                 stack
+                 [:div {:class "indent-wrapper tag"} inner-dom]]
+      :horizontal [:div {:class "horizontal-tagged-elements"}
+                   stack
+                   [:div [:class "elements-holder"] inner-dom]])))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -125,7 +129,7 @@
   inherited should be half way to the children." 
   [dom label-elements must-show-empty-label inherited]
   (if (not (empty? label-elements))
-    (non-empty-labels-wrapper-DOM-R dom label-elements inherited)
+    (non-empty-labels-wrapper-DOM-R dom label-elements :vertical inherited)
     (if (not must-show-empty-label)
       dom
       [:div {:class "horizontal-tags-element narrow"}
@@ -140,7 +144,7 @@
   "Generate the dom for a (subset of) a condition, given its elements.
   inherited must be half way to the children.
   must-show-empty-labels gets passed on to elements-DOM-R."
-  [elements must-show-empty-labels inherited]
+  [elements must-show-empty-labels direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [pairs (map vector tags elements)
@@ -152,13 +156,14 @@
                  (when non-labels
                    (expr-let [inner-dom
                               (elements-DOM-R
-                               non-labels must-show-empty-labels nil :vertical
+                               non-labels must-show-empty-labels nil direction
                                (transform-inherited-attributes
                                 inherited :element))]
                      [:div {:class "item elements-wrapper"} inner-dom]))]
         (cond
           (and labels non-labels)
-          (non-empty-labels-wrapper-DOM-R elements-dom labels inherited)
+          (non-empty-labels-wrapper-DOM-R elements-dom labels direction
+                                          inherited)
           labels
           (label-stack-DOM-R elements
                              (-> inherited

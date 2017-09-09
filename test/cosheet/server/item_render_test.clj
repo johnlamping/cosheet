@@ -604,7 +604,7 @@
                           :attributes [[#{:content} {:class "placeholder"}]])
         dom (current-value
               (condition-elements-DOM-R
-               [age qualifier] false inherited))]
+               [age qualifier] false :vertical inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}

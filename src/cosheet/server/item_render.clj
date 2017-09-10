@@ -178,13 +178,14 @@
                              (-> inherited
                                  transform-inherited-for-labels
                                  (add-inherited-attribute {:class "tag"})))
+          (and must-show-empty-label non-labels)
+          (wrap-with-labels-DOM
+           elements-dom (virtual-label-DOM inherited) direction)
           non-labels
           elements-dom
           true
-          (add-attributes
-           (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
-                             nil :after (assoc inherited :template '(nil :tag)))
-           {:class "elements-wrapper"}))))))
+          (add-attributes (virtual-label-DOM inherited)
+                          {:class "elements-wrapper"}))))))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements

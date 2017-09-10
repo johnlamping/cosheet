@@ -47,26 +47,32 @@
 ;;; attributes, and additional attributes that are used by the server.
 ;;; There are removed by the dom manager before dom is sent to the client.
 (def server-specific-attributes
-  [      :key  ; A unique client side key (further described below).
-      :target  ; The item (or virtual new item) that the dom refers to
-               ; It is itself a map, with some of these keys:
-               ; :special         A keyword indicating a special action
-               ;                  to perform on commands.
-               ; :referent        Item(s) referred to
-               ; :select-pattern  The pattern to use to generate the key to
-               ;                  select part of a new item.
-               ; :alternate       If true, this target has an alternate
-               ;                  interpretation, by narrowing the referent.
-               ;                  :selector-category must be present.
-               ;                  If an atom, that atom overrides
-               ;                  :selector-category.
- :add-sibling  ; A special target to use for add-sibling commands.
-      :delete  ; A special target to use for deletion, if it should be
-               ; different from the :target.
-      :expand  ; A special target to use for expansion, if it should be
-               ; different from the :target.
-     :add-row  ; A special target to use for add-row commands.
-  :add-column  ; The analog of :row for a column.
+  [        :key  ; A unique client side key (further described below).
+        :target  ; The item (or virtual new item) that the dom refers to
+                 ; It is itself a map, with some of these keys:
+                 ; :special         A keyword indicating a special action
+                 ;                  to perform on commands.
+                 ; :referent        Item(s) referred to
+                 ; :select-pattern  The pattern to use to generate the key to
+                 ;                  select part of a new item.
+                 ; :alternate       If true, this target has an alternate
+                 ;                  interpretation, by narrowing the referent.
+                 ;                  :selector-category must be present.
+                 ;                  If an atom, that atom overrides
+                 ;                  :selector-category.
+   :add-sibling  ; commands that may have information added to the attributes.
+   :add-element
+   :add-twin
+   :add-label
+   :add-row
+   :add-column
+   :delete
+   :delete-row
+   :delete-column
+   :set-content
+   :expand
+   :selected
+   :batch-edit
    :selector-category  ; If this dom is a selector, this field
                        ; will be present,  and hold an atom characterizing
                        ; the kind of selector.

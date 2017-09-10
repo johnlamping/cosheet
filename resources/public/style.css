@@ -76,6 +76,7 @@ body {
 
 .editable {
     min-height: 15px; /* Make no-content cells have minimum height */
+    min-width: 7px;
 }
 
 .content-text {

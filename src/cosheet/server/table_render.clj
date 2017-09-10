@@ -34,7 +34,7 @@
                                    transform-inherited-for-labels
                                    add-inherited-attribute
                                    hierarchy-node-DOM-R]]
-             [item-render :refer [elements-DOM-R condition-elements-DOM-R
+             [item-render :refer [elements-DOM-R labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))
 
@@ -243,8 +243,8 @@
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
            content example-elements false inherited-down))
-        (condition-elements-DOM-R example-elements true :vertical
-                                  inherited-down)))))
+        (labels-and-elements-DOM-R example-elements false true :vertical
+                                   inherited-down)))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of
@@ -537,8 +537,8 @@
                                       conditions-as-lists)
                condition-is-all-tags (= (count conditions-as-lists)
                                         (count condition-tags))
-               dom (condition-elements-DOM-R
-                    condition-elements :wide :horizontal
+               dom (labels-and-elements-DOM-R
+                    condition-elements true true :horizontal
                     (assoc inherited
                            :selector-category :table-condition
                            :subject-referent subject-referent

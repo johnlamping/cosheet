@@ -579,7 +579,7 @@
                     [:component {:key (any)}
                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
 
-(deftest condition-elements-DOM-R-test
+(deftest labels-and-elements-DOM-R-test
   (let [element-as-list `(39
                           ("age" :tag (~o1 :order :non-semantic))
                           ("Ke"
@@ -603,8 +603,8 @@
                           :subject-referent element-referent
                           :attributes [[#{:content} {:class "placeholder"}]])
         dom (current-value
-              (condition-elements-DOM-R
-               [age qualifier] false :vertical inherited))]
+              (labels-and-elements-DOM-R
+               [age qualifier] false false :vertical inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}

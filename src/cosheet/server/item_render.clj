@@ -96,7 +96,24 @@
          item-without-labels-DOM-R items excludeds :vertical
          inherited-down)))))
 
-(declare elements-DOM-R)
+(defn wrap-with-labels-DOM
+  [inner-dom labels-dom direction]
+  (case direction
+    :vertical [:div {:class "wrapped-element tag"}
+               labels-dom
+               [:div {:class "indent-wrapper tag"} inner-dom]]
+    :horizontal [:div {:class "horizontal-tags-element"}
+                 labels-dom
+                 inner-dom]))
+
+(defn virtual-label-DOM
+  "Return a dom for a virtual label"
+  [inherited]
+  (add-attributes
+   (virtual-item-DOM (conj (:key-prefix inherited) :tags)
+                     nil :after
+                     (transform-inherited-for-labels inherited))
+   {:class "tag"}))
 
 (defn label-stack-DOM-R
   "Given a non-empty list of label elements, return a stack of their doms."
@@ -115,13 +132,7 @@
   [inner-dom label-elements direction inherited]
   (expr-let [stack (label-stack-DOM-R
                     label-elements (transform-inherited-for-labels inherited))]
-    (case direction
-      :vertical [:div {:class "wrapped-element tag"}
-                 stack
-                 [:div {:class "indent-wrapper tag"} inner-dom]]
-      :horizontal [:div {:class "horizontal-tags-element"}
-                   stack
-                   inner-dom])))
+    (wrap-with-labels-DOM inner-dom stack direction)))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -133,18 +144,16 @@
     (if (not must-show-empty-label)
       dom
       [:div {:class "horizontal-tags-element narrow"}
-       (add-attributes
-        (virtual-item-DOM (conj (:key-prefix inherited) :tags)
-                          nil :after
-                          (transform-inherited-for-labels inherited))
-        {:class "tag"})
+       (virtual-label-DOM inherited)
        dom])))
 
-(defn condition-elements-DOM-R
-  "Generate the dom for a (subset of) a condition, given its elements.
+(declare elements-DOM-R)
+
+(defn labels-and-elements-DOM-R
+  "Generate the dom for a set of elements, some of which may be labels.
   inherited must be half way to the children.
-  must-show-empty-labels gets passed on to elements-DOM-R."
-  [elements must-show-empty-labels direction inherited]
+  must-show-empty-labels determines whether the elements must show labels."
+  [elements must-show-empty-label must-show-empty-labels direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
     (let [pairs (map vector tags elements)

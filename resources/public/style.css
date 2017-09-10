@@ -597,6 +597,10 @@ body {
     flex: 1 0 auto;
 }
 
+.table-condition.horizontal-tags-element > *:first-child {
+    min-width: 50px;
+}
+
 /* Merge the border of the wrapped element with the table-top border. */
 .wrapped-element.table-condition {
     margin-left: -5px;

@@ -299,6 +299,7 @@ body {
     margin-bottom: 2px;
     text-align: center;
     color: hsl(220, 100%, 45%);
+    font-weight: bold;
 }
 
 .batch-stack-wrapper {

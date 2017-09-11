@@ -579,6 +579,7 @@
                     [:component {:key (any)}
                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
 
+;;; TODO: Add a test where some of the arguments are true.
 (deftest labels-and-elements-DOM-R-test
   (let [element-as-list `(39
                           ("age" :tag (~o1 :order :non-semantic))
@@ -604,7 +605,7 @@
                           :attributes [[#{:content} {:class "placeholder"}]])
         dom (current-value
               (labels-and-elements-DOM-R
-               [age qualifier] false false :vertical inherited))]
+               [age qualifier] false false false :vertical inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}
                 [:component {:key age-key :class "tag"}

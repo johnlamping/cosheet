@@ -243,7 +243,7 @@
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
            content example-elements false inherited-down))
-        (labels-and-elements-DOM-R example-elements false true :vertical
+        (labels-and-elements-DOM-R example-elements false false true :vertical
                                    inherited-down)))))
 
 (defn table-header-child-info
@@ -538,7 +538,7 @@
                condition-is-all-tags (= (count conditions-as-lists)
                                         (count condition-tags))
                dom (labels-and-elements-DOM-R
-                    condition-elements true true :horizontal
+                    condition-elements true true true :horizontal
                     (assoc inherited
                            :selector-category :table-condition
                            :subject-referent subject-referent

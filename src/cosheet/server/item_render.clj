@@ -96,6 +96,12 @@
          item-without-labels-DOM-R items excludeds :vertical
          inherited-down)))))
 
+(defn opposite-direction
+  [direction]
+  (case direction
+    :horizontal :vertical
+    :vertical :horizontal))
+
 (defn wrap-with-labels-DOM
   [inner-dom labels-dom direction]
   (case direction
@@ -147,13 +153,39 @@
        (virtual-label-DOM inherited)
        dom])))
 
-(declare elements-DOM-R)
+(declare element-DOMs-R)
+
+(defn virtual-element-DOM-R
+  "Return the dom for a virtual element."
+  [elements virtual-content must-show-empty-label direction inherited]
+  (expr-let [adjacent (when elements
+                        (expr-let [ordered (order-items-R elements)]
+                          (item-or-exemplar-referent
+                           (last ordered) (:subject-referent inherited))))]
+    (let [dom (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
+                                adjacent :after inherited)]
+      (if must-show-empty-label
+        (let [labels-dom
+              (let [inherited-down
+                    (-> inherited
+                        (assoc :template '(nil :tag))
+                        (update :subject-referent
+                                #(let [template
+                                       (if (:template inherited)
+                                         (cons virtual-content
+                                               (rest (:template inherited)))
+                                         virtual-content)]
+                                   (virtual-referent template % adjacent))))]
+                (virtual-item-DOM (conj (:key-prefix inherited) :virtual :label)
+                                  adjacent :after inherited-down))]
+          (wrap-with-labels-DOM dom labels-dom direction))
+        dom))))
 
 (defn labels-and-elements-DOM-R
   "Generate the dom for a set of elements, some of which may be labels.
   inherited must be half way to the children.
   must-show-empty-labels determines whether the elements must show labels."
-  [elements include-virtual must-show-empty-label must-show-empty-labels
+  [elements virtual-content must-show-empty-label must-show-empty-labels
    direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
@@ -163,14 +195,24 @@
           non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
                                 pairs))]
       (expr-let [elements-dom
-                 (when non-labels
-                   (expr-let [inner-dom
-                              (when non-labels
-                                (elements-DOM-R
-                                 non-labels must-show-empty-labels nil direction
-                                 (transform-inherited-attributes
-                                  inherited :element)))]
-                     [:div {:class "item elements-wrapper"} inner-dom]))]
+                 (when (or non-labels virtual-content)
+                   (expr-let
+                       [element-doms
+                        (when non-labels
+                          (element-DOMs-R
+                           non-labels must-show-empty-labels nil direction
+                           (transform-inherited-attributes
+                            inherited :element)))
+                        virtual-dom
+                        (when virtual-content
+                          (virtual-element-DOM-R
+                           elements virtual-content must-show-empty-label
+                           (opposite-direction direction) inherited))]
+                     [:div {:class "item elements-wrapper"}
+                      (nest-if-multiple-DOM
+                       (cond-> element-doms
+                         virtual-dom (concat [virtual-dom]))
+                       direction)]))]
         (cond
           (and labels non-labels)
           (non-empty-labels-wrapper-DOM-R elements-dom labels direction

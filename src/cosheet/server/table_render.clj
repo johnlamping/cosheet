@@ -538,7 +538,7 @@
                condition-is-all-tags (= (count conditions-as-lists)
                                         (count condition-tags))
                dom (labels-and-elements-DOM-R
-                    condition-elements true true true :horizontal
+                    condition-elements 'anything true true :horizontal
                     (assoc inherited
                            :selector-category :table-condition
                            :subject-referent subject-referent

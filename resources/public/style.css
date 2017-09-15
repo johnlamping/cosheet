@@ -132,11 +132,19 @@ body {
 
 .horizontal-stack {
     display: flex; /* horizontal is default */
-    align-items: flex-end;
 }
 
 .horizontal-stack > *:not(:last-child) {
     margin-right: 2px;
+}
+
+.horizontal-stack > .vertical-tags-element {
+    display: flex;
+    flex-direction: column;
+}
+
+.horizontal-stack > .vertical-tags-element > :first-child {
+    flex: 1;
 }
 
 /* --- tabs --- */
@@ -564,6 +572,10 @@ body {
     border-top-right-radius: 7px;
 }
 
+.vertical-tags-element > * {
+    min-width: 20px;
+}
+
 .vertical-tags-element > :first-child {
     border-bottom-width: 2px;
 }
@@ -738,7 +750,8 @@ body {
     margin-top: -2px;
 }
 
-.column-header:not(.merge-with-parent).tag, .table-top.tag {
+.column-header:not(.merge-with-parent).tag, .table-top.tag,
+.vertical-tags-element > :first-child {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),

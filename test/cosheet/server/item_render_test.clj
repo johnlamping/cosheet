@@ -539,7 +539,7 @@
                      :attributes [[#{:content}
                                    {:expand {:referent
                                              (item-referent element)}}]]}]]
-                  [:div {:class "indent-wrapper tag"}
+                  [:div {:class "indent-wrapper"}
                    [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
                            :target {:referent (item-referent element)}
@@ -614,7 +614,7 @@
                    :subject-referent (item-referent element)
                    :width 1.0
                    :template '(nil :tag)}]]
-                [:div {:class "indent-wrapper tag"}
+                [:div {:class "indent-wrapper"}
                  [:div {:class "item elements-wrapper"}
                   [:div {:class "horizontal-tags-element wide"}
                    [:div {:class
@@ -662,7 +662,7 @@
                    :subject-referent (item-referent element)
                    :width 1.0
                    :template '(nil :tag)}]]
-                [:div {:class "indent-wrapper tag"}
+                [:div {:class "indent-wrapper"}
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"
                          :target {:referent element-referent}

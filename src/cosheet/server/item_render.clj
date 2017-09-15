@@ -110,7 +110,7 @@
   (if (= direction :vertical-wrapped)
     [:div {:class "wrapped-element tag"}
      labels-dom
-     [:div {:class "indent-wrapper tag"} inner-dom]]
+     [:div {:class "indent-wrapper"} inner-dom]]
     [:div {:class (case direction
                     :vertical "vertical-tags-element"
                     :horizontal "horizontal-tags-element")}
@@ -307,15 +307,10 @@
                     (= direction :vertical)
                     (add-attributes {:class "narrow"}))
                   descendants-dom)
-                [:div {:class (case direction
-                                :vertical "wrapped-element tag"
-                                :horizontal "vertical-tags-element")}
-                 ;; If the properties-dom is a stack,
-                 ;; we need to mark it as tag.
-                 (add-attributes properties-dom {:class "tag"})
-                 (case direction
-                   :vertical [:div {:class "indent-wrapper"} descendants-dom]
-                   :horizontal descendants-dom)])
+                (add-labels-DOM properties-dom descendants-dom
+                                (case direction
+                                  :vertical :vertical-wrapped
+                                  :horizontal :vertical)))
         only-item
         (add-attributes (inherited-attributes inherited only-item))))))
 

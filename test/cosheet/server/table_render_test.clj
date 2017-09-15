@@ -162,7 +162,7 @@
                     [#{:content}
                      {:expand {:referent first-column-referent}
                       :delete {:referent nil}}]]}]]
-                [:div {:class "indent-wrapper tag"}
+                [:div {:class "indent-wrapper"}
                  [:div {:selector-category :table-header
                         :delete-column {:referent delete-column-referent
                                         :alternate true},

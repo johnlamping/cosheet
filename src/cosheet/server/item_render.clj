@@ -177,7 +177,9 @@
                                 adjacent :after inherited)]
       (if must-show-empty-label
         (let [labels-dom
-              (let [inherited-down
+              (let [selector (when (:selector-category inherited)
+                               :first-group)
+                    inherited-down
                     (-> inherited
                         (assoc :template '(nil :tag))
                         (update :subject-referent
@@ -186,7 +188,8 @@
                                          (cons virtual-content
                                                (rest (:template inherited)))
                                          virtual-content)]
-                                   (virtual-referent template % adjacent))))]
+                                   (virtual-referent template % adjacent
+                                                     :selector selector))))]
                 (add-attributes
                  (virtual-item-DOM
                   (conj (:key-prefix inherited) :virtual :label)

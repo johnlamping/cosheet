@@ -132,6 +132,7 @@ body {
 
 .horizontal-stack {
     display: flex; /* horizontal is default */
+    align-items: flex-end;
 }
 
 .horizontal-stack > *:not(:last-child) {

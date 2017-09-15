@@ -187,9 +187,12 @@
                                                (rest (:template inherited)))
                                          virtual-content)]
                                    (virtual-referent template % adjacent))))]
-                (virtual-item-DOM (conj (:key-prefix inherited) :virtual :label)
-                                  adjacent :after inherited-down))]
-          (wrap-with-labels-DOM labels-dom dom direction))
+                (add-attributes
+                 (virtual-item-DOM
+                  (conj (:key-prefix inherited) :virtual :label)
+                  adjacent :after inherited-down)
+                 {:class "tag"}))]
+          (add-labels-DOM labels-dom dom direction))
         dom))))
 
 (defn labels-and-elements-DOM-R

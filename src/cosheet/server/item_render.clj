@@ -102,15 +102,26 @@
     :horizontal :vertical
     :vertical :horizontal))
 
+(defn add-labels-DOM
+  "Add label dom to an inner dom. Direction gives the direction of the label
+  with respect to the inner dom. It can also be :vertical-wrapped, which puts
+  it above the inner dom, but with an indentation on the left too."
+  [labels-dom inner-dom direction]
+  (if (= direction :vertical-wrapped)
+    [:div {:class "wrapped-element tag"}
+     labels-dom
+     [:div {:class "indent-wrapper tag"} inner-dom]]
+    [:div {:class (case direction
+                    :vertical "vertical-tags-element"
+                    :horizontal "horizontal-tags-element")}
+     labels-dom inner-dom]))
+
 (defn wrap-with-labels-DOM
-  [inner-dom labels-dom direction]
-  (case direction
-    :vertical [:div {:class "wrapped-element tag"}
-               labels-dom
-               [:div {:class "indent-wrapper tag"} inner-dom]]
-    :horizontal [:div {:class "horizontal-tags-element"}
-                 labels-dom
-                 inner-dom]))
+  "Direction gives the direction of the label with respect to the inner dom.
+  :vertical is interpreted as :vertical-wrapped."
+  [labels-dom inner-dom direction]
+  (add-labels-DOM labels-dom inner-dom (if (= direction :vertical)
+                                         :vertical-wrapped direction)))
 
 (defn virtual-label-DOM
   "Return a dom for a virtual label"
@@ -138,7 +149,7 @@
   [inner-dom label-elements direction inherited]
   (expr-let [stack (label-stack-DOM-R
                     label-elements (transform-inherited-for-labels inherited))]
-    (wrap-with-labels-DOM inner-dom stack direction)))
+    (wrap-with-labels-DOM stack inner-dom direction)))
 
 (defn labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -178,7 +189,7 @@
                                    (virtual-referent template % adjacent))))]
                 (virtual-item-DOM (conj (:key-prefix inherited) :virtual :label)
                                   adjacent :after inherited-down))]
-          (wrap-with-labels-DOM dom labels-dom direction))
+          (wrap-with-labels-DOM labels-dom dom direction))
         dom))))
 
 (defn labels-and-elements-DOM-R
@@ -224,7 +235,7 @@
                                  (add-inherited-attribute {:class "tag"})))
           (and must-show-empty-label non-labels)
           (wrap-with-labels-DOM
-           elements-dom (virtual-label-DOM inherited) direction)
+           (virtual-label-DOM inherited) elements-dom direction)
           non-labels
           elements-dom
           true
@@ -278,7 +289,7 @@
                                       inherited node)
                                only-item
                                (remove-inherited-for-item only-item))
-        descendants-doms (nest-if-multiple-DOM
+        descendants-dom (nest-if-multiple-DOM
                           (if (empty? leaves)
                             child-doms
                             (cons (hierarchy-leaf-items-DOM
@@ -291,11 +302,11 @@
                                  node inherited))]
       (cond-> (if (empty? (:properties node))
                 (if must-show-empty-labels
-                  [:div {:class (case direction
-                                  :vertical "horizontal-tags-element narrow"
-                                  :horizontal "vertical-tags-element")}
-                   properties-dom descendants-doms]
-                  descendants-doms)
+                  (cond-> (add-labels-DOM properties-dom descendants-dom
+                                          (opposite-direction direction))
+                    (= direction :vertical)
+                    (add-attributes {:class "narrow"}))
+                  descendants-dom)
                 [:div {:class (case direction
                                 :vertical "wrapped-element tag"
                                 :horizontal "vertical-tags-element")}
@@ -303,8 +314,8 @@
                  ;; we need to mark it as tag.
                  (add-attributes properties-dom {:class "tag"})
                  (case direction
-                   :vertical [:div {:class "indent-wrapper"} descendants-doms]
-                   :horizontal descendants-doms)])
+                   :vertical [:div {:class "indent-wrapper"} descendants-dom]
+                   :horizontal descendants-dom)])
         only-item
         (add-attributes (inherited-attributes inherited only-item))))))
 

@@ -8,9 +8,11 @@
                      [expression :refer [expr expr-let expr-seq]])
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
-                               union-referent instantiate-to-items]]
+                               union-referent instantiate-to-items
+                               semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute]]
-             [item-render :refer [must-show-label-item-DOM-R]])))
+             [item-render :refer [must-show-label-item-DOM-R
+                                  labels-and-elements-DOM-R]])))
 
 (defn top-level-items-referent
   "Return a referent to all the top level items that match the query item."
@@ -96,12 +98,16 @@
   [query-item selected-batch-item store inherited]
   (let [inherited-for-query
         (-> inherited
-            (assoc :selector-category :batch-query)
+            (assoc :selector-category :batch-query
+                   :subject-referent (item-referent query-item))
             (add-inherited-attribute
-             [(:item-id selected-batch-item) {:class "batch-selected-item"}])
-            )]
+             [(:item-id selected-batch-item) {:class "batch-selected-item"}]))]
     (expr-let
-        [query-dom (must-show-label-item-DOM-R
+        [condition-elements (semantic-elements-R query-item)
+         query-dom (labels-and-elements-DOM-R
+                    condition-elements 'anything true true :horizontal
+                    inherited-for-query)
+         old-query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)
          stack-dom (batch-edit-stack-DOM-R
                     query-item selected-batch-item store inherited)]

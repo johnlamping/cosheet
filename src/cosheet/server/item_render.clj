@@ -170,7 +170,7 @@
 (defn virtual-element-DOM-R
   "Return the dom for a virtual element."
   [elements virtual-content must-show-empty-label direction inherited]
-  (expr-let [adjacent (when elements
+  (expr-let [adjacent (when (seq elements)
                         (expr-let [ordered (order-items-R elements)]
                           (item-or-exemplar-referent
                            (last ordered) (:subject-referent inherited))))]
@@ -232,7 +232,7 @@
                          virtual-dom (concat [virtual-dom]))
                        direction)]))]
         (cond
-          (and labels non-labels)
+          (and labels elements-dom)
           (non-empty-labels-wrapper-DOM-R elements-dom labels direction
                                           inherited)
           labels
@@ -240,10 +240,10 @@
                              (-> inherited
                                  transform-inherited-for-labels
                                  (add-inherited-attribute {:class "tag"})))
-          (and must-show-empty-label non-labels)
+          (and must-show-empty-label elements-dom)
           (wrap-with-labels-DOM
            (virtual-label-DOM inherited) elements-dom direction)
-          non-labels
+          elements-dom
           elements-dom
           true
           (add-attributes (virtual-label-DOM inherited)

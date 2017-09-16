@@ -298,6 +298,14 @@ body {
     display: inline-block;
 }
 
+.batch-query {
+    border-width: 2px;
+    border-bottom-width: 0px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
+    min-width: 300px;
+}
+
 /* Three copies, so our definition of margin wins out. */
 .batch-selected.batch-selected.batch-selected {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%),

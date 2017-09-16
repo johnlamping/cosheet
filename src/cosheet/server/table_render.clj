@@ -242,7 +242,9 @@
       (if (empty? (:child-nodes node))
         (expr-let [content (entity/content item)]
           (item-content-and-elements-DOM-R
-           content example-elements false inherited-down))
+           content example-elements false
+           (add-inherited-attribute inherited-down
+                                    [#{:content} {:add-twin {:referent nil}}])))
         (labels-and-elements-DOM-R example-elements false false true :vertical
                                    inherited-down)))))
 

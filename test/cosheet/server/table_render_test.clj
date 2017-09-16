@@ -168,6 +168,7 @@
                                         :alternate true},
                         :delete {:referent nil}
                         :add-column first-column-add
+                        :add-twin {:referent nil}
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
                                  :alternate true

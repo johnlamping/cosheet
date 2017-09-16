@@ -138,6 +138,10 @@ body {
     margin-right: 2px;
 }
 
+.horizontal-stack > .item + .item {
+    border-width: 0px 0px 0px 1px;
+}
+
 .horizontal-stack > .vertical-tags-element {
     display: flex;
     flex-direction: column;

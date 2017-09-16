@@ -11,7 +11,8 @@
             (cosheet.server
              [referent :refer [item-or-exemplar-referent virtual-referent
                                semantic-elements-R semantic-element?-R ]]
-             [hierarchy :refer [hierarchy-node-descendants
+             [hierarchy :refer [replace-hierarchy-leaves-by-nodes
+                                hierarchy-node-descendants
                                 hierarchy-node-leaves
                                 hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
@@ -448,7 +449,8 @@
               (tagged-items-for-one-column-DOMs-R hierarchy inherited)
               (tagged-items-for-two-column-DOMs-R hierarchy inherited))
             :horizontal
-            (tagged-items-for-horizontal-DOMs-R hierarchy inherited)))))))
+            (tagged-items-for-horizontal-DOMs-R
+             (replace-hierarchy-leaves-by-nodes hierarchy) inherited)))))))
 
 (defn elements-DOM-R
   "Make doms for elements.

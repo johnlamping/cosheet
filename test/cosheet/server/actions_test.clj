@@ -195,6 +195,17 @@
                             :from "45" :to "46"}
                            {})))
          46))
+  ;; Test making the new content be 'anything.
+  (is (= (content
+          (description->entity
+           (:item-id joe-age)
+           (do-set-content store
+                           {:referent (item-referent joe-age)
+                            :target-key "joe"
+                            :from "45" :to ""}
+                           {:selector-category :foo})))
+         'anything))
+  ;; Test doing nothing when the old doesn't match.
   (is (= (content
           (description->entity
            joe-id (do-set-content store
@@ -218,7 +229,7 @@
     (is (= (item->canonical-semantic
             (description->entity (:item-id jane-age-tag) modified))
            (canonicalize-list '("oldness" :tag)))))
-  ;; Try creating new content
+    ;; Try creating new content
     (let [result (do-set-content
                   store
                   {:referent (virtual-referent

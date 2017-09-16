@@ -83,8 +83,7 @@
    matches 'from'."
   [from to store item]
   ;; There are several special cases to match: If we have a number,
-  ;; the client will have a string. If we have an anonymous symbol,
-  ;; the client will have "???". If the client had ..., it was probably
+  ;; the client will have a string. If the client had ..., it was a
   ;; a wild card, and we could have anything.
   (if (let [from (parse-string-as-number from)
             content (content item)]
@@ -100,7 +99,10 @@
          ;; automatically, the UI clears the text to blank. Don't match
          ;; in that case, as we don't want to remove the original heading
          ;; if the user didn't type anything.
-         (not (and (string? from) (= (first from) \u00A0) (= to "")))))
+         (not (and (string? from)
+                   (= (first from) \u00A0)
+                   (not= from "\u00A0...")
+                   (= to "")))))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))
@@ -205,13 +207,25 @@
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups new-ids store] (instantiate-or-create-referent
                                       referent store)
-              items (apply concat groups)]
-          (println "updating " (count items) " items")
-          (let [new-store (reduce (partial update-set-content-if-matching
+              first-group (first groups)
+              remaining-items (apply concat (rest groups))]
+          (println "updating "
+                   (+ (count first-group) (count remaining-items)) " items")
+          (let [first-to (if (and (:selector-category attributes)
+                                  (= to "")
+                                  (not= from "\u00A0..."))
+                           'anything
+                           to)
+                s1 (reduce (partial update-set-content-if-matching
+                                    from first-to)
+                           store first-group)
+                new-store (reduce (partial update-set-content-if-matching
                                            from to)
-                                  store items)]
+                                  s1 remaining-items)]
             ;; If we have set a virtual item, tell the client to select it.
-            (if (and (virtual-referent? referent) select-pattern (seq items))
+            (if (and (virtual-referent? referent)
+                     select-pattern
+                     (or (seq first-group) (seq remaining-items)))
               (add-select-request
                new-store (map #(description->entity % new-store) new-ids)
                select-pattern target-key)

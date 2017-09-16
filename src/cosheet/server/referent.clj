@@ -3,9 +3,11 @@
                                     map-map thread-map thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
-                     [entity :refer [atom? elements content label->elements
-                                     call-with-immutable description->entity
-                                     StoredEntity]]
+                     [entity
+                      :as Entity
+                      :refer [atom? elements content label->elements
+                              call-with-immutable description->entity
+                              StoredEntity]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription
                                               update-content]]
@@ -531,18 +533,30 @@
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
             [[(description->entity referent immutable-store)]])
-    :exemplar (let [[_ exemplar subject] referent
+    :exemplar (let [[_ exemplar subject-ref] referent
                     condition (pattern-to-condition
-                               (condition-to-list exemplar immutable-store))]
-                (map (fn [group] (mapcat #(best-matching-element condition %)
-                                         group))
-                     (instantiate-referent subject immutable-store)))
-    :elements (let [[_ condition subject] referent
+                               (condition-to-list exemplar immutable-store))
+                    picker (if (and (item-referent? exemplar)
+                                    (id-valid? immutable-store exemplar))
+                             ;; If the exemplar is an item, then always
+                             ;; return it for its subject, even if another
+                             ;; element of its subject is as good a match.
+                             (let [exemplar-item
+                                   (description->entity
+                                    exemplar immutable-store)
+                                   subj (Entity/subject exemplar-item)]
+                               #(if (= % subj)
+                                  [exemplar-item]
+                                  (best-matching-element condition %)))
+                             #(best-matching-element condition %))]
+                (map (fn [group] (mapcat picker group))
+                     (instantiate-referent subject-ref immutable-store)))
+    :elements (let [[_ condition subject-ref] referent
                     condition (pattern-to-condition
                                (condition-to-list condition immutable-store))]
                 (map (fn [group] (mapcat #(matching-elements condition %)
                                          group))
-                     (instantiate-referent subject immutable-store)))
+                     (instantiate-referent subject-ref immutable-store)))
     :query (let [[_ condition] referent
                  condition (pattern-to-condition
                             (condition-to-list condition immutable-store))]

@@ -61,14 +61,19 @@
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
                      ("age" ~'tag (~o3 :order :non-semantic)))))
+(def dup-list `("dup" (~o1 :order :non-semantic)
+                ("female" (~o2 :order :non-semantic))
+                ("female" (~o3 :order :non-semantic))))
 (def age-condition-list '(anything ("age" tag)))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
 (def jane-id (second t2))
-(def t3 (add-entity (first t2) nil age-condition-list))
-(def age-condition-id (second t3))
-(def store (first t3))
+(def t3 (add-entity (first t2) nil dup-list))
+(def dup-id (second t3))
+(def t4 (add-entity (first t3) nil age-condition-list))
+(def age-condition-id (second t4))
+(def store (first t4))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-male (first (matching-elements "male" joe)))
@@ -77,6 +82,10 @@
 (def jane (description->entity jane-id store))
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
+(def dup (description->entity dup-id store))
+(def dup-females (matching-elements "female" dup))
+(def dup-female-1 (first dup-females))
+(def dup-female-2 (second dup-females))
 
 (deftest item-or-exemplar-referent-test
   (is (= (item-or-exemplar-referent joe nil)
@@ -179,6 +188,17 @@
                [[joe-age-tag] [jane-age-tag]]))
     (is (check [(first (instantiate-referent referent store))]
                (instantiate-referent (first-group-referent referent) store))))
+  ;; Preference of Exemplar of for exemplar element
+  (is (check (instantiate-referent
+              (exemplar-referent (item-referent dup-female-1)
+                                 (item-referent dup))
+              store)
+             [[dup-female-1]]))
+    (is (check (instantiate-referent
+              (exemplar-referent (item-referent dup-female-2)
+                                 (item-referent dup))
+              store)
+             [[dup-female-2]]))
   ;; Union of non-trivial sequences
   (let [referent (union-referent
                   [(elements-referent 45 (query-referent '(nil (nil "age"))))

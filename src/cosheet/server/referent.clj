@@ -59,10 +59,9 @@
 ;;;                  Refers to one group of items per referent, each
 ;;;                  containg all items that referent refers to
 ;;;  parallel-union  [:parallel-union <referent> ...]
-;;;                  Refers to a sequence of groups. Each referent must
-;;;                  produce the same number of groups, and the union
-;;;                  refers to the sequence of groups formed by unioning
-;;;                  corresponding groups from the sequences.
+;;;                  Refers to the sequence of groups formed by unioning
+;;;                  corresponding groups from the sequences. If some sequences
+;;;                  are shorter, they are padded out with empty groups.
 ;;;      difference  [:difference <referent> <referent>]
 ;;;                  Returns a single group of all items refered to by the
 ;;;                  first referent and not by the second.
@@ -567,9 +566,11 @@
     :parallel-union (let [[_ & referents] referent
                           groupses (map #(instantiate-referent
                                           % immutable-store)
-                                        referents)]
-                      (apply mapcat (fn [& groups] (apply map vector groups))
-                             groupses))
+                                        referents)
+                          longest (apply max (map count groupses))
+                          padded (map #(take longest (concat % (repeat nil)))
+                                      groupses)]
+                      (apply map (fn [& groups] (apply concat groups)) padded))
     :difference (let [[_ plus minus] referent]
                   [(remove
                     (set (instantiate-to-items minus immutable-store))

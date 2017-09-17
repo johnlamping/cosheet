@@ -214,7 +214,13 @@
     (is (check (instantiate-referent referent store)
                [(as-set [joe joe-age]) [jane jane-age]]))
     (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store)))))
+               (instantiate-referent (first-group-referent referent) store))))
+  ;; A parallel union where the parts have different numbers of groups.
+  (let [union-ref (union-referent [(item-referent joe) (item-referent jane)])
+        referent (parallel-union-referent [union-ref
+                                           (item-referent joe-age)])]
+    (is (check (instantiate-referent referent store)
+               [(as-set [joe joe-age]) [jane]]))))
 
 (deftest instantiate-or-create-referent-test
   (let [referent (exemplar-referent joe-age (item-referent jane))]

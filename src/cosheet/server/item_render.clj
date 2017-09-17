@@ -9,7 +9,9 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [referent :refer [item-or-exemplar-referent virtual-referent
+             [referent :refer [item-or-exemplar-referent elements-referent
+                               item-referent
+                               parallel-union-referent virtual-referent
                                semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
@@ -33,6 +35,16 @@
                                    hierarchy-node-DOM-R]])))
 
 (declare item-without-labels-DOM-R)
+
+(defn referent-for-item
+  "Return the proper referent for the item, given inherited."
+  [item inherited]
+  (let [referent (item-or-exemplar-referent item (:subject-referent inherited))]
+    (if-let [elements-ref (:subject-elements-referent inherited)]
+      (parallel-union-referent
+       [(elements-referent (item-referent item) elements-ref)
+        referent])
+      referent)))
 
 (defn hierarchy-adjacent-virtual-target
   "Given a hierarchy node, generate attributes for the target of
@@ -82,8 +94,7 @@
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
-            adjacent-referent (item-or-exemplar-referent
-                               adjacent-item (:subject-referent inherited))
+            adjacent-referent (referent-for-item adjacent-item inherited)
             example-elements (hierarchy-node-example-elements hierarchy-node)
             key (conj (:key-prefix inherited)
                       :example-element
@@ -172,8 +183,7 @@
   [elements virtual-content must-show-empty-label direction inherited]
   (expr-let [adjacent (when (seq elements)
                         (expr-let [ordered (order-items-R elements)]
-                          (item-or-exemplar-referent
-                           (last ordered) (:subject-referent inherited))))]
+                          (referent-for-item (last ordered) inherited)))]
     (let [dom (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
                                 adjacent :after inherited)]
       (if must-show-empty-label
@@ -183,6 +193,7 @@
                     inherited-down
                     (-> inherited
                         (assoc :template '(nil :tag))
+                        (dissoc :subject-elements-referent)
                         (update :subject-referent
                                 #(let [template
                                        (if (:template inherited)
@@ -266,7 +277,8 @@
                                (add-adjacent-sibling-command hierarchy-node)
                                (assoc :key-prefix tags-key-prefix
                                       :template '(nil :tag)
-                                      :subject-referent items-referent)) ]
+                                      :subject-referent items-referent)
+                               (dissoc :subject-elements-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-item-DOM (conj tags-key-prefix
@@ -530,8 +542,7 @@
    We only record the key on the content, not the whole item
    (unless it is just the content)."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent
-                   item (:subject-referent inherited))]
+   (let [referent (referent-for-item item inherited)]
      (item-without-labels-DOM-R item referent excluded-elements inherited)))
   ([item referent excluded-elements inherited]
    (println
@@ -578,8 +589,7 @@
    or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent
-                   item (:subject-referent inherited))]
+   (let [referent (referent-for-item item inherited)]
      (item-DOM-impl-R item referent excluded-elements false inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements false inherited)))
@@ -591,8 +601,7 @@
    or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (item-or-exemplar-referent
-                   item (:subject-referent inherited))]
+   (let [referent (referent-for-item item inherited)]
      (item-DOM-impl-R item referent excluded-elements true inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements true inherited)))

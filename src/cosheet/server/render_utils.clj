@@ -201,7 +201,8 @@
   [inherited item-key item-referent]
   (-> inherited
       (assoc :subject-referent item-referent
-             :key-prefix item-key)))
+             :key-prefix item-key)
+      (dissoc :subject-elements-referent)))
 
 (defn transform-inherited-for-labels
   "Given an inherited that has been transformed for children,

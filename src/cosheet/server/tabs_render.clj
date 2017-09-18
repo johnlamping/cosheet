@@ -16,14 +16,14 @@
              [hierarchy :refer [hierarchy-by-all-elements-R
                                 hierarchy-node?
                                 hierarchy-node-descendants
-                                hierarchy-node-items-referent
-                                hierarchy-last-item-referent
                                 hierarchy-node-next-level
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
              [model-utils :refer [new-tab-elements]]
-             [render-utils :refer [virtual-item-DOM hierarchy-node-DOM-R]]
+             [render-utils :refer [virtual-item-DOM hierarchy-node-DOM-R
+                                   hierarchy-node-items-referent
+                                   hierarchy-last-item-referent]]
              [item-render :refer [elements-DOM-R]])))
 
 (def base-tab-width 150)
@@ -74,9 +74,7 @@
   [node inherited]
   "Generate the dom for a node of the tabs hierarchy, but not any of its
   children."
-  (let [subject-referent (:subject-referent inherited)
-        tabs-referent (hierarchy-node-items-referent
-                       node subject-referent)
+  (let [tabs-referent (hierarchy-node-items-referent node inherited)
         tab-items (map :item (hierarchy-node-descendants node))]
     (expr-let [example-elements (hierarchy-node-example-elements node)
                tabs-elements (expr-seq map semantic-elements-R tab-items)]

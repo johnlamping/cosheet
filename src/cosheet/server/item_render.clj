@@ -9,14 +9,12 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [referent :refer [item-or-exemplar-referent elements-referent
-                               item-referent
-                               parallel-union-referent virtual-referent
+             [referent :refer [item-or-exemplar-referent
+                               item-referent virtual-referent
                                semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
                                 hierarchy-node-leaves
-                                hierarchy-node-parallel-items-referent
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
@@ -32,35 +30,26 @@
                                    remove-inherited-attribute
                                    inherited-attributes
                                    content-attributes
+                                   item-referent-given-inherited
+                                   hierarchy-node-parallel-items-referent
                                    hierarchy-node-DOM-R]])))
 
 (declare item-without-labels-DOM-R)
-
-(defn referent-for-item
-  "Return the proper referent for the item, given inherited."
-  [item inherited]
-  (let [referent (item-or-exemplar-referent item (:subject-referent inherited))]
-    (if-let [elements-ref (:subject-elements-referent inherited)]
-      (parallel-union-referent
-       [(elements-referent (item-referent item) elements-ref)
-        referent])
-      referent)))
 
 (defn hierarchy-adjacent-virtual-target
   "Given a hierarchy node, generate attributes for the target of
   a command to add an item that would be adjacent to the hierarchy node."
   [hierarchy-node inherited]
-  (let [subject-ref (:subject-referent inherited)
-        ancestor-props (first (multiset-diff
+  (let [ancestor-props (first (multiset-diff
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
     {:referent (virtual-referent
                 (when (seq conditions) (list* nil conditions))
-                subject-ref
+                (:subject-referent inherited)
                 (hierarchy-node-parallel-items-referent
-                 hierarchy-node subject-ref)
+                 hierarchy-node inherited)
                 :selector (when (:selector-category inherited) :first-group))
      :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
@@ -94,7 +83,8 @@
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
-            adjacent-referent (referent-for-item adjacent-item inherited)
+            adjacent-referent (item-referent-given-inherited
+                               adjacent-item inherited)
             example-elements (hierarchy-node-example-elements hierarchy-node)
             key (conj (:key-prefix inherited)
                       :example-element
@@ -183,7 +173,8 @@
   [elements virtual-content must-show-empty-label direction inherited]
   (expr-let [adjacent (when (seq elements)
                         (expr-let [ordered (order-items-R elements)]
-                          (referent-for-item (last ordered) inherited)))]
+                          (item-referent-given-inherited
+                           (last ordered) inherited)))]
     (let [dom (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
                                 adjacent :after inherited)]
       (if must-show-empty-label
@@ -268,7 +259,7 @@
   ;; We have to use a parallel union referent here, so that the groupings
   ;; of the subject are preserved if we are part of a header.
   (let [items-referent (hierarchy-node-parallel-items-referent
-                        hierarchy-node (:subject-referent inherited))
+                        hierarchy-node inherited)
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
         tags-key-prefix (conj (:key-prefix inherited) :label)
@@ -542,7 +533,7 @@
    We only record the key on the content, not the whole item
    (unless it is just the content)."
   ([item excluded-elements inherited]
-   (let [referent (referent-for-item item inherited)]
+   (let [referent (item-referent-given-inherited item inherited)]
      (item-without-labels-DOM-R item referent excluded-elements inherited)))
   ([item referent excluded-elements inherited]
    (println
@@ -589,7 +580,7 @@
    or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (referent-for-item item inherited)]
+   (let [referent (item-referent-given-inherited item inherited)]
      (item-DOM-impl-R item referent excluded-elements false inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements false inherited)))
@@ -601,7 +592,7 @@
    or inherited must contain :subject-referent.
    If the item is a tag, the caller is responsible for tag formatting."
   ([item excluded-elements inherited]
-   (let [referent (referent-for-item item inherited)]
+   (let [referent (item-referent-given-inherited item inherited)]
      (item-DOM-impl-R item referent excluded-elements true inherited)))
   ([item referent excluded-elements inherited]
    (item-DOM-impl-R item referent excluded-elements true inherited)))

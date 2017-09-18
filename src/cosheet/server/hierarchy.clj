@@ -229,24 +229,3 @@
        (:property-canonicals example)
        (:property-elements example)))))
 
-(defn hierarchy-node-items-referent
-  "Given a hierarchy node or leaf, return a referent to all its descendants."
-  [hierarchy-node-or-leaf subject-referent]
-  (union-referent-if-needed
-   (map #(item-or-exemplar-referent (:item %) subject-referent)
-        (hierarchy-node-descendants hierarchy-node-or-leaf))))
-
-(defn hierarchy-node-parallel-items-referent
-  "Given a hierarchy node or leaf, return a referent to all its descendants,
-  returning one group per group the subject returns."
-  [hierarchy-node-or-leaf subject-referent]
-  (parallel-union-referent
-   (map #(item-or-exemplar-referent (:item %) subject-referent)
-        (hierarchy-node-descendants hierarchy-node-or-leaf))))
-
-(defn hierarchy-last-item-referent
-  "Return a referent to the last item of the hierarchy, if any."
-  [hierarchy]
-  (when (seq hierarchy)
-    (let [last-item (last (hierarchy-node-descendants (last hierarchy)))]
-      (item-referent (:item last-item)))))

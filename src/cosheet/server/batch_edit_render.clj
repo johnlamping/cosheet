@@ -19,15 +19,17 @@
   [query-item]
   (query-referent (list (item-referent query-item) :top-level)))
 
+(defn table-conditions-referent
+  " All table conditions matching the query."
+  [query-item]
+  (query-referent (list (item-referent query-item) :row-condition)))
+
 (defn query-items-referent
   [query-item]
   (union-referent
-   [;; The item, itself.
-    (item-referent query-item)
-    ;; All rows matching the query.
+   [(item-referent query-item)
     (top-level-items-referent query-item)
-    ;; All table conditions matching the query.
-    (query-referent (list (item-referent query-item) :row-condition))]))
+    (table-conditions-referent query-item)]))
 
 (defn selected-batch-referent
   "Return the referent for the selected batch item and everything affected
@@ -45,7 +47,7 @@
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
-  [query-item selected-batch-item store inherited]
+  [query-item query-elements selected-batch-item store inherited]
   (expr-let
       [doms
        (when selected-batch-item
@@ -57,24 +59,39 @@
                 selected-batch-item query-item
                 (top-level-items-referent query-item))
                inherited-for-batch
-               (cond->
-                   (-> inherited
-                       (assoc :selector-category :batch-selected)
-                       ;; Make its doms have different keys.
-                       (update :key-prefix #(conj % :batch)))
-                 ;; If the selected item is the whole query,
-                 ;; then a delete could remove the whole condition
-                 ;; of a table. Have it just remove top level
-                 ;; items, instead.
-                 (= query-item selected-batch-item)
-                 (add-inherited-attribute
-                  [#{:content}
-                   {:delete
-                    {:referent selected-non-header-referent}}]))]
+               (-> inherited
+                   (assoc :selector-category :batch-selected)
+                   ;; Make its doms have different keys.
+                   (update :key-prefix #(conj % :batch)))]
            (expr-let
-               [batch-dom (must-show-label-item-DOM-R
-                           selected-batch-item selected-referent nil
-                           inherited-for-batch)
+               [batch-dom
+                (if (= query-item selected-batch-item)
+                  (let [inherited
+                        (->
+                         inherited-for-batch
+                         ;; We split the subject, putting the table conditions
+                         ;; in :subject-elements-referent so that all column
+                         ;; headers will be changed, even if there are several
+                         ;; matching headers in one table.
+                         (assoc
+                          :subject-referent
+                          (union-referent
+                           [(item-referent query-item)
+                            (top-level-items-referent query-item)])
+                          :subject-elements-referent
+                          (table-conditions-referent query-item))
+                         ;; If the selected item is the whole query, then a
+                         ;; delete could remove the whole condition of a
+                         ;; table. Have it just remove top level rows, instead.
+                         (add-inherited-attribute
+                          [#{:content}
+                           {:delete
+                            {:referent selected-non-header-referent}}]))]
+                     (labels-and-elements-DOM-R
+                      query-elements nil false true :horizontal inherited))
+                  (must-show-label-item-DOM-R
+                   selected-batch-item selected-referent nil
+                   inherited-for-batch))
                 count-dom
                 (call-dependent-on-id
                  store nil
@@ -87,6 +104,7 @@
                      [:div {:class "batch-query-match-counts"}
                       (str non-header " data matches. "
                            (- total non-header 1) " header matches.")])))]
+             (println "XXX " (simplify-for-print batch-dom))
              [count-dom
               (add-attributes batch-dom {:class "batch-selected"})])))]
     (into [:div {:class "batch-stack-wrapper"}] doms)))
@@ -110,7 +128,8 @@
          old-query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)
          stack-dom (batch-edit-stack-DOM-R
-                    query-item selected-batch-item store inherited)]
+                    query-item condition-elements selected-batch-item store
+                    inherited)]
       [:div {:class "batch-holder"}
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]

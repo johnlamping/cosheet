@@ -11,8 +11,12 @@
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [virtual-referent item->canonical-semantic
+                               parallel-union-referent elements-referent
+                               item-referent item-or-exemplar-referent
+                               union-referent-if-needed
                                item->canonical-semantic-R
-                               semantic-element?-R]])))
+                               semantic-element?-R]]
+             [hierarchy :refer [hierarchy-node-descendants]])))
 
 (defn condition-satisfiers-R
   "Return a sequence of elements of an entity sufficient to make it
@@ -292,6 +296,16 @@
       (> (count items) 1)
       (add-attributes local))))
 
+(defn item-referent-given-inherited
+  "Return the proper referent for the item, given inherited."
+  [item inherited]
+  (let [referent (item-or-exemplar-referent item (:subject-referent inherited))]
+    (if-let [elements-ref (:subject-elements-referent inherited)]
+      (parallel-union-referent
+           [(elements-referent (item-referent item) elements-ref)
+            referent])
+      referent)))
+
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls
@@ -322,6 +336,28 @@
                                          child-function-info child-inherited)
                                    children))))]
      (node-f node child-doms function-info inherited))))
+
+(defn hierarchy-node-items-referent
+  "Given a hierarchy node or leaf, return a referent to all its descendants."
+  [hierarchy-node-or-leaf inherited]
+  (union-referent-if-needed
+   (map #(item-referent-given-inherited (:item %) inherited)
+        (hierarchy-node-descendants hierarchy-node-or-leaf))))
+
+(defn hierarchy-node-parallel-items-referent
+  "Given a hierarchy node or leaf, return a referent to all its descendants,
+  returning one group per group the subject returns."
+  [hierarchy-node-or-leaf inherited]
+  (parallel-union-referent
+   (map #(item-referent-given-inherited (:item %) inherited)
+        (hierarchy-node-descendants hierarchy-node-or-leaf))))
+
+(defn hierarchy-last-item-referent
+  "Return a referent to the last item of the hierarchy, if any."
+  [hierarchy]
+  (when (seq hierarchy)
+    (let [last-item (last (hierarchy-node-descendants (last hierarchy)))]
+      (item-referent (:item last-item)))))
 
 
 

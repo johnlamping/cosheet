@@ -24,15 +24,15 @@
                                 hierarchy-node-next-level hierarchy-node-extent
                                 hierarchy-nodes-extent
                                 hierarchy-by-all-elements-R
-                                hierarchy-node-example-elements
-                                hierarchy-node-items-referent
-                                hierarchy-node-parallel-items-referent
-                                hierarchy-last-item-referent]]
+                                hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [make-component virtual-item-DOM
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    add-inherited-attribute
+                                   hierarchy-node-items-referent
+                                   hierarchy-node-parallel-items-referent
+                                   hierarchy-last-item-referent
                                    hierarchy-node-DOM-R]]
              [item-render :refer [elements-DOM-R labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
@@ -117,7 +117,7 @@
         ;; satisfying the element template. We want to select that
         ;; element.
         adjacent-referent (hierarchy-node-parallel-items-referent
-                           node subject-ref)
+                           node inherited)
         new-column-ref (virtual-referent (:template inherited)
                                          (union-referent [subject-ref])
                                          adjacent-referent
@@ -213,8 +213,7 @@
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (union-referent
-                         [(hierarchy-node-items-referent
-                           node (:subject-referent inherited))
+                         [(hierarchy-node-items-referent node inherited)
                           (table-node-row-elements-referent
                            node (when (empty? example-elements) shadowing-nodes)
                            rows-referent)])

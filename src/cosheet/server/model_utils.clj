@@ -52,6 +52,7 @@
               [(conj headers header) store]))
           [[] store] (range n)))
 
+;;; TODO: Get rid of this.
 (defn specialize-template
   "Adjust a template or condition to make it ready for adding as an
   element. Specifically, replace each '??? with a new unique string

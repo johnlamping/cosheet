@@ -10,7 +10,8 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [referent :refer [virtual-referent item->canonical-semantic
+             [referent :refer [referent?
+                               virtual-referent item->canonical-semantic
                                parallel-union-referent elements-referent
                                item-referent item-or-exemplar-referent
                                union-referent-if-needed
@@ -205,8 +206,7 @@
   [inherited item-key item-referent]
   (-> inherited
       (assoc :subject-referent item-referent
-             :key-prefix item-key)
-      (dissoc :subject-elements-referent)))
+             :key-prefix item-key)))
 
 (defn transform-inherited-for-labels
   "Given an inherited that has been transformed for children,
@@ -233,6 +233,23 @@
         excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
     (make-component {:key key} [dom-fn item excluded inherited])))
 
+(defn item-referent-given-inherited
+  "Return the proper referent for the item, given inherited.
+  If item is :subject, return the subject referent itself."
+  [item inherited]
+  (let [subject-referent (:subject-referent inherited)]
+    (cond
+      (nil? subject-referent)
+      (item-referent item)
+      (referent? subject-referent)
+      (if (= :subject item)
+        subject-referent
+        (item-or-exemplar-referent item subject-referent))
+      (clojure.test/function? subject-referent)
+      (subject-referent item)
+      true
+      (assert false "bad :subject-referent"))))
+
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must include a :template and a :subject-referent."
@@ -247,7 +264,8 @@
               :target (copy-alternate-request-to-target
                        {:referent (virtual-referent
                                    (:template inherited)
-                                   (:subject-referent inherited)
+                                   (item-referent-given-inherited
+                                    :subject inherited)
                                    adjacent-referent
                                    :position position
                                    :selector (when (:selector-category
@@ -295,16 +313,6 @@
              direction)
       (> (count items) 1)
       (add-attributes local))))
-
-(defn item-referent-given-inherited
-  "Return the proper referent for the item, given inherited."
-  [item inherited]
-  (let [referent (item-or-exemplar-referent item (:subject-referent inherited))]
-    (if-let [elements-ref (:subject-elements-referent inherited)]
-      (parallel-union-referent
-           [(elements-referent (item-referent item) elements-ref)
-            referent])
-      referent)))
 
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

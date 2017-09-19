@@ -47,7 +47,7 @@
                            (rest (:template inherited)))]
     {:referent (virtual-referent
                 (when (seq conditions) (list* nil conditions))
-                (:subject-referent inherited)
+                (item-referent-given-inherited :subject inherited)
                 (hierarchy-node-parallel-items-referent
                  hierarchy-node inherited)
                 :selector (when (:selector-category inherited) :first-group))
@@ -183,16 +183,18 @@
                                :first-group)
                     inherited-down
                     (-> inherited
-                        (assoc :template '(nil :tag))
-                        (dissoc :subject-elements-referent)
-                        (update :subject-referent
-                                #(let [template
-                                       (if (:template inherited)
-                                         (cons virtual-content
-                                               (rest (:template inherited)))
-                                         virtual-content)]
-                                   (virtual-referent template % adjacent
-                                                     :selector selector))))]
+                        (assoc
+                         :template '(nil :tag)
+                         :subject-referent
+                         (let [template
+                               (if (:template inherited)
+                                 (cons virtual-content
+                                       (rest (:template inherited)))
+                                 virtual-content)]
+                           (virtual-referent
+                            template
+                            (item-referent-given-inherited :subject inherited)
+                            adjacent :selector selector))))]
                 (add-attributes
                  (virtual-item-DOM
                   (conj (:key-prefix inherited) :virtual :label)
@@ -268,8 +270,7 @@
                                (add-adjacent-sibling-command hierarchy-node)
                                (assoc :key-prefix tags-key-prefix
                                       :template '(nil :tag)
-                                      :subject-referent items-referent)
-                               (dissoc :subject-elements-referent))]
+                                      :subject-referent items-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-item-DOM (conj tags-key-prefix

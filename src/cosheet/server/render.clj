@@ -130,9 +130,9 @@
 ;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
-; :subject-elements-referent ; An additional referent to :subject referent.
-                           ; If present, the item also indicates all elements
-                           ; with these subjects matching its template.
+                           ; May alternatively be a function from item
+                           ; to referent, which also returns the subject
+                           ; if the item is :subject.
 ;               :template  ; The template that the twins of this dom
                            ; must satisfy. If not present, then twins
                            ; may not be created.

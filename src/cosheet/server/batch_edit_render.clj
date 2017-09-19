@@ -8,6 +8,8 @@
                      [expression :refer [expr expr-let expr-seq]])
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
+                               parallel-union-referent
+                               exemplar-referent
                                union-referent instantiate-to-items
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute]]
@@ -66,7 +68,12 @@
            (expr-let
                [batch-dom
                 (if (= query-item selected-batch-item)
-                  (let [inherited
+                  (let [query-and-rows-referent
+                        (union-referent [(item-referent query-item)
+                                         (top-level-items-referent query-item)])
+                        conditions-referent
+                        (table-conditions-referent query-item)
+                        inherited
                         (->
                          inherited-for-batch
                          ;; We split the subject, putting the table conditions
@@ -75,11 +82,16 @@
                          ;; matching headers in one table.
                          (assoc
                           :subject-referent
-                          (union-referent
-                           [(item-referent query-item)
-                            (top-level-items-referent query-item)])
-                          :subject-elements-referent
-                          (table-conditions-referent query-item))
+                          (fn [item]
+                            (if (= item :subject)
+                              (union-referent [query-and-rows-referent
+                                               conditions-referent])
+                              (let [item-ref (item-referent item)]
+                                (parallel-union-referent
+                                 [(exemplar-referent
+                                   item-ref query-and-rows-referent)
+                                  (elements-referent
+                                   item-ref conditions-referent)])))))
                          ;; If the selected item is the whole query, then a
                          ;; delete could remove the whole condition of a
                          ;; table. Have it just remove top level rows, instead.

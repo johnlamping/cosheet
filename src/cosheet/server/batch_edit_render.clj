@@ -87,8 +87,14 @@
                           [#{:content}
                            {:delete
                             {:referent selected-non-header-referent}}]))]
-                     (labels-and-elements-DOM-R
-                      query-elements nil false true :horizontal inherited))
+                    ;; TODO: We want to add a virtual element here, but
+                    ;; it has to know to add the necessary stuff to table
+                    ;; headers or not to add to headers at all. (Maybe use
+                    ;; a union of two virtual referents.)
+                    ;; Add-twin might be a problem too.
+                    (labels-and-elements-DOM-R
+                     query-elements nil true true :horizontal
+                     inherited))
                   (must-show-label-item-DOM-R
                    selected-batch-item selected-referent nil
                    inherited-for-batch))

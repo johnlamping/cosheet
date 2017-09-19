@@ -367,6 +367,31 @@ body {
     margin-right: 0px;
 }
 
+.horizontal-tags-element.batch-selected {
+    border-width: 2px;
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+    background-color: white;
+}
+
+.horizontal-tags-element.batch-selected > :first-child {
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+    background-image:
+    linear-gradient(to right,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to bottom,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0)),
+    linear-gradient(to top,
+                    hsla(0, 0%, 100%, .7),
+                    hsla(0, 0%, 100%, 0) 7px,
+                    hsla(0, 0%, 100%, 0));
+}
+
 /* --- tags --- */
 
 .tag {

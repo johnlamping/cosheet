@@ -30,6 +30,7 @@
                                    remove-inherited-attribute
                                    inherited-attributes
                                    content-attributes
+                                   subject-referent-given-inherited
                                    item-referent-given-inherited
                                    hierarchy-node-parallel-items-referent
                                    hierarchy-node-DOM-R]])))
@@ -47,7 +48,7 @@
                            (rest (:template inherited)))]
     {:referent (virtual-referent
                 (when (seq conditions) (list* nil conditions))
-                (item-referent-given-inherited :subject inherited)
+                (subject-referent-given-inherited inherited)
                 (hierarchy-node-parallel-items-referent
                  hierarchy-node inherited)
                 :selector (when (:selector-category inherited) :first-group))
@@ -193,7 +194,7 @@
                                  virtual-content)]
                            (virtual-referent
                             template
-                            (item-referent-given-inherited :subject inherited)
+                            (subject-referent-given-inherited inherited)
                             adjacent :selector selector))))]
                 (add-attributes
                  (virtual-item-DOM

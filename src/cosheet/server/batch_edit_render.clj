@@ -76,22 +76,22 @@
                         inherited
                         (->
                          inherited-for-batch
-                         ;; We split the subject, putting the table conditions
-                         ;; in :subject-elements-referent so that all column
-                         ;; headers will be changed, even if there are several
-                         ;; matching headers in one table.
+                         ;; We use a function for the subject, so that
+                         ;; all column headers will be changed, even if
+                         ;; there are several matching headers in one table.
                          (assoc
                           :subject-referent
-                          (fn [item]
-                            (if (= item :subject)
-                              (union-referent [query-and-rows-referent
-                                               conditions-referent])
-                              (let [item-ref (item-referent item)]
-                                (parallel-union-referent
-                                 [(exemplar-referent
-                                   item-ref query-and-rows-referent)
-                                  (elements-referent
-                                   item-ref conditions-referent)])))))
+                          (fn
+                            ([]
+                             (union-referent [query-and-rows-referent
+                                              conditions-referent]))
+                            ([item]
+                             (let [item-ref (item-referent item)]
+                               (parallel-union-referent
+                                [(exemplar-referent
+                                  item-ref query-and-rows-referent)
+                                 (elements-referent
+                                  item-ref conditions-referent)])))))
                          ;; If the selected item is the whole query, then a
                          ;; delete could remove the whole condition of a
                          ;; table. Have it just remove top level rows, instead.
@@ -122,7 +122,6 @@
                      [:div {:class "batch-query-match-counts"}
                       (str non-header " data matches. "
                            (- total non-header 1) " header matches.")])))]
-             (println "XXX " (simplify-for-print batch-dom))
              [count-dom
               (add-attributes batch-dom {:class "batch-selected"})])))]
     (into [:div {:class "batch-stack-wrapper"}] doms)))

@@ -233,22 +233,21 @@
         excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
     (make-component {:key key} [dom-fn item excluded inherited])))
 
+(defn subject-referent-given-inherited
+  "Return the subject from inherited."
+  [inherited]
+  (let [subject-referent (:subject-referent inherited)]
+    (if (clojure.test/function? subject-referent)
+      (subject-referent)
+      subject-referent)))
+
 (defn item-referent-given-inherited
-  "Return the proper referent for the item, given inherited.
-  If item is :subject, return the subject referent itself."
+  "Return the proper referent for the item, given inherited."
   [item inherited]
   (let [subject-referent (:subject-referent inherited)]
-    (cond
-      (nil? subject-referent)
-      (item-referent item)
-      (referent? subject-referent)
-      (if (= :subject item)
-        subject-referent
-        (item-or-exemplar-referent item subject-referent))
-      (clojure.test/function? subject-referent)
+    (if (clojure.test/function? subject-referent)
       (subject-referent item)
-      true
-      (assert false "bad :subject-referent"))))
+      (item-or-exemplar-referent item subject-referent))))
 
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
@@ -264,8 +263,7 @@
               :target (copy-alternate-request-to-target
                        {:referent (virtual-referent
                                    (:template inherited)
-                                   (item-referent-given-inherited
-                                    :subject inherited)
+                                   (subject-referent-given-inherited inherited)
                                    adjacent-referent
                                    :position position
                                    :selector (when (:selector-category

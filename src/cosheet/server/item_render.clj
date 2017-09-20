@@ -171,7 +171,7 @@
 
 (defn virtual-element-DOM-R
   "Return the dom for a virtual element."
-  [elements virtual-content must-show-empty-label direction inherited]
+  [virtual-content elements must-show-empty-label direction inherited]
   (expr-let [adjacent (when (seq elements)
                         (expr-let [ordered (order-items-R elements)]
                           (item-referent-given-inherited
@@ -206,9 +206,11 @@
 
 (defn labels-and-elements-DOM-R
   "Generate the dom for a set of elements, some of which may be labels.
-  inherited must be half way to the children.
-  must-show-empty-labels determines whether the elements must show labels."
-  [elements virtual-content must-show-empty-label must-show-empty-labels
+  virtual-generator, if present, must be a function that expects a list of
+  the elements and returns a reporter for the virtual element DOM.
+  must-show-empty-labels determines whether the elements must show labels.
+  inherited must be half way to the children."
+  [elements virtual-generator must-show-empty-label must-show-empty-labels
    direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
@@ -218,7 +220,7 @@
           non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
                                 pairs))]
       (expr-let [elements-dom
-                 (when (or non-labels virtual-content)
+                 (when (or non-labels virtual-generator)
                    (expr-let
                        [element-doms
                         (when non-labels
@@ -227,10 +229,7 @@
                            (transform-inherited-attributes
                             inherited :element)))
                         virtual-dom
-                        (when virtual-content
-                          (virtual-element-DOM-R
-                           elements virtual-content must-show-empty-label
-                           (opposite-direction direction) inherited))]
+                        (when virtual-generator (virtual-generator elements))]
                      [:div {:class "item elements-wrapper"}
                       (nest-if-multiple-DOM
                        (cond-> element-doms

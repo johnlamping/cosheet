@@ -34,7 +34,8 @@
                                    hierarchy-node-parallel-items-referent
                                    hierarchy-last-item-referent
                                    hierarchy-node-DOM-R]]
-             [item-render :refer [elements-DOM-R labels-and-elements-DOM-R
+             [item-render :refer [elements-DOM-R virtual-element-DOM-R
+                                  labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-DOM-R item-content-DOM]])))
 
@@ -538,19 +539,23 @@
                                       conditions-as-lists)
                condition-is-all-tags (= (count conditions-as-lists)
                                         (count condition-tags))
+               inherited-down (assoc
+                               inherited
+                               :selector-category :table-condition
+                               :subject-referent subject-referent
+                               :template (if condition-is-all-tags
+                                           '(nil :tag)
+                                           '(nil))
+                               :alternate-target true
+                               ;; TODO: Do only when all tags?
+                               :attributes [[#{:label} #{:content}
+                                             {:add-element
+                                              {:referent subject-referent}}]])
                dom (labels-and-elements-DOM-R
-                    condition-elements 'anything true true :horizontal
-                    (assoc inherited
-                           :selector-category :table-condition
-                           :subject-referent subject-referent
-                           :template (if condition-is-all-tags
-                                       '(nil :tag)
-                                       '(nil))
-                           :alternate-target true
-                           ;; TODO: Do only when all tags?
-                           :attributes [[#{:label} #{:content}
-                                          {:add-element
-                                           {:referent subject-referent}}]]))]
+                    condition-elements
+                    #(virtual-element-DOM-R
+                      'anything % true :vertical inherited-down)
+                    true true :horizontal inherited-down)]
       [[:div {:class (cond-> "table-top selectors"
                        condition-is-all-tags (str " tag"))}
         [:div {:class "table-corner tag"}]

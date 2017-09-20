@@ -14,6 +14,7 @@
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute]]
              [item-render :refer [must-show-label-item-DOM-R
+                                  virtual-element-DOM-R
                                   labels-and-elements-DOM-R]])))
 
 (defn top-level-items-referent
@@ -105,8 +106,7 @@
                     ;; a union of two virtual referents.)
                     ;; Add-twin might be a problem too.
                     (labels-and-elements-DOM-R
-                     query-elements nil true true :horizontal
-                     inherited))
+                     query-elements false true true :horizontal inherited))
                   (must-show-label-item-DOM-R
                    selected-batch-item selected-referent nil
                    inherited-for-batch))
@@ -140,8 +140,10 @@
     (expr-let
         [condition-elements (semantic-elements-R query-item)
          query-dom (labels-and-elements-DOM-R
-                    condition-elements 'anything true true :horizontal
-                    inherited-for-query)
+                    condition-elements
+                    #(virtual-element-DOM-R
+                      'anything % true :vertical inherited-for-query)
+                    true true :horizontal inherited-for-query)
          old-query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)
          stack-dom (batch-edit-stack-DOM-R

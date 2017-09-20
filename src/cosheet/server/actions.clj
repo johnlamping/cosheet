@@ -103,7 +103,7 @@
                    (= (first from) \u00A0)
                    (not= from "\u00A0...")
                    (= to "")))
-         (not= from 'anything-immutable)))
+         (not= content 'anything-immutable)))
     (update-content store (:item-id item) (parse-string-as-number to))
     (do (println "content doesn't match" from (content item))
         store)))

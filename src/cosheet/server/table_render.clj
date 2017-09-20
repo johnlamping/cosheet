@@ -543,9 +543,7 @@
                                inherited
                                :selector-category :table-condition
                                :subject-referent subject-referent
-                               :template (if condition-is-all-tags
-                                           '(nil :tag)
-                                           '(nil))
+                               :template '(nil)
                                :alternate-target true
                                ;; TODO: Do only when all tags?
                                :attributes [[#{:label} #{:content}

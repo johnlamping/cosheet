@@ -6,7 +6,8 @@
                                     id->content-reference
                                     call-dependent-on-id
                                     mutable-store?
-                                    stored-item-id-string]]
+                                    stored-item-id-string
+                                    Store]]
                      [utils :refer [equivalent-atoms?]]
                      [expression-manager :refer [current-value]]
                      [orderable :as orderable]
@@ -26,8 +27,11 @@
     (when-let [subject-id (id->subject store item-id)]
       (description->entity subject-id store)))
 
-  (in-different-store [this entity-with-store]
-    (description->entity (:item-id this) (:store entity-with-store)))
+  (in-different-store [this store-or-entity]
+    (description->entity (:item-id this)
+                         (if (satisfies? Store store-or-entity)
+                           store-or-entity
+                           (:store store-or-entity))))
   
   Entity
 

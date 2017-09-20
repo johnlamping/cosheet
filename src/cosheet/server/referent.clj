@@ -7,7 +7,7 @@
                       :as Entity
                       :refer [atom? elements content label->elements
                               call-with-immutable description->entity
-                              StoredEntity]]
+                              in-different-store StoredEntity]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription
                                               update-content]]
@@ -57,7 +57,7 @@
 ;;;                  Refers to the group of items that satisfies the condition.
 ;;;           union  [:union  <referent> ...]
 ;;;                  Refers to one group of items per referent, each
-;;;                  containg all items that referent refers to
+;;;                  containg all items that referent refers to.
 ;;;  parallel-union  [:parallel-union <referent> ...]
 ;;;                  Refers to the sequence of groups formed by unioning
 ;;;                  corresponding groups from the sequences. If some sequences
@@ -95,6 +95,9 @@
 
 (defn exemplar-referent? [referent]
   (and (sequential? referent) (= (first referent) :exemplar)))
+
+(defn union-referent? [referent]
+  (and (sequential? referent) (= (first referent) :union)))
 
 (defn virtual-referent? [referent]
   (and (sequential? referent) (= (first referent) :virtual)))
@@ -612,8 +615,7 @@
             store))
          (map vector subject-groups adjacent-groups)
          store)]
-    [(map (fn [group] (map #(description->entity % store) group))
-          id-groups)
+    [(map-map #(description->entity % store) id-groups)
      store]))
 
 (defn create-possible-selector-elements
@@ -700,14 +702,35 @@
              new-subject-ids new-template-ids)
      store]))
 
+(defn create-virtual-union-referent
+  "Does create-virtual-referent on each referent of a union, and combines
+  the results."
+  [referent store]
+  (let [[groups ids store]
+        (reduce (fn [[combined-groups first-ids store] referent]
+                  (let [[groups ids store] (create-virtual-referent
+                                            referent store)]
+                    [(conj combined-groups (apply concat groups))
+                     (or first-ids ids)
+                     store]))
+                [[] nil store]
+                (rest referent))]
+    ;; The earlier items will have only the partially updated store.
+    ;; Make them all have the latest store.
+    [(map-map #(in-different-store % store) groups) ids store]))
+
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
   for virtual referents. Return the groups, a seq of the ids of first item
   created for this referent and each nested virtual referent, 
   and the updated store."
   [referent store]
-  (if (virtual-referent? referent)
+  (cond
+    (virtual-referent? referent)
     (create-virtual-referent referent store)
+    (and (union-referent? referent) (virtual-referent? (second referent)))
+    (create-virtual-union-referent referent store)
+    true
     [(instantiate-referent referent store) nil store]))
 
 

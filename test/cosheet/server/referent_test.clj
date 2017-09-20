@@ -338,4 +338,24 @@
                     (39 ("age" ~'tag) ("doubtful" "confidence"))))))
       (is (check (canonicalize-list (semantic-to-list-R new-jane))
                  (canonicalize-list
-                  `("Jane" "female" (45 ("age" ~'tag)) ~new-sym)))))))
+                  `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
+  ;; A union of virtual referents
+  (let [r1 (virtual-referent "male" (item-referent jane)
+                             (item-referent jane-age))
+        r2 (virtual-referent "hello" (item-referent joe) nil)
+        [groups new-ids store0] (instantiate-or-create-referent
+                                 (union-referent [r1 r2]) store)]
+    (is (check groups [[(any)] [(any)]]))
+    (is (= new-ids [(:item-id (first (first groups)))]))
+    (let [[[item1] [item2]] groups
+          new-jane (in-different-store jane store0)
+          new-joe (in-different-store joe store0)]
+      (is (= (:store item1) store0))
+      (is (= (:store item2) store0))
+      (is (= (entity/subject item1) new-jane))
+      (is (= (entity/subject item2) new-joe))
+      (is (= (semantic-to-list-R item1) "male"))
+      (is (= (semantic-to-list-R item2) "hello"))
+      (is (= (canonicalize-list (semantic-to-list-R new-jane))
+             (canonicalize-list
+              '("Jane" "female" (45 ("age" tag)) "male")))))))

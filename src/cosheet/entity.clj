@@ -27,9 +27,9 @@
   (subject [this]
     "Return the subject of this stored entity, if any.")
 
-  (in-different-store [this entity-with-store]
+  (in-different-store [this store-or-entity]
     "Replace the entity with an entity with the same id,
-    but with the store of the second entity."))
+    but with the specified store or the store the second entity."))
 
 (defprotocol Entity
   "An item or constant. For constants, the entity methods behave as if

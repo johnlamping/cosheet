@@ -249,11 +249,10 @@
       (subject-referent item)
       (item-or-exemplar-referent item subject-referent))))
 
-(defn virtual-item-DOM
-  "Make a dom for a place that could hold an item, but doesn't.
-  inherited must include a :template and a :subject-referent."
-  [key adjacent-referent position inherited]
-  (assert (not (nil? (:subject-referent inherited))))
+(defn virtual-referent-item-DOM
+  "Make a dom for a place that could hold an item, but doesn't, given
+  the virtual referent for the item."
+  [referent key inherited]
   [:div (-> (:selectable-attributes inherited)
             (into-attributes (item-or-content-attributes inherited))
             (into-attributes (select-keys inherited [:selector-category]))
@@ -261,18 +260,25 @@
              {:class "editable"
               :key key
               :target (copy-alternate-request-to-target
-                       {:referent (virtual-referent
-                                   (:template inherited)
-                                   (subject-referent-given-inherited inherited)
-                                   adjacent-referent
-                                   :position position
-                                   :selector (when (:selector-category
-                                                    inherited)
-                                               :first-group))
+                       {:referent referent
                         :select-pattern (or (:select-pattern inherited)
                                             (conj (:key-prefix inherited)
                                                   [:pattern]))}
                        inherited)}))])
+
+(defn virtual-item-DOM
+  "Make a dom for a place that could hold an item, but doesn't.
+  inherited must include a :template and a :subject-referent."
+  [key adjacent-referent position inherited]
+  (assert (not (nil? (:subject-referent inherited))))
+  (let [referent (virtual-referent
+                  (:template inherited)
+                  (subject-referent-given-inherited inherited)
+                  adjacent-referent
+                  :position position
+                  :selector (when (:selector-category inherited)
+                              :first-group))]
+    (virtual-referent-item-DOM referent key inherited)))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return

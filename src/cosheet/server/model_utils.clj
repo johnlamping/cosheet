@@ -82,6 +82,10 @@
              tabs (expr order-items-R (label->elements holder :tab))]
     (first tabs)))
 
+(def table-header-template
+  '(anything-immutable (:column :non-semantic)
+                       (:non-semantic :non-semantic)))
+
 (defn table-tab-non-semantic-elements
   "Return the non-semantic elements for a new tab for a table
   with the given row condition and column conditions."
@@ -97,10 +101,8 @@
                       row-condition-elements
                       (map (fn [header-condition-elements]
                              (apply list (concat
-                                          ['anything-immutable]
-                                          header-condition-elements
-                                          ['(:column :non-semantic)
-                                           '(:non-semantic :non-semantic)])))
+                                          table-header-template
+                                          header-condition-elements)))
                            header-conditions-elements)
                       ['(:row-condition :non-semantic)
                        '(:non-semantic :non-semantic)]))))))

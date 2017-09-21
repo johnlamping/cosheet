@@ -26,6 +26,7 @@
                                 hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
+             [model-utils :refer [table-header-template]]
              [render-utils :refer [make-component virtual-item-DOM
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
@@ -605,9 +606,7 @@
                                   inherited
                                   :subject-referent (item-referent
                                                      row-condition-item)
-                                  :template '(anything-immutable
-                                              (:column :non-semantic)
-                                              (:non-semantic :non-semantic)))
+                                  :template table-header-template)
                                  :priority inc)]
           (expr-let
               [[row-template row-items] (row-template-and-items-R

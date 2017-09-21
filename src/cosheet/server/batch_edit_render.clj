@@ -8,13 +8,16 @@
                      [expression :refer [expr expr-let expr-seq]])
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
-                               parallel-union-referent
+                               virtual-referent parallel-union-referent
                                exemplar-referent
                                union-referent instantiate-to-items
                                semantic-elements-R]]
-             [render-utils :refer [add-inherited-attribute]]
+             [render-utils :refer [add-inherited-attribute
+                                   virtual-referent-item-DOM]]
+             [order-utils :refer [order-items-R]]
              [item-render :refer [must-show-label-item-DOM-R
                                   virtual-element-DOM-R
+                                  add-labels-DOM
                                   labels-and-elements-DOM-R]])))
 
 (defn top-level-items-referent
@@ -48,6 +51,55 @@
         (elements-referent (item-referent selected-batch-item)
                            subject-referent)))))
 
+(defn referent-for-virtual-element
+  "Return a referent for a new virtual element that comes after the current
+  last element."
+  [template subject-referent last-element-referent]
+  (virtual-referent
+   template
+   subject-referent
+   (when last-element-referent
+     (exemplar-referent last-element-referent subject-referent))
+   :position :after
+   :selector :first-group))
+
+(defn batch-edit-stack-virtual-DOM-R
+  "Return the DOM for a virtual element, when the selected batch item
+  is the query item."
+  [query-item query-elements inherited]
+  (expr-let [ordered-elements (order-items-R query-elements)]
+    (let [last-element (last ordered-elements)
+          last-element-referent (when last-element (item-referent last-element))
+          non-headers-referent (referent-for-virtual-element
+                                'anything
+                                (union-referent
+                                 [(item-referent query-item)
+                                  (top-level-items-referent query-item)])
+                                last-element-referent)
+          headers-referent (referent-for-virtual-element
+                            '(anything-immutable
+                              (:column :non-semantic)
+                              (:non-semantic :non-semantic))
+                            (union-referent
+                             [(table-conditions-referent query-item)])
+                            last-element-referent)
+          referent (union-referent
+                    [non-headers-referent
+                     headers-referent])
+          tag-referent (union-referent
+                        [(virtual-referent
+                          '(anything :tag) non-headers-referent nil)
+                         (virtual-referent
+                          '(anything :tag) headers-referent nil)])
+          dom (virtual-referent-item-DOM
+               referent (conj (:key-prefix inherited) :virtual)
+               inherited)
+          tag-dom (virtual-referent-item-DOM
+                   tag-referent
+                   (conj (:key-prefix inherited) :virtual :label)
+                   inherited)]
+      (add-labels-DOM tag-dom dom :vertical))))
+
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
   [query-item query-elements selected-batch-item store inherited]
@@ -67,7 +119,9 @@
                    ;; Make its doms have different keys.
                    (update :key-prefix #(conj % :batch)))]
            (expr-let
-               [batch-dom
+               [virtual-dom (batch-edit-stack-virtual-DOM-R
+                             query-item query-elements inherited)
+                batch-dom
                 (if (= query-item selected-batch-item)
                   (let [query-and-rows-referent
                         (union-referent [(item-referent query-item)
@@ -100,13 +154,11 @@
                           [#{:content}
                            {:delete
                             {:referent selected-non-header-referent}}]))]
-                    ;; TODO: We want to add a virtual element here, but
-                    ;; it has to know to add the necessary stuff to table
-                    ;; headers or not to add to headers at all. (Maybe use
-                    ;; a union of two virtual referents.)
-                    ;; Add-twin might be a problem too.
+                    ;; TODO: Add-twin is a problem here with not knowing
+                    ;; what template to use.
                     (labels-and-elements-DOM-R
-                     query-elements false true true :horizontal inherited))
+                     query-elements virtual-dom
+                     true true :horizontal inherited))
                   (must-show-label-item-DOM-R
                    selected-batch-item selected-referent nil
                    inherited-for-batch))
@@ -139,10 +191,11 @@
              [(:item-id selected-batch-item) {:class "batch-selected-item"}]))]
     (expr-let
         [condition-elements (semantic-elements-R query-item)
+         virtual-dom (virtual-element-DOM-R
+                      'anything condition-elements
+                      true :vertical inherited-for-query)
          query-dom (labels-and-elements-DOM-R
-                    condition-elements
-                    #(virtual-element-DOM-R
-                      'anything % true :vertical inherited-for-query)
+                    condition-elements virtual-dom
                     true true :horizontal inherited-for-query)
          old-query-dom (must-show-label-item-DOM-R
                     query-item nil inherited-for-query)

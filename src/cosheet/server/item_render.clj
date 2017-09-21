@@ -206,11 +206,10 @@
 
 (defn labels-and-elements-DOM-R
   "Generate the dom for a set of elements, some of which may be labels.
-  virtual-generator, if present, must be a function that expects a list of
-  the elements and returns a reporter for the virtual element DOM.
+  virtual-dom, if present, will appear after the elements.
   must-show-empty-labels determines whether the elements must show labels.
   inherited must be half way to the children."
-  [elements virtual-generator must-show-empty-label must-show-empty-labels
+  [elements virtual-dom must-show-empty-label must-show-empty-labels
    direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
@@ -220,16 +219,14 @@
           non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
                                 pairs))]
       (expr-let [elements-dom
-                 (when (or non-labels virtual-generator)
+                 (when (or non-labels virtual-dom)
                    (expr-let
                        [element-doms
                         (when non-labels
                           (element-DOMs-R
                            non-labels must-show-empty-labels nil direction
                            (transform-inherited-attributes
-                            inherited :element)))
-                        virtual-dom
-                        (when virtual-generator (virtual-generator elements))]
+                            inherited :element)))]
                      [:div {:class "item elements-wrapper"}
                       (nest-if-multiple-DOM
                        (cond-> element-doms

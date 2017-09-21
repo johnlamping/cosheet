@@ -549,10 +549,11 @@
                                :attributes [[#{:label} #{:content}
                                              {:add-element
                                               {:referent subject-referent}}]])
+               virtual-dom (virtual-element-DOM-R
+                            'anything condition-elements
+                            true :vertical inherited-down)
                dom (labels-and-elements-DOM-R
-                    condition-elements
-                    #(virtual-element-DOM-R
-                      'anything % true :vertical inherited-down)
+                    condition-elements virtual-dom
                     true true :horizontal inherited-down)]
       [[:div {:class (cond-> "table-top selectors"
                        condition-is-all-tags (str " tag"))}

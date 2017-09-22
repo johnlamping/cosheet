@@ -629,12 +629,12 @@
                                        (table-virtual-header-element-template
                                         hierarchy)
                                        headers-inherited)
-                  virtual-template (virtual-referent new-column-template
-                                                     (item-referent table-item)
-                                                     (item-referent
-                                                      (or (last columns)
-                                                          table-item))
-                                                     :selector :first-group)
+                  virtual-template (virtual-referent
+                                    new-column-template
+                                    (item-referent row-condition-item)
+                                    (item-referent (or (last columns)
+                                                       table-item))
+                                    :selector :first-group)
                   virtual-column-description {:column-id :virtualColumn
                                               :template virtual-template
                                               :exclusions nil}

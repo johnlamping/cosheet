@@ -217,7 +217,7 @@
                                 (:column :non-semantic)
                                 (:non-semantic :non-semantic)
                                 (???))
-                              (item-referent table)
+                              (item-referent query)
                               (item-referent c6)
                               :selector :first-group)
                    :exclusions nil}]
@@ -290,7 +290,7 @@
                                   (:column :non-semantic)
                                   (:non-semantic :non-semantic)
                                   (???))
-                                (item-referent table)
+                                (item-referent query)
                                 (item-referent c6)
                                 :selector :first-group)
                                (item-referent joe)

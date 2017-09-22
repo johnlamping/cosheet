@@ -650,10 +650,10 @@
 
 (defn instantiate-or-create-exemplar
   "Run instantiate-or-create-referent on all referents in the exemplar."
-  [exemplar store]
+  [exemplar original-store store]
   (cond (referent? exemplar)
         (let [[groups new-ids store]
-              (instantiate-or-create-referent exemplar store)]
+              (instantiate-or-create-referent exemplar original-store store)]
           [(semantic-to-list-R (first (first groups))) new-ids store])
         (seq? exemplar)
         (let [[exemplar [new-ids store]]
@@ -661,7 +661,8 @@
                (fn [exemplar [new-ids store]]
                  (if (referent? exemplar)
                    (let [[groups newest-ids store]
-                         (instantiate-or-create-referent exemplar store)]
+                         (instantiate-or-create-referent
+                          exemplar original-store store)]
                      [(semantic-to-list-R (first (apply concat groups)))
                       [(concat new-ids newest-ids) store]])
                    [exemplar [nil store]]))
@@ -674,20 +675,24 @@
   "Create items for virtual referents. Return the groups
   of new items,  a seq of ids of the first item created for this referent
   and each nested virtual referent, and the updated store."
-  [referent store]
+  [referent original-store store]
   (assert (virtual-referent? referent))
   (let [[_ exemplar subject-referent adjacent-referent
          position use-bigger selector]
         referent
         [template new-template-ids store]
-        (instantiate-or-create-exemplar exemplar store)
+        (instantiate-or-create-exemplar exemplar original-store store)
         [subject-groups new-subject-ids store]
         (if (nil? subject-referent)
           [nil nil store]
-          (instantiate-or-create-referent subject-referent store))
+          (instantiate-or-create-referent
+           subject-referent original-store store))
+        subject-groups (map-map #(in-different-store % store) subject-groups)
         adjacent-groups (if (nil? adjacent-referent)
                           subject-groups
-                          (instantiate-referent adjacent-referent store))
+                          (map-map #(in-different-store % store)
+                                   (instantiate-referent
+                                    adjacent-referent original-store)))
         subject-groups
         (if (nil? subject-referent)
           [(map-map (constantly nil) adjacent-groups)]
@@ -705,33 +710,39 @@
 (defn create-virtual-union-referent
   "Does create-virtual-referent on each referent of a union, and combines
   the results."
-  [referent store]
+  [referent original-store store]
   (let [[groups ids store]
         (reduce (fn [[combined-groups first-ids store] referent]
                   (let [[groups ids store] (create-virtual-referent
-                                            referent store)]
+                                            referent original-store store)]
                     [(conj combined-groups (apply concat groups))
                      (or first-ids ids)
                      store]))
                 [[] nil store]
                 (rest referent))]
-    ;; The earlier items will have only the partially updated store.
-    ;; Make them all have the latest store.
+    ;; Some items may have the original store or only the partially
+    ;; updated store. Make them all have the latest store.
     [(map-map #(in-different-store % store) groups) ids store]))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
   for virtual referents. Return the groups, a seq of the ids of first item
   created for this referent and each nested virtual referent, 
-  and the updated store."
-  [referent store]
-  (cond
-    (virtual-referent? referent)
-    (create-virtual-referent referent store)
-    (and (union-referent? referent) (virtual-referent? (second referent)))
-    (create-virtual-union-referent referent store)
-    true
-    [(instantiate-referent referent store) nil store]))
+  and the updated store.
+  Evaluate non-virtual sub-parts in the original store, so that
+  they will have their original interpretation, even if some embedded
+  virtual modifies the store.
+  To support recursion, the original store can be specified explicitly."
+  ([referent store]
+   (instantiate-or-create-referent referent store store))
+  ([referent original-store store]
+   (cond
+     (virtual-referent? referent)
+     (create-virtual-referent referent original-store store)
+     (and (union-referent? referent) (virtual-referent? (second referent)))
+     (create-virtual-union-referent referent original-store store)
+     true
+     [(instantiate-referent referent original-store) nil store])))
 
 
 

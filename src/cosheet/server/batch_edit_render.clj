@@ -14,6 +14,7 @@
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute
                                    virtual-referent-item-DOM]]
+             [model-utils :refer [table-header-template]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [must-show-label-item-DOM-R
                                   virtual-element-DOM-R
@@ -77,27 +78,26 @@
                                   (top-level-items-referent query-item)])
                                 last-element-referent)
           headers-referent (referent-for-virtual-element
-                            '(anything-immutable
-                              (:column :non-semantic)
-                              (:non-semantic :non-semantic))
+                            table-header-template
                             (union-referent
                              [(table-conditions-referent query-item)])
                             last-element-referent)
-          referent (union-referent
-                    [non-headers-referent
-                     headers-referent])
           tag-referent (union-referent
                         [(virtual-referent
                           '(anything :tag) non-headers-referent nil)
                          (virtual-referent
                           '(anything :tag) headers-referent nil)])
+          ;; If we are setting the content, then don't add to headers, since
+          ;; their content must always be 'anything-immutable.
           dom (virtual-referent-item-DOM
-               referent (conj (:key-prefix inherited) :virtual)
+               non-headers-referent (conj (:key-prefix inherited) :virtual)
                inherited)
-          tag-dom (virtual-referent-item-DOM
-                   tag-referent
-                   (conj (:key-prefix inherited) :virtual :label)
-                   inherited)]
+          tag-dom (add-attributes
+                   (virtual-referent-item-DOM
+                    tag-referent
+                    (conj (:key-prefix inherited) :virtual :label)
+                    inherited)
+                   {:class "tag"})]
       (add-labels-DOM tag-dom dom :vertical))))
 
 (defn batch-edit-stack-DOM-R
@@ -115,12 +115,12 @@
                 (top-level-items-referent query-item))
                inherited-for-batch
                (-> inherited
-                   (assoc :selector-category :batch-selected)
+                   (assoc :selector-category :batch-stack)
                    ;; Make its doms have different keys.
-                   (update :key-prefix #(conj % :batch)))]
+                   (update :key-prefix #(conj % :batch-stack)))]
            (expr-let
                [virtual-dom (batch-edit-stack-virtual-DOM-R
-                             query-item query-elements inherited)
+                             query-item query-elements inherited-for-batch)
                 batch-dom
                 (if (= query-item selected-batch-item)
                   (let [query-and-rows-referent
@@ -187,6 +187,7 @@
         (-> inherited
             (assoc :selector-category :batch-query
                    :subject-referent (item-referent query-item))
+            (update :key-prefix #(conj % :batch-query))
             (add-inherited-attribute
              [(:item-id selected-batch-item) {:class "batch-selected-item"}]))]
     (expr-let

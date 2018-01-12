@@ -24,7 +24,7 @@
                       instantiate-to-items
                       referent->string referent? virtual-referent?
                       referent->exemplar-and-subject
-                      item-referent first-group-referent
+                      item-referent virtual-referent first-group-referent
                       semantic-elements-R
                       condition-to-template adjust-adjacents
                       create-possible-selector-elements
@@ -176,12 +176,25 @@
            store [(first (apply concat added))]
            (conj (pop item-key) [:pattern]) target-key))))))
 
+(defn add-virtual [store target-key referent select-pattern]
+  (println "adding virtual" (simplify-for-print [target-key referent select-pattern]))
+  (let [[items new-ids store] (instantiate-or-create-referent referent store)]
+    (add-select-request store (map #(description->entity % store) new-ids)
+                        select-pattern target-key)))
+
 (defn do-add-virtual
   [store arguments attributes]
-  (let [{:keys [referent select-pattern]} arguments
-        [items new-ids store] (instantiate-or-create-referent referent store)]
-    (add-select-request store (map #(description->entity % store) new-ids)
-                        select-pattern (:target-key arguments))))
+  (let [{:keys [referent select-pattern target-key]} arguments]
+    (add-virtual store target-key referent select-pattern)))
+
+(defn do-add-row
+  [store arguments attributes]
+  (println "adding row")
+  (let [{:keys [row column]} attributes]
+    (add-virtual
+     store (:target-key arguments)
+     (virtual-referent (:template row) nil (:referent row))
+     (conj (vec (butlast (:key row))) [:pattern] (:referent column)))))
 
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
@@ -320,7 +333,7 @@
     :add-label [do-add-label :target]
     :add-twin [do-add-twin :target]
     :add-sibling [do-add-virtual :add-sibling]
-    :add-row [do-add-virtual :add-row]
+    :add-row [do-add-row :row]
     :add-column [do-add-virtual :add-column]
     :delete [do-delete :target]
     :delete-row [do-delete :delete-row]

@@ -362,13 +362,11 @@
             (assoc :width 0.75)
             (add-inherited-attribute
              [#{:label :element :recursive :optional} #{:content}
-              {:add-row
-               {:referent
-                (virtual-referent new-row-template nil row-referent)
-                :select-pattern (conj (vec (-> (:key-prefix inherited)
-                                               butlast
-                                               butlast))
-                                      [:pattern] column-id)}
+              ;; TODO: Move this to the row generator.
+              {:row {:referent row-referent
+                     :key (butlast (:key-prefix inherited))
+                     :template new-row-template}
+               :column {:referent column-id}
                :delete-row {:referent row-referent}}]))]
     (expr-let
         [dom (if (empty? items)
@@ -417,11 +415,12 @@
 (defn table-row-DOM-R
   "Generate dom for a table row."
   [row-item row-key new-row-template column-descriptions inherited]
-  (let [inherited (-> inherited
+  (let [row-referent (item-or-exemplar-referent
+                      row-item (:subject-referent inherited))
+        inherited (-> inherited
                       (assoc :key-prefix row-key)
                       (update :priority inc)
-                      (update :subject-referent
-                              #(item-or-exemplar-referent row-item %)))]
+                      (assoc :subject-referent row-referent))]
     (expr-let [cells (expr-seq map #(table-cell-DOM-R
                                      row-item new-row-template % inherited)
                                column-descriptions)]

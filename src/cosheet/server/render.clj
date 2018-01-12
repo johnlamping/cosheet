@@ -64,7 +64,8 @@
    :add-element
    :add-twin
    :add-label
-   :add-row
+   :row
+   :column
    :add-column
    :delete
    :delete-row

@@ -239,15 +239,16 @@
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]
+        (println (simplify-for-print [c1 c2 c3]))
         (is (check
              row-dom
              [:div {}
-              [:div {:add-row {:referent (virtual-referent
-                                          '("" ("" ("age" :tag))
-                                            (:top-level :non-semantic))
-                                          nil (item-referent joe))
-                               :select-pattern (conj table-key
-                                                     [:pattern] (:item-id c1))}
+              [:div {:row {:referent (item-referent joe)
+                           :key (conj (vec table-key) (item-referent joe))
+                           :template '(""
+                                       ("" ("age" :tag))
+                                       (:top-level :non-semantic))}
+                     :column {:referent (item-referent c1)}
                      :delete-row {:referent (item-referent joe)}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
@@ -270,12 +271,12 @@
                  :template '(nil ("name" :tag))
                  :attributes
                  [[#{:label :element :recursive :optional} #{:content}
-                   {:add-row {:referent (virtual-referent
-                                         '("" ("" ("age" :tag))
-                                           (:top-level :non-semantic))
-                                         nil (item-referent joe))
-                              :select-pattern (conj table-key
-                                                    [:pattern] (:item-id c2))}
+                   {:row {:referent (item-referent joe)
+                          :key (conj (vec table-key) (item-referent joe))
+                          :template '(""
+                                      ("" ("age" :tag))
+                                      (:top-level :non-semantic))}
+                    :column {:referent (item-referent c2)}
                     :delete-row {:referent (item-referent joe)}}]]}]]
               (any)
               (any)

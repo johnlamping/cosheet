@@ -12,9 +12,9 @@
                                         label->elements label->content]]
              [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [profile-and-print-reporters
-                            simplify-for-print]]
+                            store-as-list simplify-for-print]]
              entity-impl
-             [query :refer [matching-elements]]
+             [query :refer [matching-elements matching-items]]
              [store :refer [new-element-store new-mutable-store
                             current-store id-valid?]]
              [store-impl :refer [->ItemId]]
@@ -151,6 +151,19 @@
     (is (check (:select result)
                [["jane" (any)] [["jane" "jane-age"]]]))))
 
+(deftest do-add-row-test
+  (let [result (do-add-row
+                store
+                {:target-key ["jane" "jane-age"]}
+                {:row {:referent (item-referent jane)
+                       :template '("a" :new-row)
+                       :key ["x" "y"]}
+                 :column {:referent (item-referent joe)}})
+        new-store (:store result)]
+    (let [new-rows (matching-items "a" new-store)]
+      (is (= (count new-rows) 1)))
+    (is (check (:select result)
+               [["x" (any) (item-referent joe)] [["jane" "jane-age"]]])))  )
 
 (deftest do-delete-test
   (let [new-store (do-delete

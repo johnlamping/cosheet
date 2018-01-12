@@ -46,6 +46,12 @@
         "Reporter"))
     expr))
 
+(defn store-as-list [store]
+  (map
+   #(entity/to-list (entity/description->entity % store))
+   (filter #(nil? (store/id->subject store %))
+           (store/candidate-matching-ids store nil))))
+
 (defn simplify-for-print [item]
   (cond (satisfies? store/Store item)
         (if (store/mutable-store? item)

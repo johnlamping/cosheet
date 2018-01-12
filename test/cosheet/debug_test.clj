@@ -5,11 +5,13 @@
             (cosheet [mutable-map :as mm]
                      [debug :refer :all]
                      [test-utils :refer [check as-set]]
+                     [canonical :refer [canonicalize-list]]
                      [reporter :refer [new-reporter set-value! data-atom]]
                      [expression-manager :refer [new-expression-manager-data
                                                  request compute]]
                      [expression :refer [expr expr-let cache]]
                      [store :refer :all]
+                     [store-utils :refer [add-entity]]
                      [entity :refer :all])
             ; :reload
             ))
@@ -63,6 +65,15 @@
         [[+ 1 1]
          [+ 3 2]
          [+ 8 5]])))
+
+(deftest store-as-list-test
+  (let [s (-> (new-element-store)
+              (add-entity nil '("a" "b"))
+              first
+              (add-entity nil '("x" ("y" "z")))
+              first)]
+    (is (check (canonicalize-list (store-as-list s))
+               (canonicalize-list '(("a" "b") ("x" ("y" "z"))))))))
 
 (deftest simplify-for-print-test
   (let [s (new-element-store)

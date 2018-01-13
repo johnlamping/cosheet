@@ -68,7 +68,6 @@
    :column
    :add-column
    :delete
-   :delete-row
    :delete-column
    :set-content
    :expand

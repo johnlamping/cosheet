@@ -362,8 +362,7 @@
             (assoc :width 0.75)
             (add-inherited-attribute
              [#{:label :element :recursive :optional} #{:content}
-              {:column {:referent column-id}
-               :delete-row {:referent row-referent}}]))]
+              {:column {:referent column-id}}]))]
     (expr-let
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it

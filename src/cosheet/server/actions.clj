@@ -336,7 +336,7 @@
     :add-row [do-add-row :row]
     :add-column [do-add-virtual :add-column]
     :delete [do-delete :target]
-    :delete-row [do-delete :delete-row]
+    :delete-row [do-delete :row]
     :delete-column [do-delete :delete-column]
     :set-content [do-set-content :target]
     :expand [do-expand :target]

@@ -249,7 +249,6 @@
                                        ("" ("age" :tag))
                                        (:top-level :non-semantic))}
                      :column {:referent (item-referent c1)}
-                     :delete-row {:referent (item-referent joe)}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1))
                      :target {:referent (virtual-referent
@@ -277,8 +276,7 @@
                                       ("" ("age" :tag))
                                       (:top-level :non-semantic))}}]
                   [#{:label :element :recursive :optional} #{:content}
-                   {:column {:referent (item-referent c2)}
-                    :delete-row {:referent (item-referent joe)}}]]}]]
+                   {:column {:referent (item-referent c2)}}]]}]]
               (any)
               (any)
               (any)

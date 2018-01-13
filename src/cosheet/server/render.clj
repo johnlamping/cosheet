@@ -208,7 +208,8 @@
                                    {:expand {:referent subject-ref}}])))
               dom (item-DOM-R item tags inherited
                               :referent referent
-                              :must-show-label (empty? tags))]
+                              :must-show-label (empty? tags)
+                              :do-not-show-content (not (empty? top-level)))]
           (expr-let [dom dom]
             (cond-> dom
               (seq tags)

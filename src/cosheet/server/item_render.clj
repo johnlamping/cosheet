@@ -567,7 +567,8 @@
                elements (semantic-elements-R item)
                dom (if do-not-show-content
                      (labels-and-elements-DOM-R
-                      elements nil must-show-label false :vertical inherited)
+                      elements nil must-show-label true :vertical
+                      inherited-down)
                      (item-content-and-elements-DOM-R
                       content (remove (set excluded-elements) elements)
                       must-show-label inherited-down))]

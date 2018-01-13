@@ -355,18 +355,14 @@
 (defn table-cell-items-DOM-R
   "Return the dom for one cell of a table, given its items.
   Inherited gives the context of each item in the cell."
-  [items column-id new-row-template inherited]
+  [items column-id inherited]
   (let [row-referent (:subject-referent inherited)
         inherited
         (-> inherited
             (assoc :width 0.75)
             (add-inherited-attribute
              [#{:label :element :recursive :optional} #{:content}
-              ;; TODO: Move this to the row generator.
-              {:row {:referent row-referent
-                     :key (butlast (:key-prefix inherited))
-                     :template new-row-template}
-               :column {:referent column-id}
+              {:column {:referent column-id}
                :delete-row {:referent row-referent}}]))]
     (expr-let
         [dom (if (empty? items)
@@ -391,7 +387,7 @@
 
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
-  [row-item new-row-template
+  [row-item
    {:keys [column-id template exclusions] :as header-description}
    inherited]
   (let [inherited-down (assoc inherited
@@ -410,7 +406,7 @@
                              (set matches)
                              (set (apply concat do-not-show))))]
           (table-cell-items-DOM-R
-           elements column-id new-row-template inherited-down))))))
+           elements column-id inherited-down))))))
 
 (defn table-row-DOM-R
   "Generate dom for a table row."
@@ -418,11 +414,15 @@
   (let [row-referent (item-or-exemplar-referent
                       row-item (:subject-referent inherited))
         inherited (-> inherited
-                      (assoc :key-prefix row-key)
-                      (update :priority inc)
-                      (assoc :subject-referent row-referent))]
-    (expr-let [cells (expr-seq map #(table-cell-DOM-R
-                                     row-item new-row-template % inherited)
+                      (assoc :key-prefix row-key
+                             :subject-referent row-referent)
+                      (add-inherited-attribute
+                       [#{:label :element :recursive :optional} #{:content}
+                        {:row {:referent row-referent
+                               :key row-key
+                               :template new-row-template}}])
+                      (update :priority inc))]
+    (expr-let [cells (expr-seq map #(table-cell-DOM-R row-item % inherited)
                                column-descriptions)]
       (into [:div {}] cells))))
 

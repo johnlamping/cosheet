@@ -275,8 +275,9 @@
                           :key (conj (vec table-key) (item-referent joe))
                           :template '(""
                                       ("" ("age" :tag))
-                                      (:top-level :non-semantic))}
-                    :column {:referent (item-referent c2)}
+                                      (:top-level :non-semantic))}}]
+                  [#{:label :element :recursive :optional} #{:content}
+                   {:column {:referent (item-referent c2)}
                     :delete-row {:referent (item-referent joe)}}]]}]]
               (any)
               (any)
@@ -284,6 +285,11 @@
               (any)
               [:div {:class "editable table-cell virtual-column has-border"
                      :key (conj table-key (:item-id joe) :virtualColumn)
+                     :row {:referent (item-referent joe)
+                           :key (conj (vec table-key) (item-referent joe))
+                           :template '(""
+                                       ("" ("age" :tag))
+                                       (:top-level :non-semantic))}
                      :target {:referent
                               (virtual-referent
                                (virtual-referent

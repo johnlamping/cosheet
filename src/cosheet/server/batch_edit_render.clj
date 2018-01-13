@@ -16,7 +16,7 @@
                                    virtual-referent-item-DOM]]
              [model-utils :refer [table-header-template]]
              [order-utils :refer [order-items-R]]
-             [item-render :refer [must-show-label-item-DOM-R
+             [item-render :refer [item-DOM-R
                                   virtual-element-DOM-R
                                   add-labels-DOM
                                   labels-and-elements-DOM-R]])))
@@ -159,9 +159,10 @@
                     (labels-and-elements-DOM-R
                      query-elements virtual-dom
                      true true :horizontal inherited))
-                  (must-show-label-item-DOM-R
-                   selected-batch-item selected-referent nil
-                   inherited-for-batch))
+                  (item-DOM-R
+                   selected-batch-item nil inherited-for-batch
+                   :referent selected-referent
+                   :must-show-label true))
                 count-dom
                 (call-dependent-on-id
                  store nil
@@ -198,8 +199,9 @@
          query-dom (labels-and-elements-DOM-R
                     condition-elements virtual-dom
                     true true :horizontal inherited-for-query)
-         old-query-dom (must-show-label-item-DOM-R
-                    query-item nil inherited-for-query)
+         old-query-dom (item-DOM-R
+                        query-item nil inherited-for-query
+                        :must-show-empty-label true)
          stack-dom (batch-edit-stack-DOM-R
                     query-item condition-elements selected-batch-item store
                     inherited)]

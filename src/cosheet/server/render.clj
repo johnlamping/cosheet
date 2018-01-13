@@ -14,7 +14,7 @@
                                item-referent? instantiate-to-items]]
              [model-utils :refer [ tabs-holder-item-R first-tab-R]]
              [render-utils :refer [make-component]]
-             [item-render :refer [item-DOM-R must-show-label-item-DOM-R]]
+             [item-render :refer [item-DOM-R]]
              [table-render :refer [table-DOM-R]]
              [tabs-render :refer [tabs-DOM-R]]
              [batch-edit-render :refer [batch-edit-DOM-R]])))
@@ -189,6 +189,7 @@
   [item referent inherited]
   (let [inherited (into starting-inherited inherited)]
     (expr-let [table (matching-elements :table item)
+               top-level (matching-elements :top-level item)
                tags (matching-elements :tag item)]
       (if (empty? table)
         (let [subject-ref (or (:subject-referent inherited)
@@ -205,8 +206,9 @@
                            #(conj (or % [])
                                   [#{:label :optional} #{:content}
                                    {:expand {:referent subject-ref}}])))
-              dom ((if (empty? tags) must-show-label-item-DOM-R item-DOM-R)
-                   item referent tags inherited)]
+              dom (item-DOM-R item tags inherited
+                              :referent referent
+                              :must-show-label (empty? tags))]
           (expr-let [dom dom]
             (cond-> dom
               (seq tags)

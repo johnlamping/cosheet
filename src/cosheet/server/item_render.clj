@@ -167,8 +167,6 @@
        (virtual-label-DOM inherited)
        dom])))
 
-(declare element-DOMs-R)
-
 (defn virtual-element-DOM-R
   "Return the dom for a virtual element."
   [virtual-content elements must-show-empty-label direction inherited]
@@ -203,52 +201,6 @@
                  {:class "tag"}))]
           (add-labels-DOM labels-dom dom direction))
         dom))))
-
-(defn labels-and-elements-DOM-R
-  "Generate the dom for a set of elements, some of which may be labels.
-  virtual-dom, if present, will appear after the elements.
-  must-show-empty-labels determines whether the elements must show labels.
-  inherited must be half way to the children."
-  [elements virtual-dom must-show-empty-label must-show-empty-labels
-   direction inherited]
-  (expr-let
-      [tags (expr-seq map #(matching-elements :tag %) elements)]
-    (let [pairs (map vector tags elements)
-          labels (seq (keep (fn [[tags elem]] (when (seq tags) elem))
-                            pairs))
-          non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
-                                pairs))]
-      (expr-let [elements-dom
-                 (when (or non-labels virtual-dom)
-                   (expr-let
-                       [element-doms
-                        (when non-labels
-                          (element-DOMs-R
-                           non-labels must-show-empty-labels nil direction
-                           (transform-inherited-attributes
-                            inherited :element)))]
-                     [:div {:class "item elements-wrapper"}
-                      (nest-if-multiple-DOM
-                       (cond-> element-doms
-                         virtual-dom (concat [virtual-dom]))
-                       direction)]))]
-        (cond
-          (and labels elements-dom)
-          (non-empty-labels-wrapper-DOM-R elements-dom labels direction
-                                          inherited)
-          labels
-          (label-stack-DOM-R elements
-                             (-> inherited
-                                 transform-inherited-for-labels
-                                 (add-inherited-attribute {:class "tag"})))
-          (and must-show-empty-label elements-dom)
-          (wrap-with-labels-DOM
-           (virtual-label-DOM inherited) elements-dom direction)
-          elements-dom
-          elements-dom
-          true
-          (add-attributes (virtual-label-DOM inherited)
-                          {:class "elements-wrapper"}))))))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements
@@ -464,6 +416,52 @@
                                   implied-template direction inherited)]
     (nest-if-multiple-DOM doms direction)))
 
+(defn labels-and-elements-DOM-R
+  "Generate the dom for a set of elements, some of which may be labels.
+  virtual-dom, if present, will appear after the elements.
+  must-show-empty-labels determines whether the elements must show labels.
+  inherited must be half way to the children."
+  [elements virtual-dom must-show-empty-label must-show-empty-labels
+   direction inherited]
+  (expr-let
+      [tags (expr-seq map #(matching-elements :tag %) elements)]
+    (let [pairs (map vector tags elements)
+          labels (seq (keep (fn [[tags elem]] (when (seq tags) elem))
+                            pairs))
+          non-labels (seq (keep (fn [[tags elem]] (when (empty? tags) elem))
+                                pairs))]
+      (expr-let [elements-dom
+                 (when (or non-labels virtual-dom)
+                   (expr-let
+                       [element-doms
+                        (when non-labels
+                          (element-DOMs-R
+                           non-labels must-show-empty-labels nil direction
+                           (transform-inherited-attributes
+                            inherited :element)))]
+                     [:div {:class "item elements-wrapper"}
+                      (nest-if-multiple-DOM
+                       (cond-> element-doms
+                         virtual-dom (concat [virtual-dom]))
+                       direction)]))]
+        (cond
+          (and labels elements-dom)
+          (non-empty-labels-wrapper-DOM-R elements-dom labels direction
+                                          inherited)
+          labels
+          (label-stack-DOM-R elements
+                             (-> inherited
+                                 transform-inherited-for-labels
+                                 (add-inherited-attribute {:class "tag"})))
+          (and must-show-empty-label elements-dom)
+          (wrap-with-labels-DOM
+           (virtual-label-DOM inherited) elements-dom direction)
+          elements-dom
+          elements-dom
+          true
+          (add-attributes (virtual-label-DOM inherited)
+                          {:class "elements-wrapper"}))))))
+
 (defn item-content-DOM
   "Make dom for the content part of an item."
   [item-referent content inherited]
@@ -550,14 +548,16 @@
         dom
         (inherited-attributes inherited item))))))
 
-(defn item-DOM-impl-R
+(defn item-DOM-R
   "Make a dom for an item or exemplar of a group of items.
    If the item is a tag, the caller is responsible for tag formatting."
-  [item referent excluded-elements must-show-empty-label inherited]
+  [item excluded-elements inherited
+   & {:keys [referent do-not-show-content must-show-label]}]
   (println
    "Generating DOM for"
    (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
-  (let [inherited-down
+  (let [referent (or referent (item-referent-given-inherited item inherited))
+        inherited-down
         (-> inherited
             (transform-inherited-for-children
              (conj (:key-prefix inherited) (:item-id item)) referent)
@@ -565,32 +565,10 @@
              [#{:label} #{:content} {:expand {:referent referent}}]))]
     (expr-let [content (entity/content item)
                elements (semantic-elements-R item)
-               dom (item-content-and-elements-DOM-R
-                    content (remove (set excluded-elements) elements)
-                    must-show-empty-label inherited-down)]
-      (add-attributes
-       dom
-       (inherited-attributes inherited item)))))
-
-(defn item-DOM-R
-   "Make a dom for an item or exemplar for a group of items.
-   Either the referent for the item/group must be provided,
-   or inherited must contain :subject-referent.
-   If the item is a tag, the caller is responsible for tag formatting."
-  ([item excluded-elements inherited]
-   (let [referent (item-referent-given-inherited item inherited)]
-     (item-DOM-impl-R item referent excluded-elements false inherited)))
-  ([item referent excluded-elements inherited]
-   (item-DOM-impl-R item referent excluded-elements false inherited)))
-
-(defn must-show-label-item-DOM-R
-   "Make a dom for an item or exemplar for a group of items, always showing
-   at least one label, empty, if necessary. 
-   Either the referent for the item/group must be provided,
-   or inherited must contain :subject-referent.
-   If the item is a tag, the caller is responsible for tag formatting."
-  ([item excluded-elements inherited]
-   (let [referent (item-referent-given-inherited item inherited)]
-     (item-DOM-impl-R item referent excluded-elements true inherited)))
-  ([item referent excluded-elements inherited]
-   (item-DOM-impl-R item referent excluded-elements true inherited)))
+               dom (if do-not-show-content
+                     (labels-and-elements-DOM-R
+                      elements nil must-show-label false :vertical inherited)
+                     (item-content-and-elements-DOM-R
+                      content (remove (set excluded-elements) elements)
+                      must-show-label inherited-down))]
+      (add-attributes dom (inherited-attributes inherited item)))))

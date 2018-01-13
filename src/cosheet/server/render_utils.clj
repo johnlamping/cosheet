@@ -225,13 +225,6 @@
   (assert (:key attributes))
   [:component attributes definition])
 
-(defn item-component
-  "Make a component dom for the given item.
-  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
-  [dom-fn item exclude-elements inherited]
-  (let [key (conj (:key-prefix inherited) (:item-id item))
-        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
-    (make-component {:key key} [dom-fn item excluded inherited])))
 
 (defn subject-referent-given-inherited
   "Return the subject from inherited."
@@ -248,6 +241,15 @@
     (if (clojure.test/function? subject-referent)
       (subject-referent item)
       (item-or-exemplar-referent item subject-referent))))
+
+(defn item-component
+  "Make a component dom for the given item.
+    dom-fn should take [item excluded-elements inherited]
+  and return a DOM reporter."
+  [dom-fn item exclude-elements inherited]
+  (let [key (conj (:key-prefix inherited) (:item-id item))
+        excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
+    (make-component {:key key} [dom-fn item excluded inherited])))
 
 (defn virtual-referent-item-DOM
   "Make a dom for a place that could hold an item, but doesn't, given
@@ -303,7 +305,8 @@
   than one component.
   The excludeds can be either a single value to be used for all items,
   or a sequence of values, one per item.
-  dom-fn should be item-DOM-R, or item-without-labels-DOM-R, or similar."
+  dom-fn should take [item excluded-elements inherited]
+  and return a DOM reporter."
   [dom-fn items excludeds direction inherited]
   (let [descriptors (:attributes inherited)
         [local remaining] (split-descriptors-by-currency descriptors)

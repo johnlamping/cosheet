@@ -38,7 +38,7 @@
              [item-render :refer [elements-DOM-R virtual-element-DOM-R
                                   labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
-                                  item-DOM-R item-content-DOM]])))
+                                  item-content-DOM]])))
 
 (def base-table-column-width 150)
 

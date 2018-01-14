@@ -202,5 +202,9 @@
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]
         [:div.tooltip "exit batch edit (C-Q)"]]
-       (add-attributes query-dom {:class "batch-query"})
-       (into [:div {:class "batch-stack-wrapper"}] stack-dom)])))
+       [:div {:class "query-holder tag"}
+        [:div {:class "query-indent"}]
+        (add-attributes query-dom {:class "query-condition"})]
+       [:div {:class "query-result-wrapper"}
+        [:div {:class "query-result-indent tag"}]
+        (into [:div {:class "batch-stack-wrapper"}] stack-dom)]])))

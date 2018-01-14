@@ -135,7 +135,7 @@
            dom
            [:div {:class "table selector-scope"}
             [:div {:class "query-holder selectors"}
-             [:div {:class "query-corner tag"}]
+             [:div {:class "query-indent tag"}]
              ;; TODO: Add test here too.
              (any)]
             [:div {:class "query-result-wrapper"}

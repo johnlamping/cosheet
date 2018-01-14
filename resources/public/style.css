@@ -666,12 +666,15 @@ body {
     margin-bottom: 0px;
 }
 
-.table-main {
-    min-width: 300px;
+.query-result-wrapper > :last-child {
     padding-top: 1px;
     padding-left: 1px;
     padding-right: 2px;
     background-color: hsl(0, 0%, 80%);
+}
+
+.table-main {
+    min-width: 300px;
     /* So we can find the position of elements relative to this node 
     for horizontal scrolling */
     position: relative;
@@ -681,11 +684,6 @@ body {
     align-items: flex-start;
     overflow-x: auto;
     overflow-y: hidden;
-}
-
-.table-main > * {
-    /* Turn pointer events back on for the children. */
-    pointer-events: auto;
 }
 
 .table-rows {
@@ -707,10 +705,6 @@ body {
     flex: none;
     display: flex;
     align-items: stretch;
-}
-
-.table-main > .column-header-sequence {
-    border-bottom-width: 2px;
 }
 
 .table-main > .column-header-sequence {
@@ -805,6 +799,7 @@ body {
 .column-header.horizontal-tags-element {
     display: flex;
     flex-direction: row;
+    background-color: white;
 }
 
 .column-header.horizontal-tags-element > * {

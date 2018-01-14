@@ -202,7 +202,7 @@
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]
         [:div.tooltip "exit batch edit (C-Q)"]]
-       [:div {:class "query-holder tag"}
+       [:div {:class "query-holder"}
         [:div {:class "query-indent"}]
         (add-attributes query-dom {:class "query-condition"})]
        [:div {:class "query-result-wrapper"}

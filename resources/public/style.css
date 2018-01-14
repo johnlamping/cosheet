@@ -298,18 +298,6 @@ body {
     display: inline-block;
 }
 
-.batch-query {
-    border-width: 2px;
-    border-bottom-width: 0px;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-    min-width: 300px;
-}
-
-.batch-query > :first-child {
-    border-top-left-radius: 7px;
-}
-
 /* Three copies, so our definition of margin wins out. */
 .batch-selected.batch-selected.batch-selected {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
@@ -328,7 +316,7 @@ body {
 }
 
 .batch-stack-wrapper {
-    border-width: 2px;
+    border-width: 0px 2px 2px 2px;
     padding: 3px 3px 3px 6px;
     margin-right: -2px;
     background-color: hsl(0, 0%, 93%);
@@ -664,12 +652,12 @@ body {
     margin-top: -2px;
 }
 
-.table-body {
+.query-result-wrapper {
     flex: 0 1 auto;
     display: flex;
 }
 
-.table-indent {
+.query-result-indent {
     width: 7px;
     border-left-width: 2px;
     border-right-width: 2px;
@@ -856,7 +844,7 @@ body {
     border-top-right-radius: 7px;
 }
 
-.table-indent.tag {
+.query-result-indent.tag {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),

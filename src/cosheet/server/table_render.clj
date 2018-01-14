@@ -647,8 +647,8 @@
                                column-descriptions inherited)]
               [:div {:class "table selector-scope"}
                condition-dom
-               [:div {:class "table-body"}
-                [:div {:class (cond-> "table-indent tag"
+               [:div {:class "query-result-wrapper"}
+                [:div {:class (cond-> "query-result-indent tag"
                                 condition-is-all-tags (str " tag"))}]
                 [:div {:class "table-main selectees selector-scope"}
                  (add-attributes headers {:class "selectors"})

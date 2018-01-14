@@ -635,7 +635,7 @@ body {
     width: fit-content;
 }
 
-.table-top {
+.query-holder {
     flex: none;
     display: flex;
     border-width: 2px;
@@ -645,21 +645,21 @@ body {
     min-width: 300px;
 }
 
-.table-corner {
+.query-indent {
     width: 3px; /* Doesn't include either border */
 }
 
-.table-condition {
+.query-condition {
     border-bottom-width: 2px;
     flex: 1 0 auto;
 }
 
-.table-condition.horizontal-tags-element > *:first-child {
+.query-condition.horizontal-tags-element > *:first-child {
     min-width: 50px;
 }
 
-/* Merge the border of the wrapped element with the table-top border. */
-.wrapped-element.table-condition {
+/* Merge the border of the wrapped element with the query-holder border. */
+.wrapped-element.query-condition {
     margin-left: -5px;
     margin-top: -2px;
 }
@@ -793,7 +793,7 @@ body {
     margin-top: -2px;
 }
 
-.column-header:not(.merge-with-parent).tag, .table-top.tag,
+.column-header:not(.merge-with-parent).tag, .query-holder.tag,
 .vertical-tags-element > :first-child {
     background-image:
     linear-gradient(to right,

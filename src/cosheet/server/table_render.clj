@@ -554,10 +554,10 @@
                dom (labels-and-elements-DOM-R
                     condition-elements virtual-dom
                     true true :horizontal inherited-down)]
-      [[:div {:class (cond-> "table-top selectors"
+      [[:div {:class (cond-> "query-holder selectors"
                        condition-is-all-tags (str " tag"))}
-        [:div {:class "table-corner tag"}]
-        (add-attributes dom {:class "table-condition"})]
+        [:div {:class "query-corner tag"}]
+        (add-attributes dom {:class "query-condition"})]
        condition-tags
        condition-is-all-tags])))
 

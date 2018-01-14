@@ -556,7 +556,7 @@
                     true true :horizontal inherited-down)]
       [[:div {:class (cond-> "query-holder selectors"
                        condition-is-all-tags (str " tag"))}
-        [:div {:class "query-corner tag"}]
+        [:div {:class "query-indent tag"}]
         (add-attributes dom {:class "query-condition"})]
        condition-tags
        condition-is-all-tags])))

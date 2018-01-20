@@ -132,7 +132,9 @@
                            ; be present if the item is an exemplar.
                            ; May alternatively be a function from item
                            ; to referent, which also returns the subject
-                           ; if given no arguements.
+                           ; if given no arguments.
+;              :match-all  ; If true, then referents for all children
+                           ; should match all matches, not just one exemplar.
 ;               :template  ; The template that the twins of this dom
                            ; must satisfy. If not present, then twins
                            ; may not be created.

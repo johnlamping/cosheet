@@ -38,6 +38,7 @@
     (top-level-items-referent query-item)
     (table-conditions-referent query-item)]))
 
+;;; TODO: Delete.
 (defn selected-batch-referent
   "Return the referent for the selected batch item and everything affected
   by it, given the query item and a referent for everything relevant
@@ -186,15 +187,12 @@
              [(:item-id selected-batch-item) {:class "batch-selected-item"}]))]
     (expr-let
         [condition-elements (semantic-elements-R query-item)
-         virtual-dom (virtual-element-DOM-R
+         query-virtual-element-dom (virtual-element-DOM-R
                       'anything condition-elements
                       true :vertical inherited-for-query)
          query-dom (labels-and-elements-DOM-R
-                    condition-elements virtual-dom
+                    condition-elements query-virtual-element-dom
                     true true :horizontal inherited-for-query)
-         old-query-dom (item-DOM-R
-                        query-item nil inherited-for-query
-                        :must-show-empty-label true)
          stack-dom (batch-edit-stack-DOM-R
                     query-item condition-elements selected-batch-item store
                     inherited)]

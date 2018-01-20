@@ -9,8 +9,7 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [referent :refer [item-or-exemplar-referent
-                               item-referent virtual-referent
+             [referent :refer [item-referent virtual-referent
                                semantic-elements-R semantic-element?-R ]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants

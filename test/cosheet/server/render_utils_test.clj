@@ -6,12 +6,14 @@
              [entity :as entity  :refer [to-list description->entity]]
              [expression :refer [expr expr-let expr-seq]]
              [canonical :refer [canonicalize-list]]
+             [store-utils :refer [add-entity]]
              [debug :refer [envs-to-list simplify-for-print]]
              [test-utils :refer [check any as-set evals-to
                                  let-mutated item->immutable]])
             (cosheet.server
              [render-utils :refer :all]
-             [referent :refer [elements-referent union-referent]])
+             [referent :refer [elements-referent exemplar-referent
+                               union-referent]])
             ; :reload
             ))
 
@@ -170,4 +172,21 @@
                :x 9})
              {:class "foo bar baz"
               :other "hi"})))
+
+(deftest item-referent-given-inherited-test
+  (let [s0 (new-element-store)
+        [s1 joe-id] (add-entity s0 nil "joe")
+        [store joe-age-id] (add-entity s1 joe-id '(30 ("age" :tag)))
+        joe (description->entity joe-id store)
+        joe-age (description->entity joe-age-id store)]
+    (is (check (item-referent-given-inherited joe-age {})
+               joe-age-id))
+    (is (check (item-referent-given-inherited joe-age {:match-all true})
+               joe-age-id))
+    (is (check (item-referent-given-inherited
+                joe-age {:match-all true :subject-referent joe-id})
+               (elements-referent joe-age-id joe-id)))
+    (is (check (item-referent-given-inherited
+                joe-age  {:subject-referent (union-referent [joe-id])})
+               (exemplar-referent joe-age-id (union-referent [joe-id])))))) 
 

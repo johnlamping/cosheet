@@ -26,32 +26,10 @@
   [query-item]
   (query-referent (list (item-referent query-item) :top-level)))
 
-(defn table-conditions-referent
+(defn table-headers-referent
   " All table conditions matching the query."
   [query-item]
   (query-referent (list (item-referent query-item) :row-condition)))
-
-(defn query-items-referent
-  [query-item]
-  (union-referent
-   [(item-referent query-item)
-    (top-level-items-referent query-item)
-    (table-conditions-referent query-item)]))
-
-;;; TODO: Delete.
-(defn selected-batch-referent
-  "Return the referent for the selected batch item and everything affected
-  by it, given the query item and a referent for everything relevant
-  to the query."
-  [selected-batch-item query-item query-referent]
-  (if (= query-item selected-batch-item)
-    query-referent
-    (when-let [subject (when selected-batch-item
-                         (entity/subject selected-batch-item))]
-      (let [subject-referent (selected-batch-referent
-                              subject query-item query-referent)]
-        (elements-referent (item-referent selected-batch-item)
-                           subject-referent)))))
 
 (defn referent-for-virtual-element
   "Return a referent for a new virtual element that comes after the current
@@ -81,7 +59,7 @@
           headers-referent (referent-for-virtual-element
                             table-header-template
                             (union-referent
-                             [(table-conditions-referent query-item)])
+                             [(table-headers-referent query-item)])
                             last-element-referent)
           tag-referent (union-referent
                         [(virtual-referent
@@ -103,88 +81,60 @@
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
-  [query-item query-elements selected-batch-item store inherited]
-  (when selected-batch-item
-    (let [selected-referent (selected-batch-referent
-                             selected-batch-item query-item
-                             (query-items-referent query-item))
-          selected-non-header-referent
-          (selected-batch-referent
-           selected-batch-item query-item
-           (top-level-items-referent query-item))
-          inherited-for-batch
-          (-> inherited
-              (assoc :selector-category :batch-stack)
-              ;; Make its doms have different keys.
-              (update :key-prefix #(conj % :batch-stack)))]
-      (expr-let
-          [virtual-dom (batch-edit-stack-virtual-DOM-R
-                        query-item query-elements inherited-for-batch)
-           batch-dom
-           (if (= query-item selected-batch-item)
-             (let [query-and-rows-referent
-                   (union-referent [(item-referent query-item)
-                                    (top-level-items-referent query-item)])
-                   conditions-referent
-                   (table-conditions-referent query-item)
-                   inherited
-                   (-> inherited-for-batch
-                       ;; We use a function for the subject, so that
-                       ;; all column headers will be changed, even if
-                       ;; there are several matching headers in one table.
-                       (assoc
-                        :subject-referent
-                        (fn
-                          ([] (union-referent [query-and-rows-referent
-                                               conditions-referent]))
-                          ([item]
-                           (let [item-ref (item-referent item)]
-                             (parallel-union-referent
-                              [(exemplar-referent
-                                item-ref query-and-rows-referent)
-                               (elements-referent
-                                item-ref conditions-referent)])))))
-                       ;; If the selected item is the whole query, then a
-                       ;; delete could remove the whole condition of a
-                       ;; table. Have it just remove top level rows, instead.
-                       (add-inherited-attribute
-                        [#{:content}
-                         {:delete
-                          {:referent selected-non-header-referent}}]))]
-               ;; TODO: Add-twin is a problem here with not knowing
-               ;; what template to use.
-               (labels-and-elements-DOM-R
-                query-elements virtual-dom true true :horizontal inherited))
-             (item-DOM-R
-              selected-batch-item nil inherited-for-batch
-              :referent selected-referent :must-show-label true))
-           count-dom
-           (call-dependent-on-id
-            store nil
-            (fn [store]
-              (let [total (count (instantiate-to-items
-                                  selected-referent store))
-                    non-header (count (instantiate-to-items
-                                       selected-non-header-referent
-                                       store))]
-                [:div {:class "batch-query-match-counts"}
-                 (str non-header " data matches. "
-                      (- total non-header 1) " header matches.")])))]
-        [count-dom
-         (add-attributes batch-dom {:class "batch-selected"})]))))
+  [query-item query-elements store inherited]
+  (println (simplify-for-print ["Batch stack" query-item query-elements]))
+  (let [top-level-matches-referent (top-level-items-referent query-item)
+        table-header-matches-referent (table-headers-referent query-item)
+        matches-referent (union-referent
+                          [(item-referent query-item)
+                           top-level-matches-referent
+                           table-header-matches-referent])
+        inherited-for-batch
+        (-> inherited
+            (assoc :selector-category :batch-stack :match-all true)
+            ;; Make its doms have different keys.
+            (update :key-prefix #(conj % :batch-stack)))]
+    (expr-let
+        [virtual-dom (batch-edit-stack-virtual-DOM-R
+                      query-item query-elements inherited-for-batch)
+         batch-dom
+         (let [inherited
+               (-> inherited-for-batch
+                   (assoc :subject-referent matches-referent)
+                   ;; If the selected item is the whole query, then a
+                   ;; delete could remove the whole condition of a
+                   ;; table. Have it just remove top level rows, instead.
+                   (add-inherited-attribute
+                    [#{:content}
+                     {:delete {:referent top-level-matches-referent}}]))]
+           ;; TODO: Add-twin is a problem here with not knowing
+           ;; what template to use.
+           (labels-and-elements-DOM-R
+            query-elements virtual-dom true true :horizontal inherited))
+         count-dom
+         (call-dependent-on-id
+          store nil
+          (fn [store]
+            (let [header (count (instantiate-to-items
+                                 table-header-matches-referent store))
+                  non-header (count (instantiate-to-items
+                                     top-level-matches-referent store))]
+              [:div {:class "batch-query-match-counts"}
+               (str non-header " row matches.  "
+                    header " table header matches.")])))]
+      [count-dom
+       (add-attributes batch-dom {:class "batch-selected"})])))
 
 (defn batch-edit-DOM-R
   "Return the DOM for batch editing, given the item specifying the query,
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
-  [query-item selected-batch-item store inherited]
+  [query-item store inherited]
   (let [inherited-for-query
         (-> inherited
             (assoc :selector-category :batch-query
                    :subject-referent (item-referent query-item))
-            (update :key-prefix #(conj % :batch-query))
-            (add-inherited-attribute
-             [(:item-id selected-batch-item) {:class "batch-selected-item"}]))]
+            (update :key-prefix #(conj % :batch-query)))]
     (expr-let
         [condition-elements (semantic-elements-R query-item)
          query-virtual-element-dom (virtual-element-DOM-R
@@ -194,7 +144,7 @@
                     condition-elements query-virtual-element-dom
                     true true :horizontal inherited-for-query)
          stack-dom (batch-edit-stack-DOM-R
-                    query-item condition-elements selected-batch-item store
+                    query-item condition-elements store
                     inherited)]
       [:div {:class "batch-holder"}
        [:div#quit-batch-edit.tool

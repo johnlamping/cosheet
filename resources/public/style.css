@@ -386,7 +386,7 @@ body {
 
 /* --- tags --- */
 
-.tag {
+.tag, .query-holder {
     background-color: hsl(194, 100%, 88%);
 }
 
@@ -552,7 +552,7 @@ body {
     border-bottom-left-radius: 7px;
 }
 
-.horizontal-header.top-border {
+.horizontal-header.top-border, .query-holder{
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -613,6 +613,8 @@ body {
 
 .horizontal-tags-element > .elements-wrapper {
     border-left-width: 2px;
+    flex-grow: 1;
+    display: flex;
 }
 
 /* --- tables --- */
@@ -635,6 +637,7 @@ body {
 
 .query-indent {
     width: 3px; /* Doesn't include either border */
+    background-color: transparent;
 }
 
 .query-condition {

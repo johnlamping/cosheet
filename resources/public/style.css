@@ -37,8 +37,10 @@ body {
     margin: 0;
 }
 
-.selected {
+/* need to override box shadow for selectors */
+.selected.selected.selected.selected {
     box-shadow: inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
+    border-radius: 5px;
 }
 
 /* In general, if there is a border, there is a matching negative margin
@@ -327,14 +329,13 @@ body {
     margin-right: 0px;
 }
 
-.horizontal-tags-element.batch-stack {
+.batch-stack {
     border-width: 2px;
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
-    background-color: white;
 }
 
-.horizontal-tags-element.batch-stack > :first-child {
+.batch-stack > :first-child {
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
     background-image:
@@ -358,7 +359,7 @@ body {
     background-color: hsl(194, 100%, 88%);
 }
 
-.tag > .tag.tag.tag, .horizontal-tags-element > .tag.tag.tag {
+.tag > .tag.tag.tag {
     background-color: transparent;
 }
 
@@ -585,13 +586,7 @@ body {
     display: flex;
 }
 
-/* --- tables --- */
-
-.table {
-    display: flex;
-    flex-direction: column;
-    width: fit-content;
-}
+/* --- queries --- */
 
 .query-holder {
     flex: none;
@@ -615,6 +610,13 @@ body {
 
 .query-condition.horizontal-tags-element > *:first-child {
     min-width: 50px;
+}
+
+.query-condition .content-text.item,
+.column-header-sequence .content-text.item {
+    box-shadow: inset -5px 5px 10px 0px hsla(0, 0%, 100%, 0.5),
+                inset 5px -5px 10px 0px hsla(0, 0%, 0%, 0.2);
+    border-radius: 5px;
 }
 
 /* Merge the border of the wrapped element with the query-holder border. */
@@ -642,6 +644,14 @@ body {
     padding-left: 1px;
     padding-right: 2px;
     background-color: hsl(0, 0%, 80%);
+}
+
+/* --- tables --- */
+
+.table {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
 }
 
 .table-main {

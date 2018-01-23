@@ -40,7 +40,7 @@
                                      {:subject-referent subject-ref})]
                        [dom (item->immutable fred)]))]
     (is (check dom
-               [:div {:class "horizontal-tags-element narrow"}
+               [:div {:class "horizontal-tags-element tag narrow"}
                 (any)
                 [:div {:expand {:referent subject-ref}
                        :class "content-text editable item"

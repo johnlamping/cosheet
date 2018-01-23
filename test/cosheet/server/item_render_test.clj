@@ -223,7 +223,7 @@
                    :selector-category :some-category
                    :alternate-target true}]]]]]]]
            ;; None
-           [:div {:class "horizontal-tags-element narrow added2"}
+           [:div {:class "horizontal-tags-element tag narrow added2"}
             [:div {:class "editable tag"
                    :key (conj (conj age-key :label (:item-id none)) :virtual)
                    :selector-category :some-category
@@ -342,7 +342,7 @@
          [:div {:class "item with-elements"}
           [:div (any map?) "39"]
           [:div {:class "vertical-stack"}
-           [:div {:class "horizontal-tags-element wide"}
+           [:div {:class "horizontal-tags-element tag wide"}
             ;; Group with empty item.
             [:div {:class "tag horizontal-header top-border"}
              [:component {:key (conj tags-key (:item-id confidence1))
@@ -374,7 +374,7 @@
                                             all-elements-parallel-referent) 
                                  :select-pattern (conj age-key [:pattern])}}]]
            ;; Group for confidence and likelihood.
-           [:div {:class "horizontal-tags-element wide"}
+           [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent"}
              [:div {:class "tag horizontal-header top-border bottom-border"}
               [:component {:key (conj tags-key (:item-id likelihood))
@@ -418,7 +418,7 @@
               [item-without-labels-DOM-R double (any)
                (any)]]]]
            ;; Group for confidence and probability
-           [:div {:class "horizontal-tags-element wide"}
+           [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent"}
              [:div {:class "tag horizontal-header top-border bottom-border"}
               [:component {:key (conj age-key :label (:item-id probability))
@@ -456,7 +456,7 @@
                                            (item-referent two)) 
                                 :select-pattern (conj age-key [:pattern])}}]]}]]]
            ;; Group for confidence
-           [:div {:class "horizontal-tags-element wide"}
+           [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent bottom-border"}
              (any)]
             [:div {:class "horizontal-value-last"}
@@ -477,7 +477,7 @@
                                             (item-referent one)) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]]]
            ;; Group for unique
-           [:div {:class "horizontal-tags-element wide added2"}
+           [:div {:class "horizontal-tags-element tag wide added2"}
             [:div {:class "tag horizontal-header top-border bottom-border"}
              [:component {:key (conj age-key :label (:item-id certainty))
                           :class "tag"}
@@ -545,7 +545,7 @@
                            :target {:referent (item-referent element)}
                            :key (conj element-key :content)}
                      "39"]
-                    [:div {:class "horizontal-tags-element wide"}
+                    [:div {:class "horizontal-tags-element tag wide"}
                      (any)
                      [:component {:key (any)}
                       [item-without-labels-DOM-R (any) [(any)] (any)]]]]]]))))
@@ -560,7 +560,7 @@
                        [dom item]))]
     (let [item-key [:root (:item-id item)]]
       (is (check dom
-                 [:div {:class "horizontal-tags-element narrow"}
+                 [:div {:class "horizontal-tags-element tag narrow"}
                   [:div {:class "editable tag" :key (conj item-key :tags)
                          :expand {:referent (item-referent item)}
                          :target {:referent (virtual-referent
@@ -574,7 +574,7 @@
                           :target {:referent (item-referent item)}
                           :key (conj item-key :content)}
                     "39"]
-                   [:div {:class "horizontal-tags-element wide"}
+                   [:div {:class "horizontal-tags-element tag wide"}
                     (any)
                     [:component {:key (any)}
                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
@@ -616,7 +616,7 @@
                    :template '(nil :tag)}]]
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item elements-wrapper"}
-                  [:div {:class "horizontal-tags-element wide"}
+                  [:div {:class "horizontal-tags-element tag wide"}
                    [:div {:class
                           "tag horizontal-header top-border bottom-border"}
                     [:component {:key (conj element-key :label according-to-id)
@@ -668,7 +668,7 @@
                          :target {:referent element-referent}
                          :key (conj element-key :content)}
                    "39"]
-                  [:div {:class "horizontal-tags-element wide"}
+                  [:div {:class "horizontal-tags-element tag wide"}
                    [:div {:class
                           "tag horizontal-header top-border bottom-border"}
                     [:component {:key (conj element-key

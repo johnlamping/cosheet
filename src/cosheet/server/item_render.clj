@@ -115,7 +115,7 @@
      [:div {:class "indent-wrapper"} inner-dom]]
     [:div {:class (case direction
                     :vertical "vertical-tags-element"
-                    :horizontal "horizontal-tags-element")}
+                    :horizontal "horizontal-tags-element tag")}
      labels-dom inner-dom]))
 
 (defn wrap-with-labels-DOM
@@ -162,7 +162,7 @@
     (non-empty-labels-wrapper-DOM-R dom label-elements :vertical inherited)
     (if (not must-show-label)
       dom
-      [:div {:class "horizontal-tags-element narrow"}
+      [:div {:class "horizontal-tags-element tag narrow"}
        (virtual-label-DOM inherited)
        dom])))
 
@@ -356,7 +356,7 @@
                            hierarchy only-items)]
       (map
        (fn [label-dom items-dom only-item]
-         (cond-> [:div {:class "horizontal-tags-element wide"}
+         (cond-> [:div {:class "horizontal-tags-element tag wide"}
                   label-dom items-dom]
            only-item
            (add-attributes (inherited-attributes inherited only-item))))

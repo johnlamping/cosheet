@@ -386,11 +386,11 @@ body {
 
 /* --- tags --- */
 
-.tag, .query-holder {
+.tag {
     background-color: hsl(194, 100%, 88%);
 }
 
-.tag > .tag.tag.tag {
+.tag > .tag.tag.tag, .horizontal-tags-element > .tag.tag.tag {
     background-color: transparent;
 }
 
@@ -802,7 +802,7 @@ body {
 .column-header.horizontal-tags-element {
     display: flex;
     flex-direction: row;
-    background-color: white;
+    background-color: transparent;
 }
 
 .column-header.horizontal-tags-element > * {

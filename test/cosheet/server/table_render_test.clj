@@ -134,7 +134,7 @@
       (is (check
            dom
            [:div {:class "table selector-scope"}
-            [:div {:class "query-holder selectors"}
+            [:div {:class "query-holder tag selectors"}
              [:div {:class "query-indent tag"}]
              ;; TODO: Add test here too.
              (any)]

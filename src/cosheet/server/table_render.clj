@@ -547,7 +547,7 @@
                dom (labels-and-elements-DOM-R
                     condition-elements virtual-dom
                     true true :horizontal inherited-down)]
-      [:div {:class "query-holder selectors"}
+      [:div {:class "query-holder tag selectors"}
        [:div {:class "query-indent tag"}]
        (add-attributes dom {:class "query-condition"})])))
 

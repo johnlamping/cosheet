@@ -123,7 +123,7 @@
                (str non-header " row matches.  "
                     header " table header matches.")])))]
       [count-dom
-       (add-attributes batch-dom {:class "batch-selected"})])))
+       (add-attributes batch-dom {:class "batch-stack"})])))
 
 (defn batch-edit-DOM-R
   "Return the DOM for batch editing, given the item specifying the query,
@@ -146,13 +146,14 @@
          stack-dom (batch-edit-stack-DOM-R
                     query-item condition-elements store
                     inherited)]
-      [:div {:class "batch-holder"}
+      [:div
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]
         [:div.tooltip "exit batch edit (C-Q)"]]
-       [:div {:class "query-holder tag"}
-        [:div {:class "query-indent"}]
-        (add-attributes query-dom {:class "query-condition"})]
-       [:div {:class "query-result-wrapper"}
-        [:div {:class "query-result-indent tag"}]
-        (into [:div {:class "batch-stack-wrapper"}] stack-dom)]])))
+       [:div  {:class "batch-holder"}
+        [:div {:class "query-holder tag"}
+         [:div {:class "query-indent"}]
+         (add-attributes query-dom {:class "query-condition"})]
+        [:div {:class "query-result-wrapper"}
+         [:div {:class "query-result-indent tag"}]
+         (into [:div {:class "batch-stack-wrapper"}] stack-dom)]]])))

@@ -299,74 +299,42 @@ body {
 }
 
 /* Three copies, so our definition of margin wins out. */
-.batch-selected.batch-selected.batch-selected {
+.batch-stack.batch-stack.batch-stack {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
                 4px 4px white, 6px 6px hsl(220, 70%, 65%),
                 8px 8px white, 10px 10px hsl(220, 40%, 60%);
-    margin: 0px 10px 10px 0px;
+    margin: 8px 16px 16px 6px;
     z-index: 1;
 }
 
 .batch-query-match-counts {
     margin-top: 4px;
-    margin-bottom: 2px;
+    margin: 4px 8px 4px 6px;
     text-align: center;
     color: hsl(220, 100%, 45%);
     font-weight: bold;
 }
 
 .batch-stack-wrapper {
-    border-width: 0px 2px 2px 2px;
-    padding: 3px 3px 3px 6px;
-    margin-right: -2px;
     background-color: hsl(0, 0%, 93%);
 }
 
-.batch-selected-item {
-    box-shadow: 0 0 0 2px hsl(220, 100%, 70%);
-    z-index: 1;
-    position: relative; /* To make z-index work. */
-}
-
-.batch-selected-item.selected {
-    box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
-                inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
-    z-index: 1;
-    position: relative; /* To make z-index work. */
-}
-
-
-.wrapped-element.batch-selected-item {
-    z-index: 1;
-    position: relative; /* To make z-index work. */
-}
-
-.horizontal-tags-element.wide.wide.wide.batch-selected-item > *,
-.horizontal-tags-element.narrow.narrow.narrow.batch-selected-item > *,
-.horizontal-tags-element.narrow.narrow.narrow.batch-selected > * {
+.horizontal-tags-element.narrow.narrow.narrow.batch-stack > * {
     margin-bottom: 0px;
 }
 
-.horizontal-tags-element.wide.batch-selected-item,
-.horizontal-tags-element.narrow.batch-selected-item{
-    z-index: 1;
-    position: relative; /* To make z-index work. */
-}
-
-.horizontal-tags-element.wide.wide.wide.batch-selected-item > :last-child,
-.horizontal-tags-element.narrow.narrow.narrow.batch-selected-item > :last-child,
-.horizontal-tags-element.narrow.narrow.narrow.batch-selected > :last-child {
+.horizontal-tags-element.narrow.narrow.narrow.batch-stack > :last-child {
     margin-right: 0px;
 }
 
-.horizontal-tags-element.batch-selected {
+.horizontal-tags-element.batch-stack {
     border-width: 2px;
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
     background-color: white;
 }
 
-.horizontal-tags-element.batch-selected > :first-child {
+.horizontal-tags-element.batch-stack > :first-child {
     border-top-left-radius: 7px;
     border-bottom-left-radius: 7px;
     background-image:
@@ -880,6 +848,13 @@ body {
 .virtual-column.selected {
     width: 200px;
 }
+
+.batch-holder {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+}
+
 
 /* --- toolbar --- */
 

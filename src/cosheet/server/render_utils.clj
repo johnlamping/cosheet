@@ -238,14 +238,12 @@
   "Return the proper referent for the item, given inherited."
   [item inherited]
   (let [subject-referent (:subject-referent inherited)]
-    (if (clojure.test/function? subject-referent)
-      (subject-referent item)
-      (if (:match-all inherited)
+    (if (:match-all inherited)
         (let [item-ref (item-referent item)]
           (if (nil? subject-referent)
             item-ref
             (elements-referent item-ref subject-referent)))
-        (item-or-exemplar-referent item subject-referent)))))
+        (item-or-exemplar-referent item subject-referent))))
 
 (defn item-component
   "Make a component dom for the given item.

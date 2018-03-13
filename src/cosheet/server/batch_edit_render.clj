@@ -31,45 +31,34 @@
   [query-item]
   (query-referent (list (item-referent query-item) :row-condition)))
 
-(defn referent-for-virtual-element
-  "Return a referent for a new virtual element that comes after the current
-  last element."
-  [template subject-referent last-element-referent]
-  (virtual-referent
-   template
-   subject-referent
-   (when last-element-referent
-     (exemplar-referent last-element-referent subject-referent))
-   :position :after
-   :selector :first-group))
-
 (defn batch-edit-stack-virtual-DOM-R
-  "Return the DOM for a virtual element, when the selected batch item
-  is the query item."
+  "Return the DOM for a virtual element in the edit stack part of the display,
+   that is an element of the query item."
   [query-item query-elements inherited]
   (expr-let [ordered-elements (order-items-R query-elements)]
     (let [last-element (last ordered-elements)
           last-element-referent (when last-element (item-referent last-element))
-          non-headers-referent (referent-for-virtual-element
-                                'anything
-                                (union-referent
-                                 [(item-referent query-item)
-                                  (top-level-items-referent query-item)])
-                                last-element-referent)
-          headers-referent (referent-for-virtual-element
-                            table-header-template
-                            (union-referent
-                             [(table-headers-referent query-item)])
-                            last-element-referent)
+          query-virtual-referent (virtual-referent
+                                  'anything (item-referent query-item)
+                                  last-element-referent)
+          headers-virtual-referent (virtual-referent
+                                    table-header-template
+                                    (table-headers-referent query-item))
+          matches-virtual-referent (virtual-referent
+                                  "" (top-level-items-referent query-item))
           tag-referent (union-referent
                         [(virtual-referent
-                          '(anything :tag) non-headers-referent nil)
+                          '(anything :tag) query-virtual-referent)
                          (virtual-referent
-                          '(anything :tag) headers-referent nil)])
+                          '(anything :tag) headers-virtual-referent)
+                         (virtual-referent
+                          '("" :tag) matches-virtual-referent)])
           ;; If we are setting the content, then don't add to headers, since
           ;; their content must always be 'anything-immutable.
           dom (virtual-referent-item-DOM
-               non-headers-referent (conj (:key-prefix inherited) :virtual)
+               (union-referent [query-virtual-referent
+                                matches-virtual-referent])
+               (conj (:key-prefix inherited) :virtual)
                inherited)
           tag-dom (add-attributes
                    (virtual-referent-item-DOM

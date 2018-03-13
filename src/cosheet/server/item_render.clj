@@ -167,10 +167,10 @@
        dom])))
 
 (defn virtual-element-DOM-R
-  "Return the dom for a virtual element."
-  [virtual-content elements must-show-label direction inherited]
-  (expr-let [adjacent (when (seq elements)
-                        (expr-let [ordered (order-items-R elements)]
+  "Return the dom for a virtual element of an item."
+  [virtual-content adjacent-elements must-show-label direction inherited]
+  (expr-let [adjacent (when (seq adjacent-elements)
+                        (expr-let [ordered (order-items-R adjacent-elements)]
                           (item-referent-given-inherited
                            (last ordered) inherited)))]
     (let [dom (virtual-item-DOM (conj (:key-prefix inherited) :virtual)

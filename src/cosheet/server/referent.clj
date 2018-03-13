@@ -185,19 +185,21 @@
 
 (defn virtual-referent
   "Create a virtual referent."
-  [exemplar subject adjacent & {:keys [position use-bigger selector]
-                                :or {position :after
-                                     use-bigger false}
-                                :as options}]
-  (when subject (assert (referent? subject)))
-  (when adjacent (assert (referent? adjacent)))
-  (assert (or subject adjacent))
-  (assert (#{:before :after} position))
-  (assert (contains? #{true false} use-bigger))
-  (assert (every? #{:position :use-bigger :selector} (keys options)))
-  (when selector (assert (= selector :first-group)))
-  [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
-            (coerce-item-to-id adjacent) position use-bigger selector])
+  ([exemplar subject]
+   (virtual-referent exemplar subject nil))
+  ([exemplar subject adjacent & {:keys [position use-bigger selector]
+                                  :or {position :after
+                                       use-bigger false}
+                                 :as options}]
+   (when subject (assert (referent? subject)))
+   (when adjacent (assert (referent? adjacent)))
+   (assert (or subject adjacent))
+   (assert (#{:before :after} position))
+   (assert (contains? #{true false} use-bigger))
+   (assert (every? #{:position :use-bigger :selector} (keys options)))
+   (when selector (assert (= selector :first-group)))
+   [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
+    (coerce-item-to-id adjacent) position use-bigger selector]))
 
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
@@ -475,7 +477,7 @@
 
 (defn condition-to-template
   "Given a condition, turn it into a template by removing (nil :order
-  :non-semantic) elements (which get added by template to condition)
+  :non-semantic) elements (which get added by template-to-condition)
   and by then replacing any nil by the specified replacement, or the empty
   string by default."
   ([condition]
@@ -624,11 +626,10 @@
   selector and its selected. Return the new items and new store."
   [template subject-groups adjacent-groups position use-bigger selector
    store]
-  (let [[specialized-template store]
-        (specialize-template template store)
-        flattened-template (flatten-nested-content specialized-template)
+  (let [[specialized-template store] (specialize-template template store)
         ;; The template for a non-selector
-        template (-> flattened-template
+        template (-> specialized-template
+                     flatten-nested-content
                      pattern-to-condition
                      condition-to-template)]
     (if (= selector :first-group)
@@ -707,13 +708,15 @@
              new-subject-ids new-template-ids)
      store]))
 
+(declare instantiate-or-create-referent)
+
 (defn create-virtual-union-referent
-  "Does create-virtual-referent on each referent of a union, and combines
-  the results."
+  "Does instantiate-or-create-referent on each referent of a union,
+   and combines the results."
   [referent original-store store]
   (let [[groups ids store]
         (reduce (fn [[combined-groups first-ids store] referent]
-                  (let [[groups ids store] (create-virtual-referent
+                  (let [[groups ids store] (instantiate-or-create-referent
                                             referent original-store store)]
                     [(conj combined-groups (apply concat groups))
                      (or first-ids ids)
@@ -723,6 +726,11 @@
     ;; Some items may have the original store or only the partially
     ;; updated store. Make them all have the latest store.
     [(map-map #(in-different-store % store) groups) ids store]))
+
+(defn virtual-union-referent? [referent]
+  (and (union-referent? referent)
+       (or (virtual-referent? (second referent))
+           (virtual-union-referent? (second referent)))))
 
 (defn instantiate-or-create-referent
   "Find the groups of items that the referent refers to, creating items
@@ -739,7 +747,7 @@
    (cond
      (virtual-referent? referent)
      (create-virtual-referent referent original-store store)
-     (and (union-referent? referent) (virtual-referent? (second referent)))
+     (virtual-union-referent? referent)
      (create-virtual-union-referent referent original-store store)
      true
      [(instantiate-referent referent original-store) nil store])))

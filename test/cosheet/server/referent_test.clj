@@ -313,7 +313,7 @@
               `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
   ;; Subject is virtual too, plus nil adjacent
   (let [referent (virtual-referent
-                  (virtual-referent '??? (item-referent jane) nil)
+                  (virtual-referent '??? (item-referent jane))
                   (virtual-referent '??? (item-referent joe)
                                     (item-referent joe))
                   (item-referent joe))
@@ -342,7 +342,7 @@
   ;; A union of virtual referents
   (let [r1 (virtual-referent "male" (item-referent jane)
                              (item-referent jane-age))
-        r2 (virtual-referent "hello" (item-referent joe) nil)
+        r2 (virtual-referent "hello" (item-referent joe))
         [groups new-ids store0] (instantiate-or-create-referent
                                  (union-referent [r1 r2]) store)]
     (is (check groups [[(any)] [(any)]]))

@@ -34,39 +34,36 @@
 (defn batch-edit-stack-virtual-DOM-R
   "Return the DOM for a virtual element in the edit stack part of the display,
    that is an element of the query item."
-  [query-item query-elements inherited]
-  (expr-let [ordered-elements (order-items-R query-elements)]
-    (let [last-element (last ordered-elements)
-          last-element-referent (when last-element (item-referent last-element))
-          query-virtual-referent (virtual-referent
-                                  'anything (item-referent query-item)
-                                  last-element-referent)
-          headers-virtual-referent (virtual-referent
-                                    table-header-template
-                                    (table-headers-referent query-item))
-          matches-virtual-referent (virtual-referent
+  [query-item inherited]
+  (let [query-virtual-referent (virtual-referent
+                                'anything (item-referent query-item))
+        headers-virtual-referent (virtual-referent
+                                  table-header-template
+                                  (table-headers-referent query-item)
+                                  nil :selector :first-group)
+        matches-virtual-referent (virtual-referent
                                   "" (top-level-items-referent query-item))
-          tag-referent (union-referent
-                        [(virtual-referent
-                          '(anything :tag) query-virtual-referent)
-                         (virtual-referent
-                          '(anything :tag) headers-virtual-referent)
-                         (virtual-referent
-                          '("" :tag) matches-virtual-referent)])
-          ;; If we are setting the content, then don't add to headers, since
-          ;; their content must always be 'anything-immutable.
-          dom (virtual-referent-item-DOM
-               (union-referent [query-virtual-referent
-                                matches-virtual-referent])
-               (conj (:key-prefix inherited) :virtual)
-               inherited)
-          tag-dom (add-attributes
-                   (virtual-referent-item-DOM
-                    tag-referent
-                    (conj (:key-prefix inherited) :virtual :label)
-                    inherited)
-                   {:class "tag"})]
-      (add-labels-DOM tag-dom dom :vertical))))
+        tag-referent (union-referent
+                      [(virtual-referent
+                        '(anything :tag) query-virtual-referent)
+                       (virtual-referent
+                        '(anything :tag) headers-virtual-referent)
+                       (virtual-referent
+                        '("" :tag) matches-virtual-referent)])
+        ;; If we are setting the content, then don't add to headers, since
+        ;; their content must always be 'anything-immutable.
+        dom (virtual-referent-item-DOM
+             (union-referent [query-virtual-referent
+                              matches-virtual-referent])
+             (conj (:key-prefix inherited) :virtual)
+             inherited)
+        tag-dom (add-attributes
+                 (virtual-referent-item-DOM
+                  tag-referent
+                  (conj (:key-prefix inherited) :virtual :label)
+                  inherited)
+                 {:class "tag"})]
+    (add-labels-DOM tag-dom dom :vertical)))
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
@@ -85,7 +82,7 @@
             (update :key-prefix #(conj % :batch-stack)))]
     (expr-let
         [virtual-dom (batch-edit-stack-virtual-DOM-R
-                      query-item query-elements inherited-for-batch)
+                      query-item inherited-for-batch)
          batch-dom
          (let [inherited
                (-> inherited-for-batch
@@ -127,8 +124,8 @@
     (expr-let
         [condition-elements (semantic-elements-R query-item)
          query-virtual-element-dom (virtual-element-DOM-R
-                      'anything condition-elements
-                      true :vertical inherited-for-query)
+                                    'anything nil
+                                    true :vertical inherited-for-query)
          query-dom (labels-and-elements-DOM-R
                     condition-elements query-virtual-element-dom
                     true true :horizontal inherited-for-query)

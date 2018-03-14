@@ -17,7 +17,7 @@
                                     template-matches]])
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
-                                  order-items-R furthest-item]]
+                                  order-items-R furthest-item furthest-element]]
              [model-utils :refer [specialize-template]])))
 
 ;;; Commands are typically run with respect to a referent, which
@@ -81,7 +81,9 @@
 ;;;                  have the same group structure as subject-referent,
 ;;;                  or it must have one group for each item of sequence
 ;;;                  referent. It may be nil, in which case subject-referent
-;;;                  must not be nil, and the subject is used for adjacent.
+;;;                  must not be nil, and the element of the subject furthest
+;;;                  in the position direction is used for adjacent, or
+;;;                  subject, itself, if it has no ordered elements.
 ;;;                  Position and use-bigger say where the new
 ;;;                  item should go relative to the adjacent item. If selector
 ;;;                  has the value :first-group, it means that the first
@@ -690,7 +692,8 @@
            subject-referent original-store store))
         subject-groups (map-map #(in-different-store % store) subject-groups)
         adjacent-groups (if (nil? adjacent-referent)
-                          subject-groups
+                          (map-map (fn [item] (furthest-element item position))
+                                   subject-groups)
                           (map-map #(in-different-store % store)
                                    (instantiate-referent
                                     adjacent-referent original-store)))

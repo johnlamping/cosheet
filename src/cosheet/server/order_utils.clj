@@ -97,6 +97,15 @@
                   (map (fn [item] [(label->content item :order) item])
                        items)))))
 
+(defn furthest-element [item position]
+  "Return the furthest element of the item, in the direction of the position.
+   If the item has no ordered elements, return the item."
+  (let [candidates (filter (fn [element] (label->content element :order))
+                           (elements item))]
+    (if candidates
+      (furthest-item candidates position)
+      item)))
+
 (defn order-element-for-item
   "Return an element with the order information for item,
    or, if that is not available, for the overall store."

@@ -45,6 +45,7 @@
 (def joe (description->entity joe-id store))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
+(def joe-45 (first (matching-elements 45 joe)))
 
 (deftest update-add-entity-with-order-test
   (let [[s id order] (update-add-entity-with-order
@@ -116,3 +117,7 @@
   (is (= (furthest-item [joe-married] :before) joe-married))
   (is (= (furthest-item [joe-married joe-male] :before) joe-male))
   (is (= (furthest-item [joe-married joe-male] :after) joe-married)))
+
+(deftest furthest-element-test
+  (is (= (furthest-element joe :after) joe-45))
+  (is (= (furthest-element joe :before) joe-male)))

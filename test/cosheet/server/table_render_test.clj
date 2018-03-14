@@ -180,7 +180,7 @@
                (any)
                [:div {:selector-category :table-header
                       :class "editable column-header virtual-column"
-                      :key (conj table-key :virtualColumn)
+                      :key (conj table-key :virtualColumn :virtual)
                       :target {:referent
                                (virtual-referent
                                 '(nil)
@@ -250,7 +250,7 @@
                                        (:top-level :non-semantic))}
                      :column {:referent (item-referent c1)}
                      :class "editable table-cell has-border"
-                     :key (conj table-key (:item-id joe) (:item-id c1))
+                     :key (conj table-key (:item-id joe) (:item-id c1) :virtual)
                      :target {:referent (virtual-referent
                                          '(nil ("single" :tag))
                                          (item-referent joe)
@@ -282,7 +282,7 @@
               (any)
               (any)
               [:div {:class "editable table-cell virtual-column has-border"
-                     :key (conj table-key (:item-id joe) :virtualColumn)
+                     :key (conj table-key (:item-id joe) :virtualColumn :virtual)
                      :row {:referent (item-referent joe)
                            :key (conj (vec table-key) (item-referent joe))
                            :template '(""

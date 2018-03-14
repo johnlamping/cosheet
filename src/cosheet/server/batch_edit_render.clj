@@ -13,7 +13,7 @@
                                union-referent instantiate-to-items
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute
-                                   virtual-referent-item-DOM]]
+                                   virtual-referent-DOM]]
              [model-utils :refer [table-header-template]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [item-DOM-R
@@ -52,15 +52,15 @@
                         '("" :tag) matches-virtual-referent)])
         ;; If we are setting the content, then don't add to headers, since
         ;; their content must always be 'anything-immutable.
-        dom (virtual-referent-item-DOM
+        dom (virtual-referent-DOM
              (union-referent [query-virtual-referent
                               matches-virtual-referent])
-             (conj (:key-prefix inherited) :virtual)
+             (:key-prefix inherited)
              inherited)
         tag-dom (add-attributes
-                 (virtual-referent-item-DOM
+                 (virtual-referent-DOM
                   tag-referent
-                  (conj (:key-prefix inherited) :virtual :label)
+                  (:key-prefix inherited)
                   inherited)
                  {:class "tag"})]
     (add-labels-DOM tag-dom dom :vertical)))

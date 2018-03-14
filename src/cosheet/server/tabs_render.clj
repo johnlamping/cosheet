@@ -129,7 +129,7 @@
 
 (defn virtual-tab-DOM
   [subject-referent hierarchy inherited]
-  (let [key (conj (:key-prefix inherited) :virtualTab)
+  (let [key (:key-prefix inherited)
         v-ref (virtual-referent
                      (cons "" new-tab-elements)
                      subject-referent

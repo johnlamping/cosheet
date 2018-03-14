@@ -84,7 +84,7 @@
           [:div {:class "tabs-holder"}
            [:div]
            [:div {:class "editable tab virtualTab"
-                  :key [:foo :virtualTab]
+                  :key [:foo :virtual]
                   :target {:referent (virtual-referent
                                       "" (virtual-tab-referent
                                           new-tab-elements t3) nil)
@@ -136,7 +136,7 @@
                          :selected {:referent (item-referent t2)
                                     :special :tab}}]])]]
              [:div {:class "editable empty-child tab"
-                    :key [:foo :nested (item-referent t1)]
+                    :key [:foo :nested (item-referent t1) :virtual]
                     :target {:referent (virtual-referent
                                         '(nil) (item-referent t1)
                                         (item-referent t1))

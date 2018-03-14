@@ -362,7 +362,8 @@
                                             all-elements-parallel-referent) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]]
             [:div {:class "editable"
-                   :key (conj age-key :example-element (:item-id confidence1))
+                   :key (conj age-key
+                              :example-element (:item-id confidence1) :virtual)
                    :target {:referent (virtual-referent
                                        '(nil ("confidence" :tag))
                                        (item-referent age)
@@ -561,7 +562,8 @@
     (let [item-key [:root (:item-id item)]]
       (is (check dom
                  [:div {:class "horizontal-tags-element tag narrow"}
-                  [:div {:class "editable tag" :key (conj item-key :tags)
+                  [:div {:class "editable tag" :key (conj item-key
+                                                          :tags :virtual)
                          :expand {:referent (item-referent item)}
                          :target {:referent (virtual-referent
                                              '(nil :tag)

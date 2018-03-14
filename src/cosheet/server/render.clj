@@ -286,7 +286,8 @@
                 [:div {:class "tabbed"}
                  (make-component
                   {:key [:tabs]}
-                  [tabs-DOM-R holder nil starting-inherited])])))))))
+                  [tabs-DOM-R holder nil
+                   (assoc starting-inherited :key-prefix [:tab])])])))))))
 
 (defn DOM-for-client-R
   "Return a reporter giving the DOM specified by the client."

@@ -254,16 +254,16 @@
         excluded (if (empty? exclude-elements) nil (vec exclude-elements))]
     (make-component {:key key} [dom-fn item excluded inherited])))
 
-(defn virtual-referent-item-DOM
+(defn virtual-referent-DOM
   "Make a dom for a place that could hold an item, but doesn't, given
-  the virtual referent for the item."
-  [referent key inherited]
+  the virtual referent for the new item."
+  [referent key-prefix inherited]
   [:div (-> (:selectable-attributes inherited)
             (into-attributes (item-or-content-attributes inherited))
             (into-attributes (select-keys inherited [:selector-category]))
             (into-attributes
              {:class "editable"
-              :key key
+              :key (conj key-prefix :virtual)
               :target (copy-alternate-request-to-target
                        {:referent referent
                         :select-pattern (or (:select-pattern inherited)
@@ -274,7 +274,7 @@
 (defn virtual-item-DOM
   "Make a dom for a place that could hold an item, but doesn't.
   inherited must include a :template and a :subject-referent."
-  [key adjacent-referent position inherited]
+  [key-prefix adjacent-referent position inherited]
   (assert (not (nil? (:subject-referent inherited))))
   (let [referent (virtual-referent
                   (:template inherited)
@@ -283,7 +283,7 @@
                   :position position
                   :selector (when (:selector-category inherited)
                               :first-group))]
-    (virtual-referent-item-DOM referent key inherited)))
+    (virtual-referent-DOM referent key-prefix inherited)))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return

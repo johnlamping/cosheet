@@ -173,7 +173,7 @@
                         (expr-let [ordered (order-items-R adjacent-elements)]
                           (item-referent-given-inherited
                            (last ordered) inherited)))]
-    (let [dom (virtual-item-DOM (conj (:key-prefix inherited) :virtual)
+    (let [dom (virtual-item-DOM (conj (:key-prefix inherited))
                                 adjacent :after inherited)]
       (if must-show-label
         (let [labels-dom
@@ -195,7 +195,7 @@
                             adjacent :selector selector))))]
                 (add-attributes
                  (virtual-item-DOM
-                  (conj (:key-prefix inherited) :virtual :label)
+                  (conj (:key-prefix inherited) :label)
                   adjacent :after inherited-down)
                  {:class "tag"}))]
           (add-labels-DOM labels-dom dom direction))
@@ -224,8 +224,7 @@
                (virtual-item-DOM (conj tags-key-prefix
                                        ;; Need to make it different from
                                        ;; sibling virtuals.
-                                       (:item-id (:item example-descendant))
-                                       :virtual)
+                                       (:item-id (:item example-descendant)))
                                  nil :after inherited-for-tags)
                (label-stack-DOM-R
                 (hierarchy-node-example-elements hierarchy-node)

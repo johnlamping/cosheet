@@ -171,39 +171,28 @@
        (virtual-label-DOM inherited)
        dom])))
 
-(defn virtual-element-DOM-R
+(defn virtual-element-with-label-DOM
   "Return the dom for a virtual element of an item."
-  [virtual-content adjacent-elements must-show-label direction inherited]
-  (expr-let [adjacent (when (seq adjacent-elements)
-                        (expr-let [ordered (order-items-R adjacent-elements)]
-                          (item-referent-given-inherited
-                           (last ordered) inherited)))]
-    (let [dom (virtual-element-DOM adjacent :after inherited)]
-      (if must-show-label
-        (let [labels-dom
-              (let [selector (when (:selector-category inherited)
-                               :first-group)
-                    inherited-down
-                    (-> inherited
-                        (assoc
-                         :template '(nil :tag)
-                         :subject-referent
-                         (let [template
-                               (if (:template inherited)
-                                 (cons virtual-content
-                                       (rest (:template inherited)))
-                                 virtual-content)]
-                           (virtual-referent
-                            template
-                            (subject-referent-given-inherited inherited)
-                            adjacent :selector selector))))]
-                (add-attributes
-                 (virtual-element-DOM
-                  adjacent :after
-                  (update inherited-down :key-prefix #(conj % :label)))
-                 {:class "tag"}))]
-          (add-labels-DOM labels-dom dom direction))
-        dom))))
+  [virtual-content direction inherited]
+  (let [dom (virtual-element-DOM nil :after inherited)
+        selector (when (:selector-category inherited)
+                   :first-group)
+        template (if (:template inherited)
+                   (cons virtual-content (rest (:template inherited)))
+                   virtual-content)
+        virtual-ref (virtual-referent
+                     template
+                     (subject-referent-given-inherited inherited)
+                     nil :selector selector)
+        inherited-for-label (-> inherited
+                                (assoc :template '(nil :tag)
+                                       :subject-referent virtual-ref))
+        labels-dom (add-attributes
+                    (virtual-element-DOM
+                     nil :after
+                     (update inherited-for-label :key-prefix #(conj % :label)))
+                    {:class "tag"})]
+    (add-labels-DOM labels-dom dom direction)))
 
 (defn tagged-items-properties-DOM-R
   "Given a hierarchy node for tags, Return DOM for example elements

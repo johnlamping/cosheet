@@ -35,7 +35,7 @@
                                    hierarchy-node-parallel-items-referent
                                    hierarchy-last-item-referent
                                    hierarchy-node-DOM-R]]
-             [item-render :refer [elements-DOM-R virtual-element-DOM-R
+             [item-render :refer [elements-DOM-R virtual-element-with-label-DOM
                                   labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-content-DOM]])))
@@ -544,9 +544,8 @@
                                :attributes [[#{:label} #{:content}
                                              {:add-element
                                               {:referent subject-referent}}]])
-               virtual-dom (virtual-element-DOM-R
-                            'anything condition-elements
-                            true :vertical inherited-down)
+               virtual-dom (virtual-element-with-label-DOM
+                            'anything :vertical inherited-down)
                dom (labels-and-elements-DOM-R
                     condition-elements virtual-dom
                     true true :horizontal inherited-down)]

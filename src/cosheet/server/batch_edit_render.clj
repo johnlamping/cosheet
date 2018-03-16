@@ -17,7 +17,7 @@
              [model-utils :refer [table-header-template]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [item-DOM-R
-                                  virtual-element-DOM-R
+                                  virtual-element-with-label-DOM
                                   add-labels-DOM
                                   labels-and-elements-DOM-R]])))
 
@@ -123,9 +123,8 @@
             (update :key-prefix #(conj % :batch-query)))]
     (expr-let
         [condition-elements (semantic-elements-R query-item)
-         query-virtual-element-dom (virtual-element-DOM-R
-                                    'anything nil
-                                    true :vertical inherited-for-query)
+         query-virtual-element-dom (virtual-element-with-label-DOM
+                                    'anything :vertical inherited-for-query)
          query-dom (labels-and-elements-DOM-R
                     condition-elements query-virtual-element-dom
                     true true :horizontal inherited-for-query)

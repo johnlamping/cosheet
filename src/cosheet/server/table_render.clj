@@ -327,7 +327,7 @@
                                             adjacent-referent
                                             :selector :first-group)
                          :select-pattern (conj (:key-prefix inherited)
-                                               :nested [:pattern])
+                                               [:pattern :subject] [:pattern])
                          :template template)]
     (add-attributes
      (virtual-element-DOM adjacent-referent :after inherited)

@@ -195,7 +195,8 @@
                                 :selector :first-group)
                                :alternate true
                                :select-pattern (conj table-key
-                                                     :nested [:pattern])}}]]
+                                                     [:pattern :subject]
+                                                     [:pattern] )}}]]
               [:div {:class "table-rows selectees"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}

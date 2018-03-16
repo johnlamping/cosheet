@@ -562,15 +562,16 @@
     (let [item-key [:root (:item-id item)]]
       (is (check dom
                  [:div {:class "horizontal-tags-element tag narrow"}
-                  [:div {:class "editable tag" :key (conj item-key
-                                                          :tags :virtual)
+                  [:div {:class "editable tag"
+                         :key (conj item-key :tags :virtual)
                          :expand {:referent (item-referent item)}
                          :target {:referent (virtual-referent
                                              '(nil :tag)
                                              (item-referent item)
                                              nil
                                              :position :after)
-                                  :select-pattern (conj item-key [:pattern])}}]
+                                  :select-pattern (conj item-key
+                                                        :tags [:pattern])}}]
                   [:div {:class "item with-elements"}
                    [:div {:class "content-text editable"
                           :target {:referent (item-referent item)}

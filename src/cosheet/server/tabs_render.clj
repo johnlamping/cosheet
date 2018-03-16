@@ -21,7 +21,7 @@
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
              [model-utils :refer [new-tab-elements]]
-             [render-utils :refer [virtual-item-DOM hierarchy-node-DOM-R
+             [render-utils :refer [virtual-element-DOM hierarchy-node-DOM-R
                                    hierarchy-node-items-referent
                                    hierarchy-last-item-referent]]
              [item-render :refer [elements-DOM-R]])))
@@ -89,11 +89,14 @@
             (cond-> dom
               (not (empty? (apply concat elements-elements)))
               (add-attributes {:class "complex"})))        
-          (let [key (conj (:key-prefix inherited)
-                          (:item-id (first tab-items)))]
-            (add-attributes
-             (virtual-item-DOM key tabs-referent :after inherited-down)
-             {:class "empty-child"})))))))
+          (add-attributes
+           (virtual-element-DOM
+            tabs-referent :after
+            (-> inherited-down
+                (assoc :select-pattern
+                       (conj (:key-prefix inherited) [:pattern]))
+                (update :key-prefix  #(conj % (:item-id (first tab-items))))))
+           {:class "empty-child"}))))))
 
 (defn tabs-child-info
   "Adjust the information for child tabs."
@@ -129,8 +132,7 @@
 
 (defn virtual-tab-DOM
   [subject-referent hierarchy inherited]
-  (let [key (:key-prefix inherited)
-        v-ref (virtual-referent
+  (let [v-ref (virtual-referent
                      (cons "" new-tab-elements)
                      subject-referent
                      (hierarchy-last-item-referent hierarchy)
@@ -139,7 +141,7 @@
         inherited (assoc inherited :subject-referent v-ref)
         virtual-inherited (assoc inherited :template "")]
     (add-attributes
-     (virtual-item-DOM key nil :after virtual-inherited)
+     (virtual-element-DOM nil :after virtual-inherited)
      {:class "tab virtualTab"
       :selected {:special :new-tab}})))
 

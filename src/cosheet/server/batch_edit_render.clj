@@ -55,20 +55,20 @@
         dom (virtual-referent-DOM
              (union-referent [query-virtual-referent
                               matches-virtual-referent])
-             (:key-prefix inherited)
              inherited)
         tag-dom (add-attributes
                  (virtual-referent-DOM
                   tag-referent
-                  (:key-prefix inherited)
-                  inherited)
+                  (-> inherited
+                      (update :key-prefix #(conj % :tags))
+                      (assoc :select-pattern (conj (:key-prefix inherited)
+                                                   :label [:pattern]))))
                  {:class "tag"})]
     (add-labels-DOM tag-dom dom :vertical)))
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
   [query-item query-elements store inherited]
-  (println (simplify-for-print ["Batch stack" query-item query-elements]))
   (let [top-level-matches-referent (top-level-items-referent query-item)
         table-header-matches-referent (table-headers-referent query-item)
         matches-referent (union-referent

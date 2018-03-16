@@ -22,7 +22,8 @@
     [dom-tracker :refer [id->key key->attributes]]
     [referent :refer [instantiate-referent instantiate-or-create-referent
                       instantiate-to-items
-                      referent->string referent? virtual-referent?
+                      referent->string referent?
+                      virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
                       item-referent virtual-referent first-group-referent
                       semantic-elements-R
@@ -237,7 +238,8 @@
                                            from to)
                                   s1 remaining-items)]
             ;; If we have set a virtual item, tell the client to select it.
-            (if (and (virtual-referent? referent)
+            (if (and (or (virtual-referent? referent)
+                         (virtual-union-referent? referent))
                      select-pattern
                      (or (seq first-group) (seq remaining-items)))
               (add-select-request

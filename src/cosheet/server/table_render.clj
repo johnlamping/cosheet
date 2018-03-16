@@ -27,7 +27,7 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
              [model-utils :refer [table-header-template]]
-             [render-utils :refer [make-component virtual-item-DOM
+             [render-utils :refer [make-component virtual-element-DOM
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    add-inherited-attribute
@@ -228,10 +228,13 @@
       ;;       different in that case.
       [:div {:style {:width (str base-table-column-width "px")}
              :class "column-header tag wrapped-element merge-with-parent"}
-       (cond-> (virtual-item-DOM
-                (conj (:key-prefix inherited-down) :label)
+       (cond-> (virtual-element-DOM
                 column-referent :after
-                (transform-inherited-for-labels inherited-down))
+                (-> inherited-down
+                    transform-inherited-for-labels
+                    (update :key-prefix #(conj % :label))
+                    (assoc :select-pattern (conj (:key-prefix inherited)
+                                                 [:pattern]))))
          (is-tag-template? (table-header-element-template
                             (keys (:cumulative-properties node))))
          (add-attributes {:class "tag content-text"}))
@@ -314,9 +317,10 @@
 
 (defn table-virtual-header-node-DOM
   [hierarchy adjacent-referent inherited]
-  (let [key (conj (:key-prefix inherited) :virtualColumn)
-        template (table-virtual-header-element-template hierarchy)
+  (let [template (table-virtual-header-element-template hierarchy)
         inherited (assoc inherited
+                         :key-prefix (conj (:key-prefix inherited)
+                                           :virtualColumn)
                          :subject-referent (virtual-referent
                                             (:template inherited)
                                             (:subject-referent inherited)
@@ -326,7 +330,7 @@
                                                :nested [:pattern])
                          :template template)]
     (add-attributes
-     (virtual-item-DOM key adjacent-referent :after inherited)
+     (virtual-element-DOM adjacent-referent :after inherited)
      {:class (cond-> "column-header virtual-column"
                (is-tag-template? template)
                (str " tag"))})))
@@ -367,9 +371,9 @@
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
-               (virtual-item-DOM
-                (:key-prefix inherited) (:subject-referent inherited) :after
-                inherited)
+               (virtual-element-DOM
+                ;; TODO: Is the subject referent needed? Maybe just nil.
+                (:subject-referent inherited) :after inherited)
                (elements-DOM-R items false (:template inherited) :vertical
                                inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
@@ -377,11 +381,10 @@
 (defn table-virtual-column-cell-DOM
   [row-item inherited]
   (add-attributes
-   (virtual-item-DOM (:key-prefix inherited)
-                     (:subject-referent inherited) :after
-                     (assoc inherited :select-pattern
-                            (conj (vec (butlast (:key-prefix inherited)))
-                                  [:pattern 1] [:pattern])))
+   (virtual-element-DOM (:subject-referent inherited) :after
+                        (assoc inherited :select-pattern
+                               (conj (vec (butlast (:key-prefix inherited)))
+                                     [:pattern 1] [:pattern])))
    {:class "table-cell virtual-column has-border"}))
 
 (defn table-cell-DOM-R
@@ -444,11 +447,11 @@
                      column-id
                      [:pattern])
         inherited (assoc inherited
+                         :key-prefix (conj (:key-prefix inherited) column-id)
                          :template template
-                         :select-pattern select)
-        key (conj (:key-prefix inherited) column-id)]
+                         :select-pattern select)]
     (add-attributes
-     (virtual-item-DOM key adjacent-referent :after inherited)
+     (virtual-element-DOM adjacent-referent :after inherited)
      {:class "table-cell has-border"})))
 
 (defn table-virtual-row-DOM

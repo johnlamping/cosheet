@@ -18,7 +18,7 @@
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
-             [render-utils :refer [virtual-item-DOM item-stack-DOM
+             [render-utils :refer [virtual-element-DOM item-stack-DOM
                                    copy-alternate-request-to-target
                                    nest-if-multiple-DOM condition-satisfiers-R
                                    transform-inherited-for-children
@@ -85,11 +85,15 @@
                                          hierarchy-node)))
             adjacent-referent (item-referent-given-inherited
                                adjacent-item inherited)
-            example-elements (hierarchy-node-example-elements hierarchy-node)
-            key (conj (:key-prefix inherited)
-                      :example-element
-                      (:item-id (first example-elements)))]
-        (virtual-item-DOM key adjacent-referent :before inherited-down))
+            example-elements (hierarchy-node-example-elements hierarchy-node)]
+        (virtual-element-DOM
+         adjacent-referent :before
+         (-> inherited-down
+             (update :key-prefix
+                     #(conj % :example-element
+                            (:item-id (first example-elements))))
+             (assoc :select-pattern
+                    (conj (:key-prefix inherited) [:pattern])))))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -129,9 +133,10 @@
   "Return a dom for a virtual label"
   [inherited]
   (add-attributes
-   (virtual-item-DOM (conj (:key-prefix inherited) :tags)
-                     nil :after
-                     (transform-inherited-for-labels inherited))
+   (virtual-element-DOM nil :after
+                        (-> inherited
+                            transform-inherited-for-labels
+                            (update :key-prefix #(conj % :tags))))
    {:class "tag"}))
 
 (defn label-stack-DOM-R
@@ -173,8 +178,7 @@
                         (expr-let [ordered (order-items-R adjacent-elements)]
                           (item-referent-given-inherited
                            (last ordered) inherited)))]
-    (let [dom (virtual-item-DOM (conj (:key-prefix inherited))
-                                adjacent :after inherited)]
+    (let [dom (virtual-element-DOM adjacent :after inherited)]
       (if must-show-label
         (let [labels-dom
               (let [selector (when (:selector-category inherited)
@@ -194,9 +198,9 @@
                             (subject-referent-given-inherited inherited)
                             adjacent :selector selector))))]
                 (add-attributes
-                 (virtual-item-DOM
-                  (conj (:key-prefix inherited) :label)
-                  adjacent :after inherited-down)
+                 (virtual-element-DOM
+                  adjacent :after
+                  (update inherited-down :key-prefix #(conj % :label)))
                  {:class "tag"}))]
           (add-labels-DOM labels-dom dom direction))
         dom))))
@@ -221,11 +225,14 @@
                                       :subject-referent items-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
-               (virtual-item-DOM (conj tags-key-prefix
-                                       ;; Need to make it different from
-                                       ;; sibling virtuals.
-                                       (:item-id (:item example-descendant)))
-                                 nil :after inherited-for-tags)
+               (virtual-element-DOM
+                nil :after
+                (->
+                 inherited-for-tags
+                 (update :key-prefix
+                         ;; Need to make it different from sibling virtuals.
+                         #(conj % (:item-id (:item example-descendant))))
+                 (assoc :select-pattern (conj tags-key-prefix [:pattern]))))
                (label-stack-DOM-R
                 (hierarchy-node-example-elements hierarchy-node)
                 inherited-for-tags))]
@@ -417,9 +424,9 @@
 (defn labels-and-elements-DOM-R
   "Generate the dom for a set of elements, some of which may be labels.
   virtual-dom, if present, will appear after the elements.
-  must-show-labels determines whether the elements must show labels.
+  elements-must-show-labels determines whether the elements must show labels.
   inherited must be half way to the children."
-  [elements virtual-dom must-show-label must-show-labels
+  [elements virtual-dom must-show-label elements-must-show-labels
    direction inherited]
   (expr-let
       [tags (expr-seq map #(matching-elements :tag %) elements)]
@@ -434,7 +441,7 @@
                        [element-doms
                         (when non-labels
                           (element-DOMs-R
-                           non-labels must-show-labels nil direction
+                           non-labels elements-must-show-labels nil direction
                            (transform-inherited-attributes
                             inherited :element)))]
                      [:div {:class "item elements-wrapper"}

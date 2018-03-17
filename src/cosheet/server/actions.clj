@@ -345,58 +345,6 @@
     :batch-edit [do-batch-edit :target]}
    action))
 
-(defn broad-alternate-text
-  [selector-category]
-  (selector-category
-   {:table-header ["Column's description changed."
-                   "Change selection instead."]
-    :table-condition ["Table's description changed."
-                      "Change selection instead."]
-    :only-element-delete ["Column data deleted."
-                          "Only hide the column instead."]}))
-
-(defn narrow-alternate-text
-  [selector-category]
-  (selector-category
-   {:table-header ["Column selection changed."
-                   "Change description instead."]
-    :table-condition ["Table selection changed."
-                      "Change description instead."]
-    :only-element-delete ["Column hidden."
-                          "Delete the column data also."]}))
-
-(defn alternate-arguments
-  "Given the session state, action type and arguments,
-  return a vector of the default arguments
-  to use, and the alternate arguments, if any. Also return the text to show the
-  user to give them the chance to ask for the alternate arguments"
-  [session-state action-type arguments attributes]
-  (or
-   (when (:alternate arguments)
-     (when (not= action-type :expand)
-       (println "alternate requested.")
-       (when-let [selector-category (:selector-category attributes)]
-         (println "selector found" selector-category)
-         (let [arguments (dissoc arguments :alternate)
-               narrow-arguments (update-in arguments [:referent]
-                                         #(first-group-referent %))
-               wide-referent (:referent arguments)
-               narrow-referent (:referent narrow-arguments)
-               store (current-store (:store session-state))]
-           (when (if (virtual-referent? wide-referent)
-                   (not= wide-referent narrow-referent)
-                   (not= (set (instantiate-to-items wide-referent store))
-                         (set (instantiate-to-items narrow-referent store))))
-             (let [result
-                   (if (= (:selector-interpretation session-state) :broad)
-                     [arguments narrow-arguments
-                      (broad-alternate-text selector-category)]
-                     [narrow-arguments arguments
-                      (narrow-alternate-text selector-category)])]
-               (println "computed alternate")
-               result))))))
-   [arguments nil nil]))
-
 (defn do-contextual-action
   "Do an action that applies to a DOM cell, and whose interpretation depends
   on that cell. We will call a contextual action handler with arguments
@@ -430,43 +378,14 @@
           (println "arguments: " (simplify-for-print
                                   (dissoc arguments :session-state)))
           (println "attributes: " (simplify-for-print dom-attributes))
-          (let [[arguments alternate-arguments text] (alternate-arguments
-                                                      session-state action-type
-                                                      arguments dom-attributes)
-                result (do-storage-update-action
+          (let [result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
                           handler arguments dom-attributes)]
-            (when (or (not (:special arguments)) (= action-type :set-content))
-                  (state-map-reset!
-                   (:client-state session-state) :alternate
-                   (when alternate-arguments
-                     (println "setting non-trivial alternate arguments." text)
-                     {:new-store (first (fetch-and-clear-modified-ids
-                                         (:store result)))
-                      :action [handler
-                               (dissoc alternate-arguments :session-state)
-                               dom-attributes]
-                      :text text})))
             (dissoc result :store)))
         (println "No context for action:" action-type
                  dom-attributes))
       (do 
         (println "unhandled action type:" action-type)))))
-
-(defn do-alternate-contextual-action
-  "Do the alternate interpretation of the recorded contextual action."
-  [mutable-store session-state]
-  (when-let [alternate (state-map-get-current-value
-                        (:client-state session-state) :alternate)]
-    (println "doing alternate.")
-    (let [{:keys [new-store action]} alternate
-          [handler arguments attributes] action
-          result (apply do-storage-update-action
-                  (partial revise-update-control-return!
-                           mutable-store new-store)
-                  [handler arguments (assoc attributes
-                                          :session-state session-state)])]
-      (dissoc result :store))))
 
 (defn do-undo
   [mutable-store session-state]
@@ -491,13 +410,9 @@
                        :undo do-undo
                        :redo do-redo
                        :quit-batch-edit do-quit-batch-edit
-                       :alternate do-alternate-contextual-action
                        nil)]
       (do (println "command: " (map simplify-for-print action))
-          (let [for-client
-                (apply handler mutable-store session-state additional-args)]
-            (state-map-reset! (:client-state session-state) :alternate nil)
-            for-client))
+          (apply handler mutable-store session-state additional-args))
       (if (= (mod (count action) 2) 0)
         (do-contextual-action mutable-store session-state action)
         (println "Error: odd number of keyword/argument pairs:" action)))))
@@ -506,25 +421,18 @@
   "Run the actions, and return any additional information to be returned
   to the client"
   [mutable-store session-state action-sequence]
-  (let [for-client
-        (try
-          (reduce (fn [client-info action]
-                    (let [for-client
-                          (do-action mutable-store session-state action)]
-                      (println "for client " (simplify-for-print for-client))
-                      (into client-info
-                            (select-keys for-client [:select :open :set-url]))))
-                  {} action-sequence)
-          (catch Exception e
-            (queue-to-log [:error (str e)] (:url-path session-state))
-            (println "Error" (str e))
-            nil))]
-    (if-let [alternate-text (:text (state-map-get-current-value
-                                    (:client-state session-state) :alternate))]
-      (assoc for-client :alternate-text alternate-text)
-      for-client)
-    ;; Remove this to re-enable alternate text.
-    for-client))
+  (try
+    (reduce (fn [client-info action]
+              (let [for-client
+                    (do-action mutable-store session-state action)]
+                (println "for client " (simplify-for-print for-client))
+                (into client-info
+                      (select-keys for-client [:select :open :set-url]))))
+            {} action-sequence)
+    (catch Exception e
+      (queue-to-log [:error (str e)] (:url-path session-state))
+      (println "Error" (str e))
+      nil)))
 
 (defn confirm-actions
   "Check that the actions have not already been done, update the

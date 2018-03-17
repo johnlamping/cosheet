@@ -288,19 +288,7 @@
                              [[:add-element (key->id tracker [:jane])]])
           new-store (current-store mutable-store)
           select (:select result)
-          new-id (last (first select))
-          alternate (state-map-get-current-value
-                     (:client-state session-state) :alternate)
-          alternate-arguments (-> (:target attributes)
-                                  (assoc :referent (union-referent
-                                                    [(item-referent jane)]))
-                                  (assoc :target-key [:jane])
-                                  (dissoc :alternate))]
-      (is (check alternate
-                 {:new-store new-store
-                  :action [do-add-element alternate-arguments attributes]
-                  :text ["Column's description changed."
-                         "Change selection instead."]}))
+          new-id (last (first select))]
       (is (= select [[:jane new-id] [[:jane]]]))
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
@@ -326,33 +314,12 @@
                   [[:undo]])
       (is (check (current-store mutable-store)
                  (assoc store :modified-ids #{})))
-      ;; Check that alternate does nothing if the store isn't what it expects.
-      (state-map-reset! (:client-state session-state) :alternate alternate)
-      (do-actions mutable-store session-state [[:alternate]])
       ;; Check redo.
       (do-actions mutable-store {:tracker tracker
                                  :client-state (new-state-map {:last-action nil
                                                                :alternate nil})}
                   [[:redo]])
-      (is (check (current-store mutable-store) new-store))
-      ;; Check alternate.
-      (state-map-reset! (:client-state session-state) :alternate alternate)
-      (let [result (do-actions mutable-store session-state [[:alternate]])
-            alternate-store (current-store mutable-store)]
-        (is (check (item->canonical-semantic
-                    (description->entity (:item-id jane) alternate-store))
-                   (canonicalize-list '("Jane"
-                                        "female"
-                                        (45 ("age" :tag))
-                                        anything))))
-        (is (check (item->canonical-semantic
-                    (description->entity (:item-id joe) alternate-store))
-                   (canonicalize-list '("Joe"
-                                        "male" 
-                                        (39 ("age" :tag)
-                                            ("doubtful" "confidence"))
-                                        "married"
-                                        (45 ("age" :tag))))))))))
+      (is (check (current-store mutable-store) new-store)))))
 
 (deftest confirm-actions-test
   (let [client-state (new-state-map {:last-action nil})]

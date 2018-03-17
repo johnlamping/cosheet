@@ -107,12 +107,8 @@
           row-condition (list (item-referent query)
                               '(:top-level :non-semantic))
           rows-referent (query-referent row-condition)
-          first-column-referent (union-referent
-                                 [(item-referent c1)
-                                  (elements-referent c1 rows-referent)])
-          delete-column-referent (union-referent
-                                  [(item-referent c1)
-                                   (elements-referent c1 rows-referent)])
+          first-column-referent (union-referent [(item-referent c1)])
+          delete-column-referent (item-referent c1)
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
                                                  (true :reference)))]
@@ -153,25 +149,21 @@
                    :subject-referent first-column-referent
                    :template '(nil :tag)
                    :selector-category :table-header
-                   :alternate-target true
                    :attributes
                    [[#{:label :element :recursive :optional} #{:content}
                      {:add-column first-column-add
-                      :delete-column {:referent delete-column-referent
-                                      :alternate true}}]
+                      :delete-column {:referent first-column-referent}}]
                     [#{:content}
                      {:expand {:referent first-column-referent}
                       :delete {:referent nil}}]]}]]
                 [:div {:class "indent-wrapper"}
                  [:div {:selector-category :table-header
-                        :delete-column {:referent delete-column-referent
-                                        :alternate true},
+                        :delete-column {:referent first-column-referent},
                         :delete {:referent nil}
                         :add-column first-column-add
                         :add-twin {:referent nil}
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
-                                 :alternate true
                                  :template '(nil :tag)}
                         :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
@@ -193,7 +185,6 @@
                                  :selector :first-group)
                                 (item-referent c6)
                                 :selector :first-group)
-                               :alternate true
                                :select-pattern (conj table-key
                                                      [:pattern :subject]
                                                      [:pattern] )}}]]

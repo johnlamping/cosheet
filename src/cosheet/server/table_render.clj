@@ -185,8 +185,7 @@
                   (cond-> (attributes-for-header-add-column-command
                            node elements-template inherited)
                     (= (count descendants) 1)
-                    (assoc :delete-column {:referent column-referent
-                                           :alternate true})
+                    (assoc :delete-column {:referent column-referent})
                     (empty? example-elements)
                     (assoc :expand {:referent column-referent}))]))
       (:leaves node)
@@ -215,10 +214,7 @@
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (union-referent
-                         [(hierarchy-node-items-referent node inherited)
-                          (table-node-row-elements-referent
-                           node (when (empty? example-elements) shadowing-nodes)
-                           rows-referent)])
+                         [(hierarchy-node-items-referent node inherited)])
         item (:item (first (hierarchy-node-descendants node)))
         inherited-down (table-header-properties-inherited
                         node function-info example-elements column-referent
@@ -343,8 +339,7 @@
   [hierarchy rows-referent inherited]
   (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
         inherited-down (assoc inherited
-                              :selector-category :table-header
-                              :alternate-target true)
+                              :selector-category :table-header)
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)
                               (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
@@ -531,15 +526,13 @@
   "Return a hiccup representation for the top of a table, the part that
   holds its condition."
   [row-condition-item rows-referent inherited]
-  (let [subject-referent (union-referent [(item-referent row-condition-item)
-                                          rows-referent])]
+  (let [subject-referent (union-referent [(item-referent row-condition-item)])]
     (expr-let [condition-elements (semantic-elements-R row-condition-item)
                inherited-down (assoc
                                inherited
                                :selector-category :table-condition
                                :subject-referent subject-referent
                                :template '(nil)
-                               :alternate-target true
                                ;; TODO: Do only when all tags?
                                :attributes [[#{:label} #{:content}
                                              {:add-element

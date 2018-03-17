@@ -178,7 +178,8 @@
            (conj (pop item-key) [:pattern]) target-key))))))
 
 (defn add-virtual [store target-key referent select-pattern]
-  (println "adding virtual" (simplify-for-print [target-key referent select-pattern]))
+  (println "adding virtual"
+           (simplify-for-print [target-key referent select-pattern]))
   (let [[items new-ids store] (instantiate-or-create-referent referent store)]
     (add-select-request store (map #(description->entity % store) new-ids)
                         select-pattern target-key)))
@@ -206,11 +207,9 @@
   "Remove item(s)." 
   [store arguments attributes]
   (when-let [to-delete (:referent arguments)]
-    (let [item-groups (instantiate-referent to-delete store)
-          header (first (first item-groups))
-          items (distinct ;; distinct should not be necessary, but is a
-                          ;; safety measure to make sure we don't delete twice
-                 (apply concat item-groups))]
+    (let [;; distinct should not be necessary, but is a
+          ;; safety measure to make sure we don't delete twice
+          items (distinct (instantiate-to-items to-delete store))]
       (println "total items:" (count items))
       (reduce update-delete store items))))
 

@@ -676,7 +676,7 @@
 
 (defn create-virtual-referent
   "Create items for virtual referents. Return the groups
-  of new items,  a seq of ids of the first item created for this referent
+  of new items, a seq of ids of the first item created for this referent
   and each nested virtual referent, and the updated store."
   [referent original-store store]
   (assert (virtual-referent? referent))

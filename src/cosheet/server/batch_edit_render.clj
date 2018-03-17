@@ -8,8 +8,7 @@
                      [expression :refer [expr expr-let expr-seq]])
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
-                               virtual-referent parallel-union-referent
-                               exemplar-referent
+                               virtual-referent exemplar-referent
                                union-referent instantiate-to-items
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute

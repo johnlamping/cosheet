@@ -242,11 +242,7 @@
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (if batch-editing
       (let [transient-item (description->entity transient-id store)]
-        (expr-let [query (expr first (label->elements transient-item :query))
-                   selected-id (state-map-get client-state
-                                              :selected-batch-edit-id)
-                   selected-valid (when selected-id
-                                    (id-valid? store selected-id))]
+        (expr-let [query (expr first (label->elements transient-item :query))]
           (batch-edit-DOM-R query store starting-inherited)))
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)

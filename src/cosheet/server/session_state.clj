@@ -262,9 +262,6 @@
 ;;;            :batch-editing  If true, we are batch editing, and showing
 ;;;                            the batch edit window, rather than whatever
 ;;;                            referent says we should show.
-;;;   :selected-batch-edit-id  The id, if any, of the selected item in batch
-;;;                            editing query. It will be shown in the batch
-;;;                            editing subwindow.
 ;;; When we process client commands, we add to the session state
 ;;; :selector-interpretation from the client's request.
 
@@ -288,7 +285,6 @@
                     :subject-referent subject-ref
                     :last-action nil
                     :batch-editing false
-                    :selected-batch-edit-id nil
                     :in-sync false})))
 
 (defn create-tracker

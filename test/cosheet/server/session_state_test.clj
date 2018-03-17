@@ -57,7 +57,6 @@
                 :subject-referent nil
                 :last-action nil
                 :batch-editing false
-                :selected-batch-edit-id nil
                 :in-sync false}))))
 
 (deftest new-id-test

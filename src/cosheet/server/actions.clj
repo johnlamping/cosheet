@@ -281,15 +281,7 @@
                          "?referent=" (referent->string referent))})
       (= (:special arguments) :new-tab)
       (do-set-content
-       store (:target attributes) (into attributes {:from "" :to ""}))
-      (and (state-map-get-current-value client-state :batch-editing)
-           (= (:selector-category attributes) :batch-query))
-      (let [item (let [item (first (instantiate-to-items referent store))]
-                   (if (and item (seq (matching-elements :tag item)))
-                     (subject item)
-                     item))]
-        (state-map-reset! client-state :selected-batch-edit-id
-                          (:item-id item))))))
+       store (:target attributes) (into attributes {:from "" :to ""})))))
 
 (defn do-batch-edit
   [store arguments attributes]

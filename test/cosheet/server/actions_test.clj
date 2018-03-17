@@ -271,15 +271,12 @@
         session-state {:tracker tracker
                        :store mutable-store
                        :selector-interpretation :broad
-                       :client-state (new-state-map {:last-action nil
-                                                     :alternate nil})}
+                       :client-state (new-state-map {:last-action nil})}
         attributes {:commands {:add-element nil}
                     :selector-category :table-header
                     :target {:referent
                              (union-referent [(item-referent jane)
-                                              (item-referent joe)])
-                             
-                             :alternate true}}]
+                                              (item-referent joe)])}}]
     (swap! tracker update-set-component
            {:key [:jane]
             :definition [(fn [& _] [:div])]
@@ -309,15 +306,15 @@
              'anything))
       ;; Check undo redo.
       (do-actions mutable-store {:tracker tracker
-                                 :client-state (new-state-map {:last-action nil
-                                                               :alternate nil})}
+                                 :client-state (new-state-map
+                                                {:last-action nil})}
                   [[:undo]])
       (is (check (current-store mutable-store)
                  (assoc store :modified-ids #{})))
       ;; Check redo.
       (do-actions mutable-store {:tracker tracker
-                                 :client-state (new-state-map {:last-action nil
-                                                               :alternate nil})}
+                                 :client-state (new-state-map
+                                                {:last-action nil})}
                   [[:redo]])
       (is (check (current-store mutable-store) new-store)))))
 

@@ -55,11 +55,6 @@
                  ; :referent        Item(s) referred to
                  ; :select-pattern  The pattern to use to generate the key to
                  ;                  select part of a new item.
-                 ; :alternate       If true, this target has an alternate
-                 ;                  interpretation, by narrowing the referent.
-                 ;                  :selector-category must be present.
-                 ;                  If an atom, that atom overrides
-                 ;                  :selector-category.
    :add-sibling  ; commands that may have information added to the attributes.
    :add-element
    :add-twin
@@ -130,9 +125,6 @@
 ;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
-                           ; May alternatively be a function from item
-                           ; to referent, which also returns the subject
-                           ; if given no arguments.
 ;              :match-all  ; If true, then referents for all children
                            ; should match all matches, not just one exemplar.
 ;               :template  ; The template that the twins of this dom
@@ -148,8 +140,6 @@
                            ; and not part of what is selected. When the
                            ; target referent is instantiated, the first group
                            ; items must be the selector.
-;        :alternate-target ; If true, there is an alternate interpretation
-                           ; of the item. :selector-category must be present.
    })
 ;;; In some cases, the inherited information is halfway between being about
 ;;; an item and its children. In this case, :template and :attributes are
@@ -259,8 +249,7 @@
                             subject-referent
                             (assoc :subject-referent subject-referent)
                             selector-category
-                            (assoc :selector-category selector-category
-                                   :alternate-target true))]
+                            (assoc :selector-category selector-category))]
             (expr-let [tab-tags (matching-elements :tab item)
                        content (content item)]
               (if (empty? tab-tags)

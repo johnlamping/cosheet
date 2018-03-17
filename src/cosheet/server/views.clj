@@ -190,8 +190,6 @@
 ;;;                should have successively higher sort orders.
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
-;;; :selector-interpretation Either :broad or :narrow, giving the interpretation
-;;;                          to use when there is an alternate interpretation.
 ;;; response:
 ;;;         :reload The server has no record of the session. The page
 ;;;                 should request a reload.
@@ -206,9 +204,6 @@
 ;;;                 that may currently be selected for the command to
 ;;;                 take effect.
 ;;;           :open A url that should be opened in a new window.
-;;; :alternate-text Either nil or a vector of two or three strings
-;;;                 to display in the  alternate interpretation field.
-;;;                 The second string will be the link text.
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
@@ -233,12 +228,12 @@
                               (map (partial key->id tracker)
                                    if-selected))])))
         answer (cond-> (select-keys client-info
-                                    [:open :set-url :alternate-text])
+                                    [:open :set-url])
                  (seq doms) (assoc :doms doms)
                  (not in-sync) (assoc :reset-versions true)
                  select (assoc :select select)
                  actions (assoc :acknowledge (vec (keys actions))))]
-    (when (not= (dissoc answer :alternate-text) {})
+    (when (not= answer {})
       (let [stripped (update
                       answer :doms
                       #(map (fn [dom] (:id (dom-attributes dom)))
@@ -281,11 +276,6 @@
           (do-replay session-state replay))
         (process-acknowledgements tracker acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
-          (when (and (not-any? #{[:alternate]} action-sequence)
-                     (not (empty? action-sequence))
-                     (empty? acknowledge))
-            (println "resetting alternate" action-sequence acknowledge)
-            (state-map-reset! client-state :alternate nil))
           (let [augmented-state (assoc session-state :selector-interpretation
                                        selector-interpretation)
                 client-info (cond-> (do-actions

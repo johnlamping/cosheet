@@ -3,8 +3,7 @@
             [cosheet.dom-utils :refer [find-ancestor-with-class
                                        scroll-to-be-visible]]))
 
-;;; These are the UI operations on the edit field, alternate interpretation
-;;; field, and on selections. We
+;;; These are the UI operations on the edit field and on selections. We
 ;;; put them in their own file so both client.cljs and ajax.cljs can
 ;;; access them.
 

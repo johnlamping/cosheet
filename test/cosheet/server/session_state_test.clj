@@ -47,18 +47,6 @@
     (is (= (immutable-semantic-to-list row2)
            '("" ("Hello" :tag) (3 ("a" :tag)))))))
 
-(deftest interpret-url-path-test
-  (is (= (interpret-url-path "foo/bar/baz")
-         ["foo/bar/baz" "baz" ".cosheet"]))
-  (is (= (interpret-url-path "foo/bar/baz.cosheet")
-         ["foo/bar/baz" "baz" ".cosheet"]))
-  (is (= (interpret-url-path "foo/bar/baz.csv")
-         ["foo/bar/baz" "baz" ".csv"]))
-  (is (= (interpret-url-path "foo/bar/baz.wrong")
-         nil))
-  (is (= (interpret-url-path "foo/bar/baz.wrong.csv")
-         nil)))
-
 (deftest create-client-state-test
   (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state-map (create-client-state
@@ -68,7 +56,8 @@
                 :referent (any #(= (:id %) 5))
                 :subject-referent nil
                 :last-action nil
-                :alternate nil
+                :batch-editing false
+                :selected-batch-edit-id nil
                 :in-sync false}))))
 
 (deftest new-id-test

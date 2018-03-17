@@ -56,13 +56,6 @@
       (seq (clojure.set/difference (set elements) (set excludeds)))
       elements)))
 
-(defn copy-alternate-request-to-target
-  "Given the map for a target, and inherited information, change the target
-  to have a :alternate if the inherited information says to."
-  [target inherited]
-  (cond-> target
-    (:alternate-target inherited) (assoc :alternate true)))
-
 ;;; These next functions handle inherited attributes.
 ;;; In inherited, :attributes is a vector of descriptors.
 ;;; A descriptor is either:
@@ -264,12 +257,10 @@
             (into-attributes
              {:class "editable"
               :key (conj (:key-prefix inherited) :virtual)
-              :target (copy-alternate-request-to-target
-                       {:referent referent
-                        :select-pattern (or (:select-pattern inherited)
-                                            (conj (:key-prefix inherited)
-                                                  [:pattern]))}
-                       inherited)}))])
+              :target {:referent referent
+                       :select-pattern (or (:select-pattern inherited)
+                                           (conj (:key-prefix inherited)
+                                                 [:pattern]))}}))])
 
 (defn virtual-element-DOM
   "Make a dom for a place that could hold an item, but doesn't.

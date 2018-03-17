@@ -265,14 +265,6 @@
 ;;;   :selected-batch-edit-id  The id, if any, of the selected item in batch
 ;;;                            editing query. It will be shown in the batch
 ;;;                            editing subwindow.
-;;;                :alternate  Either nil or a map indicating an alternate
-;;;                            interpretation of the last command. the map
-;;;                            contains
-;;;                     :new-store  The state of the immutable store after
-;;;                                 the action.
-;;;                        :action  The alternate storage update action,
-;;;                                 with the store missing.
-;;;                          :text  The text shown to the user.
 ;;; When we process client commands, we add to the session state
 ;;; :selector-interpretation from the client's request.
 
@@ -297,7 +289,6 @@
                     :last-action nil
                     :batch-editing false
                     :selected-batch-edit-id nil
-                    :alternate nil
                     :in-sync false})))
 
 (defn create-tracker

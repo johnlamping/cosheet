@@ -19,7 +19,6 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
              [render-utils :refer [virtual-element-DOM item-stack-DOM
-                                   copy-alternate-request-to-target
                                    nest-if-multiple-DOM condition-satisfiers-R
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
@@ -61,10 +60,8 @@
       (remove-inherited-attribute :add-sibling)
       (add-inherited-attribute
        [#{:label :optional} #{:content}
-        {:add-sibling (copy-alternate-request-to-target
-                       (hierarchy-adjacent-virtual-target
-                        hierarchy-node inherited)
-                       inherited)}])))
+        {:add-sibling (hierarchy-adjacent-virtual-target
+                       hierarchy-node inherited)}])))
 
 (defn hierarchy-leaf-items-DOM
   "Given a hierarchy node with tags as the properties, generate DOM
@@ -471,10 +468,8 @@
                             (content-attributes inherited))
            {:class (cond-> "content-text editable"
                      (= content 'anything-immutable) (str " immutable"))
-            :target (copy-alternate-request-to-target
-                     (assoc (select-keys inherited [:template])
-                            :referent item-referent)
-                     inherited)})
+            :target (assoc (select-keys inherited [:template])
+                            :referent item-referent)})
      (if anything "\u00A0..." (str content))]))
 
 (defn item-content-and-non-label-elements-DOM-R

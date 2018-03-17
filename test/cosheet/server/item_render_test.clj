@@ -44,15 +44,13 @@
                                   :attributes
                                   [[#{:content}
                                     {:expand {:referent
-                                              (item-referent fred)}}]]
-                                  :alternate-target true)]
+                                              (item-referent fred)}}]])]
                        (expr-let [dom (item-DOM-R fred [] my-inherited)]
                          [dom (item->immutable fred)])))]
     (is (check dom
                [:div {:class "content-text editable item"
                       :key [:root (:item-id fred) :content]
-                      :target {:referent (item-referent fred)
-                               :alternate true}
+                      :target {:referent (item-referent fred)}
                       :expand {:referent (item-referent fred)}}
                 "Fred"]))))
 
@@ -86,7 +84,6 @@
                                      {:width 0.5
                                       :template "foo"
                                       :selector-category :some-category
-                                      :alternate-target true
                                       :attributes
                                       [[#{:content} {:added-by-test {1 2}}]
                                        [(:item-id another) {:class "added1"}]
@@ -121,8 +118,7 @@
                  :key (conj age-key :content)
                  :selector-category :some-category
                  :target {:referent (item-referent age)
-                          :template "foo"
-                          :alternate true}
+                          :template "foo"}
                  :added-by-test {1 2}}
            "39"]
           [:div {:class "vertical-stack"}
@@ -144,10 +140,8 @@
                                             'nil (item-referent age)
                                             one-another-two-parallel-referent
                                             :selector :first-group) 
-                                 :select-pattern (conj age-key [:pattern])
-                                 :alternate true}}]]
-               :selector-category :some-category
-               :alternate-target true}]]
+                                 :select-pattern (conj age-key [:pattern])}}]]
+               :selector-category :some-category}]]
             [:div {:class "indent-wrapper"}
              [:div {:class "vertical-stack"}
               ;; One Another
@@ -169,10 +163,9 @@
                                      'nil (item-referent age)
                                      one-another-two-parallel-referent
                                     :selector :first-group) 
-                                    :select-pattern (conj age-key [:pattern])
-                                    :alternate true}}]]
-                  :selector-category :some-category
-                  :alternate-target true}]]
+                                    :select-pattern (conj age-key [:pattern])}
+                      }]]
+                  :selector-category :some-category}]]
                ;; Another
                [:component {:key (conj age-key (:item-id another))}
                 [item-without-labels-DOM-R another [(any)]
@@ -196,13 +189,13 @@
                                                (item-referent age)
                                                (item-referent two)
                                                :selector :first-group) 
-                                    :select-pattern (conj age-key [:pattern])
-                                    :alternate true}}]]
-                  :selector-category :some-category
-                  :alternate-target true}]]
+                                    :select-pattern (conj age-key [:pattern])}
+                      }]]
+                  :selector-category :some-category}]]
                [:div {:class "indent-wrapper"}
                 [:component {:key (conj age-key (:item-id two))}
-                 [item-without-labels-DOM-R two (as-set [confidence2 probability])
+                 [item-without-labels-DOM-R
+                  two (as-set [confidence2 probability])
                   {:priority 1
                    :width 0.5
                    :key-prefix age-key
@@ -218,10 +211,9 @@
                                                 (item-referent age)
                                                 (item-referent two)
                                                 :selector :first-group) 
-                                     :select-pattern (conj age-key [:pattern])
-                                     :alternate true}}]]
-                   :selector-category :some-category
-                   :alternate-target true}]]]]]]]
+                                     :select-pattern (conj age-key [:pattern])}
+                       }]]
+                   :selector-category :some-category}]]]]]]]
            ;; None
            [:div {:class "horizontal-tags-element tag narrow added2"}
             [:div {:class "editable tag"
@@ -230,16 +222,14 @@
                    :target {:referent (virtual-referent
                                        '(nil :tag) (item-referent none)
                                        nil
-                                       :selector :first-group) 
-                            :alternate true
+                                       :selector :first-group)
                             :select-pattern (conj age-key :label [:pattern])}
                    :add-sibling {:referent (virtual-referent
                                              nil
                                              (item-referent age)
                                              (item-referent none)
                                              :selector :first-group) 
-                                 :select-pattern (conj age-key [:pattern])
-                                 :alternate true}}]
+                                 :select-pattern (conj age-key [:pattern])}}]
             [:component {:key none-key}
              [item-without-labels-DOM-R none nil
               {:priority 1
@@ -248,7 +238,6 @@
                :subject-referent (item-referent age)
                :template '(nil)
                :selector-category :some-category
-               :alternate-target true
                :attributes
                [[(:item-id another) {:class "added1"}]
                 [#{:label :optional} #{:content}
@@ -257,8 +246,8 @@
                                             (item-referent age)
                                             (item-referent none)
                                             :selector :first-group) 
-                                 :select-pattern (conj age-key [:pattern])
-                                 :alternate true}}]]}]]]]]))))
+                                 :select-pattern (conj age-key [:pattern])}
+                   }]]}]]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.

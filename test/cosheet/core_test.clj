@@ -13,7 +13,7 @@
            (cosheet.server
             referent hierarchy render dom_tracker actions
             model-utils-test referent-test hierarchy-test order-utils-test
-            format-convert-test
+            format-convert-test session_state_test
             render-utils-test render-test item-render-test table-render-test
             tabs-render-test dom-tracker-test actions-test)
            :reload

@@ -69,18 +69,6 @@
                                test '(nil 1) '(nil (:b 1))))))
              [])))
 
-(deftest copy-alternate-request-to-target-test
-  (let [ia (make-id "a")
-        ib (make-id "b")
-        ref (union-referent [ia ib])
-        subject (elements-referent '(nil :x) ref)]
-    (is (check (copy-alternate-request-to-target {:item-referent ref} {})
-               {:item-referent ref}))
-    (is (check (copy-alternate-request-to-target {:item-referent ref}
-                                        {:alternate-target true})
-               {:item-referent ref
-                :alternate true}))))
-
 (deftest transform-inherited-attributes-test
   (is (check (transform-inherited-attributes
               {:attributes [{:a 1}

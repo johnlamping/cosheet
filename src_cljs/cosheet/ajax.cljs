@@ -168,7 +168,7 @@
   (reset! ajax-request-open false)
   (when (not= response {})
     (.log js/console (str response))
-    (when (not= (dissoc response :alternate-text) {})
+    (when (not= response {})
       (reset-poll-delay))
     (if (:reload response)
       (js/location.reload)

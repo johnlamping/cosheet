@@ -52,12 +52,11 @@
               [(conj headers header) store]))
           [[] store] (range n)))
 
-;;; TODO: Get rid of this.
 (defn specialize-template
   "Adjust a template or condition to make it ready for adding as an
   element. Specifically, replace each '??? with a new unique string
   with a leading non-breaking space. Allocating new strings will require
-  updating the store, and Return the new condition and the new store."
+  updating the store. Return the new condition and the new store."
   [condition store]
   (thread-recursive-map (fn [item store]
                           (if (= item '???)
@@ -83,7 +82,11 @@
     (first tabs)))
 
 (def table-header-template
+  ;; A table header is an element of the condition, so that batch edit changes
+  ;; can match table headers. But a header doesn't count as a semantic part
+  ;; of the condition, because it shouldn't affect what rows are selected.
   '(anything-immutable (:column :non-semantic)
+                       (:selector :non-semantic)
                        (:non-semantic :non-semantic)))
 
 (defn table-tab-non-semantic-elements

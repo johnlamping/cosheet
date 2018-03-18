@@ -117,6 +117,7 @@
                                        (virtual-referent
                                         '(anything-immutable
                                           (:column :non-semantic)
+                                          (:selector :non-semantic)
                                           (:non-semantic :non-semantic))
                                         (union-referent
                                          [(item-referent query)])
@@ -179,6 +180,7 @@
                                 (virtual-referent
                                  '(anything-immutable
                                    (:column :non-semantic)
+                                   (:selector :non-semantic)
                                    (:non-semantic :non-semantic))
                                  (item-referent query)
                                  (item-referent c6)
@@ -207,6 +209,7 @@
                    :template (virtual-referent
                               '(anything-immutable
                                 (:column :non-semantic)
+                                (:selector :non-semantic)
                                 (:non-semantic :non-semantic)
                                 (???))
                               (item-referent query)
@@ -285,6 +288,7 @@
                                (virtual-referent
                                 '(anything-immutable
                                   (:column :non-semantic)
+                                  (:selector :non-semantic)
                                   (:non-semantic :non-semantic)
                                   (???))
                                 (item-referent query)

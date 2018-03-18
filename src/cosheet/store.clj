@@ -98,15 +98,15 @@
      It must have no elements.")
 
   (update-content [this id content]
-    "Change the content of the item with the  given id to be the
+    "Change the content of the item with the given id to be the
      specified content.")
 
   (track-modified-ids [this]
     "Record the ids that have been modified.")
 
   (fetch-and-clear-modified-ids [this]
-    "Clear the record modified ids.
-     Returns the new store, and the set of modified ids.")
+    "Clear the record of modified ids.
+     Returns the new store, and the original set of modified ids.")
 
   (declare-transient-id [this id]
     "Declare the id to be transient. It and all its descendant elements
@@ -164,7 +164,7 @@
      It must have no elements.")
 
   (update-content! [this id content]
-    "Change the content of the item with the  given id to be the
+    "Change the content of the item with the given id to be the
      specified content.")
 
   (declare-transient-id! [this id]

@@ -86,7 +86,6 @@
   ;; can match table headers. But a header doesn't count as a semantic part
   ;; of the condition, because it shouldn't affect what rows are selected.
   '(anything-immutable (:column :non-semantic)
-                       (:selector :non-semantic)
                        (:non-semantic :non-semantic)))
 
 (defn table-tab-non-semantic-elements
@@ -108,6 +107,7 @@
                                           header-condition-elements)))
                            header-conditions-elements)
                       ['(:row-condition :non-semantic)
+                       '(:selector :non-semantic)
                        '(:non-semantic :non-semantic)]))))))
 
 (def new-tab-elements

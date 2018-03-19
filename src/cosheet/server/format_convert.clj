@@ -27,24 +27,20 @@
      (first (add-entity store nil '(1 :format)))
      tables)))
 
-(defn convert-from-1-to-2
-  "Convert a store from format 1 to format 2.
-   The only difference is that in format 2, each table header is also marked
-   with (:selector :non-semantic)."
+(defn convert-from-1-or-2-to-3
+  "Convert a store from format 1 or 2 to format 3.
+   The only difference is that in format 3, each table condition is also marked
+   with (:selector :non-semantic). We leave behind (:selector :non-semantic)
+   that format 2 had on column headers, as they do no harm."
   [store]
   (let [format (first (matching-items '(nil :format) store))
         tables (matching-items '(nil :table) store)]
     (reduce
      (fn [store table]
-       (let [condition (first (label->elements table :row-condition))
-             columns (label->elements condition :column)]
-         (reduce
-          (fn [store column]
-            (first (add-entity store
-                               (:item-id column)
-                               '(:selector :non-semantic))))
-          store columns)))
-     (update-content store (:item-id format) 2)
+       (let [condition (first (label->elements table :row-condition))]
+         (first (add-entity store (:item-id condition)
+                            '(:selector :non-semantic)))))
+     (update-content store (:item-id format) 3)
      tables)))
 
 (defn convert-to-current
@@ -52,8 +48,8 @@
   [store]
   (let [format (first (matching-items '(nil :format) store))
         format (if format (content format) 0)]
-    (assert (and (>= format 0) (<= format 2))
-            (str ("Store in unknown format " format)))
+    (assert (and (>= format 0) (<= format 3))
+            (str "Store in unknown format " format))
     (cond-> store
       (<= format 0) convert-from-0-to-1
-      (<= format 1) convert-from-1-to-2)))
+      (<= format 2) convert-from-1-or-2-to-3)))

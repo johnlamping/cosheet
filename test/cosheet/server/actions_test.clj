@@ -27,7 +27,8 @@
                                immutable-semantic-to-list]]
              [referent :refer [item->canonical-semantic referent->string]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
-             [actions :refer :all])
+             [actions :refer :all]
+             [model-utils :refer [selector?]])
             ; :reload
             ))
 
@@ -209,15 +210,16 @@
                            {})))
          46))
   ;; Test making the new content be 'anything.
-  (is (= (content
-          (description->entity
-           (:item-id joe-age)
-           (do-set-content store
-                           {:referent (item-referent joe-age)
-                            :target-key "joe"
-                            :from "45" :to ""}
-                           {:selector-category :foo})))
-         'anything))
+  (let [[store id] (add-entity store joe-id '(:selector :non-semantic))]
+    (is (= (content
+            (description->entity
+             (:item-id joe-age)
+             (do-set-content store
+                             {:referent (item-referent joe-age)
+                              :target-key "joe"
+                              :from "45" :to ""}
+                             {})))
+           'anything)))
   ;; Test doing nothing when the old doesn't match.
   (is (= (content
           (description->entity

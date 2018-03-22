@@ -20,6 +20,7 @@
    (cosheet.server
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
+    [model-utils :refer [selector?]]
     [referent :refer [instantiate-referent instantiate-or-create-referent
                       instantiate-to-items
                       referent->string referent?
@@ -221,26 +222,23 @@
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[groups new-ids store] (instantiate-or-create-referent
                                       referent store)
-              first-group (first groups)
-              remaining-items (apply concat (rest groups))]
-          (println "updating "
-                   (+ (count first-group) (count remaining-items)) " items")
-          (let [first-to (if (and (:selector-category attributes)
-                                  (= to "")
-                                  (not= from "\u00A0..."))
-                           'anything
-                           to)
-                s1 (reduce (partial update-set-content-if-matching
-                                    from first-to)
-                           store first-group)
-                new-store (reduce (partial update-set-content-if-matching
-                                           from to)
-                                  s1 remaining-items)]
+              items (apply concat groups)]
+          (println "updating " (count items) " items")
+          (let [new-store (reduce
+                           (fn [store item]
+                             (let [to (if (and (= to "")
+                                               (not= from "\u00A0...")
+                                               (selector? item))
+                                        'anything
+                                        to)]
+                               (update-set-content-if-matching
+                                from to store item)))
+                                  store items)]
             ;; If we have set a virtual item, tell the client to select it.
             (if (and (or (virtual-referent? referent)
                          (virtual-union-referent? referent))
                      select-pattern
-                     (or (seq first-group) (seq remaining-items)))
+                     (seq items))
               (add-select-request
                new-store (map #(description->entity % new-store) new-ids)
                select-pattern target-key)

@@ -5,7 +5,7 @@
                      [expression :refer [expr expr-let expr-seq]]
                      [store :refer [new-element-store update-content]]
                      [entity :refer [description->entity
-                                     content label->elements]]
+                                     content subject label->elements]]
                      [store-utils :refer [add-entity]]
                      [query :refer [matching-items]])
             (cosheet.server
@@ -65,6 +65,11 @@
                             [item store]))
                         condition store))
 
+(defn selector? [item]
+  (or (some #(= (content %) :selector)
+            (label->elements item :non-semantic))
+      (if-let [subj (subject item)]
+        (is-selector subj))))
 
 ;;; Creating new tabs and tables.
 

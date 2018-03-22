@@ -1,8 +1,10 @@
 (ns cosheet.server.model-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [store :refer [new-element-store]]
+                     [store-utils :refer [add-entity]]
                      [query :refer [matching-items matching-elements]]
-                     [entity :refer [to-list]]
+                     [entity :refer [description->entity label->elements
+                                     to-list]]
                      [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server
@@ -20,6 +22,36 @@
                                      s1)]
     (is (= c1  '("x" ("\u00A0A" :a) ("\u00A0B" 22))))
     (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
+
+(deftest is-selector-test
+  (let [[s1 selector-root-id] (add-entity
+                               (starting-store "tab") nil
+                               '(thing (:selector :non-semantic)
+                                       (child (1 (:order :non-semantic))
+                                              grandchild)))
+        [s non-selector-root-id] (add-entity
+                                  s1 nil
+                                  '(thing (child (1 (:order :non-semantic))
+                                                 grandchild)))
+        selector-root (description->entity selector-root-id s)
+        selector-child (first (matching-elements 'child selector-root))
+        selector-grandchild (first (matching-elements 'grandchild
+                                                      selector-child))
+        non-selector-root (description->entity non-selector-root-id s)
+        non-selector-child (first (matching-elements 'child non-selector-root))
+        non-selector-grandchild (first (matching-elements 'grandchild
+                                                          non-selector-child))]
+    
+    (is (selector? (first (label->elements
+                           (first (label->elements
+                                   (first-tab-R s) :tab-topic))
+                           :row-condition))))
+    (is (selector? selector-root))
+    (is (selector? selector-child))
+    (is (selector? selector-grandchild))
+    (is (not (selector? non-selector-root)))
+    (is (not (selector? non-selector-child)))
+    (is (not (selector? non-selector-grandchild)))))
 
 (deftest add-table-test
   (let [s (starting-store "hi")

@@ -78,7 +78,8 @@
 ;;;                  one element is created for each item in adjacent.
 ;;;                  Adjacent-referent gives items the new items should
 ;;;                  be adjacent to in the order. It may be either a single
-;;;                  referent or a list of referents. In either case, each
+;;;                  referent or a list of referents preceeded by :multiple.
+;;;                  In either case, each
 ;;;                  of the referents must have the same number of items,
 ;;;                  which must be the same number as subject, if it is
 ;;;                  present. If there are multiple adjacent referents, the
@@ -195,13 +196,19 @@
                                        use-bigger false}
                                  :as options}]
    (when subject (assert (referent? subject)))
-   (when adjacent (assert (referent? adjacent)))
+   (when adjacent (assert (or (referent? adjacent)
+                              (and (sequential? adjacent)
+                                   (= (first adjacent) :multiple)
+                                   (every? referent? (rest adjacent))))))
    (assert (or subject adjacent))
    (assert (#{:before :after} position))
    (assert (contains? #{true false} use-bigger))
    (assert (every? #{:position :use-bigger} (keys options)))
    [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
-    (coerce-item-to-id adjacent) position use-bigger]))
+    (if (sequential? adjacent)
+      (map coerce-item-to-id adjacent)
+      (coerce-item-to-id adjacent))
+    position use-bigger]))
 
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
@@ -661,6 +668,32 @@
         true
         [exemplar nil store]))
 
+(defn find-adjacents
+  "Given an adjacent referent from a virtual referent, and the subject items,
+   Return the adjacent to use for each subject item. original-store gives the
+   store to instantiate in, while store gives the store that the returned
+   items should reference."
+  [adjacent-referent subjects position original-store store]
+  (cond
+    (nil? adjacent-referent)
+    (map-map (fn [item] (furthest-element item position)) subjects)
+    (and (sequential? adjacent-referent)
+         (= (first adjacent-referent) :multiple))
+    (let [groupses (map (fn [referent]
+                          (map-map #(in-different-store % store)
+                                   (instantiate-referent
+                                    referent original-store)))
+                        (rest adjacent-referent))]
+      (apply map (fn [& groups]
+                   (apply map (fn [& items]
+                                (furthest-item items position))
+                          groups))
+             groupses))
+    true
+    (map-map #(in-different-store % store)
+             (instantiate-referent
+              adjacent-referent original-store))))
+
 (defn create-virtual-referent
   "Create items for virtual referents. Return the
   new items, a seq of ids of the first item created for this referent
@@ -677,12 +710,8 @@
           (instantiate-or-create-referent
            subject-referent original-store store))
         subject-groups (map-map #(in-different-store % store) subject-groups)
-        adjacent-groups (if (nil? adjacent-referent)
-                          (map-map (fn [item] (furthest-element item position))
-                                   subject-groups)
-                          (map-map #(in-different-store % store)
-                                   (instantiate-referent
-                                    adjacent-referent original-store)))
+        adjacent-groups (find-adjacents adjacent-referent subject-groups
+                                        position original-store store)
         subject-groups
         (if (nil? subject-referent)
           (map-map (constantly nil) adjacent-groups)

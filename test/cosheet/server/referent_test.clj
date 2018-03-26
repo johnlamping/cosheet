@@ -13,7 +13,8 @@
                      [canonical :refer [canonicalize-list]]
                      [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
-            (cosheet.server [referent :refer :all])
+            (cosheet.server [referent :refer :all]
+                            [order-utils :refer [order-items-R]])
             ; :reload
             ))
 
@@ -81,6 +82,7 @@
 (def joe-age-tag (first (matching-elements "age" joe-age)))
 (def jane (description->entity jane-id store))
 (def jane-age (first (matching-elements 45 jane)))
+(def jane-female (first (matching-elements "female" jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 (def dup (description->entity dup-id store))
 (def dup-females (matching-elements "female" dup))
@@ -339,6 +341,48 @@
       (is (check (canonicalize-list (semantic-to-list-R new-jane))
                  (canonicalize-list
                   `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
+  ;; Multiple adjacents
+  (let [referent (virtual-referent '("hi" tag)
+                                   (item-referent jane)
+                                   [:multiple
+                                    (item-referent jane-age)
+                                    (item-referent jane-female)]
+                                   :position :after)
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
+    (is (check groups [[(any)]]))
+    (let [[[item]] groups
+          new-jane (in-different-store jane item)]
+      (is (= new-ids [(:item-id item)]))
+      (is (= (:store item) store))
+      (is (= new-jane (entity/subject item)))
+      (is (= (semantic-to-list-R item) '("hi" tag)))
+      (is (= (canonicalize-list (semantic-to-list-R new-jane))
+             (canonicalize-list
+              '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))
+      (let [ordered-elements (order-items-R (semantic-elements-R new-jane))]
+        (is (= item (nth ordered-elements 2))))))
+  ;; Multiple adjacents in the other order
+  (let [referent (virtual-referent '("hi" tag)
+                                   (item-referent jane)
+                                   [:multiple
+                                    (item-referent jane-age)
+                                    (item-referent jane-female)]
+                                   :position :before)
+        [groups new-ids store] (instantiate-or-create-referent
+                                referent store)]
+    (is (check groups [[(any)]]))
+    (let [[[item]] groups
+          new-jane (in-different-store jane item)]
+      (is (= new-ids [(:item-id item)]))
+      (is (= (:store item) store))
+      (is (= new-jane (entity/subject item)))
+      (is (= (semantic-to-list-R item) '("hi" tag)))
+      (is (= (canonicalize-list (semantic-to-list-R new-jane))
+             (canonicalize-list
+              '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))
+      (let [ordered-elements (order-items-R (semantic-elements-R new-jane))]
+        (is (= item (nth ordered-elements 0))))))
   ;; A union of virtual referents
   (let [r1 (virtual-referent "male" (item-referent jane)
                              (item-referent jane-age))

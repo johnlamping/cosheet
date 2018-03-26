@@ -48,8 +48,7 @@
                 (when (seq conditions) (list* nil conditions))
                 (subject-referent-given-inherited inherited)
                 (hierarchy-node-parallel-items-referent
-                 hierarchy-node inherited)
-                :selector (when (:selector-category inherited) :first-group))
+                 hierarchy-node inherited))
      :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
 (defn add-adjacent-sibling-command
@@ -172,15 +171,12 @@
   "Return the dom for a virtual element of an item."
   [virtual-content direction inherited]
   (let [dom (virtual-element-DOM nil :after inherited)
-        selector (when (:selector-category inherited)
-                   :first-group)
         template (if (:template inherited)
                    (cons virtual-content (rest (:template inherited)))
                    virtual-content)
         virtual-ref (virtual-referent
                      template
-                     (subject-referent-given-inherited inherited)
-                     nil :selector selector)
+                     (subject-referent-given-inherited inherited) nil)
         inherited-for-label (-> inherited
                                 (assoc :template '(nil :tag)
                                        :subject-referent virtual-ref))

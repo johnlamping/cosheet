@@ -69,7 +69,7 @@
   (or (some #(= (content %) :selector)
             (label->elements item :non-semantic))
       (if-let [subj (subject item)]
-        (is-selector subj))))
+        (selector? subj))))
 
 ;;; Creating new tabs and tables.
 

@@ -52,6 +52,7 @@
                 (45 (~o4 :order :non-semantic)
                     ("age" :tag))))
 (def jane-list `("Jane" (~o1 :order :non-semantic)
+                 (:selector :non-semantic)
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
                      ("age" :tag))))
@@ -101,7 +102,7 @@
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
-               (canonicalize-list '(45 ("age" :tag) ""))))
+               (canonicalize-list '(45 ("age" :tag) anything))))
     (is (check (:select result)
                [["jane-age" (any)] [["jane-age"]]]))))
 
@@ -114,7 +115,7 @@
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
-               (canonicalize-list '(45 ("age" :tag) ("" :tag)))))
+               (canonicalize-list '(45 ("age" :tag) (anything :tag)))))
     (is (check (:select result)
                [[:label (any)] [["jane-age"]]]))))
 
@@ -130,7 +131,8 @@
                 (to-list (description->entity (:item-id jane) new-store)))
                (canonicalize-list '("Jane"
                                     "female"
-                                    (45 ("age" :tag)) ("" ("age" :tag))))))
+                                    (45 ("age" :tag))
+                                    (anything ("age" :tag))))))
     (is (check (:select result)
                [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -148,7 +150,8 @@
                 (to-list (description->entity (:item-id jane) (:store result))))
                (canonicalize-list '("Jane"
                                     "female"
-                                    (45 ("age" :tag)) ("" ("age" :tag))))))
+                                    (45 ("age" :tag))
+                                    (anything ("age" :tag))))))
     (is (check (:select result)
                [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -175,6 +178,7 @@
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
                (canonicalize-list `("Jane" (~o1 :order :non-semantic)
+                                    (:selector :non-semantic)
                                     ("female" (~o2 :order :non-semantic)))))))
   ;; Set up a store with some headers to test the special cases.
   (let [[store column1-id] (add-entity store nil
@@ -288,7 +292,12 @@
           new-store (current-store mutable-store)
           select (:select result)
           new-id (last (first select))]
+      (println (simplify-for-print result))
       (is (= select [[:jane new-id] [[:jane]]]))
+      (println ["YYY" (to-list (description->entity (:item-id jane) new-store))])
+      (println new-id)
+      (println (to-list
+                (description->entity new-id new-store)) )
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
                  (canonicalize-list '("Jane" "female"

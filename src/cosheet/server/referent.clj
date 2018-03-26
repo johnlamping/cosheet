@@ -18,7 +18,7 @@
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
                                   order-items-R furthest-item furthest-element]]
-             [model-utils :refer [specialize-template]])))
+             [model-utils :refer [selector? specialize-template]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -67,7 +67,7 @@
 ;;;                  first referent and not by the second.
 ;;;                  refers to the sequence of groups
 ;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
-;;;                            <adjacent-referent> position use-bigger selector]
+;;;                            <adjacent-referent(s)> <position> <use-bigger>]
 ;;;                  For each group of items refered to by subject-referent,
 ;;;                  refers to a group of new items matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
@@ -77,20 +77,21 @@
 ;;;                  referent can be virtual, and may be nil, in which case
 ;;;                  one element is created for each item in adjacent.
 ;;;                  Adjacent-referent gives items the new items should
-;;;                  be adjacent to in the order. It must either
-;;;                  have the same group structure as subject-referent,
-;;;                  or it must have one group for each item of sequence
-;;;                  referent. It may be nil, in which case subject-referent
+;;;                  be adjacent to in the order. It may be either a single
+;;;                  referent or a list of referents. In either case, each
+;;;                  of the referents must have the same number of items,
+;;;                  which must be the same number as subject, if it is
+;;;                  present. If there are multiple adjacent referents, the
+;;;                  new item will be adjacent to the furthest in the direction
+;;;                  of position. Finally, adjacent-referent
+;;;                  may be nil, in which case subject-referent
 ;;;                  must not be nil, and the element of the subject furthest
 ;;;                  in the position direction is used for adjacent, or
 ;;;                  subject, itself, if it has no ordered elements.
 ;;;                  Position and use-bigger say where the new
-;;;                  item should go relative to the adjacent item. If selector
-;;;                  has the value :first-group, it means that the first
-;;;                  group of items will be selectors, and so don't need
-;;;                  'anything turned into space.
-;;;                  Virtual referents may never be nested inside non-virtual
-;;;                  referents.
+;;;                  item should go relative to the adjacent item.
+;;;                  Virtual referents may not be nested inside non-virtual
+;;;                  referents, except union referents.
 
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
@@ -189,7 +190,7 @@
   "Create a virtual referent."
   ([exemplar subject]
    (virtual-referent exemplar subject nil))
-  ([exemplar subject adjacent & {:keys [position use-bigger selector]
+  ([exemplar subject adjacent & {:keys [position use-bigger]
                                   :or {position :after
                                        use-bigger false}
                                  :as options}]
@@ -198,10 +199,9 @@
    (assert (or subject adjacent))
    (assert (#{:before :after} position))
    (assert (contains? #{true false} use-bigger))
-   (assert (every? #{:position :use-bigger :selector} (keys options)))
-   (when selector (assert (= selector :first-group)))
+   (assert (every? #{:position :use-bigger} (keys options)))
    [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
-    (coerce-item-to-id adjacent) position use-bigger selector]))
+    (coerce-item-to-id adjacent) position use-bigger]))
 
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
@@ -240,14 +240,13 @@
                       (parallel-union-referent
                        (map first-group-referent referents)))
     :difference referent
-    :virtual (let [[_ exemplar subject adjacent position use-bigger selector]
+    :virtual (let [[_ exemplar subject adjacent position use-bigger]
                    referent]
                (virtual-referent exemplar
                                  (when subject (first-group-referent subject))
                                  (when adjacent (first-group-referent adjacent))
                                  :position position
-                                 :use-bigger use-bigger
-                                 :selector selector))))
+                                 :use-bigger use-bigger))))
 
 ;;; The string format of a referent is
 ;;;     for item referents: I<the digits of their id>
@@ -479,7 +478,7 @@
 
 (defn condition-to-template
   "Given a condition, turn it into a template by removing (nil :order
-  :non-semantic) elements (which get added by template-to-condition)
+  :non-semantic) elements (which get added by pattern-to-condition)
   and by then replacing any nil by the specified replacement, or the empty
   string by default."
   ([condition]
@@ -599,55 +598,43 @@
                     (map count subject-groups)))
     adjacent-groups))
 
-(defn create-elements-satisfying
-  "Make a series of elements satisfying the template.
-  Return the new elements and the updated store.
-  subjects and adjacent-items must be seqs of groups of items, with
-  corresponding entries.
-  adjacent-item and position give order information for a new elements."
-  [template subject-groups adjacent-groups position use-bigger store]
-  (let [[id-groups store]
-        (thread-map
-         (fn [[subject-group adjacent-group] store]
-           (thread-map
-            (fn [[subject-item adjacent-item] store]
-              (let [[store id] (update-add-entity-adjacent-to
-                                store (:item-id subject-item)
-                                template adjacent-item position use-bigger)]
-                [id store]))
-            (map vector subject-group adjacent-group)
-            store))
-         (map vector subject-groups adjacent-groups)
-         store)]
-    [(map-map #(description->entity % store) id-groups)
-     store]))
+;;; TODO: Move to model-utils?
+(defn create-selector-or-non-selector-element
+  "Create an element, using the appropriate template depending on whether
+   the subject is a selector. Return the updated store and the id of the
+   new element."
+  [selector-template non-selector-template subject
+   adjacent position use-bigger store]
+  (let [template (if (or (= selector-template non-selector-template)
+                         (and subject (selector? subject)))
+                   selector-template
+                   non-selector-template)]
+    (update-add-entity-adjacent-to store (:item-id subject)
+                                   template adjacent position use-bigger)))
 
 (defn create-possible-selector-elements
-  "Given that the first group of the subject may describe a selector, and
-  the rest its selected, create appropriate elements both for the
-  selector and its selected. Return the new items and new store."
-  [template subject-groups adjacent-groups position use-bigger selector
-   store]
+  "Create elements, specializing the template as appropriate, depending on
+   whether each subject is a selector. Return the updated store and the ids
+   of the new elements."
+  [template subject-groups adjacent-groups position use-bigger store]
   (let [[specialized-template store] (specialize-template template store)
-        ;; The template for a non-selector
-        template (-> specialized-template
-                     flatten-nested-content
-                     pattern-to-condition
-                     condition-to-template)]
-    (if (= selector :first-group)
-      (let [sel-template (condition-to-template specialized-template 'anything)
-            [items1 store] (create-elements-satisfying
-                            sel-template
-                            [(first subject-groups)] [(first adjacent-groups)]
-                            position use-bigger store)
-            [items2 store] (create-elements-satisfying
-                            template (rest subject-groups)
-                            (rest adjacent-groups) position use-bigger store)]
-        [(concat items1 items2) store])
-      (let [[items store] (create-elements-satisfying
-                           template subject-groups adjacent-groups
-                           position use-bigger store)]
-        [items store]))))
+        flattened-template (flatten-nested-content specialized-template)
+        selector-template (condition-to-template flattened-template 'anything)
+        non-selector-template (-> flattened-template
+                                  pattern-to-condition
+                                  condition-to-template)
+        [new-ids store]
+        (thread-map
+         (fn [[subject adjacent] store]
+           (let [[store id] (create-selector-or-non-selector-element
+                             selector-template non-selector-template
+                             subject adjacent position use-bigger store)]
+             [id store]))
+         (map vector
+              (apply concat subject-groups) (apply concat adjacent-groups))
+         store)]
+    [(map #(description->entity % store) new-ids)
+     store]))
 
 (def instantiate-or-create-referent)
 
@@ -675,13 +662,12 @@
         [exemplar nil store]))
 
 (defn create-virtual-referent
-  "Create items for virtual referents. Return the groups
-  of new items, a seq of ids of the first item created for this referent
+  "Create items for virtual referents. Return the
+  new items, a seq of ids of the first item created for this referent
   and each nested virtual referent, and the updated store."
   [referent original-store store]
   (assert (virtual-referent? referent))
-  (let [[_ exemplar subject-referent adjacent-referent
-         position use-bigger selector]
+  (let [[_ exemplar subject-referent adjacent-referent position use-bigger]
         referent
         [template new-template-ids store]
         (instantiate-or-create-exemplar exemplar original-store store)
@@ -699,15 +685,15 @@
                                     adjacent-referent original-store)))
         subject-groups
         (if (nil? subject-referent)
-          [(map-map (constantly nil) adjacent-groups)]
+          (map-map (constantly nil) adjacent-groups)
           subject-groups)
         adjacent-groups (adjust-adjacents
                          subject-groups adjacent-groups position)
-        [groups store] (create-possible-selector-elements
+        [items store] (create-possible-selector-elements
                         template subject-groups adjacent-groups
-                        position use-bigger selector store)]
-    [groups
-     (concat [(:item-id (first (apply concat groups)))]
+                        position use-bigger store)]
+    [[items]
+     (concat [(:item-id (first items))]
              new-subject-ids new-template-ids)
      store]))
 

@@ -67,8 +67,7 @@
                                 (item-referent tabs)
                                 (if (referent? adjacent)
                                   adjacent
-                                  (item-referent adjacent))
-                                :selector :first-group))
+                                  (item-referent adjacent))))
         items-referent (fn [& items] (union-referent (map item-referent items)))
         starting-inherited {:priority 1
                            :width 3.0

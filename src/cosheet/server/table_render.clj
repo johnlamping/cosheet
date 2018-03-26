@@ -123,13 +123,11 @@
         new-column-ref (virtual-referent (:template inherited)
                                          (union-referent [subject-ref])
                                          adjacent-referent
-                                         :position :after
-                                         :selector :first-group)
+                                         :position :after)
         new-element-ref (virtual-referent (cons '??? (rest elements-template))
                                           new-column-ref
                                           nil
-                                          :position :after
-                                          :selector :first-group)
+                                          :position :after)
         select-pattern (conj (:key-prefix inherited)
                              [:pattern :subject] [:pattern])]
     {:referent new-element-ref
@@ -320,8 +318,7 @@
                          :subject-referent (virtual-referent
                                             (:template inherited)
                                             (:subject-referent inherited)
-                                            adjacent-referent
-                                            :selector :first-group)
+                                            adjacent-referent)
                          :select-pattern (conj (:key-prefix inherited)
                                                [:pattern :subject] [:pattern])
                          :template template)]
@@ -612,8 +609,7 @@
                                     new-column-template
                                     (item-referent row-condition-item)
                                     (item-referent (or (last columns)
-                                                       table-item))
-                                    :selector :first-group)
+                                                       table-item)))
                   virtual-column-description {:column-id :virtualColumn
                                               :template virtual-template
                                               :exclusions nil}

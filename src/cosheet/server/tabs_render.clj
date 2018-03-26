@@ -61,8 +61,7 @@
                           {:referent (virtual-referent
                                       (:template inherited)
                                       (:subject-referent inherited)
-                                      adjacent-referent
-                                      :selector :first-group)}}
+                                      adjacent-referent)}}
                    (= (count tab-items) 1)
                    (assoc :selected {:referent tabs-referent
                                      :special :tab})
@@ -135,9 +134,7 @@
   (let [v-ref (virtual-referent
                      (cons "" new-tab-elements)
                      subject-referent
-                     (hierarchy-last-item-referent hierarchy)
-                     ;; Avoid turning 'anything in the template into ""
-                     :selector :first-group)
+                     (hierarchy-last-item-referent hierarchy))
         inherited (assoc inherited :subject-referent v-ref)
         virtual-inherited (assoc inherited :template "")]
     (add-attributes

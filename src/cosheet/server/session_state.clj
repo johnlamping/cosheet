@@ -135,8 +135,10 @@
   "Add the root transient element to an immutable store.
    Return the revised store and the id of the element."
   [store]
-  (let [[store id] (add-entity store nil '("" :transient
-                                           (anything (:query :non-semantic))))]
+  (let [[store id] (add-entity store nil
+                               '("" :transient
+                                 (anything (:query :non-semantic)
+                                           (:selector :non-semantic))))]
     [(declare-transient-id store id) id]))
 
 (defn get-store

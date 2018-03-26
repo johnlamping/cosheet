@@ -8,8 +8,7 @@
              [referent :refer [semantic-elements-R semantic-to-list-R
                                item->canonical-semantic-R
                                union-referent-if-needed
-                               item-referent parallel-union-referent
-                               item-or-exemplar-referent]])))
+                               item-referent item-or-exemplar-referent]])))
 
 ;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,
 ;;; based on a multiset of "properties" associated with each leaf.

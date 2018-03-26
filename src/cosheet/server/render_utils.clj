@@ -271,9 +271,7 @@
                   (:template inherited)
                   (subject-referent-given-inherited inherited)
                   adjacent-referent
-                  :position position
-                  :selector (when (:selector-category inherited)
-                              :first-group))]
+                  :position position)]
     (virtual-referent-DOM referent inherited)))
 
 (defn nest-if-multiple-DOM

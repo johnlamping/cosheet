@@ -29,8 +29,7 @@
                       item-referent virtual-referent first-group-referent
                       semantic-elements-R
                       condition-to-template adjust-adjacents
-                      create-possible-selector-elements
-                      create-elements-satisfying]]
+                      create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -131,12 +130,10 @@
         {:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
-            selector (when selector-category :first-group)
             [added store] (create-possible-selector-elements
-                           nil items items :after true selector
-                           store)]
+                           nil items items :after true store)]
         (add-select-request
-         store [(first (apply concat added))]
+         store [(first added)]
          (or select-pattern
              (conj (pop-content-from-key target-key) [:pattern]))
          target-key)))))
@@ -151,12 +148,11 @@
             is-tag (when sample-item
                      (seq (matching-elements :tag sample-item)))]
         (when (not is-tag)
-          (let [selector (when selector-category :first-group)
-                [added store] (create-possible-selector-elements
+          (let [[added store] (create-possible-selector-elements
                                '(anything :tag) items items
-                               :after true selector store)]
+                               :after true store)]
             (add-select-request
-             store [(first (apply concat added))]
+             store [(first added)]
              (or select-pattern
                  (conj (subvec target-key 0 (- (count target-key) 1))
                        :label [:pattern])) target-key)))))))
@@ -169,13 +165,11 @@
       (when-let [condition (:template arguments)]
         (let [items (instantiate-referent referent store)
               subjects (map #(map subject %) items)
-              selector (when selector-category :first-group)
               [added store] (create-possible-selector-elements
-                             condition subjects items :after true selector
-                             store)
+                             condition subjects items :after true store)
               item-key (pop-content-from-key target-key)]
           (add-select-request
-           store [(first (apply concat added))]
+           store [(first added)]
            (conj (pop item-key) [:pattern]) target-key))))))
 
 (defn add-virtual [store target-key referent select-pattern]

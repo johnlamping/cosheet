@@ -120,10 +120,8 @@
                                           (:non-semantic :non-semantic))
                                         (union-referent
                                          [(item-referent query)])
-                                        (item-referent c1)
-                                        :selector :first-group)
-                                       nil
-                                       :selector :first-group) 
+                                        (item-referent c1))
+                                       nil) 
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
@@ -181,10 +179,8 @@
                                    (:column :non-semantic)
                                    (:non-semantic :non-semantic))
                                  (item-referent query)
-                                 (item-referent c6)
-                                 :selector :first-group)
-                                (item-referent c6)
-                                :selector :first-group)
+                                 (item-referent c6))
+                                (item-referent c6))
                                :select-pattern (conj table-key
                                                      [:pattern :subject]
                                                      [:pattern] )}}]]
@@ -210,8 +206,7 @@
                                 (:non-semantic :non-semantic)
                                 (???))
                               (item-referent query)
-                              (item-referent c6)
-                              :selector :first-group)
+                              (item-referent c6))
                    :exclusions nil}]
                  {:priority 3 :width 3.0 :key-prefix table-key}]]
                [:component {:key (conj table-key :virtualRow)
@@ -288,8 +283,7 @@
                                   (:non-semantic :non-semantic)
                                   (???))
                                 (item-referent query)
-                                (item-referent c6)
-                                :selector :first-group)
+                                (item-referent c6))
                                (item-referent joe)
                                (item-referent joe))
                               :select-pattern (conj table-key

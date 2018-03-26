@@ -344,20 +344,25 @@
                                    children))))]
      (node-f node child-doms function-info inherited))))
 
+(defn hierarchy-node-items-referents
+  "Given a hierarchy node or leaf, return a referent to each of its
+   descendants."
+  [hierarchy-node-or-leaf inherited]
+  (map #(item-referent-given-inherited (:item %) inherited)
+        (hierarchy-node-descendants hierarchy-node-or-leaf)))
+
 (defn hierarchy-node-items-referent
   "Given a hierarchy node or leaf, return a referent to all its descendants."
   [hierarchy-node-or-leaf inherited]
   (union-referent-if-needed
-   (map #(item-referent-given-inherited (:item %) inherited)
-        (hierarchy-node-descendants hierarchy-node-or-leaf))))
+   (hierarchy-node-items-referents hierarchy-node-or-leaf inherited)))
 
 (defn hierarchy-node-parallel-items-referent
   "Given a hierarchy node or leaf, return a referent to all its descendants,
   returning one group per group the subject returns."
   [hierarchy-node-or-leaf inherited]
   (parallel-union-referent
-   (map #(item-referent-given-inherited (:item %) inherited)
-        (hierarchy-node-descendants hierarchy-node-or-leaf))))
+   (hierarchy-node-items-referents hierarchy-node-or-leaf inherited)))
 
 (defn hierarchy-last-item-referent
   "Return a referent to the last item of the hierarchy, if any."

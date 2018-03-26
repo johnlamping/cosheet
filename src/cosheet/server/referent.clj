@@ -67,7 +67,7 @@
 ;;;                  first referent and not by the second.
 ;;;                  refers to the sequence of groups
 ;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
-;;;                            <adjacent-referent(s)> <position> <use-bigger>]
+;;;                            <adjacent-referents> <position> <use-bigger>]
 ;;;                  For each group of items refered to by subject-referent,
 ;;;                  refers to a group of new items matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
@@ -76,16 +76,15 @@
 ;;;                  virtual or contain virtual referents. The subject
 ;;;                  referent can be virtual, and may be nil, in which case
 ;;;                  one element is created for each item in adjacent.
-;;;                  Adjacent-referent gives items the new items should
-;;;                  be adjacent to in the order. It may be either a single
-;;;                  referent or a list of referents preceeded by :multiple.
-;;;                  In either case, each
-;;;                  of the referents must have the same number of items,
+;;;                  Adjacent-referent is a list of referents, each of which
+;;;                  gives items the new items could be adjacent to in the
+;;;                  order. Each
+;;;                  of the referents must yield the same number of items,
 ;;;                  which must be the same number as subject, if it is
 ;;;                  present. If there are multiple adjacent referents, the
 ;;;                  new item will be adjacent to the furthest in the direction
-;;;                  of position. Finally, adjacent-referent
-;;;                  may be nil, in which case subject-referent
+;;;                  of position. If there are no adjacent-referents
+;;;                  subject-referent
 ;;;                  must not be nil, and the element of the subject furthest
 ;;;                  in the position direction is used for adjacent, or
 ;;;                  subject, itself, if it has no ordered elements.
@@ -191,23 +190,22 @@
   "Create a virtual referent."
   ([exemplar subject]
    (virtual-referent exemplar subject nil))
-  ([exemplar subject adjacent & {:keys [position use-bigger]
+  ([exemplar subject adjacents & {:keys [position use-bigger]
                                   :or {position :after
                                        use-bigger false}
-                                 :as options}]
+                                  :as options}]
    (when subject (assert (referent? subject)))
-   (when adjacent (assert (or (referent? adjacent)
-                              (and (sequential? adjacent)
-                                   (= (first adjacent) :multiple)
-                                   (every? referent? (rest adjacent))))))
-   (assert (or subject adjacent))
+   (when adjacents (assert (or (referent? adjacents)
+                              (and (sequential? adjacents)
+                                   (every? referent? adjacents)))))
+   (assert (or subject adjacents))
    (assert (#{:before :after} position))
    (assert (contains? #{true false} use-bigger))
    (assert (every? #{:position :use-bigger} (keys options)))
    [:virtual (coerce-item-to-id exemplar) (coerce-item-to-id subject)
-    (if (sequential? adjacent)
-      (map coerce-item-to-id adjacent)
-      (coerce-item-to-id adjacent))
+    (if (referent? adjacents)
+      [(coerce-item-to-id adjacents)]
+      (map coerce-item-to-id adjacents))
     position use-bigger]))
 
 (defn item-or-exemplar-referent
@@ -229,31 +227,6 @@
   [referent]
   (cond (item-referent? referent) [referent nil]
         (exemplar-referent? referent) (rest referent)))
-
-(defn first-group-referent
-  "Given a referent, return a referent whose instantiation
-  is just the first group of the instantiation of the referent"
-  [referent]
-  (case (referent-type referent)
-    :item referent
-    :exemplar (let [[_ exemplar subject] referent]
-                    (exemplar-referent exemplar (first-group-referent subject)))
-    :elements (let [[_ condition subject] referent]
-                (elements-referent condition (first-group-referent subject)))
-    :query referent
-    :union (let [[_ & referents] referent]
-             (union-referent [(first referents)]))
-    :parallel-union (let [[_ & referents] referent]
-                      (parallel-union-referent
-                       (map first-group-referent referents)))
-    :difference referent
-    :virtual (let [[_ exemplar subject adjacent position use-bigger]
-                   referent]
-               (virtual-referent exemplar
-                                 (when subject (first-group-referent subject))
-                                 (when adjacent (first-group-referent adjacent))
-                                 :position position
-                                 :use-bigger use-bigger))))
 
 ;;; The string format of a referent is
 ;;;     for item referents: I<the digits of their id>
@@ -669,30 +642,25 @@
         [exemplar nil store]))
 
 (defn find-adjacents
-  "Given an adjacent referent from a virtual referent, and the subject items,
+  "Given a list of adjacent referent from a virtual referent,
+   and the subject items,
    Return the adjacent to use for each subject item. original-store gives the
    store to instantiate in, while store gives the store that the returned
    items should reference."
-  [adjacent-referent subjects position original-store store]
-  (cond
-    (nil? adjacent-referent)
+  [adjacent-referents subjects position original-store store]
+  (if
+    (empty? adjacent-referents)
     (map-map (fn [item] (furthest-element item position)) subjects)
-    (and (sequential? adjacent-referent)
-         (= (first adjacent-referent) :multiple))
     (let [groupses (map (fn [referent]
                           (map-map #(in-different-store % store)
                                    (instantiate-referent
                                     referent original-store)))
-                        (rest adjacent-referent))]
+                        adjacent-referents)]
       (apply map (fn [& groups]
                    (apply map (fn [& items]
                                 (furthest-item items position))
                           groups))
-             groupses))
-    true
-    (map-map #(in-different-store % store)
-             (instantiate-referent
-              adjacent-referent original-store))))
+             groupses))))
 
 (defn create-virtual-referent
   "Create items for virtual referents. Return the
@@ -700,7 +668,7 @@
   and each nested virtual referent, and the updated store."
   [referent original-store store]
   (assert (virtual-referent? referent))
-  (let [[_ exemplar subject-referent adjacent-referent position use-bigger]
+  (let [[_ exemplar subject-referent adjacent-referents position use-bigger]
         referent
         [template new-template-ids store]
         (instantiate-or-create-exemplar exemplar original-store store)
@@ -710,7 +678,7 @@
           (instantiate-or-create-referent
            subject-referent original-store store))
         subject-groups (map-map #(in-different-store % store) subject-groups)
-        adjacent-groups (find-adjacents adjacent-referent subject-groups
+        adjacent-groups (find-adjacents adjacent-referents subject-groups
                                         position original-store store)
         subject-groups
         (if (nil? subject-referent)

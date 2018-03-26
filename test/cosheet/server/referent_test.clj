@@ -33,7 +33,7 @@
                      (item-referent (->ItemId 6789)))
                     (virtual-referent (item-referent (->ItemId 1234))
                                       (item-referent (->ItemId 2345))
-                                      (item-referent (->ItemId 3456))
+                                      [(item-referent (->ItemId 3456))]
                                       :use-bigger true)]))
         serialized (referent->string referent)
         parsed (string->referent serialized)]
@@ -128,32 +128,21 @@
          (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
 
 (deftest instantiate-referent-test
-  ;; This also tests first-group-referent
   (let [referent (item-referent joe)]
-    (is (= (instantiate-referent referent store) [[joe]]))
-    (is (= [(first (instantiate-referent referent store))]
-           (instantiate-referent (first-group-referent referent) store))))
+    (is (= (instantiate-referent referent store) [[joe]])))
   (let [referent (exemplar-referent joe-age (item-referent jane))]
     (is (= (instantiate-referent referent store)
-           [[jane-age]]))
-    (is (= [(first (instantiate-referent referent store))]
-           (instantiate-referent (first-group-referent referent) store))))
+           [[jane-age]])))
   (let [referent (elements-referent '(nil ("age" tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
-               [(as-set [joe-age joe-bogus-age])]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               [(as-set [joe-age joe-bogus-age])])))
   (let [referent (query-referent '(nil (nil "age")))]
     (is (check (instantiate-referent referent store)
-               [(as-set [joe jane])]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               [(as-set [joe jane])])))
   (let [referent (exemplar-referent joe-age
                                     (query-referent '(nil (nil "age"))))]
     (is (check (instantiate-referent referent store)
-               [(as-set [joe-age jane-age])]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               [(as-set [joe-age jane-age])])))
   ;; An elements referent with an item for its condition.
   (is (check (instantiate-referent
               (elements-referent age-condition-id
@@ -164,32 +153,24 @@
                 (elements-referent '(nil "age") (item-referent jane))
                 (query-referent '(nil (nil "age")))])]
     (is (check (instantiate-referent referent store)
-               (as-set [[joe-age] [jane-age] (as-set [joe jane])])))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               (as-set [[joe-age] [jane-age] (as-set [joe jane])]))))
   ;; Exemplar of union
   (let [referent (exemplar-referent joe-age
                                     (union-referent [(item-referent joe)
                                                      (item-referent jane)]))]
     (is (check (instantiate-referent referent store)
-               (as-set [[joe-age] [jane-age]])))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               (as-set [[joe-age] [jane-age]]))))
   (let [referent (difference-referent (query-referent '(nil (nil "age")))
                                       (item-referent joe))]
     (is (check (instantiate-referent referent store)
-               [[jane]]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               [[jane]])))
   ;; Exemplar of union of elements
   (let [referent (exemplar-referent
                (item-referent joe-age-tag)
                (union-referent [(elements-referent 45 (item-referent joe))
                                 (elements-referent 45 (item-referent jane))]))]
     (is (check (instantiate-referent referent store)
-               [[joe-age-tag] [jane-age-tag]]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
+               [[joe-age-tag] [jane-age-tag]])))
   ;; Preference of Exemplar of for exemplar element
   (is (check (instantiate-referent
               (exemplar-referent (item-referent dup-female-1)
@@ -206,23 +187,7 @@
                   [(elements-referent 45 (query-referent '(nil (nil "age"))))
                    (elements-referent 39 (query-referent '(nil (nil "age"))))])]
     (is (check (instantiate-referent referent store)
-               (as-set [(as-set [joe-age jane-age]) [joe-bogus-age]])))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
-  ;; Corresponding parallel union
-  (let [union-ref (union-referent [(item-referent joe) (item-referent jane)])
-        referent (parallel-union-referent [union-ref
-                                           (elements-referent 45 union-ref)])]
-    (is (check (instantiate-referent referent store)
-               [(as-set [joe joe-age]) [jane jane-age]]))
-    (is (check [(first (instantiate-referent referent store))]
-               (instantiate-referent (first-group-referent referent) store))))
-  ;; A parallel union where the parts have different numbers of groups.
-  (let [union-ref (union-referent [(item-referent joe) (item-referent jane)])
-        referent (parallel-union-referent [union-ref
-                                           (item-referent joe-age)])]
-    (is (check (instantiate-referent referent store)
-               [(as-set [joe joe-age]) [jane]]))))
+               (as-set [(as-set [joe-age jane-age]) [joe-bogus-age]])))))
 
 (deftest instantiate-or-create-referent-test
   (let [referent (exemplar-referent joe-age (item-referent jane))]
@@ -242,12 +207,7 @@
       (is (= (semantic-to-list-R item) "male"))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) "male")))))
-    ;; Check first-group-referent on virtuals
-    (let [[groups1 new-ids store1] (instantiate-or-create-referent
-                                    (first-group-referent referent) store)]
-      (is (= groups1 groups))
-      (is (= store1 store0))))
+              '("Jane" "female" (45 ("age" tag)) "male"))))))
   ;; A referent for the exemplar.
   (let [referent (virtual-referent joe-male (item-referent jane)
                                    (item-referent jane-age))
@@ -336,7 +296,11 @@
       (is (= new-sym "\u00A0A"))
       (is (check (canonicalize-list (semantic-to-list-R new-joe))
                  (canonicalize-list
-                  `("Joe" ("\u00A0B" ~new-sym) "male"  "married" (45 ("age" ~'tag))
+                  `("Joe"
+                    ("\u00A0B" ~new-sym)
+                    "male"
+                    "married"
+                    (45 ("age" ~'tag))
                     (39 ("age" ~'tag) ("doubtful" "confidence"))))))
       (is (check (canonicalize-list (semantic-to-list-R new-jane))
                  (canonicalize-list
@@ -344,8 +308,7 @@
   ;; Multiple adjacents
   (let [referent (virtual-referent '("hi" tag)
                                    (item-referent jane)
-                                   [:multiple
-                                    (item-referent jane-age)
+                                   [(item-referent jane-age)
                                     (item-referent jane-female)]
                                    :position :after)
         [groups new-ids store] (instantiate-or-create-referent
@@ -365,8 +328,7 @@
   ;; Multiple adjacents in the other order
   (let [referent (virtual-referent '("hi" tag)
                                    (item-referent jane)
-                                   [:multiple
-                                    (item-referent jane-age)
+                                   [(item-referent jane-age)
                                     (item-referent jane-female)]
                                    :position :before)
         [groups new-ids store] (instantiate-or-create-referent

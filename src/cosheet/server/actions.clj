@@ -26,7 +26,7 @@
                       referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
-                      item-referent virtual-referent first-group-referent
+                      item-referent virtual-referent
                       semantic-elements-R
                       condition-to-template adjust-adjacents
                       create-possible-selector-elements]]

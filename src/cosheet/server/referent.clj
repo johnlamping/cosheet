@@ -58,10 +58,6 @@
 ;;;           union  [:union  <referent> ...]
 ;;;                  Refers to one group of items per referent, each
 ;;;                  containg all items that referent refers to.
-;;;  parallel-union  [:parallel-union <referent> ...]
-;;;                  Refers to the sequence of groups formed by unioning
-;;;                  corresponding groups from the sequences. If some sequences
-;;;                  are shorter, they are padded out with empty groups.
 ;;;      difference  [:difference <referent> <referent>]
 ;;;                  Returns a single group of all items refered to by the
 ;;;                  first referent and not by the second.
@@ -108,8 +104,7 @@
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :query :union :parallel-union :difference
-              :virtual}
+           (#{:exemplar :elements :query :union :difference :virtual}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -169,15 +164,6 @@
   (if (= (count referents) 1)
     (first referents)
     (union-referent referents)))
-
-(defn parallel-union-referent
-  "Create a referent for the parallel union of the referents."
-  [referents]
-  (doseq [referent referents]
-    (assert (referent? referent)))
-  (if (= (count referents) 1)
-    (first referents)
-    (vec (cons :parallel-union referents))))
 
 (defn difference-referent
   "Create a difference referent."
@@ -245,7 +231,6 @@
    \E :elements
    \Q :query
    \U :union
-   \P :parallel-union
    \D :difference
    \V :virtual})
 (def type->letters (clojure.set/map-invert letters->type))
@@ -549,14 +534,6 @@
     :union (let [[_ & referents] referent]
              (map #(instantiate-to-items % immutable-store)
                   referents))
-    :parallel-union (let [[_ & referents] referent
-                          groupses (map #(instantiate-referent
-                                          % immutable-store)
-                                        referents)
-                          longest (apply max (map count groupses))
-                          padded (map #(take longest (concat % (repeat nil)))
-                                      groupses)]
-                      (apply map (fn [& groups] (apply concat groups)) padded))
     :difference (let [[_ plus minus] referent]
                   [(remove
                     (set (instantiate-to-items minus immutable-store))

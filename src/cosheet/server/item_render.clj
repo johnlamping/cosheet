@@ -30,7 +30,8 @@
                                    content-attributes
                                    subject-referent-given-inherited
                                    item-referent-given-inherited
-                                   hierarchy-node-parallel-items-referent
+                                   hierarchy-node-items-referents
+                                   hierarchy-node-items-referent
                                    hierarchy-node-DOM-R]])))
 
 (declare item-without-labels-DOM-R)
@@ -47,7 +48,7 @@
     {:referent (virtual-referent
                 (when (seq conditions) (list* nil conditions))
                 (subject-referent-given-inherited inherited)
-                (hierarchy-node-parallel-items-referent
+                (hierarchy-node-items-referents
                  hierarchy-node inherited))
      :select-pattern (conj (:key-prefix inherited) [:pattern])}))
 
@@ -192,9 +193,7 @@
   that give rise to the properties of the node.
   Inherited describes the overall context of the node."
   [hierarchy-node inherited]
-  ;; We have to use a parallel union referent here, so that the groupings
-  ;; of the subject are preserved if we are part of a header.
-  (let [items-referent (hierarchy-node-parallel-items-referent
+  (let [items-referent (hierarchy-node-items-referent
                         hierarchy-node inherited)
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))

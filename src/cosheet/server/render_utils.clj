@@ -12,7 +12,7 @@
             (cosheet.server
              [referent :refer [referent?
                                virtual-referent item->canonical-semantic
-                               parallel-union-referent elements-referent
+                               elements-referent
                                item-referent item-or-exemplar-referent
                                union-referent-if-needed
                                item->canonical-semantic-R
@@ -355,13 +355,6 @@
   "Given a hierarchy node or leaf, return a referent to all its descendants."
   [hierarchy-node-or-leaf inherited]
   (union-referent-if-needed
-   (hierarchy-node-items-referents hierarchy-node-or-leaf inherited)))
-
-(defn hierarchy-node-parallel-items-referent
-  "Given a hierarchy node or leaf, return a referent to all its descendants,
-  returning one group per group the subject returns."
-  [hierarchy-node-or-leaf inherited]
-  (parallel-union-referent
    (hierarchy-node-items-referents hierarchy-node-or-leaf inherited)))
 
 (defn hierarchy-last-item-referent

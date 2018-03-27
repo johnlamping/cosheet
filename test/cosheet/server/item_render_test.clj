@@ -14,8 +14,7 @@
              [test-utils :refer [check any as-set
                                  let-mutated item->immutable]])
             (cosheet.server
-             [referent :refer [item-referent union-referent
-                               parallel-union-referent virtual-referent]]
+             [referent :refer [item-referent union-referent virtual-referent]]
              [item-render :refer :all])
             ; :reload
             ))
@@ -107,10 +106,10 @@
         age-key [:root (:item-id age)]
         tags-key (conj age-key :label)
         none-key (conj age-key (:item-id none))
-        one-another-two-parallel-referent (parallel-union-referent
-                                           [(item-referent one)
-                                            (item-referent another)
-                                            (item-referent two)])]
+        one-another-two-items [(item-referent one)
+                               (item-referent another)
+                               (item-referent two)]
+        one-another-two-referent (union-referent one-another-two-items)]
     (is (check
          dom
          [:div {:class "item with-elements"}
@@ -130,7 +129,7 @@
               {:priority 1
                :width 0.5
                :key-prefix tags-key
-               :subject-referent one-another-two-parallel-referent
+               :subject-referent one-another-two-referent
                :template '(nil :tag)
                :attributes
                [[(:item-id another) {:class "added1"}]
@@ -138,7 +137,7 @@
                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             'nil (item-referent age)
-                                            one-another-two-parallel-referent) 
+                                            one-another-two-items) 
                                  :select-pattern (conj age-key [:pattern])}}]]
                :selector-category :some-category}]]
             [:div {:class "indent-wrapper"}
@@ -160,7 +159,7 @@
                      {:add-sibling {:referent
                                     (virtual-referent
                                      'nil (item-referent age)
-                                     one-another-two-parallel-referent) 
+                                     one-another-two-items) 
                                     :select-pattern (conj age-key [:pattern])}
                       }]]
                   :selector-category :some-category}]]
@@ -310,14 +309,14 @@
         one-key (conj age-key (:item-id one))
         unique (first (current-value (matching-elements "unique" age)))
         certainty (first (current-value (matching-elements "certainty" unique)))
-        likelihoods-parallel-referent (parallel-union-referent
-                                       [(item-referent pair)
-                                        (item-referent double)])
-        all-elements-parallel-referent (parallel-union-referent
-                                        [(item-referent pair)
-                                         (item-referent double)
-                                         (item-referent two)
-                                         (item-referent one)])]
+        likelihoods [(item-referent pair)
+                     (item-referent double)]
+        likelihoods-referent (union-referent likelihoods)
+        all-elements [(item-referent pair)
+                      (item-referent double)
+                      (item-referent two)
+                      (item-referent one)]
+        all-elements-referent (union-referent all-elements)]
     (is (check
          dom
          [:div {:class "item with-elements"}
@@ -332,7 +331,7 @@
                {:priority 1
                 :width 0.25
                 :key-prefix tags-key
-                :subject-referent all-elements-parallel-referent
+                :subject-referent all-elements-referent
                 :template '(nil :tag)
                 :attributes
                 [[(:item-id double) {:class "added1"}]
@@ -340,7 +339,7 @@
                  [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
-                                            all-elements-parallel-referent) 
+                                            all-elements) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]]
             [:div {:class "editable"
                    :key (conj age-key
@@ -353,7 +352,7 @@
                             :select-pattern (conj age-key [:pattern])}
                    :add-sibling {:referent (virtual-referent
                                             nil (item-referent age)
-                                            all-elements-parallel-referent) 
+                                            all-elements) 
                                  :select-pattern (conj age-key [:pattern])}}]]
            ;; Group for confidence and likelihood.
            [:div {:class "horizontal-tags-element tag wide"}
@@ -365,7 +364,7 @@
                 {:priority 1
                  :width 0.25
                  :key-prefix tags-key
-                 :subject-referent likelihoods-parallel-referent
+                 :subject-referent likelihoods-referent
                  :template '(nil :tag)
                  :attributes
                  [[(:item-id double) {:class "added1"}]
@@ -374,7 +373,7 @@
                    {:add-sibling {:referent (virtual-referent
                                              '(nil ("confidence" :tag))
                                              (item-referent age)
-                                             likelihoods-parallel-referent) 
+                                             likelihoods) 
                                   :select-pattern (conj age-key [:pattern])}}]]}]]]]
             [:div {:class "vertical-stack"}
              ;; Pair
@@ -393,7 +392,7 @@
                   {:add-sibling {:referent (virtual-referent
                                             '(nil ("confidence" :tag))
                                             (item-referent age)
-                                            likelihoods-parallel-referent) 
+                                            likelihoods) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]
              ;; Double
              [:component {:key (conj age-key (:item-id double))}

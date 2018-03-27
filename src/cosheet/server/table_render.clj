@@ -32,7 +32,7 @@
                                    transform-inherited-for-labels
                                    add-inherited-attribute
                                    hierarchy-node-items-referent
-                                   hierarchy-node-parallel-items-referent
+                                   hierarchy-node-items-referents
                                    hierarchy-last-item-referent
                                    hierarchy-node-DOM-R]]
              [item-render :refer [elements-DOM-R virtual-element-with-label-DOM
@@ -118,11 +118,11 @@
         ;; There is an item for the new column, which has an element
         ;; satisfying the element template. We want to select that
         ;; element.
-        adjacent-referent (hierarchy-node-parallel-items-referent
+        adjacent-referents (hierarchy-node-items-referents
                            node inherited)
         new-column-ref (virtual-referent (:template inherited)
                                          (union-referent [subject-ref])
-                                         adjacent-referent
+                                         adjacent-referents
                                          :position :after)
         new-element-ref (virtual-referent (cons '??? (rest elements-template))
                                           new-column-ref

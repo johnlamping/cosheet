@@ -23,9 +23,7 @@
                   (item-referent (->ItemId 0))
                   (union-referent
                    [(elements-referent (item-referent (->ItemId 1))
-                                       (parallel-union-referent
-                                        [(item-referent (->ItemId 3))
-                                         (item-referent (->ItemId 4))]))
+                                       (item-referent (->ItemId 3)))
                     (difference-referent
                      (query-referent (list (item-referent (->ItemId 3))
                                            '(nil (:root :A_a))

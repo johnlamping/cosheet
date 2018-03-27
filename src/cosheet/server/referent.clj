@@ -457,6 +457,22 @@
             true condition))
     condition)))
 
+(defn pattern-to-possible-non-selector-template
+  "Given a pattern, alter it to work as a template for a possible non-selector.
+   Specifically, replace nil, 'anything, 'anything-immutable by the empty
+   string, unless in a part of the template that is marked as a selector,
+   in which case replace only nils."
+  [pattern]
+  (if (sequential? pattern)
+    (if (some #(or (= % :selector)
+                   (and (sequential? %) (= (first %) :selector)))
+              (rest pattern))
+      (condition-to-template pattern)
+      (map pattern-to-possible-non-selector-template pattern))
+    (if (or (nil? pattern) (#{'anything 'anything-immutable} pattern))
+      ""
+      pattern)))
+
 (defn best-matching-element
   "Given the list form of a template, find an element of the item that
   matches it. Return the best matching element in a list if there is one,
@@ -540,21 +556,6 @@
                     (instantiate-to-items plus immutable-store))])
     :virtual []))
 
-(defn adjust-adjacents
-  "If there is one group of adjacents per subject, choose the one in
-  each group the furthest in the direction of the position."
-  [subject-groups adjacent-groups position]
-  (if (= (count adjacent-groups)
-         (apply + (map count subject-groups)))
-    ;; We have to find the correct adjacent in each group, then
-    ;; group those according to the number of items in each group
-    ;; of subjects.
-    (second (reduce (fn [[adjacents result] n]
-                      [(nthnext adjacents n) (conj result (take n adjacents))])
-                    [(map #(furthest-item % position) adjacent-groups) []]
-                    (map count subject-groups)))
-    adjacent-groups))
-
 ;;; TODO: Move to model-utils?
 (defn create-selector-or-non-selector-element
   "Create an element, using the appropriate template depending on whether
@@ -577,9 +578,8 @@
   (let [[specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
         selector-template (condition-to-template flattened-template 'anything)
-        non-selector-template (-> flattened-template
-                                  pattern-to-condition
-                                  condition-to-template)
+        non-selector-template (pattern-to-possible-non-selector-template
+                               flattened-template)
         [new-ids store]
         (thread-map
          (fn [[subject adjacent] store]
@@ -661,8 +661,6 @@
         (if (nil? subject-referent)
           (map-map (constantly nil) adjacent-groups)
           subject-groups)
-        adjacent-groups (adjust-adjacents
-                         subject-groups adjacent-groups position)
         [items store] (create-possible-selector-elements
                         template subject-groups adjacent-groups
                         position use-bigger store)]

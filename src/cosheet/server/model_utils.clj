@@ -65,7 +65,9 @@
                             [item store]))
                         condition store))
 
-(defn selector? [item]
+(defn selector?
+  "Return whether the item is a selector."
+  [item]
   (or (some #(= (content %) :selector)
             (label->elements item :non-semantic))
       (if-let [subj (subject item)]

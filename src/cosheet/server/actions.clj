@@ -27,8 +27,7 @@
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
                       item-referent virtual-referent
-                      semantic-elements-R
-                      condition-to-template adjust-adjacents
+                      semantic-elements-R condition-to-template
                       create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 

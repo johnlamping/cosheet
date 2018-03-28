@@ -294,7 +294,6 @@
           new-id (last (first select))]
       (println (simplify-for-print result))
       (is (= select [[:jane new-id] [[:jane]]]))
-      (println ["YYY" (to-list (description->entity (:item-id jane) new-store))])
       (println new-id)
       (println (to-list
                 (description->entity new-id new-store)) )

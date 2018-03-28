@@ -572,9 +572,9 @@
 
 (defn create-possible-selector-elements
   "Create elements, specializing the template as appropriate, depending on
-   whether each subject is a selector. Return the updated store and the ids
-   of the new elements."
-  [template subject-groups adjacent-groups position use-bigger store]
+   whether each subject is a selector. Return the new items and the updated
+   store."
+  [template subjects adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
         selector-template (condition-to-template flattened-template 'anything)
@@ -587,8 +587,7 @@
                              selector-template non-selector-template
                              subject adjacent position use-bigger store)]
              [id store]))
-         (map vector
-              (apply concat subject-groups) (apply concat adjacent-groups))
+         (map vector subjects adjacents)
          store)]
     [(map #(description->entity % store) new-ids)
      store]))
@@ -619,7 +618,7 @@
         [exemplar nil store]))
 
 (defn find-adjacents
-  "Given a list of adjacent referent from a virtual referent,
+  "Given a list of adjacent referents from a virtual referent,
    and the subject items,
    Return the adjacent to use for each subject item. original-store gives the
    store to instantiate in, while store gives the store that the returned
@@ -654,15 +653,17 @@
           [nil nil store]
           (instantiate-or-create-referent
            subject-referent original-store store))
-        subject-groups (map-map #(in-different-store % store) subject-groups)
-        adjacent-groups (find-adjacents adjacent-referents subject-groups
-                                        position original-store store)
-        subject-groups
+        subjects (map #(in-different-store % store)
+                      (apply concat subject-groups))
+        adjacents (apply concat
+                         (find-adjacents adjacent-referents subject-groups
+                                         position original-store store))
+        subjects
         (if (nil? subject-referent)
-          (map-map (constantly nil) adjacent-groups)
-          subject-groups)
+          (map (constantly nil) adjacents)
+          subjects)
         [items store] (create-possible-selector-elements
-                        template subject-groups adjacent-groups
+                        template subjects adjacents
                         position use-bigger store)]
     [[items]
      (concat [(:item-id (first items))]
@@ -694,7 +695,7 @@
            (virtual-union-referent? (second referent)))))
 
 (defn instantiate-or-create-referent
-  "Find the groups of items that the referent refers to, creating items
+  "Find the items that the referent refers to, creating items
   for virtual referents. Return the groups, a seq of the ids of first item
   created for this referent and each nested virtual referent, 
   and the updated store.
@@ -712,10 +713,3 @@
      (create-virtual-union-referent referent original-store store)
      true
      [(instantiate-referent referent original-store) nil store])))
-
-
-
- 
-
-
-

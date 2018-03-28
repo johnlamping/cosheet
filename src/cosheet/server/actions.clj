@@ -128,7 +128,7 @@
   (let [{:keys [selector-category]} attributes
         {:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
-      (let [items (instantiate-referent referent store)
+      (let [items (instantiate-to-items referent store)
             [added store] (create-possible-selector-elements
                            nil items items :after true store)]
         (add-select-request
@@ -142,8 +142,8 @@
   (let [{:keys [select-pattern target-key]} arguments
         {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
-      (let [items (instantiate-referent referent store)
-            sample-item (first (apply concat items))
+      (let [items (instantiate-to-items referent store)
+            sample-item (first items)
             is-tag (when sample-item
                      (seq (matching-elements :tag sample-item)))]
         (when (not is-tag)
@@ -162,8 +162,8 @@
         {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
-        (let [items (instantiate-referent referent store)
-              subjects (map #(map subject %) items)
+        (let [items (instantiate-to-items referent store)
+              subjects (map subject items)
               [added store] (create-possible-selector-elements
                              condition subjects items :after true store)
               item-key (pop-content-from-key target-key)]

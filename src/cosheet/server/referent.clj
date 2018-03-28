@@ -592,24 +592,24 @@
     [(map #(description->entity % store) new-ids)
      store]))
 
-(def instantiate-or-create-referent)
+(declare instantiate-or-create-referent)
 
 (defn instantiate-or-create-exemplar
   "Run instantiate-or-create-referent on all referents in the exemplar."
   [exemplar original-store store]
   (cond (referent? exemplar)
-        (let [[groups new-ids store]
+        (let [[items new-ids store]
               (instantiate-or-create-referent exemplar original-store store)]
-          [(semantic-to-list-R (first (first groups))) new-ids store])
+          [(semantic-to-list-R (first items)) new-ids store])
         (seq? exemplar)
         (let [[exemplar [new-ids store]]
               (thread-recursive-map
                (fn [exemplar [new-ids store]]
                  (if (referent? exemplar)
-                   (let [[groups newest-ids store]
+                   (let [[items newest-ids store]
                          (instantiate-or-create-referent
                           exemplar original-store store)]
-                     [(semantic-to-list-R (first (apply concat groups)))
+                     [(semantic-to-list-R (first items))
                       [(concat new-ids newest-ids) store]])
                    [exemplar [nil store]]))
                exemplar [nil store])]
@@ -626,17 +626,15 @@
   [adjacent-referents subjects position original-store store]
   (if
     (empty? adjacent-referents)
-    (map-map (fn [item] (furthest-element item position)) subjects)
-    (let [groupses (map (fn [referent]
-                          (map-map #(in-different-store % store)
-                                   (instantiate-referent
-                                    referent original-store)))
+    (map (fn [item] (furthest-element item position)) subjects)
+    (let [adjacentses (map (fn [referent]
+                             (map #(in-different-store % store)
+                                  (instantiate-to-items
+                                   referent original-store)))
                         adjacent-referents)]
-      (apply map (fn [& groups]
-                   (apply map (fn [& items]
-                                (furthest-item items position))
-                          groups))
-             groupses))))
+      (apply map (fn [& items]
+                   (furthest-item items position))
+             adjacentses))))
 
 (defn create-virtual-referent
   "Create items for virtual referents. Return the
@@ -648,16 +646,14 @@
         referent
         [template new-template-ids store]
         (instantiate-or-create-exemplar exemplar original-store store)
-        [subject-groups new-subject-ids store]
+        [subjects new-subject-ids store]
         (if (nil? subject-referent)
           [nil nil store]
           (instantiate-or-create-referent
            subject-referent original-store store))
-        subjects (map #(in-different-store % store)
-                      (apply concat subject-groups))
-        adjacents (apply concat
-                         (find-adjacents adjacent-referents subject-groups
-                                         position original-store store))
+        subjects (map #(in-different-store % store) subjects)
+        adjacents (find-adjacents adjacent-referents subjects
+                                  position original-store store)
         subjects
         (if (nil? subject-referent)
           (map (constantly nil) adjacents)
@@ -665,29 +661,27 @@
         [items store] (create-possible-selector-elements
                         template subjects adjacents
                         position use-bigger store)]
-    [[items]
+    [items
      (concat [(:item-id (first items))]
              new-subject-ids new-template-ids)
      store]))
-
-(declare instantiate-or-create-referent)
 
 (defn create-virtual-union-referent
   "Does instantiate-or-create-referent on each referent of a union,
    and combines the results."
   [referent original-store store]
-  (let [[groups ids store]
-        (reduce (fn [[combined-groups first-ids store] referent]
-                  (let [[groups ids store] (instantiate-or-create-referent
+  (let [[items ids store]
+        (reduce (fn [[accum-items first-ids store] referent]
+                  (let [[items ids store] (instantiate-or-create-referent
                                             referent original-store store)]
-                    [(conj combined-groups (apply concat groups))
+                    [(concat accum-items items)
                      (or first-ids ids)
                      store]))
                 [[] nil store]
                 (rest referent))]
     ;; Some items may have the original store or only the partially
     ;; updated store. Make them all have the latest store.
-    [(map-map #(in-different-store % store) groups) ids store]))
+    [(map #(in-different-store % store) items) ids store]))
 
 (defn virtual-union-referent? [referent]
   (and (union-referent? referent)
@@ -696,7 +690,7 @@
 
 (defn instantiate-or-create-referent
   "Find the items that the referent refers to, creating items
-  for virtual referents. Return the groups, a seq of the ids of first item
+  for virtual referents. Return the items a seq of the ids of first item
   created for this referent and each nested virtual referent, 
   and the updated store.
   Evaluate non-virtual sub-parts in the original store, so that
@@ -712,4 +706,4 @@
      (virtual-union-referent? referent)
      (create-virtual-union-referent referent original-store store)
      true
-     [(instantiate-referent referent original-store) nil store])))
+     [(instantiate-to-items referent original-store) nil store])))

@@ -21,7 +21,7 @@
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector?]]
-    [referent :refer [instantiate-referent instantiate-or-create-referent
+    [referent :refer [instantiate-or-create-referent
                       instantiate-to-items
                       referent->string referent?
                       virtual-referent? virtual-union-referent?
@@ -213,9 +213,8 @@
         {:keys [from to referent select-pattern target-key]} arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
-        (let [[groups new-ids store] (instantiate-or-create-referent
-                                      referent store)
-              items (apply concat groups)]
+        (let [[items new-ids store] (instantiate-or-create-referent
+                                      referent store)]
           (println "updating " (count items) " items")
           (let [new-store (reduce
                            (fn [store item]

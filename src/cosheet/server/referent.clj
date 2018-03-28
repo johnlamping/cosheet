@@ -23,18 +23,10 @@
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
 
-;;; The semantics of a referent is a sequence of groups of items. The
+;;; The semantics of a referent is a sequence of items. The
 ;;; sequence supports DOM elements, like labels, that can refer to
-;;; several parallel parts of the database, while the groups support
-;;; things, like adjacent element groups, that need to refer to a
-;;; collection of items. The most common situation is a singleton
-;;; sequence of a singleton group. The groups may be empty, so that
-;;; sequences of groups can be aligned.
-
-;;; When a referent contains another referent as a sequence-referent,
-;;; it coerces that that referent into a sequence of individual items,
-;;; by concatenating the items in each group together to for a single
-;;; sequence.
+;;; several parallel parts of the database. The most common situation
+;;; is a singleton item.
 
 ;;; When a referent contains a <condition>, it can be either an item
 ;;; id, the list form of an element, or a list of an item id and
@@ -43,29 +35,28 @@
 
 ;;; The kinds of referent are:
 ;;;            item  <an item-id>
-;;;                  Refers to the singlton group of the item.
+;;;                  Refers to the single item.
 ;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
-;;;                  For each group of items refered to by sequence-referent,
-;;;                  refers to a group of an element of each member
-;;;                  whose semantic information is the same as that of
-;;;                  the item.
+;;;                  For each item refered to by sequence-referent,
+;;;                  refers to an element, if there is one, whose semantic
+;;;                  information incliudes that of the item. If there are
+;;;                  several matching items, chooses the one with the least
+;;;                  additional stuff.
 ;;;        elements  [:elements <condition> <sequence-referent>]
-;;;                  For each group refered to by sequence-referent,
-;;;                  refers to the group of all elements of its items
-;;;                  whose semantic information matches the condition.
+;;;                  For each item refered to by sequence-referent,
+;;;                  refers to the all elements whose semantic information
+;;;                  matches the condition.
 ;;;           query  [:query <condition>]
-;;;                  Refers to the group of items that satisfies the condition.
+;;;                  Refers to the items that satisfies the condition.
 ;;;           union  [:union  <referent> ...]
-;;;                  Refers to one group of items per referent, each
-;;;                  containg all items that referent refers to.
+;;;                  Refers to all items that any of the referents refers to.
 ;;;      difference  [:difference <referent> <referent>]
-;;;                  Returns a single group of all items refered to by the
-;;;                  first referent and not by the second.
-;;;                  refers to the sequence of groups
+;;;                  Refers to all items refered to by the first referent
+;;;                  and not by the second.
 ;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
 ;;;                            <adjacent-referents> <position> <use-bigger>]
-;;;                  For each group of items refered to by subject-referent,
-;;;                  refers to a group of new items matching the exemplar
+;;;                  For item refered to by subject-referent,
+;;;                  refers to new item matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
 ;;;                  and may be a template, with 'anything or refer to an
 ;;;                  item that is a template. It can also be
@@ -74,18 +65,18 @@
 ;;;                  one element is created for each item in adjacent.
 ;;;                  Adjacent-referent is a list of referents, each of which
 ;;;                  gives items the new items could be adjacent to in the
-;;;                  order. Each
-;;;                  of the referents must yield the same number of items,
+;;;                  order. Each of the adjacent
+;;;                  referents must yield the same number of items,
 ;;;                  which must be the same number as subject, if it is
 ;;;                  present. If there are multiple adjacent referents, the
 ;;;                  new item will be adjacent to the furthest in the direction
-;;;                  of position. If there are no adjacent-referents
+;;;                  of position. If there are no adjacent-referents,
 ;;;                  subject-referent
 ;;;                  must not be nil, and the element of the subject furthest
 ;;;                  in the position direction is used for adjacent, or
 ;;;                  subject, itself, if it has no ordered elements.
 ;;;                  Position and use-bigger say where the new
-;;;                  item should go relative to the adjacent item.
+;;;                  item should go relative to the adjacent item(s).
 ;;;                  Virtual referents may not be nested inside non-virtual
 ;;;                  referents, except union referents.
 
@@ -502,23 +493,17 @@
 
 (defn instantiate-to-items
   "Same as instantiate referent, except returns a list of all the
-  unique items, rather than a list of groups."
+  unique items."
   [referent immutable-store]
-  (distinct (apply concat (instantiate-referent referent immutable-store))))
-
-(defn map-over-instances
-  "Instantiate the referent and call the function on each resulting item,
-   collecting the results into a sequence of groups."
-  [fun referent immutable-store]
-  (map fun (instantiate-to-items referent immutable-store)))
+  (instantiate-referent referent immutable-store))
 
 (defn instantiate-referent
-  "Return the groups of items that the referent refers to. Does not handle
+  "Return the items that the referent refers to. Does not handle
   virtual referents."
   [referent immutable-store]
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
-            [[(description->entity referent immutable-store)]])
+            [(description->entity referent immutable-store)])
     :exemplar (let [[_ exemplar subject-ref] referent
                     condition (pattern-to-condition
                                (condition-to-list exemplar immutable-store))
@@ -535,25 +520,24 @@
                                   [exemplar-item]
                                   (best-matching-element condition %)))
                              #(best-matching-element condition %))]
-                (map (fn [group] (mapcat picker group))
-                     (instantiate-referent subject-ref immutable-store)))
+                (mapcat picker
+                        (instantiate-referent subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
                     condition (pattern-to-condition
                                (condition-to-list condition immutable-store))]
-                (map (fn [group] (mapcat #(matching-elements condition %)
-                                         group))
-                     (instantiate-referent subject-ref immutable-store)))
+                (mapcat #(matching-elements condition %)
+                        (instantiate-referent subject-ref immutable-store)))
     :query (let [[_ condition] referent
                  condition (pattern-to-condition
                             (condition-to-list condition immutable-store))]
-             [(matching-items condition immutable-store)])
+             (matching-items condition immutable-store))
     :union (let [[_ & referents] referent]
-             (map #(instantiate-to-items % immutable-store)
-                  referents))
+             (mapcat #(instantiate-referent % immutable-store)
+                     referents))
     :difference (let [[_ plus minus] referent]
-                  [(remove
-                    (set (instantiate-to-items minus immutable-store))
-                    (instantiate-to-items plus immutable-store))])
+                  (remove
+                   (set (instantiate-referent minus immutable-store))
+                   (instantiate-referent plus immutable-store)))
     :virtual []))
 
 ;;; TODO: Move to model-utils?

@@ -9,7 +9,7 @@
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
                                virtual-referent exemplar-referent
-                               union-referent instantiate-to-items
+                               union-referent instantiate-referent
                                semantic-elements-R]]
              [render-utils :refer [add-inherited-attribute
                                    virtual-referent-DOM]]
@@ -99,9 +99,9 @@
          (call-dependent-on-id
           store nil
           (fn [store]
-            (let [header (count (instantiate-to-items
+            (let [header (count (instantiate-referent
                                  table-header-matches-referent store))
-                  non-header (count (instantiate-to-items
+                  non-header (count (instantiate-referent
                                      top-level-matches-referent store))]
               [:div {:class "batch-query-match-counts"}
                (str non-header " row matches.  "

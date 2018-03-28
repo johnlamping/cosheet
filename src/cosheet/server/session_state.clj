@@ -24,7 +24,7 @@
     [format-convert :refer [convert-to-current]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
-                      instantiate-to-items]]
+                      instantiate-referent]]
     [render :refer [DOM-for-client-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
 
@@ -276,7 +276,7 @@
                 (when referent
                   (let [[_ subject-ref]
                         (referent->exemplar-and-subject referent)
-                        item (first (instantiate-to-items
+                        item (first (instantiate-referent
                                      referent immutable-store))]
                     (when (and item (user-visible-item? item))
                       [referent subject-ref])))))

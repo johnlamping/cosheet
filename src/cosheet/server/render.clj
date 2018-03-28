@@ -11,7 +11,7 @@
                      [state-map :refer [state-map-get]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
-                               item-referent? instantiate-to-items]]
+                               item-referent? instantiate-referent]]
              [model-utils :refer [ tabs-holder-item-R first-tab-R]]
              [render-utils :refer [make-component]]
              [item-render :refer [item-DOM-R]]
@@ -240,7 +240,7 @@
                              store nil
                              (fn [immutable-store]
                                (or (when referent
-                                     (first (instantiate-to-items
+                                     (first (instantiate-referent
                                              referent immutable-store)))
                                    (first-tab-R immutable-store))))]
         (if immutable-item

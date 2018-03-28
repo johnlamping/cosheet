@@ -22,7 +22,7 @@
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector?]]
     [referent :refer [instantiate-or-create-referent
-                      instantiate-to-items
+                      instantiate-referent
                       referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
@@ -128,7 +128,7 @@
   (let [{:keys [selector-category]} attributes
         {:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
-      (let [items (instantiate-to-items referent store)
+      (let [items (instantiate-referent referent store)
             [added store] (create-possible-selector-elements
                            nil items items :after true store)]
         (add-select-request
@@ -142,7 +142,7 @@
   (let [{:keys [select-pattern target-key]} arguments
         {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
-      (let [items (instantiate-to-items referent store)
+      (let [items (instantiate-referent referent store)
             sample-item (first items)
             is-tag (when sample-item
                      (seq (matching-elements :tag sample-item)))]
@@ -162,7 +162,7 @@
         {:keys [selector-category]} attributes]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
-        (let [items (instantiate-to-items referent store)
+        (let [items (instantiate-referent referent store)
               subjects (map subject items)
               [added store] (create-possible-selector-elements
                              condition subjects items :after true store)
@@ -203,7 +203,7 @@
   (when-let [to-delete (:referent arguments)]
     (let [;; distinct should not be necessary, but is a
           ;; safety measure to make sure we don't delete twice
-          items (distinct (instantiate-to-items to-delete store))]
+          items (distinct (instantiate-referent to-delete store))]
       (println "total items:" (count items))
       (reduce update-delete store items))))
 
@@ -243,7 +243,7 @@
     (when (referent? referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
-      (let [items (instantiate-to-items referent store)
+      (let [items (instantiate-referent referent store)
             item (first items)
             [_ subject-ref] (referent->exemplar-and-subject referent)
             subject-ref (or subject-ref

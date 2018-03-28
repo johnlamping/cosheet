@@ -50,6 +50,7 @@
 ;;;                  Refers to the items that satisfies the condition.
 ;;;           union  [:union  <referent> ...]
 ;;;                  Refers to all items that any of the referents refers to.
+;;;                  Replications are removed
 ;;;      difference  [:difference <referent> <referent>]
 ;;;                  Refers to all items refered to by the first referent
 ;;;                  and not by the second.
@@ -489,14 +490,6 @@
           [(first (if (empty? perfect-matches) matches perfect-matches))])
         matches))))
 
-(def instantiate-referent)
-
-(defn instantiate-to-items
-  "Same as instantiate referent, except returns a list of all the
-  unique items."
-  [referent immutable-store]
-  (instantiate-referent referent immutable-store))
-
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
   virtual referents."
@@ -532,8 +525,8 @@
                             (condition-to-list condition immutable-store))]
              (matching-items condition immutable-store))
     :union (let [[_ & referents] referent]
-             (mapcat #(instantiate-referent % immutable-store)
-                     referents))
+             (distinct (mapcat #(instantiate-referent % immutable-store)
+                               referents)))
     :difference (let [[_ plus minus] referent]
                   (remove
                    (set (instantiate-referent minus immutable-store))
@@ -613,7 +606,7 @@
     (map (fn [item] (furthest-element item position)) subjects)
     (let [adjacentses (map (fn [referent]
                              (map #(in-different-store % store)
-                                  (instantiate-to-items
+                                  (instantiate-referent
                                    referent original-store)))
                         adjacent-referents)]
       (apply map (fn [& items]
@@ -690,4 +683,4 @@
      (virtual-union-referent? referent)
      (create-virtual-union-referent referent original-store store)
      true
-     [(instantiate-to-items referent original-store) nil store])))
+     [(instantiate-referent referent original-store) nil store])))

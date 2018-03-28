@@ -61,13 +61,11 @@
         t2-bar (first (current-value (matching-elements "bar" t2)))
         t3-baz (first (current-value (matching-elements "baz" t3)))
         t3-bletch (first (current-value (matching-elements "bletch" t3)))
-        virtual-tab-referent (fn [elements adjacent]
+        virtual-tab-referent (fn [elements adjacent-items]
                                (virtual-referent
                                 (cons "" elements)
                                 (item-referent tabs)
-                                (if (referent? adjacent)
-                                  adjacent
-                                  (item-referent adjacent))))
+                                (map item-referent adjacent-items)))
         items-referent (fn [& items] (union-referent (map item-referent items)))
         starting-inherited {:priority 1
                            :width 3.0
@@ -86,7 +84,7 @@
                   :key [:foo :virtual]
                   :target {:referent (virtual-referent
                                       "" (virtual-tab-referent
-                                          new-tab-elements t3) nil)
+                                          new-tab-elements nil))
                            :select-pattern [:foo [:pattern]]}
                   :selected {:special :new-tab}}]
            (let [inherited (assoc starting-inherited
@@ -95,7 +93,8 @@
                                   [[#{:label :optional} #{:content}
                                     {:add-column {:referent
                                                   (virtual-tab-referent
-                                                   (cons "" new-tab-elements) t3)}
+                                                   (cons "" new-tab-elements)
+                                                   [t3])}
                                      :selected {:referent (item-referent t3)
                                                 :special :tab}}]])]
              [:div {:class "vertical-stack tab"}
@@ -112,8 +111,7 @@
                      [[#{:label :optional} #{:content}
                        {:add-column {:referent
                                      (virtual-tab-referent
-                                      (cons "" new-tab-elements)
-                                      (union-referent [(items-referent t1 t2)]))}
+                                      (cons "" new-tab-elements) [t1 t2])}
                         :delete {:referent (union-referent
                                             [(item-referent t1)
                                              (exemplar-referent
@@ -130,7 +128,8 @@
                       [[#{:label :optional} #{:content}
                         {:add-column {:referent
                                       (virtual-tab-referent
-                                       (concat [""] new-tab-elements ["foo"]) t2)}
+                                       (concat [""] new-tab-elements ["foo"])
+                                       [t2])}
                          :delete {:referent (item-referent t2-bar)}
                          :selected {:referent (item-referent t2)
                                     :special :tab}}]])]]
@@ -143,7 +142,7 @@
                     :add-column {:referent
                                  (virtual-tab-referent
                                   (concat [""] new-tab-elements ["foo"])
-                                  (item-referent t1))}
+                                  [t1])}
                     :selected {:referent (item-referent t1)
                                :special :tab}
                     :delete {:referent (item-referent t1)}}]]]]]))))

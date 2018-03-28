@@ -118,8 +118,7 @@
                                         '(anything-immutable
                                           (:column :non-semantic)
                                           (:non-semantic :non-semantic))
-                                        (union-referent
-                                         [(item-referent query)])
+                                        (item-referent query)
                                         (item-referent c1))
                                        nil) 
                             :select-pattern (conj table-key
@@ -241,7 +240,7 @@
                      :target {:referent (virtual-referent
                                          '(nil ("single" :tag))
                                          (item-referent joe)
-                                         (item-referent joe)
+                                         nil
                                          :position :after)
                               :select-pattern (conj table-key
                                                     (:item-id joe) (:item-id c1)
@@ -284,7 +283,6 @@
                                   (???))
                                 (item-referent query)
                                 (item-referent c6))
-                               (item-referent joe)
                                (item-referent joe))
                               :select-pattern (conj table-key
                                                     (:item-id joe)

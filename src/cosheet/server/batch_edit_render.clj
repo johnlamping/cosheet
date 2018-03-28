@@ -38,7 +38,7 @@
                                 'anything (item-referent query-item))
         headers-virtual-referent (virtual-referent
                                   table-header-template
-                                  (table-headers-referent query-item) nil)
+                                  (table-headers-referent query-item))
         matches-virtual-referent (virtual-referent
                                   "" (top-level-items-referent query-item))
         tag-referent (union-referent

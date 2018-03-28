@@ -121,8 +121,7 @@
         adjacent-referents (hierarchy-node-items-referents
                            node inherited)
         new-column-ref (virtual-referent (:template inherited)
-                                         (union-referent [subject-ref])
-                                         adjacent-referents
+                                         subject-ref adjacent-referents
                                          :position :after)
         new-element-ref (virtual-referent (cons '??? (rest elements-template))
                                           new-column-ref
@@ -363,9 +362,7 @@
         [dom (if (empty? items)
                ;; TODO: Get our left neighbor as an arg, and pass it
                ;; in as adjacent information for new-twin.
-               (virtual-element-DOM
-                ;; TODO: Is the subject referent needed? Maybe just nil.
-                (:subject-referent inherited) :after inherited)
+               (virtual-element-DOM nil :after inherited)
                (elements-DOM-R items false (:template inherited) :vertical
                                inherited))]
       (add-attributes dom {:class "table-cell has-border"}))))
@@ -373,7 +370,7 @@
 (defn table-virtual-column-cell-DOM
   [row-item inherited]
   (add-attributes
-   (virtual-element-DOM (:subject-referent inherited) :after
+   (virtual-element-DOM nil :after
                         (assoc inherited :select-pattern
                                (conj (vec (butlast (:key-prefix inherited)))
                                      [:pattern 1] [:pattern])))

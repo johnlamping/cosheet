@@ -177,7 +177,7 @@
                    virtual-content)
         virtual-ref (virtual-referent
                      template
-                     (subject-referent-given-inherited inherited) nil)
+                     (subject-referent-given-inherited inherited))
         inherited-for-label (-> inherited
                                 (assoc :template '(nil :tag)
                                        :subject-referent virtual-ref))

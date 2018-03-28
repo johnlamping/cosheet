@@ -33,11 +33,6 @@
   tabs-referent gives the tab or tabs that these elements apply to."
   [tab-items tabs-element-counts example-elements tabs-referent inherited]
   (let [subject-referent (:subject-referent inherited)
-        ;; Make sure the adjacent referent returns just one group, since
-        ;; the subject is just one group.
-        adjacent-referent (if (item-referent? tabs-referent)
-                            tabs-referent
-                            (union-referent [tabs-referent]))
         ;; For tabs with just one element (or none), delete deletes the tab.
         delete-referent
         (when (<= (count example-elements) 1)
@@ -61,7 +56,7 @@
                           {:referent (virtual-referent
                                       (:template inherited)
                                       (:subject-referent inherited)
-                                      adjacent-referent)}}
+                                      (map item-referent tab-items))}}
                    (= (count tab-items) 1)
                    (assoc :selected {:referent tabs-referent
                                      :special :tab})
@@ -133,8 +128,7 @@
   [subject-referent hierarchy inherited]
   (let [v-ref (virtual-referent
                      (cons "" new-tab-elements)
-                     subject-referent
-                     (hierarchy-last-item-referent hierarchy))
+                     subject-referent)
         inherited (assoc inherited :subject-referent v-ref)
         virtual-inherited (assoc inherited :template "")]
     (add-attributes

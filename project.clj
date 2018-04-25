@@ -7,15 +7,18 @@
                  [org.clojure/data.priority-map "0.0.5"]
                  ;; Server side
                  [ring/ring-core "1.4.0"]
-                 [ring/ring-jetty-adapter "1.3.2"]
+                 [ring/ring-jetty-adapter "1.5.1"]
                  [ring-transit "0.1.4"]
-                 [compojure "1.3.4"]
+                 [compojure "1.5.1"]
                  [hiccup "1.0.5"]
                  [clojure-csv/clojure-csv "2.0.1"]
                  ;; Client side
                  [org.clojure/clojurescript "1.8.40"]
                  [reagent "0.5.1"]
                  [cljs-ajax "0.5.4"]
+                 ;; buddy authentication
+                 [buddy/buddy-auth "2.1.0"]
+                 [buddy/buddy-sign "2.2.0"]
                  ]
   :plugins [[lein-cljsbuild "1.1.3"]
             [lein-ring "0.9.7"]

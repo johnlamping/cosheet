@@ -109,6 +109,12 @@
       (-> (redirect next-url))
       )))
 
+(defn ajax-request
+  [request]
+  (if-not (authenticated? request)
+    (throw-unauthorized)
+    (handle-ajax request))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes and Middlewares                           ;;
@@ -123,7 +129,7 @@
   ;;     (initial-page (str "//" path) referent selector))
   ;;(GET "/~/:path{.*}" [path referent selector]
   ;;     (initial-page (str "/~/" path) referent selector))
-  (POST "/ajax-request/:id" request (handle-ajax request))
+  (POST "/ajax-request/:id" [] ajax-request)
   (GET "/login" [] login)
   (POST "/login" [] login-authenticate)
   (GET "/logout" [] logout)

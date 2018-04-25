@@ -52,7 +52,7 @@
         found-password (get authdata (keyword username))]
     (if (and found-password (= found-password password))
       (let [next-url (get-in request [:query-params "next"] "/")
-            updated-session (assoc session :identity (keyword username))]
+            updated-session (assoc session :identity username)]
         (-> (redirect next-url)
             (assoc :session updated-session)))
       (let [content (slurp (io/resource "public/login.html"))]
@@ -67,8 +67,13 @@
   [request path referent selector]
   (if-not (authenticated? request)
     (throw-unauthorized)
-    (initial-page (str "/~/cosheet/" path) referent selector))
-  )
+    ;;
+    ;; chnage file path to ~/cosheet/userdata/<user-id>/<filename>
+    ;; TODO use global variable for "~/cosheet/userdata"
+    (let [user-id (get-in request [:session :identity] "unknown")]
+      (initial-page (str "/~/cosheet/userdata/" user-id "/" path) referent selector)
+    )
+  ))
 
 ;; Login page controller
 ;; It returns a login page on get requests.

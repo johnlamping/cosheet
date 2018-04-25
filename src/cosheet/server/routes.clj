@@ -160,9 +160,6 @@
 
 ;; So we don't need lein ring.
 ;; Pass the handler to Jetty on port 3000
-(defn -main []
-  (run-jetty app {:port 3000}))
-
 (defn -main
   [& args]
   (as-> app $

@@ -7,7 +7,7 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax]]
+            [cosheet.server.views :refer [initial-page handle-ajax list-user-files]]
 
             [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
@@ -44,7 +44,7 @@
   (:next (:query-params request)). On failed
   authentication, renders the login page."
   [request]
-  (println "login-authenticate request " request)
+  ;;(println "login-authenticate request " request)
 
   (let [username (get-in request [:form-params "username"])
         password (get-in request [:form-params "password"])
@@ -68,7 +68,7 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;;
-    ;; chnage file path to ~/cosheet/userdata/<user-id>/<filename>
+    ;; user data is stored in ~/cosheet/userdata/<user-id>/<filename>
     ;; TODO use global variable for "~/cosheet/userdata"
     (let [user-id (get-in request [:session :identity] "unknown")]
       (initial-page (str "/~/cosheet/userdata/" user-id "/" path) referent selector)
@@ -95,9 +95,11 @@
   [request]
   (if-not (authenticated? request)
     (throw-unauthorized)
+    (let [user-id (get-in request [:session :identity] "unknown")]
+      (list-user-files (str "/~/cosheet/userdata/" user-id))
     ;; placeholder only. TODO: generate a list of user files
     (let [content (slurp (io/resource "public/index-user-files.html"))]
-      (render content request))))
+      (render content request)))) )
 
 (defn create-file
   [request]

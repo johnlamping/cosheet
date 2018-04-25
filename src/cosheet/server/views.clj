@@ -31,7 +31,7 @@
                          key->id dom-for-key?]]
     [session-state :refer [create-session ensure-session forget-session
                            create-client-state url-path-to-file-path
-                           remove-url-file-extension
+                           remove-url-file-extension path-to-Path
                            get-session-state queue-to-log update-store-file]]
     [actions :refer [confirm-actions do-actions]])))
 
@@ -50,6 +50,16 @@
         (comment (check-propagation reporters))
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
+
+(defn list-user-files [url-path]
+  (when-let [directory (url-path-to-file-path url-path)]
+    (println "listing files in " (path-to-Path directory))
+    ;(doseq [file (file-seq (clojure.java.io/file (path-to-Path directory)))]
+    ;  (if (clojure.string/ends-with? (.getName file) ".cosheet")
+    ;    (println (.getName file)) ))
+    ; TODO create html response with href for each .cosheet file in the directory
+    ; and a text with submit for creating a new file
+  ))
 
 (defn initial-page [url-path referent-string selector-string]
   (println "initial page" url-path referent-string selector-string)

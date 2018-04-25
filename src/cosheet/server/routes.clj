@@ -29,8 +29,8 @@
 (def authdata
   "Global var that stores valid users with their
    respective passwords."
-  {:admin "secret"
-   :test "secret"})
+  {:jlamping "cosheet"
+   :fchu "cosheet"})
 
 ;; Authentication Handler
 ;; Used to respond to POST requests to /login.

@@ -2,6 +2,7 @@
   (:require
    [hiccup.page :refer [html5 include-js include-css]]
    [ring.util.response :refer [response]]
+   [clojure.java.io :as io]
    (cosheet
     [store :refer [current-store data-to-store reset-store! id-valid?]]
     [store-impl :refer [->ItemId]]
@@ -51,14 +52,18 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
+;;
+;;  generate html page listing all user files with href to edit file
+;;  page also contains logout
+;;  if admin user, contains link to admin page
+;;  TODO, not done
 (defn list-user-files [url-path]
   (when-let [directory (url-path-to-file-path url-path)]
-    (println "listing files in " (path-to-Path directory))
-    ;(doseq [file (file-seq (clojure.java.io/file (path-to-Path directory)))]
-    ;  (if (clojure.string/ends-with? (.getName file) ".cosheet")
-    ;    (println (.getName file)) ))
-    ; TODO create html response with href for each .cosheet file in the directory
-    ; and a text with submit for creating a new file
+    (println "listing files in " directory)
+    (let [files (.list (io/file directory))]
+      (doseq [file files]
+        (if (clojure.string/ends-with? file ".cosheet")
+          (println file))))
   ))
 
 (defn initial-page [url-path referent-string selector-string]

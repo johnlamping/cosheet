@@ -8,10 +8,12 @@
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
             [cosheet.server.views :refer [initial-page handle-ajax list-user-files]]
+            [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
 
             [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
+            [buddy.hashers :as hashers]
 
             [ring.util.response :refer [response redirect content-type]]
             [ring.middleware.session :refer [wrap-session]]
@@ -26,17 +28,11 @@
 ;; Authentication                                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def authdata
-  "Global var that stores valid users with their
-   respective passwords."
-  {:jlamping "cosheet"
-   :fchu "cosheet"})
-
 ;; Authentication Handler
 ;; Used to respond to POST requests to /login.
 
 (defn login-authenticate
-  "Check request username and password against authdata
+  "Check request username and password against user credentials dB
   username and passwords.
 
   On successful authentication, set appropriate user
@@ -49,8 +45,10 @@
   (let [username (get-in request [:form-params "username"])
         password (get-in request [:form-params "password"])
         session (:session request)
-        found-password (get authdata (keyword username))]
-    (if (and found-password (= found-password password))
+        found-pwdhash (get (get-user-pwdhash username) (keyword "pwdhash"))]
+    ;;(println "login-authenticate username:" username " pwdhash: " found-pwdhash)
+    ;;(println "pwd" password " hash " (hashers/encrypt password))
+    (if (and found-pwdhash (hashers/check password found-pwdhash))
       (let [next-url (get-in request [:query-params "next"] "/")
             updated-session (assoc session :identity username)]
         (-> (redirect next-url)

@@ -19,6 +19,10 @@
                  ;; buddy authentication
                  [buddy/buddy-auth "2.1.0"]
                  [buddy/buddy-sign "2.2.0"]
+                 [buddy/buddy-hashers "1.3.0"]
+                 ;; dB
+                 [org.clojure/java.jdbc "0.6.0"]
+                 [com.h2database/h2 "1.4.193"]
                  ]
   :plugins [[lein-cljsbuild "1.1.3"]
             [lein-ring "0.9.7"]

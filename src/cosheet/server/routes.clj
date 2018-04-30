@@ -7,7 +7,7 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax list-user-files]]
+            [cosheet.server.views :refer [initial-page handle-ajax list-user-files admin-page]]
             [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
 
             [buddy.auth :refer [authenticated? throw-unauthorized]]
@@ -60,7 +60,8 @@
 ;; Controllers                                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+;; cosheet initial page
+;;
 (defn get-initial-page
   [request path referent selector]
   (if-not (authenticated? request)
@@ -89,6 +90,8 @@
   (-> (redirect "/login")
       (assoc :session {})))
 
+;; Per user's home page
+;; list files in the user's directory
 (defn list-files
   [request]
   (if-not (authenticated? request)
@@ -118,6 +121,27 @@
     (handle-ajax request))
   )
 
+(defn get-admin
+  [request]
+  (if-not (authenticated? request)
+    (throw-unauthorized)
+    ;; only allow "admin" user to access admin page
+    (let [user-id (get-in request [:session :identity] "unknown")]
+      (if-not (= "admin" user-id)
+        (throw-unauthorized)
+        (admin-page user-id)
+        ))
+  ))
+
+(defn post-admin
+  [request]
+  (if-not (authenticated? request)
+    (throw-unauthorized)
+    (let [username (get-in request [:form-params "username"])
+          ]
+      ;;todo (create-user username)
+      )))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes and Middlewares                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -135,6 +159,8 @@
   (GET "/login" [] login)
   (POST "/login" [] login-authenticate)
   (GET "/logout" [] logout)
+  (GET "/admin" [] get-admin)
+  (POST "/admin" [] post-admin)
   (route/resources "/")
   (route/not-found "Page not found"))
 

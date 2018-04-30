@@ -56,22 +56,20 @@
 ;;
 ;;  generate html page listing all user files with href to edit file
 ;;  page also contains logout
-;;  if admin user, contains link to admin page
-;;  TODO, not done
 (defn list-user-files [url-path user-id]
   (when-let [directory (url-path-to-file-path url-path)]
-    (println "listing files in " directory)
     (html5
       [:head
        [:title "user files"]
        ]
       [:body
         [:h1 "Welcome " user-id]
-        [:p  (let [files (.list (io/file directory))]
-           (doseq [file files]
+        ;; list current files  TODO, not complete
+        [:ul  (let [files (.list (io/file directory))]
+           (for [file files]
              (if (clojure.string/ends-with? file ".cosheet")
                ;(println file)
-               [:a {:href (str "/cosheet/" file)} file ]
+               [:li [:a {:href (str "/cosheet/" file)} file ] ]
              )))
          ]
         [:form {:action "/" :method "POST"}
@@ -80,6 +78,24 @@
         [:a {:href "/logout"} "Logout"]
       ])
   ))
+
+;; administration page for mananging users
+;;
+(defn admin-page [user-id]
+  (html5
+    [:head
+     [:title "Administration"]
+     ]
+    [:body
+      [:h1 "Manage Users "]
+      ;; list current users
+      ;; TODO
+      [:form {:action "/admin" :method "POST"}
+         ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
+         [:p " New User: " [:input {:type "text" :name "username"}] [:input {:type "submit" :value "Create"}]]]
+      [:a {:href "/logout"} "Logout"]
+    ])
+ )
 
 (defn initial-page [url-path referent-string selector-string]
   (println "initial page" url-path referent-string selector-string)

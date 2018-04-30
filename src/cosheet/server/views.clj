@@ -57,13 +57,26 @@
 ;;  page also contains logout
 ;;  if admin user, contains link to admin page
 ;;  TODO, not done
-(defn list-user-files [url-path]
+(defn list-user-files [url-path user-id]
   (when-let [directory (url-path-to-file-path url-path)]
     (println "listing files in " directory)
-    (let [files (.list (io/file directory))]
-      (doseq [file files]
-        (if (clojure.string/ends-with? file ".cosheet")
-          (println file))))
+    (html5
+      [:head
+       [:title "user files"]
+       ]
+      [:body
+        [:h1 "Welcome " user-id]
+;         (let [files (.list (io/file directory))]
+;           (doseq [file files]
+;             (if (clojure.string/ends-with? file ".cosheet")
+;               ;(println file))
+;               ([:p file] )
+;             )))
+       [:form {:action "/" :method "POST"}
+        ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
+        [:p "New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
+        [:a {:href "/logout"} "Logout"]
+      ])
   ))
 
 (defn initial-page [url-path referent-string selector-string]

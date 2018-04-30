@@ -93,11 +93,13 @@
   [request]
   (if-not (authenticated? request)
     (throw-unauthorized)
+    ;; call list-user-files
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (list-user-files (str "/~/cosheet/userdata/" user-id))
-    ;; placeholder only. TODO: generate a list of user files
-    (let [content (slurp (io/resource "public/index-user-files.html"))]
-      (render content request)))) )
+      (list-user-files (str "/~/cosheet/userdata/" user-id) user-id))
+    ;; static html response - deprecated
+    ;(let [content (slurp (io/resource "public/index-user-files.html"))]
+    ;  (render content request))
+    ))
 
 (defn create-file
   [request]

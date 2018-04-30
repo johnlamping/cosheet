@@ -24,8 +24,10 @@
 
 (comment   ;; the following statement was used to create the ./cosheet-db
            ;; refer to http://clojure-doc.org/articles/tutorials/basic_web_development.html#run-your-webapp-during-development
+           ;; "lein  repl" and then paste in the following
 
   (require '[clojure.java.jdbc :as jdbc])
+  (require '[buddy.hashers :as hashers])
   (jdbc/with-db-connection [conn {:dbtype "h2" :dbname "~/cosheet/cosheet-db"}]
 
     (jdbc/db-do-commands conn
@@ -35,18 +37,15 @@
          [:pwdhash "varchar(1024)"]]))
 
       (jdbc/insert! conn :usercredentials
-        {:username "jlamping" :pwdhash "bcrypt+sha512$a9bdc1803db9234ab5817dfc13230a8d$12$53748e8de5968c217fbbe7eef3d7d095b2f455a549ea34e2"})
-
-      (jdbc/insert! conn :usercredentials
-        {:username "fchu" :pwdhash "bcrypt+sha512$a9bdc1803db9234ab5817dfc13230a8d$12$53748e8de5968c217fbbe7eef3d7d095b2f455a549ea34e2"})
-
+        {:username "testuser" :pwdhash (hashers/encrypt "testpwd")})
   )
 )
 
 (comment ;; the following statement was used to add an add-user-to-db
 
   (require '[clojure.java.jdbc :as jdbc])
+  (require '[buddy.hashers :as hashers])
   (jdbc/with-db-connection [conn {:dbtype "h2" :dbname "~/cosheet/cosheet-db"}]
       (jdbc/insert! conn :usercredentials
-        {:username "testuser" :pwdhash "bcrypt+sha512$a9bdc1803db9234ab5817dfc13230a8d$12$53748e8de5968c217fbbe7eef3d7d095b2f455a549ea34e2"}))
+        {:username "testuser2" :pwdhash (hashers/encrypt "testpwd2")}))
 )

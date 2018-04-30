@@ -1,40 +1,41 @@
 (ns cosheet.server.views
   (:require
-   [hiccup.page :refer [html5 include-js include-css]]
-   [ring.util.response :refer [response]]
-   [clojure.java.io :as io]
-   (cosheet
-    [store :refer [current-store data-to-store reset-store! id-valid?]]
-    [store-impl :refer [->ItemId]]
-    mutable-store-impl
-    [entity :refer [description->entity in-different-store
-                    content label->elements]]
-    entity-impl
-    [query :refer [matching-elements]]
-    [debug :refer [simplify-for-print]]
-    query-impl
-    [expression :refer [expr expr-let]]
-    [expression-manager :refer [new-expression-manager-data compute]]
-    [expression-manager-test :refer [check-propagation]]
-    [task-queue :refer [finished-all-tasks?]]
-    [hiccup-utils :refer [dom-attributes add-attributes]]
-    [reporter :as reporter]
-    [mutable-manager :refer [current-mutable-value]]
-    [state-map :refer [state-map-reset! state-map-get]]
-    [debug :refer [profile-and-print-reporters]])
-   (cosheet.server
-    [referent :refer [union-referent referent->string]]
-    [render-utils :refer [make-component]]
-    [order-utils :refer [order-items-R]]
-    [item-render :refer [item-content-DOM]]
-    [dom-tracker :refer [request-client-refresh
-                         process-acknowledgements response-doms
-                         key->id dom-for-key?]]
-    [session-state :refer [create-session ensure-session forget-session
-                           create-client-state url-path-to-file-path
-                           remove-url-file-extension path-to-Path
-                           get-session-state queue-to-log update-store-file]]
-    [actions :refer [confirm-actions do-actions]])))
+    [hiccup.page :refer [html5 include-js include-css]]
+    [ring.util.response :refer [response]]
+    [clojure.java.io :as io]
+    (cosheet
+      [store :refer [current-store data-to-store reset-store! id-valid?]]
+      [store-impl :refer [->ItemId]]
+      mutable-store-impl
+      [entity :refer [description->entity in-different-store
+                      content label->elements]]
+      entity-impl
+      [query :refer [matching-elements]]
+      [debug :refer [simplify-for-print]]
+      query-impl
+      [expression :refer [expr expr-let]]
+      [expression-manager :refer [new-expression-manager-data compute]]
+      [expression-manager-test :refer [check-propagation]]
+      [task-queue :refer [finished-all-tasks?]]
+      [hiccup-utils :refer [dom-attributes add-attributes]]
+      [reporter :as reporter]
+      [mutable-manager :refer [current-mutable-value]]
+      [state-map :refer [state-map-reset! state-map-get]]
+      [debug :refer [profile-and-print-reporters]])
+    (cosheet.server
+      [referent :refer [union-referent referent->string]]
+      [render-utils :refer [make-component]]
+      [order-utils :refer [order-items-R]]
+      [item-render :refer [item-content-DOM]]
+      [dom-tracker :refer [request-client-refresh
+                           process-acknowledgements response-doms
+                           key->id dom-for-key?]]
+      [session-state :refer [create-session ensure-session forget-session
+                             create-client-state url-path-to-file-path
+                             remove-url-file-extension path-to-Path
+                             get-session-state queue-to-log update-store-file]]
+      [actions :refer [confirm-actions do-actions]]))
+  (:import (org.h2.util New)))
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
@@ -66,15 +67,16 @@
        ]
       [:body
         [:h1 "Welcome " user-id]
-;         (let [files (.list (io/file directory))]
-;           (doseq [file files]
-;             (if (clojure.string/ends-with? file ".cosheet")
-;               ;(println file))
-;               ([:p file] )
-;             )))
-       [:form {:action "/" :method "POST"}
-        ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
-        [:p "New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
+        [:p  (let [files (.list (io/file directory))]
+           (doseq [file files]
+             (if (clojure.string/ends-with? file ".cosheet")
+               ;(println file)
+               [:a {:href (str "/cosheet/" file)} file ]
+             )))
+         ]
+        [:form {:action "/" :method "POST"}
+           ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
+           [:p " New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
         [:a {:href "/logout"} "Logout"]
       ])
   ))

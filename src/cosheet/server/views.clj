@@ -32,8 +32,9 @@
                            key->id dom-for-key?]]
       [session-state :refer [create-session ensure-session forget-session
                              create-client-state url-path-to-file-path
-                             remove-url-file-extension path-to-Path
+                             remove-url-file-extension isAdmin
                              get-session-state queue-to-log update-store-file]]
+      [db :refer [get-all-users add-user-to-db remove-user-from-db get-user-pwdhash]]
       [actions :refer [confirm-actions do-actions]]))
   (:import (org.h2.util New)))
 
@@ -64,7 +65,8 @@
        ]
       [:body
         [:h1 "Welcome " user-id]
-        ;; list current files  TODO, not complete
+        ;; list current files
+        [:h3 "Cosheet Files:"]
         [:ul  (let [files (.list (io/file directory))]
            (for [file files]
              (if (clojure.string/ends-with? file ".cosheet")
@@ -72,14 +74,16 @@
                [:li [:a {:href (str "/cosheet/" file)} file ] ]
              )))
          ]
+        [:h3 "Create New File"]
         [:form {:action "/" :method "POST"}
            ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
            [:p " New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
+        ;[:p (if (isAdmin user-id) ([:a {:href "/admin"} "Add/Remove Users"]))]
         [:a {:href "/logout"} "Logout"]
       ])
   ))
 
-;; administration page for mananging users
+;; administration page for managing users
 ;;
 (defn admin-page [user-id]
   (html5
@@ -89,13 +93,69 @@
     [:body
       [:h1 "Manage Users "]
       ;; list current users
-      ;; TODO
+     [:h3 "Active Users"]
+     [:ul  (let [users (get-all-users)]
+        (for [user users]
+          (let [username (user :username)]
+            [:li username]  ;; todo, add remove button
+          )))]
+
       [:form {:action "/admin" :method "POST"}
          ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
-         [:p " New User: " [:input {:type "text" :name "username"}] [:input {:type "submit" :value "Create"}]]]
+         [:h3 " Create New User"]
+         [:p [:input {:type "text" :placeholder "username" :name "username"}]]
+         [:p [:input {:type "text" :placeholder "password" :name "password"}]]
+         [:p [:input {:type "submit" :value "Create"}]]]
       [:a {:href "/logout"} "Logout"]
     ])
  )
+
+;; create user
+;;
+(defn create-user [user-id password user-data-path]
+
+; not sure why try/catch is not working below
+;  (try (
+       ;; check if user-id is already in dB
+       (if (get-user-pwdhash user-id)
+         (throw (Exception. "User already exists")))
+
+       ;; create userdata dir
+       (println "checking userdata dir " user-data-path)
+       (if-not (.exists (java.io.File. user-data-path))
+         (let [success (.mkdir (java.io.File. user-data-path))]
+             (if-not success
+               (throw (Exception. "Unable to create user data directory")))
+             (println "created userdata dir at " user-data-path))
+         (println "userdata dir for " user-id "already exists")
+        )
+
+       (println "adding " user-id " to dB")
+       ;; add user-id to dB
+       (if-not (add-user-to-db user-id password)
+         (throw (Exception. "Unable to add user to dB.")))
+
+       ;; success
+       (println "User " user-id " added successfully")
+       (html5
+         [:head
+          [:title "Success"]
+          [:body
+           [:div (str "User " user-id " created successfully.")]
+           [:a {:href "/admin"} "Back"]
+           ]])
+;  )(catch Exception e
+;      (println (str "create-user caught exception: " e))
+;      (println (clojure.stacktrace/print-stack-trace e))
+;      ;; respond with error
+;      (html5
+;          [:head
+;           [:title "Error"]
+;          [:body
+;           [:div (str "Unable to create user. Exception " e)]]
+;           [:a {:href "/admin"} "Back"]])
+;))
+)
 
 (defn initial-page [url-path referent-string selector-string]
   (println "initial page" url-path referent-string selector-string)

@@ -1,9 +1,9 @@
 (ns cosheet.server.db
   (:require [clojure.java.jdbc :as jdbc]
-            [cosheet.server.session-state :refer [url-path-to-file-path]]
+            [cosheet.server.session-state :refer [url-path-to-file-path get-db-path]]
             [buddy.hashers :as hashers]))
 
-(def db-spec {:dbtype "h2" :dbname (url-path-to-file-path "/~/cosheet/cosheet-db")})  ;; note the hard coded path
+(def db-spec {:dbtype "h2" :dbname (url-path-to-file-path (get-db-path "cosheet-db"))})
 
 (defn add-user-to-db
   [username password]
@@ -17,6 +17,17 @@
                             ["select username, pwdhash from usercredentials where username = ?" username])]
     ;(assert (= (count results) 1))
     (first results)))
+
+(defn remove-user-from-db
+  [username]
+  (let [results (jdbc/query db-spec
+                            ["select id, username from usercredentials where username = ?" username])]
+    (if results
+      (let [record-id (first (vals (first results)))]
+        (if record-id
+          (jdbc/execute! db-spec
+                      ["delete from usercredentials where id = ?" record-id])))
+      )))
 
 (defn get-all-users
   []

@@ -7,7 +7,8 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax list-user-files admin-page]]
+            [cosheet.server.views :refer [initial-page handle-ajax list-user-files admin-page create-user]]
+            [cosheet.server.session-state :refer [isAdmin get-userdata-path url-path-to-file-path]]
             [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
 
             [buddy.auth :refer [authenticated? throw-unauthorized]]
@@ -45,9 +46,7 @@
   (let [username (get-in request [:form-params "username"])
         password (get-in request [:form-params "password"])
         session (:session request)
-        found-pwdhash (get (get-user-pwdhash username) (keyword "pwdhash"))]
-    ;;(println "login-authenticate username:" username " pwdhash: " found-pwdhash)
-    ;;(println "pwd" password " hash " (hashers/encrypt password))
+        found-pwdhash ((get-user-pwdhash username) :pwdhash)]
     (if (and found-pwdhash (hashers/check password found-pwdhash))
       (let [next-url (get-in request [:query-params "next"] "/")
             updated-session (assoc session :identity username)]
@@ -68,9 +67,8 @@
     (throw-unauthorized)
     ;;
     ;; user data is stored in ~/cosheet/userdata/<user-id>/<filename>
-    ;; TODO use global variable for "~/cosheet/userdata"
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (initial-page (str "/~/cosheet/userdata/" user-id "/" path) referent selector)
+      (initial-page (str (get-userdata-path user-id) "/" path) referent selector)
     )
   ))
 
@@ -98,7 +96,7 @@
     (throw-unauthorized)
     ;; call list-user-files
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (list-user-files (str "/~/cosheet/userdata/" user-id) user-id))
+      (list-user-files (get-userdata-path user-id) user-id))
     ;; static html response - deprecated
     ;(let [content (slurp (io/resource "public/index-user-files.html"))]
     ;  (render content request))
@@ -127,7 +125,7 @@
     (throw-unauthorized)
     ;; only allow "admin" user to access admin page
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (if-not (= "admin" user-id)
+      (if-not (isAdmin user-id)
         (throw-unauthorized)
         (admin-page user-id)
         ))
@@ -137,10 +135,15 @@
   [request]
   (if-not (authenticated? request)
     (throw-unauthorized)
-    (let [username (get-in request [:form-params "username"])
-          ]
-      ;;todo (create-user username)
-      )))
+    ;; only allow "admin" user to access admin page
+    (let [user-id (get-in request [:session :identity] "unknown")]
+      (if-not (isAdmin user-id)
+        (throw-unauthorized)
+        (let [username (get-in request [:form-params "username"])
+              password (get-in request [:form-params "password"])
+              userdata-full-path (url-path-to-file-path (get-userdata-path username))]
+          (create-user username password userdata-full-path)))
+  )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes and Middlewares                           ;;

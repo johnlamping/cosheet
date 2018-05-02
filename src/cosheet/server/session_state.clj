@@ -394,3 +394,17 @@
                           (dissoc session-map session-id))
                       session-map))))))
 
+;;
+;; functions to retrieve hard coded global params (e.g., default userdata directory path)
+;;
+(defn isAdmin
+  [user-id]
+  (= "admin" user-id))
+
+(defn get-db-path
+  [filename]
+  (str "/~/cosheet/" filename))
+
+(defn get-userdata-path
+  [user-id]
+  (str "/~/cosheet/userdata/" user-id))

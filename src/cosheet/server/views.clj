@@ -97,7 +97,7 @@
      [:ul  (let [users (get-all-users)]
         (for [user users]
           (let [username (user :username)]
-            [:li username]  ;; todo, add remove button
+            [:li (str username "&nbsp;&nbsp;&nbsp;&nbsp;") [:a {:href (str "/admin/delete/" username)} "disable"]]
           )))]
 
       [:form {:action "/admin" :method "POST"}
@@ -113,7 +113,6 @@
 ;; create user
 ;;
 (defn create-user [user-id password user-data-path]
-
 ; not sure why try/catch is not working below
 ;  (try (
        ;; check if user-id is already in dB
@@ -156,6 +155,26 @@
 ;           [:a {:href "/admin"} "Back"]])
 ;))
 )
+
+(defn delete-user-view [username]
+  (if (remove-user-from-db username)     ; TODO, better return error check
+    (html5
+      [:head
+       [:title "Success"]
+       [:body
+        [:div (str "User " username " diabled successfully.")]
+        [:a {:href "/admin"} "Back"]
+        ]])
+    (      ; error case
+      (html5
+        [:head
+         [:title "Error"]
+         [:body
+          [:div (str "Unable to disable " username)]
+          [:a {:href "/admin"} "Back"]
+          ]])
+      ))
+  )
 
 (defn initial-page [url-path referent-string selector-string]
   (println "initial page" url-path referent-string selector-string)

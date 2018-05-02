@@ -7,7 +7,8 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax list-user-files admin-page create-user]]
+            [cosheet.server.views :refer [initial-page handle-ajax list-user-files
+                                          admin-page create-user delete-user-view]]
             [cosheet.server.session-state :refer [isAdmin get-userdata-path url-path-to-file-path]]
             [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
 
@@ -145,6 +146,18 @@
           (create-user username password userdata-full-path)))
   )))
 
+(defn delete-user
+  [request username]
+  (if-not (authenticated? request)
+    (throw-unauthorized)
+    (let [user-id (get-in request [:session :identity] "unknown")]
+      (if-not (isAdmin user-id)
+        (throw-unauthorized)
+        (if (isAdmin username)  ; can't remove "admin" user
+          (throw-unauthorized)
+          (delete-user-view username))))
+  ))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Routes and Middlewares                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -164,6 +177,8 @@
   (GET "/logout" [] logout)
   (GET "/admin" [] get-admin)
   (POST "/admin" [] post-admin)
+  ;; TODO, should be PUT or POST, but temp hack for now
+  (GET "/admin/delete/:username" [username :as request] (delete-user request username))
   (route/resources "/")
   (route/not-found "Page not found"))
 

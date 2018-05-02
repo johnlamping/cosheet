@@ -78,7 +78,7 @@
         [:form {:action "/" :method "POST"}
            ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
            [:p " New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
-        ;[:p (if (isAdmin user-id) ([:a {:href "/admin"} "Add/Remove Users"]))]
+        [:p (if (isAdmin user-id) [:a {:href "/admin"} "Add/Disable Users"])]
         [:a {:href "/logout"} "Logout"]
       ])
   ))

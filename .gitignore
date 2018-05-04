@@ -1,6 +1,7 @@
 /target
 /classes
 /checkouts
+/aws
 pom.xml
 pom.xml.asc
 *.jar

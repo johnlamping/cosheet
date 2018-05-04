@@ -68,6 +68,12 @@ cd cosheet
 nohup java -jar cosheet-0.1.2-SNAPSHOT-standalone.jar > cosheet.log &
 See logs by “tail -f cosheet.log”
 
+#To make cosheet.com point to the server:
+Go to the aws console (aws.amazon.com).
+Click EC2 dashboard.
+Click Elastic IPs.
+Choose the one IP, and associate it with the image.
+
 8. Stop cosheet server
 Find cosheet’s Java process Id:  “ps aux | grep java”
 Kill -9 <process Id>
@@ -78,6 +84,6 @@ Setting up SSL
 # ssh to the server, then:
 openssl req -new -newkey rsa:2048 -nodes -keyout cosheet.key -out cosheet.csr
 # Fill in all the data
-scp -i "~/cosheet.pem" ubuntu@cosheet.com:cosheet.csr .
+scp -i "~/Dropbox/cosheet/aws/cosheet.pem" ubuntu@cosheet.com:cosheet.csr .
 
 

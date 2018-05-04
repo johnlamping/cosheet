@@ -162,7 +162,7 @@
 ;; Routes and Middlewares                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defroutes app    ;;main-routes
+(defroutes main-routes    ;;main-routes
   (GET "/" [] list-files)
   (POST "/" [] create-file)
   (GET "/cosheet/:path{.*}" [path referent selector :as request]
@@ -207,10 +207,21 @@
 (def auth-backend
   (session-backend {:unauthorized-handler unauthorized-handler}))
 
+(def app
+  (-> main-routes
+      (wrap-authorization auth-backend)
+      (wrap-authentication auth-backend)
+      (wrap-params)
+      (wrap-session)
+      (wrap-transit-params)
+      (wrap-transit-response {:encoding :json, :opts {}})
+      (wrap-base-url)))
 
 ;;; Note: It is probably not necessary, but you may have to first run
 ;;;   lein cljsbuild once
-;;; This allows the server to be run from lein with
+;;; This allows the server to be run from lein with:
+;;;    lein run
+;;; or if you want the running code to update:
 ;;;    lein ring server-headless 3000
 ;;; Running the server from lein makes it automatically update
 ;;; whenever a source file is changed.
@@ -219,12 +230,4 @@
 ;; Pass the handler to Jetty on port 3000
 (defn -main
   [& args]
-  (as-> app $
-        (wrap-authorization $ auth-backend)
-        (wrap-authentication $ auth-backend)
-        (wrap-params $)
-        (wrap-session $)
-        (wrap-transit-params $)
-        (wrap-transit-response $ {:encoding :json, :opts {}})
-        (wrap-base-url $)
-        (jetty/run-jetty $ {:port 3000})))
+  (jetty/run-jetty app {:port 3000}))

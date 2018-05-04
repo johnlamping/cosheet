@@ -11,6 +11,7 @@
             task-queue-test expression-manager-test
             mutable-store-test store-utils-test)
            (cosheet.server
+            views routes
             referent hierarchy render dom_tracker actions
             model-utils-test referent-test hierarchy-test order-utils-test
             format-convert-test session_state_test

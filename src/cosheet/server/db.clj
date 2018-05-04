@@ -1,27 +1,35 @@
 (ns cosheet.server.db
   (:require [clojure.java.jdbc :as jdbc]
-            [cosheet.server.session-state :refer [url-path-to-file-path get-db-path]]
+            [cosheet.server.session-state
+             :refer [url-path-to-file-path get-db-path]]
             [buddy.hashers :as hashers]))
 
-(def db-spec {:dbtype "h2" :dbname (url-path-to-file-path (get-db-path "cosheet-db"))})
+(def db-spec {:dbtype "h2"
+              :dbname (url-path-to-file-path (get-db-path "cosheet-db"))})
 
 (defn add-user-to-db
   [username password]
-  (let [results (jdbc/insert! db-spec :usercredentials {:username username :pwdhash (hashers/encrypt password)})]
+  (let [results (jdbc/insert! db-spec :usercredentials
+                              {:username username
+                               :pwdhash (hashers/encrypt password)})]
     (assert (= (count results) 1))
     (first (vals (first results)))))
 
 (defn get-user-pwdhash
   [username]
   (let [results (jdbc/query db-spec
-                            ["select username, pwdhash from usercredentials where username = ?" username])]
+                            [(str "select username, pwdhash from "
+                                  "usercredentials where username = ?")
+                             username])]
     ;(assert (= (count results) 1))
     (first results)))
 
 (defn remove-user-from-db
   [username]
   (let [results (jdbc/query db-spec
-                            ["select id, username from usercredentials where username = ?" username])]
+                            [(str "select id, username from "
+                                  "usercredentials where username = ?")
+                             username])]
     (if results
       (let [record-id (first (vals (first results)))]
         (if record-id

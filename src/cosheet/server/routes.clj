@@ -33,6 +33,14 @@
 ;; Authentication Handler
 ;; Used to respond to POST requests to /login.
 
+(defn secure-url [request url]
+  "Turn a url into an https request on the server, unless we are running
+  locally."
+  (let [host (get-in request [:headers "host"])]
+    (if (clojure.string/starts-with? host "localhost:")
+      (str "http://" host url)
+      (str "https://cosheet.com" url))))
+
 (defn login-authenticate
   "Check request username and password against user credentials dB
   username and passwords.
@@ -47,11 +55,11 @@
   (let [username (get-in request [:form-params "username"])
         password (get-in request [:form-params "password"])
         session (:session request)
-        found-pwdhash ((get-user-pwdhash username) :pwdhash)]
+        found-pwdhash (:pwdhash (get-user-pwdhash username))]
     (if (and found-pwdhash (hashers/check password found-pwdhash))
       (let [next-url (get-in request [:query-params "next"] "/")
             updated-session (assoc session :identity username)]
-        (-> (redirect next-url)
+        (-> (redirect (secure-url request next-url))
             (assoc :session updated-session)))
       (let [content (slurp (io/resource "public/login.html"))]
         (render content request)))))
@@ -86,7 +94,7 @@
 
 (defn logout
   [request]
-  (-> (redirect "/login")
+  (-> (redirect (secure-url request "/login"))
       (assoc :session {})))
 
 ;; Per user's home page
@@ -108,10 +116,8 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     (let [filename (get-in request [:form-params "filename"])
-          next-url (str "/cosheet/" filename)
-          ]
-      (-> (redirect next-url))
-      )))
+          next-url (str "/cosheet/" filename)]
+      (redirect (secure-url request next-url)))))
 
 (defn ajax-request
   [request]
@@ -187,20 +193,17 @@
 ;; This function is responsible for handling
 ;; unauthorized requests (when unauthorized exception
 ;; is raised by some handler)
-
 (defn unauthorized-handler
   [request metadata]
-  (cond
+  (if (authenticated? request)
     ;; If request is authenticated, raise 403 instead
     ;; of 401 (because user is authenticated but permission
     ;; denied is raised).
-    (authenticated? request)
     (-> (render (slurp (io/resource "public/error.html")) request)
         (assoc :status 403))
     ;; In other cases, redirect the user to login page.
-    :else
     (let [current-url (:uri request)]
-      (redirect (format "/login?next=%s" current-url)))))
+      (redirect (secure-url request (format "/login?next=%s" current-url))))))
 
 ;; Create an instance of auth backend.
 

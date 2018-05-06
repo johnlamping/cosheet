@@ -246,11 +246,9 @@
 
 (defn replay-request
   [session-state request]
-  (let [{:keys [actions selector-interpretation]} request 
-        action-sequence (confirm-actions actions (:client-state session-state))
-        augmented-state (assoc session-state :selector-interpretation
-                               selector-interpretation)]
-    (do-actions (:store session-state) augmented-state action-sequence))
+  (let [{:keys [actions]} request 
+        action-sequence (confirm-actions actions (:client-state session-state))]
+    (do-actions (:store session-state) session-state action-sequence))
   (compute manager-data 100000)
   (check-propagation-if-quiescent (:tracker session-state)))
 
@@ -379,15 +377,14 @@
 
 (defn handle-ajax [request]
   (let [params (:params request)
-        {:keys [actions replay unload clean selector-interpretation
-                acknowledge]}
+        {:keys [actions replay unload clean acknowledge]}
         params
         session-state (ensure-session-state params)]
     (if session-state
       (let [{:keys [tracker file-path store client-state]} session-state]
         (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] file-path))
-        (when (= (dissoc request :id :selector-interpretation) {})
+        (when (not= (dissoc request :id) {})
           (println "Request" params))
         (when unload
           (println "Unloading session.")
@@ -401,10 +398,8 @@
           (do-replay session-state replay))
         (process-acknowledgements tracker acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
-          (let [augmented-state (assoc session-state :selector-interpretation
-                                       selector-interpretation)
-                client-info (cond-> (do-actions
-                                     store augmented-state action-sequence)
+          (let [client-info (cond-> (do-actions
+                                     store session-state action-sequence)
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)

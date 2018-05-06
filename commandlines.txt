@@ -25,6 +25,7 @@ Enable DNS Hostname
 Continue with instructions in the “Installing NGINX Software” section https://www.nginx.com/blog/setting-up-nginx/
 Stop after completing step 10
 
+DON'T DO THIS. use the conf file in cosheet/aws/etc/ngnix/conf.d.
 3. Setting up Nginx as proxy server
 cd /etc/nginx/conf.d 
 sudo cp default.conf server1.conf
@@ -52,7 +53,7 @@ sudo apt install default-jre
   On a local terminal:
 cd <source root>/ 
 Build cosheet “lein uberjar”
-scp cosheet jar to ec2 server. For example, scp -i "~/cosheet-aws.pem" target/cosheet-0.1.2-SNAPSHOT-standalone.jar ubuntu@ec2-18-204-199-193.compute-1.amazonaws.com:
+scp cosheet jar to ec2 server. For example, scp -i "~/Dropbox/cosheet/aws/cosheet.pem" target/cosheet-0.1.2-SNAPSHOT-standalone.jar ubuntu@ec2-18-204-199-193.compute-1.amazonaws.com:
 scp <source root>/cosheet-db.mv.db to ec2 server
 
 6. Setup directories on EC2 server
@@ -86,4 +87,19 @@ openssl req -new -newkey rsa:2048 -nodes -keyout cosheet.key -out cosheet.csr
 # Fill in all the data
 scp -i "~/Dropbox/cosheet/aws/cosheet.pem" ubuntu@cosheet.com:cosheet.csr .
 
+# To set up a new volume on AWS:
+# Use the AWS web interface to find the volume and attach it to the instance.
+# Use ls to find the device name, which will be /dev/sdf or /dev/xvdf
+To see if it has a file system, do
+# sudo file -s <device name>
+# If it needs a file system, do
+sudo mkfs -t ext4 <device name>
+# Make a mount point
+sudo mkdir /cosheet
+# Mount the file system
+sudo mount <device name> /cosheet
+# Make it writable by all users
+sudo chmod u+rwx /cosheet
+# To make it mount automatically, see step 7 here
+  https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html
 

@@ -5,4 +5,3 @@
 *.gitattributes text eol=crlf
 *.md text eol=crlf
 *.log text eol=crlf
-LICENSE *.md text eol=crlf

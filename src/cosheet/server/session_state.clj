@@ -43,6 +43,14 @@
         (clojure.string/join "?" (concat [path] (rest parts))))
       url)))
 
+;;
+;; functions to retrieve hard coded global params
+;; (e.g., default userdata directory path)
+;;
+(defn isAdmin
+  [user-id]
+  (= "admin" user-id))
+
 ;;; If there is a top level mount point, /cosheet, then we put our data
 ;;; there, otherwise in /~/cosheet/.
 (defonce cosheet-data-path
@@ -62,7 +70,7 @@
   [filename]
   (str cosheet-data-path filename))
 
-;;; User data is stored in <data-path>/userdata/<user-id>/<filename>
+;;; User data is stored in <cosheet-data-path>/userdata/<user-id>/<filename>
 (defn get-userdata-path
   [user-id]
   (str cosheet-data-path "userdata/" user-id "/"))
@@ -190,7 +198,7 @@
    If the current immutable store is different from the written store,
    writes the current value to a file of the given url path. Always returns
    the current-value."
-   [written-store mutable-store file-path]
+  [written-store mutable-store file-path]
   ;; We write the latest value from the mutable store, rather than the value
   ;; at the time the send was done, so that we will catch up if we get behind.
   (with-latest-value [store (current-store mutable-store)]
@@ -233,35 +241,37 @@
   Return nil if there is something wrong with the path."
   [file-path]
   (let [[without-suffix name suffix] (interpret-file-path file-path)]
-    (or
-     ((:stores @session-info) without-suffix)
-     ;; If there were a race to create the store, the log stream might get
-     ;; opened multiple times in ensure-in-atom-map! To avoid that, we run under
-     ;; a global lock.
+    (->
+     ;; We want to make sure we don't have a race between threads to
+     ;; create a store twice, open its log stream multiple times, etc.
+     ;; So we run under a global lock.
      (locking session-info
-       ;; If the path is not valid, we don't want to put nil in
-       ;; (:stores @session-info), as that would preclude fixing the path.
-       ;; Rather, we leave (:stores @session-info) blank in that case.
-       (when-let [[immutable-store transient-id]
-                  (get-store without-suffix name suffix)]
-         (let [log-stream (try (java.io.FileOutputStream.
-                                (str without-suffix ".cosheetlog") true)
-                               (catch java.io.FileNotFoundException e
-                                 nil))
-               log-agent (when log-stream
-                           (agent (clojure.java.io/writer log-stream)))
-               info {:store (new-mutable-store immutable-store)
-                     :transient-id transient-id
-                     :agent (agent immutable-store)
-                     :log-agent log-agent}]
-           (when log-agent
-             (when (= (.position (.getChannel log-stream)) 0)
-               (send log-agent
-                     write-log-entry
-                     [:store (store-to-data immutable-store)]))
-             (send log-agent write-log-entry [:opened]))
-           (swap! session-info #(assoc-in % [:stores without-suffix] info))
-           (assoc info :without-suffix without-suffix)))))))
+       (or
+        ((:stores @session-info) without-suffix)
+        ;; If the path is not valid, we don't want to put nil in
+        ;; (:stores @session-info), as that would preclude fixing the path.
+        ;; Rather, we leave (:stores @session-info) blank in that case.
+        (when-let [[immutable-store transient-id]
+                   (get-store without-suffix name suffix)]
+          (let [log-stream (try (java.io.FileOutputStream.
+                                 (str without-suffix ".cosheetlog") true)
+                                (catch java.io.FileNotFoundException e
+                                  nil))
+                log-agent (when log-stream
+                            (agent (clojure.java.io/writer log-stream)))
+                info {:store (new-mutable-store immutable-store)
+                      :transient-id transient-id
+                      :agent (agent immutable-store)
+                      :log-agent log-agent}]
+            (when log-agent
+              (when (= (.position (.getChannel log-stream)) 0)
+                (send log-agent
+                      write-log-entry
+                      [:store (store-to-data immutable-store)]))
+              (send log-agent write-log-entry [:opened]))
+            (swap! session-info #(assoc-in % [:stores without-suffix] info))
+            info))))
+     (assoc :without-suffix without-suffix))))
 
 ;;; Session management. There is a tracker for each session.
 
@@ -413,10 +423,4 @@
                           (dissoc session-map session-id))
                       session-map))))))
 
-;;
-;; functions to retrieve hard coded global params (e.g., default userdata directory path)
-;;
-(defn isAdmin
-  [user-id]
-  (= "admin" user-id))
 

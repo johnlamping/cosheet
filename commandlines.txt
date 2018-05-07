@@ -52,8 +52,10 @@ sudo apt install default-jre
 5. Copy cosheet jar and cosheet-db.mv.db to ec2 server
   On a local terminal:
 cd <source root>/ 
-Build cosheet “lein uberjar”
-scp cosheet jar to ec2 server. For example, scp -i "~/Dropbox/cosheet/aws/cosheet.pem" target/cosheet-0.1.2-SNAPSHOT-standalone.jar ubuntu@ec2-18-204-199-193.compute-1.amazonaws.com:
+# Build cosheet
+lein uberjar
+# scp cosheet jar to ec2 server. For example,
+scp -i "~/Dropbox/cosheet/aws/cosheet.pem" target/cosheet-0.1.2-SNAPSHOT-standalone.jar ubuntu@cosheet.com:
 scp <source root>/cosheet-db.mv.db to ec2 server
 
 6. Setup directories on EC2 server

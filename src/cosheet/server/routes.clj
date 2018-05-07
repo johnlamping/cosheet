@@ -7,9 +7,11 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax list-user-files
-                                          admin-page create-user delete-user-view]]
-            [cosheet.server.session-state :refer [isAdmin get-userdata-path url-path-to-file-path]]
+            [cosheet.server.views :refer [initial-page handle-ajax
+                                          list-user-files admin-page
+                                          create-user delete-user-view]]
+            [cosheet.server.session-state :refer [isAdmin
+                                                  url-path-to-file-path]]
             [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
 
             [buddy.auth :refer [authenticated? throw-unauthorized]]
@@ -74,10 +76,9 @@
   [request path referent selector]
   (if-not (authenticated? request)
     (throw-unauthorized)
-    ;;
-    ;; user data is stored in ~/cosheet/userdata/<user-id>/<filename>
+    ;; TODO: Rather than make up an unknown user, show an error.
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (initial-page (str (get-userdata-path user-id) "/" path) referent selector)
+      (initial-page (url-path-to-file-path path user-id) referent selector)
     )
   ))
 
@@ -105,7 +106,7 @@
     (throw-unauthorized)
     ;; call list-user-files
     (let [user-id (get-in request [:session :identity] "unknown")]
-      (list-user-files (get-userdata-path user-id) user-id))
+      (list-user-files user-id))
     ;; static html response - deprecated
     ;(let [content (slurp (io/resource "public/index-user-files.html"))]
     ;  (render content request))
@@ -147,9 +148,8 @@
       (if-not (isAdmin user-id)
         (throw-unauthorized)
         (let [username (get-in request [:form-params "username"])
-              password (get-in request [:form-params "password"])
-              userdata-full-path (url-path-to-file-path (get-userdata-path username))]
-          (create-user username password userdata-full-path)))
+              password (get-in request [:form-params "password"])]
+          (create-user username password)))
   )))
 
 (defn delete-user
@@ -172,7 +172,7 @@
   (GET "/" [] list-files)
   (POST "/" [] create-file)
   (GET "/cosheet/:path{.*}" [path referent selector :as request]
-       (get-initial-page request path referent selector))
+       (get-initial-page request (str "/cosheet/" path) referent selector))
   ;;(GET ".+//:path{.*}" [path referent selector]
   ;;     (initial-page (str "//" path) referent selector))
   ;;(GET "/~/:path{.*}" [path referent selector]

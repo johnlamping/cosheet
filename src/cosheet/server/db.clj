@@ -1,11 +1,11 @@
 (ns cosheet.server.db
   (:require [clojure.java.jdbc :as jdbc]
             [cosheet.server.session-state
-             :refer [url-path-to-file-path get-db-path]]
+             :refer [get-db-path]]
             [buddy.hashers :as hashers]))
 
 (def db-spec {:dbtype "h2"
-              :dbname (url-path-to-file-path (get-db-path "cosheet-db"))})
+              :dbname (get-db-path "cosheet-db")})
 
 (defn add-user-to-db
   [username password]

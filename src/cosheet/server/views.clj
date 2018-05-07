@@ -32,6 +32,7 @@
                            key->id dom-for-key?]]
       [session-state :refer [create-session ensure-session forget-session
                              create-client-state url-path-to-file-path
+                             get-userdata-path
                              remove-url-file-extension isAdmin
                              get-session-state queue-to-log update-store-file]]
       [db :refer [get-all-users add-user-to-db remove-user-from-db get-user-pwdhash]]
@@ -54,11 +55,11 @@
         ;; This can be uncommented to see what is allocating reporters.
         (comment (profile-and-print-reporters reporters))))))
 
-;;
-;;  generate html page listing all user files with href to edit file
-;;  page also contains logout
-(defn list-user-files [url-path user-id]
-  (when-let [directory (url-path-to-file-path url-path)]
+
+;;;  generate html page listing all user files with href to edit file
+;;;  page. Also contains logout.
+(defn list-user-files [user-id]
+  (when-let [directory (get-userdata-path user-id)]
     (html5
       [:head
        [:title "user files"]
@@ -70,7 +71,6 @@
         [:ul  (let [files (.list (io/file directory))]
            (for [file files]
              (if (clojure.string/ends-with? file ".cosheet")
-               ;(println file)
                [:li [:a {:href (str "/cosheet/" file)} file ] ]
              )))
          ]
@@ -83,8 +83,7 @@
       ])
   ))
 
-;; administration page for managing users
-;;
+;;; Administration page for managing users.
 (defn admin-page [user-id]
   (html5
     [:head
@@ -110,51 +109,45 @@
     ])
  )
 
-;; create user
-;;
-(defn create-user [user-id password user-data-path]
-; not sure why try/catch is not working below
-;  (try (
-       ;; check if user-id is already in dB
-       (if (get-user-pwdhash user-id)
-         (throw (Exception. "User already exists")))
-
-       ;; create userdata dir
-       (println "checking userdata dir " user-data-path)
-       (if-not (.exists (java.io.File. user-data-path))
-         (let [success (.mkdir (java.io.File. user-data-path))]
-             (if-not success
-               (throw (Exception. "Unable to create user data directory")))
-             (println "created userdata dir at " user-data-path))
-         (println "userdata dir for " user-id "already exists")
-        )
-
-       (println "adding " user-id " to dB")
-       ;; add user-id to dB
-       (if-not (add-user-to-db user-id password)
-         (throw (Exception. "Unable to add user to dB.")))
-
-       ;; success
-       (println "User " user-id " added successfully")
-       (html5
-         [:head
-          [:title "Success"]
-          [:body
-           [:div (str "User " user-id " created successfully.")]
-           [:a {:href "/admin"} "Back"]
-           ]])
-;  )(catch Exception e
-;      (println (str "create-user caught exception: " e))
-;      (println (clojure.stacktrace/print-stack-trace e))
-;      ;; respond with error
-;      (html5
-;          [:head
-;           [:title "Error"]
-;          [:body
-;           [:div (str "Unable to create user. Exception " e)]]
-;           [:a {:href "/admin"} "Back"]])
-;))
-)
+;;; Create user
+(defn create-user [user-id password]
+  (try ;; check if user-id is already in dB
+    (if (get-user-pwdhash user-id)
+      (throw (Exception. "User already exists")))
+    (let [userdata-path (get-userdata-path user-id)]
+      ;; create userdata dir
+      (println "checking userdata dir " userdata-path)
+      (if-not (.exists (java.io.File. userdata-path))
+        (let [success (.mkdir (java.io.File. userdata-path))]
+          (if-not success
+            (throw (Exception. "Unable to create user data directory")))
+          (println "created userdata dir at " userdata-path))
+        (println "userdata dir for " user-id "already exists")
+        ))
+    (println "adding " user-id " to dB")
+    ;; add user-id to dB
+    (if-not (add-user-to-db user-id password)
+      (throw (Exception. "Unable to add user to dB.")))
+    ;; success
+    (println "User " user-id " added successfully")
+    (html5
+     [:head
+      [:title "Success"]
+      [:body
+       [:div (str "User " user-id " created successfully.")]
+       [:a {:href "/admin"} "Back"]
+       ]])
+    (catch Exception e
+      (println (str "create-user caught exception: " e))
+      (println (clojure.stacktrace/print-stack-trace e))
+      ;; respond with error
+      (html5
+       [:head
+        [:title "Error"]
+        [:body
+         [:div (str "Unable to create user. Exception " e)]]
+        [:a {:href "/admin"} "Back"]])
+      )))
 
 (defn delete-user-view [username]
   (if (remove-user-from-db username)     ; TODO, better return error check
@@ -176,13 +169,13 @@
       ))
   )
 
-(defn initial-page [url-path referent-string selector-string]
-  (println "initial page" url-path referent-string selector-string)
-  (if-let [session-id (create-session nil url-path referent-string
+(defn initial-page [file-path referent-string selector-string]
+  (println "initial page" file-path referent-string selector-string)
+  (if-let [session-id (create-session nil file-path referent-string
                                       manager-data selector-string)]
     (html5
      [:head
-      [:title (last (clojure.string/split url-path #"/"))]
+      [:title (last (clojure.string/split file-path #"/"))]
       [:meta {:itemprop "session-id"
               :content session-id}]
       (include-js "../js/main.js")
@@ -268,16 +261,17 @@
 (defn do-replay [session-state replay]
   ;; First, make our own client state to run the replays in, so we get separate
   ;; numbering of actions.
-  (let [{:keys [url-path store client-state]} session-state
+  (let [{:keys [id url-path store client-state]} session-state
         client-state (create-client-state
                       store (referent->string (:referent client-state)))
         session-state (assoc session-state :client-state client-state)]
     (when (clojure.string/ends-with? url-path ".history")
       (let [original-path (subs url-path 0 (- (count url-path) 8))]
         (try
-          (let [items (with-open [stream (clojure.java.io/input-stream
-                                          (url-path-to-file-path
-                                           original-path ".cosheetlog"))]
+          (let [items (with-open
+                        [stream (clojure.java.io/input-stream
+                                 (url-path-to-file-path
+                                  (str original-path ".cosheetlog") id))]
                         (with-open [reader (java.io.PushbackReader.
                                             (java.io.InputStreamReader.
                                              stream))]
@@ -365,21 +359,23 @@
     (response answer)))
 
 (defn ensure-session-state
-  [params]
+  [user-id params]
   (let [{:keys [id clean]} params]
     (or (get-session-state id)
         (when-let [url clean]
           (let [referent-string (second (re-find #"\?.*referent=([^&]*)" url))
                 selector-string (second (re-find #"\?.*selector=([^&]*)" url))
-                url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))]
+                url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))
+                file-path (url-path-to-file-path url-path user-id)]
             (ensure-session
-             id url-path referent-string manager-data selector-string))))))
+             id file-path referent-string manager-data selector-string))))))
 
 (defn handle-ajax [request]
   (let [params (:params request)
         {:keys [actions replay unload clean acknowledge]}
         params
-        session-state (ensure-session-state params)]
+        user-id (get-in request [:session :identity] "unknown")
+        session-state (ensure-session-state user-id params)]
     (if session-state
       (let [{:keys [tracker file-path store client-state]} session-state]
         (when (or actions clean)

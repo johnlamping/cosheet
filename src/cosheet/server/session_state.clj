@@ -28,29 +28,9 @@
     [render :refer [DOM-for-client-R user-visible-item?]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
 
-(defn path-to-Path [path]
-  (java.nio.file.Paths/get
-   (java.net.URI. (str "file://" path))))
-
-(defn url-path-to-file-path
-  "Turn a url path into a file path, returning nil if the url path is
-  syntactically ill formed."
-  [url-path]
-  (when (not (clojure.string/ends-with? url-path "/"))
-    ;; We need to get the home directory, but with /, not \, even on Windows.
-    ;; We do that by turning it into a URI, then replacing the prefix with "/".
-    (let [home (-> (new java.io.File (System/getProperty "user.home"))
-                   (.toURI)
-                   (.toString)
-                   (clojure.string/replace-first #"[^:]*:/*" "/"))]
-      (cond (clojure.string/starts-with? url-path "/cosheet/")
-            (str home (subs url-path 1))
-            (clojure.string/starts-with? url-path "/~/")
-            (str home (subs url-path 3))
-            (clojure.string/starts-with? url-path "//")
-            (subs url-path 1)
-            true nil))))
-
+;;; This is the only function that directly turns one url into another.
+;;; It is used only to remove the suffix from an initial url, so the client
+;;; can be asked to redirect to the clean url.
 (defn remove-url-file-extension
   "If the url has a file extension, remove it."
   [url]
@@ -62,6 +42,64 @@
                   "/" (concat (butlast path-parts) [(first file-parts)]))]
         (clojure.string/join "?" (concat [path] (rest parts))))
       url)))
+
+;;; If there is a top level mount point, /cosheet, then we put our data
+;;; there, otherwise in /~/cosheet/.
+(defonce cosheet-data-path
+  (if (.exists (clojure.java.io/file "/cosheet/"))
+    ;; on server
+    "/cosheet/"
+    ;; on local machine
+    ;; We need to get the home directory, but with /, not \, even on Windows.
+    ;; We do that by turning it into a URI, then replacing the prefix with "/".
+    (let [home (-> (new java.io.File (System/getProperty "user.home"))
+                   (.toURI)
+                   (.toString)
+                   (clojure.string/replace-first #"[^:]*:/*" "/"))]
+      (str home "cosheet/"))))
+
+(defn get-db-path
+  [filename]
+  (str cosheet-data-path filename))
+
+;;; User data is stored in <data-path>/userdata/<user-id>/<filename>
+(defn get-userdata-path
+  [user-id]
+  (str cosheet-data-path "userdata/" user-id "/"))
+
+(defn url-path-to-file-path
+  "Turn a url path into a file path, returning nil if the url path is
+  syntactically ill formed."
+  [url-path user-id]
+  (println url-path)
+  (when (and (not (clojure.string/ends-with? url-path "/"))
+             (clojure.string/starts-with? url-path "/cosheet/"))
+    (str (get-userdata-path user-id) (subs url-path 9))))
+
+(defn interpret-file-path
+  "Given the file path, return the path without the suffix,
+  the name, and the suffix, using appropriate defaults.
+  Return nil if the path is not well formed."
+  [file-path]
+  (let [parts (clojure.string/split file-path #"/")
+        directory-path (clojure.string/join "/" (butlast parts))
+        filename (last parts)
+        name-parts (clojure.string/split filename #"\.")
+        name (first name-parts)
+        without-suffix (str directory-path "/" name)]
+    (cond (= (count name-parts) 1)
+          ;; If there was no extension, we default to "cosheet"
+          [without-suffix name ".cosheet"]
+          (and (= (count name-parts) 2)
+               (#{"cosheet" "csv"} (second name-parts)))
+          [without-suffix name (str "." (second name-parts))])))
+
+(defn path-to-Path
+  "Turn a string file path to a Java file Path object, which is what various
+  Java File static methods need."
+   [path]
+  (java.nio.file.Paths/get
+   (java.net.URI. (str "file://" path))))
 
 (defn has-valid-directory?
   "Return whether the file path refers to an actual directory."
@@ -83,7 +121,8 @@
 
 ;;; Store management
 
-;;; (:stores @session-info) is a map from url path to a map:
+;;; (:stores @session-info) is a map from file path (with suffix omitted)
+;;; to a map:
 ;;;  {        :store The mutable-store.
 ;;;    :transient-id The id of the root transient item in the store.
 ;;;           :agent The agent responsible for saving the store. It's state
@@ -112,24 +151,6 @@
     (with-open [reader (clojure.java.io/reader path)]
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
-
-(defn interpret-file-path
-  "Given the file path, return the path without the suffix,
-  the name, and the suffix, using appropriate defaults.
-  Return nil if the path is not well formed."
-  [file-path]
-  (let [parts (clojure.string/split file-path #"/")
-        directory-path (clojure.string/join "/" (butlast parts))
-        filename (last parts)
-        name-parts (clojure.string/split filename #"\.")
-        name (first name-parts)
-        without-suffix (str directory-path "/" name)]
-    (cond (= (count name-parts) 1)
-          ;; If there was no extension, we default to "cosheet"
-          [without-suffix name ".cosheet"]
-          (and (= (count name-parts) 2)
-               (#{"cosheet" "csv"} (second name-parts)))
-          [without-suffix name (str "." (second name-parts))])))
 
 (defn add-transient-element
   "Add the root transient element to an immutable store.
@@ -208,7 +229,7 @@
 (defn ensure-store
   "Return the store info for the given file path, creating it if necessary.
   Also add :without-suffix to the store info returned, giving the
-  url path that the store is indexed under.
+  file path that the store is indexed under.
   Return nil if there is something wrong with the path."
   [file-path]
   (let [[without-suffix name suffix] (interpret-file-path file-path)]
@@ -247,7 +268,8 @@
 ;;; (:sessions @session-info) is a map from id to session state.
 ;;; Session state consists of a map
 ;;;             :id  The session id identifying the client.
-;;;      :file-path  The file path corresponding to the store.
+;;;      :file-path  The file path (with suffix omitted) corresponding
+;;;                  to the store.
 ;;;          :store  The store that holds the data.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
@@ -264,8 +286,6 @@
 ;;;            :batch-editing  If true, we are batch editing, and showing
 ;;;                            the batch edit window, rather than whatever
 ;;;                            referent says we should show.
-;;; When we process client commands, we add to the session state
-;;; :selector-interpretation from the client's request.
 
 (defn create-client-state
   [store referent-string]
@@ -347,37 +367,36 @@
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
-  [session-id url-path referent-string manager-data selector-string]
+  [session-id file-path referent-string manager-data selector-string]
   (prune-old-sessions (* 60 60 1000))
-  (when-let [file-path (url-path-to-file-path url-path)]
-    (when-let [store-info (ensure-store file-path)]
-      (let [store (:store store-info)
-            id (swap-control-return!
-                session-info
-                (fn [session-info]
-                  (let [session-map (:sessions session-info)
-                        id (or session-id (new-id session-map))
-                        client-state (create-client-state store referent-string)]
-                    [(assoc-in session-info [:sessions id]
-                               {:file-path (:without-suffix store-info)
-                                :id id
-                                :store store
-                                :tracker (create-tracker
-                                          store (:transient-id store-info)
-                                          client-state
-                                          manager-data selector-string)
-                                :client-state client-state})
-                     id])))]
-        (prune-unused-stores)
-        (compute manager-data 1000)
-        (println "computed some")
-        id))))
+  (when-let [store-info (ensure-store file-path)]
+    (let [store (:store store-info)
+          id (swap-control-return!
+              session-info
+              (fn [session-info]
+                (let [session-map (:sessions session-info)
+                      id (or session-id (new-id session-map))
+                      client-state (create-client-state store referent-string)]
+                  [(assoc-in session-info [:sessions id]
+                             {:file-path (:without-suffix store-info)
+                              :id id
+                              :store store
+                              :tracker (create-tracker
+                                        store (:transient-id store-info)
+                                        client-state
+                                        manager-data selector-string)
+                              :client-state client-state})
+                   id])))]
+      (prune-unused-stores)
+      (compute manager-data 1000)
+      (println "computed some")
+      id)))
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
-  [session-id url-path referent-string manager-data selector-string]
+  [session-id file-path referent-string manager-data selector-string]
   (or (get-session-state session-id)
-      (let [session-id (create-session session-id url-path referent-string
+      (let [session-id (create-session session-id file-path referent-string
                                        manager-data selector-string)]
         (get-session-state session-id))))
 
@@ -401,10 +420,3 @@
   [user-id]
   (= "admin" user-id))
 
-(defn get-db-path
-  [filename]
-  (str "/~/cosheet/" filename))
-
-(defn get-userdata-path
-  [user-id]
-  (str "/~/cosheet/userdata/" user-id))

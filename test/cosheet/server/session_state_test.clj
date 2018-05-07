@@ -21,13 +21,9 @@
 
 (deftest url-path-to-file-path-test
   (let [home (System/getProperty "user.home")]
-    (is (= (url-path-to-file-path "foo/") nil))
-    (is (= (url-path-to-file-path "/cosheet/foo")
-           (str home "/cosheet/foo")))
-    (is (= (url-path-to-file-path "/~/foo")
-           (str home "/foo")))
-    (is (= (url-path-to-file-path "//foo")
-           "/foo"))))
+    (is (= (url-path-to-file-path "foo/" "john") nil))
+    (is (clojure.string/ends-with? (url-path-to-file-path "/cosheet/foo" "john")
+                                   "/cosheet/userdata/john/foo"))))
 
 (deftest remove-url-file-extension-test
   (is (= (remove-url-file-extension "a/b.c/c.foo?bar=1&baz=2?baz")
@@ -112,7 +108,7 @@
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "//foo" nil md nil)]
+    (let [state (ensure-session nil "/foo" nil md nil)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))

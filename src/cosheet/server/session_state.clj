@@ -327,7 +327,8 @@
                     selector-category]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
-    (println "created tracker" (simplify-for-print definition))
+    (println (new java.util.Date) "created tracker"
+             (simplify-for-print definition))
     tracker))
 
 (defn new-id [session-map]
@@ -398,8 +399,8 @@
                               :client-state client-state})
                    id])))]
       (prune-unused-stores)
-      (compute manager-data 1000)
-      (println "computed some")
+      (compute manager-data 100)
+      (println (new java.util.Date) "computed some")
       id)))
 
 (defn ensure-session

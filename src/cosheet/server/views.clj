@@ -170,61 +170,63 @@
   )
 
 (defn initial-page [file-path referent-string selector-string]
-  (println "initial page" file-path referent-string selector-string)
+  (println (new java.util.Date) "initial page"
+           file-path referent-string selector-string)
   (if-let [session-id (create-session nil file-path referent-string
                                       manager-data selector-string)]
-    (html5
-     [:head
-      [:title (last (clojure.string/split file-path #"/"))]
-      [:meta {:itemprop "session-id"
-              :content session-id}]
-      (include-js "../js/main.js")
-      (include-css "../style.css")]
-     [:body
-      [:div#toolbar.toolbar
-       [:div#undo.tool
-        [:img {:src "../icons/undo.gif"}]
-        [:div.tooltip "undo (C-Z)"]]
-       [:div#redo.tool
-        [:img {:src "../icons/redo.gif"}]
-        [:div.tooltip "redo (C-Y)"]]
-       [:div.toolgap]
-       [:div#expand.tool
-        [:img {:src "../icons/expand.gif"}]
-        [:div.tooltip "expand (C-E)"]]
-       [:div.toolgap]
-       [:div#add-twin.tool
-        [:img {:src "../icons/add_twin.gif"}]
-        [:Div.tooltip "add twin (C-=)"]]
-       [:div#add-element.tool
-        [:img {:src "../icons/add_element.gif"}]
-        [:div.tooltip "add element (C->)"]]
-       [:div#add-label.tool
-        [:img {:src "../icons/add_label.gif"}]
-        [:div.tooltip "add label (C-L)"]]
-       [:div#add-sibling.tool
-        [:img {:src "../icons/add_sibling.gif"}]
-        [:div.tooltip "add sibling below (C-S)"]]
-       [:div.toolgap]
-       [:div#add-row.tool
-        [:img {:src "../icons/add_row.gif"}]
-        [:div.tooltip "add row below (C-_)"]]
-       [:div#add-column.tool
-        [:img {:src "../icons/add_column.gif"}]
-        [:div.tooltip "add column right (C-|)"]]
-       [:div.toolgap]
-       [:div#delete-row.tool
-        [:img {:src "../icons/delete_row.gif"}]
-        [:div.tooltip "delete row"]]
-       [:div#delete-column.tool
-        [:img {:src "../icons/delete_column.gif"}]
-        [:div.tooltip "delete column"]]
-       [:div.toolgap]
-       [:a.logout {:href "/logout"} "Logout"]]
-      [:div#app "Root"] ;; Client will create a component with id "root".
-      [:div#select_holder.select_holder
-       [:input#edit_input {"type" "text"}]]
-      [:script "cosheet.client.run();"]])
+    (do (println (new java.util.Date) "Got session")
+        (html5
+         [:head
+          [:title (last (clojure.string/split file-path #"/"))]
+          [:meta {:itemprop "session-id"
+                  :content session-id}]
+          (include-js "../js/main.js")
+          (include-css "../style.css")]
+         [:body
+          [:div#toolbar.toolbar
+           [:div#undo.tool
+            [:img {:src "../icons/undo.gif"}]
+            [:div.tooltip "undo (C-Z)"]]
+           [:div#redo.tool
+            [:img {:src "../icons/redo.gif"}]
+            [:div.tooltip "redo (C-Y)"]]
+           [:div.toolgap]
+           [:div#expand.tool
+            [:img {:src "../icons/expand.gif"}]
+            [:div.tooltip "expand (C-E)"]]
+           [:div.toolgap]
+           [:div#add-twin.tool
+            [:img {:src "../icons/add_twin.gif"}]
+            [:Div.tooltip "add twin (C-=)"]]
+           [:div#add-element.tool
+            [:img {:src "../icons/add_element.gif"}]
+            [:div.tooltip "add element (C->)"]]
+           [:div#add-label.tool
+            [:img {:src "../icons/add_label.gif"}]
+            [:div.tooltip "add label (C-L)"]]
+           [:div#add-sibling.tool
+            [:img {:src "../icons/add_sibling.gif"}]
+            [:div.tooltip "add sibling below (C-S)"]]
+           [:div.toolgap]
+           [:div#add-row.tool
+            [:img {:src "../icons/add_row.gif"}]
+            [:div.tooltip "add row below (C-_)"]]
+           [:div#add-column.tool
+            [:img {:src "../icons/add_column.gif"}]
+            [:div.tooltip "add column right (C-|)"]]
+           [:div.toolgap]
+           [:div#delete-row.tool
+            [:img {:src "../icons/delete_row.gif"}]
+            [:div.tooltip "delete row"]]
+           [:div#delete-column.tool
+            [:img {:src "../icons/delete_column.gif"}]
+            [:div.tooltip "delete column"]]
+           [:div.toolgap]
+           [:a.logout {:href "/logout"} "Logout"]]
+          [:div#app "Root"] ;; Client will create a component with id "root".
+          [:div#select_holder.select_holder
+           [:input#edit_input {"type" "text"}]]
+          [:script "cosheet.client.run();"]]))
      (html5
      [:head
       [:title "Hello World"]
@@ -357,7 +359,7 @@
                       answer :doms
                       #(map (fn [dom] (:id (dom-attributes dom)))
                             %))]
-        (println "response" stripped)))
+        (println (new java.util.Date) "response" stripped)))
     (response answer)))
 
 (defn ensure-session-state
@@ -383,7 +385,7 @@
         (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] file-path))
         (when (not= (dissoc request :id) {})
-          (println "Request" params))
+          (println (new java.util.Date) "Request" params))
         (when unload
           (println "Unloading session.")
           (forget-session (:id params)))

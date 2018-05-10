@@ -880,6 +880,12 @@ body {
     border-width: 0px 0px 1px 0px;
 }
 
+.logout {
+    display: inline-block;
+    font-family: arial,sans-serif;
+    float: right;
+}
+
 .tool {
     position: relative;
     height: 34px;

@@ -218,7 +218,9 @@
         [:div.tooltip "delete row"]]
        [:div#delete-column.tool
         [:img {:src "../icons/delete_column.gif"}]
-        [:div.tooltip "delete column"]]]
+        [:div.tooltip "delete column"]]
+       [:div.toolgap]
+       [:a.logout {:href "/logout"} "Logout"]]
       [:div#app "Root"] ;; Client will create a component with id "root".
       [:div#select_holder.select_holder
        [:input#edit_input {"type" "text"}]]

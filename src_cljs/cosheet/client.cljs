@@ -13,7 +13,7 @@
                                        dom-text find-ancestor-with-class
                                        next-mutable-editable]]
             cosheet.hiccup-utils
-            [cosheet.ajax :refer [request-action request-replay
+            [cosheet.ajax :refer [timed-log request-action request-replay
                                   ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                open-edit-field close-edit-field
@@ -229,6 +229,7 @@
     ;(gevents/listen app-key-handler key-handler/EventType.KEY keypress-handler)
     (gevents/listen toolbar gevents/EventType.CLICK click-handler)
     (gevents/listen js/window gevents/EventType.UNLOAD unload-handler))
+  (timed-log "page loaded.")
   (add-pending-clean js/window.location.href)
   (ajax-if-pending)) 
 

@@ -16,6 +16,11 @@
 
 (def ajax-request-open (atom false))
 
+(defn timed-log [item]
+  (let [now (js/Date.)]
+    (.log js/console (str (subs (.toTimeString now) 0, 8) ":"
+                          (.getMilliseconds now) " " item))))
+
 (defn session-id []
   (-> (->> (array-seq (js/document.getElementsByTagName "meta"))
            (filter #(= (.getAttribute % "itemprop") "session-id")))
@@ -26,9 +31,9 @@
   ([params]
    (ajax-request params 5000))
   ([params timeout]
+   (timed-log "sending ajax request.")
    (POST (clojure.string/join "/" ["/ajax-request" (session-id)])
-         ;; TODO: Get rid of interpretation :narrow once the server is fixed.
-         {:params (assoc params :selector-interpretation :narrow)
+         {:params params
           :response-format (transit-response-format)
           :handler ajax-handler
           :error-handler ajax-error-handler
@@ -52,7 +57,7 @@
 (defn poll-task
   "The task to run when it is time to poll for server changes."
   []
-  (swap! poll-delay #(min (* % 10) 3600000))
+  (swap! poll-delay #(min (* % 2) 3600000))
   (schedule-poll-task)
   (when (not @ajax-request-open)
     (ajax-request (take-pending-params))))
@@ -139,7 +144,7 @@
                           previously-selected-id)
           select-target (and target-id (js/document.getElementById target-id))]
       (when select-target
-        (.log js/console "doing select.")
+        (timed-log "doing select.")
         (select select-target)
         (when request-id
           ;; Tell the server that their selection request went through.
@@ -167,7 +172,7 @@
 (defn ajax-handler [response]
   (reset! ajax-request-open false)
   (when (not= response {})
-    (.log js/console (str response))
+    (timed-log response)
     (when (not= response {})
       (reset-poll-delay))
     (if (:reload response)
@@ -185,5 +190,5 @@
 
 (defn ajax-error-handler [{:keys [status status-text]}]
   (reset! ajax-request-open false)
-  (.log js/console (str "ajax-error: " status " " status-text))
+  (timed-log (str "ajax-error: " status " " status-text))
   (schedule-poll-task))

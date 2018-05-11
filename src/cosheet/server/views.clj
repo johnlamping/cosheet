@@ -41,6 +41,20 @@
 
 (defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
 
+(defonce time-formatter (java.text.DateFormat/getDateTimeInstance))
+(defn now-string
+  "Return a string representing the current time, down to milliseconds"
+  []
+  (let [now (java.util.Calendar/getInstance)
+        datime (.format time-formatter (.getTime now))
+        datime-len (count datime)
+        millis (.get now java.util.Calendar/MILLISECOND)]
+    ;; Put the millis after the seconds, and before the AM or PM.
+    (str (subs datime 0, (- datime-len 3))
+         ":"
+         millis
+         (subs datime, (- datime-len 3)) )))
+
 (defn check-propagation-if-quiescent [tracker]
   (let [tracker-data @tracker
         task-queue (get-in tracker-data [:manager-data :queue])]
@@ -170,11 +184,11 @@
   )
 
 (defn initial-page [file-path referent-string selector-string]
-  (println (new java.util.Date) "initial page"
+  (println (now-string) "initial page"
            file-path referent-string selector-string)
   (if-let [session-id (create-session nil file-path referent-string
                                       manager-data selector-string)]
-    (do (println (new java.util.Date) "Got session")
+    (do (println (now-string) "Got session")
         (html5
          [:head
           [:title (last (clojure.string/split file-path #"/"))]
@@ -229,9 +243,7 @@
           [:script "cosheet.client.run();"]]))
      (html5
      [:head
-      [:title "Hello World"]
-      (include-js "../js/main.js")
-      (include-css "../style.css")]
+      [:title "Hello World"]]
      [:body
       [:div "Invalid path."]])))
 
@@ -359,7 +371,7 @@
                       answer :doms
                       #(map (fn [dom] (:id (dom-attributes dom)))
                             %))]
-        (println (new java.util.Date) "response" stripped)))
+        (println (now-string) "response" stripped)))
     (response answer)))
 
 (defn ensure-session-state
@@ -385,7 +397,7 @@
         (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] file-path))
         (when (not= (dissoc request :id) {})
-          (println (new java.util.Date) "Request" params))
+          (println (now-string) "Request" params))
         (when unload
           (println "Unloading session.")
           (forget-session (:id params)))

@@ -34,7 +34,7 @@
   :hooks [leiningen.cljsbuild]
   :cljsbuild {:builds [{:source-paths ["src_cljc" "src_cljs"]
                         :compiler {:output-to "resources/public/js/main.js"
-                                   :optimizations :whitespace
+                                   :optimizations :advanced
                                    :pretty-print true
                                    :preamble ["reagent/react.js"]}}]}
   :main ^:skip-aot cosheet.server.routes ;; So we don't need lein ring.

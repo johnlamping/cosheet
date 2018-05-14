@@ -53,7 +53,7 @@
 
 ;;; If there is a top level mount point, /cosheet, then we put our data
 ;;; there, otherwise in /~/cosheet/.
-(defonce cosheet-data-path
+(defn cosheet-data-path-uncached []
   (if (.exists (clojure.java.io/file "/cosheet/"))
     ;; on server
     "/cosheet/"
@@ -66,14 +66,16 @@
                    (clojure.string/replace-first #"[^:]*:/*" "/"))]
       (str home "cosheet/"))))
 
+(def cosheet-data-path (memoize cosheet-data-path-uncached))
+
 (defn get-db-path
   [filename]
-  (str cosheet-data-path filename))
+  (str (cosheet-data-path) filename))
 
 ;;; User data is stored in <cosheet-data-path>/userdata/<user-id>/<filename>
 (defn get-userdata-path
   [user-id]
-  (str cosheet-data-path "userdata/" user-id "/"))
+  (str (cosheet-data-path) "userdata/" user-id "/"))
 
 (defn url-path-to-file-path
   "Turn a url path into a file path, returning nil if the url path is

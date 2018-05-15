@@ -278,21 +278,24 @@
         old-dom (get-in data [:key->dom key])
         depth (:depth component-map)]
     (if (and component-map (not= dom old-dom))
-      (do (check-subcomponents-stored data old-dom depth)
-          (let [subcomponent-maps (dom->subcomponent-maps dom depth)
-                [data version] (update-next-version data)
-                new-map (-> component-map
-                            (assoc :subcomponents
-                                   (set (map :key subcomponent-maps)))
-                            (assoc :version version))]
+      (let [subcomponent-maps (dom->subcomponent-maps dom depth)
+            [data version] (update-next-version data)
+            new-map (-> component-map
+                        (assoc :subcomponents
+                               (set (map :key subcomponent-maps)))
+                        (assoc :version version))]
+        (check-subcomponents-stored data old-dom depth)
+        (cond->
             (-> (reduce update-set-component data subcomponent-maps)
                 (update-in [:key->dom]
                            #(into (apply dissoc %
                                          (keys (dom->keys-and-dom old-dom)))
                                   (dom->keys-and-dom dom)))
                 (update-unneeded-subcomponents component-map new-map)
-                (update-in [:out-of-date-keys] #(assoc % key depth))
-                (assoc-in [:components key] new-map))))
+                (assoc-in [:components key] new-map))
+          (not= (adjust-dom-for-client data dom)
+                (adjust-dom-for-client data old-dom)) 
+          (update-in [:out-of-date-keys] #(assoc % key depth))))
       data)))
 
 (defn dom-callback

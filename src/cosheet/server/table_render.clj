@@ -413,8 +413,15 @@
                                :key row-key
                                :template new-row-template}}])
                       (update :priority inc))]
-    (expr-let [cells (expr-seq map #(table-cell-DOM-R row-item % inherited)
-                               column-descriptions)]
+    ;; We use call-with-immutable so that we don't track every dependency
+    ;; in the row. The downside is that we have to reexamine the whole
+    ;; row when any part of it changes. (Much of that still won't lead
+    ;; to recomputation, as we will reuse unchanged parts.)
+    (expr-let [cells (entity/call-with-immutable
+                      row-item
+                      (fn [row-item]
+                        (expr-seq map #(table-cell-DOM-R row-item % inherited)
+                                  column-descriptions)))]
       (into [:div {}] cells))))
 
 (defn table-row-DOM-component

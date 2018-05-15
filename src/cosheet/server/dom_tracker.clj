@@ -3,7 +3,7 @@
             (cosheet [reporter :as reporter]
                      [expression :refer [new-expression]]
                      [utils :refer [swap-control-return!
-                                    call-with-latest-value]]
+                                    with-latest-value]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes add-attributes
                                            into-attributes]]
@@ -62,7 +62,9 @@
 ;;;                    where add-dom was called directly.
 ;;;          :id->key  The inverse of the key->id map
 ;;;         :key->dom  A map from key to the server version of the dom
-;;;                    for that key. The dom also provides access to any extra
+;;;                    for that key. There can be doms that have keys, but
+;;;                    are not components, so we can't put this in the
+;;;                    components map. The dom also provides access to any extra
 ;;;                    information needed to interpret actions on the key.
 ;;;                    The dom is in hiccup format, as returned by the
 ;;;                    definition or the reporter it returns.
@@ -296,43 +298,42 @@
 (defn dom-callback
   "Record a new value for the dom."
   [[_ key] reporter data-atom]
-  (call-with-latest-value
-   #(reporter/value reporter)
-   (fn [dom]
-     (when verbose
-       (println "got dom value for key" (simplify-for-print key)))
+  (with-latest-value [dom (reporter/value reporter)]
+   (when verbose
+     (println "got dom value for key" (simplify-for-print key)))
      ;;; TODO: When not valid, but we have a previous dom,
      ;;; set a style for the dom to indicate invalidity.
-     (when (reporter/valid? dom)
-       (when verbose
-         (println "value is valid"))
-       (let [dom-key (:key (dom-attributes dom))]
-         (assert (or (nil? dom-key)
-                     (= (seq key) (seq dom-key))
-                     (= (seq (conj key :content)) (seq dom-key)))
-                 [key dom]))
-       (swap-and-act
-        data-atom
-        (fn [data]
-          (when (= reporter (get-in data [:components key :reporter]))
-            (when verbose
-              (println "reporter is current")))
-          (cond-> data
-            (= reporter (get-in data [:components key :reporter]))
-            (update-dom key dom))))))))
+    (when (reporter/valid? dom)
+      (when verbose
+        (println "value is valid"))
+      (let [dom-key (:key (dom-attributes dom))]
+        (assert (or (nil? dom-key)
+                    (= (seq key) (seq dom-key))
+                    (= (seq (conj key :content)) (seq dom-key)))
+                [key dom]))
+      (swap-and-act
+       data-atom
+       (fn [data]
+         (when (= reporter (get-in data [:components key :reporter]))
+           (when verbose
+             (println "reporter is current")))
+         (cond-> data
+           (= reporter (get-in data [:components key :reporter]))
+           (update-dom key dom)))))))
 
 (defn set-attending
-  "Set whether or not we are attending to the reporter for the dom for the key."
+  "Set whether or not we are attending to the reporter for the dom
+     for the key."
   [data-atom reporter key]
-  (call-with-latest-value
-   #(= (get-in @data-atom [:components key :reporter]) reporter)
-   (fn [should-attend]
-     ;; Note: The key we use to subscribe might be the same as other
-     ;; dom trackers use, but we only subscribe to reporters that we
-     ;; create, so there will never be a conflict.
-     (apply reporter/set-attendee! reporter [:dom-request key]
-            (when should-attend
-              [dom-callback data-atom])))))
+  (with-latest-value
+    [should-attend
+     (= (get-in @data-atom [:components key :reporter]) reporter)]
+    ;; Note: The key we use to subscribe might be the same as other
+    ;; dom trackers use, but we only subscribe to reporters that we
+    ;; create, so there will never be a conflict.
+    (apply reporter/set-attendee! reporter [:dom-request key]
+           (when should-attend
+             [dom-callback data-atom]))))
 
 (defn update-request-set-attending
   "Add a further action to start or stop attending to the reporter

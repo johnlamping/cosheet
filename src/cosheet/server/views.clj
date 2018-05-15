@@ -67,6 +67,7 @@
         ;; stores.
         (comment (check-propagation reporters))
         ;; This can be uncommented to see what is allocating reporters.
+        ;(profile-and-print-reporters reporters)
         (comment (profile-and-print-reporters reporters))))))
 
 

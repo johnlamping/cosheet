@@ -73,7 +73,7 @@
   (call-with-immutable [this fun]
   "Call the function with an immutable version of the entity.
   If the entity is mutable, a reporter is returned whose value is the result
-  of calling the function the immutable version of the entity, getting
+  of calling the function on the immutable version of the entity, getting
   re-called whenever the entity changes.
   This is good if you want to do a computation on the entity, and
   not have to track every sub-dependency."))

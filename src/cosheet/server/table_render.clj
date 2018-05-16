@@ -550,17 +550,13 @@
 (defn table-DOM-R
   "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
-  ;; The following elements of item describe the table:
-  ;;  :row-query  The content is an item whose list form gives the
-  ;;              requirements for an item to appear as a row. When the
-  ;;              query is created, an extra [:top-level
-  ;;              :non-semantic] element is added, to keep the query,
-  ;;              which is also in the database, from matching itself.
+  ;; The following elements of table-item describe the table:
+  ;;  :row-condition  The content is an item whose list form gives the
+  ;;                  requirements for an item to appear as a row.
+  ;;                  It is marked as :non-semantic and :selector.
+  ;;                  It has additional non-semantic elements tagged with:
   ;;     :column  The semantics gives the requirements for an element
-  ;;              of a row to appear in this column. The :column
-  ;;              element has, itself, a :non-semantic element, to
-  ;;              make it not part of the semantics of the column
-  ;;              specifier. Generally, the content of the content
+  ;;              of a row to appear in this column. Generally, the content
   ;;              will be the keyword 'anything, to indicate no constraint
   ;;              on the content of an element in the row, without
   ;;              breaking the rule that the database doesn't contain

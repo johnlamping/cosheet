@@ -3,13 +3,14 @@
             [clojure.pprint :refer [pprint]]
             (cosheet [utils :refer [parse-string-as-number]]
                      [store :as store]
+                     store-impl
                      [entity :as entity]
+                     [entity-impl :as entity-impl]
                      [query :as query]
                      [reporter :refer [reporter? attended? data value
                                         valid? set-attendee!]]
                      [orderable]
                      [expression-manager :refer [current-value]]
-                     [entity-impl :as entity-impl]
                      store-utils
                      [mutable-map :as mm])
             (cosheet.server [order-utils :refer [order-items-R]])))

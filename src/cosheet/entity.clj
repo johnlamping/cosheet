@@ -76,7 +76,10 @@
   of calling the function on the immutable version of the entity, getting
   re-called whenever the entity changes.
   This is good if you want to do a computation on the entity, and
-  not have to track every sub-dependency."))
+  not have to track every sub-dependency.")
+
+  (current-version [this]
+    "Return an immutable entity that is the current value of the entity."))
 
 ;;; Utility functions that work on entities
 

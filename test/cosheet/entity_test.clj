@@ -62,7 +62,8 @@
     (is (label-has-atomic-value? item99 "foo" 3))
     (is (not (label-has-atomic-value? item99 "foo" 4)))
     (is (= (label->atomic-values item99 "bar")) [4])
-    (is (= (to-list item0) nil))))
+    (is (= (to-list item0) nil))
+    (is (= (current-version item0) item0))))
 
 (deftest mutable-storeditem-test
   (let [id0 (make-id "0")
@@ -157,7 +158,10 @@
       (is (check (value call-with-immutable-result)
                  (as-set '(nil ((4 "baz") "bletch") (3 "foo")))))
       (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))
-                          (as-set '(nil ((4 "baz") "bletch") (3 "foo")))])))))
+                          (as-set '(nil ((4 "baz") "bletch") (3 "foo")))])))
+    ;; Finally, check current-version
+    (is (= (current-version item0)
+           (description->entity id0 (cosheet.store/current-store ms))))))
 
 (deftest list-test
   (is (not (atom? '(1 2))))

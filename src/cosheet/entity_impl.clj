@@ -6,6 +6,7 @@
                                     id->content-reference
                                     call-dependent-on-id
                                     mutable-store?
+                                    current-store
                                     stored-item-id-string
                                     Store]]
                      [utils :refer [equivalent-atoms?]]
@@ -53,7 +54,9 @@
   (content-reference [this]
     (description->entity (id->content-reference store item-id) store))
 
-  (call-with-immutable [this fun] (fun this)))
+  (call-with-immutable [this fun] (fun this))
+
+  (current-version [this] this))
 
 (defrecord
     ^{:doc "An item whose elements are described by a mutable store."}
@@ -97,7 +100,10 @@
 
   (call-with-immutable [this fun]
     (call-dependent-on-id
-     store item-id  #(fun (description->entity item-id %)))))
+     store item-id  #(fun (description->entity item-id %))))
+
+  (current-version [this]
+    (description->entity item-id (current-store store))))
 
 ;;; Make a list work as an item. The format is (content element
 ;;; element...) We use ISeq, because, for example, while '(1 2) is a
@@ -132,6 +138,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
   clojure.lang.Symbol
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -140,6 +147,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
   java.lang.String
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -148,6 +156,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
   java.lang.Number
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -156,6 +165,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
   java.lang.Boolean
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -164,6 +174,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
   cosheet.orderable.Orderable
   (mutable-entity? [this] false)
   (atom? [this] true)
@@ -181,6 +192,7 @@
   (content [this] this)
   (content-reference [this] this)
   (call-with-immutable [this fun] (fun this))
+  (current-version [this] this)
 )
 
 (extend-protocol Description

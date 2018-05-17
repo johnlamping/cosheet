@@ -162,7 +162,10 @@
     (bind-entity (content wrapped) env))
 
   (call-with-immutable [this fun]
-    (fun this)))
+    (fun this))
+
+  (current-version [this]
+    this))
 
 (defn bind-entity [entity env]
   (assert (not (mutable-entity? entity)))

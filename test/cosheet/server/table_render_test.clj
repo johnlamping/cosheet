@@ -3,6 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [orderable :as orderable]
+             [query :refer [matching-items matching-elements]]
              [entity :as entity  :refer [label->elements]]
              [expression :refer [expr expr-let expr-seq]]
              [expression-manager :refer [current-value]]
@@ -57,7 +58,8 @@
                     "plain" "plain")]
     (let [table-list
           `("table"
-            (~'anything (~'anything ("age" :tag))
+            (~'anything
+             (~'anything ("age" :tag))
              (:row-condition :non-semantic)
              (~'anything ("single" :tag (~o1 :order :non-semantic))
               (~o1 :order :non-semantic)
@@ -124,6 +126,28 @@
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
+      ;; First, test batch-pattern.
+      (let [immutable-query (entity/current-version query)]
+        (is (= (batch-edit-pattern (first (matching-elements
+                                           `(~'anything ("age" :tag))
+                                           immutable-query))
+                                   immutable-query)
+               `(~'anything
+                 (~'anything ("age" :tag)))))
+        (is (= (batch-edit-pattern (first (matching-elements
+                                           `(~'anything ("single" :tag))
+                                           immutable-query))
+                                   immutable-query)
+               `(~'anything
+                 (~'anything ("age" :tag))
+                 (~'anything ("single" :tag)))))
+        (is (= (batch-edit-pattern (first (matching-items
+                                           '(45 ("age" :tag))
+                                           (:store immutable-query)))
+                                   immutable-query)
+               `(~'anything
+                 (~'anything ("age" :tag))
+                 (45 ("age" :tag))))))
       (is (check
            dom
            [:div {:class "table selector-scope"}

@@ -16,6 +16,7 @@
                                union-referent-if-needed union-referent
                                difference-referent virtual-referent
                                item-or-exemplar-referent
+                               immutable-semantic-to-list
                                semantic-elements-R semantic-to-list-R
                                pattern-to-condition condition-to-template]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
@@ -41,6 +42,29 @@
                                   item-content-DOM]])))
 
 (def base-table-column-width 150)
+
+(defn batch-edit-pattern
+  "Given an item, return the list form of the batch query that matches
+  everything 'like' the item. For a table header, this is everything
+  that would go in its column, while for an element, it is all
+  elements with its content.  For the table header, it is all matching
+  rows."
+  [immutable-item immutable-row-condition-item]
+  ;; We walk up containing items, until we find an item that is either
+  ;; column condition, an element of a row, or the entire row condition.
+  ;; Then we return the appropriate thing for that situation.
+  (loop [item immutable-item]
+    (let [parent-item (entity/subject item)]
+      (cond
+        (or (seq (matching-elements :column item))  
+            (seq (matching-elements :top-level parent-item)))
+        (apply list (concat (immutable-semantic-to-list
+                             immutable-row-condition-item)
+                            [(immutable-semantic-to-list item)]))
+        (seq (matching-elements :row-condition item))
+        (immutable-semantic-to-list item)
+        parent-item
+        (recur parent-item)))))
 
 (defn is-tag-template?
   "Return true if the template describes a label."
@@ -413,15 +437,15 @@
                                :key row-key
                                :template new-row-template}}])
                       (update :priority inc))]
-    ;; We use call-with-immutable so that we don't track every dependency
-    ;; in the row. The downside is that we have to reexamine the whole
-    ;; row when any part of it changes. (Much of that still won't lead
-    ;; to recomputation, as we will reuse unchanged parts.)
-    (expr-let [cells (entity/call-with-immutable
-                      row-item
-                      (fn [row-item]
-                        (expr-seq map #(table-cell-DOM-R row-item % inherited)
-                                  column-descriptions)))]
+    ;; We use updating-with-immutable so that we don't track
+    ;; every dependency in the row. The downside is that we have to
+    ;; reexamine the whole row when any part of it changes. (Much of
+    ;; that still won't lead to recomputation, as we will reuse
+    ;; unchanged parts.)
+    (expr-let [cells (entity/updating-with-immutable
+                      [immutable row-item]
+                      (expr-seq map #(table-cell-DOM-R immutable % inherited)
+                                column-descriptions))]
       (into [:div {}] cells))))
 
 (defn table-row-DOM-component

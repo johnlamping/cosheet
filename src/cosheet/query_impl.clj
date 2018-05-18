@@ -161,7 +161,7 @@
   (content [this]
     (bind-entity (content wrapped) env))
 
-  (call-with-immutable [this fun]
+  (updating-call-with-immutable [this fun]
     (fun this))
 
   (current-version [this]

@@ -135,18 +135,20 @@
            '(nil (3 "foo") ((4 "baz") "bar"))))
     (is (= (deep-to-list (description->entity id99 s))
            '(nil (3 "foo") ((4 "baz") "bar"))))
-    ;; Now  make sure call-with-immutable tracks right.
+    ;; Now make sure updating-with-immutable tracks right.
     (let [record (atom [])
-          fun (fn [current-item]
-                (is (not (mutable-entity? current-item)))
-                (let [value (deep-to-list current-item)]
-                  (swap! record #(conj % value))
-                  value))
-          call-with-immutable-result (call-with-immutable item99 fun)]
+          updating-with-immutable-result
+          (updating-with-immutable
+           [current-item item99]
+           (is (not (mutable-entity? current-item)))
+           (let [value (deep-to-list current-item)]
+             (swap! record #(conj % value))
+             value))]
       (is (= @record []))
       ;; See if it gets computed when demand is added.
-      (set-attendee! call-with-immutable-result :a (fn [id reporter] nil))
-      (is (check (value call-with-immutable-result)
+      (set-attendee! updating-with-immutable-result :a
+                     (fn [id reporter] nil))
+      (is (check (value updating-with-immutable-result)
                  (as-set '(nil ((4 "baz") "bar") (3 "foo")))))
       (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))]))
       ;; Make sure it is not recomputed when an irrelevant change is made.
@@ -155,7 +157,7 @@
       ;; Make sure it is recomputed when a deep, but relevant, change is made.
       (update-content! ms idd "bletch")
       (println (current-value (to-list item99)))
-      (is (check (value call-with-immutable-result)
+      (is (check (value updating-with-immutable-result)
                  (as-set '(nil ((4 "baz") "bletch") (3 "foo")))))
       (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))
                           (as-set '(nil ((4 "baz") "bletch") (3 "foo")))])))

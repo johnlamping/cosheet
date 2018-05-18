@@ -29,18 +29,17 @@
   (when (and (sequential? condition)
              (not (empty? (rest condition))))
     (expr-let [satisfiers
-               (entity/call-with-immutable
-                entity
-                (fn [entity]
-                  (let [elements (entity/elements entity)
-                        canonical-elements (expr-seq
-                                            map item->canonical-semantic-R
-                                            elements)]
-                    (multiset-to-generating-values
-                     (multiset (map #(item->canonical-semantic
-                                      (replace-in-seqs % nil ""))
-                                    (rest condition)))
-                     canonical-elements elements))))]
+               (entity/updating-with-immutable
+                [entity entity]
+                (let [elements (entity/elements entity)
+                      canonical-elements (expr-seq
+                                          map item->canonical-semantic-R
+                                          elements)]
+                  (multiset-to-generating-values
+                   (multiset (map #(item->canonical-semantic
+                                    (replace-in-seqs % nil ""))
+                                  (rest condition)))
+                   canonical-elements elements)))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
 (defn non-implied-matching-elements-R

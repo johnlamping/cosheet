@@ -6,7 +6,7 @@
                      [entity
                       :as Entity
                       :refer [atom? elements content label->elements
-                              call-with-immutable description->entity
+                              updating-call-with-immutable description->entity
                               in-different-store StoredEntity]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription
@@ -380,7 +380,7 @@
   "Given an item, make a list representation of the
   semantic information of the item."
   [item]
-  (call-with-immutable item immutable-semantic-to-list))
+  (updating-call-with-immutable item immutable-semantic-to-list))
 
 (defn item->canonical-semantic
   "Return the canonical form of the semantic information for the item.
@@ -391,7 +391,7 @@
 (defn item->canonical-semantic-R
   "Return the canonical form of the semantic information for the item."
   [item]
-  (call-with-immutable item item->canonical-semantic))
+  (updating-call-with-immutable item item->canonical-semantic))
 
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into

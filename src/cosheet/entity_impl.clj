@@ -54,7 +54,7 @@
   (content-reference [this]
     (description->entity (id->content-reference store item-id) store))
 
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
 
   (current-version [this] this))
 
@@ -98,7 +98,7 @@
     (expr-let [reference (id->content-reference store item-id)]
       (description->entity reference store)))
 
-  (call-with-immutable [this fun]
+  (updating-call-with-immutable [this fun]
     (call-dependent-on-id
      store item-id  #(fun (description->entity item-id %))))
 
@@ -127,7 +127,9 @@
 
   (content-reference [this] (first this))
 
-  (call-with-immutable [this fun] (fun this)))
+  (updating-call-with-immutable [this fun] (fun this))
+
+  (current-version [this] this))
 
 (extend-protocol Entity
   clojure.lang.Keyword
@@ -137,7 +139,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
   clojure.lang.Symbol
   (mutable-entity? [this] false)
@@ -146,7 +148,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
   java.lang.String
   (mutable-entity? [this] false)
@@ -155,7 +157,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
   java.lang.Number
   (mutable-entity? [this] false)
@@ -164,7 +166,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
   java.lang.Boolean
   (mutable-entity? [this] false)
@@ -173,7 +175,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
   cosheet.orderable.Orderable
   (mutable-entity? [this] false)
@@ -182,7 +184,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
@@ -191,7 +193,7 @@
   (elements [this] nil)
   (content [this] this)
   (content-reference [this] this)
-  (call-with-immutable [this fun] (fun this))
+  (updating-call-with-immutable [this fun] (fun this))
   (current-version [this] this)
 )
 
@@ -289,9 +291,9 @@
 
 (defmethod to-list true [entity]
   (if (mutable-entity? entity)
-    ;; We want to run under call-with-immutable, but have stored
+    ;; We want to run under updating-call-with-immutable, but have stored
     ;; entities reference the mutable store.
-    (call-with-immutable
+    (updating-call-with-immutable
      entity (content-transformed-immutable-to-list
              (fn [content] (if (satisfies? StoredEntity content)
                              (in-different-store content entity)
@@ -308,7 +310,7 @@
         (cons content-as-list (map immutable-deep-to-list elements))))))
 
 (defmethod deep-to-list true [entity]
-  (call-with-immutable entity immutable-deep-to-list))
+  (updating-call-with-immutable entity immutable-deep-to-list))
 
 (defmethod stored-entity-id-string  true [entity]
   (assert (satisfies? StoredEntity entity))

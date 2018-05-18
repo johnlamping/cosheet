@@ -70,7 +70,7 @@
     "Return a reference to the content of the entity if the entity is stored,
      otherwise just return its content.")
 
-  (call-with-immutable [this fun]
+  (updating-call-with-immutable [this fun]
   "Call the function with an immutable version of the entity.
   If the entity is mutable, a reporter is returned whose value is the result
   of calling the function on the immutable version of the entity, getting
@@ -80,6 +80,16 @@
 
   (current-version [this]
     "Return an immutable entity that is the current value of the entity."))
+
+(defmacro updating-with-immutable
+  "Run with an immutable version of the entity.
+  If the entity is mutable, a reporter is returned whose value is the result
+  of running the body on the immutable version of the entity, getting
+  re-called whenever the entity changes."
+  [[var expression] & body]
+  `(updating-call-with-immutable
+    ~expression
+    (fn [~var] ~@body)))
 
 ;;; Utility functions that work on entities
 

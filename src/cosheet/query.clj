@@ -50,8 +50,9 @@
       (if (and (entity/mutable-entity? target)
                (satisfies? entity/StoredEntity target))
         ;; Optimized case to not build reporters for all the subsidiary tests. 
-        (expr-let [matches (entity/call-with-immutable
-                            target #(template-matches template %))]
+        (expr-let [matches (entity/updating-with-immutable
+                            [immutable target]
+                            (template-matches template immutable))]
           (map #(entity/in-different-store (:v %) target) matches))
         (expr-let [matches (template-matches template target)]
           (map :v matches))))))

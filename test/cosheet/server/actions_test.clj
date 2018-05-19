@@ -271,6 +271,33 @@
               :open (str "foo?referent="
                          (referent->string (item-referent joe)))})))
 
+(deftest do-selected-test
+  (let [mutable-store (new-mutable-store store)
+        tracker (new-dom-tracker mutable-store)
+        client-state (new-state-map {:last-action nil
+                                     :selected-dom nil
+                                     :referent "Joe"})
+        session-state {:tracker tracker
+                       :store mutable-store
+                       :selector-interpretation :broad
+                       :url-path "Path"
+                       :client-state client-state}
+        attributes {:commands {:add-element nil}
+                    :selector-category :table-header
+                    :target {:referent
+                             (union-referent [(item-referent jane)
+                                              (item-referent joe)])}}]
+    (let [tab-selected (do-selected store
+                                    {:special :tab
+                                     :referent true
+                                     :session-state session-state}
+                                    {})]
+      (is (= tab-selected
+             {:store store
+              :set-url "Path?referent=T"}))
+      (is (= (state-map-get-current-value client-state :referent)
+             true)))))
+
 (deftest do-actions-test
   (let [mutable-store (new-mutable-store store)
         tracker (new-dom-tracker mutable-store)

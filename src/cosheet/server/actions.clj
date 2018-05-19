@@ -269,6 +269,7 @@
           {:store store
            :set-url (str (:url-path (:session-state arguments))
                          "?referent=" (referent->string referent))})
+      ;; TODO: This has no effect. It should create a tab; see why not.
       (= (:special arguments) :new-tab)
       (do-set-content
        store (:target attributes) (into attributes {:from "" :to ""})))))

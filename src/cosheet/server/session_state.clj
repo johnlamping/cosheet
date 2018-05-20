@@ -8,7 +8,7 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   declare-transient-id]]
+                   do-update-control-return! declare-transient-id]]
     store-impl
     mutable-store-impl
     [store-utils :refer [add-entity]]
@@ -81,7 +81,6 @@
   "Turn a url path into a file path, returning nil if the url path is
   syntactically ill formed."
   [url-path user-id]
-  (println url-path)
   (when (and (not (clojure.string/ends-with? url-path "/"))
              (clojure.string/starts-with? url-path "/cosheet/"))
     (str (get-userdata-path user-id) (subs url-path 9))))
@@ -134,7 +133,6 @@
 ;;; (:stores @session-info) is a map from file path (with suffix omitted)
 ;;; to a map:
 ;;;  {        :store The mutable-store.
-;;;    :transient-id The id of the root transient item in the store.
 ;;;           :agent The agent responsible for saving the store. It's state
 ;;;                  is the last version of the store written. We write
 ;;;                  the store by doing a send to this agent, so that
@@ -163,21 +161,21 @@
     (catch java.io.FileNotFoundException e nil)))
 
 (defn add-transient-element
-  "Add the root transient element to an immutable store.
-   Return the revised store and the id of the element."
+  "Add a root transient element to a store.
+   Return the id of the element."
   [store]
-  (let [[store id] (add-entity store nil
-                               '("" :transient
-                                 (anything (:query :non-semantic)
-                                           (:selector :non-semantic))))]
-    [(declare-transient-id store id) id]))
+  (do-update-control-return!
+   store
+   (fn [store]
+     (let [[store id] (add-entity store nil
+                                  '("" :transient
+                                    (anything (:batch-query :non-semantic)
+                                              (:selector :non-semantic))))]
+       [(declare-transient-id store id) id]))))
 
 (defn get-store
   "Read the store if possible; otherwise create one.
-  Return the store and the id of the transient root.
-  Return a map with the store and the file-path to use for accessing it.
-  (If there was a format conversion, the access path will be different from
-  the initial path.)  If the store can't be made, return nil."
+   If the store can't be made, return nil."
   [without-suffix name suffix]
   (when (and without-suffix (has-valid-directory? without-suffix))
     (let [file-path (str without-suffix suffix)]
@@ -193,7 +191,7 @@
                          (starting-store name)))
                      (= suffix ".csv")
                      (read-csv file-path name))]
-        (add-transient-element (convert-to-current store))))))
+        (convert-to-current store)))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).
@@ -253,7 +251,7 @@
         ;; If the path is not valid, we don't want to put nil in
         ;; (:stores @session-info), as that would preclude fixing the path.
         ;; Rather, we leave (:stores @session-info) blank in that case.
-        (when-let [[immutable-store transient-id]
+        (when-let [immutable-store
                    (get-store without-suffix name suffix)]
           (let [log-stream (try (java.io.FileOutputStream.
                                  (str without-suffix ".cosheetlog") true)
@@ -262,7 +260,6 @@
                 log-agent (when log-stream
                             (agent (clojure.java.io/writer log-stream)))
                 info {:store (new-mutable-store immutable-store)
-                      :transient-id transient-id
                       :agent (agent immutable-store)
                       :log-agent log-agent}]
             (when log-agent
@@ -283,6 +280,8 @@
 ;;;      :file-path  The file path (with suffix omitted) corresponding
 ;;;                  to the store.
 ;;;          :store  The store that holds the data.
+;;;    :transient-id The id of the root transient item in the store
+;;;                  for this session.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
 ;;;                :last-time  The last time we accessed this session.
@@ -384,6 +383,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path)]
     (let [store (:store store-info)
+          transient-id (add-transient-element store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -394,9 +394,9 @@
                              {:file-path (:without-suffix store-info)
                               :id id
                               :store store
+                              :transient-id transient-id
                               :tracker (create-tracker
-                                        store (:transient-id store-info)
-                                        client-state
+                                        store transient-id client-state
                                         manager-data selector-string)
                               :client-state client-state})
                    id])))]
@@ -415,6 +415,7 @@
 
 (defn forget-session
   "The session is no longer needed. Forget about it."
+  ;; TODO: Remove its transient item from the store.
   [session-id]
   (swap! session-info
          (fn [session-info]

@@ -232,7 +232,8 @@
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (if batch-editing
       (let [transient-item (description->entity transient-id store)]
-        (expr-let [query (expr first (label->elements transient-item :query))]
+        (expr-let [query (expr first
+                           (label->elements transient-item :batch-query))]
           (batch-edit-DOM-R query store starting-inherited)))
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)

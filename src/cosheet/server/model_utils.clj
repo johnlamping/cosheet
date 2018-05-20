@@ -100,22 +100,21 @@
   with the given row condition and column conditions."
   [row-condition-elements header-conditions-elements]
   `((:tab :non-semantic)
-    ~(concat
-      `(""
-        (:non-semantic :non-semantic)
-        (:tab-topic :non-semantic)
-        (:table :non-semantic)
-        ~(apply list (concat
-                      ['anything]
-                      row-condition-elements
-                      (map (fn [header-condition-elements]
-                             (apply list (concat
-                                          table-header-template
-                                          header-condition-elements)))
-                           header-conditions-elements)
-                      ['(:row-condition :non-semantic)
-                       '(:selector :non-semantic)
-                       '(:non-semantic :non-semantic)]))))))
+    (""
+     (:non-semantic :non-semantic)
+     (:tab-topic :non-semantic)
+     (:table :non-semantic)
+     ~(apply list (concat
+                   ['anything]
+                   row-condition-elements
+                   (map (fn [header-condition-elements]
+                          (apply list (concat
+                                       table-header-template
+                                       header-condition-elements)))
+                        header-conditions-elements)
+                   ['(:row-condition :non-semantic)
+                    '(:selector :non-semantic)
+                    '(:non-semantic :non-semantic)])))))
 
 (def new-tab-elements
   (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))

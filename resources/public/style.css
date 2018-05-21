@@ -305,7 +305,7 @@ body {
     box-shadow: 0 0 0 2px hsl(220, 100%, 70%),
                 4px 4px white, 6px 6px hsl(220, 70%, 65%),
                 8px 8px white, 10px 10px hsl(220, 40%, 60%);
-    margin: 8px 16px 16px 6px;
+    margin: 10px 16px 16px 8px;
     z-index: 1;
 }
 
@@ -317,8 +317,12 @@ body {
     font-weight: bold;
 }
 
-.batch-stack-wrapper {
+.batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper {
     background-color: hsl(0, 0%, 93%);
+    margin-top: 2px;
+    border-width: 2px;
+    border-radius: 7px;
+    border-color: hsl(220, 100%, 55%);
 }
 
 .horizontal-tags-element.narrow.narrow.narrow.batch-stack > * {
@@ -858,13 +862,6 @@ body {
 .virtual-column.selected {
     width: 200px;
 }
-
-.batch-holder {
-    display: flex;
-    flex-direction: column;
-    width: fit-content;
-}
-
 
 /* --- toolbar --- */
 

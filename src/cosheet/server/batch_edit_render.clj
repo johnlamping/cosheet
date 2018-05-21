@@ -128,7 +128,5 @@
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/exit.gif"}]
         [:div.tooltip "exit batch edit (C-Q)"]]
-       [:div  {:class "batch-holder"}
-        [:div {:class "query-result-wrapper"}
-         [:div {:class "query-result-indent tag"}]
-         (into [:div {:class "batch-stack-wrapper"}] stack-dom)]]])))
+       [:div {:class "query-result-wrapper"}
+        (into [:div {:class "batch-stack-wrapper"}] stack-dom)]])))

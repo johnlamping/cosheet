@@ -318,11 +318,11 @@ body {
 }
 
 .batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper {
-    background-color: hsl(0, 0%, 93%);
+    background-color: hsl(0, 0%, 95%);
     margin-top: 2px;
     border-width: 2px;
     border-radius: 7px;
-    border-color: hsl(220, 100%, 55%);
+    border-color: hsl(0, 0%, 80%);
 }
 
 .horizontal-tags-element.narrow.narrow.narrow.batch-stack > * {

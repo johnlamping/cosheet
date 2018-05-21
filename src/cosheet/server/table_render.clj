@@ -1,7 +1,9 @@
 (ns cosheet.server.table-render
   (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by
-                                    add-elements-to-entity-list]]
+                                    add-elements-to-entity-list
+                                    thread-map]]
                      [entity :as entity]
+                     [orderable :as orderable]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
@@ -43,6 +45,28 @@
 
 (def base-table-column-width 150)
 
+(defn add-order-elements
+  "Given the list form of the semantic part of an item, add order
+  information to each user selectable part. Otherwise when a referent
+  is instantiated with respect to the item, elements won't match, being
+  assumed to be non-semantic.
+  Return the new list and the unused part of order."
+  [entity order]
+  (cond
+    (seq? entity)
+    (let [[elements order] (thread-map add-order-elements (rest entity) order)
+          [before after] (orderable/split order :after)]
+      [(apply list (concat [(first entity)]
+                           elements
+                           [`(~before :order :non-semantic)]))
+       after])
+    (or (nil? entity) (= entity :tag))
+    [entity order]
+    true
+    (let [[before after] (orderable/split order :after)]
+      [(apply list (cons entity `(~before :order :non-semantic)))
+       after])))
+
 (defn batch-edit-pattern
   "Given an item, return the list form of the batch query that matches
   everything 'like' the item. For a table header, this is everything
@@ -53,18 +77,20 @@
   ;; We walk up containing items, until we find an item that is either
   ;; column condition, an element of a row, or the entire row condition.
   ;; Then we return the appropriate thing for that situation.
-  (loop [item immutable-item]
-    (let [parent-item (entity/subject item)]
-      (cond
-        (or (seq (matching-elements :column item))  
-            (seq (matching-elements :top-level parent-item)))
-        (apply list (concat (immutable-semantic-to-list
-                             immutable-row-condition-item)
-                            [(immutable-semantic-to-list item)]))
-        (seq (matching-elements :row-condition item))
-        (immutable-semantic-to-list item)
-        parent-item
-        (recur parent-item)))))
+  (first (add-order-elements
+          (loop [item immutable-item]
+            (let [parent-item (entity/subject item)]
+              (cond
+                (or (seq (matching-elements :column item))  
+                    (seq (matching-elements :top-level parent-item)))
+                (apply list (concat (immutable-semantic-to-list
+                                     immutable-row-condition-item)
+                                    [(immutable-semantic-to-list item)]))
+                (seq (matching-elements :row-condition item))
+                (immutable-semantic-to-list item)
+                parent-item
+                (recur parent-item))))
+          orderable/initial)))
 
 (defn is-tag-template?
   "Return true if the template describes a label."

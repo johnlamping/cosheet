@@ -121,11 +121,6 @@
             (update :key-prefix #(conj % :batch-query)))]
     (expr-let
         [condition-elements (semantic-elements-R query-item)
-         query-virtual-element-dom (virtual-element-with-label-DOM
-                                    'anything :vertical inherited-for-query)
-         query-dom (labels-and-elements-DOM-R
-                    condition-elements query-virtual-element-dom
-                    true true :horizontal inherited-for-query)
          stack-dom (batch-edit-stack-DOM-R
                     query-item condition-elements store
                     inherited)]
@@ -134,9 +129,6 @@
               [:img {:src "../icons/exit.gif"}]
         [:div.tooltip "exit batch edit (C-Q)"]]
        [:div  {:class "batch-holder"}
-        [:div {:class "query-holder tag"}
-         [:div {:class "query-indent"}]
-         (add-attributes query-dom {:class "query-condition"})]
         [:div {:class "query-result-wrapper"}
          [:div {:class "query-result-indent tag"}]
          (into [:div {:class "batch-stack-wrapper"}] stack-dom)]]])))

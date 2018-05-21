@@ -128,26 +128,39 @@
                                                   [:pattern])}]
       ;; First, test batch-pattern.
       (let [immutable-query (entity/current-version query)]
-        (is (= (batch-edit-pattern (first (matching-elements
-                                           `(~'anything ("age" :tag))
-                                           immutable-query))
-                                   immutable-query)
-               `(~'anything
-                 (~'anything ("age" :tag)))))
-        (is (= (batch-edit-pattern (first (matching-elements
+        (is (check (batch-edit-pattern (first (matching-elements
+                                               `(~'anything ("age" :tag))
+                                               immutable-query))
+                                       immutable-query)
+                   `(~'anything
+                     (~'anything
+                      ("age" :tag (~(any) :order :non-semantic))
+                      (~(any) :order :non-semantic))
+                     (~(any) :order :non-semantic))))
+        (is (check (batch-edit-pattern (first (matching-elements
                                            `(~'anything ("single" :tag))
                                            immutable-query))
                                    immutable-query)
                `(~'anything
-                 (~'anything ("age" :tag))
-                 (~'anything ("single" :tag)))))
-        (is (= (batch-edit-pattern (first (matching-items
-                                           '(45 ("age" :tag))
-                                           (:store immutable-query)))
-                                   immutable-query)
-               `(~'anything
-                 (~'anything ("age" :tag))
-                 (45 ("age" :tag))))))
+                 (~'anything
+                  ("age" :tag (~(any) :order :non-semantic))
+                  (~(any) :order :non-semantic))
+                 (~'anything
+                  ("single" :tag (~(any) :order :non-semantic))
+                  (~(any) :order :non-semantic))
+                 (~(any) :order :non-semantic))))
+        (is (check (batch-edit-pattern (first (matching-items
+                                               '(45 ("age" :tag))
+                                               (:store immutable-query)))
+                                       immutable-query)
+                   `(~'anything
+                     (~'anything
+                      ("age" :tag (~(any) :order :non-semantic))
+                      (~(any) :order :non-semantic))
+                     (45
+                      ("age" :tag (~(any) :order :non-semantic))
+                      (~(any) :order :non-semantic))
+                     (~(any) :order :non-semantic)))))
       (is (check
            dom
            [:div {:class "table selector-scope"}

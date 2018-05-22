@@ -45,16 +45,14 @@
 
 (def base-table-column-width 150)
 
-(defn add-order-elements
-  "Given the list form of the semantic part of an item, add order
-  information to each user selectable part. Otherwise when a referent
-  is instantiated with respect to the item, elements won't match, being
-  assumed to be non-semantic.
-  Return the new list and the unused part of order."
+(defn add-order-elements-internal
+  "This form uses the specified order to order the elements,
+   and returns the new list and the unused part of order."
   [entity order]
   (cond
-    (seq? entity)
-    (let [[elements order] (thread-map add-order-elements (rest entity) order)
+    (sequential? entity)
+    (let [[elements order] (thread-map add-order-elements-internal
+                                       (rest entity) order)
           [before after] (orderable/split order :after)]
       [(apply list (concat [(first entity)]
                            elements
@@ -67,6 +65,14 @@
       [(apply list (cons entity `(~before :order :non-semantic)))
        after])))
 
+(defn add-order-elements
+  "Given the list form of the semantic part of an item, add order
+  information to each user selectable part. Otherwise when a referent
+  is instantiated with respect to the item, elements won't match, being
+  assumed to be non-semantic."
+  [entity]
+  (first (add-order-elements-internal entity orderable/initial)))
+
 (defn batch-edit-pattern
   "Given an item, return the list form of the batch query that matches
   everything 'like' the item. For a table header, this is everything
@@ -77,20 +83,20 @@
   ;; We walk up containing items, until we find an item that is either
   ;; column condition, an element of a row, or the entire row condition.
   ;; Then we return the appropriate thing for that situation.
-  (first (add-order-elements
-          (loop [item immutable-item]
-            (let [parent-item (entity/subject item)]
-              (cond
-                (or (seq (matching-elements :column item))  
-                    (seq (matching-elements :top-level parent-item)))
-                (apply list (concat (immutable-semantic-to-list
-                                     immutable-row-condition-item)
-                                    [(immutable-semantic-to-list item)]))
-                (seq (matching-elements :row-condition item))
-                (immutable-semantic-to-list item)
-                parent-item
-                (recur parent-item))))
-          orderable/initial)))
+  (-> (loop [item immutable-item]
+        (let [parent-item (entity/subject item)]
+          (cond
+            (or (seq (matching-elements :column item))  
+                (seq (matching-elements :top-level parent-item)))
+            (apply list (concat (immutable-semantic-to-list
+                                 immutable-row-condition-item)
+                                [(immutable-semantic-to-list item)]))
+            (seq (matching-elements :row-condition item))
+            (immutable-semantic-to-list item)
+            parent-item
+            (recur parent-item))))
+      add-order-elements
+      (replace-in-seqs 'anything-immutable 'anything)))
 
 (defn is-tag-template?
   "Return true if the template describes a label."

@@ -100,6 +100,8 @@ sudo mkfs -t ext4 <device name>
 sudo mkdir /cosheet
 # Mount the file system
 sudo mount <device name> /cosheet
+# eg
+  sudo mount /dev/xvdf /cosheet
 # Make it writable by all users
 sudo chmod u+rwx /cosheet
 # To make it mount automatically, see step 7 here

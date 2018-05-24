@@ -276,30 +276,35 @@
        store (:target attributes) (into attributes {:from "" :to ""})))))
 
 (defn do-batch-edit
-  [store arguments attributes]
-  (let [target (first (instantiate-referent (:referent arguments) store))
-        session-state (:session-state arguments)
-        client-state (:client-state session-state)
-        top-item (first
-                  (instantiate-referent
-                   (state-map-get-current-value client-state :referent) store))
-        topic (first (label->elements top-item :tab-topic))
-        row-condition (when topic
-                        (first (label->elements topic :row-condition)))
-        transient-id (:transient-id session-state)
-        transient-item (description->entity transient-id store)
-        current-batch-query (first (label->elements
-                                    transient-item :batch-query))
-        new-batch-query (when (and target row-condition)
-                          (apply list (concat (batch-edit-pattern
-                                               target row-condition)
-                                              ['(:batch-query :non-semantic)
-                                               '(:selector :non-semantic)])))]
-    (when new-batch-query
-      (state-map-reset! client-state :batch-editing true)
-      (as-> store store
-          (remove-entity-by-id store (:item-id current-batch-query))
-          (first (add-entity store transient-id new-batch-query))))))
+  [store {:keys [referent session-state]} attributes]
+  (when referent
+    (let [target (first (instantiate-referent referent store))
+          client-state (:client-state session-state)
+          top-item (first
+                    (instantiate-referent
+                     (state-map-get-current-value client-state :referent)
+                     store))
+          topic (first (label->elements top-item :tab-topic))
+          row-condition (when topic
+                          (first (label->elements topic :row-condition)))
+          transient-id (:transient-id session-state)
+          transient-item (description->entity transient-id store)
+          current-batch-query (first (label->elements
+                                      transient-item :batch-query))
+          new-batch-query (when (and target row-condition)
+                            (when-let [pattern (batch-edit-pattern
+                                                target row-condition)]
+                              (apply list (concat
+                                           pattern
+                                           ['(:batch-query :non-semantic)
+                                            '(:selector :non-semantic)]))))]
+      (when new-batch-query
+        (state-map-reset! client-state :batch-editing true)
+        (as-> store store
+          (if current-batch-query
+            (remove-entity-by-id store (:item-id current-batch-query))
+            store)
+          (first (add-entity store transient-id new-batch-query)))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client

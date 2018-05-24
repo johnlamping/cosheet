@@ -126,7 +126,7 @@
                     inherited)]
       [:div
        [:div#quit-batch-edit.tool
-              [:img {:src "../icons/exit.gif"}]
-        [:div.tooltip "exit batch edit (C-Q)"]]
+              [:img {:src "../icons/table_view.gif"}]
+        [:div.tooltip "table view (C-Q)"]]
        [:div {:class "query-result-wrapper"}
         (into [:div {:class "batch-stack-wrapper"}] stack-dom)]])))

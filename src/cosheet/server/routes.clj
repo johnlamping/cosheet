@@ -203,7 +203,12 @@
         (assoc :status 403))
     ;; In other cases, redirect the user to login page.
     (let [current-url (:uri request)]
-      (redirect (secure-url request (format "/login?next=%s" current-url))))))
+      (if (clojure.string/starts-with? current-url "/ajax-request")
+        ;; The client AJAX code expects JSON, so if we have an ajax
+        ;; request, ask the client to do a reload, which we can
+        ;; redirect to the login page.
+        (response {:reload true})
+        (redirect (secure-url request (format "/login?next=%s" current-url)))))))
 
 ;; Create an instance of auth backend.
 

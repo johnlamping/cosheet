@@ -107,3 +107,5 @@ sudo chmod u+rwx /cosheet
 # To make it mount automatically, see step 7 here
   https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-using-volumes.html
 
+# To update my amazon server
+sudo apt-get update && sudo apt-get upgrade

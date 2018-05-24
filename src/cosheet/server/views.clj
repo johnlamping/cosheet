@@ -39,7 +39,7 @@
       [actions :refer [confirm-actions do-actions]]))
   (:import (org.h2.util New)))
 
-(defonce manager-data (new-expression-manager-data 0)) ;; TODO: Make it 1
+(defonce manager-data (new-expression-manager-data 1))
 
 (defonce time-formatter (java.text.DateFormat/getDateTimeInstance))
 (defn now-string

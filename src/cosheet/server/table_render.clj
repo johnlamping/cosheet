@@ -221,8 +221,8 @@
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
-  [node {:keys [top-level rows-referent]}
-   example-elements column-referent inherited]
+  [{:keys [top-level rows-referent]}
+   node content example-elements column-referent inherited]
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
         elements-template (table-header-element-template
@@ -242,10 +242,11 @@
                     (empty? example-elements)
                     (assoc :expand {:referent column-referent}))]))
       (:leaves node)
-      (add-inherited-attribute
-       [#{:content}
-        {:delete {:referent nil}
-         :class "placeholder"}])
+      (add-inherited-attribute [#{:content}
+                                {:delete {:referent nil}}])
+      (and (:leaves node) (#{'anything 'anything-immutable} content))
+      (add-inherited-attribute [#{:content}
+                                {:class "placeholder"}])
       (= (count example-elements) 1)
       (add-inherited-attribute
        [#{:label :element} #{:content}
@@ -268,38 +269,39 @@
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (union-referent
                          [(hierarchy-node-items-referent node inherited)])
-        item (:item (first (hierarchy-node-descendants node)))
-        inherited-down (table-header-properties-inherited
-                        node function-info example-elements column-referent
-                        inherited)]
-    (if (empty? (:properties node))
-      ;; TODO: This needs to check for not being a tag, and doing something
-      ;;       different in that case.
-      [:div {:style {:width (str base-table-column-width "px")}
-             :class "column-header tag wrapped-element merge-with-parent"}
-       (cond-> (virtual-element-DOM
-                column-referent :after
-                (-> inherited-down
-                    transform-inherited-for-labels
-                    (update :key-prefix #(conj % :label))
-                    (assoc :select-pattern (conj (:key-prefix inherited)
-                                                 [:pattern]))))
-         (is-tag-template? (table-header-element-template
-                            (keys (:cumulative-properties node))))
-         (add-attributes {:class "tag content-text"}))
-       [:div {:class "indent-wrapper tag"}
-        (add-attributes
-         (item-content-DOM column-referent 'anything-immutable inherited-down)
-         {:key (:key-prefix inherited)
-          :class "item"})]]
-      (if (empty? (:child-nodes node))
-        (expr-let [content (entity/content item)]
-          (item-content-and-elements-DOM-R
-           content example-elements false
-           (add-inherited-attribute inherited-down
-                                    [#{:content} {:add-twin {:referent nil}}])))
-        (labels-and-elements-DOM-R example-elements false false true :vertical
-                                   inherited-down)))))
+        item (:item (first (hierarchy-node-descendants node))) ]
+    (expr-let [content (when item (entity/content item))]
+      (let [inherited-down (table-header-properties-inherited
+                            function-info node content example-elements
+                            column-referent inherited)]
+        (if (empty? (:properties node))
+          ;; TODO: This needs to check for not being a tag, and doing something
+          ;;       different in that case.
+          [:div {:style {:width (str base-table-column-width "px")}
+                 :class "column-header tag wrapped-element merge-with-parent"}
+           (cond-> (virtual-element-DOM
+                    column-referent :after
+                    (-> inherited-down
+                        transform-inherited-for-labels
+                        (update :key-prefix #(conj % :label))
+                        (assoc :select-pattern (conj (:key-prefix inherited)
+                                                     [:pattern]))))
+             (is-tag-template? (table-header-element-template
+                                (keys (:cumulative-properties node))))
+             (add-attributes {:class "tag content-text"}))
+           [:div {:class "indent-wrapper tag"}
+            (add-attributes
+             (item-content-DOM
+              column-referent 'anything-immutable inherited-down)
+             {:key (:key-prefix inherited)
+              :class "item"})]]
+          (if (empty? (:child-nodes node))
+            (item-content-and-elements-DOM-R
+             content example-elements false
+             (add-inherited-attribute
+              inherited-down [#{:content} {:add-twin {:referent nil}}]))
+            (labels-and-elements-DOM-R
+             example-elements false false true :vertical inherited-down)))))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of

@@ -117,7 +117,7 @@
           first-column-add {:referent (virtual-referent
                                        '(??? :tag)
                                        (virtual-referent
-                                        '(anything-immutable
+                                        '(anything
                                           (:column :non-semantic)
                                           (:non-semantic :non-semantic))
                                         (item-referent query)
@@ -211,7 +211,7 @@
                                (virtual-referent
                                 '(nil)
                                 (virtual-referent
-                                 '(anything-immutable
+                                 '(anything
                                    (:column :non-semantic)
                                    (:non-semantic :non-semantic))
                                  (item-referent query)
@@ -237,7 +237,7 @@
                   (any)
                   {:column-id :virtualColumn
                    :template (virtual-referent
-                              '(anything-immutable
+                              '(anything
                                 (:column :non-semantic)
                                 (:non-semantic :non-semantic)
                                 (???))
@@ -314,7 +314,7 @@
                      :target {:referent
                               (virtual-referent
                                (virtual-referent
-                                '(anything-immutable
+                                '(anything
                                   (:column :non-semantic)
                                   (:non-semantic :non-semantic)
                                   (???))

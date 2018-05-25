@@ -92,8 +92,8 @@
   ;; A table header is an element of the condition, so that batch edit changes
   ;; can match table headers. But a header doesn't count as a semantic part
   ;; of the condition, because it shouldn't affect what rows are selected.
-  '(anything-immutable (:column :non-semantic)
-                       (:non-semantic :non-semantic)))
+  '(anything (:column :non-semantic)
+             (:non-semantic :non-semantic)))
 
 (defn table-tab-non-semantic-elements
   "Return the non-semantic elements for a new tab for a table

@@ -6,7 +6,8 @@
     [entity :refer [content elements label->elements label->content]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
-    [expression :refer [expr-let expr-seq]])))
+    [expression :refer [expr-let expr-seq]]
+    [utils :refer [thread-map]])))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -125,3 +126,31 @@
                               store subject-id entity
                               order position use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))
+
+(defn add-order-elements-internal
+  "This form uses the specified order to order the elements,
+   and returns the new list and the unused part of order."
+  [entity order]
+  (cond
+    (sequential? entity)
+    (let [[elements order] (thread-map add-order-elements-internal
+                                       (rest entity) order)
+          [before after] (split order :after)]
+      [(apply list (concat [(first entity)]
+                           elements
+                           [`(~before :order :non-semantic)]))
+       after])
+    (or (nil? entity) (= entity :tag))
+    [entity order]
+    true
+    (let [[before after] (split order :after)]
+      [(apply list (cons entity `(~before :order :non-semantic)))
+       after])))
+
+(defn add-order-elements
+  "Given the list form of the semantic part of an item, add order
+  information to each user selectable part. Otherwise when a referent
+  is instantiated with respect to the item, elements won't match, being
+  assumed to be non-semantic."
+  [entity]
+  (first (add-order-elements-internal entity initial)))

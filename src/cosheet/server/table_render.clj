@@ -1,9 +1,7 @@
 (ns cosheet.server.table-render
   (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by
-                                    add-elements-to-entity-list
-                                    thread-map]]
+                                    add-elements-to-entity-list]]
                      [entity :as entity]
-                     [orderable :as orderable]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
@@ -28,7 +26,7 @@
                                 hierarchy-nodes-extent
                                 hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements]]
-             [order-utils :refer [order-items-R]]
+             [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [table-header-template]]
              [render-utils :refer [make-component virtual-element-DOM
                                    transform-inherited-for-children
@@ -44,34 +42,6 @@
                                   item-content-DOM]])))
 
 (def base-table-column-width 150)
-
-(defn add-order-elements-internal
-  "This form uses the specified order to order the elements,
-   and returns the new list and the unused part of order."
-  [entity order]
-  (cond
-    (sequential? entity)
-    (let [[elements order] (thread-map add-order-elements-internal
-                                       (rest entity) order)
-          [before after] (orderable/split order :after)]
-      [(apply list (concat [(first entity)]
-                           elements
-                           [`(~before :order :non-semantic)]))
-       after])
-    (or (nil? entity) (= entity :tag))
-    [entity order]
-    true
-    (let [[before after] (orderable/split order :after)]
-      [(apply list (cons entity `(~before :order :non-semantic)))
-       after])))
-
-(defn add-order-elements
-  "Given the list form of the semantic part of an item, add order
-  information to each user selectable part. Otherwise when a referent
-  is instantiated with respect to the item, elements won't match, being
-  assumed to be non-semantic."
-  [entity]
-  (first (add-order-elements-internal entity orderable/initial)))
 
 (defn batch-edit-pattern
   "Given an item, return the list form of the batch query that matches

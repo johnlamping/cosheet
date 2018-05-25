@@ -35,6 +35,7 @@
   [store]
   (let [format (first (matching-items '(nil :format) store))
         tables (matching-items '(nil :table) store)]
+    (assert (#{1 2} (content format)))
     (reduce
      (fn [store table]
        (let [condition (first (label->elements table :row-condition))]
@@ -43,13 +44,35 @@
      (update-content store (:item-id format) 3)
      tables)))
 
+(defn convert-from-3-to-4
+  "Convert a store from format 3 to 4.
+  The only difference is that where table-headers had 'anything-immutable
+  for their content, they now have 'anything."
+  [store]
+  (let [format (first (matching-items '(nil :format) store))
+        tables (matching-items '(nil :table) store)]
+    (assert (= (content format) 3))
+    (reduce
+     (fn [store table]
+       (let [condition (first (label->elements table :row-condition))
+             columns (label->elements condition :column)]
+         (reduce
+          (fn [store column]
+            (if (= (content column) 'anything-immutable)
+              (update-content store (:item-id column) 'anything)
+              store))
+          store columns)))
+     (update-content store (:item-id format) 4)
+     tables)))
+
 (defn convert-to-current
   "Convert a store to the current format (That's 1 right now."
   [store]
   (let [format (first (matching-items '(nil :format) store))
         format (if format (content format) 0)]
-    (assert (and (>= format 0) (<= format 3))
+    (assert (and (>= format 0) (<= format 4))
             (str "Store in unknown format " format))
     (cond-> store
       (<= format 0) convert-from-0-to-1
-      (<= format 2) convert-from-1-or-2-to-3)))
+      (<= format 2) convert-from-1-or-2-to-3
+      (<= format 3) convert-from-3-to-4)))

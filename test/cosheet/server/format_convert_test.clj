@@ -35,11 +35,13 @@
                        :table
                        (~'anything (~'anything ("age" :tag))
                         (:row-condition :non-semantic))
-                       (~'anything ("single" :tag (~o1 :order :non-semantic))
+                       (~'anything-immutable
+                        ("single" :tag (~o1 :order :non-semantic))
                         (~o1 :order :non-semantic)
                         (:column :non-semantic)
                         (:non-semantic :non-semantic))
-                       (~'anything ("name" :tag (~o1 :order :non-semantic))
+                       (~'anything-immutable
+                        ("name" :tag (~o1 :order :non-semantic))
                         (~o2 :order :non-semantic)
                         (:column :non-semantic)
                         (:non-semantic :non-semantic)))
@@ -47,15 +49,32 @@
                        :table
                        (~'anything (~'anything ("age" :tag))
                         (:row-condition :non-semantic)
-                        (~'anything ("single" :tag (~o1 :order :non-semantic))
+                        (~'anything-immutable
+                         ("single" :tag (~o1 :order :non-semantic))
                          (~o1 :order :non-semantic)
                          (:column :non-semantic)
                          (:non-semantic :non-semantic))
-                        (~'anything ("name" :tag (~o1 :order :non-semantic))
+                        (~'anything-immutable
+                         ("name" :tag (~o1 :order :non-semantic))
                          (~o2 :order :non-semantic)
                          (:column :non-semantic)
                          (:non-semantic :non-semantic))))
         table-list-3 `("table"
+                       :table
+                       (~'anything (~'anything ("age" :tag))
+                        (:row-condition :non-semantic)
+                        (:selector :non-semantic)
+                        (~'anything-immutable
+                         ("single" :tag (~o1 :order :non-semantic))
+                         (~o1 :order :non-semantic)
+                         (:column :non-semantic)
+                         (:non-semantic :non-semantic))
+                        (~'anything-immutable
+                         ("name" :tag (~o1 :order :non-semantic))
+                         (~o2 :order :non-semantic)
+                         (:column :non-semantic)
+                         (:non-semantic :non-semantic))))
+        table-list-4 `("table"
                        :table
                        (~'anything (~'anything ("age" :tag))
                         (:row-condition :non-semantic)
@@ -74,7 +93,10 @@
           versions-1 (matching-items '(nil :format) store-1)
           store-3 (convert-from-1-or-2-to-3 store-1)
           tables-3 (matching-items '(nil :table) store-3)
-          versions-3 (matching-items '(nil :format) store-3)]
+          versions-3 (matching-items '(nil :format) store-3)
+          store-4 (convert-from-3-to-4 store-3)
+          tables-4 (matching-items '(nil :table) store-4)
+          versions-4 (matching-items '(nil :format) store-4)]
       (is (= (count tables-1) 1))
       (is (check (canonicalize-list (to-list (first tables-1)))
                  (canonicalize-list table-list-1)))
@@ -85,6 +107,12 @@
                  (canonicalize-list table-list-3)))
       (is (= (count versions-3) 1))
       (is (= (to-list (first versions-3)) '(3 :format)))
-      (is (= (convert-to-current store-0) store-3))
-      (is (= (convert-to-current store-1) store-3))
-      (is (= (convert-to-current store-3) store-3)))))
+      (is (= (count tables-4) 1))
+      (is (check (canonicalize-list (to-list (first tables-4)))
+                 (canonicalize-list table-list-4)))
+      (is (= (count versions-4) 1))
+      (is (= (to-list (first versions-4)) '(4 :format)))
+      (is (= (convert-to-current store-0) store-4))
+      (is (= (convert-to-current store-1) store-4))
+      (is (= (convert-to-current store-3) store-4))
+      (is (= (convert-to-current store-4) store-4)))))

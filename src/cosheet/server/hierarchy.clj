@@ -17,7 +17,7 @@
 ;;;       :hierarchy-node  true (used to identify hierarchy nodes)
 ;;;           :properties  A multiset of the properties added by this node.
 ;;; :cumulatve-properties  The multiset union of the properties of this node
-;;;                        all all its ancestors.
+;;;                        and all its ancestors.
 ;;;               :leaves  A vector of leaves whose properties exactly
 ;;;                        match the cumulative-properties of this node.
 ;;;                        All leaves must come before all children in the

@@ -500,14 +500,32 @@
       row-key new-row-template adjacent-referent column-descriptions
       inherited])))
 
+(defn add-content-to-hierarchy-R
+  "Given a hierarchy, add an additional :content field to each info map."
+  [hierarchy]
+  (expr-seq map
+    (fn [node]
+      (expr-let [leaves (expr-seq map
+                          (fn [leaf]
+                            (expr-let [content (entity/content (:item leaf))]
+                              (assoc leaf :content content)))
+                          (:leaves node))
+                 children (add-content-to-hierarchy-R (:child-nodes node))]
+        (cond-> (assoc node :leaves leaves)
+          children (assoc :child-nodes children))))
+    hierarchy))
+
 (defn table-hierarchy-node-condition
-  "Given a hierarchy node, return the condition that all elements
-  under the node satisfy."
-  [node]
-  (pattern-to-condition
-   (cons nil (canonical-set-to-list (:cumulative-properties node)))))
+  "Given a hierarchy element for a column, and its immediately containing node,
+  return the condition that all elements under the column satisfy."
+  [element node]
+  (let [content (:content element)]
+    (pattern-to-condition
+     (cons (if (#{'anything 'anything-immutable} content) nil content)
+           (canonical-set-to-list (:cumulative-properties node))))))
 
 (defn table-hierarchy-node-exclusions
+  ;; TOD: This doesn't work right when nodes have non-trivial contents.
   "Given a hierarchy node, return a seq of conditions that immediate
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
@@ -532,7 +550,7 @@
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
               [{:column-id (:item-id (:item node-or-element))
-                :template (table-hierarchy-node-condition node)
+                :template (table-hierarchy-node-condition node-or-element node)
                 :exclusions (table-hierarchy-node-exclusions node)}]))
           (hierarchy-node-next-level node)))
 
@@ -621,7 +639,8 @@
                                          store row-condition-item)
                columns (expr order-items-R
                          (entity/label->elements row-condition-item :column))
-               hierarchy (hierarchy-by-all-elements-R columns)
+               hierarchy (add-content-to-hierarchy-R
+                          (hierarchy-by-all-elements-R columns))
                headers (table-header-DOM-R
                         hierarchy rows-referent headers-inherited)
                condition-dom (table-top-DOM-R

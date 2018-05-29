@@ -84,5 +84,5 @@
     (is (check (immutable-semantic-to-list row-condition)
                '(anything ("there" :tag))))
     (is (check (map immutable-semantic-to-list (order-items-R headers))
-               ['(anything-immutable ("a" :tag))
-                '(anything-immutable ("b" :tag))]))))
+               ['(anything ("a" :tag))
+                '(anything ("b" :tag))]))))

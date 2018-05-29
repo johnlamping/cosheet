@@ -262,7 +262,7 @@
            [:div {:class "indent-wrapper tag"}
             (add-attributes
              (item-content-DOM
-              column-referent 'anything-immutable inherited-down)
+              column-referent content inherited-down)
              {:key (:key-prefix inherited)
               :class "item"})]]
           (if (empty? (:child-nodes node))

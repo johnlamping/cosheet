@@ -266,8 +266,10 @@ body {
     border-bottom: 0px;
 }
 
-.tab.chosen.selected {
+.tab.chosen.selected.selected.selected.selected {
     box-shadow: inset 0px 2px hsl(0, 0%, 80%),
+    0px 2px hsl(0, 0%, 100%),
+    inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
 
  /* Put the selected box shadow on the select holder, because the :left and

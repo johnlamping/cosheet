@@ -74,22 +74,34 @@
   (some #(or (= (if (sequential? %) (first %) %) :tag))
         template))
 
-(defn table-hierarchy-node-representative-sub-nodes
-  ;; TOD: This doesn't work right when nodes have non-trivial contents.
-  "Given a hierarchy node, return a seq of nodes that subsume all sub-nodes."
-  [node]
-  (->> (hierarchy-node-next-level node)
-       (filter hierarchy-node?)
-       (hierarchy-nodes-extent)))
-
 (defn table-hierarchy-node-exclusions
   "Given a hierarchy node, return a seq of conditions that immediate
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (map #(pattern-to-condition
-         (cons nil (map canonical-to-list (:property-canonicals %))))
-       (table-hierarchy-node-representative-sub-nodes node)))
+  (let [descendants (->> (:child-nodes node)
+                         (filter #(not (empty? (:properties %))))
+                         (mapcat hierarchy-node-descendants))
+        cover (if (every? #(#{'anything 'anything-immutable}
+                            (:content %))
+                          descendants)
+                ;; We may not need to match all child nodes, just
+                ;; a subset that subsumes all of them.
+                (->> (hierarchy-node-next-level node)
+                     (filter hierarchy-node?)
+                     (hierarchy-nodes-extent))
+                ;; The hierarchy ignores content, so if any of the
+                ;; leaves have content, we don't know which ones
+                ;; subsume the others, and so use them all.
+                descendants)]
+    (map #(pattern-to-condition
+         (cons
+          (let [content (:content %)]
+            (if (#{'anything 'anything-immutable} content)
+              nil
+              content))
+           (map canonical-to-list (:property-canonicals %))))
+       cover)))
 
 (defn table-node-delete-referent
   "Generate the referent for the elements to be deleted when the only
@@ -102,29 +114,18 @@
   When the referent is instantiated, the first group must be all the elements
   in table requests, while subsequent groups contain elements in rows brought
   up by the header."
-  [node rows-referent header-subject]
+  [node header-subject]
   (let [deeper-descendants (filter #(not= (multiset (:property-canonicals %))
                                           (:cumulative-properties node))
                                    (hierarchy-node-descendants node))]
     (when (seq deeper-descendants)
       (let [exemplar-item (first (hierarchy-node-example-elements node))
             referent-for-leaf #(item-or-exemplar-referent
-                                (:item %) header-subject)
-            header-ref (item-or-exemplar-referent
-                        exemplar-item
-                        (union-referent-if-needed
-                         (map referent-for-leaf deeper-descendants)))
-            deeper-columns-elements-referent
-            (union-referent-if-needed
-             (map #(elements-referent (:item %) rows-referent)
-                  (table-hierarchy-node-representative-sub-nodes node)))
-            ;; The element corresponding to this header element in
-            ;; the elements in the columns.
-            matches-ref (exemplar-referent
-                         exemplar-item deeper-columns-elements-referent)]
-        ;; We always return a union, to guarantee that instantition will
-        ;; return the header elements in the first group.
-        (union-referent [header-ref matches-ref])))))
+                                (:item %) header-subject)]
+        (item-or-exemplar-referent
+         exemplar-item
+         (union-referent-if-needed
+          (map referent-for-leaf deeper-descendants)))))))
 
 (defn new-header-template
   "Return the template for a new header. new-elements-template gives
@@ -228,8 +229,7 @@
           top-level
           (assoc :delete
                  {:referent (table-node-delete-referent
-                             node rows-referent
-                             (:subject-referent inherited))}))]))))
+                             node (:subject-referent inherited))}))]))))
 
 (defn table-header-properties-DOM-R
   "Generate the DOM for the properties of a node in the hierarchy."

@@ -22,7 +22,7 @@
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-leaves
-                                hierarchy-node-next-level hierarchy-node-extent
+                                hierarchy-node-next-level
                                 hierarchy-nodes-extent
                                 hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements]]
@@ -74,20 +74,22 @@
   (some #(or (= (if (sequential? %) (first %) %) :tag))
         template))
 
-(defn table-node-row-elements-referent
-  "Generate a referent for the elements in rows covered by the conditions
-  of a table header, but by no shadow node, if any are present."
-  ([node rows-referent]
-   (table-node-row-elements-referent node nil rows-referent))
-  ([node shadowing-nodes rows-referent]
-   (cond-> (union-referent-if-needed
-            (map #(elements-referent (:item %) rows-referent)
-                 (hierarchy-node-descendants node)))
-     (seq shadowing-nodes)
-     (difference-referent
-      (union-referent-if-needed
-       (map #(elements-referent (:item %) rows-referent)
-            (hierarchy-nodes-extent shadowing-nodes)))))))
+(defn table-hierarchy-node-representative-sub-nodes
+  ;; TOD: This doesn't work right when nodes have non-trivial contents.
+  "Given a hierarchy node, return a seq of nodes that subsume all sub-nodes."
+  [node]
+  (->> (hierarchy-node-next-level node)
+       (filter hierarchy-node?)
+       (hierarchy-nodes-extent)))
+
+(defn table-hierarchy-node-exclusions
+  "Given a hierarchy node, return a seq of conditions that immediate
+  elements of the node must not satisfy, because they are covered
+  by sub-nodes."
+  [node]
+  (map #(pattern-to-condition
+         (cons nil (map canonical-to-list (:property-canonicals %))))
+       (table-hierarchy-node-representative-sub-nodes node)))
 
 (defn table-node-delete-referent
   "Generate the referent for the elements to be deleted when the only
@@ -112,12 +114,10 @@
                         exemplar-item
                         (union-referent-if-needed
                          (map referent-for-leaf deeper-descendants)))
-            sub-nodes (filter hierarchy-node? (hierarchy-node-next-level node))
-            deeper-columns-elements-referent (union-referent-if-needed
-                                              (map #(elements-referent
-                                                     (:item %) rows-referent)
-                                                   (hierarchy-nodes-extent
-                                                    sub-nodes)))
+            deeper-columns-elements-referent
+            (union-referent-if-needed
+             (map #(elements-referent (:item %) rows-referent)
+                  (table-hierarchy-node-representative-sub-nodes node)))
             ;; The element corresponding to this header element in
             ;; the elements in the columns.
             matches-ref (exemplar-referent
@@ -523,18 +523,6 @@
     (pattern-to-condition
      (cons (if (#{'anything 'anything-immutable} content) nil content)
            (canonical-set-to-list (:cumulative-properties node))))))
-
-(defn table-hierarchy-node-exclusions
-  ;; TOD: This doesn't work right when nodes have non-trivial contents.
-  "Given a hierarchy node, return a seq of conditions that immediate
-  elements of the node must not satisfy, because they are covered
-  by sub-nodes."
-  [node]
-  (map #(pattern-to-condition
-         (cons nil (map canonical-to-list (:property-canonicals %))))
-       (->> (hierarchy-node-next-level node)
-            (filter hierarchy-node?)
-            (hierarchy-nodes-extent))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,

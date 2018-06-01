@@ -121,3 +121,16 @@
 (deftest furthest-element-test
   (is (= (furthest-element joe :after) joe-45))
   (is (= (furthest-element joe :before) joe-male)))
+
+(deftest add-order-elements-test
+  (let [ordered (add-order-elements `(a (b c) d (e :tag)))]
+    (is (check ordered
+               `(a (b (c (~(any) :order :non-semantic))
+                      (~(any) :order :non-semantic))
+                   (d (~(any) :order :non-semantic))
+                   (e :tag (~(any) :order :non-semantic))
+                   (~(any) :order :non-semantic))))
+    (is (orderable/earlier? (-> ordered second second second first)
+                           (-> ordered second (nth 2) first)))
+    (is (orderable/earlier? (-> ordered second (nth 2) first)
+                           (-> ordered (nth 2) second first)))))

@@ -144,7 +144,7 @@
     [entity order]
     true
     (let [[before after] (split order :after)]
-      [(apply list (cons entity `(~before :order :non-semantic)))
+      [`(~entity (~before :order :non-semantic))
        after])))
 
 (defn add-order-elements

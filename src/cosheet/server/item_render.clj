@@ -18,7 +18,7 @@
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R]]
-             [render-utils :refer [virtual-element-DOM item-stack-DOM
+             [render-utils :refer [virtual-element-DOM item-stack-DOM-R
                                    nest-if-multiple-DOM condition-satisfiers-R
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
@@ -63,7 +63,7 @@
         {:add-sibling (hierarchy-adjacent-virtual-target
                        hierarchy-node inherited)}])))
 
-(defn hierarchy-leaf-items-DOM
+(defn hierarchy-leaf-items-DOM-R
   "Given a hierarchy node with tags as the properties, generate DOM
   for leaves that are items. The leaves of the node may contain an additional
   :exclude-elements field that gives more of the item's elements not to
@@ -95,7 +95,7 @@
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
                            leaves)]
-        (item-stack-DOM
+        (item-stack-DOM-R
          item-without-labels-DOM-R items excludeds :vertical
          inherited-down)))))
 
@@ -142,9 +142,9 @@
   (expr-let [ordered-labels (order-items-R label-elements)
              tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
                             ordered-labels)]
-    (item-stack-DOM item-without-labels-DOM-R
-                    ordered-labels tags :vertical
-                    (add-inherited-attribute inherited {:class "tag"}))))
+    (item-stack-DOM-R item-without-labels-DOM-R
+                      ordered-labels tags :vertical
+                      (add-inherited-attribute inherited {:class "tag"}))))
 
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
@@ -234,31 +234,32 @@
         inherited-for-leaves (cond-> (add-adjacent-sibling-command
                                       inherited node)
                                only-item
-                               (remove-inherited-for-item only-item))
-        descendants-dom (nest-if-multiple-DOM
-                          (if (empty? leaves)
-                            child-doms
-                            (cons (hierarchy-leaf-items-DOM
-                                   node inherited-for-leaves)
-                                  child-doms))
-                          direction)]
-    (expr-let [properties-dom (when (or (seq (:properties node))
+                               (remove-inherited-for-item only-item))]
+    (expr-let [leaf-dom (when (seq leaves)
+                          (hierarchy-leaf-items-DOM-R
+                           node inherited-for-leaves))
+               properties-dom (when (or (seq (:properties node))
                                         must-show-labels)
                                 (tagged-items-properties-DOM-R
                                  node inherited))]
-      (cond-> (if (empty? (:properties node))
-                (if must-show-labels
-                  (cond-> (add-labels-DOM properties-dom descendants-dom
-                                          (opposite-direction direction))
-                    (= direction :vertical)
-                    (add-attributes {:class "narrow"}))
-                  descendants-dom)
-                (add-labels-DOM properties-dom descendants-dom
-                                (case direction
-                                  :vertical :vertical-wrapped
-                                  :horizontal :vertical)))
-        only-item
-        (add-attributes (inherited-attributes inherited only-item))))))
+      (let [descendants-dom (nest-if-multiple-DOM
+                          (if leaf-dom
+                            (cons leaf-dom child-doms)
+                            child-doms)
+                          direction)]
+        (cond-> (if (empty? (:properties node))
+                  (if must-show-labels
+                    (cond-> (add-labels-DOM properties-dom descendants-dom
+                                            (opposite-direction direction))
+                      (= direction :vertical)
+                      (add-attributes {:class "narrow"}))
+                    descendants-dom)
+                  (add-labels-DOM properties-dom descendants-dom
+                                  (case direction
+                                    :vertical :vertical-wrapped
+                                    :horizontal :vertical)))
+          only-item
+          (add-attributes (inherited-attributes inherited only-item)))))))
 
 (defn tagged-items-for-horizontal-DOMs-R
   [hierarchy inherited]
@@ -299,11 +300,11 @@
   [node child-doms inherited]
   (let [inherited-for-items (update
                              (add-adjacent-sibling-command inherited node)
-                             :width #(* % 0.6875))
-        leaves-dom (hierarchy-leaf-items-DOM node inherited-for-items)]
-    (map-with-first-last
-     horizontal-value-wrapper
-     (cons leaves-dom (apply concat child-doms)))))
+                             :width #(* % 0.6875))]
+    (expr-let [leaves-dom (hierarchy-leaf-items-DOM-R node inherited-for-items)]
+      (map-with-first-last
+       horizontal-value-wrapper
+       (cons leaves-dom (apply concat child-doms))))))
 
 (defn tagged-items-two-column-label-DOMs-R
   "Return the label doms for the node and all its children."
@@ -373,9 +374,10 @@
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-labels))
-        [(item-stack-DOM
-           item-without-labels-DOM-R ordered-elements excludeds direction
-           inherited)]
+        (expr-let [stack (item-stack-DOM-R
+                          item-without-labels-DOM-R ordered-elements
+                          excludeds direction inherited)]
+          [stack])
         (expr-let [item-maps (item-maps-by-elements-R ordered-elements labels)
                    augmented (map (fn [item-map excluded]
                                     (assoc item-map :exclude-elements excluded))

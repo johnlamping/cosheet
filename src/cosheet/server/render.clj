@@ -126,7 +126,9 @@
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
 ;              :match-all  ; If true, then referents for all children
-                           ; should match all matches, not just one exemplar.
+                           ; should match all matches, not just one exemplar,
+                           ; unless the child has sibling that is at
+                           ; least as specific.
 ;               :template  ; The template that the twins of this dom
                            ; must satisfy. If not present, then twins
                            ; may not be created.

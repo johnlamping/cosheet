@@ -286,7 +286,7 @@
                        :horizontal "horizontal-stack")]
            (into [:div {:class class}] doms))))
 
-(defn item-stack-DOM
+(defn item-stack-DOM-R
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
   generate DOM for a list of a component for each item.

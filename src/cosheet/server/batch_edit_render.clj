@@ -15,8 +15,7 @@
                                    virtual-referent-DOM]]
              [model-utils :refer [table-header-template]]
              [order-utils :refer [order-items-R]]
-             [item-render :refer [item-DOM-R
-                                  virtual-element-with-label-DOM
+             [item-render :refer [virtual-element-with-label-DOM
                                   add-labels-DOM
                                   labels-and-elements-DOM-R]])))
 

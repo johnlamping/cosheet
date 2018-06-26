@@ -73,7 +73,7 @@
 
 ;;;  generate html page listing all user files with href to edit file
 ;;;  page. Also contains logout.
-(defn list-user-files [user-id]
+(defn list-user-files [user-id servlet-path]
   (when-let [directory (get-userdata-path user-id)]
     (html5
       [:head
@@ -86,20 +86,20 @@
         [:ul  (let [files (.list (io/file directory))]
            (for [file files]
              (if (clojure.string/ends-with? file ".cosheet")
-               [:li [:a {:href (str "/cosheet/" file)} file ] ]
+               [:li [:a {:href (str servlet-path "/cosheet/" file)} file ] ]
              )))
          ]
         [:h3 "Create New File"]
-        [:form {:action "/" :method "POST"}
+        [:form {:action (str servlet-path "/") :method "POST"}
            ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
            [:p " New file: " [:input {:type "text" :name "filename"}] [:input {:type "submit" :value "Create"}]]]
-        [:p (if (isAdmin user-id) [:a {:href "/admin"} "Add/Disable Users"])]
-        [:a {:href "/logout"} "Logout"]
+        [:p (if (isAdmin user-id) [:a {:href (str servlet-path "/admin")} "Add/Disable Users"])]
+        [:a {:href (str servlet-path "/logout")} "Logout"]
       ])
   ))
 
 ;;; Administration page for managing users.
-(defn admin-page [user-id]
+(defn admin-page [user-id servlet-path]
   (html5
     [:head
      [:title "Administration"]
@@ -111,21 +111,21 @@
      [:ul  (let [users (get-all-users)]
         (for [user users]
           (let [username (user :username)]
-            [:li (str username "&nbsp;&nbsp;&nbsp;&nbsp;") [:a {:href (str "/admin/delete/" username)} "disable"]]
+            [:li (str username "&nbsp;&nbsp;&nbsp;&nbsp;") [:a {:href (str servlet-path "/admin/delete/" username)} "disable"]]
           )))]
 
-      [:form {:action "/admin" :method "POST"}
+      [:form {:action (str servlet-path "/admin") :method "POST"}
          ;(util/anti-forgery-field) ; prevents cross-site scripting attacks
          [:h3 " Create New User"]
          [:p [:input {:type "text" :placeholder "username" :name "username"}]]
          [:p [:input {:type "text" :placeholder "password" :name "password"}]]
          [:p [:input {:type "submit" :value "Create"}]]]
-      [:a {:href "/logout"} "Logout"]
+      [:a {:href (str servlet-path "/logout")} "Logout"]
     ])
  )
 
 ;;; Create user
-(defn create-user [user-id password]
+(defn create-user [user-id password servlet-path]
   (try ;; check if user-id is already in dB
     (if (get-user-pwdhash user-id)
       (throw (Exception. "User already exists")))
@@ -150,7 +150,7 @@
       [:title "Success"]
       [:body
        [:div (str "User " user-id " created successfully.")]
-       [:a {:href "/admin"} "Back"]
+       [:a {:href (str servlet-path "/admin")} "Back"]
        ]])
     (catch Exception e
       (println (str "create-user caught exception: " e))
@@ -161,17 +161,17 @@
         [:title "Error"]
         [:body
          [:div (str "Unable to create user. Exception " e)]]
-        [:a {:href "/admin"} "Back"]])
+        [:a {:href (str servlet-path "/admin")} "Back"]])
       )))
 
-(defn delete-user-view [username]
+(defn delete-user-view [username servlet-path]
   (if (remove-user-from-db username)     ; TODO, better return error check
     (html5
       [:head
        [:title "Success"]
        [:body
         [:div (str "User " username " diabled successfully.")]
-        [:a {:href "/admin"} "Back"]
+        [:a {:href (str servlet-path "/admin")} "Back"]
         ]])
     (      ; error case
       (html5
@@ -179,12 +179,12 @@
          [:title "Error"]
          [:body
           [:div (str "Unable to disable " username)]
-          [:a {:href "/admin"} "Back"]
+          [:a {:href (str servlet-path "admin")} "Back"]
           ]])
       ))
   )
 
-(defn initial-page [file-path referent-string selector-string]
+(defn initial-page [file-path servlet-path referent-string selector-string]
   (println (now-string) "initial page"
            file-path referent-string selector-string)
   (if-let [session-id (create-session nil file-path referent-string
@@ -237,8 +237,8 @@
             [:img {:src "../icons/delete_column.gif"}]
             [:div.tooltip "delete column"]]
            [:div.toolgap]
-           [:a.link {:href "/logout"} "Logout"]
-           [:a.link {:href "/"} "Open"]]
+           [:a.link {:href (str servlet-path "/logout")} "Logout"]
+           [:a.link {:href (str servlet-path "/")} "Open"]]
           [:div#app "Root"] ;; Client will create a component with id "root".
           [:div#select_holder.select_holder
            [:input#edit_input {"type" "text"}]]

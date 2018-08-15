@@ -62,3 +62,20 @@
           (canonicalize-list '("joe" "a" "b" ("name" "c" "e") ("name" "c")))
           (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))
          (canonicalize-list '("joe" "b" ("name" "e" "c") ("name" "c"))))))
+
+(deftest canonical-extended-by-test
+  (is (canonical-extended-by
+       (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b"))
+       (canonicalize-list '("joe" "b" ("name" "c" "e") ("name" "c")))))
+  (is (canonical-extended-by
+       (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b"))
+       (canonicalize-list '("joe" "a" "b" ("name" "c" "e") ("name" "c")))))
+  (is (not (canonical-extended-by
+            (canonicalize-list '("joe" "a" "b" ("name" "c" "e") ("name" "c")))
+            (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))))
+  (is (not (canonical-extended-by
+            (canonicalize-list '("joe" "a" ("name" "c" "e") ("name" "c")))
+            (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b")))))
+  (is (not (canonical-extended-by
+            (canonicalize-list '("joe" "a" ("name" "c" "e") ("name" "c")))
+            (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b"))))))

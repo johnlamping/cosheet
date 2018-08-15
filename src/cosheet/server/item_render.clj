@@ -510,8 +510,7 @@
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
-   Either the referent for the item/group must be provided,
-   or inherited must contain :subject-referent.
+   Inherited must contain :subject-referent.
    We only record the key on the content, not the whole item
    (unless it is just the content)."
   ([item excluded-elements inherited]

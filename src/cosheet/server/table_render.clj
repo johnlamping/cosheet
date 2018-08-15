@@ -45,7 +45,7 @@
 
 (defn batch-edit-pattern
   "Given an item, return the list form of the batch query that matches
-  everything 'like' the item. For a table header, this is everything
+  everything 'like' the item. For a column header, this is everything
   that would go in its column, while for an element, it is all
   elements with its content.  For the table header, it is all matching
   rows."

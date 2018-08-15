@@ -95,17 +95,17 @@
   (let [m1 (map-by-content s1)
         m2 (map-by-content s2)
         commons (keep (fn [[content1 items1]]
-                                (when-let [items2 (m2 content1)]
-                                  (common-canonical-multisets-for-same-content
-                                   items1 items2)))
-                              (seq m1))]
+                        (when-let [items2 (m2 content1)]
+                          (common-canonical-multisets-for-same-content
+                           items1 items2)))
+                      (seq m1))]
     (reduce multiset-union {} commons)))
 
 (defn common-canonical
   "Given two canonical representations, return the canonincal
   representation, if any, that captures their commmonality. To have
   commonality, the contents must be the same. If that is satisfied,
-  then commonality is an element with that content. In addition, if
+  then commonality is an item with that content. In addition, if
   some of the elements of the first representation can be paired up
   with elements of the second, and the pairs have commonality, then
   those commonalities are elements of the overall commonality."
@@ -120,3 +120,17 @@
             content1
             (list content1 common-elements)))
         content1))))
+
+(defn canonical-extended-by
+  "Return true if every part of c1 has a corresponding part in c2.
+   Doesn't currently recognize all cases, where an element of the
+   first list corrresponds to an extension of it in the second."
+  [c1 c2]
+  (let [content1 (content c1)
+        content2 (content c2)]
+    (when (or (nil? content1) (= content1 content2))
+      (or (not (sequential? c1))
+          (and (sequential? c2)
+               (let [common-elements (common-canonical-multisets
+                                      (second c1) (second c2))]
+                 (= common-elements (second c1))))))))

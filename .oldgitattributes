@@ -1,0 +1,8 @@
+*.clj text eol=crlf
+*.cljs text eol=crlf
+*.cljx text eol=crlf
+*.css text eol=crlf
+*.gitattributes text eol=crlf
+*.md text eol=crlf
+*.log text eol=crlf
+LICENSE *.md text eol=crlf

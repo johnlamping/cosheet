@@ -39,7 +39,7 @@
 ;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
 ;;;                  For each item refered to by sequence-referent,
 ;;;                  refers to an element, if there is one, whose semantic
-;;;                  information incliudes that of the item. If there are
+;;;                  information includes that of the item. If there are
 ;;;                  several matching items, chooses the one with the least
 ;;;                  additional stuff.
 ;;;        elements  [:elements <condition> <sequence-referent>]

@@ -1,5 +1,5 @@
 (ns cosheet.canonical
-  (:require (cosheet [utils :refer [multiset multiset-diff multiset-union
+  (:require (cosheet [utils :refer [multiset multiset-diff multiset-sum
                                     multiset-conj
                                     canonical-atom-form equivalent-atoms?]]
                      [debug :refer [simplify-for-print]])))
@@ -60,7 +60,7 @@
   all with the same content, return the multiset of representations
   with the most in common."
   ;;; TODO: We don't handle all cases of partial matching. The challenge is
-  ;;; that there isn't always a unique most in common, but this function
+  ;;; that there isn't always a unique most in common, and this function
   ;;; must be commutative. So we currently only handle identity, and when the
   ;;; non identical stuff has only one item in each multiset. That should
   ;;; cover the vast majority of cases, but it could do better by, for example,
@@ -99,7 +99,7 @@
                           (common-canonical-multisets-for-same-content
                            items1 items2)))
                       (seq m1))]
-    (reduce multiset-union {} commons)))
+    (reduce multiset-sum {} commons)))
 
 (defn common-canonical
   "Given two canonical representations, return the canonincal

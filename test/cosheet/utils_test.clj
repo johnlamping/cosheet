@@ -12,8 +12,8 @@
   (is (= (multiset-diff {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          [{:a 1 :b 2} {:d 4} {:b 1 :c 3}])))
 
-(deftest multiset-union-test
-  (is (= (multiset-union {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
+(deftest multiset-sum-test
+  (is (= (multiset-sum {:a 1 :b 3 :c 3} {:b 1 :c 3 :d 4})
          {:a 1 :b 4 :c 6 :d 4})))
 
 (deftest multiset-to-generating-values-test

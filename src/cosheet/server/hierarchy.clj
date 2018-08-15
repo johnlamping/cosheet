@@ -1,6 +1,6 @@
 (ns cosheet.server.hierarchy
   (:require (cosheet
-             [utils :refer [multiset multiset-diff multiset-union
+             [utils :refer [multiset multiset-diff multiset-sum
                             multiset-to-generating-values update-last]]
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
@@ -46,7 +46,7 @@
                     {:hierarchy-node true
                      :leaves leaves
                      :properties properties
-                     :cumulative-properties (multiset-union
+                     :cumulative-properties (multiset-sum
                                              properties ancestor-properties)})]
     (if (empty? hierarchy)
       [(make-node [leaf] properties)]
@@ -71,7 +71,7 @@
                              last [:child-nodes]
                              #(append-to-hierarchy
                                % leaf new-only
-                               (multiset-union both ancestor-properties))))))
+                               (multiset-sum both ancestor-properties))))))
               (if (empty? both)
                 (conj hierarchy (make-node [leaf] properties))
                 (append-to-hierarchy

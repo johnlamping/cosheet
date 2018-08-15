@@ -36,8 +36,8 @@
           [{} {} {}]
           (clojure.set/union (keys first) (keys second))))
 
-(defn multiset-union
-  "Return the union of two multisets."
+(defn multiset-sum
+  "Return the sum of two multisets."
   [first second]
   (let [keys (clojure.set/union (keys first) (keys second))]
     (zipmap keys

@@ -38,10 +38,13 @@
 (defn secure-url [request url]
   "Turn a url into an https request on the server, unless we are running
   locally."
-  (let [host (get-in request [:headers "host"])]
-    (if (clojure.string/starts-with? host "localhost:")
-      (str "http://" host url)
-      (str "https://cosheet.com" url))))
+  (let [host (get-in request [:headers "host"])
+        servlet-path (get-in request [:servlet-context-path])
+        scheme (get-in request [:scheme])
+        ]
+    (if (clojure.string/starts-with? scheme ":http")
+      (str "http://" host servlet-path url)
+      (str "https://" host servlet-path url))))
 
 (defn login-authenticate
   "Check request username and password against user credentials dB
@@ -59,7 +62,7 @@
         session (:session request)
         found-pwdhash (:pwdhash (get-user-pwdhash username))]
     (if (and found-pwdhash (hashers/check password found-pwdhash))
-      (let [next-url (get-in request [:query-params "next"] "/")
+      (let [next-url (get-in request [:query-params "next"])
             updated-session (assoc session :identity username)]
         (-> (redirect (secure-url request next-url))
             (assoc :session updated-session)))
@@ -77,8 +80,9 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;; TODO: Rather than make up an unknown user, show an error.
-    (let [user-id (get-in request [:session :identity] "unknown")]
-      (initial-page (url-path-to-file-path path user-id) referent selector)
+    (let [user-id (get-in request [:session :identity] "unknown")
+          servlet-path (get-in request [:servlet-context-path])]
+      (initial-page (url-path-to-file-path path user-id) servlet-path referent selector)
     )
   ))
 
@@ -105,8 +109,9 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;; call list-user-files
-    (let [user-id (get-in request [:session :identity] "unknown")]
-      (list-user-files user-id))
+    (let [user-id (get-in request [:session :identity] "unknown")
+          servlet-path (get-in request [:servlet-context-path])]
+      (list-user-files user-id servlet-path))
     ;; static html response - deprecated
     ;(let [content (slurp (io/resource "public/index-user-files.html"))]
     ;  (render content request))
@@ -132,10 +137,11 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;; only allow "admin" user to access admin page
-    (let [user-id (get-in request [:session :identity] "unknown")]
+    (let [user-id (get-in request [:session :identity] "unknown")
+          servlet-path (get-in request [:servlet-context-path])]
       (if-not (isAdmin user-id)
         (throw-unauthorized)
-        (admin-page user-id)
+        (admin-page user-id servlet-path)
         ))
   ))
 
@@ -144,24 +150,26 @@
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;; only allow "admin" user to access admin page
-    (let [user-id (get-in request [:session :identity] "unknown")]
+    (let [user-id (get-in request [:session :identity] "unknown")
+          servlet-path (get-in request [:servlet-context-path])]
       (if-not (isAdmin user-id)
         (throw-unauthorized)
         (let [username (get-in request [:form-params "username"])
               password (get-in request [:form-params "password"])]
-          (create-user username password)))
+          (create-user username password servlet-path)))
   )))
 
 (defn delete-user
   [request username]
   (if-not (authenticated? request)
     (throw-unauthorized)
-    (let [user-id (get-in request [:session :identity] "unknown")]
+    (let [user-id (get-in request [:session :identity] "unknown")
+          servlet-path (get-in request [:servlet-context-path])]
       (if-not (isAdmin user-id)
         (throw-unauthorized)
         (if (isAdmin username)  ; can't remove "admin" user
           (throw-unauthorized)
-          (delete-user-view username))))
+          (delete-user-view username servlet-path))))
   ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -202,7 +210,7 @@
     (-> (render (slurp (io/resource "public/error.html")) request)
         (assoc :status 403))
     ;; In other cases, redirect the user to login page.
-    (let [current-url (:uri request)]
+    (let [current-url (str (:url request) "/")]
       (if (clojure.string/starts-with? current-url "/ajax-request")
         ;; The client AJAX code expects JSON, so if we have an ajax
         ;; request, ask the client to do a reload, which we can

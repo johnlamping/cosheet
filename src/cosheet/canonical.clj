@@ -63,8 +63,11 @@
   ;;; that there isn't always a unique most in common, and this function
   ;;; must be commutative. So we currently only handle identity, and when the
   ;;; non identical stuff has only one item in each multiset. That should
-  ;;; cover the vast majority of cases, but it could do better by, for example,
-  ;;; checking for unique subsets.
+  ;;; cover the vast majority of cases, but it could do better. For example,
+  ;;; if one of the non-identical has only one item, and it has a largest
+  ;;; match with the other non-identical, that is still unique. (Largest
+  ;;; requires a notion of size of an item, which can be the number of
+  ;;; parts it has, which can be easily computed from its multiset.
   [s1 s2]
   (let [[first-only second-only both] (multiset-diff s1 s2)]
     (or (when (and (= (count first-only) 1) (= (count second-only) 1))

@@ -80,6 +80,11 @@
     (expr-let
         [virtual-dom (batch-edit-stack-virtual-DOM-R
                       query-item inherited-for-batch)
+         ;; We need to take the current versions of the query elements,
+         ;; as :match-all only works with immutable items.
+         current-query-elements
+         (expr-seq map #(entity/updating-call-with-immutable % identity)
+                   query-elements)
          batch-dom
          (let [inherited
                (-> inherited-for-batch
@@ -92,8 +97,8 @@
                      {:delete {:referent top-level-matches-referent}}]))]
            ;; TODO: Add-twin is a problem here with not knowing
            ;; what template to use.
-           (labels-and-elements-DOM-R
-            query-elements virtual-dom true true :horizontal inherited))
+           (labels-and-elements-DOM-R current-query-elements virtual-dom
+                                      true true :horizontal inherited))
          count-dom
          (call-dependent-on-id
           store nil

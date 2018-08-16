@@ -129,6 +129,9 @@
                            ; should match all matches, not just one exemplar,
                            ; unless the child has sibling that is at
                            ; least as specific.
+                           ; If this is set, then the item must be immutable,
+                           ; as item-referent-given-inherited only supports
+                           ; this for immutable items.
 ;               :template  ; The template that the twins of this dom
                            ; must satisfy. If not present, then twins
                            ; may not be created.

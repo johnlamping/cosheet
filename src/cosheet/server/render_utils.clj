@@ -231,11 +231,15 @@
   [item inherited]
   (let [subject-referent (:subject-referent inherited)]
     (if (:match-all inherited)
-        (let [item-ref (item-referent item)]
-          (if (nil? subject-referent)
-            item-ref
-            (elements-referent item-ref subject-referent)))
-        (item-or-exemplar-referent item subject-referent))))
+      (let [item-ref (item-referent item)]
+        (assert (satisfies? entity/StoredEntity item))
+        (assert (not (entity/mutable-entity? item)))
+        (if (nil? subject-referent)
+          item-ref
+          (let [parent (entity/subject item)]
+            ;; TODO: Code here.
+            (elements-referent item-ref subject-referent))))
+      (item-or-exemplar-referent item subject-referent))))
 
 (defn item-component
   "Make a component dom for the given item.

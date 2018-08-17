@@ -71,8 +71,8 @@
         (comment (profile-and-print-reporters reporters))))))
 
 
-;;;  generate html page listing all user files with href to edit file
-;;;  page. Also contains logout.
+;;; Generate html page listing all user files with href to edit file
+;;; page. Also contains logout.
 (defn list-user-files [user-id servlet-path]
   (when-let [directory (get-userdata-path user-id)]
     (html5

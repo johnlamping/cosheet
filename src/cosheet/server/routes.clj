@@ -82,7 +82,8 @@
     ;; TODO: Rather than make up an unknown user, show an error.
     (let [user-id (get-in request [:session :identity] "unknown")
           servlet-path (get-in request [:servlet-context-path])]
-      (initial-page (url-path-to-file-path path user-id) servlet-path referent selector)
+      (initial-page (url-path-to-file-path path user-id)
+                    servlet-path referent selector)
     )
   ))
 
@@ -210,7 +211,7 @@
     (-> (render (slurp (io/resource "public/error.html")) request)
         (assoc :status 403))
     ;; In other cases, redirect the user to login page.
-    (let [current-url (str (:url request) "/")]
+    (let [current-url (:uri request)]
       (if (clojure.string/starts-with? current-url "/ajax-request")
         ;; The client AJAX code expects JSON, so if we have an ajax
         ;; request, ask the client to do a reload, which we can

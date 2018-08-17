@@ -90,18 +90,19 @@
   the name, and the suffix, using appropriate defaults.
   Return nil if the path is not well formed."
   [file-path]
-  (let [parts (clojure.string/split file-path #"/")
-        directory-path (clojure.string/join "/" (butlast parts))
-        filename (last parts)
-        name-parts (clojure.string/split filename #"\.")
-        name (first name-parts)
-        without-suffix (str directory-path "/" name)]
-    (cond (= (count name-parts) 1)
-          ;; If there was no extension, we default to "cosheet"
-          [without-suffix name ".cosheet"]
-          (and (= (count name-parts) 2)
-               (#{"cosheet" "csv"} (second name-parts)))
-          [without-suffix name (str "." (second name-parts))])))
+  (when file-path
+    (let [parts (clojure.string/split file-path #"/")
+          directory-path (clojure.string/join "/" (butlast parts))
+          filename (last parts)
+          name-parts (clojure.string/split filename #"\.")
+          name (first name-parts)
+          without-suffix (str directory-path "/" name)]
+      (cond (= (count name-parts) 1)
+            ;; If there was no extension, we default to "cosheet"
+            [without-suffix name ".cosheet"]
+            (and (= (count name-parts) 2)
+                 (#{"cosheet" "csv"} (second name-parts)))
+            [without-suffix name (str "." (second name-parts))]))))
 
 (defn path-to-Path
   "Turn a string file path to a Java file Path object, which is what various
@@ -240,37 +241,38 @@
   file path that the store is indexed under.
   Return nil if there is something wrong with the path."
   [file-path]
-  (let [[without-suffix name suffix] (interpret-file-path file-path)]
-    (->
-     ;; We want to make sure we don't have a race between threads to
-     ;; create a store twice, open its log stream multiple times, etc.
-     ;; So we run under a global lock.
-     (locking session-info
-       (or
-        ((:stores @session-info) without-suffix)
-        ;; If the path is not valid, we don't want to put nil in
-        ;; (:stores @session-info), as that would preclude fixing the path.
-        ;; Rather, we leave (:stores @session-info) blank in that case.
-        (when-let [immutable-store
-                   (get-store without-suffix name suffix)]
-          (let [log-stream (try (java.io.FileOutputStream.
-                                 (str without-suffix ".cosheetlog") true)
-                                (catch java.io.FileNotFoundException e
-                                  nil))
-                log-agent (when log-stream
-                            (agent (clojure.java.io/writer log-stream)))
-                info {:store (new-mutable-store immutable-store)
-                      :agent (agent immutable-store)
-                      :log-agent log-agent}]
-            (when log-agent
-              (when (= (.position (.getChannel log-stream)) 0)
-                (send log-agent
-                      write-log-entry
-                      [:store (store-to-data immutable-store)]))
-              (send log-agent write-log-entry [:opened]))
-            (swap! session-info #(assoc-in % [:stores without-suffix] info))
-            info))))
-     (assoc :without-suffix without-suffix))))
+  (let [[without-suffix name suffix] (interpret-file-path file-path)
+        store-info
+        ;; We want to make sure we don't have a race between threads to
+        ;; create a store twice, open its log stream multiple times, etc.
+        ;; So we run under a global lock.
+        (locking session-info
+          (or
+           ((:stores @session-info) without-suffix)
+           ;; If the path is not valid, we don't want to put nil in
+           ;; (:stores @session-info), as that would preclude fixing the path.
+           ;; Rather, we leave (:stores @session-info) blank in that case.
+           (when-let [immutable-store
+                      (get-store without-suffix name suffix)]
+             (let [log-stream (try (java.io.FileOutputStream.
+                                    (str without-suffix ".cosheetlog") true)
+                                   (catch java.io.FileNotFoundException e
+                                     nil))
+                   log-agent (when log-stream
+                               (agent (clojure.java.io/writer log-stream)))
+                   info {:store (new-mutable-store immutable-store)
+                         :agent (agent immutable-store)
+                         :log-agent log-agent}]
+               (when log-agent
+                 (when (= (.position (.getChannel log-stream)) 0)
+                   (send log-agent
+                         write-log-entry
+                         [:store (store-to-data immutable-store)]))
+                 (send log-agent write-log-entry [:opened]))
+               (swap! session-info #(assoc-in % [:stores without-suffix] info))
+               info))))]
+    (when store-info
+      (assoc store-info :without-suffix without-suffix))))
 
 ;;; Session management. There is a tracker for each session.
 

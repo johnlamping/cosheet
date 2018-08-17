@@ -6,15 +6,18 @@
                      [store :refer [StoredItemDescription]]
                      [query :refer [matching-elements]]
                      [orderable :as orderable]
+                     [canonical :refer [canonicalize-list
+                                        canonical-extended-by]]
                      [hiccup-utils
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [referent?
                                virtual-referent item->canonical-semantic
-                               elements-referent
+                               elements-referent exemplar-referent
                                item-referent item-or-exemplar-referent
                                union-referent-if-needed
+                               immutable-semantic-to-list
                                item->canonical-semantic-R
                                semantic-element?-R]]
              [hierarchy :refer [hierarchy-node-descendants]])))
@@ -236,9 +239,24 @@
         (assert (not (entity/mutable-entity? item)))
         (if (nil? subject-referent)
           item-ref
-          (let [parent (entity/subject item)]
-            ;; TODO: Code here.
-            (elements-referent item-ref subject-referent))))
+          ;; Even if :match-all is set, we don't match all items if there
+          ;; is a sibling that is at least as specific. Otherwise, we would
+          ;; refer to the sibling too.
+          (let [parent (entity/subject item)
+                item->canonical (fn [item]
+                                  (-> item
+                                      immutable-semantic-to-list
+                                      (replace-in-seqs 'anything nil)
+                                      (replace-in-seqs 'anything-immutable nil)
+                                      canonicalize-list))
+                sibling-canonicals (->> (entity/elements parent)
+                                       (filter #(not= % item))
+                                       (map item->canonical))
+                item-canonical (item->canonical item)]
+            (if (some #(canonical-extended-by item-canonical %)
+                      sibling-canonicals)
+              (exemplar-referent item-ref subject-referent)
+              (elements-referent item-ref subject-referent)))))
       (item-or-exemplar-referent item subject-referent))))
 
 (defn item-component

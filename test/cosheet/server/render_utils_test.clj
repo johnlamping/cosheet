@@ -164,7 +164,7 @@
 (deftest item-referent-given-inherited-test
   (let [s0 (new-element-store)
         [s1 joe-id] (add-entity s0 nil "joe")
-        [store joe-age-id] (add-entity s1 joe-id '(30 ("age" :tag)))
+        [store joe-age-id] (add-entity s1 joe-id '(anything ("age" :tag)))
         joe (description->entity joe-id store)
         joe-age (description->entity joe-age-id store)]
     (is (check (item-referent-given-inherited joe-age {})
@@ -176,5 +176,19 @@
                (elements-referent joe-age-id joe-id)))
     (is (check (item-referent-given-inherited
                 joe-age  {:subject-referent (union-referent [joe-id])})
-               (exemplar-referent joe-age-id (union-referent [joe-id])))))) 
+               (exemplar-referent joe-age-id (union-referent [joe-id]))))
+    ;; Check that we go to an exemplar referent if there is a
+    ;; sibling that is more specific.
+    (let [[store _] (add-entity store joe-id '(50 ("age" :tag) ("fake" :tag)))]
+      (is (check (item-referent-given-inherited
+                  (description->entity joe-age-id store)
+                  {:match-all true :subject-referent joe-id})
+                 (exemplar-referent joe-age-id joe-id)))
+      ;; Check that we go back to entity if the sibling is no longer
+      ;; more specific.
+      (let [[store _] (add-entity store joe-age-id '("true" :tag))]
+        (is (check (item-referent-given-inherited
+                    (description->entity joe-age-id store)
+                    {:match-all true :subject-referent joe-id})
+                   (elements-referent joe-age-id joe-id))))))) 
 

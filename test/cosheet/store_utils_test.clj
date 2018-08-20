@@ -6,6 +6,7 @@
             [cosheet.entity :refer [deep-to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
+            [cosheet.test-utils :refer [check]]
             ; :reload
             ))
 

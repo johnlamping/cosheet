@@ -22,13 +22,43 @@
     (make-id "6") {:containers #{(make-id "4")} :content 5}
     (make-id "7") {:subject (make-id "1") :content "second"}
     (make-id "8") {:subject (make-id "3") :content "Bar"}}
+   ;; id->subject
+   {(make-id "1") (make-id "0")
+    (make-id "2") (make-id "1")
+    (make-id "3") (make-id "2")
+    (make-id "5") (make-id "4")
+    (make-id "7") (make-id "1")
+    (make-id "8") (make-id "3")}
+   ;; id->content
+   {(make-id "0") 0
+    (make-id "1") (make-id "4")
+    (make-id "2") "Foo"
+    (make-id "3") :label
+    (make-id "4") (make-id "6")
+    (make-id "5") "bar"
+    (make-id "6") 5
+    (make-id "7") "second"
+    (make-id "8") "Bar"}
+   ;; content->ids
+   {0 (make-id "0")
+    (make-id "4") (make-id "1")
+    "foo" (make-id "2")
+    :label (make-id "3")
+    (make-id "6") (make-id "4")
+    "bar" #{(make-id "5") (make-id "8")}
+    5 (make-id "6")
+    "second" (make-id "7")}
+   ;; transient-ids
    #{}
+   ;; subject->label->ids
    {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
     (make-id "2") {"bar" [(make-id "3")]}
     (make-id "3") {nil [(make-id "8")]}
     (make-id "4") {nil [(make-id "5")]}}
+   ;; next-id
    8
+   ;; modified-ids
    nil))
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))
@@ -100,6 +130,31 @@
   (is (= (remove-from-vector [1] 1) nil))
   (is (= (remove-from-vector nil 1) nil)))
 
+(deftest psuedo-set-test
+  (let [ps (loop [ps nil in [] out [1 2 3 4 5]]
+             (doseq [x in] (is (psuedo-set-contains? ps x)))
+             (doseq [x out] (is (not (psuedo-set-contains? ps x))))
+             (cond (empty? in)
+                   (is (nil? ps))
+                   (= (count in) 1)
+                   (is (= ps (first in))))
+             (if (not (empty? out))
+               (recur (psuedo-set-conj ps (first out))
+                      (conj in (first out))
+                      (rest out))
+               ps))]
+    (loop [ps ps in [1 2 3 4 5] out []]
+      (doseq [x in] (is (psuedo-set-contains? ps x)))
+      (doseq [x out] (is (not (psuedo-set-contains? ps x))))
+      (cond (empty? in)
+            (is (nil? ps))
+            (= (count in) 1)
+            (is (= ps (first in))))
+      (when (not (empty? in))
+        (recur (psuedo-set-disj ps (first in))
+               (rest in)
+               (conj out (first in)))))))
+
 (deftest id-is-content?-test
   (is (id-is-content? test-store (make-id "4") nil))
   (is (not (id-is-content? test-store (make-id "4") [(make-id "1")])))
@@ -124,9 +179,11 @@
   (let [data-map (:id->data test-store)
         keys (keys data-map)
         missing-store
-        (assoc test-store :id->data
+        (assoc test-store
+               :id->data
                (zipmap keys
-                       (for [key keys] (dissoc (data-map key) :containers))))
+                       (for [key keys] (dissoc (data-map key) :containers)))
+               :content->ids {})
         indexed-store
         (reduce (fn [store id]
                   (index-content store id))

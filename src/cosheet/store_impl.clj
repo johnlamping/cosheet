@@ -78,6 +78,41 @@
       (when (not (empty? result))
         result))))
 
+;;; A psuedo-set is either nil, a non-nil atom, or a set, representing
+;;; either the empty set, a singleton item, or a set with multiple items.
+;;; TODO: If the set is a small, use a vector?
+(defn psuedo-set-contains? [psuedo-set item]
+  (cond (nil? psuedo-set)
+        false
+        (set? psuedo-set)
+        (contains? psuedo-set item)
+        true
+        (= psuedo-set item)))
+
+(defn psuedo-set-conj [psuedo-set item]
+  (cond (nil? psuedo-set)
+        item
+        (set? psuedo-set)
+        (conj psuedo-set item)
+        true
+        #{psuedo-set item}))
+
+(defn psuedo-set-disj [psuedo-set item]
+  (cond (nil? psuedo-set)
+        nil
+        (set? psuedo-set)
+        (let [result (disj psuedo-set item)]
+          (cond (empty? result)
+                nil
+                (= (count result) 1)
+                (first result)
+                true
+                result))
+        (= item psuedo-set)
+        nil
+        true
+        psuedo-set))
+
 ;;; Chase contents until an atomic value is found.
 (defn atomic-value [store description]
   (if (satisfies? StoredItemDescription description)
@@ -118,12 +153,15 @@
   The content must not be implicit."
   [store id]
   (let [content (get-in store [:id->data id :content])]
-    (if (instance? ItemId content)
-      (do
-        (assert (contains? (:id->data store) content) "Content item unknown.")
-        (update-in store [:id->data content :containers]
-                   #((fnil conj #{}) % id)))
-      store)))
+    (as-> store store
+      (update-in store [:content->ids (canonical-atom-form content)]
+                 #(psuedo-set-conj % id))
+      (if (instance? ItemId content)
+        (do
+          (assert (contains? (:id->data store) content) "Content item unknown.")
+          (update-in store [:id->data content :containers]
+                     #((fnil conj #{}) % id)))
+        store))))
 
 (defn deindex-subject
   "Undo indexing to reflect the effect of the item on its subject.
@@ -161,27 +199,17 @@
       (update-in-clean-up store [:subject->label->ids subject nil]
                           #(remove-from-vector % id)))))
 
-(defn index-content
-  "Do indexing to reflect the item having the content.
-  The content must not be implicit."
-  [store id]
-  (let [content (get-in store [:id->data id :content])]
-    (if (instance? ItemId content)
-      (do
-        (assert (contains? (:id->data store) content) "Content item unknown.")
-        (update-in store [:id->data content :containers]
-                   #((fnil conj #{}) % id)))
-      store)))
-
 (defn deindex-content
   "Undo indexing to reflect the item having the content.
   The content must not be implicit."
   [store id]
   (let [content (get-in store [:id->data id :content])]
-    (if (instance? ItemId content)
-      (update-in-clean-up store [:id->data content :containers] #(disj % id))
-      store)))
+    (as-> store store
+      (update-in-clean-up store [:content->ids (canonical-atom-form content)]
                           #(psuedo-set-disj % id))
+      (if (instance? ItemId content)
+        (update-in-clean-up store [:id->data content :containers] #(disj % id))
+        store))))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -217,12 +245,15 @@
   (let [data (if (nil? subject)
                {:content content}
                {:subject subject :content content})]
-    (-> store
-         (assoc-in [:id->data item-id] data)
-         (index-subject item-id)
-         (index-in-subject item-id)
-         (index-content item-id)
-         (add-modified-id item-id))))
+    (-> (if (nil? subject)
+          store
+          (assoc-in store [:id->subject item-id] subject))
+        (assoc-in [:id->data item-id] data)
+        (assoc-in [:id->content-map item-id] content)
+        (index-subject item-id)
+        (index-in-subject item-id)
+        (index-content item-id)
+        (add-modified-id item-id))))
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."
@@ -264,18 +295,29 @@
    ;;;   :subject, the item this item is an element of.
    ;;;   :containers, a set of the items that this item is the content
    ;;;   of. This is redundant information.
+   ;;; obsolete
    id->data
+
+   ;;; The raw essential data.
+   ;;; Map from ItemId to its subject
+   id->subject
+   ;;; Map from ItemId to its content
+   ;;; We have to call it id->content-map, to avoid conflicting with
+   ;;; the method id->content
+   id->content-map
+
+   ;;; An index from content to a psuedo-set of ids with that content.
+   content->ids
 
    ;;; A set of ids that have been declared transient.
    transient-ids
    
    ;;; Index from item then label to all elements that belong to the
    ;;; item and have the label.
-   ;;; Subject and label can be ids or primitives. (Or maybe subject
-   ;;; must be an id.)
+   ;;; Subject must be an id, while label can be an id or a primitives.
    subject->label->ids
 
-   ;;; The next id to assign to an item to be stored here
+   ;;; The next id to assign to an item to be stored here.
    next-id
 
    ;;; A set of ids that have been updated since the last call to
@@ -351,6 +393,8 @@
         (deindex-in-subject id)
         (deindex-content id)
         (dissoc-in [:id->data id])
+        (dissoc-in [:id->content-map id])
+        (dissoc-in [:id->subject id])
         (add-modified-id id)))
 
   (update-content [this id content]
@@ -359,6 +403,7 @@
         (deindex-subject id)
         (deindex-content id)
         (assoc-in [:id->data id :content] content)
+        (assoc-in [:id->content-map id] content)
         (index-subject id)
         (index-content id)
         (add-modified-id id)))
@@ -375,6 +420,10 @@
     (update this :transient-ids #(conj % id)))
 
   (store-to-data [this]
+    "Extract just the essential data from the store, in preparation
+     for writing it out. If the content of an item is an id, it is
+     represented as [:id <ItemId>] and if it is a Orderable, it is represented
+     as [:ord <left> <right>]."
     (let [transient-ids (all-transient-ids this)]
       [(:next-id this)
        (for [[id {:keys [subject content] :or {subject nil}}]
@@ -395,6 +444,7 @@
         (pr (store-to-data this)))))
 
   (data-to-store [this data]
+    "Given a store's essential data, add it to a store."
     (let [[next-id items] data]
       (let [[store deferred]
             (reduce (fn [[store deferred] [id subject content]]
@@ -424,6 +474,9 @@
 
 (defmethod new-element-store true []
   (map->ElementStoreImpl {:id->data {}
+                          :id->subject {}
+                          :id->content-map {}
+                          :content->ids {}
                           :transient-ids #{}
                           :subject->label->ids {}
                           :next-id 0

@@ -1,4 +1,4 @@
-(defproject cosheet "0.1.2-SNAPSHOT"
+(defproject cosheet "0.1.3-SNAPSHOT"
   :description "Free form spreadsheet"
   :url ""
   :license {:name "Eclipse Public License"
@@ -24,6 +24,9 @@
                  [org.clojure/java.jdbc "0.6.0"]
                  [com.h2database/h2 "1.4.193"]
                  ]
+  :jvm-opts ["-XX:+UnlockCommercialFeatures"
+             "-XX:+FlightRecorder"
+             "-XX:FlightRecorderOptions=stackdepth=256"]
   :plugins [[lein-cljsbuild "1.1.3"]
             [lein-ring "0.9.7"]
             [cider/cider-nrepl "0.11.0"]]

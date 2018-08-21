@@ -131,8 +131,8 @@
   "Do indexing to reflect the effect of the item on its subject.
    The subject must not be implicit."
   [store id]
-  (let [subject (get-in store [:id->data id :subject])
-        subject-of-subject (get-in store [:id->data subject :subject])
+  (let [subject (get-in store [:id->subject id])
+        subject-of-subject (get-in store [:id->subject subject])
         atomic-value (atomic-value store id)]
     (if (or (nil? subject)
             (nil? subject-of-subject)
@@ -150,7 +150,7 @@
 (defn index-in-subject
   "Record this item as an element of its subject."
     [store id]
-    (let [subject (get-in store [:id->data id :subject])]
+    (let [subject (get-in store [:id->subject id])]
       (if (nil? subject)
         store
         (update-in store [:subject->label->ids subject nil]
@@ -160,13 +160,14 @@
   "Do indexing to reflect the item having the content.
   The content must not be implicit."
   [store id]
-  (let [content (get-in store [:id->data id :content])]
+  (let [content (get-in store [:id->content-map id])]
     (as-> store store
       (update-in store [:content->ids (canonical-atom-form content)]
                  #(psuedo-set-conj % id))
       (if (instance? ItemId content)
         (do
-          (assert (contains? (:id->data store) content) "Content item unknown.")
+          (assert (contains? (:id->content-map store) content)
+                  "Content item unknown.")
           (update-in store [:id->data content :containers]
                      #((fnil conj #{}) % id)))
         store))))
@@ -175,8 +176,8 @@
   "Undo indexing to reflect the effect of the item on its subject.
    The subject must not be implicit and the item must have no elements."    
   [store id]
-  (let [subject (:subject (get-in store [:id->data id]))
-        subject-of-subject (get-in store [:id->data subject :subject])
+  (let [subject (get-in store [:id->subject id])
+        subject-of-subject (get-in store [:id->subject subject])
         label (atomic-value store id)]
     (if (or (nil? subject)
             (nil? subject-of-subject) ; We didn't add a label.
@@ -199,7 +200,7 @@
 (defn deindex-in-subject
   "Remove the item, which must have no elements, as an element of its subject."
   [store id]
-  (let [subject (:subject (get-in store [:id->data id]))]
+  (let [subject (get-in store [:id->subject id])]
     (if (nil? subject)
       store ; We have no effect on the index
        ;; Since we have no elements, we should have been indexed
@@ -211,7 +212,7 @@
   "Undo indexing to reflect the item having the content.
   The content must not be implicit."
   [store id]
-  (let [content (get-in store [:id->data id :content])]
+  (let [content (get-in store [:id->content-map id])]
     (as-> store store
       (update-in-clean-up store [:content->ids (canonical-atom-form content)]
                           #(psuedo-set-disj % id))
@@ -293,7 +294,7 @@
   ;; Return the new store and new deferred.
   [store deferred id subject content]
   (let [needed (first (filter #(and (instance? ItemId %)
-                                    (not ((:id->data store) %)))
+                                    (not ((:id->content-map store) %)))
                               [subject content]))]
     (if needed
       [store (update-in deferred [needed]
@@ -347,7 +348,7 @@
   Store
 
   (id-valid? [this id]
-    (contains? (:id->data this) id))
+    (contains? (:id->content-map this) id))
 
   (id-label->element-ids [this id label]
     (get-in this [:subject->label->ids id (canonical-atom-form label)]))
@@ -360,7 +361,7 @@
     (cond (instance? ImplicitContentId id)
           (id->content this (id->content this (:containing-item-id id)))
           (instance? ItemId id)
-          (get-in this [:id->data id :content])
+          (get-in this [:id->content-map id])
           :else
           id))
 
@@ -376,7 +377,7 @@
       ;; The item has an element.
       ;; Return all items that have elaborations.
       (keys subject->label->ids)
-      (keys id->data)))
+      (keys id->content-map)))
 
   (mutable-store? [this] false)
 
@@ -385,7 +386,7 @@
   (id->subject [this id]
     (when
       (instance? ItemId id)
-      (get-in this [:id->data id :subject])))
+      (get-in this [:id->subject id])))
   
   ImmutableStore
 
@@ -404,7 +405,7 @@
          item-id])))
 
   (remove-simple-id [this id]
-    (assert (not (nil? (get-in this [:id->data id])))
+    (assert (not (nil? (get-in this [:id->content-map id])))
             "Removed id not present.")
     (assert (nil? (get-in this [:subject->label->ids id]))
             "Removed id has elements.")
@@ -436,7 +437,7 @@
      (:modified-ids this)])
 
   (declare-transient-id [this id]
-    (assert (:id->data this))
+    (assert (:id->content-map this))
     (update this :transient-ids #(conj % id)))
 
   (store-to-data [this]
@@ -446,11 +447,11 @@
      as [:ord <left> <right>]."
     (let [transient-ids (all-transient-ids this)]
       [(:next-id this)
-       (for [[id {:keys [subject content] :or {subject nil}}]
-             (seq (:id->data this))
+       (for [[id content]
+             (seq (:id->content-map this))
              :when (not (transient-ids id))]
          [(:id id)
-          (:id subject)
+          (:id (get-in this [:id->subject id]))
           (cond (instance? ItemId content)
                 [:id (:id content)]
                 (instance? cosheet.orderable.Orderable content)

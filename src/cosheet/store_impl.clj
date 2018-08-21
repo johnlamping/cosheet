@@ -219,25 +219,6 @@
     (update-in store [:modified-ids] #(conj % id))
     store))
 
-(defn promote-implicit-item [store id]
-  (if (instance? ImplicitContentId id)
-     (let [container (:containing-item-id id)
-           content (id->content store container)]
-       (if (instance? ItemId content)
-         [store content]
-         (let [[promoted-store promoted-container]
-               (promote-implicit-item store container)
-               content-id
-               (->ItemId (:next-id promoted-store))]
-           [(-> promoted-store
-                (update-in [:next-id] inc)
-                (assoc-in [:id->data content-id]
-                          {:content content :containers #{promoted-container}})
-                (assoc-in [:id->data promoted-container :content] content-id)
-                (add-modified-id content-id))
-            content-id])))
-     [store id]))
-
 (defn add-triple
   "Add a triple to the store, and do all necessary indexing."
   [store item-id subject content]
@@ -254,6 +235,23 @@
         (index-in-subject item-id)
         (index-content item-id)
         (add-modified-id item-id))))
+
+(defn promote-implicit-item [store id]
+  (if (instance? ImplicitContentId id)
+     (let [container (:containing-item-id id)
+           content (id->content store container)]
+       (if (instance? ItemId content)
+         [store content]
+         (let [[promoted-store promoted-container]
+               (promote-implicit-item store container)
+               content-id
+               (->ItemId (:next-id promoted-store))]
+           [(-> promoted-store
+                (update-in [:next-id] inc)
+                (add-triple content-id nil content)
+                (update-content promoted-container content-id))
+            content-id])))
+     [store id]))
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."

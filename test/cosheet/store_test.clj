@@ -242,9 +242,10 @@
   (let [[promoted-store promoted-id]
         (promote-implicit-item
          (track-modified-ids test-store) (->ImplicitContentId (make-id "2")))]
-    (is (= (:modified-ids promoted-store) #{promoted-id}))
+    (is (= (:modified-ids promoted-store) #{promoted-id (make-id "2")}))
     (is (= (fetch-and-clear-modified-ids promoted-store)
-           [(assoc promoted-store :modified-ids #{}), #{promoted-id}]))))
+           [(assoc promoted-store :modified-ids #{})
+            #{promoted-id (make-id "2")}]))))
 
 (deftest add-simple-element-test
   (let [[added-store element]

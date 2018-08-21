@@ -161,16 +161,8 @@
   The content must not be implicit."
   [store id]
   (let [content (get-in store [:id->content-map id])]
-    (as-> store store
-      (update-in store [:content->ids (canonical-atom-form content)]
-                 #(psuedo-set-conj % id))
-      (if (instance? ItemId content)
-        (do
-          (assert (contains? (:id->content-map store) content)
-                  "Content item unknown.")
-          (update-in store [:id->data content :containers]
-                     #((fnil conj #{}) % id)))
-        store))))
+    (update-in store [:content->ids (canonical-atom-form content)]
+               #(psuedo-set-conj % id))))
 
 (defn deindex-subject
   "Undo indexing to reflect the effect of the item on its subject.
@@ -213,12 +205,8 @@
   The content must not be implicit."
   [store id]
   (let [content (get-in store [:id->content-map id])]
-    (as-> store store
-      (update-in-clean-up store [:content->ids (canonical-atom-form content)]
-                          #(psuedo-set-disj % id))
-      (if (instance? ItemId content)
-        (update-in-clean-up store [:id->data content :containers] #(disj % id))
-        store))))
+    (update-in-clean-up store [:content->ids (canonical-atom-form content)]
+                        #(psuedo-set-disj % id))))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -251,7 +239,6 @@
     (-> (if (nil? subject)
           store
           (assoc-in store [:id->subject item-id] subject))
-        (assoc-in [:id->data item-id] data)
         (assoc-in [:id->content-map item-id] content)
         (index-subject item-id)
         (index-in-subject item-id)
@@ -310,15 +297,8 @@
       "An immutable store that has only enough indexing
        to find elements of items."}
 
-  [;;; A map from ItemId to a map of their
-   ;;;   :content, the content of the item.
-   ;;;   :subject, the item this item is an element of.
-   ;;;   :containers, a set of the items that this item is the content
-   ;;;   of. This is redundant information.
-   ;;; obsolete
-   id->data
-
-   ;;; The raw essential data.
+    [
+   ;;; These two maps give the facts about the store's triples.
    ;;; Map from ItemId to its subject
    id->subject
    ;;; Map from ItemId to its content
@@ -326,7 +306,7 @@
    ;;; the method id->content
    id->content-map
 
-   ;;; An index from content to a psuedo-set of ids with that content.
+   ;;; A derived index from content to a psuedo-set of ids with that content.
    content->ids
 
    ;;; A set of ids that have been declared transient.
@@ -413,7 +393,6 @@
         (deindex-subject id)
         (deindex-in-subject id)
         (deindex-content id)
-        (dissoc-in [:id->data id])
         (dissoc-in [:id->content-map id])
         (dissoc-in [:id->subject id])
         (add-modified-id id)))
@@ -423,7 +402,6 @@
     (-> this
         (deindex-subject id)
         (deindex-content id)
-        (assoc-in [:id->data id :content] content)
         (assoc-in [:id->content-map id] content)
         (index-subject id)
         (index-content id)
@@ -494,8 +472,7 @@
   (.write w "ElementStore"))
 
 (defmethod new-element-store true []
-  (map->ElementStoreImpl {:id->data {}
-                          :id->subject {}
+  (map->ElementStoreImpl {:id->subject {}
                           :id->content-map {}
                           :content->ids {}
                           :transient-ids #{}

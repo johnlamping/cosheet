@@ -13,15 +13,6 @@
 
 (def test-store
   (->ElementStoreImpl
-   {(make-id "0") {:content 0}
-    (make-id "1") {:subject (make-id "0") :content (make-id "4")}
-    (make-id "2") {:subject (make-id "1") :content "Foo"}
-    (make-id "3") {:subject (make-id "2") :content :label}
-    (make-id "4") {:containers #{(make-id "1")} :content (make-id "6")}
-    (make-id "5") {:subject (make-id "4") :content "bar"}
-    (make-id "6") {:containers #{(make-id "4")} :content 5}
-    (make-id "7") {:subject (make-id "1") :content "second"}
-    (make-id "8") {:subject (make-id "3") :content "Bar"}}
    ;; id->subject
    {(make-id "1") (make-id "0")
     (make-id "2") (make-id "1")
@@ -174,53 +165,44 @@
         (reduce (fn [store id]
                   (index-in-subject (index-subject store id) id))
                 missing-store
-                (sort-by :id (keys (:id->data missing-store))))]
+                (sort-by :id (keys (:id->content-map missing-store))))]
     (is (= indexed-store test-store))))
 
 (deftest index-content-test
-  (let [data-map (:id->data test-store)
-        keys (keys data-map)
-        missing-store
-        (assoc test-store
-               :id->data
-               (zipmap keys
-                       (for [key keys] (dissoc (data-map key) :containers)))
-               :content->ids {})
+  (let [missing-store (assoc test-store :content->ids {})
         indexed-store
         (reduce (fn [store id]
                   (index-content store id))
-                missing-store keys)]
+                missing-store (keys (:id->content-map test-store)))]
     (is (= indexed-store test-store))))
 
 (deftest deindex-subject-test
   (let [id (make-id "999")
-        s1 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2") :content :test})
-        s2 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2") :content :foo})
-        s3 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2")})
-        s4 (assoc-in test-store [:id->data id]
-                     { :content :test})]
+        s1 (-> test-store
+               (assoc-in [:id->content-map id] :test)
+               (assoc-in [:id->subject id] (make-id "2")))
+        s2 (-> test-store
+               (assoc-in [:id->content-map id] :foo)
+               (assoc-in [:id->subject id] (make-id "2")))
+        s3 (assoc-in test-store [:id->content id] :test)]
     (is (= (deindex-subject (index-subject s1 id) id) s1))
     (is (= (deindex-subject (index-subject s2 id) id) s2))
-    (is (= (deindex-subject (index-subject s3 id) id) s3))
-    (is (= (deindex-subject (index-subject s4 id) id) s4))))
+    (is (= (deindex-subject (index-subject s3 id) id) s3))))
 
 (deftest deindex-content-test
   (let [id (make-id "999")
-        s1 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2") :content :test})
-        s2 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2") :content (make-id "4")})
-        s3 (assoc-in test-store [:id->data id]
-                      {:subject (make-id "2")  :content (make-id "5")})
-        s4 (assoc-in test-store [:id->data id]
-                     {:subject (make-id "2")})]
+        s1 (-> test-store
+               (assoc-in [:id->content-map id] :test)
+               (assoc-in [:id->subject id] (make-id "2")))
+        s2 (-> test-store
+               (assoc-in [:id->content-map id] (make-id "4"))
+               (assoc-in [:id->subject id] (make-id "2")))
+        s3 (-> test-store
+               (assoc-in [:id->content-map id] (make-id "5"))
+               (assoc-in [:id->subject id] (make-id "2")))]
     (is (= (deindex-content (index-content s1 id) id) s1))
     (is (= (deindex-content (index-content s2 id) id) s2))
-    (is (= (deindex-content (index-content s3 id) id) s3))
-    (is (= (deindex-content (index-content s4 id) id) s4))))
+    (is (= (deindex-content (index-content s3 id) id) s3))))
 
 (deftest promote-implicit-item-test
   (is (= (promote-implicit-item test-store (make-id "1"))
@@ -234,13 +216,16 @@
     (is (= (:next-id promoted-store) (+ 1 (:next-id test-store))))
     (is (= (:subject->label->ids promoted-store)
            (:subject->label->ids test-store)))
-    (is (= (get-in promoted-store [:id->data (make-id "2") :content])
+    (is (= (get-in promoted-store [:id->content-map (make-id "2")])
            promoted-id))
-    (is (= (get-in promoted-store [:id->data promoted-id])
-           {:content (get-in test-store [:id->data (make-id "2") :content])
-            :containers #{(make-id "2")}}))
-    (is (= (get-in promoted-store [:id->data (make-id "2") :subject])
-           (get-in test-store [:id->data (make-id "2") :subject]))))
+    (is (= (get-in promoted-store [:id->content-map promoted-id])
+           (get-in test-store [:id->content-map (make-id "2")])))
+    (is (= (get-in promoted-store [:id->subject promoted-id])
+           nil))
+    (is (= (get-in promoted-store [:content->ids promoted-id])
+           (make-id "2")))
+    (is (= (get-in promoted-store [:id->subject (make-id "2")])
+           (get-in test-store [:id->subject (make-id "2")]))))
   (let [[promoted-store promoted-id]
         (promote-implicit-item
          (track-modified-ids test-store) (->ImplicitContentId (make-id "2")))]
@@ -255,9 +240,8 @@
     (is (= (:id element) (:next-id test-store)))
     (is (= (set (get-in added-store [:subject->label->ids (make-id "1") nil]))
            #{(make-id "7") element}))
-    (is (= (get-in added-store [:id->data element])
-           {:content "test"
-            :subject (make-id "1")})))
+    (is (= (get-in added-store [:id->content-map element]) "test"))
+    (is (= (get-in added-store [:id->subject element]) (make-id "1"))))
   (let [[added-store element]
         (add-simple-element
          (track-modified-ids test-store) (make-id "1") "test")]

@@ -221,12 +221,8 @@
    and add any id that recursively contains it."
   [store id]
   (if (:modified-ids store)
-    (loop [store (add-modified-id store id)
-          parents (psuedo-set-seq (:containing-ids store id))]
-      (if (empty? parents)
-        store
-        (recur (add-modified-id store (first parents))
-               (rest parents))))
+    (reduce (fn [store, subject] (add-modified-id store subject))
+            store (psuedo-set-seq (:containing-ids store id)))
     store))
 
 (defn add-triple

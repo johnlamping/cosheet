@@ -81,6 +81,14 @@
 ;;; A psuedo-set is either nil, a non-nil atom, or a set, representing
 ;;; either the empty set, a singleton item, or a set with multiple items.
 ;;; TODO: If the set is a small, use a vector?
+(defn psuedo-set-seq [psuedo-set]
+  (cond (nil? psuedo-set)
+        nil
+        (set? psuedo-set)
+        (seq psuedo-set)
+        true
+        (seq [psuedo-set])))
+
 (defn psuedo-set-contains? [psuedo-set item]
   (cond (nil? psuedo-set)
         false
@@ -217,6 +225,19 @@
   [store id]
   (if (:modified-ids store)
     (update-in store [:modified-ids] #(conj % id))
+    store))
+
+(defn add-modified-ids-for-id-and-containers
+  "Add the id to the modified ids,
+   and add any id that recursively contains it."
+  [store id]
+  (if (:modified-ids store)
+    (loop [store (add-modified-id store id)
+          parents (psuedo-set-seq (:containing-ids store id))]
+      (if (empty? parents)
+        store
+        (recur (add-modified-id store (first parents))
+               (rest parents))))
     store))
 
 (defn add-triple
@@ -369,7 +390,8 @@
   ImmutableStore
 
   (id-is-content? [this id exceptions]
-    (not-every? (set exceptions) (get-in this [:id->data id :containers])))
+    (not-every? (set exceptions)
+                (psuedo-set-seq (get-in this [:content->ids id]))))
 
   (add-simple-element [this subject content]
     (assert (not (nil? content)))
@@ -404,7 +426,7 @@
         (assoc-in [:id->content-map id] content)
         (index-subject id)
         (index-content id)
-        (add-modified-id id)))
+        (add-modified-ids-for-id-and-containers id)))
 
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))

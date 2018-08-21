@@ -132,6 +132,7 @@
 
 (deftest psuedo-set-test
   (let [ps (loop [ps nil in [] out [1 2 3 4 5]]
+             (is (= (set (psuedo-set-seq ps)) (set in)))
              (doseq [x in] (is (psuedo-set-contains? ps x)))
              (doseq [x out] (is (not (psuedo-set-contains? ps x))))
              (cond (empty? in)
@@ -144,6 +145,7 @@
                       (rest out))
                ps))]
     (loop [ps ps in [1 2 3 4 5] out []]
+      (is (= (set (psuedo-set-seq ps)) (set in)))
       (doseq [x in] (is (psuedo-set-contains? ps x)))
       (doseq [x out] (is (not (psuedo-set-contains? ps x))))
       (cond (empty? in)

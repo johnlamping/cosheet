@@ -12,16 +12,13 @@
                                     template-matches-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq]]
-                     [utils :refer [equivalent-atoms?]]
+                     [utils :refer [equivalent-atoms? prewalk-seqs]]
                      [debug :refer [trace-current
                                     simplify-for-print]])))
 
 ;;; TODO:
 ;;; Change the special form syntax so all special forms have content
 ;;;    :special-form.
-;;; Change the store's lookup to take a template, and return all
-;;;    candidates, maybe with an indication of whether they are
-;;;    guaranteed to satisfy the template.
 ;;; Add a term syntax that lets variables bind to the subject.
 ;;; Add a unification operation on terms, so rule matching can work.
 ;;;    The environment must include variable numbers, for renaming,
@@ -123,10 +120,23 @@
 (defmethod extended-by-m? true [template target]
   (extended-by? template target))
 
-;;; Code to bind an immutable entity in an environment
-
 (defn variable? [template]
   (= (content template) :variable))
+
+(defn variable-condition [variable]
+  (let [conditions (label->elements variable :condition)]
+    (when conditions (content (first conditions)))))
+
+(defn replace-variables
+  "Remove the variables in a template, replacing them with their condition."
+  [template]
+  (prewalk-seqs (fn [template]
+                  (if (variable? template)
+                    (replace-variables (variable-condition template))
+                    template))
+                template))
+
+;;; Code to bind an immutable entity in an environment
 
 (def bind-entity)
 
@@ -335,7 +345,8 @@
         reference (label->content var :reference)
         value (env name)]
     (if (nil? value)
-      (expr-let [candidate-ids (store/candidate-matching-ids store nil)
+      (expr-let [candidate-ids (store/candidate-matching-ids
+                                store (replace-variables var))
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
@@ -401,7 +412,7 @@
                     (expr map
                       #(description->entity % store)
                       (expr store/candidate-matching-ids
-                        store (bind-entity item env)))))]
+                        store (replace-variables (bind-entity item env))))))]
     (seq (distinct matches))))
 
 (defn query-matches

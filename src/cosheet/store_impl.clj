@@ -348,6 +348,8 @@
         (->ImplicitContentId id))))
 
   ;;; TODO: make this actually filter based on the item.
+  ;;; NOTE: When looking up an atom as content,
+  ;;;       you have to chase its containing ids too.
   (candidate-matching-ids [this item]
     (if (and (sequential? item) (seq (rest item)))
       ;; The item has an element.

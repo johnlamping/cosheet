@@ -288,6 +288,45 @@
                (dissoc deferred id)]
               (deferred id)))))
 
+(defn eventually-containing-items
+  "Return all items that contain the content, possibly through
+   a chain of containment."
+  [store content]
+  (let [items (get-in store [:content->ids (canonical-atom-form content)])]
+    (concat items (mapcat #(eventually-containing-items store %) items))))
+
+(def candidate-matching-ids-and-estimate)
+
+(defn subsuming-ids-and-estimates
+   "Return a seq of pairs of a lazy seq of ids that include all matches
+   and an estimate of how many there are in the list. Actual
+   matches will be in all the lists."
+  [store template]
+  (let [[content elements] (if (seq? template)
+                             [first template (rest template)]
+                             [template nil])
+        content-ids (if (nil? content)
+                      (keys (:id->content-map store))
+                      (eventually-containing-items store content))]
+    (concat [content-ids (count content-ids)]
+            (map (fn [element]
+                   (let [[ids estimate]
+                         (candidate-matching-ids-and-estimate store element)]
+                     [(keep #(get-in store [:id->subject %]) ids)
+                      estimate]))
+                 elements))))
+
+(defn candidate-matching-ids-and-estimate
+  "Return a pair of a lazy seq of the candidate matching ids
+   and an estimate of how many there are in the list."
+  [store template]
+  (let [possibilities (subsuming-ids-and-estimates store template)
+        best (apply min (map second possibilities))
+        threshold (* 10 best)
+        to-use (map first (filter #(<= (second %) threshold)))]
+    [(lazy-seq (apply clojure.set/intersection (map set to-use)))
+     best]))
+
 (defrecord ElementStoreImpl
     ^{:doc
       "An immutable store that has only enough indexing

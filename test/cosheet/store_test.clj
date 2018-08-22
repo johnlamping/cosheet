@@ -271,18 +271,36 @@
                         element (make-id "2"))]
     (is (= changed-store (assoc added-store :modified-ids #{element})))))
 
+(deftest eventually-containing-items-test
+  (is (= (set (eventually-containing-items test-store 5))
+         #{(make-id "1") (make-id "4") (make-id "6")})))
+
 (deftest candidate-matching-ids-test
-  (is (= (set (candidate-matching-ids test-store nil))
-         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-           (make-id "4") (make-id "5") (make-id "6") (make-id "7")
-           (make-id "8")}))
-  (is (= (set (candidate-matching-ids test-store '(1)))
-         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-           (make-id "4") (make-id "5") (make-id "6") (make-id "7")
-           (make-id "8")}))
-  (is (= (set (candidate-matching-ids test-store '(1 2)))
-         #{(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-           (make-id "4")})))
+  (is (check (candidate-matching-ids-and-estimate test-store 5)
+             [3 (as-set [(make-id "1") (make-id "4") (make-id "6")])]))
+  (is (check (candidate-matching-ids-and-estimate test-store '(5))
+             [3 (as-set [(make-id "1") (make-id "4") (make-id "6")])]))
+  (is (check (candidate-matching-ids-and-estimate test-store '(nil "foo"))
+             [1 [(make-id "1")]]))
+  (is (check (candidate-matching-ids-and-estimate test-store '(5 "foo"))
+             [1 [(make-id "1")]]))
+  (is (check (candidate-matching-ids-and-estimate test-store '(0 "foo"))
+             [1 []]))
+  (is (check (candidate-matching-ids-and-estimate
+              test-store '(nil "foo" "second"))
+             [1 [(make-id "1")]]))
+  (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
+  (is (check (candidate-matching-ids test-store nil)
+             (as-set [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
+                      (make-id "4") (make-id "5") (make-id "6") (make-id "7")
+                      (make-id "8")])))
+  (is (check (candidate-matching-ids test-store '(nil nil))
+             (as-set  [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
+                       (make-id "4")])))
+  (is (check (candidate-matching-ids test-store '(0))
+             [(make-id "0")]))
+  (is (check (candidate-matching-ids test-store 5)
+             (as-set [(make-id "1") (make-id "4") (make-id "6")]))))
 
 (deftest declare-transient-id-test
   (is (= (:transient-ids test-store) #{}))

@@ -65,9 +65,10 @@
 
   ;; Used by queries.
   
-  (candidate-matching-ids [this item]
+  (candidate-matching-ids [this template]
     "Return the ids of all items that could potentially be extensions
-     of the given item, which must be immutable.")
+     of the given template, which must be the list form of an entity,
+     and may not have non-atomic contents.")
 
   (mutable-store? [this]
     "Return whether this store is mutable"))

@@ -6,7 +6,7 @@
                      [store-utils :as store-utils]
                      [entity :as entity]
                      [query :refer :all]
-                     [query-impl :refer [bind-entity replace-variables]]
+                     [query-impl :refer [bind-entity turn-into-template]]
                      [expression-manager :refer [current-value]]
                      [debug :refer [envs-to-list]]
                      [test-utils :refer [check as-set
@@ -79,10 +79,13 @@
        ~@(if value-may-extend `((true :value-may-extend)))
        ~@(if reference `((true :reference))))))
 
-(deftest replace-variables-test
-  (is (= (replace-variables `(~(variable "foo")
-                             (:foo ~(variable "foo" (variable "bar" 5)))))
-         '(nil (:foo 5)))))
+(deftest turn-into-template-test
+  (is (= (turn-into-template `(~(variable "foo")
+                               ~(entity/description->entity
+                                (store/make-id "test")
+                                (store/new-element-store))
+                               (:foo ~(variable "foo" (variable "bar" 5)))))
+         `(nil nil (:foo 5)))))
 
 (deftest bound-entity-test
   (let [entity `(~(variable "foo")

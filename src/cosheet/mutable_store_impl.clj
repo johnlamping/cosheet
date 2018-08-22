@@ -98,9 +98,9 @@
     (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) id->content-reference id))
 
-  (candidate-matching-ids [this item]
+  (candidate-matching-ids [this template]
     (get-or-make-reporter-adjusting-ids
-     [nil] apply-to-store (:manager-data this) candidate-matching-ids item))
+     [nil] apply-to-store (:manager-data this) candidate-matching-ids template))
 
   (mutable-store? [this] true)
   

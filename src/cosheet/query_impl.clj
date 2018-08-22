@@ -1,13 +1,13 @@
 (ns cosheet.query-impl
   (:require [clojure.pprint :refer [pprint]]
             (cosheet [store :as store]
-                     [entity :refer [Entity
+                     [entity :refer [Entity StoredEntity
                                      mutable-entity? atom?
                                      content-reference
                                      description->entity
                                      content elements label->elements
                                      label->content atomic-value
-                                     deep-to-list]]
+                                     to-list deep-to-list current-version]]
                      [query :refer [extended-by-m?
                                     template-matches-m
                                     query-matches-m]]
@@ -127,13 +127,17 @@
   (let [conditions (label->elements variable :condition)]
     (when conditions (content (first conditions)))))
 
-(defn replace-variables
-  "Remove the variables in a template, replacing them with their condition."
+(defn turn-into-template
+  "Remove the variables in a item, replacing them with their condition.
+   and replace item referents with their ids"
   [template]
   (prewalk-seqs (fn [template]
-                  (if (variable? template)
-                    (replace-variables (variable-condition template))
-                    template))
+                  (cond (variable? template)
+                        (turn-into-template (variable-condition template))
+                        (satisfies? StoredEntity template)
+                        (atomic-value (current-version template))
+                        true
+                        template))
                 template))
 
 ;;; Code to bind an immutable entity in an environment
@@ -346,7 +350,7 @@
         value (env name)]
     (if (nil? value)
       (expr-let [candidate-ids (store/candidate-matching-ids
-                                store (replace-variables var))
+                                store (turn-into-template var))
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
@@ -412,7 +416,8 @@
                     (expr map
                       #(description->entity % store)
                       (expr store/candidate-matching-ids
-                        store (replace-variables (bind-entity item env))))))]
+                        store (turn-into-template
+                               (to-list (bind-entity item env)))))))]
     (seq (distinct matches))))
 
 (defn query-matches

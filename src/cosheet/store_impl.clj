@@ -292,40 +292,59 @@
   "Return all items that contain the content, possibly through
    a chain of containment."
   [store content]
-  (let [items (get-in store [:content->ids (canonical-atom-form content)])]
+  (let [items (psuedo-set-seq
+               (get-in store [:content->ids (canonical-atom-form content)]))]
     (concat items (mapcat #(eventually-containing-items store %) items))))
 
 (def candidate-matching-ids-and-estimate)
 
-(defn subsuming-ids-and-estimates
-   "Return a seq of pairs of a lazy seq of ids that include all matches
-   and an estimate of how many there are in the list. Actual
-   matches will be in all the lists."
-  [store template]
-  (let [[content elements] (if (seq? template)
-                             [first template (rest template)]
-                             [template nil])
-        content-ids (if (nil? content)
-                      (keys (:id->content-map store))
-                      (eventually-containing-items store content))]
-    (concat [content-ids (count content-ids)]
-            (map (fn [element]
-                   (let [[ids estimate]
-                         (candidate-matching-ids-and-estimate store element)]
-                     [(keep #(get-in store [:id->subject %]) ids)
-                      estimate]))
-                 elements))))
+(defn subsuming-elements-ids-and-estimates
+   "Return a seq of pairs of an estimate of number of candidates and
+    a lazy seq of the candidate matching ids, one pair for each informative
+    element. Each list will subsume all possible matches."
+  [store elements]
+  (keep (fn [element]
+          (let [[estimate ids] (candidate-matching-ids-and-estimate
+                                store element)]
+            (when estimate
+              [estimate
+               (keep #(get-in store [:id->subject %]) ids)])))
+        elements))
 
-(defn candidate-matching-ids-and-estimate
-  "Return a pair of a lazy seq of the candidate matching ids
-   and an estimate of how many there are in the list."
+(defn subsuming-ids-and-estimates
+   "Return a seq of pairs of an estimate of number of candidates and
+    a lazy seq of the candidate matching ids. Each list will
+    subsume all possible matches."
   [store template]
-  (let [possibilities (subsuming-ids-and-estimates store template)
-        best (apply min (map second possibilities))
-        threshold (* 10 best)
-        to-use (map first (filter #(<= (second %) threshold)))]
-    [(lazy-seq (apply clojure.set/intersection (map set to-use)))
-     best]))
+  ;; We can't use the entity code to extract the content and elements,
+  ;; because that code depends on this file.
+  (let [[content elements] (if (seq? template)
+                             [(first template) (rest template)]
+                             [template nil])
+        element-matches (subsuming-elements-ids-and-estimates store elements)]
+    (if (nil? content)
+      element-matches
+      (let [content-ids (eventually-containing-items store content)]
+        (concat [[(count content-ids) content-ids]]
+                element-matches)))))
+
+;;; TODO: If the estimate for an element is too large, but the element
+;;;       has a label, filter with subject->label->ids
+(defn candidate-matching-ids-and-estimate
+  "Return a pair of an estimate of number of candidates and a lazy seq of
+   the candidate matching ids. But if the template
+   provides no information, return nil."
+  [store template]
+  (let [possibilities (subsuming-ids-and-estimates store template)]
+    (when (not (empty? possibilities))
+      (let [lowest (apply min (map first possibilities))
+            threshold (* 10 lowest)]
+        [lowest
+         (lazy-seq (->> possibilities
+                        (filter #(<= (first %) threshold))
+                        (map second)
+                        (map set)
+                        (apply clojure.set/intersection)))]))))
 
 (defrecord ElementStoreImpl
     ^{:doc
@@ -386,15 +405,18 @@
         content
         (->ImplicitContentId id))))
 
-  ;;; TODO: make this actually filter based on the item.
-  ;;; NOTE: When looking up an atom as content,
-  ;;;       you have to chase its containing ids too.
-  (candidate-matching-ids [this item]
-    (if (and (sequential? item) (seq (rest item)))
-      ;; The item has an element.
-      ;; Return all items that have elaborations.
-      (keys subject->label->ids)
-      (keys id->content-map)))
+  (candidate-matching-ids [this template]
+    (let [pair (candidate-matching-ids-and-estimate this template)]
+      (if (nil? pair)
+        ;; The template is so generic that none of our indices can narrow
+        ;; it down based on any of its contents. Return basically everything.
+        (if (and (sequential? template) (seq (rest template)))
+          ;; The item has an element.
+          ;; Return all items that have elaborations.
+          (keys subject->label->ids)
+          (keys id->content-map))
+        (do (println ["xxx" template (second pair)])
+            (second pair)))))
 
   (mutable-store? [this] false)
 

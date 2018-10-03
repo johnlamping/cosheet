@@ -415,8 +415,7 @@
           ;; Return all items that have elaborations.
           (keys subject->label->ids)
           (keys id->content-map))
-        (do (println ["xxx" template (second pair)])
-            (second pair)))))
+        (second pair))))
 
   (mutable-store? [this] false)
 

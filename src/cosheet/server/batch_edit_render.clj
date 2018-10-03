@@ -65,7 +65,7 @@
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
-  [query-item query-elements store inherited]
+  [query-item store inherited]
   (let [top-level-matches-referent (top-level-items-referent query-item)
         table-header-matches-referent (table-headers-referent query-item)
         matches-referent (union-referent
@@ -84,7 +84,7 @@
          ;; as :match-all only works with immutable items.
          current-query-elements
          (expr-seq map #(entity/updating-call-with-immutable % identity)
-                   query-elements)
+                   (semantic-elements-R query-item))
          batch-dom
          (let [inherited
                (-> inherited-for-batch
@@ -124,10 +124,7 @@
                    :subject-referent (item-referent query-item))
             (update :key-prefix #(conj % :batch-query)))]
     (expr-let
-        [condition-elements (semantic-elements-R query-item)
-         stack-dom (batch-edit-stack-DOM-R
-                    query-item condition-elements store
-                    inherited)]
+        [stack-dom (batch-edit-stack-DOM-R query-item store inherited)]
       [:div
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/table_view.gif"}]

@@ -10,6 +10,7 @@
                                      to-list deep-to-list current-version]]
                      [query :refer [extended-by-m?
                                     template-matches-m
+                                    best-template-match-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
@@ -341,6 +342,19 @@
 
 (defmethod template-matches-m true [template env target]
   (template-matches template env target))
+
+(defmethod best-template-match-m true [templates env target]
+  (expr-let [matches (expr-seq map #(template-matches % env target) templates)]
+    (when-let [candidates (->> (map (fn [match template]
+                                      (when (seq match) template))
+                                   matches templates)
+                               (remove nil?)
+                               (seq))]
+      (reduce (fn [best template]
+                (if (seq (template-matches best env template))
+                  template
+                  best))
+              (first candidates) (rest candidates)))))
 
 (def query-matches)
 

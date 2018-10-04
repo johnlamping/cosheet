@@ -21,21 +21,32 @@
 ;;; since it can never match two different structures.
 
 (defmulti extended-by-m?
-  "Return true if the template, which must not have variables, is
-   extended by the target"
   (fn [template target] true))
 
-(defn extended-by? [template target]
+(defn extended-by?
+  "Return true if the template, which must be immutable and not have
+  variables, is extended by the target"
+  [template target]
   (extended-by-m? template target))
 
 (defmulti template-matches-m
-  "Return a lazy seq of environments that are extensions of the given
-   environment and where the target matches the template."
   (fn [template env target] true))
 
 (defn template-matches
+  "Return a lazy seq of environments that are extensions of the given
+  environment and where the target matches the template, which must be
+  immutable."
   ([template target] (template-matches-m template {} target))
   ([template env target] (template-matches-m template env target)))
+
+(defmulti best-template-match-m
+  (fn [templates env target] true))
+
+(defn best-template-match
+  "Given a sequence of immutable templates, return the most specific
+  of those that matches the target, if any."
+  ([templates target] (best-template-match-m templates {} target))
+  ([templates env target] (best-template-match-m templates env target)))
 
 (defn matching-elements
   "Return all elements of the target that match the condition (which

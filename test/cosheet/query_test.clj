@@ -281,6 +281,20 @@
                       {:a :b "foo" 4 "bar" 2}
                       {:a :b "foo" 4 "bar" 3}]))))
 
+(deftest best-template-match-test
+  (is (check (let [x '(1)]
+               (let-mutated [y '(1 2 3 4)]
+                 (best-template-match ['(1) '(1 2) '(1 2 5)] {:a :b} y)))
+             '(1 2)))
+  (is (check (let [x '(1)]
+               (let-mutated [y '(1 2 3 4)]
+                 (best-template-match ['(1 2 5) '(1 2) '(1)] {:a :b} y)))
+             '(1 2)))
+  (is (check (let [x '(1)]
+               (let-mutated [y '(1 2 3 4)]
+                 (best-template-match ['(1 2 5)] {:a :b} y)))
+             nil)))
+
 (deftest matching-elements-test
   (is (= (matching-elements '(nil ("a")) '(nil (1 ("A" 3)) (3 (4 5))))
          ['(1 ("A" 3))]))

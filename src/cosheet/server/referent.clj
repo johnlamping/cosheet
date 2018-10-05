@@ -18,7 +18,8 @@
             (cosheet.server
              [order-utils :refer [update-add-entity-adjacent-to
                                   order-items-R furthest-item furthest-element]]
-             [model-utils :refer [selector? specialize-template]])))
+             [model-utils :refer [create-selector-or-non-selector-element
+                                  specialize-template]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -532,20 +533,6 @@
                    (set (instantiate-referent minus immutable-store))
                    (instantiate-referent plus immutable-store)))
     :virtual []))
-
-;;; TODO: Move to model-utils?
-(defn create-selector-or-non-selector-element
-  "Create an element, using the appropriate template depending on whether
-   the subject is a selector. Return the updated store and the id of the
-   new element."
-  [selector-template non-selector-template subject
-   adjacent position use-bigger store]
-  (let [template (if (or (= selector-template non-selector-template)
-                         (and subject (selector? subject)))
-                   selector-template
-                   non-selector-template)]
-    (update-add-entity-adjacent-to store (:item-id subject)
-                                   template adjacent position use-bigger)))
 
 (defn create-possible-selector-elements
   "Create elements, specializing the template as appropriate, depending on

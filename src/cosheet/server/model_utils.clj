@@ -73,6 +73,18 @@
       (if-let [subj (subject item)]
         (selector? subj))))
 
+(defn create-selector-or-non-selector-element
+  "Create an element, using the appropriate template depending on whether
+   the subject is a selector. Return the updated store and the id of the
+   new element."
+  [selector-template non-selector-template subject
+   adjacent position use-bigger store]
+  (let [template (if (or (= selector-template non-selector-template)
+                         (and subject (selector? subject)))
+                   selector-template
+                   non-selector-template)]
+    (update-add-entity-adjacent-to store (:item-id subject)
+                                   template adjacent position use-bigger)))
 ;;; Creating new tabs and tables.
 
 (defn tabs-holder-item-R

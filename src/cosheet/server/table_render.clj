@@ -1,8 +1,9 @@
 (ns cosheet.server.table-render
   (:require (cosheet [utils :refer [replace-in-seqs multiset separate-by
-                                    add-elements-to-entity-list]]
+                                    add-elements-to-entity-list remove-first]]
                      [entity :as entity]
-                     [query :refer [matching-elements matching-items]]
+                     [query :refer [matching-elements matching-items
+                                    best-template-match]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
@@ -43,6 +44,8 @@
 
 (def base-table-column-width 150)
 
+;;; This function is here, rather than in actions, because it knows about
+;;; the structure of tables.
 (defn batch-edit-pattern
   "Given an item, return the list form of the batch query that matches
   everything 'like' the item. For a column header, this is everything
@@ -56,11 +59,27 @@
   (-> (loop [item immutable-item]
         (let [parent-item (entity/subject item)]
           (cond
+            ;; If we have reached a top level row or header element,
+            ;; add it to the row condition.
+            ;; But if it implies part of the row condition, don't include
+            ;; that redundant part.
             (or (seq (matching-elements :column item))  
                 (seq (matching-elements :top-level parent-item)))
-            (apply list (concat (immutable-semantic-to-list
-                                 immutable-row-condition-item)
-                                [(immutable-semantic-to-list item)]))
+            (let [[condition-content & condition-elements]
+                  (immutable-semantic-to-list immutable-row-condition-item)
+                  item-condition (immutable-semantic-to-list item)
+                  queryable-condition (comp immutable-semantic-to-list
+                                            pattern-to-condition)
+                  redundant (best-template-match
+                             (map queryable-condition condition-elements)
+                             item-condition)
+                  non-redundant (remove-first
+                                 #(= (queryable-condition %) redundant)
+                                 condition-elements)]
+              (apply list (concat [condition-content]
+                                  non-redundant
+                                  [item-condition])))
+            ;; If the item is part of the row condition, just return that.
             (seq (matching-elements :row-condition item))
             (immutable-semantic-to-list item)
             parent-item

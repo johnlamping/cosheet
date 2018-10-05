@@ -126,8 +126,9 @@
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
-      ;; First, test batch-pattern.
+      ;; First, test batch-edit-pattern.
       (let [immutable-query (entity/current-version query)]
+        ;; When the item is part of the row condition.
         (is (check (batch-edit-pattern (first (matching-elements
                                                `(~'anything ("age" :tag))
                                                immutable-query))
@@ -137,6 +138,7 @@
                       ("age" :tag (~(any) :order :non-semantic))
                       (~(any) :order :non-semantic))
                      (~(any) :order :non-semantic))))
+        ;; When the item is part of a column header.
         (is (check (batch-edit-pattern (first (matching-elements
                                            `(~'anything ("single" :tag))
                                            immutable-query))
@@ -149,14 +151,14 @@
                   ("single" :tag (~(any) :order :non-semantic))
                   (~(any) :order :non-semantic))
                  (~(any) :order :non-semantic))))
+        ;; When the item is an element in the table.
+        ;; In this case, the item is a refinement of a table condition,
+        ;; so it should replace the condition.
         (is (check (batch-edit-pattern (first (matching-items
                                                '(45 ("age" :tag))
                                                (:store immutable-query)))
                                        immutable-query)
                    `(~'anything
-                     (~'anything
-                      ("age" :tag (~(any) :order :non-semantic))
-                      (~(any) :order :non-semantic))
                      (45
                       ("age" :tag (~(any) :order :non-semantic))
                       (~(any) :order :non-semantic))

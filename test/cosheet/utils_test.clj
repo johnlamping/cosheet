@@ -21,6 +21,10 @@
                {:a 1 :b 2} [:a :a :a :b :b :b] [:a1 :a2 :a3 :b1 :b2 :b3]))
          (set [:a3 :b2 :b3]))))
 
+(deftest remove-first-test
+  (is (= (remove-first even? [1 2 3 2 4])
+         [1 3 2 4])))
+
 (deftest separate-by-test
   (is (= (separate-by even? [1 2 3 4 5 6])
          [[2 4 6] [1 3 5]])))

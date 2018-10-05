@@ -171,6 +171,17 @@
 
 ;;; Misc
 
+(defn remove-first
+  "Remove the first item of the seq that matches the pred"
+  [pred coll]
+  ((fn inner [coll]
+     (lazy-seq
+      (when-let [[x & xs] (seq coll)]
+        (if (pred x)
+          xs
+          (cons x (inner xs))))))
+   coll))
+
 (defn separate-by
   "Split a seq into those where the predicate is true, and those where it
   is false."

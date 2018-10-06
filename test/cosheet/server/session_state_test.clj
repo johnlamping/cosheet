@@ -14,8 +14,8 @@
              [expression-manager :refer [new-expression-manager-data]])
             (cosheet.server
              [session-state :refer :all]
-             [model-utils :refer [starting-store add-table first-tab-R]]
-             [referent :refer [immutable-semantic-to-list]])
+             [model-utils :refer [immutable-semantic-to-list
+                                  starting-store add-table first-tab-R]])
             ; :reload
             ))
 

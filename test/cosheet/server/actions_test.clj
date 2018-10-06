@@ -23,12 +23,12 @@
              [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
             (cosheet.server
-             [referent :refer [item-referent union-referent virtual-referent
-                               immutable-semantic-to-list]]
-             [referent :refer [item->canonical-semantic referent->string]]
+             [referent :refer [item-referent union-referent virtual-referent]]
+             [referent :refer [referent->string]]
              [dom-tracker :refer [new-dom-tracker update-set-component key->id]]
              [actions :refer :all]
-             [model-utils :refer [selector?]])
+             [model-utils :refer [item->canonical-semantic
+                                  immutable-semantic-to-list selector?]])
             ; :reload
             ))
 

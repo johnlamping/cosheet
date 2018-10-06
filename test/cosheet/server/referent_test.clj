@@ -14,6 +14,8 @@
                      [debug :refer [simplify-for-print]]
                      [test-utils :refer [check any as-set let-mutated]])
             (cosheet.server [referent :refer :all]
+                            [model-utils :refer [semantic-elements-R
+                                                 semantic-to-list-R]]
                             [order-utils :refer [order-items-R]])
             ; :reload
             ))
@@ -86,6 +88,17 @@
 (def dup-females (matching-elements "female" dup))
 (def dup-female-1 (first dup-females))
 (def dup-female-2 (second dup-females))
+
+(deftest best-matching-test
+  (let [joes `("x"
+              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order :non-semantic))
+              ("Joe" ("name" ~'tag) (~o2 :order :non-semantic))) ]
+    (is (= (best-matching-element '("Joe" ("name" tag)) joes)
+           [(nth joes 2)]))
+    (is (= (best-matching-element '("Joe" ("name" tag)  ("id" tag)) joes)
+           [(nth joes 1)]))
+    (is (= (best-matching-element '("Joe" ("age" tag)) joes)
+           nil))))
 
 (deftest item-or-exemplar-referent-test
   (is (= (item-or-exemplar-referent joe nil)

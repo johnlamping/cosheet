@@ -5,9 +5,9 @@
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
             (cosheet.server
-             [referent :refer [semantic-elements-R semantic-to-list-R
-                               item->canonical-semantic-R
-                               union-referent-if-needed
+             [model-utils :refer [item->canonical-semantic-R
+                                  semantic-elements-R semantic-to-list-R]]
+             [referent :refer [union-referent-if-needed
                                item-referent item-or-exemplar-referent]])))
 
 ;;; A hierarchy organizes a sequence of "leaves" into a hierarchy,

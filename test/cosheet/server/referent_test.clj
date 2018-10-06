@@ -93,30 +93,6 @@
    (is (= (item-or-exemplar-referent joe (query-referent '(:hi :there)))
           (exemplar-referent joe (query-referent '(:hi :there))))))
 
-(deftest semantic-test
-  (let [semantic (let-mutated [him joe-list]
-                  (semantic-to-list-R him))]
-    (is (= (first semantic) "Joe")))
-  (is (= (set (map canonicalize-list
-                   (let-mutated [him joe-list]
-                     (expr-seq map entity/to-list (semantic-elements-R him)))))
-         (set (map canonicalize-list (rest (rest joe-list))))))
-  (let [expected ["joe" {"male" 1
-                         "married" 1
-                         [39 {["age" {'tag 1}] 1
-                              ["doubtful" {"confidence" 1}] 1}] 1
-                              [45 {["age" {'tag 1}] 1}] 1}]]
-    (is (= (item->canonical-semantic joe-list) expected)))
-  (let [joes `("x"
-              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order :non-semantic))
-              ("Joe" ("name" ~'tag) (~o2 :order :non-semantic))) ]
-    (is (= (best-matching-element '("Joe" ("name" tag)) joes)
-           [(nth joes 2)]))
-    (is (= (best-matching-element '("Joe" ("name" tag)  ("id" tag)) joes)
-           [(nth joes 1)]))
-    (is (= (best-matching-element '("Joe" ("age" tag)) joes)
-           nil))))
-
 (deftest condition-to-list-test
   (is (= (condition-to-list '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
   (is (= (canonicalize-list (condition-to-list (item-referent jane) store))

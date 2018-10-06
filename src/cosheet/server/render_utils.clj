@@ -12,14 +12,15 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
+             [model-utils :refer [semantic-element?-R
+                                  item->canonical-semantic
+                                  item->canonical-semantic-R
+                                  immutable-semantic-to-list]]
              [referent :refer [referent?
-                               virtual-referent item->canonical-semantic
+                               virtual-referent
                                elements-referent exemplar-referent
                                item-referent item-or-exemplar-referent
-                               union-referent-if-needed
-                               immutable-semantic-to-list
-                               item->canonical-semantic-R
-                               semantic-element?-R]]
+                               union-referent-if-needed]]
              [hierarchy :refer [hierarchy-node-descendants]])))
 
 (defn condition-satisfiers-R

@@ -9,11 +9,10 @@
             (cosheet.server
              [referent :refer [item-referent elements-referent query-referent
                                virtual-referent exemplar-referent
-                               union-referent instantiate-referent
-                               semantic-elements-R]]
+                               union-referent instantiate-referent]]
              [render-utils :refer [add-inherited-attribute
                                    virtual-referent-DOM]]
-             [model-utils :refer [table-header-template]]
+             [model-utils :refer [semantic-elements-R table-header-template]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [virtual-element-with-label-DOM
                                   add-labels-DOM

@@ -17,8 +17,6 @@
                                union-referent-if-needed union-referent
                                difference-referent virtual-referent
                                item-or-exemplar-referent
-                               immutable-semantic-to-list
-                               semantic-elements-R semantic-to-list-R
                                pattern-to-condition condition-to-template]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes
@@ -28,7 +26,9 @@
                                 hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R add-order-elements]]
-             [model-utils :refer [table-header-template]]
+             [model-utils :refer [immutable-semantic-to-list
+                                  semantic-elements-R semantic-to-list-R
+                                  table-header-template]]
              [render-utils :refer [make-component virtual-element-DOM
                                    transform-inherited-for-children
                                    transform-inherited-for-labels

@@ -20,7 +20,7 @@
    (cosheet.server
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
-    [model-utils :refer [selector?]]
+    [model-utils :refer [selector? semantic-elements-R]]
     [table-render :refer [batch-edit-pattern]]
     [referent :refer [instantiate-or-create-referent
                       instantiate-referent
@@ -28,7 +28,7 @@
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
                       item-referent virtual-referent
-                      semantic-elements-R condition-to-template
+                      condition-to-template
                       create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 

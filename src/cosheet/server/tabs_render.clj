@@ -11,8 +11,7 @@
              [referent :refer [item-referent? exemplar-referent?
                                item-referent virtual-referent
                                union-referent-if-needed union-referent
-                               item-or-exemplar-referent
-                               semantic-elements-R semantic-to-list-R]]
+                               item-or-exemplar-referent]]
              [hierarchy :refer [hierarchy-by-all-elements-R
                                 hierarchy-node?
                                 hierarchy-node-descendants
@@ -20,7 +19,8 @@
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
-             [model-utils :refer [new-tab-elements]]
+             [model-utils :refer [semantic-elements-R semantic-to-list-R
+                                  new-tab-elements]]
              [render-utils :refer [virtual-element-DOM hierarchy-node-DOM-R
                                    hierarchy-node-items-referent
                                    hierarchy-last-item-referent]]

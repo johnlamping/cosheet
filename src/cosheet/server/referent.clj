@@ -5,8 +5,8 @@
                      [expression :refer [expr expr-let expr-seq]]
                      [entity
                       :as Entity
-                      :refer [atom? elements content label->elements
-                              updating-call-with-immutable description->entity
+                      :refer [elements content label->elements
+                              description->entity
                               in-different-store StoredEntity]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? StoredItemDescription
@@ -19,7 +19,9 @@
              [order-utils :refer [update-add-entity-adjacent-to
                                   order-items-R furthest-item furthest-element]]
              [model-utils :refer [create-selector-or-non-selector-element
-                                  specialize-template]])))
+                                  immutable-semantic-to-list semantic-to-list-R
+                                  item->canonical-semantic
+                                  specialize-template semantic-elements-R]])))
 
 ;;; Commands are typically run with respect to a referent, which
 ;;; describes what the command should act on.
@@ -338,61 +340,6 @@
                            (conj popped partial-referent))
                          (rest pending-partials))))
               true nil)))))
-
-;;; For purposes of comparing two entities, not all of their elements
-;;; matter. In particular, order information, or other information
-;;; about how to display the elements is considered irrelevant for
-;;; matching a condition. We call the elements that matter the semantic
-;;; elements. Non-semantic elements will always themselves have an
-;;; element with :non-semantic as content.
-
-;;; TODO: move these to model_utils.
-
-(defn semantic-element?-R
-  "Return true if an element counts as semantic information for its subject.
-  (Doesn't have a :non-semantic element.)"
-  [entity]
-  (expr-let [elements (elements entity)
-             element-contents (expr-seq map content elements)]
-    (not-any? #(= % :non-semantic) element-contents)))
-
-(defn semantic-elements-R
-  "Return the elements of an entity that are semantic to it."
-  [entity]
-  (expr-let [elements (elements entity)
-             non-semantic (label->elements entity :non-semantic)]
-    (remove (set non-semantic) elements)))
-
-(defn immutable-semantic-to-list
-  "Given an immutable item, make a list representation of the
-  semantic information of the item."
-  [item]
-  (if (atom? item)
-    (content item)
-    (let [content (content item)
-          elements (semantic-elements-R item)
-          content-semantic (immutable-semantic-to-list content)
-          element-semantics (map immutable-semantic-to-list elements)]
-      (if (empty? element-semantics)
-        content-semantic
-        (apply list (into [content-semantic] element-semantics))))))
-
-(defn semantic-to-list-R
-  "Given an item, make a list representation of the
-  semantic information of the item."
-  [item]
-  (updating-call-with-immutable item immutable-semantic-to-list))
-
-(defn item->canonical-semantic
-  "Return the canonical form of the semantic information for the item.
-  Only works on immutable items."
-  [item]
-  (canonicalize-list (immutable-semantic-to-list item)))
-
-(defn item->canonical-semantic-R
-  "Return the canonical form of the semantic information for the item."
-  [item]
-  (updating-call-with-immutable item item->canonical-semantic))
 
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into

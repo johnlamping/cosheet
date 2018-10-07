@@ -166,8 +166,8 @@
   (update-content! [this id content]
     (do-update! this #(update-content % id content)))
 
-  (declare-transient-id! [this id]
-    (do-update! this #(declare-transient-id % id)))
+  (declare-temporary-id! [this id]
+    (do-update! this #(declare-temporary-id % id)))
 
   (can-undo? [this]
     (not (empty? (:history (:value @(:manager-data this))))))

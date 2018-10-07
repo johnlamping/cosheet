@@ -48,7 +48,7 @@
 (def joe-45 (first (matching-elements 45 joe)))
 
 (deftest update-add-entity-with-order-test
-  (let [[s id order] (update-add-entity-with-order-and-transient
+  (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before true)
         joe (description->entity joe-id s)
@@ -58,7 +58,7 @@
            `(6 (~o5 :order :non-semantic))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-entity-with-order-and-transient
+  (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :before false)
         joe (description->entity joe-id s)
@@ -68,7 +68,7 @@
            `(6 (~o5 :order :non-semantic))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))    
-  (let [[s id order] (update-add-entity-with-order-and-transient
+  (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id 6
                       unused-orderable :after true)
         joe (description->entity joe-id s)
@@ -78,7 +78,7 @@
            `(6 (~o6 :order :non-semantic))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
-  (let [[s id order] (update-add-entity-with-order-and-transient
+  (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id '(6 ("height" :tag))
                       unused-orderable :before true)
         joe (description->entity joe-id s)
@@ -94,11 +94,11 @@
   ;; Check that order in the list style entity is preserved in the
   ;; :order values.
   ;; Also check and that non-semantic elements don't get order information
-  ;; and that the entity is marked transient, if requested.
-  (let [[s id order] (update-add-entity-with-order-and-transient
+  ;; and that the entity is marked temporary, if requested.
+  (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id '(6 ("height" :tag)
                                        ("" :tag)
-                                       (:transient :non-semantic)
+                                       (:temporary :non-semantic)
                                        ("other" :non-semantic ""))
                       unused-orderable :after false)
         joe (description->entity joe-id s)
@@ -111,9 +111,9 @@
                 `(6 (~o5 :order :non-semantic)
                     ("height" :tag (~o7 :order :non-semantic))
                     ("" :tag (~o6 :order :non-semantic))
-                    (:transient :non-semantic)
+                    (:temporary :non-semantic)
                     ("other" :non-semantic "")))))
-    (is ((:transient-ids s) id))
+    (is ((:temporary-ids s) id))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
 

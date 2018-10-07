@@ -233,12 +233,12 @@
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
-  [store transient-id client-state selector-category]
+  [store temporary-id client-state selector-category]
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (if batch-editing
-      (let [transient-item (description->entity transient-id store)]
+      (let [temporary-item (description->entity temporary-id store)]
         (expr-let [query (expr first
-                           (label->elements transient-item :batch-query))]
+                           (label->elements temporary-item :batch-query))]
           (batch-edit-DOM-R query store starting-inherited)))
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)
@@ -282,8 +282,8 @@
 
 (defn DOM-for-client-R
   "Return a reporter giving the DOM specified by the client."
-  [store transient-id client-state selector-category]
+  [store temporary-id client-state selector-category]
   (expr-let [dom (top-level-DOM-R
-                  store transient-id client-state selector-category)]
+                  store temporary-id client-state selector-category)]
     (into dom [(make-component {:key [:label-values]}
                                 [label-datalist-DOM-R store])])))

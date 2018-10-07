@@ -70,11 +70,11 @@
 
       (let [[store1 e] (add-simple-element store element "foo")
             [store2 _] (add-simple-element store1 e :label)
-            store3 (declare-transient-id store2 e)
+            store3 (declare-temporary-id store2 e)
             revised-store (update-content store3 element 88)
             me (add-simple-element! mutable-store element "foo")
             me1 (add-simple-element! mutable-store me :label)
-            _ (declare-transient-id! mutable-store me)
+            _ (declare-temporary-id! mutable-store me)
             _ (update-content! mutable-store element 88)]
         (is (= (value content) (id->content revised-store element)))
         (is (= (value implicit-content)

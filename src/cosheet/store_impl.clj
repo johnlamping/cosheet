@@ -262,9 +262,9 @@
   "Return a seq of the id and ids of all its descendant elements."
   (cons id (mapcat #(descendant-ids store %) (id->element-ids store id))))
 
-(defn all-transient-ids [store]
-  "Return a set of all declared transient ids and their descendant elements."
-  (set (mapcat #(descendant-ids store %) (:transient-ids store))))
+(defn all-temporary-ids [store]
+  "Return a set of all declared temporary ids and their descendant elements."
+  (set (mapcat #(descendant-ids store %) (:temporary-ids store))))
 
 (defn add-or-defer-triple
   ;; Utility function for read-store.
@@ -363,8 +363,8 @@
    ;;; A derived index from content to a psuedo-set of ids with that content.
    content->ids
 
-   ;;; A set of ids that have been declared transient.
-   transient-ids
+   ;;; A set of ids that have been declared temporary.
+   temporary-ids
    
    ;;; Index from item then label to all elements that belong to the
    ;;; item and have the label.
@@ -472,20 +472,20 @@
     [(assoc this :modified-ids #{})
      (:modified-ids this)])
 
-  (declare-transient-id [this id]
+  (declare-temporary-id [this id]
     (assert (:id->content-map this))
-    (update this :transient-ids #(conj % id)))
+    (update this :temporary-ids #(conj % id)))
 
   (store-to-data [this]
     "Extract just the essential data from the store, in preparation
      for writing it out. If the content of an item is an id, it is
      represented as [:id <ItemId>] and if it is a Orderable, it is represented
      as [:ord <left> <right>]."
-    (let [transient-ids (all-transient-ids this)]
+    (let [temporary-ids (all-temporary-ids this)]
       [(:next-id this)
        (for [[id content]
              (seq (:id->content-map this))
-             :when (not (transient-ids id))]
+             :when (not (temporary-ids id))]
          [(:id id)
           (:id (get-in this [:id->subject id]))
           (cond (instance? ItemId content)
@@ -533,7 +533,7 @@
   (map->ElementStoreImpl {:id->subject {}
                           :id->content-map {}
                           :content->ids {}
-                          :transient-ids #{}
+                          :temporary-ids #{}
                           :subject->label->ids {}
                           :next-id 0
                           :modified-ids nil}))

@@ -109,8 +109,8 @@
     "Clear the record of modified ids.
      Returns the new store, and the original set of modified ids.")
 
-  (declare-transient-id [this id]
-    "Declare the id to be transient. It and all its descendant elements
+  (declare-temporary-id [this id]
+    "Declare the id to be temporary. It and all its descendant elements
      will not be written. Returns the new store.")
 
   (store-to-data [this]
@@ -168,8 +168,8 @@
     "Change the content of the item with the given id to be the
      specified content.")
 
-  (declare-transient-id! [this id]
-    "Declare the id to be transient. It and all its descendant elements
+  (declare-temporary-id! [this id]
+    "Declare the id to be temporary. It and all its descendant elements
      will not be written.")
 
   (can-undo? [this]

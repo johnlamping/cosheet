@@ -39,7 +39,7 @@
     "bar" #{(make-id "5") (make-id "8")}
     5 (make-id "6")
     "second" (make-id "7")}
-   ;; transient-ids
+   ;; temporary-ids
    #{}
    ;; subject->label->ids
    {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
@@ -302,16 +302,16 @@
   (is (check (candidate-matching-ids test-store 5)
              (as-set [(make-id "1") (make-id "4") (make-id "6")]))))
 
-(deftest declare-transient-id-test
-  (is (= (:transient-ids test-store) #{}))
-  (let [transient-store (-> test-store
-                            (declare-transient-id (make-id "2"))
+(deftest declare-temporary-id-test
+  (is (= (:temporary-ids test-store) #{}))
+  (let [temporary-store (-> test-store
+                            (declare-temporary-id (make-id "2"))
                             (add-simple-element (make-id "1") "hi")
                             first
-                            (declare-transient-id (make-id "7")))]
-    (is (= (:transient-ids transient-store)
+                            (declare-temporary-id (make-id "7")))]
+    (is (= (:temporary-ids temporary-store)
            #{(make-id "2") (make-id "7")}))
-    (is (= (all-transient-ids transient-store)
+    (is (= (all-temporary-ids temporary-store)
            #{(make-id "2") (make-id "7")
              (make-id "3") (make-id "8")}))))
 
@@ -323,9 +323,9 @@
   (is (= test-store (data-to-store (new-element-store)
                                    (store-to-data test-store))))
   ;; Now try it with some items not serialized
-  (let [transient-store (-> test-store
-                            (declare-transient-id (make-id "2"))
-                            (declare-transient-id (make-id "7")))
+  (let [temporary-store (-> test-store
+                            (declare-temporary-id (make-id "2"))
+                            (declare-temporary-id (make-id "7")))
         smaller-store (-> test-store
                           (remove-simple-id (make-id "8"))
                           (remove-simple-id (make-id "3"))
@@ -333,7 +333,7 @@
                           (remove-simple-id (make-id "7")))]
     (is (= smaller-store
            (data-to-store (new-element-store)
-                          (store-to-data transient-store))))))
+                          (store-to-data temporary-store))))))
 
 (deftest get-unique-id-number-test
   (let [s0 (new-element-store)

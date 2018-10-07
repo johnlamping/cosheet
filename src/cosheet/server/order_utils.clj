@@ -2,7 +2,7 @@
   (:require
    (cosheet
     [orderable :refer [split earlier? initial]]
-    [store :refer [update-content add-simple-element declare-transient-id]]
+    [store :refer [update-content add-simple-element declare-temporary-id]]
     [entity :refer [content elements label->elements label->content]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
@@ -30,7 +30,7 @@
                                (vector (or order initial) item))
                              order-info items))))))
 
-(defn update-add-entity-with-order-and-transient
+(defn update-add-entity-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given
    subject.  Add ordering information to each part of the entity,
    except for tag specifiers and non-semantic elements, splitting the
@@ -38,12 +38,12 @@
    Put the new entity in the specified position (:before or :after) of
    the returned order, and make the entity use the bigger piece if
    use-bigger is true, otherwise return the bigger piece.
-   If the entity has a :transient element, mark it transient in the store. 
+   If the entity has a :temporary element, mark it temporary in the store. 
    Return the new store, the id of the item, and the remaining order."
   [store subject-id entity order position use-bigger]
   (let [entity-content (content entity)
         entity-elements (elements entity)
-        trans (some (fn [element] (= (content element) :transient))
+        trans (some (fn [element] (= (content element) :temporary))
                     entity-elements)]
     ;; Keyword markers and non-semantic elements don't get an ordering.
     ;; (Elements whose :non-semantic is itself qualified do get an ordering,
@@ -76,7 +76,7 @@
             smaller-order (split-order (- 1 bigger-index))
             [s2 _ bigger-order]
             (reduce (fn [[store _ order] element]
-                      (update-add-entity-with-order-and-transient
+                      (update-add-entity-with-order-and-temporary
                        store id element order position false))
                     [s1 nil bigger-order]
                     (case position ;; Make the order match
@@ -85,7 +85,7 @@
             [s3 _] (add-entity
                     s2 id `(~(if use-bigger bigger-order smaller-order)
                             :order :non-semantic))]
-        [(if trans (declare-transient-id s3 id) s3)
+        [(if trans (declare-temporary-id s3 id) s3)
          id
          (if use-bigger smaller-order bigger-order)]))))
 
@@ -127,7 +127,7 @@
   [store subject-id entity adjacent-to position use-bigger]
   (let [order-element (order-element-for-item adjacent-to store)
         order (content order-element)
-        [store id remainder] (update-add-entity-with-order-and-transient
+        [store id remainder] (update-add-entity-with-order-and-temporary
                               store subject-id entity
                               order position use-bigger)]
     [(update-content store (:item-id order-element) remainder) id]))

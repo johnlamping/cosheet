@@ -21,7 +21,7 @@
              [dom-tracker :refer :all]
              [render :refer [DOM-for-client-R]]
              [item-render :refer [item-DOM-R]]
-             [order-utils :refer [update-add-entity-with-order-and-transient]]
+             [order-utils :refer [update-add-entity-with-order-and-temporary]]
              [referent :refer [item-referent referent->string]]
              [session-state :refer [create-client-state]])
             ; :reload
@@ -348,7 +348,7 @@
 (deftest remove-all-doms-test
   (let [md (new-expression-manager-data)
         tracker (new-dom-tracker md)
-        [store joe _] (update-add-entity-with-order-and-transient
+        [store joe _] (update-add-entity-with-order-and-temporary
                        (new-element-store) nil '("Joe" (39 ("age" :tag)))
                        cosheet.orderable/initial :after true)
         ms (new-mutable-store store)

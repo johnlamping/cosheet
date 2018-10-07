@@ -287,10 +287,10 @@
           topic (first (label->elements top-item :tab-topic))
           row-condition (when topic
                           (first (label->elements topic :row-condition)))
-          transient-id (:transient-id session-state)
-          transient-item (description->entity transient-id store)
+          temporary-id (:temporary-id session-state)
+          temporary-item (description->entity temporary-id store)
           current-batch-query (first (label->elements
-                                      transient-item :batch-query))
+                                      temporary-item :batch-query))
           new-batch-query (when (and target row-condition)
                             (when-let [pattern (batch-edit-pattern
                                                 target row-condition)]
@@ -304,7 +304,7 @@
           (if current-batch-query
             (remove-entity-by-id store (:item-id current-batch-query))
             store)
-          (first (add-entity store transient-id new-batch-query)))))))
+          (first (add-entity store temporary-id new-batch-query)))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client

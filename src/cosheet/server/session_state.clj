@@ -8,7 +8,7 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   do-update-control-return! declare-transient-id]]
+                   do-update-control-return! declare-temporary-id]]
     store-impl
     mutable-store-impl
     [store-utils :refer [add-entity]]
@@ -161,8 +161,8 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn add-transient-element
-  "Add a root transient element to a store.
+(defn add-temporary-element
+  "Add a root temporary element to a store.
    Return the id of the element."
   [store]
   (do-update-control-return!
@@ -172,7 +172,7 @@
                                   '(""
                                     (anything (:batch-query :non-semantic)
                                               (:selector :non-semantic))))]
-       [(declare-transient-id store id) id]))))
+       [(declare-temporary-id store id) id]))))
 
 (defn get-store
   "Read the store if possible; otherwise create one.
@@ -282,7 +282,7 @@
 ;;;      :file-path  The file path (with suffix omitted) corresponding
 ;;;                  to the store.
 ;;;          :store  The store that holds the data.
-;;;    :transient-id The id of the root transient item in the store
+;;;    :temporary-id The id of the root temporary item in the store
 ;;;                  for this session.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
@@ -323,10 +323,10 @@
                     :in-sync false})))
 
 (defn create-tracker
-  [store transient-id client-state manager-data selector-string]
+  [store temporary-id client-state manager-data selector-string]
   (let [selector-category (when selector-string
                             (string->referent selector-string))
-        definition [DOM-for-client-R store transient-id client-state
+        definition [DOM-for-client-R store temporary-id client-state
                     selector-category]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
@@ -385,7 +385,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path)]
     (let [store (:store store-info)
-          transient-id (add-transient-element store)
+          temporary-id (add-temporary-element store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -396,9 +396,9 @@
                              {:file-path (:without-suffix store-info)
                               :id id
                               :store store
-                              :transient-id transient-id
+                              :temporary-id temporary-id
                               :tracker (create-tracker
-                                        store transient-id client-state
+                                        store temporary-id client-state
                                         manager-data selector-string)
                               :client-state client-state})
                    id])))]
@@ -417,7 +417,7 @@
 
 (defn forget-session
   "The session is no longer needed. Forget about it."
-  ;; TODO: Remove its transient item from the store.
+  ;; TODO: Remove its temporary item from the store.
   [session-id]
   (swap! session-info
          (fn [session-info]

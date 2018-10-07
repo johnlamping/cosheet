@@ -25,23 +25,32 @@
 ;;; most functions don't take reporters as arguments, but may return
 ;;; reporters. Their names have a suffix of -R.
 
-;;; For a basic entity, we show its contents and its semantic
+;;; For a basic entity, we show its contents and its visible semantic
 ;;; elements. We don't show its non-semantic elements, which are
-;;; identified by, themselves, having :non-semantic elements.  An
-;;; element may be marked as a tag by having an element whose content
-;;; is :tag. This make that element displayed like a tag, so the :tag
-;;; mark is semantic.
+;;; identified by, themselves, having :non-semantic elements. And we
+;;; don't show its invisible elements, which are identified by having
+;;; :invisible elements. An invisible element in a condition requires
+;;; that any match to the condition also has a matching element, while
+;;; non-semantic elements in conditions are ignored.
+;;; An element may be marked as a tag by having an element whose
+;;; content is :tag. This make that element displayed like a tag, so
+;;; the :tag mark is semantic.
+;;; Every semantic element that is not :tag must have an :order
+;;; element, to indicate its display position relative to the other
+;;; elements.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
 ;;;        ("married" (1 :order :non-semantic)
-;;;        (39 (2 :order :non-semantic)
+;;;        ("spy" (:invisible :non-sementic)
+                  (2 :order :non-semantic))
+;;;        (39 (3 :order :non-semantic)
 ;;;            ("age" :tag)
 ;;;            "doubtful"))
 ;;; would be rendered to dom that tries to convey:
 ;;;   Joe
 ;;;     married
 ;;;     age: 39
-;;;             doubtful
+;;;       doubtful
 
 ;;; We use attributes, as supported by hiccup, to store both html
 ;;; attributes, and additional attributes that are used by the server.

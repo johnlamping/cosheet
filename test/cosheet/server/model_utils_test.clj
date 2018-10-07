@@ -34,7 +34,8 @@
                                 (~o4 :order :non-semantic)) )
                 ("married" (~o2 :order :non-semantic))
                 (45 (~o4 :order :non-semantic)
-                    ("age" ~'tag (~o3 :order :non-semantic)))))
+                    ("age" ~'tag (~o3 :order :non-semantic)))
+                ("spy" (:invisible :non-semantic))))
 
 (deftest specialize-template-test
   (let [[c1 s1] (specialize-template '("x" (??? :a) (??? 22))
@@ -56,8 +57,19 @@
                          "married" 1
                          [39 {["age" {'tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
-                              [45 {["age" {'tag 1}] 1}] 1}]]
+                         [45 {["age" {'tag 1}] 1}] 1
+                         "spy" 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
+
+(deftest visible-test
+  (let [expected #{"male"
+                   "married"
+                   [39 {["age" {'tag 1}] 1
+                        ["doubtful" {"confidence" 1}] 1}]
+                   [45 {["age" {'tag 1}] 1}]}
+        visible (set (map item->canonical-semantic
+                          (visible-elements-R joe-list)))]
+    (is (check visible expected))))
 
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-entity

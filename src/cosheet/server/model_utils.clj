@@ -80,7 +80,7 @@
   [entity]
   (expr-let [elements (elements entity)
              element-contents (expr-seq map content elements)]
-    (not-any? #(= % :non-semantic) element-contents)))
+    (not-any? #{:non-semantic} element-contents)))
 
 (defn semantic-elements-R
   "Return the elements of an entity that are semantic to it."
@@ -88,7 +88,6 @@
   (expr-let [elements (elements entity)
              non-semantic (label->elements entity :non-semantic)]
     (remove (set non-semantic) elements)))
-
 
 (defn immutable-semantic-to-list
   "Given an immutable item, make a list representation of the
@@ -120,6 +119,22 @@
   "Return the canonical form of the semantic information for the item."
   [item]
   (updating-call-with-immutable item item->canonical-semantic))
+
+(defn visible-element?-R
+  "Return true if an element counts as visible information for its subject.
+  (Doesn't have a :non-semantic or :invisible element.)"
+  [entity]
+  (expr-let [elements (elements entity)
+             element-contents (expr-seq map content elements)]
+    (not-any? #{:non-semantic :invisible} element-contents)))
+
+(defn visible-elements-R
+  "Return the elements of an entity that are visible information about it."
+  [entity]
+  (expr-let [elements (elements entity)
+             non-semantic (label->elements entity :non-semantic)
+             invisible (label->elements entity :invisible)]
+    (remove (set (concat non-semantic invisible)) elements)))
 
 (defn selector?
   "Return whether the item is a selector."

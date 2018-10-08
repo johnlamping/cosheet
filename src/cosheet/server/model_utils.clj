@@ -136,6 +136,32 @@
              invisible (label->elements entity :invisible)]
     (remove (set (concat non-semantic invisible)) elements)))
 
+(defn immutable-visible-to-list
+  "Given an immutable item, make a list representation of the
+  visible information of the item."
+  [item]
+  (if (atom? item)
+    (content item)
+    (let [content (content item)
+          elements (visible-elements-R item)
+          content-visible (immutable-visible-to-list content)
+          element-visibles (map immutable-visible-to-list elements)]
+      (if (empty? element-visibles)
+        content-visible
+        (apply list (into [content-visible] element-visibles))))))
+
+(defn item->canonical-visible
+  "Return the canonical form of the semantic information for the item.
+  Only works on immutable items."
+  [item]
+  (canonicalize-list (immutable-visible-to-list item)))
+
+(defn item->canonical-visible-R
+  "Return the canonical form of the semantic information for the item."
+  [item]
+  (updating-call-with-immutable item item->canonical-visible))
+
+
 (defn selector?
   "Return whether the item is a selector."
   [item]

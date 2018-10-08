@@ -69,7 +69,13 @@
                    [45 {["age" {'tag 1}] 1}]}
         visible (set (map item->canonical-semantic
                           (visible-elements-R joe-list)))]
-    (is (check visible expected))))
+    (is (check visible expected))
+    (let [expected ["joe" {"male" 1
+                           "married" 1
+                           [39 {["age" {'tag 1}] 1
+                              ["doubtful" {"confidence" 1}] 1}] 1
+                         [45 {["age" {'tag 1}] 1}] 1}]]
+    (is (= (item->canonical-visible joe-list) expected)))))
 
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-entity

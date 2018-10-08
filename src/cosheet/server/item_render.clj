@@ -9,7 +9,7 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [model-utils :refer [semantic-elements-R semantic-element?-R]]
+             [model-utils :refer [visible-elements-R visible-item?-R]]
              [referent :refer [item-referent virtual-referent ]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
@@ -363,7 +363,7 @@
   [elements must-show-labels implied-template direction inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
-       all-labels (expr-seq map #(expr-filter semantic-element?-R
+       all-labels (expr-seq map #(expr-filter visible-item?-R
                                               (matching-elements '(nil :tag) %))
                             ordered-elements)
        excludeds (expr-seq map #(when implied-template
@@ -525,7 +525,7 @@
           inherited
           (conj (:key-prefix inherited) (:item-id item)) referent)]
      (expr-let [content (entity/content item)
-                elements (semantic-elements-R item)
+                elements (visible-elements-R item)
                 dom (item-content-and-non-label-elements-DOM-R
                      content (remove (set excluded-elements) elements)
                      inherited-down)]
@@ -549,7 +549,7 @@
             (add-inherited-attribute
              [#{:label} #{:content} {:expand {:referent referent}}]))]
     (expr-let [content (entity/content item)
-               elements (semantic-elements-R item)
+               elements (visible-elements-R item)
                dom (if do-not-show-content
                      (labels-and-elements-DOM-R
                       elements nil must-show-label true :vertical

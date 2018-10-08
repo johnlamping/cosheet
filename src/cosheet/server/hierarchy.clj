@@ -5,8 +5,8 @@
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
             (cosheet.server
-             [model-utils :refer [item->canonical-semantic-R
-                                  semantic-elements-R semantic-to-list-R]]
+             [model-utils :refer [item->canonical-visible-R
+                                  visible-elements-R]]
              [referent :refer [union-referent-if-needed
                                item-referent item-or-exemplar-referent]])))
 
@@ -181,7 +181,7 @@
 ;;;   :property-elements  The elements of the item that contribute
 ;;;                       to the cumulative properties of this node
 ;;;                       in the hierarchy.
-;;; :property-canonicals  A list of canonical-semantic for each element in
+;;; :property-canonicals  A list of canonical-visible for each element in
 ;;;                       :property-elements.
 
 (defn hierarchy-by-canonical-info
@@ -197,7 +197,7 @@
   "Given an item and a seq of elements of the item that characterize how
    it should fit in a hierarchy, return an item info map."
   [item elements]
-  (expr-let [canonicals (expr-seq map item->canonical-semantic-R elements)]
+  (expr-let [canonicals (expr-seq map item->canonical-visible-R elements)]
        {:item item
         :property-elements elements
         :property-canonicals canonicals}))
@@ -213,7 +213,7 @@
   "Given a sequence of items, generate a hierarchy based on all their elements."
   [items]
   (expr-let
-      [items-elements (expr-seq map semantic-elements-R items)
+      [items-elements (expr-seq map visible-elements-R items)
        item-maps (item-maps-by-elements-R items items-elements)]
     (hierarchy-by-canonical-info item-maps)))
 

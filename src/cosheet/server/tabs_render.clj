@@ -19,7 +19,7 @@
                                 hierarchy-node-example-elements
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [order-items-R]]
-             [model-utils :refer [semantic-elements-R semantic-to-list-R
+             [model-utils :refer [visible-elements-R
                                   new-tab-elements]]
              [render-utils :refer [virtual-element-DOM hierarchy-node-DOM-R
                                    hierarchy-node-items-referent
@@ -71,14 +71,14 @@
   (let [tabs-referent (hierarchy-node-items-referent node inherited)
         tab-items (map :item (hierarchy-node-descendants node))]
     (expr-let [example-elements (hierarchy-node-example-elements node)
-               tabs-elements (expr-seq map semantic-elements-R tab-items)]
+               tabs-elements (expr-seq map visible-elements-R tab-items)]
       (let [inherited-down (inherited-for-tab-elements
                             tab-items (map count tabs-elements)
                             example-elements tabs-referent inherited)]
         (if (seq (:properties node))
           (expr-let [dom (elements-DOM-R example-elements false nil
                                          :vertical inherited-down)
-                     elements-elements (expr-seq map semantic-elements-R
+                     elements-elements (expr-seq map visible-elements-R
                                                  example-elements)]
             (cond-> dom
               (not (empty? (apply concat elements-elements)))

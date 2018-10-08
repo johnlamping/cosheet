@@ -465,6 +465,9 @@
         (index-content id)
         (add-modified-ids-for-id-and-containers id)))
 
+  (get-unique-number [this]
+    [(:next-id this) (update-in this [:next-id] inc)])
+
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))
 
@@ -542,9 +545,3 @@
   ;;Integers are reserved for the store
   (assert (not (integer? id)))
   (->ItemId id))
-
-(defn get-unique-id-number
-  "Return an id number and an updated store
-  that will never return that number again."
-  [store]
-  [(:next-id store) (update-in store [:next-id] inc)])

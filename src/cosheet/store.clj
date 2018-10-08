@@ -102,6 +102,10 @@
     "Change the content of the item with the given id to be the
      specified content.")
 
+  (get-unique-number [this]
+    "Return an id number and an updated store that will never return
+     that number again.")
+
   (track-modified-ids [this]
     "Record the ids that have been modified.")
 

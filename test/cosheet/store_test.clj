@@ -335,10 +335,10 @@
            (data-to-store (new-element-store)
                           (store-to-data temporary-store))))))
 
-(deftest get-unique-id-number-test
+(deftest get-unique-number-test
   (let [s0 (new-element-store)
-        [id1 s1] (get-unique-id-number s0)
-        [id2 s2] (get-unique-id-number s1)]
+        [id1 s1] (get-unique-number s0)
+        [id2 s2] (get-unique-number s1)]
     (is (number? id1))
     (is (number? id2))
     (is (not (= id1 id2)))))

@@ -1,5 +1,6 @@
 (ns cosheet.server.batch-edit-render
-  (:require (cosheet [store :refer [call-dependent-on-id]]
+  (:require (cosheet [store :refer [call-dependent-on-id get-unique-number
+                                    current-store]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items]]
                      [debug :refer [simplify-for-print]]
@@ -31,14 +32,19 @@
 (defn batch-edit-stack-virtual-DOM-R
   "Return the DOM for a virtual element in the edit stack part of the display,
    that is an element of the query item."
-  [query-item inherited]
-  (let [query-virtual-referent (virtual-referent
-                                'anything (item-referent query-item))
+  [query-item store inherited]
+  (let [[unique _] (get-unique-number (current-store store))
+        invisible `(~unique
+                    (:invisible :non-semantic)
+                    (:temporary :non-semantic))
+        query-virtual-referent (virtual-referent
+                                `(~'anything ~invisible)
+                                (item-referent query-item))
         headers-virtual-referent (virtual-referent
-                                  table-header-template
+                                  (concat table-header-template [invisible])
                                   (table-headers-referent query-item))
         matches-virtual-referent (virtual-referent
-                                  "" (top-level-items-referent query-item))
+                                  `("" ~invisible) (top-level-items-referent query-item))
         tag-referent (union-referent
                       [(virtual-referent
                         '(anything :tag) query-virtual-referent)
@@ -78,7 +84,7 @@
             (update :key-prefix #(conj % :batch-stack)))]
     (expr-let
         [virtual-dom (batch-edit-stack-virtual-DOM-R
-                      query-item inherited-for-batch)
+                      query-item store inherited-for-batch)
          ;; We need to take the current versions of the query elements,
          ;; as :match-all only works with immutable items.
          current-query-elements

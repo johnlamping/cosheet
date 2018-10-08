@@ -12,7 +12,8 @@
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
                                item-referent? instantiate-referent]]
-             [model-utils :refer [ tabs-holder-item-R first-tab-R]]
+             [model-utils :refer [ tabs-holder-item-R first-tab-R
+                                  visible-item?-R]]
              [render-utils :refer [make-component]]
              [item-render :refer [item-DOM-R]]
              [table-render :refer [table-DOM-R]]
@@ -42,7 +43,7 @@
 ;;;    ("Joe"
 ;;;        ("married" (1 :order :non-semantic)
 ;;;        ("spy" (:invisible :non-sementic)
-                  (2 :order :non-semantic))
+;;;               (2 :order :non-semantic))
 ;;;        (39 (3 :order :non-semantic)
 ;;;            ("age" :tag)
 ;;;            "doubtful"))
@@ -179,15 +180,6 @@
            (string->id %))
         (clojure.string/split rep #"_"))))
 
-(defn user-visible-item?
-  "Return true if the item is user visible."
-  [item]
-  (let [order-elements (current-value (label->elements item :order))
-        non-semantic (current-value (matching-elements :non-semantic item))
-        row-condition (current-value (matching-elements :row-condition item))]
-    (and (or (seq order-elements) (seq row-condition))
-         (empty? non-semantic))))
-
 ;;; --- Top level item ---
 
 (defn top-level-item-DOM-R
@@ -203,7 +195,8 @@
                                     (referent->exemplar-and-subject referent)]
                                 (or subject-ref
                                     (when-let [subject (subject item)]
-                                      (when (user-visible-item? subject)
+                                      (when (current-value
+                                             (visible-item?-R subject))
                                         (item-referent subject))))))
               inherited (cond-> inherited
                           subject-ref

@@ -120,8 +120,8 @@
   [item]
   (updating-call-with-immutable item item->canonical-semantic))
 
-(defn visible-element?-R
-  "Return true if an element counts as visible information for its subject.
+(defn visible-item?-R
+  "Return true if an item should be visible information.
   (Doesn't have a :non-semantic or :invisible element.)"
   [entity]
   (expr-let [elements (elements entity)

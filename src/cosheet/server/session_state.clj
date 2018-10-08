@@ -5,6 +5,7 @@
    (cosheet
     [utils :refer [swap-control-return! ensure-in-atom-map! with-latest-value
                    parse-string-as-number]]
+    [expression-manager :refer [current-value]]
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
@@ -20,12 +21,12 @@
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
     [model-utils :refer [starting-store add-table first-tab-R
-                         specialize-template]]
+                         specialize-template visible-item?-R]]
     [format-convert :refer [convert-to-current]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string
                       instantiate-referent]]
-    [render :refer [DOM-for-client-R user-visible-item?]]
+    [render :refer [DOM-for-client-R]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
 
 ;;; This is the only function that directly turns one url into another.
@@ -311,7 +312,7 @@
                         (referent->exemplar-and-subject referent)
                         item (first (instantiate-referent
                                      referent immutable-store))]
-                    (when (and item (user-visible-item? item))
+                    (when (and item (current-value (visible-item?-R item)))
                       [referent subject-ref])))))
             (let [tab (first-tab-R immutable-store)]
               [(when tab (item-referent tab)) nil]))]

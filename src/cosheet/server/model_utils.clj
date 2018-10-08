@@ -150,6 +150,12 @@
         content-visible
         (apply list (into [content-visible] element-visibles))))))
 
+(defn visible-to-list-R
+  "Given an item, make a list representation of the
+  semantic information of the item."
+  [item]
+  (updating-call-with-immutable item immutable-visible-to-list))
+
 (defn item->canonical-visible
   "Return the canonical form of the semantic information for the item.
   Only works on immutable items."
@@ -160,7 +166,6 @@
   "Return the canonical form of the semantic information for the item."
   [item]
   (updating-call-with-immutable item item->canonical-visible))
-
 
 (defn selector?
   "Return whether the item is a selector."

@@ -26,8 +26,8 @@
                                 hierarchy-by-all-elements-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R add-order-elements]]
-             [model-utils :refer [immutable-semantic-to-list
-                                  semantic-elements-R semantic-to-list-R
+             [model-utils :refer [immutable-visible-to-list
+                                  visible-elements-R visible-to-list-R
                                   table-header-template]]
              [render-utils :refer [make-component virtual-element-DOM
                                    transform-inherited-for-children
@@ -66,9 +66,9 @@
             (or (seq (matching-elements :column item))  
                 (seq (matching-elements :top-level parent-item)))
             (let [[condition-content & condition-elements]
-                  (immutable-semantic-to-list immutable-row-condition-item)
-                  item-condition (immutable-semantic-to-list item)
-                  queryable-condition (comp immutable-semantic-to-list
+                  (immutable-visible-to-list immutable-row-condition-item)
+                  item-condition (immutable-visible-to-list item)
+                  queryable-condition (comp immutable-visible-to-list
                                             pattern-to-condition)
                   redundant (best-template-match
                              (map queryable-condition condition-elements)
@@ -81,7 +81,7 @@
                                   [item-condition])))
             ;; If the item is part of the row condition, just return that.
             (seq (matching-elements :row-condition item))
-            (immutable-semantic-to-list item)
+            (immutable-visible-to-list item)
             parent-item
             (recur parent-item))))
       add-order-elements
@@ -565,7 +565,7 @@
   "Given the item giving the row condition, return the template for a row
   and the items for the rows, in order."
   [store row-condition-item]
-  (expr-let [row-condition (semantic-to-list-R row-condition-item)
+  (expr-let [row-condition (visible-to-list-R row-condition-item)
              row-query (add-elements-to-entity-list
                         (pattern-to-condition row-condition)
                         ['(:top-level :non-semantic)])
@@ -581,7 +581,7 @@
   holds its condition."
   [row-condition-item rows-referent inherited]
   (let [subject-referent (union-referent [(item-referent row-condition-item)])]
-    (expr-let [condition-elements (semantic-elements-R row-condition-item)
+    (expr-let [condition-elements (visible-elements-R row-condition-item)
                inherited-down (assoc
                                inherited
                                :selector-category :table-condition

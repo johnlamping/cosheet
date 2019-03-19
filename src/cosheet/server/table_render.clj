@@ -13,10 +13,9 @@
                                         common-canonical-multisets]])
             (cosheet.server
              [referent :refer [item-referent exemplar-referent
-                               elements-referent query-referent
+                               query-referent
                                union-referent-if-needed union-referent
-                               difference-referent virtual-referent
-                               item-or-exemplar-referent
+                               virtual-referent item-or-exemplar-referent
                                pattern-to-condition condition-to-template]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes

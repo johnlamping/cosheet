@@ -182,7 +182,8 @@
 ;;;                       to the cumulative properties of this node
 ;;;                       in the hierarchy.
 ;;; :property-canonicals  A list of canonical-visible for each element in
-;;;                       :property-elements.
+;;;                       :property-elements. These are the properties
+;;;                       of the leaf in the hierarchy.
 
 (defn hierarchy-by-canonical-info
   "Given a sequence of item info maps, return a hierarchy."

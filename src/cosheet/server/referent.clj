@@ -47,10 +47,10 @@
 ;;;                  additional stuff.
 ;;;        elements  [:elements <condition> <sequence-referent>]
 ;;;                  For each item refered to by sequence-referent,
-;;;                  refers to the all elements whose semantic information
+;;;                  refers to all elements whose semantic information
 ;;;                  matches the condition.
 ;;;           query  [:query <condition>]
-;;;                  Refers to the items that satisfies the condition.
+;;;                  Refers to all items that satisfy the condition.
 ;;;           union  [:union  <referent> ...]
 ;;;                  Refers to all items that any of the referents refers to.
 ;;;                  Replications are removed
@@ -59,13 +59,13 @@
 ;;;                  and not by the second.
 ;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
 ;;;                            <adjacent-referents> <position> <use-bigger>]
-;;;                  For item refered to by subject-referent,
-;;;                  refers to new item matching the exemplar
+;;;                  For each item refered to by subject-referent,
+;;;                  refers to a new item matching the exemplar
 ;;;                  referent. The exemplar may be a condition, with nils,
 ;;;                  and may be a template, with 'anything or refer to an
 ;;;                  item that is a template. It can also be
 ;;;                  virtual or contain virtual referents. The subject
-;;;                  referent can be virtual, and may be nil, in which case
+;;;                  referent can be virtual, or may be nil, in which case
 ;;;                  one element is created for each item in adjacent.
 ;;;                  Adjacent-referent is a list of referents, each of which
 ;;;                  gives items the new items could be adjacent to in the

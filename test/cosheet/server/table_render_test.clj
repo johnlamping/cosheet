@@ -11,9 +11,8 @@
              entity-impl
              [test-utils :refer [check any as-set evals-to let-mutated]])
             (cosheet.server
-             [referent :refer [item-referent union-referent exemplar-referent
-                               query-referent elements-referent
-                               virtual-referent]]
+             [referent :refer [item-referent union-referent
+                               query-referent virtual-referent]]
              [item-render :refer [item-without-labels-DOM-R
                                   item-DOM-R]]
              [table-render :refer :all])

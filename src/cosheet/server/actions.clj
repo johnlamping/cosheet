@@ -28,7 +28,6 @@
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
                       item-referent virtual-referent
-                      condition-to-template
                       create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 

@@ -1,6 +1,6 @@
 (ns cosheet.server.model-utils
   (:require (cosheet [debug :refer [simplify-for-print]]
-                     [utils :refer [thread-recursive-map]]
+                     [utils :refer [thread-recursive-map prewalk-seqs]]
                      [orderable :as orderable]
                      [expression :refer [expr expr-let expr-seq]]
                      [canonical :refer [canonicalize-list]]
@@ -54,18 +54,86 @@
               [(conj headers header) store]))
           [[] store] (range n)))
 
+;;; We have various generic list forms:
+;;;  pattern:   a form of a query that can be saved in the store. It uses
+;;;             'anything and 'anything-immutable for wildcards,
+;;;             where a query would have nil.
+;;;  query:     a form suitable for use as a query. It can have nils. It may
+;;;             specify :top-level to require a top level row item.
+;;;  template:  the list form for the content of a new item.
+;;;  generic:   a pattern or template that has '??? to indicate values
+;;;             that need to be filled out with unique strings to turn it into
+;;;             a template.
+
+(defn flatten-nested-content
+  "If item has a form anywhere like ((a ...b...) ...c...), turn that into
+  (a ...b... ...c...)"
+  ;; This case handles adding (:top-level :non-semantic) to row referents.
+  [item]
+  (clojure.walk/postwalk
+   (fn [item]
+     (if (and (seq? item) (seq? (first item)))
+       (apply list (concat (first item) (rest item)))
+       item))
+   item))
+
+(defn pattern-to-query
+  "Given a pattern, alter it to work as a query. Specifically,
+  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
+  to make them work as a wild card that avoids matching non-user editable
+  elements."
+  [pattern]
+  (flatten-nested-content
+   (clojure.walk/postwalk
+    (fn [item] (if (#{'anything 'anything-immutable} item)
+                 '(nil (nil :order :non-semantic))
+                 item))
+    pattern)))
+
+(defn query-to-template
+  "Given a query, turn it into a template by removing (nil :order
+  :non-semantic) elements (which get added by pattern-to-query)
+  and by then replacing any nil by the specified replacement, or the empty
+  string by default."
+  ([query]
+   (query-to-template query ""))
+  ([query nil-replacement]
+   (prewalk-seqs
+    (fn [query]
+      (cond (sequential? query) (remove #(= % '(nil :order :non-semantic))
+                                        query)
+            (nil? query) nil-replacement
+            true query))
+    query)))
+
+(defn pattern-to-possible-non-selector-template
+  "Given a pattern, alter it to work as a template for a possible non-selector.
+   Specifically, replace nil, 'anything, 'anything-immutable by the empty
+   string, unless in a part of the template that is marked as a selector,
+   in which case replace only nils."
+  [pattern]
+  (if (sequential? pattern)
+    (if (some #(or (= % :selector)
+                   (and (sequential? %) (= (first %) :selector)))
+              (rest pattern))
+      (query-to-template pattern)
+      (map pattern-to-possible-non-selector-template pattern))
+    (if (or (nil? pattern) (#{'anything 'anything-immutable} pattern))
+      ""
+      pattern)))
+
 (defn specialize-template
-  "Adjust a template or condition to make it ready for adding as an
+  "Adjust a template to make it ready for adding as an
   element. Specifically, replace each '??? with a new unique string
   with a leading non-breaking space. Allocating new strings will require
-  updating the store. Return the new condition and the new store."
-  [condition store]
+  updating the store. Return the specialized template and the new store."
+  [template store]
   (thread-recursive-map (fn [item store]
                           (if (= item '???)
                             (let [[string new-store] (get-new-string store)]
                               [(str "\u00A0" string) new-store])
                             [item store]))
-                        condition store))
+                        template store))
 
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information

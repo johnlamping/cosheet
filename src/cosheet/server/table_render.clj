@@ -15,8 +15,7 @@
              [referent :refer [item-referent exemplar-referent
                                query-referent
                                union-referent-if-needed union-referent
-                               virtual-referent item-or-exemplar-referent
-                               pattern-to-condition condition-to-template]]
+                               virtual-referent item-or-exemplar-referent]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
                                 replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-leaves
@@ -27,7 +26,8 @@
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
                                   visible-elements-R visible-to-list-R
-                                  table-header-template]]
+                                  table-header-template
+                                  pattern-to-query query-to-template]]
              [render-utils :refer [make-component virtual-element-DOM
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
@@ -68,7 +68,7 @@
                   (immutable-visible-to-list immutable-row-condition-item)
                   item-condition (immutable-visible-to-list item)
                   queryable-condition (comp immutable-visible-to-list
-                                            pattern-to-condition)
+                                            pattern-to-query)
                   redundant (best-template-match
                              (map queryable-condition condition-elements)
                              item-condition)
@@ -112,7 +112,7 @@
                 ;; leaves have content, we don't know which ones
                 ;; subsume the others, and so use them all.
                 descendants)]
-    (map #(pattern-to-condition
+    (map #(pattern-to-query
          (cons
           (let [content (:content %)]
             (if (#{'anything 'anything-immutable} content)
@@ -436,7 +436,7 @@
       (expr-let [matches (matching-elements template row-item)
                  do-not-show (when exclusions
                                (expr-seq map #(matching-elements
-                                               (pattern-to-condition %)
+                                               (pattern-to-query %)
                                                row-item)
                                          exclusions))]
         (let [elements (seq (clojure.set/difference
@@ -538,7 +538,7 @@
   return the condition that all elements under the column satisfy."
   [element node]
   (let [content (:content element)]
-    (pattern-to-condition
+    (pattern-to-query
      (cons (if (#{'anything 'anything-immutable} content) nil content)
            (canonical-set-to-list (:cumulative-properties node))))))
 
@@ -566,11 +566,11 @@
   [store row-condition-item]
   (expr-let [row-condition (visible-to-list-R row-condition-item)
              row-query (add-elements-to-entity-list
-                        (pattern-to-condition row-condition)
+                        (pattern-to-query row-condition)
                         ['(:top-level :non-semantic)])
              ;; Avoid the (nil :order :non-semantic) added by
-             ;; pattern-to-condition.
-             row-template (condition-to-template row-query)
+             ;; pattern-to-query
+             row-template (query-to-template row-query)
              row-items (expr order-items-R
                          (matching-items row-query store))]
     [row-template row-items]))

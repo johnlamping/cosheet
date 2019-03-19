@@ -1,5 +1,5 @@
 (ns cosheet.server.referent
-  (:require (cosheet [utils :refer [multiset replace-in-seqs prewalk-seqs
+  (:require (cosheet [utils :refer [multiset replace-in-seqs
                                     map-map thread-map thread-recursive-map]]
                      [debug :refer [simplify-for-print]]             
                      [expression :refer [expr expr-let expr-seq]]
@@ -21,6 +21,9 @@
              [model-utils :refer [create-selector-or-non-selector-element
                                   immutable-semantic-to-list semantic-to-list-R
                                   item->canonical-semantic
+                                  pattern-to-query query-to-template
+                                  pattern-to-possible-non-selector-template
+                                  flatten-nested-content
                                   specialize-template semantic-elements-R]])))
 
 ;;; Commands are typically run with respect to a referent, which
@@ -203,7 +206,7 @@
 
 (defn referent->exemplar-and-subject
   "Given a referent, return an exemplar and subject such that
-  item-or-exemplar-referent could reconstruct the referent
+  item-or-exemplar-referent could reconstruct the referent.
   Returns nil for anything but item and exemplar referents."
   [referent]
   (cond (item-referent? referent) [referent nil]
@@ -220,7 +223,7 @@
 ;;;              for lists: L<items in the list>l
 ;;; The last three cases are needed to describe conditions in, for example,
 ;;; query referents.
-;;; The type type letter for the various types of referent is:
+;;; The type letter for the various types of referent is:
 (def letters->type
   {\X :exemplar
    \E :elements
@@ -273,7 +276,7 @@
 
 (defn string->referent
   "Parse a string representation of a referent.
-  Return or nil if the string is not a valid representation of a referent."
+  Return nil if the string is not a valid representation of a referent."
   [rep]
   (loop [index 0 ; Next index in the string to look at
          partial-referent [:start] ; The referent we are constructing
@@ -341,102 +344,50 @@
                          (rest pending-partials))))
               true nil)))))
 
-(defn flatten-nested-content
-  "If item has a form anywhere like ((a ...b...) ...c...), turn that into
-  (a ...b... ...c...)"
-  ;; This case handles adding (:top-level :non-semantic) to row referents.
-  [item]
-  (clojure.walk/postwalk
-   (fn [item]
-     (if (and (seq? item) (seq? (first item)))
-       (apply list (concat (first item) (rest item)))
-       item))
-   item))
+(defn best-match
+  "Given an immutable template, and a seq of items
+   that match it, return the best matching item."
+  [template matches]
+  (if (> (count matches) 1)
+    ;; Prefer one with no extra semantic info.
+    (let [semantic (immutable-semantic-to-list template)
+          ;; A nil in the template probably came from a wildcard.
+          ;; It should be considered a perfect match with 'anything,
+          ;; to handle selectors, and with the empty string, to handle
+          ;; blank elements added to match a selector.
+          canonical1 (canonicalize-list (replace-in-seqs semantic nil ""))
+          canonical2 (canonicalize-list (replace-in-seqs semantic
+                                                         nil 'anything))
+          perfect-matches (filter #(let [canonical-match
+                                         (item->canonical-semantic %)]
+                                     (or (= canonical-match canonical1)
+                                         (= canonical-match canonical2)))
+                                  matches)]
+      (first (if (empty? perfect-matches) matches perfect-matches)))
+    (first matches)))
+
+(defn best-matching-element
+  "Given an immutable template, find an element of the item that
+  matches it. Return a seq of the best matching element if there is one,
+  otherwise return nil. Only works on immutable templates."
+  [template subject]
+  (let [matches (matching-elements template subject)]
+    (when (not (empty? matches))
+      [(best-match template matches)])))
 
 (defn condition-to-list
-  "If the condition has an item id, look it up in the store and replace it with
-  the semantic list form of what is in the store."
+  "If the condition has any item ids, look them up in the store and replace
+  them with the semantic list form of what is in the store."
   [condition immutable-store]
   (flatten-nested-content
    (clojure.walk/postwalk
     (fn [referent]
       (if (item-referent? referent)
         (when (id-valid? immutable-store referent)
-          (semantic-to-list-R (description->entity referent immutable-store)))
+          (immutable-semantic-to-list
+           (description->entity referent immutable-store)))
         referent))
     condition)))
-
-(defn pattern-to-condition
-  "Given a pattern, alter it to work as a condition. Specifically,
-  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
-  to make them work as a wild card that avoids matching non-user editable
-  elements."
-  [condition]
-  (if (sequential? condition)
-    (let [elements (map pattern-to-condition (rest condition))]
-      (if (#{'anything 'anything-immutable} (first condition))
-        (apply list (list* nil '(nil :order :non-semantic) elements))
-        (cons (first condition) elements)))
-    (if (#{'anything 'anything-immutable} condition)
-      '(nil (nil :order :non-semantic))
-      condition)))
-
-(defn condition-to-template
-  "Given a condition, turn it into a template by removing (nil :order
-  :non-semantic) elements (which get added by pattern-to-condition)
-  and by then replacing any nil by the specified replacement, or the empty
-  string by default."
-  ([condition]
-   (condition-to-template condition ""))
-  ([condition nil-replacement]
-   (prewalk-seqs
-    (fn [condition]
-      (cond (sequential? condition)
-            (remove #(= % '(nil :order :non-semantic)) condition)
-            (nil? condition) nil-replacement
-            true condition))
-    condition)))
-
-(defn pattern-to-possible-non-selector-template
-  "Given a pattern, alter it to work as a template for a possible non-selector.
-   Specifically, replace nil, 'anything, 'anything-immutable by the empty
-   string, unless in a part of the template that is marked as a selector,
-   in which case replace only nils."
-  [pattern]
-  (if (sequential? pattern)
-    (if (some #(or (= % :selector)
-                   (and (sequential? %) (= (first %) :selector)))
-              (rest pattern))
-      (condition-to-template pattern)
-      (map pattern-to-possible-non-selector-template pattern))
-    (if (or (nil? pattern) (#{'anything 'anything-immutable} pattern))
-      ""
-      pattern)))
-
-(defn best-matching-element
-  "Given the list form of a template, find an element of the item that
-  matches it. Return the best matching element in a list if there is one,
-  otherwise return nil. Only works on immutable templates."
-  [template subject]
-  (let [matches (matching-elements template subject)]
-    (when (not (empty? matches))
-      (if (> (count matches) 1)
-        ;; Prefer one with no extra semantic info.
-        (let [semantic (immutable-semantic-to-list template)
-              ;; A nil in the template probably came from a wildcard.
-              ;; It should be considered a perfect match with 'anything,
-              ;; to handle selectors, and with the empty string, to handle
-              ;; blank elements added to match a selector.
-              canonical1 (canonicalize-list (replace-in-seqs semantic nil ""))
-              canonical2 (canonicalize-list (replace-in-seqs semantic
-                                                             nil 'anything))
-              perfect-matches (filter #(let [canonical-match
-                                             (item->canonical-semantic %)]
-                                         (or (= canonical-match canonical1)
-                                             (= canonical-match canonical2)))
-                                      matches)]
-          [(first (if (empty? perfect-matches) matches perfect-matches))])
-        matches))))
 
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
@@ -446,8 +397,8 @@
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
     :exemplar (let [[_ exemplar subject-ref] referent
-                    condition (pattern-to-condition
-                               (condition-to-list exemplar immutable-store))
+                    query (pattern-to-query
+                           (condition-to-list exemplar immutable-store))
                     picker (if (and (item-referent? exemplar)
                                     (id-valid? immutable-store exemplar))
                              ;; If the exemplar is an item, then always
@@ -459,19 +410,19 @@
                                    subj (Entity/subject exemplar-item)]
                                #(if (= % subj)
                                   [exemplar-item]
-                                  (best-matching-element condition %)))
-                             #(best-matching-element condition %))]
+                                  (best-matching-element query %)))
+                             #(best-matching-element query %))]
                 (mapcat picker
                         (instantiate-referent subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
-                    condition (pattern-to-condition
-                               (condition-to-list condition immutable-store))]
-                (mapcat #(matching-elements condition %)
+                    query (pattern-to-query
+                           (condition-to-list condition immutable-store))]
+                (mapcat #(matching-elements query %)
                         (instantiate-referent subject-ref immutable-store)))
     :query (let [[_ condition] referent
-                 condition (pattern-to-condition
-                            (condition-to-list condition immutable-store))]
-             (matching-items condition immutable-store))
+                 query (pattern-to-query
+                        (condition-to-list condition immutable-store))]
+             (matching-items query immutable-store))
     :union (let [[_ & referents] referent]
              (distinct (mapcat #(instantiate-referent % immutable-store)
                                referents)))
@@ -488,7 +439,7 @@
   [template subjects adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
-        selector-template (condition-to-template flattened-template 'anything)
+        selector-template (query-to-template flattened-template 'anything)
         non-selector-template (pattern-to-possible-non-selector-template
                                flattened-template)
         [new-ids store]

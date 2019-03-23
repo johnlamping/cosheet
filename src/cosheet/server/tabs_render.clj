@@ -47,7 +47,7 @@
                 tab-items tabs-element-counts)))]
     (-> inherited
         (assoc :subject-referent tabs-referent
-               :template '(nil))
+               :template '(anything))
         (update
          :attributes
          #(conj (or % [])

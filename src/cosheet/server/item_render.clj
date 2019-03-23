@@ -46,7 +46,7 @@
         conditions (concat (canonical-set-to-list ancestor-props)
                            (rest (:template inherited)))]
     {:referent (virtual-referent
-                (when (seq conditions) (list* nil conditions))
+                (list* 'anything conditions)
                 (subject-referent-given-inherited inherited)
                 (hierarchy-node-items-referents
                  hierarchy-node inherited))
@@ -74,7 +74,7 @@
                        (:cumulative-properties hierarchy-node))
         inherited-down (if (not (empty? property-list))
                          (assoc inherited :template
-                                (concat (or (:template inherited) '(nil))
+                                (concat (or (:template inherited) '(anything))
                                         property-list))
                          inherited)]
     (if (empty? leaves)
@@ -179,7 +179,7 @@
                      template
                      (subject-referent-given-inherited inherited))
         inherited-for-label (-> inherited
-                                (assoc :template '(nil :tag)
+                                (assoc :template '(anything :tag)
                                        :subject-referent virtual-ref))
         labels-dom (add-attributes
                     (virtual-element-DOM
@@ -202,7 +202,7 @@
                                (transform-inherited-attributes :label)
                                (add-adjacent-sibling-command hierarchy-node)
                                (assoc :key-prefix tags-key-prefix
-                                      :template '(nil :tag)
+                                      :template '(anything :tag)
                                       :subject-referent items-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
@@ -485,7 +485,7 @@
       (let [inherited-down
             (-> (transform-inherited-attributes inherited :element)
                 (update :priority inc)
-                (assoc :template '(nil)))]
+                (assoc :template '(anything)))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil :vertical inherited-down)]
           [:div {:class "item with-elements"}

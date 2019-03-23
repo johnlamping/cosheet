@@ -210,7 +210,7 @@
   [inherited]
   (-> inherited
       (transform-inherited-attributes :label)
-      (assoc :template '(nil :tag))))
+      (assoc :template '(anything :tag))))
 
 ;;; DOM creators that are used by several files.
 
@@ -355,6 +355,8 @@
                            [function-info inherited])
                          nil inherited))
   ([node node-f child-info-f function-info inherited]
+   (assert (every? #(not (nil? %)) (:template inherited))
+           (apply list  (:template inherited)))
    (expr-let
        [child-doms (when-let [children (:child-nodes node)]
                      (expr-let [child-info (child-info-f

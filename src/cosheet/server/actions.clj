@@ -22,13 +22,13 @@
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector? semantic-elements-R]]
     [table-render :refer [batch-edit-pattern]]
-    [referent :refer [instantiate-or-create-referent
-                      instantiate-referent
-                      referent->string referent?
+    [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
-                      item-referent virtual-referent
-                      create-possible-selector-elements]]
+                      item-referent virtual-referent]]
+    [instantiate :refer [instantiate-or-create-referent
+                         instantiate-referent
+                         create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -130,7 +130,7 @@
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             [added store] (create-possible-selector-elements
-                           nil items items :after true store)]
+                           'anything items items :after true store)]
         (add-select-request
          store [(first added)]
          (or select-pattern

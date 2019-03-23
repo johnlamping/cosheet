@@ -24,8 +24,8 @@
                          specialize-template visible-item?-R]]
     [format-convert :refer [convert-to-current]]
     [referent :refer [item-referent referent->exemplar-and-subject
-                      string->referent referent->string
-                      instantiate-referent]]
+                      string->referent referent->string]]
+    [instantiate :refer [instantiate-referent]]
     [render :refer [DOM-for-client-R]]
     [dom-tracker :refer [new-dom-tracker add-dom remove-all-doms]])))
 

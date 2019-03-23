@@ -123,7 +123,7 @@
   (let [result (do-add-twin
                 store
                 {:referent (item-referent jane-age)
-                 :template '(nil ("age" :tag))
+                 :template '(anything ("age" :tag))
                  :target-key ["jane" "jane-age"]}
                 {})
         new-store (:store result)]
@@ -140,7 +140,7 @@
   (let [result (do-add-virtual
                 store
                 {:referent
-                 (virtual-referent '(nil ("age" :tag))
+                 (virtual-referent '(anything ("age" :tag))
                                    (union-referent [(item-referent jane)])
                                    (item-referent jane) :position :after)
                  :select-pattern ["jane" [:pattern]]
@@ -252,7 +252,7 @@
     (let [result (do-set-content
                   store
                   {:referent (virtual-referent
-                              '(nil :tag) (item-referent joe-male)
+                              '(anything :tag) (item-referent joe-male)
                               (item-referent joe-male) :position :after)
                    :target-key ["joe-male"]
                    :from "" :to "gender"}

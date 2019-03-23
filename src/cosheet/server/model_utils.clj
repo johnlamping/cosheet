@@ -1,6 +1,6 @@
 (ns cosheet.server.model-utils
   (:require (cosheet [debug :refer [simplify-for-print]]
-                     [utils :refer [thread-recursive-map prewalk-seqs]]
+                     [utils :refer [thread-map prewalk-seqs]]
                      [orderable :as orderable]
                      [expression :refer [expr expr-let expr-seq]]
                      [canonical :refer [canonicalize-list]]
@@ -11,6 +11,7 @@
                      [store-utils :refer [add-entity]]
                      [query :refer [matching-items]])
             (cosheet.server
+             [referent :refer [referent?]]
              [order-utils :refer [order-items-R order-element-for-item
                                   update-add-entity-adjacent-to]])))
 
@@ -60,10 +61,14 @@
 ;;;             where a query would have nil.
 ;;;  query:     a form suitable for use as a query. It can have nils. It may
 ;;;             specify :top-level to require a top level row item.
-;;;  template:  the list form for the content of a new item.
+;;;  template:  the list form for the content of a new item. It may
+;;;             be a pattern, but it can also contain virtual referents.
+;;;             It may have 'anything and 'anything-immutable, as they
+;;;             are allowed in items. But since they are only allowed
+;;;             in selector items, they will be turned into "" when put
+;;;             into non-selector items. 
 ;;;  generic:   a pattern or template that has '??? to indicate values
-;;;             that need to be filled out with unique strings to turn it into
-;;;             a template.
+;;;             that need to be filled out with unique strings.
 
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
@@ -72,7 +77,7 @@
   [item]
   (clojure.walk/postwalk
    (fn [item]
-     (if (and (seq? item) (seq? (first item)))
+     (if (and (seq? item) (seq? (first item))  (not (referent? (first item))))
        (apply list (concat (first item) (rest item)))
        item))
    item))
@@ -106,34 +111,36 @@
             true query))
     query)))
 
-(defn pattern-to-possible-non-selector-template
-  "Given a pattern, alter it to work as a template for a possible non-selector.
-   Specifically, replace nil, 'anything, 'anything-immutable by the empty
-   string, unless in a part of the template that is marked as a selector,
-   in which case replace only nils."
-  [pattern]
-  (if (sequential? pattern)
-    (if (some #(or (= % :selector)
-                   (and (sequential? %) (= (first %) :selector)))
-              (rest pattern))
-      (query-to-template pattern)
-      (map pattern-to-possible-non-selector-template pattern))
-    (if (or (nil? pattern) (#{'anything 'anything-immutable} pattern))
-      ""
-      pattern)))
-
 (defn specialize-template
   "Adjust a template to make it ready for adding as an
   element. Specifically, replace each '??? with a new unique string
   with a leading non-breaking space. Allocating new strings will require
   updating the store. Return the specialized template and the new store."
   [template store]
-  (thread-recursive-map (fn [item store]
-                          (if (= item '???)
-                            (let [[string new-store] (get-new-string store)]
-                              [(str "\u00A0" string) new-store])
-                            [item store]))
-                        template store))
+  (cond
+    (= template '???)
+    (let [[string new-store] (get-new-string store)]
+      [(str "\u00A0" string) new-store])
+    (and (sequential? template) (not (referent? template)))
+    (thread-map specialize-template template store)
+    true
+    [template store]))
+
+(defn pattern-to-possible-non-selector-template
+  "Given a pattern, alter it to work as a template for a possible non-selector.
+   Specifically, replace 'anything, and 'anything-immutable by the empty
+   string, unless in a part of the template that is marked as a selector,
+   in which case don't modify it."
+  [pattern]
+  (if (sequential? pattern)
+    (if (some #(or (= % :selector)
+                   (and (sequential? %) (= (first %) :selector)))
+              (rest pattern))
+      pattern
+      (map pattern-to-possible-non-selector-template pattern))
+    (if (#{'anything 'anything-immutable} pattern)
+      ""
+      pattern)))
 
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information

@@ -12,8 +12,9 @@
             mutable-store-test store-utils-test)
            (cosheet.server
             views routes
-            referent hierarchy render dom_tracker actions
-            model-utils-test referent-test hierarchy-test order-utils-test
+            referent instantiate hierarchy render dom_tracker actions
+            model-utils-test referent-test instantiate-test
+            hierarchy-test order-utils-test
             format-convert-test session_state_test
             render-utils-test render-test item-render-test table-render-test
             tabs-render-test dom-tracker-test actions-test)

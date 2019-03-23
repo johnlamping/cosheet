@@ -13,7 +13,7 @@
                                         common-canonical-multisets]])
             (cosheet.server
              [referent :refer [item-referent exemplar-referent
-                               query-referent
+                               query-referent referent?
                                union-referent-if-needed union-referent
                                virtual-referent item-or-exemplar-referent]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
@@ -198,15 +198,17 @@
             (if (empty? remainder-sub-elements)
               ;; If there is only one current element, then the next one
               ;; only copies whether or not it has a tag.
-              (when (contains? firsts-sub-elements :tag)
-                '(nil :tag))
+              (if (contains? firsts-sub-elements :tag)
+                '(anything :tag)
+                "")
               (let [common (reduce common-canonical-multisets
                                    firsts-sub-elements
                                    remainder-sub-elements)]
-                (when (not (empty? common))
-                  (cons nil (canonical-set-to-list common)))))))
-        '(nil))
-    '(nil :tag)))
+                (if (not (empty? common))
+                  (cons 'anything (canonical-set-to-list common))
+                  "")))))
+        '(anything))
+    '(anything :tag)))
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
@@ -425,15 +427,17 @@
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
   [row-item
-   {:keys [column-id template exclusions] :as header-description}
+   {:keys [column-id query exclusions] :as header-description}
    inherited]
   (let [inherited-down (assoc inherited
                               :key-prefix (conj (:key-prefix inherited)
                                                 column-id)
-                              :template template)]
+                              :template (if (referent? query)
+                                          query
+                                          (query-to-template query)))]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM row-item inherited-down)
-      (expr-let [matches (matching-elements template row-item)
+      (expr-let [matches (matching-elements query row-item)
                  do-not-show (when exclusions
                                (expr-seq map #(matching-elements
                                                (pattern-to-query %)
@@ -482,7 +486,7 @@
 (defn table-virtual-row-cell-DOM
   "Return the dom for one cell of a virtual row of a table."
   [adjacent-referent
-   {:keys [column-id template exclusions]} ;; A column header description
+   {:keys [column-id query exclusions]} ;; A column header description
    inherited]
   (let [select (conj (vec (butlast (:key-prefix inherited)))
                      [:pattern :subject] ;; The new row's id
@@ -490,7 +494,7 @@
                      [:pattern])
         inherited (assoc inherited
                          :key-prefix (conj (:key-prefix inherited) column-id)
-                         :template template
+                         :template (query-to-template query)
                          :select-pattern select)]
     (add-attributes
      (virtual-element-DOM adjacent-referent :after inherited)
@@ -533,11 +537,12 @@
           children (assoc :child-nodes children))))
     hierarchy))
 
-(defn table-hierarchy-node-condition
+(defn table-hierarchy-node-query
   "Given a hierarchy element for a column, and its immediately containing node,
   return the condition that all elements under the column satisfy."
   [element node]
   (let [content (:content element)]
+    ;; TODO!!!: This appears not to handle 'anything in properties.
     (pattern-to-query
      (cons (if (#{'anything 'anything-immutable} content) nil content)
            (canonical-set-to-list (:cumulative-properties node))))))
@@ -547,16 +552,15 @@
   return a map:
        :column-id Id that identifies the column.
                   Typically the id of the column item.
-        :template Condition that each element of the column must satisfy.
-                  May be a constant or a (typically virtual) referent.
-                  ('anything is turned to nil before putting a condition here.)
+           :query Query that each element of the column must satisfy.
+                  For a virtual column, this will be a virtual referent.
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
               [{:column-id (:item-id (:item node-or-element))
-                :template (table-hierarchy-node-condition node-or-element node)
+                :query (table-hierarchy-node-query node-or-element node)
                 :exclusions (table-hierarchy-node-exclusions node)}]))
           (hierarchy-node-next-level node)))
 
@@ -564,9 +568,9 @@
   "Given the item giving the row condition, return the template for a row
   and the items for the rows, in order."
   [store row-condition-item]
-  (expr-let [row-condition (visible-to-list-R row-condition-item)
+  (expr-let [row-pattern (visible-to-list-R row-condition-item)
              row-query (add-elements-to-entity-list
-                        (pattern-to-query row-condition)
+                        (pattern-to-query row-pattern)
                         ['(:top-level :non-semantic)])
              ;; Avoid the (nil :order :non-semantic) added by
              ;; pattern-to-query
@@ -585,7 +589,7 @@
                                inherited
                                :selector-category :table-condition
                                :subject-referent subject-referent
-                               :template '(nil)
+                               :template '(anything)
                                ;; TODO: Do only when all tags?
                                :attributes [[#{:label} #{:content}
                                              {:add-element
@@ -664,7 +668,7 @@
                                     (item-referent (or (last columns)
                                                        table-item)))
                   virtual-column-description {:column-id :virtualColumn
-                                              :template virtual-template
+                                              :query virtual-template
                                               :exclusions nil}
                   rows (map #(table-row-DOM-component
                               % row-template (concat column-descriptions

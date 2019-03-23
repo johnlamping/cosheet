@@ -70,7 +70,8 @@
         starting-inherited {:priority 1
                            :width 3.0
                            :key-prefix [:foo]
-                           :template '(nil)}]
+                            :template '(anything)}]
+    (print "XXX")
     (is (check
          dom
          [:div {:class "tabs-wrapper"}
@@ -136,7 +137,7 @@
              [:div {:class "editable empty-child tab"
                     :key [:foo :nested (item-referent t1) :virtual]
                     :target {:referent (virtual-referent
-                                        '(nil) (item-referent t1)
+                                        '(anything) (item-referent t1)
                                         (item-referent t1))
                              :select-pattern [:foo :nested [:pattern]]}
                     :add-column {:referent

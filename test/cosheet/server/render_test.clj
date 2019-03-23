@@ -44,7 +44,8 @@
                 (any)
                 [:div {:expand {:referent subject-ref}
                        :class "content-text editable item"
-                       :target {:referent (item-referent fred)}
+                       :target {:referent (item-referent fred)
+                                :template ""}
                        :key [(:item-id fred) :content]}
                  "Fred"]])))
 

@@ -182,7 +182,7 @@
                    :width 0.75
                    :key-prefix (conj table-key (:item-id c1))
                    :subject-referent first-column-referent
-                   :template '(nil :tag)
+                   :template '(anything :tag)
                    :selector-category :table-header
                    :attributes
                    [[#{:label :element :recursive :optional} #{:content}
@@ -199,7 +199,7 @@
                         :add-twin {:referent nil}
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
-                                 :template '(nil :tag)}
+                                 :template '(anything :tag)}
                         :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
                (any)
@@ -210,7 +210,7 @@
                       :key (conj table-key :virtualColumn :virtual)
                       :target {:referent
                                (virtual-referent
-                                '(nil)
+                                ""
                                 (virtual-referent
                                  '(anything
                                    (:column :non-semantic)
@@ -226,18 +226,18 @@
                             :class "table-row"}
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
-                 [{:column-id (:item-id c1) :template '(nil ("single" :tag))
+                 [{:column-id (:item-id c1) :query '(nil ("single" :tag))
                    :exclusions '()}
-                  {:column-id (:item-id c2) :template '(nil ("name" :tag))
+                  {:column-id (:item-id c2) :query '(nil ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-id (:item-id c3)
-                   :template '(nil ("name" :tag) ("id" :tag))
+                   :query '(nil ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
                   (any)
                   (any)
                   {:column-id :virtualColumn
-                   :template (virtual-referent
+                   :query (virtual-referent
                               '(anything
                                 (:column :non-semantic)
                                 (:non-semantic :non-semantic)
@@ -252,7 +252,7 @@
                  (conj table-key :virtualRow)
                  '("" ("" ("age" :tag)) (:top-level :non-semantic))
                  (item-referent joe)
-                 [{:column-id (:item-id c1) :template '(nil ("single" :tag))
+                 [{:column-id (:item-id c1) :query '(nil ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]
                  {:priority 1 :width 3.0 :key-prefix table-key}]]]]]]))
@@ -276,7 +276,7 @@
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1) :virtual)
                      :target {:referent (virtual-referent
-                                         '(nil ("single" :tag))
+                                         '("" ("single" :tag))
                                          (item-referent joe)
                                          nil
                                          :position :after)
@@ -291,7 +291,7 @@
                  :width 0.75
                  :key-prefix (conj table-key (:item-id joe) (any))
                  :subject-referent (item-referent joe)
-                 :template '(nil ("name" :tag))
+                 :template '("" ("name" :tag))
                  :attributes
                  [[#{:label :element :recursive :optional} #{:content}
                    {:row {:referent (item-referent joe)

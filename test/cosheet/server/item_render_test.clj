@@ -130,13 +130,13 @@
                :width 0.5
                :key-prefix tags-key
                :subject-referent one-another-two-referent
-               :template '(nil :tag)
+               :template '(anything :tag)
                :attributes
                [[(:item-id another) {:class "added1"}]
                 [(:item-id none) {:class "added2"}]
                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            'nil (item-referent age)
+                                            '(anything) (item-referent age)
                                             one-another-two-items) 
                                  :select-pattern (conj age-key [:pattern])}}]]
                :selector-category :some-category}]]
@@ -151,14 +151,14 @@
                   :width 0.5
                   :key-prefix age-key
                   :subject-referent (item-referent age)
-                  :template '(nil ("confidence" :tag))
+                  :template '(anything ("confidence" :tag))
                   :attributes
                   [[(:item-id another) {:class "added1"}]
                    [(:item-id none) {:class "added2"}]
                    [#{:label :optional} #{:content}
                      {:add-sibling {:referent
                                     (virtual-referent
-                                     'nil (item-referent age)
+                                     '(anything) (item-referent age)
                                      one-another-two-items) 
                                     :select-pattern (conj age-key [:pattern])}
                       }]]
@@ -176,13 +176,13 @@
                   :width 0.5
                   :key-prefix (conj age-key :label)
                   :subject-referent (item-referent two)
-                  :template '(nil :tag)
+                  :template '(anything :tag)
                   :attributes
                   [[(:item-id another) {:class "added1"}]
                    [(:item-id none) {:class "added2"}]
                    [#{:label :optional} #{:content}
                      {:add-sibling {:referent (virtual-referent
-                                               '(nil ("confidence" :tag))
+                                               '(anything ("confidence" :tag))
                                                (item-referent age)
                                                (item-referent two)) 
                                     :select-pattern (conj age-key [:pattern])}
@@ -196,14 +196,14 @@
                    :width 0.5
                    :key-prefix age-key
                    :subject-referent (item-referent age)
-                   :template (as-set '(nil ("confidence" :tag)
-                                           ("probability" :tag)))
+                   :template (as-set '(anything ("confidence" :tag)
+                                                ("probability" :tag)))
                    :attributes
                    [[(:item-id another) {:class "added1"}]                    
                     [(:item-id none) {:class "added2"}]
                     [#{:label :optional} #{:content}
                       {:add-sibling {:referent (virtual-referent
-                                                '(nil ("confidence" :tag))
+                                                '(anything ("confidence" :tag))
                                                 (item-referent age)
                                                 (item-referent two)) 
                                      :select-pattern (conj age-key [:pattern])}
@@ -215,10 +215,11 @@
                    :key (conj (conj age-key :label (:item-id none)) :virtual)
                    :selector-category :some-category
                    :target {:referent (virtual-referent
-                                       '(nil :tag) (item-referent none) nil)
+                                       '(anything :tag)
+                                       (item-referent none) nil)
                             :select-pattern (conj age-key :label [:pattern])}
                    :add-sibling {:referent (virtual-referent
-                                             nil
+                                             '(anything)
                                              (item-referent age)
                                              (item-referent none)) 
                                  :select-pattern (conj age-key [:pattern])}}]
@@ -228,13 +229,13 @@
                :width 0.5
                :key-prefix age-key
                :subject-referent (item-referent age)
-               :template '(nil)
+               :template '(anything)
                :selector-category :some-category
                :attributes
                [[(:item-id another) {:class "added1"}]
                 [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            nil
+                                            '(anything)
                                             (item-referent age)
                                             (item-referent none)) 
                                  :select-pattern (conj age-key [:pattern])}
@@ -332,26 +333,26 @@
                 :width 0.25
                 :key-prefix tags-key
                 :subject-referent all-elements-referent
-                :template '(nil :tag)
+                :template '(anything :tag)
                 :attributes
                 [[(:item-id double) {:class "added1"}]
                  [(:item-id unique) {:class "added2"}]
                  [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            nil (item-referent age)
+                                            '(anything) (item-referent age)
                                             all-elements) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]]
             [:div {:class "editable"
                    :key (conj age-key
                               :example-element (:item-id confidence1) :virtual)
                    :target {:referent (virtual-referent
-                                       '(nil ("confidence" :tag))
+                                       '(anything ("confidence" :tag))
                                        (item-referent age)
                                        (item-referent pair)
                                        :position :before)
                             :select-pattern (conj age-key [:pattern])}
                    :add-sibling {:referent (virtual-referent
-                                            nil (item-referent age)
+                                            '(anything) (item-referent age)
                                             all-elements) 
                                  :select-pattern (conj age-key [:pattern])}}]]
            ;; Group for confidence and likelihood.
@@ -365,13 +366,13 @@
                  :width 0.25
                  :key-prefix tags-key
                  :subject-referent likelihoods-referent
-                 :template '(nil :tag)
+                 :template '(anything :tag)
                  :attributes
                  [[(:item-id double) {:class "added1"}]
                   [(:item-id unique) {:class "added2"}]
                   [#{:label :optional} #{:content}
                    {:add-sibling {:referent (virtual-referent
-                                             '(nil ("confidence" :tag))
+                                             '(anything ("confidence" :tag))
                                              (item-referent age)
                                              likelihoods) 
                                   :select-pattern (conj age-key [:pattern])}}]]}]]]]
@@ -383,14 +384,14 @@
                 :width 0.6875
                 :key-prefix age-key
                 :subject-referent (item-referent age)
-                :template (as-set '(nil ("confidence" :tag)
+                :template (as-set '(anything ("confidence" :tag)
                                         ("likelihood" :tag)))
                 :attributes
                 [[(:item-id double) {:class "added1"}]
                  [(:item-id unique) {:class "added2"}]
                  [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            '(nil ("confidence" :tag))
+                                            '(anything ("confidence" :tag))
                                             (item-referent age)
                                             likelihoods) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]
@@ -409,13 +410,13 @@
                  :width 0.25
                  :key-prefix (conj age-key :label)
                  :subject-referent (item-referent two)
-                 :template '(nil :tag)
+                 :template '(anything :tag)
                  :attributes
                  [[(:item-id double) {:class "added1"}]
                   [(:item-id unique) {:class "added2"}]
                   [#{:label :optional} #{:content}
                    {:add-sibling {:referent (virtual-referent
-                                             '(nil ("confidence" :tag))
+                                             '(anything ("confidence" :tag))
                                              (item-referent age)
                                              (item-referent two)) 
                                   :select-pattern (conj age-key [:pattern])}}]]}]]]]
@@ -425,14 +426,14 @@
                :width 0.6875
                :key-prefix age-key
                :subject-referent (item-referent age)
-               :template (as-set '(nil ("confidence" :tag)
+               :template (as-set '(anything ("confidence" :tag)
                                        ("probability" :tag)))
                :attributes
                [[(:item-id double) {:class "added1"}]
                 [(:item-id unique) {:class "added2"}]
                 [#{:label :optional} #{:content}
                  {:add-sibling {:referent (virtual-referent
-                                           '(nil ("confidence" :tag))
+                                           '(anything ("confidence" :tag))
                                            (item-referent age)
                                            (item-referent two)) 
                                 :select-pattern (conj age-key [:pattern])}}]]}]]]
@@ -447,13 +448,13 @@
                 :width 0.6875
                 :key-prefix age-key
                 :subject-referent (item-referent age)
-                :template '(nil ("confidence" :tag))
+                :template '(anything ("confidence" :tag))
                 :attributes
                 [[(:item-id double) {:class "added1"}]
                  [(:item-id unique) {:class "added2"}]
                  [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            '(nil ("confidence" :tag))
+                                            '(anything ("confidence" :tag))
                                             (item-referent age)
                                             (item-referent one)) 
                                  :select-pattern (conj age-key [:pattern])}}]]}]]]]
@@ -472,11 +473,11 @@
                  [(:item-id unique) {:class "added2"}]
                  [#{:label :optional} #{:content}
                   {:add-sibling {:referent (virtual-referent
-                                            nil
+                                            '(anything)
                                             (item-referent age)
                                             (item-referent unique)) 
                                  :select-pattern (conj age-key [:pattern])}}]]
-                :template '(nil :tag)}]]]
+                :template '(anything :tag)}]]]
             [:component {:key (conj age-key (:item-id unique))}
              [item-without-labels-DOM-R unique [certainty]
               {:priority 1
@@ -487,11 +488,11 @@
                [[(:item-id double) {:class "added1"}]
                 [#{:label :optional} #{:content}
                  {:add-sibling {:referent (virtual-referent
-                                           nil
+                                           '(anything)
                                            (item-referent age)
                                            (item-referent unique)) 
                                 :select-pattern (conj age-key [:pattern])}}]]
-               :template '(nil ("certainty" :tag))}]]]]]))))
+               :template '(anything ("certainty" :tag))}]]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels
@@ -516,7 +517,7 @@
                     {:priority 0 :key-prefix element-key
                      :subject-referent (item-referent element)
                      :width 1.0
-                     :template '(nil :tag)
+                     :template '(anything :tag)
                      :attributes [[#{:content}
                                    {:expand {:referent
                                              (item-referent element)}}]]}]]
@@ -546,7 +547,7 @@
                          :key (conj item-key :tags :virtual)
                          :expand {:referent (item-referent item)}
                          :target {:referent (virtual-referent
-                                             '(nil :tag)
+                                             '(anything :tag)
                                              (item-referent item)
                                              nil
                                              :position :after)
@@ -596,7 +597,7 @@
                   {:priority 0 :key-prefix element-key
                    :subject-referent (item-referent element)
                    :width 1.0
-                   :template '(nil :tag)}]]
+                   :template '(anything :tag)}]]
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item elements-wrapper"}
                   [:div {:class "horizontal-tags-element tag wide"}
@@ -644,7 +645,7 @@
                   {:priority 0 :key-prefix element-key
                    :subject-referent (item-referent element)
                    :width 1.0
-                   :template '(nil :tag)}]]
+                   :template '(anything :tag)}]]
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"

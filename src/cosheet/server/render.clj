@@ -11,7 +11,8 @@
                      [state-map :refer [state-map-get]])
             (cosheet.server 
              [referent :refer [item-referent referent->exemplar-and-subject
-                               item-referent? instantiate-referent]]
+                               item-referent?]]
+             [instantiate :refer [instantiate-referent]]
              [model-utils :refer [ tabs-holder-item-R first-tab-R
                                   visible-item?-R]]
              [render-utils :refer [make-component]]
@@ -142,9 +143,8 @@
                            ; If this is set, then the item must be immutable,
                            ; as item-referent-given-inherited only supports
                            ; this for immutable items.
-;               :template  ; The template that the twins of this dom
-                           ; must satisfy. If not present, then twins
-                           ; may not be created.
+              :template "" ; The template that the twins of this dom
+                           ; must satisfy.
 ;             :attributes  ; A set of attribute descriptions that parts
                            ; of the dom should have. Typically,
                            ; these are targets like row. See the comment in

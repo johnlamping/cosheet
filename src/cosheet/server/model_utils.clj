@@ -58,7 +58,10 @@
 ;;; We have various generic list forms:
 ;;;  pattern:   a form of a query that can be saved in the store. It uses
 ;;;             'anything and 'anything-immutable for wildcards,
-;;;             where a query would have nil.
+;;;             where a query would have nil. Patterns that are
+;;;             referent exemplars can also contain item referents,
+;;;             which will be replaced by the list form of their contents
+;;;             in the store.
 ;;;  query:     a form suitable for use as a query. It can have nils. It may
 ;;;             specify :top-level to require a top level row item.
 ;;;  template:  the list form for the content of a new item. It may

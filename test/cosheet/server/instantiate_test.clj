@@ -84,12 +84,12 @@
     (is (= (best-matching-element '("Joe" ("age" tag)) joes)
            nil))))
 
-(deftest condition-to-list-test
-  (is (= (condition-to-list '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
-  (is (= (canonicalize-list (condition-to-list (item-referent jane) store))
+(deftest expand-pattern-items-test
+  (is (= (expand-pattern-items '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
+  (is (= (canonicalize-list (expand-pattern-items (item-referent jane) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag))))))
   (is (= (canonicalize-list
-          (condition-to-list `(~(item-referent jane) 1 (2 3)) store))
+          (expand-pattern-items `(~(item-referent jane) 1 (2 3)) store))
          (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
 
 (deftest instantiate-referent-test

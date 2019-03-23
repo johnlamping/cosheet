@@ -56,10 +56,10 @@
     (when (not (empty? matches))
       [(best-match template matches)])))
 
-(defn condition-to-list
-  "If the condition has any item ids, look them up in the store and replace
+(defn expand-pattern-items
+  "If the pattern has any item ids, look them up in the store and replace
   them with the semantic list form of what is in the store."
-  [condition immutable-store]
+  [pattern immutable-store]
   (flatten-nested-content
    (clojure.walk/postwalk
     (fn [referent]
@@ -68,7 +68,7 @@
           (immutable-semantic-to-list
            (description->entity referent immutable-store)))
         referent))
-    condition)))
+    pattern)))
 
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
@@ -79,7 +79,7 @@
             [(description->entity referent immutable-store)])
     :exemplar (let [[_ exemplar subject-ref] referent
                     query (pattern-to-query
-                           (condition-to-list exemplar immutable-store))
+                           (expand-pattern-items exemplar immutable-store))
                     picker (if (and (item-referent? exemplar)
                                     (id-valid? immutable-store exemplar))
                              ;; If the exemplar is an item, then always
@@ -97,12 +97,12 @@
                         (instantiate-referent subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
                     query (pattern-to-query
-                           (condition-to-list condition immutable-store))]
+                           (expand-pattern-items condition immutable-store))]
                 (mapcat #(matching-elements query %)
                         (instantiate-referent subject-ref immutable-store)))
     :query (let [[_ condition] referent
                  query (pattern-to-query
-                        (condition-to-list condition immutable-store))]
+                        (expand-pattern-items condition immutable-store))]
              (matching-items query immutable-store))
     :union (let [[_ & referents] referent]
              (distinct (mapcat #(instantiate-referent % immutable-store)

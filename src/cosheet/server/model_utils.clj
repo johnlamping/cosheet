@@ -129,8 +129,8 @@
     true
     [template store]))
 
-(defn pattern-to-possible-non-selector-template
-  "Given a pattern, alter it to work as a template for a possible non-selector.
+(defn template-to-possible-non-selector-template
+  "Given a template alter it to work as a template for a possible non-selector.
    Specifically, replace 'anything, and 'anything-immutable by the empty
    string, unless in a part of the template that is marked as a selector,
    in which case don't modify it."
@@ -140,7 +140,7 @@
                    (and (sequential? %) (= (first %) :selector)))
               (rest pattern))
       pattern
-      (map pattern-to-possible-non-selector-template pattern))
+      (map template-to-possible-non-selector-template pattern))
     (if (#{'anything 'anything-immutable} pattern)
       ""
       pattern)))
@@ -254,15 +254,12 @@
         (selector? subj))))
 
 (defn create-selector-or-non-selector-element
-  "Create an element, using the appropriate template depending on whether
-   the subject is a selector. Return the updated store and the id of the
-   new element."
-  [selector-template non-selector-template subject
-   adjacent position use-bigger store]
-  (let [template (if (or (= selector-template non-selector-template)
-                         (and subject (selector? subject)))
-                   selector-template
-                   non-selector-template)]
+  "Create an element, modifying the template if the subject is not a
+   a selector. Return the updated store and the id of the new element."
+  [template subject adjacent position use-bigger store]
+  (let [template (if (and subject (selector? subject))
+                   template
+                   (template-to-possible-non-selector-template template))]
     (update-add-entity-adjacent-to store (:item-id subject)
                                    template adjacent position use-bigger)))
 ;;; Creating new tabs and tables.

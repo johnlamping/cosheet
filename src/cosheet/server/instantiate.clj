@@ -21,7 +21,6 @@
                                   immutable-semantic-to-list semantic-to-list-R
                                   item->canonical-semantic
                                   pattern-to-query query-to-template
-                                  pattern-to-possible-non-selector-template
                                   flatten-nested-content specialize-template
                                   semantic-elements-R]])))
 
@@ -120,14 +119,11 @@
   [template subjects adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
-        selector-template (query-to-template flattened-template 'anything)
-        non-selector-template (pattern-to-possible-non-selector-template
-                               flattened-template)
         [new-ids store]
         (thread-map
          (fn [[subject adjacent] store]
            (let [[store id] (create-selector-or-non-selector-element
-                             selector-template non-selector-template
+                             flattened-template
                              subject adjacent position use-bigger store)]
              [id store]))
          (map vector subjects adjacents)

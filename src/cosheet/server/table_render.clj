@@ -427,14 +427,12 @@
 (defn table-cell-DOM-R
   "Return the dom for one cell of a table, given its column description."
   [row-item
-   {:keys [column-id query exclusions] :as header-description}
+   {:keys [column-id query template exclusions] :as header-description}
    inherited]
   (let [inherited-down (assoc inherited
                               :key-prefix (conj (:key-prefix inherited)
                                                 column-id)
-                              :template (if (referent? query)
-                                          query
-                                          (query-to-template query)))]
+                              :template template)]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM row-item inherited-down)
       (expr-let [matches (matching-elements query row-item)
@@ -486,7 +484,7 @@
 (defn table-virtual-row-cell-DOM
   "Return the dom for one cell of a virtual row of a table."
   [adjacent-referent
-   {:keys [column-id query exclusions]} ;; A column header description
+   {:keys [column-id template exclusions]} ;; A column header description
    inherited]
   (let [select (conj (vec (butlast (:key-prefix inherited)))
                      [:pattern :subject] ;; The new row's id
@@ -494,7 +492,7 @@
                      [:pattern])
         inherited (assoc inherited
                          :key-prefix (conj (:key-prefix inherited) column-id)
-                         :template (query-to-template query)
+                         :template template
                          :select-pattern select)]
     (add-attributes
      (virtual-element-DOM adjacent-referent :after inherited)
@@ -553,15 +551,18 @@
        :column-id Id that identifies the column.
                   Typically the id of the column item.
            :query Query that each element of the column must satisfy.
-                  For a virtual column, this will be a virtual referent.
+                  For a virtual column, this will not be present.
+        :template Template for new items in the column.
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              [{:column-id (:item-id (:item node-or-element))
-                :query (table-hierarchy-node-query node-or-element node)
-                :exclusions (table-hierarchy-node-exclusions node)}]))
+              (let [query (table-hierarchy-node-query node-or-element node)]
+                [{:column-id (:item-id (:item node-or-element))
+                  :query (table-hierarchy-node-query node-or-element node)
+                  :template (query-to-template query)
+                  :exclusions (table-hierarchy-node-exclusions node)}])))
           (hierarchy-node-next-level node)))
 
 (defn row-template-and-items-R
@@ -668,7 +669,7 @@
                                     (item-referent (or (last columns)
                                                        table-item)))
                   virtual-column-description {:column-id :virtualColumn
-                                              :query virtual-template
+                                              :template virtual-template
                                               :exclusions nil}
                   rows (map #(table-row-DOM-component
                               % row-template (concat column-descriptions

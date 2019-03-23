@@ -88,7 +88,7 @@
   to make them work as a wild card that avoids matching non-user editable
   elements."
   [pattern]
-  (flatten-nested-content
+  (flatten-nested-content ;; Because we can add nested content.
    (clojure.walk/postwalk
     (fn [item] (if (#{'anything 'anything-immutable} item)
                  '(nil (nil :order :non-semantic))

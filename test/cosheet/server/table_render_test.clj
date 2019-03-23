@@ -226,18 +226,23 @@
                             :class "table-row"}
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
-                 [{:column-id (:item-id c1) :query '(nil ("single" :tag))
+                 [{:column-id (:item-id c1)
+                   :query '(nil ("single" :tag))
+                   :template '("" ("single" :tag))
                    :exclusions '()}
-                  {:column-id (:item-id c2) :query '(nil ("name" :tag))
+                  {:column-id (:item-id c2)
+                   :query '(nil ("name" :tag))
+                   :template '("" ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-id (:item-id c3)
                    :query '(nil ("name" :tag) ("id" :tag))
+                   :template '("" ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
                   (any)
                   (any)
                   {:column-id :virtualColumn
-                   :query (virtual-referent
+                   :template (virtual-referent
                               '(anything
                                 (:column :non-semantic)
                                 (:non-semantic :non-semantic)
@@ -252,7 +257,9 @@
                  (conj table-key :virtualRow)
                  '("" ("" ("age" :tag)) (:top-level :non-semantic))
                  (item-referent joe)
-                 [{:column-id (:item-id c1) :query '(nil ("single" :tag))
+                 [{:column-id (:item-id c1)
+                   :query '(nil ("single" :tag))
+                   :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]
                  {:priority 1 :width 3.0 :key-prefix table-key}]]]]]]))

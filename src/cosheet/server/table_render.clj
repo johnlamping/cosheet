@@ -540,9 +540,8 @@
   return the condition that all elements under the column satisfy."
   [element node]
   (let [content (:content element)]
-    ;; TODO!!!: This appears not to handle 'anything in properties.
     (pattern-to-query
-     (cons (if (#{'anything 'anything-immutable} content) nil content)
+     (cons content
            (canonical-set-to-list (:cumulative-properties node))))))
 
 (defn table-hierarchy-node-column-descriptions

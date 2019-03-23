@@ -227,15 +227,16 @@
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
                  [{:column-id (:item-id c1)
-                   :query '(nil ("single" :tag))
+                   :query '(nil (nil :order :non-semantic) ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   {:column-id (:item-id c2)
-                   :query '(nil ("name" :tag))
+                   :query '(nil  (nil :order :non-semantic) ("name" :tag))
                    :template '("" ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-id (:item-id c3)
-                   :query '(nil ("name" :tag) ("id" :tag))
+                   :query '(nil (nil :order :non-semantic)
+                                ("name" :tag) ("id" :tag))
                    :template '("" ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
@@ -258,7 +259,7 @@
                  '("" ("" ("age" :tag)) (:top-level :non-semantic))
                  (item-referent joe)
                  [{:column-id (:item-id c1)
-                   :query '(nil ("single" :tag))
+                   :query '(nil  (nil :order :non-semantic) ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]

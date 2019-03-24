@@ -495,6 +495,8 @@
                 [:id (:id content)]
                 (instance? cosheet.orderable.Orderable content)
                 [:ord (:left content) (:right content)]
+                (vector? content)
+                (into [:vec] content)
                 true
                 content)])]))
 
@@ -513,7 +515,8 @@
                             content (if (vector? content)
                                       (apply (case (first content)
                                                :id ->ItemId
-                                               :ord ->Orderable)
+                                               :ord ->Orderable
+                                               :vec vector)
                                              (rest content))
                                       content)]
                         (add-or-defer-triple

@@ -23,7 +23,7 @@
    ;; id->content
    {(make-id "0") 0
     (make-id "1") (make-id "4")
-    (make-id "2") "Foo"
+    (make-id "2") ["Foo"]
     (make-id "3") :label
     (make-id "4") (make-id "6")
     (make-id "5") "bar"
@@ -33,7 +33,7 @@
    ;; content->ids
    {0 (make-id "0")
     (make-id "4") (make-id "1")
-    "foo" (make-id "2")
+    ["Foo"] (make-id "2")
     :label (make-id "3")
     (make-id "6") (make-id "4")
     "bar" #{(make-id "5") (make-id "8")}
@@ -42,7 +42,7 @@
    ;; temporary-ids
    #{}
    ;; subject->label->ids
-   {(make-id "0") {"foo" [(make-id "1")] "second" [(make-id "1")]}
+   {(make-id "0") {["Foo"] [(make-id "1")] "second" [(make-id "1")]}
     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
     (make-id "2") {"bar" [(make-id "3")]}
     (make-id "3") {nil [(make-id "8")]}
@@ -71,9 +71,9 @@
   (is (not (id-valid? test-store (make-id "wrong")))))
 
 (deftest id-label->element-ids-test
-  (is (= (id-label->element-ids test-store (make-id "0") "foo")
+  (is (= (id-label->element-ids test-store (make-id "0") ["Foo"])
          [(make-id "1")]))
-    (is (= (id-label->element-ids test-store (make-id "0") "Foo")
+  (is (= (id-label->element-ids test-store (make-id "0") ["Foo"])
          [(make-id "1")]))
   (is (= (id-label->element-ids test-store (make-id "1") nil)
          [(make-id "7")]))
@@ -89,9 +89,9 @@
 (deftest id->content-test
   (is (= (id->content test-store (make-id "???")) nil))
   (is (= (id->content test-store (make-id "1")) (make-id "4")))
-  (is (= (id->content test-store (make-id "2")) "Foo"))
+  (is (= (id->content test-store (make-id "2")) ["Foo"]))
   (is (= (id->content test-store (make-id "6")) 5))
-  (is (= (id->content test-store (->ImplicitContentId (make-id "2"))) "Foo"))
+  (is (= (id->content test-store (->ImplicitContentId (make-id "2"))) ["Foo"]))
   (is (= (id->content test-store (->ImplicitContentId (make-id "1")))
          (make-id "6")))
   (is (= (id->content test-store (->ImplicitContentId
@@ -280,14 +280,14 @@
              [3 (as-set [(make-id "1") (make-id "4") (make-id "6")])]))
   (is (check (candidate-matching-ids-and-estimate test-store '(5))
              [3 (as-set [(make-id "1") (make-id "4") (make-id "6")])]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(nil "foo"))
+  (is (check (candidate-matching-ids-and-estimate test-store '(nil ["Foo"]))
              [1 [(make-id "1")]]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(5 "foo"))
+  (is (check (candidate-matching-ids-and-estimate test-store '(5 ["Foo"]))
              [1 [(make-id "1")]]))
-  (is (check (candidate-matching-ids-and-estimate test-store '(0 "foo"))
+  (is (check (candidate-matching-ids-and-estimate test-store '(0 ["Foo"]))
              [1 []]))
   (is (check (candidate-matching-ids-and-estimate
-              test-store '(nil "foo" "second"))
+              test-store '(nil ["Foo"] "second"))
              [1 [(make-id "1")]]))
   (is (nil? (candidate-matching-ids-and-estimate test-store '(nil))))
   (is (check (candidate-matching-ids test-store nil)

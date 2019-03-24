@@ -184,11 +184,11 @@
       ))
   )
 
-(defn initial-page [file-path servlet-path referent-string selector-string]
+(defn initial-page [file-path servlet-path referent-string]
   (println (now-string) "initial page"
-           file-path referent-string selector-string)
+           file-path referent-string)
   (if-let [session-id (create-session nil file-path referent-string
-                                      manager-data selector-string)]
+                                      manager-data)]
     (do (println (now-string) "Got session")
         (html5
          [:head
@@ -382,11 +382,10 @@
     (or (get-session-state id)
         (when-let [url clean]
           (let [referent-string (second (re-find #"\?.*referent=([^&]*)" url))
-                selector-string (second (re-find #"\?.*selector=([^&]*)" url))
                 url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))
                 file-path (url-path-to-file-path url-path user-id)]
             (ensure-session
-             id file-path referent-string manager-data selector-string))))))
+             id file-path referent-string manager-data))))))
 
 (defn handle-ajax [request]
   (let [params (:params request)

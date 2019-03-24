@@ -275,7 +275,6 @@
   [referent inherited]
   [:div (-> (:selectable-attributes inherited)
             (into-attributes (item-or-content-attributes inherited))
-            (into-attributes (select-keys inherited [:selector-category]))
             (into-attributes
              {:class "editable"
               :key (conj (:key-prefix inherited) :virtual)

@@ -82,7 +82,6 @@
                                (into base-inherited
                                      {:width 0.5
                                       :template "foo"
-                                      :selector-category :some-category
                                       :attributes
                                       [[#{:content} {:added-by-test {1 2}}]
                                        [(:item-id another) {:class "added1"}]
@@ -115,7 +114,6 @@
          [:div {:class "item with-elements"}
           [:div {:class "content-text editable"
                  :key (conj age-key :content)
-                 :selector-category :some-category
                  :target {:referent (item-referent age)
                           :template "foo"}
                  :added-by-test {1 2}}
@@ -135,11 +133,11 @@
                [[(:item-id another) {:class "added1"}]
                 [(:item-id none) {:class "added2"}]
                 [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything) (item-referent age)
-                                            one-another-two-items) 
-                                 :select-pattern (conj age-key [:pattern])}}]]
-               :selector-category :some-category}]]
+                 {:add-sibling
+                  {:referent (virtual-referent
+                              '(anything) (item-referent age)
+                              one-another-two-items) 
+                   :select-pattern (conj age-key [:pattern])}}]]}]]
             [:div {:class "indent-wrapper"}
              [:div {:class "vertical-stack"}
               ;; One Another
@@ -161,8 +159,7 @@
                                      '(anything) (item-referent age)
                                      one-another-two-items) 
                                     :select-pattern (conj age-key [:pattern])}
-                      }]]
-                  :selector-category :some-category}]]
+                      }]]}]]
                ;; Another
                [:component {:key (conj age-key (:item-id another))}
                 [item-without-labels-DOM-R another [(any)]
@@ -186,8 +183,7 @@
                                                (item-referent age)
                                                (item-referent two)) 
                                     :select-pattern (conj age-key [:pattern])}
-                      }]]
-                  :selector-category :some-category}]]
+                      }]]}]]
                [:div {:class "indent-wrapper"}
                 [:component {:key (conj age-key (:item-id two))}
                  [item-without-labels-DOM-R
@@ -207,13 +203,11 @@
                                                 (item-referent age)
                                                 (item-referent two)) 
                                      :select-pattern (conj age-key [:pattern])}
-                       }]]
-                   :selector-category :some-category}]]]]]]]
+                       }]]}]]]]]]]
            ;; None
            [:div {:class "horizontal-tags-element tag narrow added2"}
             [:div {:class "editable tag"
                    :key (conj (conj age-key :label (:item-id none)) :virtual)
-                   :selector-category :some-category
                    :target {:referent (virtual-referent
                                        '(anything :tag)
                                        (item-referent none) nil)
@@ -230,7 +224,6 @@
                :key-prefix age-key
                :subject-referent (item-referent age)
                :template '(anything)
-               :selector-category :some-category
                :attributes
                [[(:item-id another) {:class "added1"}]
                 [#{:label :optional} #{:content}

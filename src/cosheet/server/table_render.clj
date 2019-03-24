@@ -382,15 +382,13 @@
   in the hierarchy."
   [hierarchy rows-referent inherited]
   (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-        inherited-down (assoc inherited
-                              :selector-category :table-header)
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)
                               (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
-                        hierarchy adjacent-referent inherited-down)]
+                        hierarchy adjacent-referent inherited)]
     (expr-let [columns (expr-seq
                         map #(table-header-top-level-subtree-DOM-R
-                              % rows-referent inherited-down)
+                              % rows-referent inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
             (concat columns [virtual-header])))))
@@ -587,7 +585,6 @@
     (expr-let [condition-elements (visible-elements-R row-condition-item)
                inherited-down (assoc
                                inherited
-                               :selector-category :table-condition
                                :subject-referent subject-referent
                                :template '(anything)
                                ;; TODO: Do only when all tags?
@@ -599,7 +596,7 @@
                dom (labels-and-elements-DOM-R
                     condition-elements virtual-dom
                     true true :horizontal inherited-down)]
-      [:div {:class "query-holder tag selectors"}
+      [:div {:class "query-holder tag"}
        [:div {:class "query-indent tag"}]
        (add-attributes dom {:class "query-condition"})])))
 
@@ -679,11 +676,11 @@
                                row-template
                                (item-referent (or (last row-items) table-item))
                                column-descriptions inherited)]
-              [:div {:class "table selector-scope"}
+              [:div {:class "table"}
                condition-dom
                [:div {:class "query-result-wrapper"}
                 [:div {:class "query-result-indent tag"}]
-                [:div {:class "table-main selectees selector-scope"}
-                 (add-attributes headers {:class "selectors"})
-                 (into [:div {:class "table-rows selectees"}]
+                [:div {:class "table-main"}
+                 headers
+                 (into [:div {:class "table-rows"}]
                        (concat rows [virtual-row]))]]])))))))

@@ -79,7 +79,7 @@
                            table-header-matches-referent])
         inherited-for-batch
         (-> inherited
-            (assoc :selector-category :batch-stack :match-all true)
+            (assoc :match-all true)
             ;; Make its doms have different keys.
             (update :key-prefix #(conj % :batch-stack)))]
     (expr-let
@@ -125,8 +125,7 @@
   [query-item store inherited]
   (let [inherited-for-query
         (-> inherited
-            (assoc :selector-category :batch-query
-                   :subject-referent (item-referent query-item))
+            (assoc :subject-referent (item-referent query-item))
             (update :key-prefix #(conj % :batch-query)))]
     (expr-let
         [stack-dom (batch-edit-stack-DOM-R query-item store inherited)]

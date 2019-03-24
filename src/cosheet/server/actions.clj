@@ -125,8 +125,7 @@
 
 (defn do-add-element
   [store arguments attributes]
-  (let [{:keys [selector-category]} attributes
-        {:keys [select-pattern target-key]} arguments]
+  (let [{:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             [added store] (create-possible-selector-elements
@@ -139,8 +138,7 @@
 
 (defn do-add-label
   [store arguments attributes]
-  (let [{:keys [select-pattern target-key]} arguments
-        {:keys [selector-category]} attributes]
+  (let [{:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             sample-item (first items)
@@ -158,8 +156,7 @@
 
 (defn do-add-twin
   [store arguments attributes]
-  (let [{:keys [target-key]} arguments
-        {:keys [selector-category]} attributes]
+  (let [{:keys [target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
         (let [items (instantiate-referent referent store)
@@ -238,8 +235,7 @@
 
 (defn do-expand
   [store arguments attributes]
-  (let [{:keys [selector-category]} attributes
-        {:keys [referent session-state]} arguments]
+  (let [{:keys [referent session-state]} arguments]
     (when (referent? referent)
       ;; If the target is a single item with no elements, switch the target
       ;; to its subject.
@@ -256,9 +252,7 @@
                        referent)]
         {:store store
          :open (cond-> (str (:url-path session-state)
-                            "?referent=" (referent->string referent))
-                 selector-category
-                 (str "&selector=" (referent->string selector-category)))}))))
+                            "?referent=" (referent->string referent)))}))))
 
 (defn do-selected [store arguments attributes]
   (let [referent (:referent arguments)

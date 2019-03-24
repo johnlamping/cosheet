@@ -108,7 +108,7 @@
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "/foo" nil md nil)]
+    (let [state (ensure-session nil "/foo" nil md)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))

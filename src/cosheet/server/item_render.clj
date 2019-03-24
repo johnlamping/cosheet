@@ -461,8 +461,7 @@
     ;; Any attributes we inherit take precedence over basic commands,
     ;; but nothing else.
     [:div (into-attributes
-           (into-attributes (select-keys inherited [:selector-category])
-                            (content-attributes inherited))
+           (content-attributes inherited)
            {:class (cond-> "content-text editable"
                      (= content 'anything-immutable) (str " immutable"))
             :target (assoc (select-keys inherited [:template])

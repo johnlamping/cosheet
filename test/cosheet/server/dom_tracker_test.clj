@@ -354,7 +354,7 @@
         ms (new-mutable-store store)
         client-state (create-client-state ms (referent->string joe))]
     (add-dom tracker "root" [:root]
-             [DOM-for-client-R ms nil client-state nil])
+             [DOM-for-client-R ms nil client-state])
     (compute md)
     (is (>= (count (:subscriptions @(:manager-data ms))) 4))
     (let [reporters (keep :reporter (vals (:components @tracker)))]

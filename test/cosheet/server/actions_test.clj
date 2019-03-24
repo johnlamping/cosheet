@@ -283,7 +283,6 @@
                        :url-path "Path"
                        :client-state client-state}
         attributes {:commands {:add-element nil}
-                    :selector-category :table-header
                     :target {:referent
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])}}]
@@ -306,7 +305,6 @@
                        :selector-interpretation :broad
                        :client-state (new-state-map {:last-action nil})}
         attributes {:commands {:add-element nil}
-                    :selector-category :table-header
                     :target {:referent
                              (union-referent [(item-referent jane)
                                               (item-referent joe)])}}]

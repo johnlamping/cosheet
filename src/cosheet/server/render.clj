@@ -79,9 +79,6 @@
    :expand
    :selected
    :batch-edit
-   :selector-category  ; If this dom is a selector, this field
-                       ; will be present,  and hold an atom characterizing
-                       ; the kind of selector.
    ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -149,12 +146,6 @@
                            ; of the dom should have. Typically,
                            ; these are targets like row. See the comment in
                            ; render_utils for the exact format.
-;       :selector-category ; In addition to giving the category of a selector,
-                           ; this means that new elements should get 'anything
-                           ; rather than "", if they are part of the selector,
-                           ; and not part of what is selected. When the
-                           ; target referent is instantiated, the first group
-                           ; items must be the selector.
    })
 ;;; In some cases, the inherited information is halfway between being about
 ;;; an item and its children. In this case, :template and :attributes are
@@ -212,9 +203,7 @@
           (expr-let [dom dom]
             (cond-> dom
               (seq tags)
-              (add-attributes {:class "tag"})
-              (:selector-category inherited)
-              (add-attributes {:class "selectors"}))))
+              (add-attributes {:class "tag"}))))
         (table-DOM-R item inherited)))))
 
 (defn label-datalist-DOM-R
@@ -235,7 +224,7 @@
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
-  [store temporary-id client-state selector-category]
+  [store temporary-id client-state]
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (if batch-editing
       (let [temporary-item (description->entity temporary-id store)]
@@ -255,9 +244,7 @@
           (let [item (description->entity (:item-id immutable-item) store)
                 inherited (cond-> starting-inherited
                             subject-referent
-                            (assoc :subject-referent subject-referent)
-                            selector-category
-                            (assoc :selector-category selector-category))]
+                            (assoc :subject-referent subject-referent))]
             (expr-let [tab-tags (matching-elements :tab item)
                        content (content item)]
               (if (empty? tab-tags)
@@ -284,8 +271,8 @@
 
 (defn DOM-for-client-R
   "Return a reporter giving the DOM specified by the client."
-  [store temporary-id client-state selector-category]
+  [store temporary-id client-state]
   (expr-let [dom (top-level-DOM-R
-                  store temporary-id client-state selector-category)]
+                  store temporary-id client-state)]
     (into dom [(make-component {:key [:label-values]}
                                 [label-datalist-DOM-R store])])))

@@ -324,11 +324,8 @@
                     :in-sync false})))
 
 (defn create-tracker
-  [store temporary-id client-state manager-data selector-string]
-  (let [selector-category (when selector-string
-                            (string->referent selector-string))
-        definition [DOM-for-client-R store temporary-id client-state
-                    selector-category]
+  [store temporary-id client-state manager-data]
+  (let [definition [DOM-for-client-R store temporary-id client-state]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
     (println (new java.util.Date) "created tracker"
@@ -382,7 +379,7 @@
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
-  [session-id file-path referent-string manager-data selector-string]
+  [session-id file-path referent-string manager-data]
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path)]
     (let [store (:store store-info)
@@ -400,7 +397,7 @@
                               :temporary-id temporary-id
                               :tracker (create-tracker
                                         store temporary-id client-state
-                                        manager-data selector-string)
+                                        manager-data)
                               :client-state client-state})
                    id])))]
       (prune-unused-stores)
@@ -410,10 +407,10 @@
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
-  [session-id file-path referent-string manager-data selector-string]
+  [session-id file-path referent-string manager-data]
   (or (get-session-state session-id)
       (let [session-id (create-session session-id file-path referent-string
-                                       manager-data selector-string)]
+                                       manager-data)]
         (get-session-state session-id))))
 
 (defn forget-session

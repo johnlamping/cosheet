@@ -164,15 +164,15 @@
                      (~(any) :order :non-semantic)))))
       (is (check
            dom
-           [:div {:class "table selector-scope"}
-            [:div {:class "query-holder tag selectors"}
+           [:div {:class "table"}
+            [:div {:class "query-holder tag"}
              [:div {:class "query-indent tag"}]
              ;; TODO: Add test here too.
              (any)]
             [:div {:class "query-result-wrapper"}
              [:div {:class "query-result-indent tag"}]
-             [:div {:class "table-main selectees selector-scope"}
-              [:div {:class "column-header-sequence selectors"}
+             [:div {:class "table-main"}
+              [:div {:class "column-header-sequence"}
                [:div {:class "wrapped-element tag column-header leaf"} 
                 [:component {:class "tag"
                              :key (conj table-key
@@ -183,7 +183,6 @@
                    :key-prefix (conj table-key (:item-id c1))
                    :subject-referent first-column-referent
                    :template '(anything :tag)
-                   :selector-category :table-header
                    :attributes
                    [[#{:label :element :recursive :optional} #{:content}
                      {:add-column first-column-add
@@ -192,8 +191,7 @@
                      {:expand {:referent first-column-referent}
                       :delete {:referent nil}}]]}]]
                 [:div {:class "indent-wrapper"}
-                 [:div {:selector-category :table-header
-                        :delete-column {:referent first-column-referent},
+                 [:div {:delete-column {:referent first-column-referent},
                         :delete {:referent nil}
                         :add-column first-column-add
                         :add-twin {:referent nil}
@@ -205,8 +203,7 @@
                (any)
                (any)
                (any)
-               [:div {:selector-category :table-header
-                      :class "editable column-header virtual-column"
+               [:div {:class "editable column-header virtual-column"
                       :key (conj table-key :virtualColumn :virtual)
                       :target {:referent
                                (virtual-referent
@@ -221,7 +218,7 @@
                                :select-pattern (conj table-key
                                                      [:pattern :subject]
                                                      [:pattern] )}}]]
-              [:div {:class "table-rows selectees"}
+              [:div {:class "table-rows"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
                 [table-row-DOM-R

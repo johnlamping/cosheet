@@ -76,14 +76,14 @@
 ;; cosheet initial page
 ;;
 (defn get-initial-page
-  [request path referent selector]
+  [request path referent]
   (if-not (authenticated? request)
     (throw-unauthorized)
     ;; TODO: Rather than make up an unknown user, show an error.
     (let [user-id (get-in request [:session :identity] "unknown")
           servlet-path (get-in request [:servlet-context-path])]
       (initial-page (url-path-to-file-path path user-id)
-                    servlet-path referent selector)
+                    servlet-path referent)
     )
   ))
 
@@ -180,12 +180,12 @@
 (defroutes main-routes    ;;main-routes
   (GET "/" [] list-files)
   (POST "/" [] create-file)
-  (GET "/cosheet/:path{.*}" [path referent selector :as request]
-       (get-initial-page request (str "/cosheet/" path) referent selector))
-  ;;(GET ".+//:path{.*}" [path referent selector]
-  ;;     (initial-page (str "//" path) referent selector))
-  ;;(GET "/~/:path{.*}" [path referent selector]
-  ;;     (initial-page (str "/~/" path) referent selector))
+  (GET "/cosheet/:path{.*}" [path referent :as request]
+       (get-initial-page request (str "/cosheet/" path) referent))
+  ;;(GET ".+//:path{.*}" [path referent]
+  ;;     (initial-page (str "//" path) referent))
+  ;;(GET "/~/:path{.*}" [path referent]
+  ;;     (initial-page (str "/~/" path) referent))
   (POST "/ajax-request/:id" [] ajax-request)
   (GET "/login" [] login)
   (POST "/login" [] login-authenticate)

@@ -47,9 +47,9 @@
       (map #(entity/in-different-store % entity) satisfiers))))
 
 (defn non-implied-matching-elements-R
-  "Given an item, a template, and an implied template, return all semantic
-  elements matching the template, but throwing out enough elements to exactly
-  match the implied template."
+  "Given an item, a template template, and an implied template for
+  the entire item, return all semantic elements matching the template,
+  but throwing out enough elements to exactly match the implied template."
   [item template implied-template]
   (expr-let [elements (expr-filter semantic-element?-R
                                    (matching-elements template item))

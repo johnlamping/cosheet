@@ -317,11 +317,7 @@
           new-store (current-store mutable-store)
           select (:select result)
           new-id (last (first select))]
-      (println (simplify-for-print result))
       (is (= select [[:jane new-id] [[:jane]]]))
-      (println new-id)
-      (println (to-list
-                (description->entity new-id new-store)) )
       (is (check (item->canonical-semantic
                   (description->entity (:item-id jane) new-store))
                  (canonicalize-list '("Jane" "female"

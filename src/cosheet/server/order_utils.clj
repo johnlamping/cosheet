@@ -9,6 +9,15 @@
     [expression :refer [expr-let expr-seq]]
     [utils :refer [thread-map]])))
 
+;;; This is copied from model_utils to avoid a circular dependency
+(defn semantic-element?
+  "Return true if an element counts as semantic information."
+  [immutable-entity]
+   (let [cont (content immutable-entity)]
+     (or (string? cont)
+         (number? cont)
+         (#{:tag 'anything 'anything-immutable} cont))))
+
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
   [a b]
@@ -46,14 +55,8 @@
         trans (some (fn [element] (= (content element) :temporary))
                     entity-elements)]
     ;; Keyword markers and non-semantic elements don't get an ordering.
-    ;; (Elements whose :non-semantic is itself qualified do get an ordering,
-    ;; as their sub-elements might be semantic with respect to them,
-    ;; and so need ordering.
-    (if (or (and (keyword? entity-content) (empty? entity-elements))
-            (some (fn [element]
-                    (and (= (content element) :non-semantic)
-                         (empty? (elements element))))
-                  entity-elements))
+    (if (or (not (semantic-element? entity))
+            (= entity :tag))
       (let [[s1 id] (add-entity store subject-id entity)]
         [s1 id order])
       (let [value-to-store entity-content

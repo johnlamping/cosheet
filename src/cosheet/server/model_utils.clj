@@ -7,7 +7,9 @@
                      [store :refer [new-element-store update-content]]
                      [entity :refer [atom? description->entity elements
                                      content subject label->elements
-                                     updating-call-with-immutable]]
+                                     updating-call-with-immutable
+                                     updating-with-immutable
+                                     in-different-store]]
                      [store-utils :refer [add-entity]]
                      [query :refer [matching-items]])
             (cosheet.server
@@ -152,20 +154,31 @@
 ;;; elements. Non-semantic elements will always themselves have an
 ;;; element with :non-semantic as content.
 
+(defn semantic-element?
+  "Return true if an element counts as semantic information."
+  [immutable-entity]
+   (let [cont (content immutable-entity)]
+     (or (string? cont)
+         (number? cont)
+         (#{:tag 'anything 'anything-immutable} cont))))
+
 (defn semantic-element?-R
-  "Return true if an element counts as semantic information for its subject.
-  (Doesn't have a :non-semantic element.)"
+  "Return true if an element counts as semantic information."
   [entity]
-  (expr-let [elements (elements entity)
-             element-contents (expr-seq map content elements)]
-    (not-any? #{:non-semantic} element-contents)))
+   (expr-let [cont (content entity)]
+     (or (string? cont)
+         (number? cont)
+         (#{:tag 'anything 'anything-immutable} cont))))
 
 (defn semantic-elements-R
   "Return the elements of an entity that are semantic to it."
   [entity]
-  (expr-let [elements (elements entity)
-             non-semantic (label->elements entity :non-semantic)]
-    (remove (set non-semantic) elements)))
+  (updating-with-immutable
+   [immutable entity]
+   (let [semantic (filter semantic-element? (elements immutable))]
+     (if (= immutable entity)
+       semantic
+       (map #(in-different-store % entity) semantic)))))
 
 (defn immutable-semantic-to-list
   "Given an immutable item, make a list representation of the

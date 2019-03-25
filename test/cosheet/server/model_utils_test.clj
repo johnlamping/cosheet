@@ -29,12 +29,12 @@
                 (~o2 :order :non-semantic)
                 ("male" (~o1 :order :non-semantic))
                 (39 (~o3 :order :non-semantic)
-                    ("age" ~'tag (~o3 :order :non-semantic))
+                    ("age" :tag (~o3 :order :non-semantic))
                     ("doubtful" ("confidence" (~o4 :order :non-semantic))
                                 (~o4 :order :non-semantic)) )
                 ("married" (~o2 :order :non-semantic))
                 (45 (~o4 :order :non-semantic)
-                    ("age" ~'tag (~o3 :order :non-semantic)))
+                    ("age" :tag (~o3 :order :non-semantic)))
                 ("spy" (:invisible :non-semantic))))
 
 (deftest specialize-template-test
@@ -55,26 +55,26 @@
          (set (map canonicalize-list (rest (rest joe-list))))))
   (let [expected ["joe" {"male" 1
                          "married" 1
-                         [39 {["age" {'tag 1}] 1
+                         [39 {["age" {:tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
-                         [45 {["age" {'tag 1}] 1}] 1
+                         [45 {["age" {:tag 1}] 1}] 1
                          "spy" 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
 
 (deftest visible-test
   (let [expected #{"male"
                    "married"
-                   [39 {["age" {'tag 1}] 1
+                   [39 {["age" {:tag 1}] 1
                         ["doubtful" {"confidence" 1}] 1}]
-                   [45 {["age" {'tag 1}] 1}]}
+                   [45 {["age" {:tag 1}] 1}]}
         visible (set (map item->canonical-semantic
                           (visible-elements-R joe-list)))]
     (is (check visible expected))
     (let [expected ["joe" {"male" 1
                            "married" 1
-                           [39 {["age" {'tag 1}] 1
+                           [39 {["age" {:tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
-                         [45 {["age" {'tag 1}] 1}] 1}]]
+                         [45 {["age" {:tag 1}] 1}] 1}]]
     (is (= (item->canonical-visible joe-list) expected)))))
 
 (deftest is-selector-test
@@ -131,12 +131,19 @@
                        (:non-semantic :non-semantic))
                  row-condition)]
     (is (= (count tabs) 1))
-    (is (= (immutable-semantic-to-list tab) '("" "there")))
+    (is (= (immutable-semantic-to-list tab)
+           '("" ("" (anything (anything ("b" :tag))
+                              (anything ("a" :tag))
+                              ("there" :tag)))
+             "there")))
     (is (check (map immutable-semantic-to-list (order-items-R rows))
                [(as-set '("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag))))
                 (as-set '("" ("there" :tag) (3 ("a" :tag))))]))
     (is (check (immutable-semantic-to-list row-condition)
-               '(anything ("there" :tag))))
+               '(anything (anything ("b" :tag))
+                          (anything ("a" :tag))
+                          ("there" :tag))))
     (is (check (map immutable-semantic-to-list (order-items-R headers))
                ['(anything ("a" :tag))
                 '(anything ("b" :tag))]))))
+

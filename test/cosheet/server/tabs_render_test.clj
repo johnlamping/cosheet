@@ -71,7 +71,6 @@
                            :width 3.0
                            :key-prefix [:foo]
                             :template '(anything)}]
-    (print "XXX")
     (is (check
          dom
          [:div {:class "tabs-wrapper"}

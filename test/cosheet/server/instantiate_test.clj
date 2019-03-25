@@ -36,20 +36,20 @@
                 (~o2 :order :non-semantic)
                 ("male" (~o1 :order :non-semantic))
                 (39 (~o3 :order :non-semantic)
-                    ("age" ~'tag (~o3 :order :non-semantic))
+                    ("age" :tag (~o3 :order :non-semantic))
                     ("doubtful" ("confidence" (~o4 :order :non-semantic))
                                 (~o4 :order :non-semantic)) )
                 ("married" (~o2 :order :non-semantic))
                 (45 (~o4 :order :non-semantic)
-                    ("age" ~'tag (~o3 :order :non-semantic)))))
+                    ("age" :tag (~o3 :order :non-semantic)))))
 (def jane-list `("Jane" (~o1 :order :non-semantic)
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
-                     ("age" ~'tag (~o3 :order :non-semantic)))))
+                     ("age" :tag (~o3 :order :non-semantic)))))
 (def dup-list `("dup" (~o1 :order :non-semantic)
                 ("female" (~o2 :order :non-semantic))
                 ("female" (~o3 :order :non-semantic))))
-(def age-condition-list '(anything ("age" tag)))
+(def age-condition-list '(anything ("age" :tag)))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
@@ -75,22 +75,22 @@
 
 (deftest best-matching-test
   (let [joes `("x"
-              ("Joe" ("name" ~'tag) ("id" ~'tag) (~o1 :order :non-semantic))
-              ("Joe" ("name" ~'tag) (~o2 :order :non-semantic))) ]
-    (is (= (best-matching-element '("Joe" ("name" tag)) joes)
+              ("Joe" ("name" :tag) ("id" :tag) (~o1 :order :non-semantic))
+              ("Joe" ("name" :tag) (~o2 :order :non-semantic))) ]
+    (is (= (best-matching-element '("Joe" ("name" :tag)) joes)
            [(nth joes 2)]))
-    (is (= (best-matching-element '("Joe" ("name" tag)  ("id" tag)) joes)
+    (is (= (best-matching-element '("Joe" ("name" :tag)  ("id" :tag)) joes)
            [(nth joes 1)]))
-    (is (= (best-matching-element '("Joe" ("age" tag)) joes)
+    (is (= (best-matching-element '("Joe" ("age" :tag)) joes)
            nil))))
 
 (deftest expand-pattern-items-test
   (is (= (expand-pattern-items '(1 (2 :a "s")) store) '(1 (2 :a "s"))))
   (is (= (canonicalize-list (expand-pattern-items (item-referent jane) store))
-         (canonicalize-list '("Jane" "female" (45 ("age" tag))))))
+         (canonicalize-list '("Jane" "female" (45 ("age" :tag))))))
   (is (= (canonicalize-list
           (expand-pattern-items `(~(item-referent jane) 1 (2 3)) store))
-         (canonicalize-list '("Jane" "female" (45 ("age" tag)) 1 (2 3))))))
+         (canonicalize-list '("Jane" "female" (45 ("age" :tag)) 1 (2 3))))))
 
 (deftest instantiate-referent-test
   (let [referent (item-referent joe)]
@@ -98,7 +98,7 @@
   (let [referent (exemplar-referent joe-age (item-referent jane))]
     (is (= (instantiate-referent referent store)
            [jane-age])))
-  (let [referent (elements-referent '(nil ("age" tag)) (item-referent joe))]
+  (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age joe-bogus-age]))))
   (let [referent (query-referent '(nil (nil "age")))]
@@ -172,7 +172,7 @@
       (is (= (semantic-to-list-R item) "male"))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) "male"))))))
+              '("Jane" "female" (45 ("age" :tag)) "male"))))))
   ;; A referent for the exemplar.
   (let [referent (virtual-referent joe-male (item-referent jane)
                                    (item-referent jane-age))
@@ -187,9 +187,9 @@
       (is (= (semantic-to-list-R item) "male"))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) "male"))))))
+              '("Jane" "female" (45 ("age" :tag)) "male"))))))
   ;; Multiple subjects
-  (let [referent (virtual-referent '("hi" tag)
+  (let [referent (virtual-referent '("hi" :tag)
                                    (query-referent '(nil (nil "age")))
                                    (query-referent '(nil (nil "age")))
                                    :position :before)
@@ -204,15 +204,15 @@
       (is (= (:store item2) store))
       (is (#{new-joe new-jane} (entity/subject item1)))
       (is (#{new-joe new-jane} (entity/subject item2)))
-      (is (= (semantic-to-list-R item1) '("hi" tag)))
-      (is (= (semantic-to-list-R item2) '("hi" tag)))
+      (is (= (semantic-to-list-R item1) '("hi" :tag)))
+      (is (= (semantic-to-list-R item2) '("hi" :tag)))
       (is (= (canonicalize-list (semantic-to-list-R new-joe))
              (canonicalize-list
-              '("Joe" ("hi" tag) "male" (45 ("age" tag))
-                (39 ("age" tag) ("doubtful" "confidence")) "married"))))
+              '("Joe" ("hi" :tag) "male" (45 ("age" :tag))
+                (39 ("age" :tag) ("doubtful" "confidence")) "married"))))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))))
+              '("Jane" "female" (45 ("age" :tag)) ("hi" :tag)))))))
   ;; Exemplar is virtual, and needs adjusting
   (let [referent (virtual-referent
                   (virtual-referent '??? (item-referent jane)
@@ -233,11 +233,11 @@
       (is (= new-sym "\u00A0A"))
       (is (= (canonicalize-list (semantic-to-list-R new-joe))
              (canonicalize-list
-              `("Joe" ~new-sym "male" "married" (45 ("age" ~'tag))
-                (39 ("age" ~'tag) ("doubtful" "confidence"))))))
+              `("Joe" ~new-sym "male" "married" (45 ("age" :tag))
+                (39 ("age" :tag) ("doubtful" "confidence"))))))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
+              `("Jane" "female" (45 ("age" :tag)) ~new-sym))))))
   ;; Subject is virtual too, plus nil adjacent
   (let [referent (virtual-referent
                   (virtual-referent '??? (item-referent jane))
@@ -265,13 +265,13 @@
                     ("\u00A0B" ~new-sym)
                     "male"
                     "married"
-                    (45 ("age" ~'tag))
-                    (39 ("age" ~'tag) ("doubtful" "confidence"))))))
+                    (45 ("age" :tag))
+                    (39 ("age" :tag) ("doubtful" "confidence"))))))
       (is (check (canonicalize-list (semantic-to-list-R new-jane))
                  (canonicalize-list
-                  `("Jane" "female" (45 ("age" ~'tag)) ~new-sym))))))
+                  `("Jane" "female" (45 ("age" :tag)) ~new-sym))))))
   ;; Multiple adjacents
-  (let [referent (virtual-referent '("hi" tag)
+  (let [referent (virtual-referent '("hi" :tag)
                                    (item-referent jane)
                                    [(item-referent jane-age)
                                     (item-referent jane-female)]
@@ -284,14 +284,14 @@
       (is (= new-ids [(:item-id item)]))
       (is (= (:store item) store))
       (is (= new-jane (entity/subject item)))
-      (is (= (semantic-to-list-R item) '("hi" tag)))
+      (is (= (semantic-to-list-R item) '("hi" :tag)))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))
+              '("Jane" "female" (45 ("age" :tag)) ("hi" :tag)))))
       (let [ordered-elements (order-items-R (semantic-elements-R new-jane))]
         (is (= item (nth ordered-elements 2))))))
   ;; Multiple adjacents in the other order
-  (let [referent (virtual-referent '("hi" tag)
+  (let [referent (virtual-referent '("hi" :tag)
                                    (item-referent jane)
                                    [(item-referent jane-age)
                                     (item-referent jane-female)]
@@ -304,10 +304,10 @@
       (is (= new-ids [(:item-id item)]))
       (is (= (:store item) store))
       (is (= new-jane (entity/subject item)))
-      (is (= (semantic-to-list-R item) '("hi" tag)))
+      (is (= (semantic-to-list-R item) '("hi" :tag)))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) ("hi" tag)))))
+              '("Jane" "female" (45 ("age" :tag)) ("hi" :tag)))))
       (let [ordered-elements (order-items-R (semantic-elements-R new-jane))]
         (is (= item (nth ordered-elements 0))))))
   ;; A union of virtual referents
@@ -329,4 +329,4 @@
       (is (= (semantic-to-list-R item2) "hello"))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" tag)) "male")))))))
+              '("Jane" "female" (45 ("age" :tag)) "male")))))))

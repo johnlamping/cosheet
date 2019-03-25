@@ -19,54 +19,54 @@
 
 (deftest condition-satisfiers-R-test
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a)))))
-             [:a]))
+                              (condition-satisfiers-R test '(nil "A")))))
+             ["a"]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a :c)))))
-             (as-set [:a :c])))
+                              (condition-satisfiers-R test '(nil "A" "C")))))
+             (as-set ["a" "c"])))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a :b)))))
-             [:a]))
+                              (condition-satisfiers-R test '(nil "A" "B")))))
+             ["a"]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a :b)))))
-             [:a]))
+                              (condition-satisfiers-R test '(nil "A" "B")))))
+             ["a"]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a :a :b)))))
-             [:a :a]))
+                              (condition-satisfiers-R test '(nil "A" "A" "B")))))
+             ["a" "a"]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
-                              (condition-satisfiers-R test '(nil :a :a :b)))))
-             [:a])))
+                              (condition-satisfiers-R test '(nil "A" "A" "B")))))
+             ["a"])))
 
 (deftest non-implied-matching-elements-R-test
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
                               (non-implied-matching-elements-R
-                               test '(nil 1) '(nil :a :c)))))
-             [(canonicalize-list '(:b 1))]))
+                               test '(nil 1) '(nil "A" "C")))))
+             [(canonicalize-list '("B" 1))]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
                               (non-implied-matching-elements-R
-                               test '(nil 1) '(nil :b)))))
-             [(canonicalize-list '(:b 1))]))
+                               test '(nil 1) '(nil "B")))))
+             [(canonicalize-list '("B" 1))]))
   (is (check (map canonicalize-list
-                  (let-mutated [test '("age" :a (:b 1) :c)]
+                  (let-mutated [test '("age" "A" ("B" 1) "C")]
                     (expr-seq map to-list
                               (non-implied-matching-elements-R
-                               test '(nil 1) '(nil (:b 1))))))
+                               test '(nil 1) '(nil ("B" 1))))))
              [])))
 
 (deftest transform-inherited-attributes-test

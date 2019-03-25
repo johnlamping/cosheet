@@ -164,7 +164,7 @@
         ;; satisfying the element template. We want to select that
         ;; element.
         adjacent-referents (hierarchy-node-items-referents
-                           node inherited)
+                            node inherited)
         new-column-ref (virtual-referent (:template inherited)
                                          subject-ref adjacent-referents
                                          :position :after)
@@ -582,7 +582,11 @@
   holds its condition."
   [row-condition-item rows-referent inherited]
   (let [subject-referent (union-referent [(item-referent row-condition-item)])]
-    (expr-let [condition-elements (visible-elements-R row-condition-item)
+    (expr-let [visible-elements (visible-elements-R row-condition-item)
+               column-elements (entity/label->elements
+                                row-condition-item :column)
+               condition-elements (remove (set column-elements)
+                                          visible-elements)
                inherited-down (assoc
                                inherited
                                :subject-referent subject-referent

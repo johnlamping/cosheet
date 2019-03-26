@@ -3,7 +3,8 @@
                      [entity :as entity]
                      [query :refer [matching-elements]]
                      [utils :refer [multiset-diff assoc-if-non-empty
-                                    map-with-first-last]]
+                                    map-with-first-last
+                                    add-elements-to-entity-list]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils
                       :refer [into-attributes add-attributes]]
@@ -44,7 +45,8 @@
                                (:cumulative-properties hierarchy-node)
                                (:properties hierarchy-node)))
         conditions (concat (canonical-set-to-list ancestor-props)
-                           (rest (:template inherited)))]
+                           (rest (add-elements-to-entity-list
+                                  (:template inherited) nil)))]
     {:referent (virtual-referent
                 (list* 'anything conditions)
                 (subject-referent-given-inherited inherited)
@@ -74,8 +76,9 @@
                        (:cumulative-properties hierarchy-node))
         inherited-down (if (not (empty? property-list))
                          (assoc inherited :template
-                                (concat (or (:template inherited) '(anything))
-                                        property-list))
+                                (add-elements-to-entity-list
+                                 (or (:template inherited) 'anything)
+                                 property-list))
                          inherited)]
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
@@ -533,7 +536,7 @@
         (inherited-attributes inherited item))))))
 
 (defn item-DOM-R
-  "Make a dom for an item or exemplar of a group of items.
+  "Make a dom for an item or an exemplar of a group of items.
    If the item is a tag, the caller is responsible for tag formatting."
   [item excluded-elements inherited
    & {:keys [referent do-not-show-content must-show-label]}]

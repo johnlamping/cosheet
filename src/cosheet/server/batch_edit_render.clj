@@ -93,7 +93,8 @@
          batch-dom
          (let [inherited
                (-> inherited-for-batch
-                   (assoc :subject-referent matches-referent)
+                   (assoc :subject-referent matches-referent
+                          :template 'anything)
                    ;; If the selected item is the whole query, then a
                    ;; delete could remove the whole condition of a
                    ;; table. Have it just remove top level rows, instead.

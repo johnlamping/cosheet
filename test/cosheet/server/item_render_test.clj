@@ -34,7 +34,8 @@
 
 (def base-inherited {:priority 0
                      :key-prefix [:root]
-                     :subject-referent nil})
+                     :subject-referent nil
+                     :template ""})
 (deftest item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[dom fred] (let-mutated [fred "Fred"]
@@ -49,7 +50,8 @@
     (is (check dom
                [:div {:class "content-text editable item"
                       :key [:root (:item-id fred) :content]
-                      :target {:referent (item-referent fred)}
+                      :target {:referent (item-referent fred)
+                               :template ""}
                       :expand {:referent (item-referent fred)}}
                 "Fred"]))))
 
@@ -517,7 +519,8 @@
                   [:div {:class "indent-wrapper"}
                    [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
-                           :target {:referent (item-referent element)}
+                           :target {:referent (item-referent element)
+                                    :template ""}
                            :key (conj element-key :content)}
                      "39"]
                     [:div {:class "horizontal-tags-element tag wide"}
@@ -548,7 +551,8 @@
                                                         :tags [:pattern])}}]
                   [:div {:class "item with-elements"}
                    [:div {:class "content-text editable"
-                          :target {:referent (item-referent item)}
+                          :target {:referent (item-referent item)
+                                   :template ""}
                           :key (conj item-key :content)}
                     "39"]
                    [:div {:class "horizontal-tags-element tag wide"}
@@ -642,7 +646,8 @@
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"
-                         :target {:referent element-referent}
+                         :target {:referent element-referent
+                                  :template ""}
                          :key (conj element-key :content)}
                    "39"]
                   [:div {:class "horizontal-tags-element tag wide"}

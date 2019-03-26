@@ -1,7 +1,8 @@
 (ns cosheet.server.render-utils
   (:require (cosheet [entity :as entity]
                      [utils :refer [multiset multiset-to-generating-values
-                                    replace-in-seqs assoc-if-non-empty]]
+                                    replace-in-seqs assoc-if-non-empty
+                                    add-elements-to-entity-list]]
                      [debug :refer [simplify-for-print]]
                      [store :refer [StoredItemDescription]]
                      [query :refer [matching-elements]]
@@ -354,8 +355,9 @@
                            [function-info inherited])
                          nil inherited))
   ([node node-f child-info-f function-info inherited]
-   (assert (every? #(not (nil? %)) (:template inherited))
-           (apply list  (:template inherited)))
+   (assert (every? #(not (nil? %)) (add-elements-to-entity-list
+                                    (:template inherited) nil))
+           (add-elements-to-entity-list (:template inherited) nil))
    (expr-let
        [child-doms (when-let [children (:child-nodes node)]
                      (expr-let [child-info (child-info-f

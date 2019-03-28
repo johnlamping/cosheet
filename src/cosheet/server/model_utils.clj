@@ -78,7 +78,6 @@
 (defn flatten-nested-content
   "If item has a form anywhere like ((a ...b...) ...c...), turn that into
   (a ...b... ...c...)"
-  ;; This case handles adding (:top-level :non-semantic) to row referents.
   [item]
   (clojure.walk/postwalk
    (fn [item]
@@ -89,31 +88,26 @@
 
 (defn pattern-to-query
   "Given a pattern, alter it to work as a query. Specifically,
-  replace 'anything and 'anything-immutable by (nil (nil :order :non-semantic))
+  replace 'anything and 'anything-immutable by nil
   to make them work as a wild card that avoids matching non-user editable
   elements."
   [pattern]
   (flatten-nested-content ;; Because we can add nested content.
    (clojure.walk/postwalk
     (fn [item] (if (#{'anything 'anything-immutable} item)
-                 '(nil (nil :order :non-semantic))
+                 nil
                  item))
     pattern)))
 
 (defn query-to-template
-  "Given a query, turn it into a template by removing (nil :order
-  :non-semantic) elements (which get added by pattern-to-query)
-  and by then replacing any nil by the specified replacement, or the empty
-  string by default."
+  "Given a query, turn it into a template by replacing any nil
+   by the specified replacement, or the empty string by default."
   ([query]
    (query-to-template query ""))
   ([query nil-replacement]
    (prewalk-seqs
     (fn [query]
-      (cond (sequential? query) (remove #(= % '(nil :order :non-semantic))
-                                        query)
-            (nil? query) nil-replacement
-            true query))
+      (if (nil? query) nil-replacement query))
     query)))
 
 (defn specialize-template
@@ -151,14 +145,13 @@
 ;;; matter. In particular, order information, or other information
 ;;; about how to display the elements is considered irrelevant for
 ;;; matching a condition. We call the elements that matter the semantic
-;;; elements. Non-semantic elements will always themselves have an
-;;; element with :non-semantic as content.
+;;; elements.
 
 (defn semantic-element?
   "Return true if an element counts as semantic information."
   [immutable-entity]
-   (let [cont (content immutable-entity)]
-     (or (string? cont)
+  (let [cont (content immutable-entity)]
+    (or (string? cont)
          (number? cont)
          (#{:tag 'anything 'anything-immutable} cont))))
 
@@ -212,20 +205,20 @@
   (updating-call-with-immutable item item->canonical-semantic))
 
 (defn visible-item?-R
-  "Return true if an item should be visible information.
-  (Doesn't have a :non-semantic or :invisible element.)"
+  "Return true if an item should be visible information."
   [entity]
-  (expr-let [elements (elements entity)
+  (expr-let [semantic (semantic-element?-R entity)
+             elements (elements entity)
              element-contents (expr-seq map content elements)]
-    (not-any? #{:non-semantic :invisible} element-contents)))
+    (and semantic
+         (not-any? #{:invisible} element-contents))))
 
 (defn visible-elements-R
   "Return the elements of an entity that are visible information about it."
   [entity]
-  (expr-let [elements (elements entity)
-             non-semantic (label->elements entity :non-semantic)
+  (expr-let [semantic (semantic-elements-R entity)
              invisible (label->elements entity :invisible)]
-    (remove (set (concat non-semantic invisible)) elements)))
+    (remove (set invisible) semantic)))
 
 (defn immutable-visible-to-list
   "Given an immutable item, make a list representation of the
@@ -260,10 +253,9 @@
 
 (defn selector?
   "Return whether the item is a selector."
-  [item]
-  (or (some #(= (content %) :selector)
-            (label->elements item :non-semantic))
-      (if-let [subj (subject item)]
+  [immutable-item]
+  (or (some #(= (content %) :selector) (elements immutable-item))
+      (if-let [subj (subject immutable-item)]
         (selector? subj))))
 
 (defn create-selector-or-non-selector-element
@@ -294,18 +286,16 @@
   ;; A table header is an element of the condition, so that batch edit changes
   ;; can match table headers. But a header doesn't count as a semantic part
   ;; of the condition, because it shouldn't affect what rows are selected.
-  '(anything (:column :non-semantic)
-             (:non-semantic :non-semantic)))
+  '(anything :column))
 
 (defn table-tab-non-semantic-elements
   "Return the non-semantic elements for a new tab for a table
   with the given row condition and column conditions."
   [row-condition-elements header-conditions-elements]
-  `((:tab :non-semantic)
-    (""
-     (:non-semantic :non-semantic)
-     (:tab-topic :non-semantic)
-     (:table :non-semantic)
+  `(:tab
+    (:blank
+     :tab-topic
+     :table
      ~(apply list (concat
                    ['anything]
                    row-condition-elements
@@ -314,9 +304,8 @@
                                        table-header-template
                                        header-condition-elements)))
                         header-conditions-elements)
-                   ['(:row-condition :non-semantic)
-                    '(:selector :non-semantic)
-                    '(:non-semantic :non-semantic)])))))
+                   [:row-condition
+                    :selector])))))
 
 (def new-tab-elements
   (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))
@@ -329,7 +318,7 @@
                               (new-element-store) nil
                               (list orderable/initial :unused-orderable))
         [store tabs-holder-id] (add-entity store nil
-                                           '("tabs" (:tabs :non-semantic)))]
+                                           '("tabs" :tabs))]
     (if tab-name
       (let [[tab store] (specialize-template
                              (cons "" (cons tab-name
@@ -399,6 +388,6 @@
   "Given a sequence of rows, each a sequence of values,
   add a table corresponding to them to the store, with its own tab."
   [store table-name rows]
-  (let [rows-template `("" (~table-name :tag) (:top-level :non-semantic))
+  (let [rows-template `("" (~table-name :tag) :top-level)
         [store headers] (add-rows store rows rows-template)]
     (add-table-tab store table-name headers)))

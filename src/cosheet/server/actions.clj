@@ -289,8 +289,7 @@
                                                 target row-condition)]
                               (apply list (concat
                                            pattern
-                                           ['(:batch-query :non-semantic)
-                                            '(:selector :non-semantic)]))))]
+                                           [':batch-query ':selector]))))]
       (when new-batch-query
         (state-map-reset! client-state :batch-editing true)
         (as-> store store

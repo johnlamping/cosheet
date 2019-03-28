@@ -213,6 +213,8 @@
   (description->entity [this store] this)
   java.lang.Boolean
   (description->entity [this store] this)
+  clojure.lang.PersistentVector
+  (description->entity [this store] this)
   cosheet.orderable.Orderable
   (description->entity [this store] this)
   clojure.lang.ISeq

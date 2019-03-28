@@ -86,7 +86,18 @@
                         (~'anything ("name" :tag (~o1 :order :non-semantic))
                          (~o2 :order :non-semantic)
                          (:column :non-semantic)
-                         (:non-semantic :non-semantic))))]
+                         (:non-semantic :non-semantic))))
+        table-list-5 `("table"
+                       :table
+                       (~'anything (~'anything ("age" :tag))
+                        :row-condition
+                        :selector
+                        (~'anything ("single" :tag (~o1 :order))
+                         (~o1 :order)
+                         :column)
+                        (~'anything ("name" :tag (~o1 :order))
+                         (~o2 :order)
+                         :column)))]
     (let [store-0 (first (add-entity (new-element-store) nil table-list-0))
           store-1 (convert-from-0-to-1 store-0)
           tables-1 (matching-items '(nil :table) store-1)
@@ -96,7 +107,10 @@
           versions-3 (matching-items '(nil :format) store-3)
           store-4 (convert-from-3-to-4 store-3)
           tables-4 (matching-items '(nil :table) store-4)
-          versions-4 (matching-items '(nil :format) store-4)]
+          versions-4 (matching-items '(nil :format) store-4)
+          store-5 (convert-from-4-to-5 store-4)
+          tables-5 (matching-items '(nil :table) store-5)
+          versions-5 (matching-items '(nil :format) store-5)]
       (is (= (count tables-1) 1))
       (is (check (canonicalize-list (to-list (first tables-1)))
                  (canonicalize-list table-list-1)))
@@ -112,7 +126,15 @@
                  (canonicalize-list table-list-4)))
       (is (= (count versions-4) 1))
       (is (= (to-list (first versions-4)) '(4 :format)))
-      (is (= (convert-to-current store-0) store-4))
-      (is (= (convert-to-current store-1) store-4))
-      (is (= (convert-to-current store-3) store-4))
-      (is (= (convert-to-current store-4) store-4)))))
+      
+      (is (= (count tables-5) 1))
+      (is (check (canonicalize-list (to-list (first tables-5)))
+                 (canonicalize-list table-list-5)))
+      (is (= (count versions-5) 1))
+      (is (= (to-list (first versions-5)) '([5] :format)))
+      (println (simplify-for-print ["XXXX" (matching-items :non-semantic store-5)]))
+      (is (= (convert-to-current store-0) store-5))
+      (is (= (convert-to-current store-1) store-5))
+      (is (= (convert-to-current store-3) store-5))
+      (is (= (convert-to-current store-4) store-5))
+      (is (= (convert-to-current store-5) store-5)))))

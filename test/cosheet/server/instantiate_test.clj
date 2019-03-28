@@ -75,8 +75,8 @@
 
 (deftest best-matching-test
   (let [joes `("x"
-              ("Joe" ("name" :tag) ("id" :tag) (~o1 :order :non-semantic))
-              ("Joe" ("name" :tag) (~o2 :order :non-semantic))) ]
+              ("Joe" ("name" :tag) ("id" :tag) (~o1 :order))
+              ("Joe" ("name" :tag) (~o2 :order))) ]
     (is (= (best-matching-element '("Joe" ("name" :tag)) joes)
            [(nth joes 2)]))
     (is (= (best-matching-element '("Joe" ("name" :tag)  ("id" :tag)) joes)

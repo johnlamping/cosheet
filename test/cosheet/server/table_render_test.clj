@@ -4,13 +4,14 @@
             (cosheet
              [orderable :as orderable]
              [query :refer [matching-items matching-elements]]
-             [entity :as entity  :refer [label->elements]]
+             [entity :as entity  :refer [label->elements elements]]
              [expression :refer [expr expr-let expr-seq]]
              [expression-manager :refer [current-value]]
              [debug :refer [envs-to-list simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set evals-to let-mutated]])
             (cosheet.server
+             [model-utils :refer [immutable-semantic-to-list]]
              [referent :refer [item-referent union-referent
                                query-referent virtual-referent]]
              [item-render :refer [item-without-labels-DOM-R
@@ -37,56 +38,50 @@
                    :width 3.0
                    :key-prefix [:foo]}
         joe-list `("Joe"
-                   (:top-level :non-semantic)
-                   (~o2 :order :non-semantic)
-                   ("male" (~o1 :order :non-semantic))
-                   ("married" (~o2 :order :non-semantic))
-                   (39 (~o3 :order :non-semantic)
+                   :top-level
+                   (~o2 :order)
+                   ("male" (~o1 :order))
+                   ("married" (~o2 :order))
+                   (39 (~o3 :order)
                        ("age" :tag)
                        ("doubtful" "confidence"))
-                   (45 (~o4 :order :non-semantic)
+                   (45 (~o4 :order)
                        ("age" :tag))
-                   ("Joe" (~o5 :order :non-semantic)
+                   ("Joe" (~o5 :order)
                           ("name" :tag))
-                   ("Joseph" (~o6 :order :non-semantic)
-                             ("name" :tag (~o1 :order :non-semantic))
-                             ("id" :tag (~o2 :order :non-semantic))))
+                   ("Joseph" (~o6 :order)
+                             ("name" :tag (~o1 :order))
+                             ("id" :tag (~o2 :order))))
         jane-list `("Jane"
-                    (:top-level :non-semantic)
-                    (~o1 :order :non-semantic)
+                    :top-level
+                    (~o1 :order)
                     "plain" "plain")]
     (let [table-list
           `("table"
             (~'anything
              (~'anything ("age" :tag))
-             (:row-condition :non-semantic)
-             (~'anything ("single" :tag (~o1 :order :non-semantic))
-              (~o1 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))
-             (~'anything ("name" :tag (~o1 :order :non-semantic))
-              (~o2 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))
-             (~'anything ("name" :tag (~o1 :order :non-semantic))
-              ("id" :tag (~o2 :order :non-semantic))
-              (~o3 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))
-             (~'anything ("name" :tag (~o1 :order :non-semantic))
-              (~o4 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))
-             (~'anything ("age" :tag (~o1 :order :non-semantic))
-              ("id" :tag (~o2 :order :non-semantic))
-              (~o5 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))
-             (~'anything ("6-2" (~o1 :order :non-semantic)
-                          ("height" :tag (~o2 :order :non-semantic)))
-              (~o6 :order :non-semantic)
-              (:column :non-semantic)
-              (:non-semantic :non-semantic))))
+             :row-condition
+             (~'anything ("single" :tag (~o1 :order))
+              (~o1 :order)
+              :column)
+             (~'anything ("name" :tag (~o1 :order))
+              (~o2 :order)
+              :column)
+             (~'anything ("name" :tag (~o1 :order))
+              ("id" :tag (~o2 :order))
+              (~o3 :order)
+              :column)
+             (~'anything ("name" :tag (~o1 :order))
+              (~o4 :order)
+              :column)
+             (~'anything ("age" :tag (~o1 :order))
+              ("id" :tag (~o2 :order))
+              (~o5 :order)
+              :column)
+             (~'anything ("6-2" (~o1 :order)
+                          ("height" :tag (~o2 :order)))
+              (~o6 :order)
+              :column)))
           [dom table joe jane] (let-mutated [table table-list
                                              joe joe-list
                                              jane jane-list]
@@ -103,10 +98,9 @@
           c3 (first (current-value (label->elements query o3)))
           c6 (first (current-value (label->elements query o6)))
           table-key [:foo (:item-id table)]
-          row-template '("" ("" ("age" :tag))
-                             (:top-level :non-semantic))
+          row-template '(anything (anything ("age" :tag)) :top-level)
           row-condition (list (item-referent query)
-                              '(:top-level :non-semantic))
+                              :top-level)
           rows-referent (query-referent row-condition)
           first-column-referent (union-referent [(item-referent c1)])
           delete-column-referent (item-referent c1)
@@ -117,8 +111,7 @@
                                        '(??? :tag)
                                        (virtual-referent
                                         '(anything
-                                          (:column :non-semantic)
-                                          (:non-semantic :non-semantic))
+                                          :column)
                                         (item-referent query)
                                         (item-referent c1))
                                        nil) 
@@ -128,15 +121,16 @@
       ;; First, test batch-edit-pattern.
       (let [immutable-query (entity/current-version query)]
         ;; When the item is part of the row condition.
-        (is (check (batch-edit-pattern (first (matching-elements
-                                               `(~'anything ("age" :tag))
-                                               immutable-query))
-                                       immutable-query)
+        (is (check (batch-edit-pattern
+                    (first (filter #(= (immutable-semantic-to-list %)
+                                        `(~'anything ("age" :tag)))
+                                   (elements immutable-query)))
+                    immutable-query)
                    `(~'anything
                      (~'anything
-                      ("age" :tag (~(any) :order :non-semantic))
-                      (~(any) :order :non-semantic))
-                     (~(any) :order :non-semantic))))
+                      ("age" :tag (~(any) :order))
+                      (~(any) :order))
+                     (~(any) :order))))
         ;; When the item is part of a column header.
         (is (check (batch-edit-pattern (first (matching-elements
                                            `(~'anything ("single" :tag))
@@ -144,12 +138,12 @@
                                    immutable-query)
                `(~'anything
                  (~'anything
-                  ("age" :tag (~(any) :order :non-semantic))
-                  (~(any) :order :non-semantic))
+                  ("age" :tag (~(any) :order))
+                  (~(any) :order))
                  (~'anything
-                  ("single" :tag (~(any) :order :non-semantic))
-                  (~(any) :order :non-semantic))
-                 (~(any) :order :non-semantic))))
+                  ("single" :tag (~(any) :order))
+                  (~(any) :order))
+                 (~(any) :order))))
         ;; When the item is an element in the table.
         ;; In this case, the item is a refinement of a table condition,
         ;; so it should replace the condition.
@@ -159,9 +153,9 @@
                                        immutable-query)
                    `(~'anything
                      (45
-                      ("age" :tag (~(any) :order :non-semantic))
-                      (~(any) :order :non-semantic))
-                     (~(any) :order :non-semantic)))))
+                      ("age" :tag (~(any) :order))
+                      (~(any) :order))
+                     (~(any) :order)))))
       (is (check
            dom
            [:div {:class "table"}
@@ -210,8 +204,7 @@
                                 ""
                                 (virtual-referent
                                  '(anything
-                                   (:column :non-semantic)
-                                   (:non-semantic :non-semantic))
+                                   :column)
                                  (item-referent query)
                                  (item-referent c6))
                                 (item-referent c6))
@@ -224,16 +217,15 @@
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
                  [{:column-id (:item-id c1)
-                   :query '(nil (nil :order :non-semantic) ("single" :tag))
+                   :query '(nil ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   {:column-id (:item-id c2)
-                   :query '(nil  (nil :order :non-semantic) ("name" :tag))
+                   :query '(nil ("name" :tag))
                    :template '("" ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-id (:item-id c3)
-                   :query '(nil (nil :order :non-semantic)
-                                ("name" :tag) ("id" :tag))
+                   :query '(nil ("name" :tag) ("id" :tag))
                    :template '("" ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
@@ -242,8 +234,7 @@
                   {:column-id :virtualColumn
                    :template (virtual-referent
                               '(anything
-                                (:column :non-semantic)
-                                (:non-semantic :non-semantic)
+                                :column
                                 (???))
                               (item-referent query)
                               (item-referent c6))
@@ -253,10 +244,10 @@
                             :class "table-row"}
                 [table-virtual-row-DOM
                  (conj table-key :virtualRow)
-                 '("" ("" ("age" :tag)) (:top-level :non-semantic))
+                 '(anything (anything ("age" :tag)) :top-level)
                  (item-referent joe)
                  [{:column-id (:item-id c1)
-                   :query '(nil  (nil :order :non-semantic) ("single" :tag))
+                   :query '(nil ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any)]
@@ -274,9 +265,8 @@
              [:div {}
               [:div {:row {:referent (item-referent joe)
                            :key (conj (vec table-key) (item-referent joe))
-                           :template '(""
-                                       ("" ("age" :tag))
-                                       (:top-level :non-semantic))}
+                           :template '(anything (anything ("age" :tag))
+                                                :top-level)}
                      :column {:referent (item-referent c1)}
                      :class "editable table-cell has-border"
                      :key (conj table-key (:item-id joe) (:item-id c1) :virtual)
@@ -301,9 +291,8 @@
                  [[#{:label :element :recursive :optional} #{:content}
                    {:row {:referent (item-referent joe)
                           :key (conj (vec table-key) (item-referent joe))
-                          :template '(""
-                                      ("" ("age" :tag))
-                                      (:top-level :non-semantic))}}]
+                          :template '(anything (anything ("age" :tag))
+                                               :top-level)}}]
                   [#{:label :element :recursive :optional} #{:content}
                    {:column {:referent (item-referent c2)}}]]}]]
               (any)
@@ -314,15 +303,13 @@
                      :key (conj table-key (:item-id joe) :virtualColumn :virtual)
                      :row {:referent (item-referent joe)
                            :key (conj (vec table-key) (item-referent joe))
-                           :template '(""
-                                       ("" ("age" :tag))
-                                       (:top-level :non-semantic))}
+                           :template '(anything (anything ("age" :tag))
+                                                :top-level)}
                      :target {:referent
                               (virtual-referent
                                (virtual-referent
                                 '(anything
-                                  (:column :non-semantic)
-                                  (:non-semantic :non-semantic)
+                                  :column
                                   (???))
                                 (item-referent query)
                                 (item-referent c6))

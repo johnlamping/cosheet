@@ -31,13 +31,13 @@
 (def o4 (nth orderables 3))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
-                (~o2 :order :non-semantic)
-                ("male" (~o1 :order :non-semantic))
-                (39 (~o3 :order :non-semantic)
+                (~o2 :order)
+                ("male" (~o1 :order))
+                (39 (~o3 :order)
                     ("age" :tag)
                     ("doubtful" "confidence"))
-                ("married" (~o2 :order :non-semantic))
-                (45 (~o4 :order :non-semantic)
+                ("married" (~o2 :order))
+                (45 (~o4 :order)
                     ("age" :tag))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
@@ -55,7 +55,7 @@
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :before)]
     (is (= (to-list new-entity)
-           `(6 (~o5 :order :non-semantic))))
+           `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-entity-with-order-and-temporary
@@ -65,7 +65,7 @@
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
-           `(6 (~o5 :order :non-semantic))))
+           `(6 (~o5 :order))))
     (is (= order o6))
     (is (= (:item-id new-entity) id)))    
   (let [[s id order] (update-add-entity-with-order-and-temporary
@@ -75,7 +75,7 @@
         new-entity (first (matching-elements 6 joe))
         [o5 o6] (orderable/split unused-orderable :after)]
     (is (= (to-list new-entity)
-           `(6 (~o6 :order :non-semantic))))
+           `(6 (~o6 :order))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   (let [[s id order] (update-add-entity-with-order-and-temporary
@@ -86,9 +86,9 @@
         [x o5] (orderable/split unused-orderable :before)
         [o6 o7] (orderable/split x :after)]
     (is (check (canonicalize-list (to-list new-entity))
-               (canonicalize-list `(6 (~o7 :order :non-semantic)
+               (canonicalize-list `(6 (~o7 :order)
                                       ("height" :tag
-                                       (~o6 :order :non-semantic))))))
+                                       (~o6 :order))))))
     (is (= order o5))
     (is (= (:item-id new-entity) id)))
   ;; Check that order in the list style entity is preserved in the
@@ -98,8 +98,8 @@
   (let [[s id order] (update-add-entity-with-order-and-temporary
                       store joe-id '(6 ("height" :tag)
                                        ("" :tag)
-                                       (:temporary :non-semantic)
-                                       (:other :non-semantic ""))
+                                       :temporary
+                                       (:other ""))
                       unused-orderable :after false)
         joe (description->entity joe-id s)
         new-entity (first (label->elements joe "height"))
@@ -108,11 +108,11 @@
         [o8 o7] (orderable/split x :before)]
     (is (check (canonicalize-list (to-list new-entity))
                (canonicalize-list
-                `(6 (~o5 :order :non-semantic)
-                    ("height" :tag (~o7 :order :non-semantic))
-                    ("" :tag (~o6 :order :non-semantic))
-                    (:temporary :non-semantic)
-                    (:other :non-semantic "")))))
+                `(6 (~o5 :order)
+                    ("height" :tag (~o7 :order))
+                    ("" :tag (~o6 :order))
+                    :temporary
+                    (:other "")))))
     (is ((:temporary-ids s) id))
     (is (= order o8))
     (is (= (:item-id new-entity) id))))
@@ -129,11 +129,11 @@
 (deftest add-order-elements-test
   (let [ordered (add-order-elements `(a (b c) d (e :tag)))]
     (is (check ordered
-               `(a (b (c (~(any) :order :non-semantic))
-                      (~(any) :order :non-semantic))
-                   (d (~(any) :order :non-semantic))
-                   (e :tag (~(any) :order :non-semantic))
-                   (~(any) :order :non-semantic))))
+               `(a (b (c (~(any) :order))
+                      (~(any) :order))
+                   (d (~(any) :order))
+                   (e :tag (~(any) :order))
+                   (~(any) :order))))
     (is (orderable/earlier? (-> ordered second second second first)
                            (-> ordered second (nth 2) first)))
     (is (orderable/earlier? (-> ordered second (nth 2) first)

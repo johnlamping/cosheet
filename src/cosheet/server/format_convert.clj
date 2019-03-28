@@ -1,11 +1,11 @@
 (ns cosheet.server.format-convert
   (:require (cosheet [debug :refer [simplify-for-print]]             
                      [entity :refer [to-list label->elements content]]
-                     [store :refer [update-content]]
+                     [store :refer [update-content id-valid?]]
                      [store-utils :refer [add-entity remove-entity-by-id]]
                      [query :refer [matching-items]])
             (cosheet.server
-             [model-utils :refer [specialize-template]])))
+             [model-utils :refer [specialize-template semantic-element?]])))
 
 (defn convert-from-0-to-1
   "Convert a store from format 0 to format 1.
@@ -65,14 +65,37 @@
      (update-content store (:item-id format) 4)
      tables)))
 
-(defn convert-to-current
-  "Convert a store to the current format (That's 1 right now."
+(defn convert-from-4-to-5
+  "Convert a store from format 4 to 5.
+  The only difference is that where was any element that had :non-semantic,
+  remove the :non-semantic, and if its contents was the empty string,
+  replace it with :blank to make the element non-semantic."
   [store]
   (let [format (first (matching-items '(nil :format) store))
-        format (if format (content format) 0)]
-    (assert (and (>= format 0) (<= format 4))
+        wrongly-semantic (filter #(string? (content %))
+                                 (matching-items '(nil :non-semantic) store))]
+    (assert (= (content format) 4))
+    (as-> store store
+      (update-content store (:item-id format) [5])
+      (reduce (fn [s wrong]
+                (update-content s (:item-id wrong) :blank))
+              store wrongly-semantic)
+      (reduce (fn [s non-semantic]
+                (if (id-valid? s (:item-id non-semantic))
+                  (remove-entity-by-id s (:item-id non-semantic))
+                  s))
+              store (matching-items :non-semantic store)))))
+
+(defn convert-to-current
+  "Convert a store to the latest format."
+  [store]
+  (let [format (first (matching-items '(nil :format) store))
+        format (if format (content format) 0)
+        format (if (vector? format) (first format) format)]
+    (assert (and (>= format 0) (<= format 5))
             (str "Store in unknown format " format))
     (cond-> store
       (<= format 0) convert-from-0-to-1
       (<= format 2) convert-from-1-or-2-to-3
-      (<= format 3) convert-from-3-to-4)))
+      (<= format 3) convert-from-3-to-4
+      (<= format 4) convert-from-4-to-5)))

@@ -29,7 +29,8 @@
 
 ;;; For a basic entity, we show its contents and its visible semantic
 ;;; elements. We don't show its non-semantic elements, which are
-;;; identified by, themselves, having :non-semantic elements. And we
+;;; identified by, themselves, having a content other than a number string,
+;;; :tag, 'anything, or 'anything-immutable. And we
 ;;; don't show its invisible elements, which are identified by having
 ;;; :invisible elements. An invisible element in a condition requires
 ;;; that any match to the condition also has a matching element, while
@@ -42,10 +43,10 @@
 ;;; elements.
 ;;; So, for example, the entity:
 ;;;    ("Joe"
-;;;        ("married" (1 :order :non-semantic)
-;;;        ("spy" (:invisible :non-sementic)
-;;;               (2 :order :non-semantic))
-;;;        (39 (3 :order :non-semantic)
+;;;        ("married" (->Orderable 1 2) :order)
+;;;        ("spy" :invisible
+;;;               ((->Orderable 3 4 :order))
+;;;        (39 ((->Orderable 5 6) :order)
 ;;;            ("age" :tag)
 ;;;            "doubtful"))
 ;;; would be rendered to dom that tries to convey:

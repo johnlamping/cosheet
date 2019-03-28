@@ -87,7 +87,7 @@
                       :after (reverse entity-elements)))
             [s3 _] (add-entity
                     s2 id `(~(if use-bigger bigger-order smaller-order)
-                            :order :non-semantic))]
+                            :order))]
         [(if trans (declare-temporary-id s3 id) s3)
          id
          (if use-bigger smaller-order bigger-order)]))))
@@ -146,13 +146,13 @@
           [before after] (split order :after)]
       [(apply list (concat [(first entity)]
                            elements
-                           [`(~before :order :non-semantic)]))
+                           [`(~before :order)]))
        after])
     (or (nil? entity) (= entity :tag))
     [entity order]
     true
     (let [[before after] (split order :after)]
-      [`(~entity (~before :order :non-semantic))
+      [`(~entity (~before :order))
        after])))
 
 (defn add-order-elements

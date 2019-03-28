@@ -35,8 +35,8 @@
   [query-item store inherited]
   (let [[unique _] (get-unique-number (current-store store))
         invisible `(~unique
-                    (:invisible :non-semantic)
-                    (:temporary :non-semantic))
+                    :invisible
+                    :temporary)
         query-virtual-referent (virtual-referent
                                 `(~'anything ~invisible)
                                 (item-referent query-item))

@@ -26,16 +26,16 @@
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def joe-list `("Joe"
-                (~o2 :order :non-semantic)
-                ("male" (~o1 :order :non-semantic))
-                (39 (~o3 :order :non-semantic)
-                    ("age" :tag (~o3 :order :non-semantic))
-                    ("doubtful" ("confidence" (~o4 :order :non-semantic))
-                                (~o4 :order :non-semantic)) )
-                ("married" (~o2 :order :non-semantic))
-                (45 (~o4 :order :non-semantic)
-                    ("age" :tag (~o3 :order :non-semantic)))
-                ("spy" (:invisible :non-semantic))))
+                (~o2 :order)
+                ("male" (~o1 :order))
+                (39 (~o3 :order)
+                    ("age" :tag (~o3 :order))
+                    ("doubtful" ("confidence" (~o4 :order))
+                                (~o4 :order)) )
+                ("married" (~o2 :order))
+                (45 (~o4 :order)
+                    ("age" :tag (~o3 :order)))
+                ("spy" :invisible)))
 
 (deftest specialize-template-test
   (let [[c1 s1] (specialize-template '("x" (??? :a) (??? 22))
@@ -49,10 +49,10 @@
   (let [semantic (let-mutated [him joe-list]
                   (semantic-to-list-R him))]
     (is (= (first semantic) "Joe")))
-  (is (= (set (map canonicalize-list
-                   (let-mutated [him joe-list]
-                     (expr-seq map to-list (semantic-elements-R him)))))
-         (set (map canonicalize-list (rest (rest joe-list))))))
+  (is (check (map canonicalize-list
+                  (let-mutated [him joe-list]
+                    (expr-seq map to-list (semantic-elements-R him))))
+         (as-set (map canonicalize-list (rest (rest joe-list))))))
   (let [expected ["joe" {"male" 1
                          "married" 1
                          [39 {["age" {:tag 1}] 1
@@ -80,12 +80,12 @@
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-entity
                                (starting-store "tab") nil
-                               '(thing (:selector :non-semantic)
-                                       (child (1 (:order :non-semantic))
+                               '(thing :selector
+                                       (child (1 :order)
                                               grandchild)))
         [s non-selector-root-id] (add-entity
                                   s1 nil
-                                  '(thing (child (1 (:order :non-semantic))
+                                  '(thing (child (1 :order)
                                                  grandchild)))
         selector-root (description->entity selector-root-id s)
         selector-child (first (matching-elements 'child selector-root))
@@ -110,39 +110,39 @@
 (deftest add-table-test
   (let [s (starting-store "hi")
         s1 (add-table s "there" [["a" "b"] [1 2] [3]])
-        tabs (matching-items '(nil "there" (:tab :non-semantic)
-                               (nil
-                                (:non-semantic :non-semantic)
-                                (:tab-topic :non-semantic)
-                                (:table :non-semantic)))
+        tabs (matching-items '(nil "there" :tab
+                               (nil :tab-topic :table))
                              s1)
         tab (first tabs)
         rows (matching-items
-              '(nil (:top-level :non-semantic)) s1)
+              '(nil :top-level) s1)
         table (first (matching-elements
-                              '(nil (:table :non-semantic))
+                              '(nil :table)
                               tab))
         row-condition (first (matching-elements
-                              '(nil (:row-condition :non-semantic)
-                                    (:non-semantic :non-semantic))
+                              '(nil :row-condition)
                               table))
         headers (matching-elements
-                 '(nil (:column :non-semantic)
-                       (:non-semantic :non-semantic))
+                 '(nil :column)
                  row-condition)]
     (is (= (count tabs) 1))
-    (is (= (immutable-semantic-to-list tab)
-           '("" ("" (anything (anything ("b" :tag))
-                              (anything ("a" :tag))
-                              ("there" :tag)))
-             "there")))
+    (is (check (cosheet.entity/to-list tab)
+           `(""
+             (:blank :tab-topic :table
+                     (~'anything ("there" :tag)
+                      (~'anything :column ("a" :tag))
+                      (~'anything :column ("b" :tag))
+                      :row-condition :selector))
+             :tab
+             ("there" (~(any) :order))
+             (~(any) :order))))
     (is (check (map immutable-semantic-to-list (order-items-R rows))
                [(as-set '("" ("there" :tag) (1 ("a" :tag)) (2 ("b" :tag))))
                 (as-set '("" ("there" :tag) (3 ("a" :tag))))]))
     (is (check (immutable-semantic-to-list row-condition)
-               '(anything (anything ("b" :tag))
+               '(anything ("there" :tag)
                           (anything ("a" :tag))
-                          ("there" :tag))))
+                          (anything ("b" :tag)))))
     (is (check (map immutable-semantic-to-list (order-items-R headers))
                ['(anything ("a" :tag))
                 '(anything ("b" :tag))]))))

@@ -170,9 +170,7 @@
    store
    (fn [store]
      (let [[store id] (add-entity store nil
-                                  '(""
-                                    (anything (:batch-query :non-semantic)
-                                              (:selector :non-semantic))))]
+                                  '("" (anything :batch-query :selector)))]
        [(declare-temporary-id store id) id]))))
 
 (defn get-store

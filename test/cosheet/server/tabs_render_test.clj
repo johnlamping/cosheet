@@ -37,17 +37,17 @@
                    :key-prefix [:foo]}
         tabs-list `(""
                     ("" "foo"
-                     (:tab :non-semantic)
-                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                     (~o1 :order :non-semantic))
+                     :tab
+                     (:blank :table)
+                     (~o1 :order))
                     ("" "foo" "bar"
-                     (:tab :non-semantic)
-                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                     (~o2 :order :non-semantic))
+                     :tab 
+                     (:blank :table)
+                     (~o2 :order))
                     ("" "baz" "bletch"
-                     (:tab :non-semantic)
-                     ("" (:table :non-semantic) (:non-semantic :non-semantic))
-                     (~o3 :order :non-semantic)))
+                     :tab
+                     (:blank :table)
+                     (~o3 :order)))
         [dom tabs t1 t2 t3] (let-mutated [tabs tabs-list]
                               (expr-let [t1s (label->elements tabs o1)
                                          t2s (label->elements tabs o2)
@@ -68,9 +68,9 @@
                                 (map item-referent adjacent-items)))
         items-referent (fn [& items] (union-referent (map item-referent items)))
         starting-inherited {:priority 1
-                           :width 3.0
-                           :key-prefix [:foo]
-                            :template '(anything)}]
+                            :width 3.0
+                            :key-prefix [:foo]
+                            :template '(anything)}] 
     (is (check
          dom
          [:div {:class "tabs-wrapper"}

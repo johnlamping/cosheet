@@ -25,6 +25,8 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
+                                  semantic-to-list-R
+                                  semantic-elements-R
                                   visible-elements-R visible-to-list-R
                                   table-header-template
                                   pattern-to-query query-to-template]]
@@ -42,6 +44,14 @@
                                   item-content-DOM]])))
 
 (def base-table-column-width 150)
+
+;;; The condition elements of a table are its visible elements
+;;; that are not column headers.
+(defn table-condition-elements-R [row-condition-item]
+  (expr-let
+      [visible-elements (visible-elements-R row-condition-item)
+       column-elements (entity/label->elements row-condition-item :column)]
+    (remove (set column-elements) visible-elements)))
 
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
@@ -64,23 +74,25 @@
             ;; that redundant part.
             (or (seq (matching-elements :column item))  
                 (seq (matching-elements :top-level parent-item)))
-            (let [[condition-content & condition-elements]
-                  (immutable-visible-to-list immutable-row-condition-item)
+            (let [condition-elements
+                  (map immutable-visible-to-list
+                       (table-condition-elements-R
+                        immutable-row-condition-item))
                   item-condition (immutable-visible-to-list item)
-                  queryable-condition (comp immutable-visible-to-list
-                                            pattern-to-query)
                   redundant (best-template-match
-                             (map queryable-condition condition-elements)
+                             (map pattern-to-query condition-elements)
                              item-condition)
                   non-redundant (remove-first
-                                 #(= (queryable-condition %) redundant)
+                                 #(= (pattern-to-query %) redundant)
                                  condition-elements)]
-              (apply list (concat [condition-content]
+              (apply list (concat ['anything]
                                   non-redundant
                                   [item-condition])))
             ;; If the item is part of the row condition, just return that.
             (seq (matching-elements :row-condition item))
-            (immutable-visible-to-list item)
+            (concat '(anything)
+                    (map immutable-visible-to-list
+                         (table-condition-elements-R item)))
             parent-item
             (recur parent-item))))
       add-order-elements
@@ -566,15 +578,12 @@
   "Given the item giving the row condition, return the template for a row
   and the items for the rows, in order."
   [store row-condition-item]
-  (expr-let [row-pattern (visible-to-list-R row-condition-item)
-             row-query (add-elements-to-entity-list
-                        (pattern-to-query row-pattern)
-                        ['(:top-level :non-semantic)])
-             ;; Avoid the (nil :order :non-semantic) added by
-             ;; pattern-to-query
-             row-template (query-to-template row-query)
+  (expr-let [condition-elements (table-condition-elements-R row-condition-item)
+             elems-list (expr-seq map semantic-to-list-R condition-elements)
+             row-template (concat '(anything) elems-list [:top-level])
+             row-query (pattern-to-query row-template)
              row-items (expr order-items-R
-                         (matching-items row-query store))]
+                         (matching-items row-query store))] 
     [row-template row-items]))
 
 (defn table-top-DOM-R
@@ -582,11 +591,8 @@
   holds its condition."
   [row-condition-item rows-referent inherited]
   (let [subject-referent (union-referent [(item-referent row-condition-item)])]
-    (expr-let [visible-elements (visible-elements-R row-condition-item)
-               column-elements (entity/label->elements
-                                row-condition-item :column)
-               condition-elements (remove (set column-elements)
-                                          visible-elements)
+    (expr-let [condition-elements (table-condition-elements-R
+                                   row-condition-item)
                inherited-down (assoc
                                inherited
                                :subject-referent subject-referent
@@ -610,8 +616,8 @@
   ;; The following elements of table-item describe the table:
   ;;  :row-condition  The content is an item whose list form gives the
   ;;                  requirements for an item to appear as a row.
-  ;;                  It is marked as :non-semantic and :selector.
-  ;;                  It has additional non-semantic elements tagged with:
+  ;;                  It is marked as :selector.
+  ;;                  It has additional elements tagged with:
   ;;     :column  The semantics gives the requirements for an element
   ;;              of a row to appear in this column. Generally, the content
   ;;              will be the keyword 'anything, to indicate no constraint
@@ -637,7 +643,7 @@
               ;; it doesn't contain strings or other non-serializable stuff.
               rows-referent (query-referent
                              (list (item-referent row-condition-item)
-                                   '(:top-level :non-semantic)))
+                                   ':top-level))
               headers-inherited (update
                                  (assoc
                                   inherited

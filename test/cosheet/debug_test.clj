@@ -11,6 +11,7 @@
                                                  request compute]]
                      [expression :refer [expr expr-let cache]]
                      [store :refer :all]
+                     store-impl
                      [store-utils :refer [add-entity]]
                      [entity :refer :all])
             ; :reload

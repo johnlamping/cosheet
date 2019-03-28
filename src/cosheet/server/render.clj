@@ -13,8 +13,8 @@
              [referent :refer [item-referent referent->exemplar-and-subject
                                item-referent?]]
              [instantiate :refer [instantiate-referent]]
-             [model-utils :refer [ tabs-holder-item-R first-tab-R
-                                  visible-item?-R]]
+             [model-utils :refer [tabs-holder-item-R first-tab-R
+                                  visible-item?-R semantic-to-list-R]]
              [render-utils :refer [make-component]]
              [item-render :refer [item-DOM-R]]
              [table-render :refer [table-DOM-R]]
@@ -223,15 +223,25 @@
                                               content-names)))]
       (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
 
+;;; If we are batch editing and there is a non-trivial batch edit query,
+;;; return it.
+(defn batch-editing-query-item [store temporary-id client-state]
+  (expr-let [batch-editing (state-map-get client-state :batch-editing)]
+    (when batch-editing
+      (let [temporary-item (description->entity temporary-id store)]
+        (expr-let [query-item (expr first
+                                (label->elements temporary-item :batch-query))
+                   query-content (semantic-to-list-R query-item)]
+          (when (not= query-content 'anything)
+            query-item))))))
+
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   [store temporary-id client-state]
-  (expr-let [batch-editing (state-map-get client-state :batch-editing)]
-    (if batch-editing
-      (let [temporary-item (description->entity temporary-id store)]
-        (expr-let [query (expr first
-                           (label->elements temporary-item :batch-query))]
-          (batch-edit-DOM-R query store starting-inherited)))
+  (expr-let [batch-editing-item (batch-editing-query-item
+                                 store temporary-id client-state)]
+    (if batch-editing-item
+      (batch-edit-DOM-R batch-editing-item store starting-inherited)
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)
              immutable-item (call-dependent-on-id

@@ -9,7 +9,8 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   do-update-control-return! declare-temporary-id]]
+                   do-update-control-return! declare-temporary-id
+                   update-valid-undo-point]]
     store-impl
     mutable-store-impl
     [store-utils :refer [add-entity]]
@@ -171,7 +172,10 @@
    (fn [store]
      (let [[store id] (add-entity store nil
                                   '("" (anything :batch-query :selector)))]
-       [(declare-temporary-id store id) id]))))
+       [(-> store
+            (declare-temporary-id id)
+            (update-valid-undo-point false))
+        id]))))
 
 (defn get-store
   "Read the store if possible; otherwise create one.

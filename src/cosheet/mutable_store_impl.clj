@@ -174,14 +174,14 @@
     (describe-and-swap!
      (:manager-data this)
      (fn [{:keys [store history future] :as state}]
-       (println (simplify-for-print ["UNDOING" state]))
        (if (empty? (rest history))
          [state []]
          (let [[[modified-ids target-store] & remaining-history] history
                [_ prev-store] (first remaining-history)
                all-modified-ids (if-let [pending-modified-ids
                                        (:pending-modified-ids state)]
-                                (distinct pending-modified-ids modified-ids)
+                                  (vec (distinct (concat pending-modified-ids
+                                                         modified-ids)))
                                 modified-ids)]
            [{:store prev-store
              :history remaining-history

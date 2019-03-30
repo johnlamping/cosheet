@@ -109,6 +109,13 @@
   (track-modified-ids [this]
     "Record the ids that have been modified.")
 
+  (valid-undo-point? [this]
+    "Return whether this store is a valid state for undoing to.")
+
+  (update-valid-undo-point [this valid]
+    "Set whether this store is a valid state for undoing to. The validity
+     persists through other changes until explicitly changed.")
+
   (fetch-and-clear-modified-ids [this]
     "Clear the record of modified ids.
      Returns the new store, and the original set of modified ids.")
@@ -155,10 +162,6 @@
      Update the store with the result, and notify all reporters of
      changes noted by the update. This is a way to package a number
      of updates to the current store into a single transaction.")
-
-  (revise-update-control-return! [this expected-current update-fn]
-    "Run the update function on the previous state of the store,
-    provided the current state matches expected-current.")
   
   (add-simple-element! [this subject content]
     "Add an element to the subject with the given content,

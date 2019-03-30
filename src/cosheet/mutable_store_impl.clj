@@ -11,23 +11,35 @@
                               attended? new-reporter]]
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
-                                    swap-control-return!]])))
+                                    swap-control-return!]]
+                     [debug :refer [simplify-for-print]])))
 
 (defn store-to-manager-data
   "Given an immutable store, create the map that we store in the manager data,
   which adds a history to the store."
   [immutable-store]
-  {:store (track-modified-ids immutable-store)
-   ;; :history is a list of [modified-ids, store] pairs,
-   ;; where store gives a previous state and modified-ids
-   ;; gives the ids that change from that state to the next
-   ;; one.
-   :history nil
-   ;; :future is a list of [modified-ids, store] pairs,
-   ;; where store gives a next state and modified-ids
-   ;; gives the ids that change from the current state to
-   ;; the next one.
-   :future nil})
+  (assert (valid-undo-point? immutable-store))
+  (let [tracking-store (track-modified-ids immutable-store)]
+    {:store tracking-store
+     ;; The next two fields each are a list of [modified-ids, store] pairs
+     ;; where store gives one store in a sequence of stores, and
+     ;; modified-ids gives the ids that change between that store and
+     ;; the previous one in the sequence.
+     
+     ;; :history is a list of [modified-ids, store] pairs going backward
+     ;; in time. It starts with the most recent valid-undo-point store.
+     ;; (Typically, that will be the current store.)
+     :history [[nil tracking-store]]
+     ;; :future is a list of [modified-ids, store] pairs going forward
+     ;; in time, starting from the next one after the current store.
+     :future nil
+     
+     ;; :pending-modified-ids is a seq of the modified ids between the store
+     ;; at the top of :history and the current store. It will be non-null
+     ;; only if they are different because the current store is not
+     ;; a valid-undo-point.
+     :pending-modified-ids nil
+     }))
 
 (defn item-ids-affected-by-id
   "Return a seq of item ids that might be affected by a change to the given id."
@@ -124,38 +136,24 @@
      (fn [{:keys [store history] :as state}]
        (let [[updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
-                                       updated-store)]
+                                       updated-store)
+             all-modified-ids (if-let [pending-modified-ids
+                                       (:pending-modified-ids state)]
+                                (vec (distinct (concat pending-modified-ids
+                                                       modified-ids)))
+                                (vec modified-ids))]
          [(if (not= new-store store)
-            {:store new-store
-             :history (cons [modified-ids store] history)
-             :future nil}
+            (if (and (valid-undo-point? new-store) (seq modified-ids))
+              {:store new-store
+               :history (cons [all-modified-ids new-store] (:history state))
+               :future nil
+               :pending-modified-ids nil}
+              (assoc state
+                     :store new-store
+                     :pending-modified-ids all-modified-ids))
             state)
           (keys-affected-by-ids modified-ids store new-store)
           result]))))
-
-  (revise-update-control-return! [this expected-current update-fn]
-    (describe-and-swap-control-return!
-     (:manager-data this)
-     (fn [state]
-       (if (not= expected-current (:store state))
-         [state nil]
-         (let [{:keys [store history future]} state]
-           (if (empty? history)
-             [state []]
-             (let [[[prev-modified-ids prev-store] & prev-history] history
-                   [updated-store result] (update-fn prev-store)
-                   [new-store new-modified-ids] (fetch-and-clear-modified-ids
-                                                 updated-store)
-                   all-modified-ids (seq (clojure.set/union
-                                          (set prev-modified-ids)
-                                          (set new-modified-ids)))]
-               [(if (not= new-store store)
-                  {:store new-store
-                   :history (cons [new-modified-ids prev-store] prev-history)
-                   :future nil}
-                  state)
-                (keys-affected-by-ids all-modified-ids store new-store)
-                result])))))))
 
   (add-simple-element! [this subject content]
     (do-update-control-return! this #(add-simple-element % subject content)))
@@ -170,19 +168,25 @@
     (do-update! this #(declare-temporary-id % id)))
 
   (can-undo? [this]
-    (not (empty? (:history (:value @(:manager-data this))))))
+    (not (empty? (rest (:history (:value @(:manager-data this)))))))
 
   (undo! [this]
     (describe-and-swap!
      (:manager-data this)
      (fn [{:keys [store history future] :as state}]
-       (if (empty? history)
+       (println (simplify-for-print ["UNDOING" state]))
+       (if (empty? (rest history))
          [state []]
-         (let [[[modified-ids prev-store] & remaining-history] history]
+         (let [[[modified-ids target-store] & remaining-history] history
+               [_ prev-store] (first remaining-history)
+               all-modified-ids (if-let [pending-modified-ids
+                                       (:pending-modified-ids state)]
+                                (distinct pending-modified-ids modified-ids)
+                                modified-ids)]
            [{:store prev-store
              :history remaining-history
-             :future (cons [modified-ids store] future)}
-            (keys-affected-by-ids modified-ids prev-store store)])))))
+             :future (cons [modified-ids target-store] future)}
+            (keys-affected-by-ids all-modified-ids prev-store store)])))))
 
   (can-redo? [this]
     (not (empty? (:future (:value @(:manager-data this))))))
@@ -195,7 +199,7 @@
          [state []]
          (let [[[modified-ids next-store] & remaining-future] future]
            [{:store next-store
-             :history (cons [modified-ids store] history)
+             :history (cons [modified-ids next-store] history)
              :future remaining-future}
             (keys-affected-by-ids modified-ids next-store store)]))))))
 

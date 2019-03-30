@@ -8,7 +8,7 @@
                        state-map-swap-control-return!]]
     [store :refer [update-content
                    fetch-and-clear-modified-ids
-                   do-update-control-return! revise-update-control-return!
+                   do-update-control-return!
                    id->subject id-valid? undo! redo! current-store]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl

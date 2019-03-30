@@ -12,45 +12,47 @@
             ))
 
 (def test-store
-  (->ElementStoreImpl
-   ;; id->subject
-   {(make-id "1") (make-id "0")
-    (make-id "2") (make-id "1")
-    (make-id "3") (make-id "2")
-    (make-id "5") (make-id "4")
-    (make-id "7") (make-id "1")
-    (make-id "8") (make-id "3")}
-   ;; id->content
-   {(make-id "0") 0
-    (make-id "1") (make-id "4")
-    (make-id "2") ["Foo"]
-    (make-id "3") :label
-    (make-id "4") (make-id "6")
-    (make-id "5") "bar"
-    (make-id "6") 5
-    (make-id "7") "second"
-    (make-id "8") "Bar"}
-   ;; content->ids
-   {0 (make-id "0")
-    (make-id "4") (make-id "1")
-    ["Foo"] (make-id "2")
-    :label (make-id "3")
-    (make-id "6") (make-id "4")
-    "bar" #{(make-id "5") (make-id "8")}
-    5 (make-id "6")
-    "second" (make-id "7")}
-   ;; temporary-ids
-   #{}
-   ;; subject->label->ids
-   {(make-id "0") {["Foo"] [(make-id "1")] "second" [(make-id "1")]}
-    (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
-    (make-id "2") {"bar" [(make-id "3")]}
-    (make-id "3") {nil [(make-id "8")]}
-    (make-id "4") {nil [(make-id "5")]}}
-   ;; next-id
-   8
-   ;; modified-ids
-   nil))
+  (map->ElementStoreImpl
+   {:id->subject
+    {(make-id "1") (make-id "0")
+     (make-id "2") (make-id "1")
+     (make-id "3") (make-id "2")
+     (make-id "5") (make-id "4")
+     (make-id "7") (make-id "1")
+     (make-id "8") (make-id "3")}
+    :id->content-map
+    {(make-id "0") 0
+     (make-id "1") (make-id "4")
+     (make-id "2") ["Foo"]
+     (make-id "3") :label
+     (make-id "4") (make-id "6")
+     (make-id "5") "bar"
+     (make-id "6") 5
+     (make-id "7") "second"
+     (make-id "8") "Bar"}
+    :content->ids
+    {0 (make-id "0")
+     (make-id "4") (make-id "1")
+     ["Foo"] (make-id "2")
+     :label (make-id "3")
+     (make-id "6") (make-id "4")
+     "bar" #{(make-id "5") (make-id "8")}
+     5 (make-id "6")
+     "second" (make-id "7")}
+    :temporary-ids
+    #{}
+    :subject->label->ids
+    {(make-id "0") {["Foo"] [(make-id "1")] "second" [(make-id "1")]}
+     (make-id "1") {:label [(make-id "2")] nil [(make-id "7")]}
+     (make-id "2") {"bar" [(make-id "3")]}
+     (make-id "3") {nil [(make-id "8")]}
+     (make-id "4") {nil [(make-id "5")]}}
+    :next-id
+    8
+    :modified-ids
+    nil
+    :valid-undo-point
+    true}))
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))
 
@@ -342,6 +344,11 @@
     (is (number? id1))
     (is (number? id2))
     (is (not (= id1 id2)))))
+
+(deftest valid-undo-point-test
+  (is (valid-undo-point? test-store))
+  (is (valid-undo-point? (update-valid-undo-point test-store true)))
+  (is (not (valid-undo-point? (update-valid-undo-point test-store false)))))
 
 (deftest write-read-test
   (let [store (first

@@ -13,6 +13,7 @@
              store-impl
              [mutable-store-impl :refer :all]
              [canonical :refer [canonicalize-list]]
+             [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set evals-to let-mutated]])
             ; :reload
             ))
@@ -67,13 +68,15 @@
       (reset-store! mutable-store modified-store)
       (is (= (value tracking-store) (track-modified-ids modified-store)))
       (is (= (value content) 99))
-
+      
       (let [[store1 e] (add-simple-element store element "foo")
             [store2 _] (add-simple-element store1 e :label)
             store3 (declare-temporary-id store2 e)
             revised-store (update-content store3 element 88)
             me (add-simple-element! mutable-store element "foo")
+            _ (do-update! mutable-store #(update-valid-undo-point % false))
             me1 (add-simple-element! mutable-store me :label)
+            _ (do-update! mutable-store #(update-valid-undo-point % true))
             _ (declare-temporary-id! mutable-store me)
             _ (update-content! mutable-store element 88)]
         (is (= (value content) (id->content revised-store element)))
@@ -91,8 +94,6 @@
         ;; Test undo and redo.
         (is (can-undo? mutable-store))
         (undo! mutable-store)
-        (undo! mutable-store)
-        (undo! mutable-store)
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
@@ -108,8 +109,6 @@
         (is (= (value tracking-store)
                (track-modified-ids modified-store)))
         (is (can-redo? mutable-store))
-        (redo! mutable-store)
-        (redo! mutable-store)
         (redo! mutable-store)
         (is (can-redo? mutable-store))
         (redo! mutable-store)
@@ -130,8 +129,6 @@
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
-        (undo! mutable-store)
-        (undo! mutable-store)
         (undo! mutable-store)
         (is (can-redo? mutable-store))
         (remove-simple-id! mutable-store me)
@@ -159,25 +156,4 @@
     (manage as-list md)
     (compute md)
     (is (= (canonicalize-list entity)
-           (canonicalize-list (value as-list))))
-    ;; Test revise-update-control-return!.
-    (add-simple-element! mutable-store item-id 42)
-    (compute md)
-    (let [initial-modified (current-store mutable-store)
-          result (revise-update-control-return!
-                  mutable-store initial-modified
-                  (fn [store] [(first (add-simple-element store item-id 1000))
-                               57]))
-          modified-entity (apply list (concat entity [1000]))]
-      (is (= result 57))
-      (compute md)
-      (is (= (canonicalize-list (value as-list))
-             (canonicalize-list modified-entity)))
-      ;; Now, make sure a change with the wrong store is rejected.
-      (nil? (revise-update-control-return!
-             mutable-store initial-modified
-             (fn [store] [(first (add-simple-element store item-id 9999))
-                          57])))
-      (compute md)
-      (is (= (canonicalize-list (value as-list))
-             (canonicalize-list modified-entity))))))
+           (canonicalize-list (value as-list))))))

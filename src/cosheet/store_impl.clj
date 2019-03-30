@@ -350,8 +350,7 @@
     ^{:doc
       "An immutable store that has only enough indexing
        to find elements of items."}
-
-    [
+   [
    ;;; These two maps give the facts about the store's triples.
    ;;; Map from ItemId to its subject
    id->subject
@@ -365,7 +364,7 @@
 
    ;;; A set of ids that have been declared temporary.
    temporary-ids
-   
+
    ;;; Index from item then label to all elements that belong to the
    ;;; item and have the label.
    ;;; Subject must be an id, while label can be an id or a primitives.
@@ -377,7 +376,11 @@
    ;;; A set of ids that have been updated since the last call to
    ;;; clear-modified-ids. This is only present if track-modified-ids
    ;;; has been called.
-   modified-ids]
+   modified-ids
+
+   ;;; Whether this store state is a valid undo point. (Starts out true.)
+   valid-undo-point
+   ]
 
   Store
 
@@ -471,6 +474,12 @@
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))
 
+  (valid-undo-point? [this]
+    (:valid-undo-point this))
+
+  (update-valid-undo-point [this valid]
+    (assoc this :valid-undo-point valid))
+
   (fetch-and-clear-modified-ids [this]
     [(assoc this :modified-ids #{})
      (:modified-ids this)])
@@ -542,7 +551,8 @@
                           :temporary-ids #{}
                           :subject->label->ids {}
                           :next-id 0
-                          :modified-ids nil}))
+                          :modified-ids nil
+                          :valid-undo-point true}))
 
 (defmethod make-id true [id]
   ;;Integers are reserved for the store

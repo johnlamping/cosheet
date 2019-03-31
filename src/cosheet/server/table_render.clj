@@ -3,7 +3,7 @@
                                     add-elements-to-entity-list remove-first]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items
-                                    best-template-match]]
+                                    best-template-match extended-by?]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
@@ -71,7 +71,8 @@
             ;; If we have reached a top level row or header element,
             ;; add it to the row condition.
             ;; But if it implies part of the row condition, don't include
-            ;; that redundant part.
+            ;; that redundant part, while if a row condition implies the
+            ;; element, don't include the element.
             (or (seq (matching-elements :column item))  
                 (seq (matching-elements :top-level parent-item)))
             (let [condition-elements
@@ -84,10 +85,14 @@
                              item-condition)
                   non-redundant (remove-first
                                  #(= (pattern-to-query %) redundant)
-                                 condition-elements)]
+                                 condition-elements)
+                  skip-element (when (not redundant)
+                                 (let [query (pattern-to-query item-condition)]
+                                   (some #(extended-by? query %)
+                                         condition-elements)))]
               (apply list (concat ['anything]
                                   non-redundant
-                                  [item-condition])))
+                                  (if skip-element [] [item-condition]))))
             ;; If the item is part of the row condition, just return that.
             (seq (matching-elements :row-condition item))
             (concat '(anything)

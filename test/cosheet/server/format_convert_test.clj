@@ -132,7 +132,6 @@
                  (canonicalize-list table-list-5)))
       (is (= (count versions-5) 1))
       (is (= (to-list (first versions-5)) '([5] :format)))
-      (println (simplify-for-print ["XXXX" (matching-items :non-semantic store-5)]))
       (is (= (convert-to-current store-0) store-5))
       (is (= (convert-to-current store-1) store-5))
       (is (= (convert-to-current store-3) store-5))

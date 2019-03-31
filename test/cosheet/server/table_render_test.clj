@@ -55,7 +55,16 @@
         jane-list `("Jane"
                     :top-level
                     (~o1 :order)
-                    "plain" "plain")]
+                    "plain" "plain")
+        test-list `("TEST"
+                    :top-level
+                    :test
+                    (~o3 :order)
+                    ;; Real data won't have 'anything as content, but we want
+                    ;; something that is less specific than the table condition
+                    ;; to test that it will cause the condition to be
+                    ;; eliminated in batch edits.
+                    (~'anything "age"))]
     (let [table-list
           `("table"
             (~'anything
@@ -64,17 +73,20 @@
              (~'anything ("single" :tag (~o1 :order))
               (~o1 :order)
               :column)
-             (~'anything ("name" :tag (~o1 :order))
+             (~'anything
+              ("name" :tag (~o1 :order))
               (~o2 :order)
               :column)
-             (~'anything ("name" :tag (~o1 :order))
+             (~'anything
+              ("name" :tag (~o1 :order))
               ("id" :tag (~o2 :order))
               (~o3 :order)
               :column)
              (~'anything ("name" :tag (~o1 :order))
               (~o4 :order)
               :column)
-             (~'anything ("age" :tag (~o1 :order))
+             (~'anything
+              ("age" :tag (~o1 :order))
               ("id" :tag (~o2 :order))
               (~o5 :order)
               :column)
@@ -82,11 +94,12 @@
                           ("height" :tag (~o2 :order)))
               (~o6 :order)
               :column)))
-          [dom table joe jane] (let-mutated [table table-list
+          [dom table joe jane test] (let-mutated [table table-list
                                              joe joe-list
-                                             jane jane-list]
+                                             jane jane-list
+                                             test test-list]
                                  (expr-let [dom (table-DOM-R table inherited)]
-                                   [dom table joe jane]))
+                                   [dom table joe jane test]))
           query (first (current-value (entity/label->elements
                                        table :row-condition)))
           c1 (first (current-value (label->elements query o1)))
@@ -155,7 +168,20 @@
                      (45
                       ("age" :tag (~(any) :order))
                       (~(any) :order))
-                     (~(any) :order)))))
+                     (~(any) :order))))
+        ;; Again, the item is in the table, but this time, the condition
+        ;; is a refinement of the item, so just the condition should appear
+        ;; in the edit pattern.
+        (let [test-row (first (matching-items '(nil :top-level :test)
+                                              (:store immutable-query)))
+              test-item (first (label->elements test-row "age"))]
+          (is (check (batch-edit-pattern test-item immutable-query)
+                     `(~'anything
+                       (~'anything
+                        ("age" :tag (~(any) :order))
+                        (~(any) :order))
+                       (~(any) :order)))))
+        )
       (is (check
            dom
            [:div {:class "table"}

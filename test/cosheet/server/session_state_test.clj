@@ -102,7 +102,8 @@
 
 (deftest forget-session-test
   (let [stream (new java.io.StringReader "a, b")
-        store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
+        store (add-table (update-add-temporary-element (starting-store nil))
+                         "Hello" [["a" "b"] [1 2] [3]])
         ms (new-mutable-store store)
         md (new-expression-manager-data)]
     (reset! session-info {:sessions {}

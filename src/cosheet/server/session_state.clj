@@ -163,23 +163,22 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn add-temporary-element
-  "Add a root temporary element to a store.
-   Return the id of the element."
-  [store]
-  (do-update-control-return!
-   store
-   (fn [store]
-     (let [[store id] (add-entity store nil
-                                  '("" (anything :batch-query :selector)))]
-       [(-> store
-            (declare-temporary-id id)
-            (update-valid-undo-point false))
-        id]))))
+(defn update-add-temporary-element
+  "Add a root temporary element to an immutable store."
+  [immutable-store]
+  (let [[store id] (add-entity immutable-store nil
+                                  '(:root-temporary
+                                    (anything :batch-query :selector)))]
+    (declare-temporary-id store id)))
+
+(defn temporary-element-id [store]
+  (let [matches (matching-items :root-temporary (current-store store))]
+    (assert (not (empty? matches)))
+    (:item-id (first matches))))
 
 (defn get-store
-  "Read the store if possible; otherwise create one.
-   If the store can't be made, return nil."
+  "Read the store if possible; otherwise create one. Return the immutable
+   store. If the store can't be made, return nil."
   [without-suffix name suffix]
   (when (and without-suffix (has-valid-directory? without-suffix))
     (let [file-path (str without-suffix suffix)]
@@ -195,7 +194,7 @@
                          (starting-store name)))
                      (= suffix ".csv")
                      (read-csv file-path name))]
-        (convert-to-current store)))))
+        (update-add-temporary-element (convert-to-current store))))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).
@@ -385,7 +384,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path)]
     (let [store (:store store-info)
-          temporary-id (add-temporary-element store)
+          temporary-id (temporary-element-id store)
           id (swap-control-return!
               session-info
               (fn [session-info]

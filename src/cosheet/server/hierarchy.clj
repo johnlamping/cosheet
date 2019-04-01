@@ -38,8 +38,10 @@
        (contains? node :hierarchy-node)))
 
 (defn append-to-hierarchy
-  "Given a leaf and its properties, add them to the hierarchy.
-  If the node has a parent, its ancestor properties must be provided.
+  "Given a sub-part of a hierarchy, a leaf and its properties that are
+  not already accounted for by the containing hierarchy, add it to the
+  hierarchy. If the hierarchy has a parent, its ancestor properties
+  must be provided.
   Don't merge items with empty properties at the top level."
   [hierarchy leaf properties ancestor-properties]
   (let [make-node (fn [leaves properties]
@@ -144,12 +146,6 @@
   (when (hierarchy-node? node-or-leaf)
     (:properties node-or-leaf)))
 
-(defn hierarchy-node-cumulative-properties
-  "Return the cumulative properties of the hierarchy node."
-  [node-or-leaf]
-  (when (hierarchy-node? node-or-leaf)
-    (:cumulative-properties node-or-leaf)))
-
 (def hierarchy-nodes-extent)
 
 ;;; TODO: This code should be aware of refinements of properties, not just
@@ -175,15 +171,16 @@
   [nodes]
   (seq (apply clojure.set/union (map #(set (hierarchy-node-extent %)) nodes))))
 
-;;; The following code assumes that the leaves of a hierarchy are info maps,
+;;; The following code assumes that the leaves of a hierarchy are maps,
 ;;; containing at least the following:
-;;;                :item  The item that is the leaf.
-;;;   :property-elements  The elements of the item that contribute
-;;;                       to the cumulative properties of this node
-;;;                       in the hierarchy.
+;;;                :item  The item that corresponds to the leaf.
 ;;; :property-canonicals  A list of canonical-visible for each element in
 ;;;                       :property-elements. These are the properties
 ;;;                       of the leaf in the hierarchy.
+;;;   :property-elements  The elements of the item that contribute
+;;;                       to the cumulative properties of this node
+;;;                       in the hierarchy, in the same order they appear
+;;;                       :property-canonicals.
 
 (defn hierarchy-by-canonical-info
   "Given a sequence of item info maps, return a hierarchy."
@@ -204,9 +201,9 @@
         :property-canonicals canonicals}))
 
 (defn item-maps-by-elements-R
-  "Given parallel sequences of items in order, and lists of elements
-   that characterize the hierarchy,
-  return item info maps for each item."
+  "Given parallel sequences of items in order, and lists of their elements
+   that characterize their properties,
+   return item info maps for each item."
   [items elements]
   (expr-seq map item-map-by-elements-R items elements))
 

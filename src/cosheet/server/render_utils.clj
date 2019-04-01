@@ -47,19 +47,6 @@
                    canonical-elements elements)))]
       (map #(entity/in-different-store % entity) satisfiers))))
 
-(defn non-implied-matching-elements-R
-  "Given an item, a template template, and an implied template for
-  the entire item, return all semantic elements matching the template,
-  but throwing out enough elements to exactly match the implied template."
-  [item template implied-template]
-  (expr-let [elements (expr-filter semantic-element?-R
-                                   (matching-elements template item))
-             excludeds (when implied-template
-                         (condition-satisfiers-R item implied-template))]
-    (if excludeds
-      (seq (clojure.set/difference (set elements) (set excludeds)))
-      elements)))
-
 ;;; These next functions handle inherited attributes.
 ;;; In inherited, :attributes is a vector of descriptors.
 ;;; A descriptor is either:
@@ -104,6 +91,16 @@
                             description)))
                       %))))
 
+(defn remove-inherited-for-item
+  "Remove any inherited attributes specified as being for the specific item."
+  [inherited item]
+  (if-let [descriptors (:attributes inherited)]
+    (let [id (:item-id item)]
+      (assoc-if-non-empty inherited :attributes
+                          (remove #(and (sequential? %) (= (first %) id))
+                                   descriptors)))
+    inherited))
+
 (defn advance-along-descriptor
   "Advance one step along an inherited descriptor. Return a seq of possible
   successor descriptors."
@@ -136,16 +133,6 @@
   (if-let [descriptors (:attributes inherited)]
     (assoc-if-non-empty inherited :attributes
                         (transform-descriptors descriptors motion))
-    inherited))
-
-(defn remove-inherited-for-item
-  "Remove any inherited attributes specified as being for the specific item."
-  [inherited item]
-  (if-let [descriptors (:attributes inherited)]
-    (let [id (:item-id item)]
-      (assoc-if-non-empty inherited :attributes
-                          (remove #(and (sequential? %) (= (first %) id))
-                                   descriptors)))
     inherited))
 
 (defn split-descriptors-by-currency
@@ -222,14 +209,10 @@
   (assert (:key attributes))
   [:component attributes definition])
 
-
 (defn subject-referent-given-inherited
   "Return the subject from inherited."
   [inherited]
-  (let [subject-referent (:subject-referent inherited)]
-    (if (clojure.test/function? subject-referent)
-      (subject-referent)
-      subject-referent)))
+  (:subject-referent inherited))
 
 (defn item-referent-given-inherited
   "Return the proper referent for the item, given inherited."

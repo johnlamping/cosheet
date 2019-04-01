@@ -49,26 +49,6 @@
                               (condition-satisfiers-R test '(nil "A" "A" "B")))))
              ["a"])))
 
-(deftest non-implied-matching-elements-R-test
-  (is (check (map canonicalize-list
-                  (let-mutated [test '("age" "A" ("B" 1) "C")]
-                    (expr-seq map to-list
-                              (non-implied-matching-elements-R
-                               test '(nil 1) '(nil "A" "C")))))
-             [(canonicalize-list '("B" 1))]))
-  (is (check (map canonicalize-list
-                  (let-mutated [test '("age" "A" ("B" 1) "C")]
-                    (expr-seq map to-list
-                              (non-implied-matching-elements-R
-                               test '(nil 1) '(nil "B")))))
-             [(canonicalize-list '("B" 1))]))
-  (is (check (map canonicalize-list
-                  (let-mutated [test '("age" "A" ("B" 1) "C")]
-                    (expr-seq map to-list
-                              (non-implied-matching-elements-R
-                               test '(nil 1) '(nil ("B" 1))))))
-             [])))
-
 (deftest transform-inherited-attributes-test
   (is (check (transform-inherited-attributes
               {:attributes [{:a 1}

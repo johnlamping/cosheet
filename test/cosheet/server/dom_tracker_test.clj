@@ -356,9 +356,9 @@
     (add-dom tracker "root" [:root]
              [DOM-for-client-R ms nil client-state])
     (compute md)
-    (is (>= (count (:subscriptions @(:manager-data ms))) 4))
+    (is (>= (count (:subscriptions @(:manager-data ms))) 6))
     (let [reporters (keep :reporter (vals (:components @tracker)))]
-      (assert (= (count reporters) 4))
+      (assert (= (count reporters) 2))
       (doseq [reporter reporters]
         (= (count (:attendees @(:data reporter))) 1))
       (remove-all-doms tracker)

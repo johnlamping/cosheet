@@ -123,89 +123,40 @@
           [:div {:class "vertical-stack"}
            ;; Everything with "confidence"
            [:div {:class "wrapped-element tag"}
-            [:component {:key (conj tags-key (:item-id confidence1))
-                         :class "tag"}
-             [item-without-labels-DOM-R confidence1 [confidence1-tag]
-              {:priority 1
-               :width 0.5
-               :key-prefix tags-key
-               :subject-referent one-another-two-referent
-               :template '(anything :tag)
-               :attributes
-               [[(:item-id another) {:class "added1"}]
-                [(:item-id none) {:class "added2"}]
-                [#{:label :optional} #{:content}
-                 {:add-sibling
-                  {:referent (virtual-referent
-                              '(anything) (item-referent age)
-                              one-another-two-items) 
-                   :select-pattern (conj age-key [:pattern])}}]]}]]
+            [:div {:key (conj tags-key (:item-id confidence1) :content)
+                   :class "content-text editable item tag"
+                   :target {:template '(anything :tag)
+                            :referent [:exemplar
+                                       (item-referent confidence1)
+                                       one-another-two-referent]}
+                   :add-sibling
+                   {:referent (virtual-referent
+                               '(anything) (item-referent age)
+                               one-another-two-items) 
+                    :select-pattern (conj age-key [:pattern])}}
+             "confidence"]
             [:div {:class "indent-wrapper"}
              [:div {:class "vertical-stack"}
               ;; One Another
               [:div {:class "vertical-stack"}
-               ;; One
-               [:component {:key (conj age-key (:item-id one))}
-                [item-without-labels-DOM-R one [confidence1]
-                 {:priority 1
-                  :width 0.5
-                  :key-prefix age-key
-                  :subject-referent (item-referent age)
-                  :template '(anything ("confidence" :tag))
-                  :attributes
-                  [[(:item-id another) {:class "added1"}]
-                   [(:item-id none) {:class "added2"}]
-                   [#{:label :optional} #{:content}
-                     {:add-sibling {:referent
-                                    (virtual-referent
-                                     '(anything) (item-referent age)
-                                     one-another-two-items) 
-                                    :select-pattern (conj age-key [:pattern])}
-                      }]]}]]
-               ;; Another
-               [:component {:key (conj age-key (:item-id another))}
-                [item-without-labels-DOM-R another [(any)]
-                 (any)]]]
+               [:div (any) "one"]
+               [:div (any) "another"]]
               ;; Two (must be nested)
               [:div {:class "wrapped-element tag"}
-               [:component {:key (conj age-key :label (:item-id probability))
-                            :class "tag"}
-                [item-without-labels-DOM-R probability [probability-tag]
-                 {:priority 1
-                  :width 0.5
-                  :key-prefix (conj age-key :label)
-                  :subject-referent (item-referent two)
-                  :template '(anything :tag)
-                  :attributes
-                  [[(:item-id another) {:class "added1"}]
-                   [(:item-id none) {:class "added2"}]
-                   [#{:label :optional} #{:content}
-                     {:add-sibling {:referent (virtual-referent
-                                               '(anything ("confidence" :tag))
-                                               (item-referent age)
-                                               (item-referent two)) 
-                                    :select-pattern (conj age-key [:pattern])}
-                      }]]}]]
+               [:div
+                {:key (conj age-key :label (:item-id probability) :content)
+                 :class "content-text editable item tag"
+                   :target {:template '(anything :tag)
+                            :referent (item-referent probability)}
+                   :add-sibling
+                   {:referent (virtual-referent
+                               '(anything ("confidence" :tag))
+                               (item-referent age)
+                               (item-referent two)) 
+                    :select-pattern (conj age-key [:pattern])}}
+                "probability"]         
                [:div {:class "indent-wrapper"}
-                [:component {:key (conj age-key (:item-id two))}
-                 [item-without-labels-DOM-R
-                  two (as-set [confidence2 probability])
-                  {:priority 1
-                   :width 0.5
-                   :key-prefix age-key
-                   :subject-referent (item-referent age)
-                   :template (as-set '(anything ("confidence" :tag)
-                                                ("probability" :tag)))
-                   :attributes
-                   [[(:item-id another) {:class "added1"}]                    
-                    [(:item-id none) {:class "added2"}]
-                    [#{:label :optional} #{:content}
-                      {:add-sibling {:referent (virtual-referent
-                                                '(anything ("confidence" :tag))
-                                                (item-referent age)
-                                                (item-referent two)) 
-                                     :select-pattern (conj age-key [:pattern])}
-                       }]]}]]]]]]]
+                [:div (any) "two"]]]]]]
            ;; None
            [:div {:class "horizontal-tags-element tag narrow added2"}
             [:div {:class "editable tag"
@@ -219,22 +170,7 @@
                                              (item-referent age)
                                              (item-referent none)) 
                                  :select-pattern (conj age-key [:pattern])}}]
-            [:component {:key none-key}
-             [item-without-labels-DOM-R none nil
-              {:priority 1
-               :width 0.5
-               :key-prefix age-key
-               :subject-referent (item-referent age)
-               :template '(anything)
-               :attributes
-               [[(:item-id another) {:class "added1"}]
-                [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything)
-                                            (item-referent age)
-                                            (item-referent none)) 
-                                 :select-pattern (conj age-key [:pattern])}
-                   }]]}]]]]]))))
+            [:div (any) "none"]]]]))))
 
 (deftest item-DOM-R-test-two-column  
   ;; Test two column element hierarchy.
@@ -321,22 +257,17 @@
            [:div {:class "horizontal-tags-element tag wide"}
             ;; Group with empty item.
             [:div {:class "tag horizontal-header top-border"}
-             [:component {:key (conj tags-key (:item-id confidence1))
-                          :class "tag"}
-              [item-without-labels-DOM-R confidence1 [confidence1-tag]
-               {:priority 1
-                :width 0.25
-                :key-prefix tags-key
-                :subject-referent all-elements-referent
-                :template '(anything :tag)
-                :attributes
-                [[(:item-id double) {:class "added1"}]
-                 [(:item-id unique) {:class "added2"}]
-                 [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything) (item-referent age)
-                                            all-elements) 
-                                 :select-pattern (conj age-key [:pattern])}}]]}]]]
+             [:div {:key (conj tags-key (:item-id confidence1) :content)
+                    :class "content-text editable item tag"
+                    :target {:template '(anything :tag)
+                             :referent [:exemplar
+                                        (:item-id confidence1)
+                                        all-elements-referent]}
+                    :add-sibling {:referent (virtual-referent
+                                             '(anything) (item-referent age)
+                                             all-elements) 
+                                  :select-pattern (conj age-key [:pattern])}}
+              "confidence"]]
             [:div {:class "editable"
                    :key (conj age-key
                               :example-element (:item-id confidence1) :virtual)
@@ -354,140 +285,47 @@
            [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent"}
              [:div {:class "tag horizontal-header top-border bottom-border"}
-              [:component {:key (conj tags-key (:item-id likelihood))
-                           :class "tag"}
-               [item-without-labels-DOM-R likelihood [likelihood-tag]
-                {:priority 1
-                 :width 0.25
-                 :key-prefix tags-key
-                 :subject-referent likelihoods-referent
-                 :template '(anything :tag)
-                 :attributes
-                 [[(:item-id double) {:class "added1"}]
-                  [(:item-id unique) {:class "added2"}]
-                  [#{:label :optional} #{:content}
-                   {:add-sibling {:referent (virtual-referent
-                                             '(anything ("confidence" :tag))
-                                             (item-referent age)
-                                             likelihoods) 
-                                  :select-pattern (conj age-key [:pattern])}}]]}]]]]
+              [:div (any) "likelihood"]]]
             [:div {:class "vertical-stack"}
-             ;; Pair
-             [:component {:key (conj age-key (:item-id pair))}
-              [item-without-labels-DOM-R pair (as-set [confidence1 likelihood])
-               {:priority 1
-                :width 0.6875
-                :key-prefix age-key
-                :subject-referent (item-referent age)
-                :template (as-set '(anything ("confidence" :tag)
-                                        ("likelihood" :tag)))
-                :attributes
-                [[(:item-id double) {:class "added1"}]
-                 [(:item-id unique) {:class "added2"}]
-                 [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything ("confidence" :tag))
-                                            (item-referent age)
-                                            likelihoods) 
-                                 :select-pattern (conj age-key [:pattern])}}]]}]]
-             ;; Double
-             [:component {:key (conj age-key (:item-id double))}
-              [item-without-labels-DOM-R double (any)
-               (any)]]]]
+             [:div (any) "pair"]
+             [:div (any) "double"]]]
            ;; Group for confidence and probability
            [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent"}
              [:div {:class "tag horizontal-header top-border bottom-border"}
-              [:component {:key (conj age-key :label (:item-id probability))
-                           :class "tag"}
-               [item-without-labels-DOM-R probability [probability-tag]
-                {:priority 1
-                 :width 0.25
-                 :key-prefix (conj age-key :label)
-                 :subject-referent (item-referent two)
-                 :template '(anything :tag)
-                 :attributes
-                 [[(:item-id double) {:class "added1"}]
-                  [(:item-id unique) {:class "added2"}]
-                  [#{:label :optional} #{:content}
-                   {:add-sibling {:referent (virtual-referent
-                                             '(anything ("confidence" :tag))
-                                             (item-referent age)
-                                             (item-referent two)) 
-                                  :select-pattern (conj age-key [:pattern])}}]]}]]]]
-            [:component {:key (conj age-key (:item-id two))}
-             [item-without-labels-DOM-R two (as-set [confidence2 probability])
-              {:priority 1
-               :width 0.6875
-               :key-prefix age-key
-               :subject-referent (item-referent age)
-               :template (as-set '(anything ("confidence" :tag)
-                                       ("probability" :tag)))
-               :attributes
-               [[(:item-id double) {:class "added1"}]
-                [(:item-id unique) {:class "added2"}]
-                [#{:label :optional} #{:content}
-                 {:add-sibling {:referent (virtual-referent
-                                           '(anything ("confidence" :tag))
-                                           (item-referent age)
-                                           (item-referent two)) 
-                                :select-pattern (conj age-key [:pattern])}}]]}]]]
+              [:div (any) "probability"]]]
+            [:div (any) "two"]]
            ;; Group for confidence
            [:div {:class "horizontal-tags-element tag wide"}
             [:div {:class "tag horizontal-header indent bottom-border"}
              (any)]
             [:div {:class "horizontal-value-last"}
-             [:component {:key one-key}
-              [item-without-labels-DOM-R one [confidence3]
-               {:priority 1
-                :width 0.6875
-                :key-prefix age-key
-                :subject-referent (item-referent age)
-                :template '(anything ("confidence" :tag))
-                :attributes
-                [[(:item-id double) {:class "added1"}]
-                 [(:item-id unique) {:class "added2"}]
-                 [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything ("confidence" :tag))
-                                            (item-referent age)
-                                            (item-referent one)) 
-                                 :select-pattern (conj age-key [:pattern])}}]]}]]]]
+             [:div (any) "one"]]]
            ;; Group for unique
            [:div {:class "horizontal-tags-element tag wide added2"}
             [:div {:class "tag horizontal-header top-border bottom-border"}
-             [:component {:key (conj age-key :label (:item-id certainty))
-                          :class "tag"}
-              [item-without-labels-DOM-R certainty (any)
-               {:priority 1
-                :key-prefix (conj age-key :label)
-                :subject-referent (item-referent unique)
-                :width 0.25
-                :attributes
-                [[(:item-id double) {:class "added1"}]
-                 [(:item-id unique) {:class "added2"}]
-                 [#{:label :optional} #{:content}
-                  {:add-sibling {:referent (virtual-referent
-                                            '(anything)
-                                            (item-referent age)
-                                            (item-referent unique)) 
-                                 :select-pattern (conj age-key [:pattern])}}]]
-                :template '(anything :tag)}]]]
-            [:component {:key (conj age-key (:item-id unique))}
-             [item-without-labels-DOM-R unique [certainty]
-              {:priority 1
-               :key-prefix age-key
-               :subject-referent (item-referent age)
-               :width 0.6875
-               :attributes
-               [[(:item-id double) {:class "added1"}]
-                [#{:label :optional} #{:content}
-                 {:add-sibling {:referent (virtual-referent
-                                           '(anything)
-                                           (item-referent age)
-                                           (item-referent unique)) 
-                                :select-pattern (conj age-key [:pattern])}}]]
-               :template '(anything ("certainty" :tag))}]]]]]))))
+             [:div
+              {:key (conj age-key :label (item-referent certainty) :content)
+               :class "content-text editable item tag"
+               :target {:template '(anything :tag)
+                        :referent (item-referent certainty)}
+               :add-sibling {:referent (virtual-referent
+                                        '(anything)
+                                        (item-referent age)
+                                        (item-referent unique)) 
+                             :select-pattern (conj age-key [:pattern])}}
+              "certainty"]]
+            [:div
+             {:key (conj age-key (item-referent unique) :content)
+               :class "content-text editable item"
+               :target {:template '(anything ("certainty" :tag))
+                        :referent (item-referent unique)}
+               :add-sibling {:referent (virtual-referent
+                                        '(anything)
+                                        (item-referent age)
+                                        (item-referent unique)) 
+                             :select-pattern (conj age-key [:pattern])}}
+              "unique"]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
 (deftest item-DOM-R-test-labels
@@ -507,15 +345,13 @@
           age-key (conj element-key (:item-id age))]
       (is (check dom
                  [:div {:class "wrapped-element tag"}
-                  [:component {:key age-key :class "tag"}
-                   [item-without-labels-DOM-R age [age-tag]
-                    {:priority 0 :key-prefix element-key
-                     :subject-referent (item-referent element)
-                     :width 1.0
-                     :template '(anything :tag)
-                     :attributes [[#{:content}
-                                   {:expand {:referent
-                                             (item-referent element)}}]]}]]
+                  [:div
+                   {:key (conj age-key :content)
+                    :class "content-text editable item tag"
+                    :target {:template '(anything :tag)
+                             :referent (item-referent age)}
+                    :expand {:referent (item-referent element)}}
+                   "age"]
                   [:div {:class "indent-wrapper"}
                    [:div {:class "item with-elements"}
                     [:div {:class "content-text editable"
@@ -525,8 +361,7 @@
                      "39"]
                     [:div {:class "horizontal-tags-element tag wide"}
                      (any)
-                     [:component {:key (any)}
-                      [item-without-labels-DOM-R (any) [(any)] (any)]]]]]]))))
+                     [:div (any) "Ke"]]]]]))))
   ;; Then test when there is no label, but labels must be shown.
   (let [item-as-list `(39 ("Ke"
                            ("according-to" :tag (~o1 :order :non-semantic))
@@ -557,8 +392,7 @@
                     "39"]
                    [:div {:class "horizontal-tags-element tag wide"}
                     (any)
-                    [:component {:key (any)}
-                     [item-without-labels-DOM-R (any) [(any)] (any)]]]]])))))
+                    [:div (any) "Ke"]]]])))))
 
 ;;; TODO: Add a test where some of the arguments are true.
 (deftest labels-and-elements-DOM-R-test
@@ -589,24 +423,18 @@
                [age qualifier] false false false :vertical inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}
-                [:component {:key age-key :class "tag"}
-                 [item-without-labels-DOM-R age [age-tag]
-                  {:priority 0 :key-prefix element-key
-                   :subject-referent (item-referent element)
-                   :width 1.0
-                   :template '(anything :tag)}]]
+                [:div {:key (conj age-key :content)
+                       :class "content-text editable item tag"
+                       :target {:template '(anything :tag)
+                                :referent (item-referent age)}}
+                 "age"]
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item elements-wrapper"}
                   [:div {:class "horizontal-tags-element tag wide"}
                    [:div {:class
                           "tag horizontal-header top-border bottom-border"}
-                    [:component {:key (conj element-key :label according-to-id)
-                                 :class "tag"}
-                     [item-without-labels-DOM-R
-                      according-to [(any)] (any)]]]
-                   [:component {:key (conj element-key (:item-id qualifier))}
-                    [item-without-labels-DOM-R
-                     qualifier [(any)] (any)]]]]]]))))
+                    [:div (any) "according-to"]]
+                   [:div (any) "Ke"]]]]]))))
 
 
 (deftest item-content-and-elements-DOM-R-test
@@ -637,12 +465,7 @@
               39 [age qualifier] false inherited))]
     (is (check dom
                [:div {:class "wrapped-element tag"}
-                [:component {:key age-key :class "tag"}
-                 [item-without-labels-DOM-R age [age-tag]
-                  {:priority 0 :key-prefix element-key
-                   :subject-referent (item-referent element)
-                   :width 1.0
-                   :template '(anything :tag)}]]
+                (any)
                 [:div {:class "indent-wrapper"}
                  [:div {:class "item with-elements"}
                   [:div {:class "placeholder content-text editable"
@@ -653,11 +476,5 @@
                   [:div {:class "horizontal-tags-element tag wide"}
                    [:div {:class
                           "tag horizontal-header top-border bottom-border"}
-                    [:component {:key (conj element-key
-                                            :label according-to-id)
-                                 :class "tag"}
-                     [item-without-labels-DOM-R
-                      according-to [(any)] (any)]]]
-                   [:component {:key (conj element-key (:item-id qualifier))}
-                    [item-without-labels-DOM-R
-                     qualifier [(any)] (any)]]]]]]))))
+                    [:div (any) "according-to"]]                   
+                   [:div (any) "Ke"]]]]]))))

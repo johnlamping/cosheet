@@ -193,23 +193,19 @@
              [:div {:class "query-result-indent tag"}]
              [:div {:class "table-main"}
               [:div {:class "column-header-sequence"}
-               [:div {:class "wrapped-element tag column-header leaf"} 
-                [:component {:class "tag"
-                             :key (conj table-key
-                                        (:item-id c1) (:item-id single))}
-                 [item-without-labels-DOM-R single [single-tag-spec]
-                  {:priority 2
-                   :width 0.75
-                   :key-prefix (conj table-key (:item-id c1))
-                   :subject-referent first-column-referent
-                   :template '(anything :tag)
-                   :attributes
-                   [[#{:label :element :recursive :optional} #{:content}
-                     {:add-column first-column-add
-                      :delete-column {:referent first-column-referent}}]
-                    [#{:content}
-                     {:expand {:referent first-column-referent}
-                      :delete {:referent nil}}]]}]]
+               [:div {:class "wrapped-element tag column-header leaf"}
+                [:div
+                 {:key (conj table-key (:item-id c1) (:item-id single) :content)
+                  :class "content-text editable item tag"
+                  :target {:template '(anything :tag)
+                           :referent [:exemplar
+                                      (item-referent single)
+                                      first-column-referent]}
+                  :add-column first-column-add
+                  :delete-column {:referent first-column-referent}
+                  :expand {:referent first-column-referent}
+                  :delete {:referent nil}}
+                 "single"]
                 [:div {:class "indent-wrapper"}
                  [:div {:delete-column {:referent first-column-referent},
                         :delete {:referent nil}
@@ -304,23 +300,18 @@
                               :select-pattern (conj table-key
                                                     (:item-id joe) (:item-id c1)
                                                     [:pattern])}}]
-              [:component {:key (conj table-key
-                                      (:item-id joe) (:item-id c2) (any))
-                           :class "table-cell has-border"}
-               [item-without-labels-DOM-R (any) [(any)]
-                {:priority 4
-                 :width 0.75
-                 :key-prefix (conj table-key (:item-id joe) (any))
-                 :subject-referent (item-referent joe)
-                 :template '("" ("name" :tag))
-                 :attributes
-                 [[#{:label :element :recursive :optional} #{:content}
-                   {:row {:referent (item-referent joe)
+              [:div
+               {:key (conj table-key
+                           (:item-id joe) (:item-id c2) (any) :content)
+                :class "content-text editable item table-cell has-border"
+                :target {:template '("" ("name" :tag))
+                         :referent (any)}
+                :column {:referent (:item-id c2)}
+                :row {:referent (item-referent joe)
                           :key (conj (vec table-key) (item-referent joe))
                           :template '(anything (anything ("age" :tag))
-                                               :top-level)}}]
-                  [#{:label :element :recursive :optional} #{:content}
-                   {:column {:referent (item-referent c2)}}]]}]]
+                                               :top-level)}}
+               "Joe"]
               (any)
               (any)
               (any)

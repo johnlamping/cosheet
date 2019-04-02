@@ -87,52 +87,19 @@
                                           new-tab-elements nil))
                            :select-pattern [:foo [:pattern]]}
                   :selected {:special :new-tab}}]
-           (let [inherited (assoc starting-inherited
-                                  :subject-referent (item-referent t3)
-                                  :attributes
-                                  [[#{:label :optional} #{:content}
-                                    {:add-column {:referent
-                                                  (virtual-tab-referent
-                                                   (cons "" new-tab-elements)
-                                                   [t3])}
-                                     :selected {:referent (item-referent t3)
-                                                :special :tab}}]])]
-             [:div {:class "vertical-stack tab"}
-              [:component {:key [:foo (item-referent t3-baz)]}
-               [item-without-labels-DOM-R t3-baz nil inherited]]
-              [:component {:key [:foo (item-referent t3-bletch)]}
-               [item-without-labels-DOM-R t3-bletch nil inherited]]])
+           [:div {:class "vertical-stack tab"}
+            [:div {:class "content-text editable item"
+                   :key [:foo (item-referent t3-baz) :content]
+                   :target {:template '(anything)
+                            :referent (item-referent t3-baz)}
+                   :add-column (any)
+                   :selected {:referent (item-referent t3) :special :tab}}
+             "baz"]
+            [:div (any) (any)]]
            [:div {:class "tab-tree chosen"}
-            [:component {:key [:foo (item-referent t1-foo)] :class "multi-tab"}
-             [item-without-labels-DOM-R t1-foo nil
-              (assoc starting-inherited
-                     :subject-referent (items-referent t1 t2)
-                     :attributes
-                     [[#{:label :optional} #{:content}
-                       {:add-column {:referent
-                                     (virtual-tab-referent
-                                      (cons "" new-tab-elements) [t1 t2])}
-                        :delete {:referent (union-referent
-                                            [(item-referent t1)
-                                             (exemplar-referent
-                                              (item-referent t1-foo)
-                                              (item-referent t2))])}}]])]]
+            (any)
             [:div {:class "tab-sequence"}
-             [:component {:key [:foo :nested (item-referent t2-bar)]
-                          :class "tab chosen"}
-              [item-without-labels-DOM-R  t2-bar nil
-               (assoc starting-inherited
-                      :key-prefix (conj (:key-prefix starting-inherited) :nested)
-                      :subject-referent (item-referent t2)
-                      :attributes
-                      [[#{:label :optional} #{:content}
-                        {:add-column {:referent
-                                      (virtual-tab-referent
-                                       (concat [""] new-tab-elements ["foo"])
-                                       [t2])}
-                         :delete {:referent (item-referent t2-bar)}
-                         :selected {:referent (item-referent t2)
-                                    :special :tab}}]])]]
+             (any)
              [:div {:class "editable empty-child tab"
                     :key [:foo :nested (item-referent t1) :virtual]
                     :target {:referent (virtual-referent

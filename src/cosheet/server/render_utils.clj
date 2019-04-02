@@ -14,6 +14,7 @@
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [model-utils :refer [semantic-element?-R
+                                  semantic-elements-R
                                   item->canonical-semantic
                                   item->canonical-semantic-R
                                   immutable-semantic-to-list]]
@@ -295,11 +296,13 @@
 (defn item-stack-DOM-R
   "Given a list of items and a matching list of elements to exclude,
   and attributes that the doms for each of the items should have,
-  generate DOM for a list of a component for each item.
+  generate DOM for a list of each item. If an item have no sub-elements
+  to show, use dom-fn to generate DOM for the item; otherwise, generate
+  a component that will use dom-fn.
   If there is more than one item, add stack-class to the stack.
   Any attributes that should apply to the immediate dom will get
-  applied to each component, plus to the stack if there is more
-  than one component.
+  applied to each item, plus to the stack if there is more
+  than one item.
   The excludeds can be either a single value to be used for all items,
   or a sequence of values, one per item.
   dom-fn should take [item excluded-elements inherited]
@@ -308,15 +311,21 @@
   (let [descriptors (:attributes inherited)
         [local remaining] (split-descriptors-by-currency descriptors)
         inherited (assoc-if-non-empty inherited :attributes remaining)]
-    (cond-> (nest-if-multiple-DOM
-             (map (fn [item excluded]
-                    (add-attributes
-                     (item-component dom-fn item excluded inherited) local))
-                  items
-                  (if (sequential? excludeds) excludeds (repeat excludeds)))
-             direction)
-      (> (count items) 1)
-      (add-attributes local))))
+    (expr-let [elementss (expr-seq map semantic-elements-R items)
+               doms (expr-seq
+                     map
+                     (fn [item elements excluded]
+                       (if (or (nil? elements)
+                               (every? (set excluded) elements))
+                         (dom-fn item excluded inherited)
+                         (item-component dom-fn item excluded inherited)))
+                     items
+                     elementss
+                     (if (sequential? excludeds) excludeds (repeat excludeds)))]
+      (cond-> (nest-if-multiple-DOM
+               (map #(add-attributes % local) doms) direction)
+        (> (count items) 1)
+        (add-attributes local)))))
 
 (defn hierarchy-node-DOM-R
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

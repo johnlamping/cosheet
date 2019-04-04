@@ -18,9 +18,10 @@
 (defrecord ReporterImpl
     ^{:doc
       "A reporter is essentially an atom that provides monitoring not only
-       of its value, but also of demand for its value. This allows
-       a computation to be associated with a reporter to keep its value up
-       to date as long as their is demand.
+       of its value, but also of demand for its value. A computation
+       may be associated with a reporter and will be re-evaluated as necessary
+       called to keep the reporter's value up to date, but only as long as
+       there is demand for the reporter's value.
        A reporter is implemented as a record holding an atom with
        a map of relevant information.
        We only use a record so we can have a special print method that
@@ -34,8 +35,8 @@
        eventually be similarly called after any change in the value, but not
        necessarily once per change.
        (We use a key, rather than just passing in a closure, because an
-       equal key can be generated later, to refer to the callback when we
-       want to remove it, while an equal closure can't.)
+       identical key can be generated later, to refer to the callback when we
+       want to remove it, while an identical closure can't.)
        A manager can be registered with the reporter, to be informed when
        demand for the reporter's value changes. It will be called the
        first time there are any attendees to the reporter, and whenever

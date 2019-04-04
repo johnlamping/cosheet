@@ -20,12 +20,16 @@
     (let [data (reporter/data expr)
           expression (:expression data)]
       (if expression
-        ((or (:trace data) identity)
+        ((or (:trace data) (fn [thunk] (thunk)))
          #(current-value (apply (fn [f & args] (apply f args))
                                 (map current-value expression))))
-        (do (when (and (:manager data) (not (reporter/attended? expr)))
-              (reporter/set-attendee! expr :request (fn [key reporter] nil)))
-            (reporter/value expr))))
+        (if (and (:manager data) (not (reporter/attended? expr)))
+          (do
+            (reporter/set-attendee! expr :request (fn [key reporter] nil))
+            (let [result (reporter/value expr)]
+              (reporter/set-attendee! expr :request)
+              result))
+          (reporter/value expr))))
     expr))
 
 ;;; Manage the (re)computation of reporters using a priority queue.

@@ -10,7 +10,7 @@
              [entity :as entity :refer [description->entity to-list
                                         content elements
                                         label->elements label->content]]
-             [expression-manager :refer [new-expression-manager-data compute]]
+             [expression-manager :refer [compute]]
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
              entity-impl

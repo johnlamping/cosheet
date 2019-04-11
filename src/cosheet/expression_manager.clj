@@ -450,11 +450,12 @@
 
 (defn new-expression-manager-data
   "Create the manager data for a caching evaluator."
-  ([] (new-expression-manager-data 0))
-  ([worker-threads]
+  ([] (new-expression-manager-data (new-priority-task-queue 0)))
+  ([queue]
+   (assert (instance? clojure.lang.Atom queue))
    (map->ExpressionManagerData
     {:cache (mm/new-mutable-map)
-     :queue (new-priority-task-queue worker-threads)
+     :queue queue
      :manage-map {:cache (fn [r m] (reporter/set-manager!
                                     r cache-manager m))
                   :eval manage-eval

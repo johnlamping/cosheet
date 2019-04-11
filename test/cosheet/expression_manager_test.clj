@@ -3,7 +3,7 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet [mutable-map :as mm]
-                     [task-queue :as task-queue]
+                     [task-queue :refer [current-tasks new-priority-task-queue]]
                      [reporter :as reporter]
                      [expression :refer [expr expr-seq expr-let cache invalid]]
                      [utils :refer :all]
@@ -224,26 +224,26 @@
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue md))
+    (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
     ;; Change the subordinate value, and make sure it got propagated.
-    (reset! (:queue md) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(new-priority-task-queue))
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue md))
+    (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
     ;; Send a spurious update, and make sure things are unchanged.
-    (reset! (:queue md) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(new-priority-task-queue))
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
     (is (= (reporter/value r2) invalid))
-    (is (= (task-queue/current-tasks (:queue md)) ()))
+    (is (= (current-tasks (:queue md)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
-    (reset! (:queue md) @(task-queue/new-priority-task-queue))
+    (reset! (:queue md) @(new-priority-task-queue))
     (swap! (reporter/data-atom r2) assoc :value-source r0)
     (register-copy-value r0 r2)
     (register-copy-value r2 r3)
@@ -253,7 +253,7 @@
     (is (= (reporter/value r3) invalid))
     (is (= (:value-source (reporter/data r2)) nil))
     (is (= (:old-value-source (reporter/data r2)) r0)) ;; Last known source.
-    (is (= (task-queue/current-tasks (:queue md)) ()))
+    (is (= (current-tasks (:queue md)) ()))
     ;; Now set the value back to the original value, and check the consequences.
     ;; We don't need to compute, because it is just value copying.
     (reporter/set-value! r1 :v1)
@@ -457,7 +457,7 @@
         base (vec (for [i (range width)]
                     (reporter/new-reporter :name [0 i]
                                            :value (mod (inc i) width))))
-        md (new-expression-manager-data 4)
+        md (new-expression-manager-data (new-priority-task-queue 4))
         evals (atom 0)]
     (letfn [(indexer [d pos]
               (if (zero? d)

@@ -16,7 +16,7 @@
       [expression :refer [expr expr-let]]
       [expression-manager :refer [new-expression-manager-data compute]]
       [expression-manager-test :refer [check-propagation]]
-      [task-queue :refer [finished-all-tasks?]]
+      [task-queue :refer [new-priority-task-queue finished-all-tasks?]]
       [hiccup-utils :refer [dom-attributes add-attributes]]
       [reporter :as reporter]
       [mutable-manager :refer [current-mutable-value]]
@@ -39,7 +39,7 @@
       [actions :refer [confirm-actions do-actions]]))
   (:import (org.h2.util New)))
 
-(defonce manager-data (new-expression-manager-data 1))
+(defonce manager-data (new-expression-manager-data (new-priority-task-queue 1)))
 
 (defonce time-formatter (java.text.DateFormat/getDateTimeInstance))
 (defn now-string

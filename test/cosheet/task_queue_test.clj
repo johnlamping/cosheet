@@ -30,7 +30,14 @@
     (add-task-with-priority queue -1 (task-factory :a8) :a8)
     (add-task-with-priority queue 1 (task-factory :a9) :a9)
     (run-some-pending-tasks queue 2)
-    (is (= @history [[:a4] [:a1 :a2] [:a5] [:a4] [:a2] [:a8] [:a7]]))))
+    (is (= @history [[:a4] [:a1 :a2] [:a5] [:a4] [:a2] [:a8] [:a7]]))
+    (run-all-pending-tasks queue)
+    (add-tasks-with-priorities queue [[-1 (task-factory :b1) :b1]
+                                      [1 (task-factory :b2) :b2]])
+    (is (not (finished-all-tasks? queue)))
+    (run-some-pending-tasks queue 2)
+    (wait-until-finished queue)
+    (is (finished-all-tasks? queue))))
 
 (deftest tasks-workers-test
   (dotimes [_ 500]

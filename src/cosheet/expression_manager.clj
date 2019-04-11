@@ -20,10 +20,13 @@
     (let [data (reporter/data expr)
           expression (:expression data)]
       (if expression
+        ;; If there is an expression for the reporter, evaluate it directly.
         ((or (:trace data) (fn [thunk] (thunk)))
          #(current-value (apply (fn [f & args] (apply f args))
                                 (map current-value expression))))
         (if (and (:manager data) (not (reporter/attended? expr)))
+          ;; Maybe the manager knows a different way to get the value.
+          ;; Add an attendee, get the value, then take the attendee away.
           (do
             (reporter/set-attendee! expr :request (fn [key reporter] nil))
             (let [result (reporter/value expr)]
@@ -76,7 +79,7 @@
 ;;;                      map before it is stored.)
 
 ;;; The computation is multi-threaded, but can avoid using locks and
-;;; TSM because it just needs eventual consistency; it is just copying
+;;; TSM because it only provides eventual consistency; it is just copying
 ;;; information. The danger is that in between a read and a copy in
 ;;; one thread, the data that was read will be changed, and another
 ;;; thread will complete a read and copy of the new information, only to

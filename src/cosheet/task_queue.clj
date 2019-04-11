@@ -38,6 +38,29 @@
                [added false]))))
     (future (do-work task-queue))))
 
+(defn add-tasks-with-priorities
+  "Add tasks to the queue of pending tasks (lower priority goes
+  first). priorities-and-tasks is a seq of seqs, each consisting of a priority,
+  a function, and then the remainder being the arguments to the function.
+  In addition, if we are not at our maximum number of worker tasks,
+  start up a new worker."
+  [task-queue priorities-and-tasks]
+  (when (swap-control-return!
+         task-queue
+         (fn [data]
+           (let [added (reduce (fn [data [priority & task]]
+                                 (update-in data [:tasks]
+                                            #(assoc % task priority)))
+                               data priorities-and-tasks)]
+             ;; Don't add a thread if we already have a thread for
+             ;; every ten tasks.
+             (if (let [num-workers (:num-workers data)]
+                   (and (< num-workers (:max-workers data))
+                        (> (count (:tasks added)) (* 10 num-workers))))
+               [(update-in added [:num-workers] inc) true]
+               [added false]))))
+    (future (do-work task-queue))))
+
 (defn add-task
   "Add a task to the queue of pending tasks with priority 0.
    The task is a seq of a function and arguments."

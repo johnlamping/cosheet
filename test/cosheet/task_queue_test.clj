@@ -4,7 +4,7 @@
             :reload))
 
 (deftest tasks-test
-  (let [queue (new-priority-task-queue)
+  (let [queue (new-priority-task-queue 0)
         history (atom [])
         task-factory (fn [& expected]
                        (fn [& args]

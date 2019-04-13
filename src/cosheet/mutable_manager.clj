@@ -21,25 +21,23 @@
 ;;; arguments beyond the value
 
 (defn new-mutable-manager-data
-  ([value]
-   (new-mutable-manager-data value (new-priority-task-queue 0)))
-  ([value queue]
-   (atom {
-          ;; The current value.
-          :value value
-          
-          ;; A map from key to a set of reporters that need to be
-          ;; checked on any change to that key.
-          :subscriptions {}
+  [value queue]
+  (atom {
+         ;; The current value.
+         :value value
+         
+         ;; A map from key to a set of reporters that need to be
+         ;; checked on any change to that key.
+         :subscriptions {}
 
-          ;; A cache so that requests for the same computation can
-          ;; share a reporter. It is a map from application to an
-          ;; an attended reporter with that application, if there
-          ;; is any.
-          :application->attended-reporter nil
+         ;; A cache so that requests for the same computation can
+         ;; share a reporter. It is a map from application to an
+         ;; an attended reporter with that application, if there
+         ;; is any.
+         :application->attended-reporter nil
 
-          ;; The queue of work remaining to do.
-          :queue queue})))
+         ;; The queue of work remaining to do.
+         :queue queue}))
 
 (defn mutable-manager-queue
   [manager-data]

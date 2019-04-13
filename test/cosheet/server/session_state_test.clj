@@ -45,7 +45,7 @@
            '("" ("Hello" :tag) (3 ("a" :tag)))))))
 
 (deftest create-client-state-test
-  (let [queue (new-priority-task-queue)
+  (let [queue (new-priority-task-queue 0)
         store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state-map (create-client-state
                    (new-mutable-store store queue) "I5" queue)]
@@ -66,7 +66,8 @@
 
 (deftest get-session-state-test
   (reset! session-info
-          {:sessions {123 {:client-state (new-state-map {})}}})
+          {:sessions {123 {:client-state
+                           (new-state-map {} (new-priority-task-queue 0))}}})
   (let [state (get-session-state 123)
         diff (- (System/currentTimeMillis)
                 (state-map-get-current-value
@@ -74,12 +75,15 @@
     (is (#{0 1} diff))))
 
 (deftest prune-old-sessions-test
-  (let [now (System/currentTimeMillis)]
+  (let [now (System/currentTimeMillis)
+        queue (new-priority-task-queue 0)]
     (reset! session-info
             {:sessions {123 {:client-state (new-state-map
-                                            {:last-time (- now 10000)})}
+                                            {:last-time (- now 10000)}
+                                            queue)}
                         789 {:client-state (new-state-map
-                                            {:last-time (- now 100000)})}}}))
+                                            {:last-time (- now 100000)}
+                                            queue)}}}))
   (prune-old-sessions 200000)
   (is (check (keys (:sessions @session-info)) (as-set [123 789])))
   (prune-old-sessions 20000)
@@ -106,7 +110,7 @@
   (let [stream (new java.io.StringReader "a, b")
         store (add-table (update-add-temporary-element (starting-store nil))
                          "Hello" [["a" "b"] [1 2] [3]])
-        queue (new-priority-task-queue)
+        queue (new-priority-task-queue 0)
         ms (new-mutable-store store queue)
         md (new-expression-manager-data queue)]
     (reset! session-info {:sessions {}

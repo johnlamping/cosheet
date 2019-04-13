@@ -82,7 +82,7 @@
                                  (content-reference
                                   (description->entity idc s4))) "baz")]
                   [s5 ida idb idc idd ide])))))
-        queue (new-priority-task-queue)
+        queue (new-priority-task-queue 0)
         ms (new-mutable-store s queue)
         item0 (description->entity id0 ms)
         item1 (description->entity id1 ms)

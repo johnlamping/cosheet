@@ -15,7 +15,7 @@
   (set-attendee! reporter :demand))
 
 (deftest mutable-manager-test
-  (let [queue (new-priority-task-queue)
+  (let [queue (new-priority-task-queue 0)
         mm (new-mutable-manager-data {:a 1 :b 2} queue)
         fa #(:a %)
         ra (get-or-make-reporter [:a] fa mm)]

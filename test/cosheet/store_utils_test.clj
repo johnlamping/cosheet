@@ -6,6 +6,7 @@
             [cosheet.entity :refer [deep-to-list description->entity]]
             cosheet.entity-impl
             [cosheet.store-impl :refer :all]
+            [cosheet.task-queue :refer [new-priority-task-queue]]
             [cosheet.test-utils :refer [check]]
             ; :reload
             ))
@@ -36,7 +37,8 @@
                     (make-id "0") '((77 88) ("test" :label)))
         [added-store2 _]
         (add-entity added-store element '("Fred" ("by" :label)))
-        mutable (new-mutable-store (new-element-store))
+        queue (new-priority-task-queue 0)
+        mutable (new-mutable-store (new-element-store) queue)
         m-element (add-entity! mutable
                                (make-id "0") '((77 88) ("test" :label)))
         _ (add-entity! mutable m-element '("Fred" ("by" :label)))]
@@ -48,7 +50,8 @@
                     '(("foo") ("test" :label)))
         [added-store2 e2]
         (add-entity added-store e1 '("Fred" ("by" :label)))
-        mutable (new-mutable-store added-store2)]
+        queue (new-priority-task-queue 0)
+        mutable (new-mutable-store added-store2 queue)]
     (remove-entity-by-id! mutable e1)
     (is (= (assoc (current-store mutable) :next-id
                   (:next-id (new-element-store)))

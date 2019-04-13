@@ -190,7 +190,7 @@
                    (assoc :next-version (inc (:next-version tracker))))))))
 
 (deftest update-set-component-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)
         [joe jane jill] (let-mutated [joe "Joe", jane "Jane", jill "Jill"]
                           [joe jane jill])
@@ -291,7 +291,7 @@
     (is (= (get-in @tracker [:components [:d "s"] :attributes] {:width 1})))))
 
 (deftest id->key-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (swap-and-act tracker #(-> %
                                (assoc-in [:id->key "root"] [:foo])
@@ -300,21 +300,21 @@
     (is (= (id->key tracker ":k") [:k]))))
 
 (deftest key->id-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (swap-and-act tracker #(assoc-in % [:key->id [:foo]] "root"))
     (is (= (key->id tracker [:foo]) "root"))
     (is (= (key->id tracker [:k]) ":k"))))
 
 (deftest dom-for-key?-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (swap-and-act tracker #(assoc-in % [:key->dom [:foo]] [:div {} "root"]))
     (is (dom-for-key? tracker [:foo]))
     (is (not (dom-for-key? tracker [:k])))))
 
 (deftest key->attributes-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}
@@ -326,7 +326,7 @@
                                                    :other :foo}))))
 
 (deftest add-dom-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)
         joe (let-mutated [joe "Joe"] joe)
         joe-key [:root (item-referent joe)]]
@@ -350,12 +350,12 @@
       (is (= (set (:out-of-date-keys data)) #{[joe-key 0]})))))
 
 (deftest remove-all-doms-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)
         [store joe _] (update-add-entity-with-order-and-temporary
                        (new-element-store) nil '("Joe" (39 ("age" :tag)))
                        cosheet.orderable/initial :after true)
-        queue (new-priority-task-queue)
+        queue (new-priority-task-queue 0)
         ms (new-mutable-store store queue)
         client-state (create-client-state ms (referent->string joe) queue)]
     (add-dom tracker "root" [:root]
@@ -373,7 +373,7 @@
       (is (= (count (:subscriptions @(:manager-data ms))) 0)))))
 
 (deftest request-client-refresh-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (add-dom tracker "root" [:root]
              [identity [:div {:key [:root] :other :bar}

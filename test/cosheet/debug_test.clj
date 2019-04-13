@@ -13,7 +13,8 @@
                      [store :refer :all]
                      store-impl
                      [store-utils :refer [add-entity]]
-                     [entity :refer :all])
+                     [entity :refer :all]
+                     [task-queue :refer [new-priority-task-queue]])
             ; :reload
             ))
 
@@ -33,7 +34,8 @@
 (deftest trace-current-test
   (let [state (new-reporter :value 0)
         fib6 (fib 6 state)
-        md (new-expression-manager-data)]
+        queue (new-priority-task-queue 0)
+        md (new-expression-manager-data queue)]
     (is (= (first (trace-current fib6)) 0))
     (set-value! state 1)
     (is (= (first (trace-current fib6)) 13))
@@ -57,7 +59,8 @@
 (deftest generate-backtrace-test
   (let [state (new-reporter :value 0)
         fib6 (fib 6 state)
-        md (new-expression-manager-data)]
+        queue (new-priority-task-queue 0)
+        md (new-expression-manager-data queue)]
     (request fib6 md)
     (set-value! state 1)
     (compute md)
@@ -77,8 +80,9 @@
                (canonicalize-list '(("a" "b") ("x" ("y" "z"))))))))
 
 (deftest simplify-for-print-test
-  (let [s (new-element-store)
-        ms (new-mutable-store s)
+  (let [q (new-priority-task-queue 0)
+        s (new-element-store)
+        ms (new-mutable-store s q)
         i (make-id "i")
         ci (cosheet.store-impl/->ImplicitContentId i)
         r (new-reporter :expression [+ 1 (new-reporter :application [+ 2 3])])

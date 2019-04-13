@@ -215,7 +215,11 @@
                                   :needed-values #{r1}
                                   :subordinate-values {})
         r3 (reporter/new-reporter :name :r3 :value-source r2)
-        md (new-expression-manager-data)]
+        queue (new-priority-task-queue 0)
+        md (new-expression-manager-data queue)
+        ;; Since md is immutable, we can't replace its queue, but we
+        ;; can set the content of its queue to the content of a fresh queue.
+        clear-md-queue #(reset! (:queue md) @(new-priority-task-queue 0))]
     ;; Give the ultimate reporters demand
     (reporter/set-attendee! r2 :k (constantly nil))
     (reporter/set-attendee! r3 :k (constantly nil))
@@ -227,7 +231,7 @@
     (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
     ;; Change the subordinate value, and make sure it got propagated.
-    (reset! (:queue md) @(new-priority-task-queue))
+    (clear-md-queue)
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
@@ -235,7 +239,7 @@
     (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
     ;; Send a spurious update, and make sure things are unchanged.
-    (reset! (:queue md) @(new-priority-task-queue))
+    (clear-md-queue)
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
@@ -243,7 +247,7 @@
     (is (= (current-tasks (:queue md)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
-    (reset! (:queue md) @(new-priority-task-queue))
+    (clear-md-queue)
     (swap! (reporter/data-atom r2) assoc :value-source r0)
     (register-copy-value r0 r2)
     (register-copy-value r2 r3)
@@ -272,7 +276,7 @@
                                  :needed-values #{r0}
                                  :subordinate-values {r0 1})
         rc (reporter/new-reporter :name :rc :value-source r)
-        md (new-expression-manager-data)]
+        md (new-expression-manager-data (new-priority-task-queue 0))]
     (register-copy-value r rc)
     ;; Try when the expression is not ready.
     (eval-expression-if-ready r md)
@@ -307,7 +311,7 @@
         r (reporter/new-reporter :expression [inc r0]
                                  :manager-type :eval)
         rc (reporter/new-reporter :value-source r)
-        md (new-expression-manager-data)]
+        md (new-expression-manager-data (new-priority-task-queue 0))]
     ;; Run manager when there is no interest.
     (eval-manager r md)
     (is (= (reporter/value r) invalid))
@@ -325,7 +329,7 @@
     (is (empty? (:attendees (reporter/data r0))))))
 
 (deftest ensure-in-cache-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         r0 (ensure-in-cache [:a :b] "ab" md)
         r1 (ensure-in-cache [:a :c] "bc" md)
         r2 (ensure-in-cache [:a :b] "changed" md)]
@@ -335,7 +339,7 @@
     (is (not= r0 r1))))
 
 (deftest cache-manager-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
                                   :expression [inc r0]
@@ -388,7 +392,7 @@
 ;;; Test that caching is working by doing a recursive computation that would
 ;;; take a very long time if it weren't cached.
 (deftest fib-cache-test
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         base (reporter/new-reporter :value 0)]
     (letfn [(fib [n] (if (<= n 1)
                        base
@@ -419,7 +423,7 @@
         r (expr-let [s1 (expr-seq map dependency-introducer rs)
                       s2 (expr-seq map dependency-introducer s1)]
              s2)
-        md (new-expression-manager-data)]
+        md (new-expression-manager-data (new-priority-task-queue 0))]
     (is (= (computation-value r md) [3 4 5]))
     (is (= @counter 4))
     (reporter/set-value! rs [1 2 3 4])
@@ -429,7 +433,7 @@
 (deftest nil-value-test
   ;; There had been a bug with nil values throwing off propagation.
   ;; This tests that it is fixed.
-  (let [md (new-expression-manager-data)
+  (let [md (new-expression-manager-data (new-priority-task-queue 0))
         r0 (reporter/new-reporter :name :r0)
         r1 (expr identity r0)
         r2 (expr identity r1)]

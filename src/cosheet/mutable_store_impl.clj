@@ -13,7 +13,6 @@
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]]
-                     [task-queue :refer [new-priority-task-queue]]
                      [debug :refer [simplify-for-print]])))
 
 (defn store-to-manager-data
@@ -211,11 +210,8 @@
   (.write w "Mutable:")
   (print-method (dissoc (:value @(:manager-data s)) :history) w))
 
-(defmethod new-mutable-store true [immutable-store & queue]
-  (let [queue (if (empty? queue)
-                (new-priority-task-queue)
-                (first queue))]
-    (map->MutableStoreImpl
+(defmethod new-mutable-store true [immutable-store queue]
+  (map->MutableStoreImpl
      {:manager-data (new-mutable-manager-data
                      (store-to-manager-data immutable-store)
-                     queue)})))
+                     queue)}))

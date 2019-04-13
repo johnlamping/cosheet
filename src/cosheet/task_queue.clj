@@ -9,12 +9,11 @@
   ;; but not finished tasks, a maximum number of worker threads, and a
   ;; number of current worker threads. (Note: tasks may be run under
   ;; threads other than the worker threads we can provide.)
-  ([] (new-priority-task-queue 0))
-  ([max-workers]
-   (atom {:tasks (priority-map/priority-map)
-          :num-running 0
-          :max-workers max-workers
-          :num-workers 0})))
+  [max-workers]
+  (atom {:tasks (priority-map/priority-map)
+         :num-running 0
+         :max-workers max-workers
+         :num-workers 0}))
 
 (def do-work)
 

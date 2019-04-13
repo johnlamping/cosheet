@@ -3,8 +3,7 @@
             (cosheet
              [reporter :refer [set-attendee! value invalid]]
              [state-map :refer :all]
-             [task-queue :refer [new-priority-task-queue
-                                 run-all-pending-tasks]])
+             [task-queue :refer [new-priority-task-queue]])
             ; :reload
             ))
 
@@ -12,7 +11,7 @@
   (set-attendee! reporter :demand (fn [key reporter] nil)))
 
 (deftest state-map-test
-  (let [queue (new-priority-task-queue)
+  (let [queue (new-priority-task-queue 0)
         sm (new-state-map {:a 1 :b 3} queue)
         ra (state-map-get sm :a)
         rb (state-map-get sm :b)

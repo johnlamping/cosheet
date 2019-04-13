@@ -10,7 +10,7 @@
              [entity :as entity :refer [description->entity to-list
                                         content elements
                                         label->elements label->content]]
-             [expression-manager :refer [compute]]
+             [expression-manager :refer [new-expression-manager-data compute]]
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
              entity-impl
@@ -19,6 +19,7 @@
                             current-store id-valid?]]
              [store-impl :refer [->ItemId]]
              [store-utils :refer [add-entity]]
+             [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
@@ -272,11 +273,14 @@
                          (referent->string (item-referent joe)))})))
 
 (deftest do-selected-test
-  (let [mutable-store (new-mutable-store store)
-        tracker (new-dom-tracker mutable-store)
+  (let [queue (new-priority-task-queue 0)
+        manager-data (new-expression-manager-data queue)
+        mutable-store (new-mutable-store store queue)
+        tracker (new-dom-tracker manager-data)
         client-state (new-state-map {:last-action nil
                                      :selected-dom nil
-                                     :referent "Joe"})
+                                     :referent "Joe"}
+                                    queue)
         session-state {:tracker tracker
                        :store mutable-store
                        :selector-interpretation :broad
@@ -298,12 +302,13 @@
              true)))))
 
 (deftest do-actions-test
-  (let [mutable-store (new-mutable-store store)
+  (let [queue (new-priority-task-queue 0)
+        mutable-store (new-mutable-store store queue)
         tracker (new-dom-tracker mutable-store)
         session-state {:tracker tracker
                        :store mutable-store
                        :selector-interpretation :broad
-                       :client-state (new-state-map {:last-action nil})}
+                       :client-state (new-state-map {:last-action nil} queue)}
         attributes {:commands {:add-element nil}
                     :target {:referent
                              (union-referent [(item-referent jane)
@@ -338,19 +343,22 @@
       ;; Check undo redo.
       (do-actions mutable-store {:tracker tracker
                                  :client-state (new-state-map
-                                                {:last-action nil})}
+                                                {:last-action nil}
+                                                queue)}
                   [[:undo]])
       (is (check (current-store mutable-store)
                  (assoc store :modified-ids #{})))
       ;; Check redo.
       (do-actions mutable-store {:tracker tracker
                                  :client-state (new-state-map
-                                                {:last-action nil})}
+                                                {:last-action nil}
+                                                queue)}
                   [[:redo]])
       (is (check (current-store mutable-store) new-store)))))
 
 (deftest confirm-actions-test
-  (let [client-state (new-state-map {:last-action nil})]
+  (let [queue (new-priority-task-queue 0)
+        client-state (new-state-map {:last-action nil} queue)]
     (is (= (confirm-actions {1 :a 2 :b 3 :c} client-state)
            [:a :b :c]))
     (is (= (confirm-actions {2 :b 3 :c 4 :d} client-state)

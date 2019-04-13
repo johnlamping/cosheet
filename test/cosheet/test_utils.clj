@@ -160,7 +160,7 @@
                                              (add-entity new-store nil cont)))]
              [new-store (conj ids new-id) (conj contents new-content)]))
          [s [] []] entities)
-        queue (new-priority-task-queue)
+        queue (new-priority-task-queue 0)
         ms (new-mutable-store s queue)
         md (expression-manager/new-expression-manager-data queue)
         mutable-entities (map #(cosheet.entity/description->entity % ms) ids)
@@ -195,7 +195,7 @@
 ;;; with the mutable store as an argument, and return the new current
 ;;; value of the expression.
 (defmacro let-mutated-store [[var initial mutator] exp]
-  `(let [queue# (new-priority-task-queue)
+  `(let [queue# (new-priority-task-queue 0)
          ~var (new-mutable-store ~initial queue#)
          md# (expression-manager/new-expression-manager-data queue#)
          exp-val# ~exp]

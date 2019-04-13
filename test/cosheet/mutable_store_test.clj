@@ -14,9 +14,7 @@
              [mutable-store-impl :refer :all]
              [canonical :refer [canonicalize-list]]
              [task-queue :refer [new-priority-task-queue
-                                 run-all-pending-tasks
-                                 ;; TODO!!!: Remove this.
-                                 finished-all-tasks?]]
+                                 run-all-pending-tasks]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set evals-to let-mutated]])
             ; :reload
@@ -33,7 +31,7 @@
   (let [[store element]
         (add-entity (new-element-store) nil '(77 ("test" :label)
                                                  ("Fred" ("by" :label))))
-        queue (new-priority-task-queue)
+        queue (new-priority-task-queue 0)
         mutable-store (new-mutable-store store queue)
         modified-store (update-content store element 99)]
     ;; Test the accessors
@@ -158,10 +156,11 @@
   ;; Test building a store from scratch using add-entity!.
   (let [entity '(77 ("test" :label)
                     ("Fred" ("by" :label)))
-        mutable-store (new-mutable-store (new-element-store))
+        queue (new-priority-task-queue 0)
+        mutable-store (new-mutable-store (new-element-store) queue)
         item-id (add-entity! mutable-store nil entity)
         as-list (to-list (description->entity item-id mutable-store))
-        md (new-expression-manager-data)]
+        md (new-expression-manager-data (new-priority-task-queue 0))]
     (request as-list)
     (manage as-list md)
     (compute md)

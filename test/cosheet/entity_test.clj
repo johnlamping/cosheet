@@ -9,6 +9,8 @@
                      [entity :refer :all]
                      entity-impl
                      [expression-manager :refer [current-value]]
+                     [task-queue :refer [new-priority-task-queue
+                                         run-all-pending-tasks]]
                      [test-utils :refer [check any as-set]])
             ; :reload
             ))
@@ -80,7 +82,8 @@
                                  (content-reference
                                   (description->entity idc s4))) "baz")]
                   [s5 ida idb idc idd ide])))))
-        ms (new-mutable-store s)
+        queue (new-priority-task-queue)
+        ms (new-mutable-store s queue)
         item0 (description->entity id0 ms)
         item1 (description->entity id1 ms)
         item99 (description->entity id99 ms)]    
@@ -156,6 +159,7 @@
       (is (check @record [(as-set '(nil ((4 "baz") "bar") (3 "foo")))]))
       ;; Make sure it is recomputed when a deep, but relevant, change is made.
       (update-content! ms idd "bletch")
+      (run-all-pending-tasks queue)
       (println (current-value (to-list item99)))
       (is (check (value updating-with-immutable-result)
                  (as-set '(nil ((4 "baz") "bletch") (3 "foo")))))

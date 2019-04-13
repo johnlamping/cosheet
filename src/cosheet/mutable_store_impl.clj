@@ -2,6 +2,7 @@
   (:require (cosheet [store :refer :all]
                      [mutable-manager
                       :refer [new-mutable-manager-data
+                              mutable-manager-queue
                               current-mutable-value
                               get-or-make-reporter reset-manager!
                               describe-and-swap!
@@ -12,6 +13,7 @@
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]]
+                     [task-queue :refer [new-priority-task-queue]]
                      [debug :refer [simplify-for-print]])))
 
 (defn store-to-manager-data
@@ -120,6 +122,8 @@
 
   (current-store [this] (:store (:value @(:manager-data this))))
 
+  (store-queue [this] (mutable-manager-queue (:manager-data this)))
+
   (call-dependent-on-id [this id fun]
     (get-or-make-reporter-adjusting-ids
      [id] apply-to-store (:manager-data this) fun))
@@ -207,7 +211,11 @@
   (.write w "Mutable:")
   (print-method (dissoc (:value @(:manager-data s)) :history) w))
 
-(defmethod new-mutable-store true [immutable-store]
-  (map->MutableStoreImpl
-   {:manager-data (new-mutable-manager-data
-                   (store-to-manager-data immutable-store))}))
+(defmethod new-mutable-store true [immutable-store & queue]
+  (let [queue (if (empty? queue)
+                (new-priority-task-queue)
+                (first queue))]
+    (map->MutableStoreImpl
+     {:manager-data (new-mutable-manager-data
+                     (store-to-manager-data immutable-store)
+                     queue)})))

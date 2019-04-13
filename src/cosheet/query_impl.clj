@@ -373,7 +373,10 @@
       (if reference
         [env]
         (expr-let [value-as-immutable (current-entity-value value)
-                   matches (query-matches value-as-immutable env store)]
+                   ;; TODO: We need this test because atoms aren't allowed
+                   ;; as queries. But is that a bug?
+                   matches (when (not (atom? value-as-immutable))
+                             (query-matches value-as-immutable env store))]
           (when matches [env]))))))
 
 (defn exists-matches-in-store [exists env store]

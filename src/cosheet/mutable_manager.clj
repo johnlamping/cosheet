@@ -3,6 +3,8 @@
                       :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
+                     [task-queue :refer [new-priority-task-queue
+                                         add-tasks-with-priorities]]
                      [utils :refer [with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]])))
@@ -18,20 +20,30 @@
 ;;; function that should be called, together with any additional
 ;;; arguments beyond the value
 
-(defn new-mutable-manager-data [value]
-  (atom {
-         ;; The current value
-         :value value
-         
-         ;; A map from key to a set of reporters that need to be
-         ;; checked on any change to that key.
-         :subscriptions {}
+(defn new-mutable-manager-data
+  ([value]
+   (new-mutable-manager-data value (new-priority-task-queue 0)))
+  ([value queue]
+   (atom {
+          ;; The current value.
+          :value value
+          
+          ;; A map from key to a set of reporters that need to be
+          ;; checked on any change to that key.
+          :subscriptions {}
 
-         ;; A cache so that requests for the same computation can
-         ;; share a reporter. It is a map from application to an
-         ;; an attended reporter with that application, if there
-         ;; is any.
-         :application->attended-reporter nil}))
+          ;; A cache so that requests for the same computation can
+          ;; share a reporter. It is a map from application to an
+          ;; an attended reporter with that application, if there
+          ;; is any.
+          :application->attended-reporter nil
+
+          ;; The queue of work remaining to do.
+          :queue queue})))
+
+(defn mutable-manager-queue
+  [manager-data]
+  (:queue @manager-data))
 
 (defn current-mutable-value
   "Return the current value of the managed item."
@@ -42,6 +54,7 @@
   "Given the current mutable value, compute the value for the reporter."
   [value reporter]
   (let [[f & args] (:application (reporter/data reporter))]
+    ;; TODO!!!: Don't do this if the reporter is invalid and has no attendees.
     (set-value! reporter (apply f value args))))
 
 (defn recompute-reporter
@@ -49,6 +62,16 @@
   [manager-data reporter]
   (with-latest-value [value (:value @manager-data)]
     (compute-reporter value reporter)))
+
+(defn queue-recomputations [manager-data reporters]
+  (doseq [reporter reporters]
+    (reporter/set-value! reporter reporter/invalid))
+  (let [queue (:queue @manager-data)]
+    (add-tasks-with-priorities
+       queue
+       (map (fn [reporter] [(or (:priority (reporter/data reporter)) 0)
+                            recompute-reporter manager-data reporter])
+            reporters))))
 
 (defn recompute-reporters-for-keys
   "Update all reporters that care about the changes represented by the keys."
@@ -60,18 +83,14 @@
     (let [subscriptions (:subscriptions @manager-data)
           ;; Avoid calling the same reporter twice.
           reporters (set (mapcat (partial get subscriptions) keys))]
-      (with-latest-value [value (:value @manager-data)]
-        (doseq [reporter reporters]
-          (compute-reporter value reporter))))))
+      (queue-recomputations manager-data reporters))))
 
 (defn recompute-all-reporters
   "Update all reporters."
   [manager-data]
   (let [;; Avoid calling the same reporter twice.
         reporters (set (apply concat (vals (:subscriptions @manager-data))))]
-    (with-latest-value [value (:value @manager-data)]
-      (doseq [reporter reporters]
-        (compute-reporter value reporter)))))
+    (queue-recomputations manager-data reporters)))
 
 (defn add-subscriptions
   "Given the current manager data, a reporter, and its keys,

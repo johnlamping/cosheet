@@ -4,14 +4,16 @@
                               current-mutable-value
                               get-or-make-reporter
                               describe-and-swap!
-                              describe-and-swap-control-return!]])))
+                              describe-and-swap-control-return!]]
+                     [task-queue :refer [new-priority-task-queue]])))
 
 ;;; Support for a mutable manager over a map.
 
 (defn new-state-map
-  [initial]
-  (assert (map? initial))
-  (new-mutable-manager-data initial))
+  ([initial] (new-state-map initial (new-priority-task-queue)))
+  ([initial queue]
+   (assert (map? initial))
+   (new-mutable-manager-data initial queue)))
 
 (defn state-map-get [state-map key & rest]
   (apply get-or-make-reporter [key] get state-map key rest))

@@ -13,6 +13,10 @@
              store-impl
              [mutable-store-impl :refer :all]
              [canonical :refer [canonicalize-list]]
+             [task-queue :refer [new-priority-task-queue
+                                 run-all-pending-tasks
+                                 ;; TODO!!!: Remove this.
+                                 finished-all-tasks?]]
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set evals-to let-mutated]])
             ; :reload
@@ -29,7 +33,8 @@
   (let [[store element]
         (add-entity (new-element-store) nil '(77 ("test" :label)
                                                  ("Fred" ("by" :label))))
-        mutable-store (new-mutable-store store)
+        queue (new-priority-task-queue)
+        mutable-store (new-mutable-store store queue)
         modified-store (update-content store element 99)]
     ;; Test the accessors
     (is (get-value (id-valid? mutable-store element)))
@@ -63,9 +68,10 @@
       (set-attendee! label-ids :a callback "arg")
       (set-attendee! candidate-ids :a callback "arg")
       (set-attendee! tracking-store :a callback "arg")
-
+      (run-all-pending-tasks queue)
       (is (= (value tracking-store) (track-modified-ids store)))
       (reset-store! mutable-store modified-store)
+      (run-all-pending-tasks queue)
       (is (= (value tracking-store) (track-modified-ids modified-store)))
       (is (= (value content) 99))
       
@@ -79,6 +85,7 @@
             _ (do-update! mutable-store #(update-valid-undo-point % true))
             _ (declare-temporary-id! mutable-store me)
             _ (update-content! mutable-store element 88)]
+        (run-all-pending-tasks queue)
         (is (= (value content) (id->content revised-store element)))
         (is (= (value implicit-content)
                (id->content revised-store content-ref)))
@@ -97,6 +104,7 @@
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (not (can-undo? mutable-store)))
+        (run-all-pending-tasks queue)
         (is (= (value content) (id->content modified-store element)))
         (is (= (value implicit-content)
                (id->content modified-store content-ref)))
@@ -113,6 +121,7 @@
         (is (can-redo? mutable-store))
         (redo! mutable-store)
         (is (not (can-redo? mutable-store)))
+        (run-all-pending-tasks queue)
         (is (= (value content) (id->content revised-store element)))
         (is (= (value implicit-content)
                (id->content revised-store content-ref)))
@@ -133,6 +142,7 @@
         (is (can-redo? mutable-store))
         (remove-simple-id! mutable-store me)
         (is (not (can-redo? mutable-store)))
+        (run-all-pending-tasks queue)
         ;; Still tracked, so should be equal to the original store
         (is (= (set (value element-ids))
                (set (id->element-ids store element))))

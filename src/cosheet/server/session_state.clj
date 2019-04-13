@@ -242,7 +242,7 @@
   Also add :without-suffix to the store info returned, giving the
   file path that the store is indexed under.
   Return nil if there is something wrong with the path."
-  [file-path]
+  [file-path queue]
   (let [[without-suffix name suffix] (interpret-file-path file-path)
         store-info
         ;; We want to make sure we don't have a race between threads to
@@ -262,7 +262,7 @@
                                      nil))
                    log-agent (when log-stream
                                (agent (clojure.java.io/writer log-stream)))
-                   info {:store (new-mutable-store immutable-store)
+                   info {:store (new-mutable-store immutable-store queue)
                          :agent (agent immutable-store)
                          :log-agent log-agent}]
                (when log-agent
@@ -303,7 +303,7 @@
 ;;;                            referent says we should show.
 
 (defn create-client-state
-  [store referent-string]
+  [store referent-string queue]
   (let [immutable-store (current-store store)
         [referent subject-ref]
         (or (when referent-string
@@ -322,7 +322,8 @@
                     :subject-referent subject-ref
                     :last-action nil
                     :batch-editing false
-                    :in-sync false})))
+                    :in-sync false}
+                   queue)))
 
 (defn create-tracker
   [store temporary-id client-state manager-data]
@@ -380,9 +381,9 @@
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
-  [session-id file-path referent-string manager-data]
+  [session-id file-path referent-string queue manager-data]
   (prune-old-sessions (* 60 60 1000))
-  (when-let [store-info (ensure-store file-path)]
+  (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
           temporary-id (temporary-element-id store)
           id (swap-control-return!
@@ -390,7 +391,8 @@
               (fn [session-info]
                 (let [session-map (:sessions session-info)
                       id (or session-id (new-id session-map))
-                      client-state (create-client-state store referent-string)]
+                      client-state (create-client-state
+                                    store referent-string queue)]
                   [(assoc-in session-info [:sessions id]
                              {:file-path (:without-suffix store-info)
                               :id id
@@ -408,10 +410,10 @@
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
-  [session-id file-path referent-string manager-data]
+  [session-id file-path referent-string queue manager-data]
   (or (get-session-state session-id)
       (let [session-id (create-session session-id file-path referent-string
-                                       manager-data)]
+                                       queue manager-data)]
         (get-session-state session-id))))
 
 (defn forget-session

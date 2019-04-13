@@ -14,9 +14,12 @@
              [debug :refer [envs-to-list]]
              entity-impl
              [store :refer [update-content!
-                            new-element-store new-mutable-store]]
+                            new-element-store new-mutable-store
+                            store-queue]]
              store-impl
-             mutable-store-impl)
+             mutable-store-impl 
+             [task-queue :refer [new-priority-task-queue
+                                 run-all-pending-tasks]])
             (cosheet.server
              [dom-tracker :refer :all]
              [render :refer [DOM-for-client-R]]
@@ -244,7 +247,8 @@
       ;; Change the value of the store, and make sure the dom updates.
       (swap! tracker #(assoc % :out-of-date-keys (priority-map/priority-map)))
       (let [store (:store joe)]
-        (update-content! store (:item-id joe) "Joe's"))
+        (update-content! store (:item-id joe) "Joe's")
+        (run-all-pending-tasks (store-queue store)))
       (compute md)
       (is (check (get-in @tracker [:key->dom joe-key])
                  [:div  {:key joe-key
@@ -351,8 +355,9 @@
         [store joe _] (update-add-entity-with-order-and-temporary
                        (new-element-store) nil '("Joe" (39 ("age" :tag)))
                        cosheet.orderable/initial :after true)
-        ms (new-mutable-store store)
-        client-state (create-client-state ms (referent->string joe))]
+        queue (new-priority-task-queue)
+        ms (new-mutable-store store queue)
+        client-state (create-client-state ms (referent->string joe) queue)]
     (add-dom tracker "root" [:root]
              [DOM-for-client-R ms nil client-state])
     (compute md)

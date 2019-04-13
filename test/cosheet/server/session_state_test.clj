@@ -11,7 +11,8 @@
              [store :refer [new-element-store new-mutable-store]]
              [query :refer [matching-items]]
              [state-map :refer [new-state-map state-map-get-current-value]]
-             [expression-manager :refer [new-expression-manager-data]])
+             [expression-manager :refer [new-expression-manager-data]]
+             [task-queue :refer [new-priority-task-queue]])
             (cosheet.server
              [session-state :refer :all]
              [model-utils :refer [immutable-semantic-to-list
@@ -44,9 +45,10 @@
            '("" ("Hello" :tag) (3 ("a" :tag)))))))
 
 (deftest create-client-state-test
-  (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
+  (let [queue (new-priority-task-queue)
+        store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state-map (create-client-state
-                   (new-mutable-store store) "I5")]
+                   (new-mutable-store store queue) "I5" queue)]
     (is (check (current-mutable-value state-map)
                {:last-time (any)
                 :referent (any #(= (:id %) 5))
@@ -104,12 +106,13 @@
   (let [stream (new java.io.StringReader "a, b")
         store (add-table (update-add-temporary-element (starting-store nil))
                          "Hello" [["a" "b"] [1 2] [3]])
-        ms (new-mutable-store store)
-        md (new-expression-manager-data)]
+        queue (new-priority-task-queue)
+        ms (new-mutable-store store queue)
+        md (new-expression-manager-data queue)]
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "/foo" nil md)]
+    (let [state (ensure-session nil "/foo" nil queue md)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))

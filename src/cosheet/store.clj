@@ -140,7 +140,10 @@
   "The basic methods that mutable stores support to change themselves,
   from which higher levels ones are built."
   (current-store [this]
-   "The current store of the mutable store.")
+    "The current store of the mutable store.")
+
+  (store-queue [this]
+    "The task queue used by the store.")
 
   (call-dependent-on-id [this id fun]
    "Returns a reporter with the result of calling the function on

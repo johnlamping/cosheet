@@ -11,7 +11,9 @@
                      :refer [current-value]]
                     [debug :refer [simplify-for-print]]
                     [reporter :refer [value reporter?]]
-                    [store-utils :refer [add-entity]])))
+                    [store-utils :refer [add-entity]]
+                    [task-queue :refer [new-priority-task-queue
+                                        run-all-pending-tasks]])))
 
 (def differences)
 
@@ -143,9 +145,9 @@
   "Support function for let-mutated. Given a function of n items
   and a list of n entities in list form, create an empty mutable
   store, give all the enities a content of the empty string,
-  call the function with those entities evaluate
+  call the function with those entities, evaluate
   the resulting reporter, then add the correct value and any elements
-  to the entities recompute the reporter, returning its value."
+  to the entities, recompute the reporter, and return its value."
   [fun entities]
   (let [s (new-element-store)
         [s ids contents]
@@ -158,8 +160,9 @@
                                              (add-entity new-store nil cont)))]
              [new-store (conj ids new-id) (conj contents new-content)]))
          [s [] []] entities)
-        ms (new-mutable-store s)
-        md (expression-manager/new-expression-manager-data)
+        queue (new-priority-task-queue)
+        ms (new-mutable-store s queue)
+        md (expression-manager/new-expression-manager-data queue)
         mutable-entities (map #(cosheet.entity/description->entity % ms) ids)
         result (apply fun mutable-entities)]
     (expression-manager/request result md)
@@ -192,11 +195,12 @@
 ;;; with the mutable store as an argument, and return the new current
 ;;; value of the expression.
 (defmacro let-mutated-store [[var initial mutator] exp]
-  `(let [~var (new-mutable-store ~initial)
-         md# (expression-manager/new-expression-manager-data)
+  `(let [queue# (new-priority-task-queue)
+         ~var (new-mutable-store ~initial queue#)
+         md# (expression-manager/new-expression-manager-data queue#)
          exp-val# ~exp]
      (expression-manager/request exp-val# md#)
-     (expression-manager/compute md#)    
+     (expression-manager/compute md#)
      (~mutator ~var)
      (expression-manager/compute md#)
      (value exp-val#)))

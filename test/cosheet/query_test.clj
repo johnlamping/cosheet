@@ -349,7 +349,7 @@
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
                    (query-matches `(:and ((1 ~(variable "v")) :first)
-                                          (~(variable "v") :second))
+                                         (~(variable "v") :second))
                                    store))))
            #{{"v" '(2 3)} {"v" '(2 4)}}))
     ;; variables inside items

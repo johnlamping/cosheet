@@ -39,7 +39,8 @@
       [actions :refer [confirm-actions do-actions]]))
   (:import (org.h2.util New)))
 
-(defonce manager-data (new-expression-manager-data (new-priority-task-queue 1)))
+(defonce common-queue (new-priority-task-queue 1))
+(defonce manager-data (new-expression-manager-data common-queue))
 
 (defonce time-formatter (java.text.DateFormat/getDateTimeInstance))
 (defn now-string
@@ -56,9 +57,8 @@
          (subs datime, (- datime-len 3)) )))
 
 (defn check-propagation-if-quiescent [tracker]
-  (let [tracker-data @tracker
-        task-queue (get-in tracker-data [:manager-data :queue])]
-    (when (finished-all-tasks? task-queue)
+  (let [tracker-data @tracker]
+    (when (finished-all-tasks? common-queue)
       (let [reporters (->> (vals (:components tracker-data))
                            (map :reporter)
                            (filter reporter/reporter?))]
@@ -188,7 +188,7 @@
   (println (now-string) "initial page"
            file-path referent-string)
   (if-let [session-id (create-session nil file-path referent-string
-                                      manager-data)]
+                                      common-queue manager-data)]
     (do (println (now-string) "Got session")
         (html5
          [:head
@@ -385,7 +385,7 @@
                 url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))
                 file-path (url-path-to-file-path url-path user-id)]
             (ensure-session
-             id file-path referent-string manager-data))))))
+             id file-path referent-string common-queue manager-data))))))
 
 (defn handle-ajax [request]
   (let [params (:params request)

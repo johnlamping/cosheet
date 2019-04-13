@@ -2,7 +2,8 @@
   (:require (cosheet [utils :refer [dissoc-in swap-returning-both!]])))
 
 (defn- check-callback [callback]
-  (assert (fn? (first callback)) "Callback is not a function.")
+  (assert (fn? (first callback))
+          ["Callback doesn't start with a function." callback])
   callback)
 
 (defn- call-callback [callback & args]
@@ -24,13 +25,17 @@
        there is demand for the reporter's value.
        A reporter is implemented as a record holding an atom with
        a map of relevant information.
-       We only use a record so we can have a special print method that
-       can avoid printing circular references.
-       The special value ::invalid indicates that there is no current
+       We warp the atom in a record only because that supports a special
+       print method that can avoid printing circular references.
+       The special value, ::invalid, indicates that there is no current
        valid value.
        One or more callbacks can attend to the value of the reporter. Each
-       callback is associated with a key, and optionally some additional
-       arguments. Each attendee is guaranteed to eventually be called with
+       is contains a key, a priority, a function and optionally some
+       additional arguments. The priority indicates how important it is
+       for this reporter to be recomputed earlier, if multiple reporters
+       are out of date (lower priority first). The effective priority
+       of a reporter is the minimum of the priority of each of its attendees.
+       Each attendee is guaranteed to eventually be called with
        the key, the reporter, and the attendee's additional arguments. It will
        eventually be similarly called after any change in the value, but not
        necessarily once per change.
@@ -41,12 +46,18 @@
        demand for the reporter's value changes. It will be called the
        first time there are any attendees to the reporter, and whenever
        there is a transition in whether there are attendees. It is responsible
-       for keeping the reporter's value up to date. It can do things
+       for keeping the reporter's value up to date, doing things
        like registering for callbacks to update its state, or removing those
        callbacks when there is no more interest. It can put additional
        information on the reporter to support its functionality."}
-  [;;; An atom holding a map including :value, and possibly :manager,
-   ;;; and :attendees, as well as other keys.
+    [;;; An atom holding a map including
+     ;;;   :value     The value of the reporter.
+     ;;;   :priority  The priority for recomputing this reporter (lower first)
+     ;;;              This will be the minimum of the priorities of all
+     ;;;              attendees.
+     ;;;   :manager   If present, the manager for this reporter.
+     ;;;   :attendees If present, a map from key [priority fn &args] of
+     ;;;              attendees to the reporter.
    data]
   )
 
@@ -112,35 +123,36 @@
 
 (defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be unique
-   to each callback. If no callback is provided, remove any callback that is
-   present. If a callback is provided, call it."
-  [r key & callback]
-  (if (reporter? r)
-    (let [[old current]
-          (swap-returning-both!
-           (:data r)
-           (fn [data]
-             (if (nil? callback)
-               (dissoc-in data [:attendees key])
-               (assoc-in data [:attendees key] (check-callback callback)))))]
+   to each callback. If a callback is provided, the remaining arguments are
+   a priority, a function, and added arguments to the function.
+   If no callback is provided, remove any callback that is
+   present. If a callback is provided, call it immediately."
+  [r key & priority-and-callback]
+  (let [[priority & callback] priority-and-callback]
+    (if (reporter? r)
+      (let [[old current]
+            (swap-returning-both!
+             (:data r)
+             (fn [data]
+               (if (nil? callback)
+                 (dissoc-in data [:attendees key])
+                 (assoc-in data [:attendees key] (check-callback callback)))))]
+        (when callback
+          (call-callback callback key r))
+        (when (and (:manager current)
+                   (not= (data-attended? old) (data-attended? current)))
+          (call-callback (:manager current) r)))
       (when callback
-        (call-callback callback key r))
-      (when (and (:manager current)
-                 (not= (data-attended? old) (data-attended? current)))
-        (call-callback (:manager current) r)))
-    (when callback
-      (call-callback callback key r))))
+        (call-callback callback key r)))))
 
 (defn new-reporter
-  [& {[key & callback] :attendee manager :manager :as args}]
+  [& {manager :manager :as args}]
   (let [args (merge {:value invalid} args)]
     (let [reporter (->ReporterImpl
-                    (atom (dissoc args :attendee :manager)))]
+                    (atom (dissoc args :manager)))]
       (when manager
         (apply set-manager! reporter
                (check-callback (if (sequential? manager) manager [manager]))))
-      (when key
-        (apply set-attendee! reporter key callback))
       reporter)))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]

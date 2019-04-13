@@ -221,8 +221,8 @@
         ;; can set the content of its queue to the content of a fresh queue.
         clear-md-queue #(reset! (:queue md) @(new-priority-task-queue 0))]
     ;; Give the ultimate reporters demand
-    (reporter/set-attendee! r2 :k (constantly nil))
-    (reporter/set-attendee! r3 :k (constantly nil))
+    (reporter/set-attendee! r2 :k 0 (constantly nil))
+    (reporter/set-attendee! r3 :k 0 (constantly nil))
     ;; Register, and check that the information is copied.
     (register-copy-subordinate r1 r2 md)
     (is (= (:needed-values (reporter/data r2)) #{}))

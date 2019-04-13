@@ -15,7 +15,7 @@
   (is (= (value 2) 2))
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))]
-    (set-attendee! 2 :key callback)
+    (set-attendee! 2 :key 0 callback)
     (is (= @history [[:key 2]]))))
 
 (deftest reporter-test
@@ -23,11 +23,11 @@
         callback (fn [& args] (swap! history #(conj % args)))
         r (new-reporter :value 2
                         :manager [callback :m]
-                        :attendee [:foo callback :f]
                         :extra :e)]
     (is (reporter? r))
     (is (not (reporter? 2)))
-    (is (attended? r))
+    (is (not (attended? r)))
+    (set-attendee! r :foo 0 callback :f)
     (is (= (value r) 2))
     (is (= (:extra (data r)) :e))
     (is (= @history [[:foo r :f] [r :m]]))
@@ -38,16 +38,16 @@
     (is (not (attended? r)))
     (is (= @history [[:foo r :f] [r :m] [:foo r :f] [r :m]]))
     (reset! history [])
-    (set-attendee! r :bar callback :b)
+    (set-attendee! r :bar 0 callback :b)
     (is (= @history [[:bar r :b] [r :m]]))
-    (set-attendee! r :tst callback :t)
+    (set-attendee! r :tst 0 callback :t)
     (is (= @history [[:bar r :b] [r :m] [:tst r :t]]))
     (set-value! r 4)
     (is (= (set @history)
            (set [[:bar r :b] [r :m] [:tst r :t] [:bar r :b] [:tst r :t]])))
-    (is (thrown? java.lang.AssertionError (set-attendee! r :foo 1 2)))
+    (is (thrown? java.lang.AssertionError (set-attendee! r :foo 0 1 2)))
     (set-manager! r callback :m)
-    (is (thrown? java.lang.AssertionError (set-manager! r callback 2)))))
+    (is (thrown? java.lang.AssertionError (set-manager! r callback 0 2)))))
 
 
 

@@ -149,7 +149,7 @@
              value))]
       (is (= @record []))
       ;; See if it gets computed when demand is added.
-      (set-attendee! updating-with-immutable-result :a
+      (set-attendee! updating-with-immutable-result :a 0
                      (fn [id reporter] nil))
       (is (check (value updating-with-immutable-result)
                  (as-set '(nil ((4 "baz") "bar") (3 "foo")))))

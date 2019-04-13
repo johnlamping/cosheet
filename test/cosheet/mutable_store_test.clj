@@ -21,7 +21,7 @@
             ))
 
 (defn- request [reporter]
-  (set-attendee! reporter :demand (fn [key reporter] nil))
+  (set-attendee! reporter :demand 0 (fn [key reporter] nil))
   reporter)
 
 (defn- get-value [reporter]  
@@ -60,12 +60,12 @@
           tracking-store (call-dependent-on-id mutable-store element identity)
           callback (fn [id reporter arg]
                      (is (= arg "arg")))]
-      (set-attendee! content :a callback "arg")
-      (set-attendee! implicit-content :a callback "arg")
-      (set-attendee! element-ids :a callback "arg")
-      (set-attendee! label-ids :a callback "arg")
-      (set-attendee! candidate-ids :a callback "arg")
-      (set-attendee! tracking-store :a callback "arg")
+      (set-attendee! content :a 0 callback "arg")
+      (set-attendee! implicit-content :a 0 callback "arg")
+      (set-attendee! element-ids :a 0 callback "arg")
+      (set-attendee! label-ids :a 0 callback "arg")
+      (set-attendee! candidate-ids :a 0 callback "arg")
+      (set-attendee! tracking-store :a 0 callback "arg")
       (run-all-pending-tasks queue)
       (is (= (value tracking-store) (track-modified-ids store)))
       (reset-store! mutable-store modified-store)
@@ -150,7 +150,7 @@
         (is (= (value label-ids) invalid))
         ;; Subscribing should return the current value, and update the
         ;; reporter.
-        (set-attendee! label-ids :a callback "arg")
+        (set-attendee! label-ids :a 0 callback "arg")
         (is (= (set (value label-ids))
                (set (id-label->element-ids store element :label)))))))
   ;; Test building a store from scratch using add-entity!.

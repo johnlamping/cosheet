@@ -8,7 +8,7 @@
                      [entity-impl :as entity-impl]
                      [query :as query]
                      [reporter :refer [reporter? attended? data value
-                                        valid? set-attendee!]]
+                                        valid?]]
                      [orderable]
                      [expression-manager :refer [current-value]]
                      store-utils

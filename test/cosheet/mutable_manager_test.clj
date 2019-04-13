@@ -9,7 +9,7 @@
             ))
 
 (defn- request [reporter]
-  (set-attendee! reporter :demand (fn [key reporter] nil)))
+  (set-attendee! reporter :demand 0 (fn [key reporter] nil)))
 
 (defn- unrequest [reporter]
   (set-attendee! reporter :demand))

@@ -8,8 +8,7 @@
                               describe-and-swap!
                               describe-and-swap-control-return!]]
                      [reporter
-                      :refer [set-value! set-manager!
-                              attended? new-reporter]]
+                      :refer [set-value! set-manager!]]
                      [utils :refer [call-with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]]

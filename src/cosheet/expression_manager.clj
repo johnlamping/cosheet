@@ -28,7 +28,7 @@
           ;; Maybe the manager knows a different way to get the value.
           ;; Add an attendee, get the value, then take the attendee away.
           (do
-            (reporter/set-attendee! expr :request (fn [key reporter] nil))
+            (reporter/set-attendee! expr :request 0 (fn [key reporter] nil))
             (let [result (reporter/value expr)]
               (reporter/set-attendee! expr :request)
               result))
@@ -219,7 +219,7 @@
                 (cond (= (:value-source data) from) [copy-value-callback]
                       (= (:old-value-source data) from) [null-callback]))]    
     (apply reporter/set-attendee!
-           from (list :copy-value to) callback)))
+           from (list :copy-value to) 0 callback)))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -319,7 +319,7 @@
                 (when (or (contains? (get data :needed-values #{}) from)
                           (contains? (:subordinate-values data) from))
                   [copy-subordinate-callback md]))]
-    (apply reporter/set-attendee! from to callback)))
+    (apply reporter/set-attendee! from to 0 callback)))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
@@ -476,14 +476,14 @@
 (defn request
   "Request computation of a reporter, returning the reporter."
   [r md]
-  (reporter/set-attendee! r :computation-request (fn [key value] nil))
+  (reporter/set-attendee! r :computation-request 0 (fn [key value] nil))
   (manage r md)
   r)
 
 (defn unrequest
   "Remove request for omputation of a reporter."
   [r md]
-  (reporter/set-attendee! r :computation-request nil))
+  (reporter/set-attendee! r :computation-request 0 nil))
 
 (defn compute
   "Do all pending computations, or if the second argument is provided,

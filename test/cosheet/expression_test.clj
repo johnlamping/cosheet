@@ -12,7 +12,10 @@
 (deftest expression-test
   (let [r (reporter/new-reporter)]
     (is (= (dissoc (reporter/data (expr r 2 3)) :trace)
-           {:expression [r 2 3] :manager-type :eval :value invalid})))
+           {:expression [r 2 3]
+            :manager-type :eval
+            :value invalid
+            :priority Double/MAX_VALUE})))
   
   ;; Try cases where the expression should evaluate to a constant.
   (is (= (expr + (expr inc 1) 3)

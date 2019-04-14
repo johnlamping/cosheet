@@ -44,8 +44,9 @@
        want to remove it, while an identical closure can't.)
        A manager can be registered with the reporter, to be informed when
        demand for the reporter's value changes. It will be called the
-       first time there are any attendees to the reporter, and whenever
-       there is a transition in whether there are attendees. It is responsible
+       first time there are any attendees to the reporter, whenever
+       there is a transition in whether there are attendees, and whenever
+       the priority of the reporter changes. It is responsible
        for keeping the reporter's value up to date, doing things
        like registering for callbacks to update its state, or removing those
        callbacks when there is no more interest. It can put additional
@@ -54,7 +55,8 @@
      ;;;   :value     The value of the reporter.
      ;;;   :priority  The priority for recomputing this reporter (lower first)
      ;;;              This will be the minimum of the priorities of all
-     ;;;              attendees.
+     ;;;              attendees. If there are no attendees, it will be
+     ;;;              Double/MAX_VALUE.
      ;;;   :manager   If present, the manager for this reporter.
      ;;;   :attendees If present, a map from key [priority fn &args] of
      ;;;              attendees to the reporter.
@@ -94,8 +96,10 @@
   [r]
   ;;; Since the only guarantee is eventual callback, we can fetch the
   ;;; attendees map outside of any lock, since anything that changed
-  ;;; the attendees will also do callbacks if appropriate.
-  (doseq [[key callback] (:attendees @(:data r))]
+  ;;; the attendees will also request callbacks if appropriate.
+  ;;; This does mean that an attendee may be called after it has cancelled
+  ;;; its request.
+  (doseq [[key [priority & callback]] (:attendees @(:data r))]
     (call-callback callback key r)))
 
 (defn set-value!
@@ -121,6 +125,10 @@
     (when (data-attended? current)
       (call-callback manager reporter))))
 
+(defn- best-priority
+  [attendees]
+  )
+
 (defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be unique
    to each callback. If a callback is provided, the remaining arguments are
@@ -134,13 +142,35 @@
             (swap-returning-both!
              (:data r)
              (fn [data]
-               (if (nil? callback)
-                 (dissoc-in data [:attendees key])
-                 (assoc-in data [:attendees key] (check-callback callback)))))]
+               (let [prev-attendee-priority
+                     (first (get-in data [:attendees key]))
+                     adjusted
+                     (if (nil? callback)
+                       (dissoc-in data [:attendees key])
+                       (do (check-callback callback)
+                           (-> data
+                               (assoc-in [:attendees key] priority-and-callback)
+                               (update :priority #(min % priority)))))]
+                 (if (or (nil? prev-attendee-priority)
+                         (and (not (nil? callback))
+                              (<= priority prev-attendee-priority))
+                         (> prev-attendee-priority (:priority adjusted)))
+                   adjusted
+                   ;; We replaced the lowest priority with a higher one,
+                   ;; So we have to go through all the priorities to find
+                   ;; the new lowest.
+                   (let [priorities-and-callbacks (vals (:attendees adjusted))
+                         new-priority
+                         (if (empty? priorities-and-callbacks)
+                           Double/MAX_VALUE
+                           (apply min (map first priorities-and-callbacks)))]
+                     (assoc adjusted :priority new-priority))))))]
         (when callback
           (call-callback callback key r))
         (when (and (:manager current)
-                   (not= (data-attended? old) (data-attended? current)))
+                   (or
+                    (not= (data-attended? old) (data-attended? current))
+                    (not= (:priority old) (:priority current))))
           (call-callback (:manager current) r)))
       (when callback
         (call-callback callback key r)))))
@@ -149,7 +179,9 @@
   [& {manager :manager :as args}]
   (let [args (merge {:value invalid} args)]
     (let [reporter (->ReporterImpl
-                    (atom (dissoc args :manager)))]
+                    (atom (-> args
+                              (dissoc :manager)
+                              (assoc :priority Double/MAX_VALUE))))]
       (when manager
         (apply set-manager! reporter
                (check-callback (if (sequential? manager) manager [manager]))))

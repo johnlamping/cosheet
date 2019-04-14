@@ -163,7 +163,7 @@
                          (assoc-in [:components :a] component-map)
                          (update-request-set-attending component-map))) 
     (is (= (:attendees (reporter/data r))
-           {[:dom-request :a] [dom-callback a]}))
+           {[:dom-request :a] [0 dom-callback a]}))
     (swap-and-act a #(-> %
                          (dissoc-in [:components :a])
                          (update-request-set-attending component-map)))

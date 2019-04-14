@@ -7,7 +7,8 @@
                      [reporter :as reporter]
                      [expression :refer [expr expr-seq expr-let cache invalid]]
                      [utils :refer :all]
-                     [expression-manager :refer :all])
+                     [expression-manager :refer :all]
+                     [test-utils :refer [check any]])
             ; :reload
             ))
 
@@ -21,7 +22,8 @@
           (for [key [:name :value]]
             [key (key (reporter/data expr))])]
       (if (nil? (second (first desc)))
-        (let [[key callback] (first (:attendees (reporter/data expr)))]
+        (let [[key [priority & callback]]
+              (first (:attendees (reporter/data expr)))]
           (let [to (if (sequential? key) (second key) key)]
             (if (reporter/reporter? to)
               (concat [[:name [(:name (reporter/data to))]]]
@@ -77,9 +79,11 @@
         source (:value-source data)]
     (if source
       (do (is (= (:value data) (reporter/value source)))
-          (is (= (get-in (reporter/data source)
-                         [:attendees `(:copy-value ~reporter)])
-                 [copy-value-callback]))
+          (is (check (get-in (reporter/data source)
+                             [:attendees `(:copy-value ~reporter)])
+                     ;; TODO: replace the (any) by (:priority data)
+                     ;;       then replace check by is above
+                     (into [(any)] [copy-value-callback])))
           (conj need-checking source))
       need-checking)))
 
@@ -204,8 +208,9 @@
     (is (= (reporter/value r2) :w))
     (register-copy-value r1 r3)
     (is (= (reporter/value r3) invalid))
-    (is  (= ((:attendees (reporter/data r1)) [:copy-value r3])
-            [null-callback]))))
+    ;; TODO: Put in right priority.
+    (is  (check ((:attendees (reporter/data r1)) [:copy-value r3])
+                (into [(any)] [null-callback])))))
 
 (deftest copy-subordinate-test
   (let [r0 (reporter/new-reporter :name :r0 :value :r0)
@@ -292,8 +297,9 @@
                      :expression [r0]
                      :value-source r1}))
     (register-copy-value r1 r)
-    (is (= (:attendees (reporter/data r1))
-           {[:copy-value r] [copy-value-callback]}))
+    (is (check (:attendees (reporter/data r1))
+               ;; TODO: Put in priority
+               {[:copy-value r] (into [(any)] [copy-value-callback])}))
     (is (= (:manager (reporter/data r1)) nil))
     (reporter/set-value! r invalid)
     (eval-expression-if-ready r md)

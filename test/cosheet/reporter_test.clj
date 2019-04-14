@@ -45,7 +45,8 @@
     (set-attendee! r :tst 5 callback :t)
     (is (= @history [[:bar r :b] [r :m] [:tst r :t]]))
     (is (= (:priority (data r)) 3))
-    (set-value! r 4)
+    (update-reporter! r (fn [d] [(assoc d :value 7) false]))
+    (update-reporter! r (fn [d] [(assoc d :value 4) true]))
     (is (= (set @history)
            (set [[:bar r :b] [r :m] [:tst r :t] [:bar r :b] [:tst r :t]])))
     ;; Check priority updates

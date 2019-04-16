@@ -111,17 +111,6 @@
     (if (not= (:value old) (:value current))
       (inform-attendees r))))
 
-(defn update-reporter!
-  "Runs the update function on the reporter's data. It should return
-   the new data, and a boolean indicating whether the new data counts as
-   a change for attendees.
-   This allows a report to record more that might be of interest to attendees
-   than just its value."
-  [r f]
-  (let [changed (swap-control-return! (:data r) f)]
-    (assert (contains? #{true false nil} changed))
-    (when changed (inform-attendees r))))
-
 (defn set-manager!
   "Set the manager for the reporter.
    Once set, the manager can never be changed."

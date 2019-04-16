@@ -103,7 +103,7 @@
   [need-checking reporter]
   (let [data (reporter/data reporter)]
     (reduce
-     (fn [need-checking [subordinate value]]
+     (fn [need-checking [subordinate [value dependent-depth]]]
        (if (contains? (:needed-values data) subordinate)
          need-checking
          (do
@@ -214,9 +214,10 @@
 
 (deftest copy-subordinate-test
   (let [r0 (reporter/new-reporter :name :r0 :value :r0)
-        r1 (reporter/new-reporter :name :r1 :value :v)
+        r1 (reporter/new-reporter :name :r1 :value :v :dependent-depth 1)
         r2 (reporter/new-reporter :name :r2
                                   :value :x
+                                  :dependent-depth 1
                                   :needed-values #{r1}
                                   :subordinate-values {})
         r3 (reporter/new-reporter :name :r3 :value-source r2)
@@ -231,7 +232,7 @@
     ;; Register, and check that the information is copied.
     (register-copy-subordinate r1 r2 md)
     (is (= (:needed-values (reporter/data r2)) #{}))
-    (is (= (:subordinate-values (reporter/data r2)) {r1 :v}))
+    (is (check (:subordinate-values (reporter/data r2)) {r1 [:v (any)]}))
     (is (= (reporter/value r2) invalid))
     (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
@@ -239,7 +240,7 @@
     (clear-md-queue)
     (reporter/set-value! r1 :v1)
     (is (= (:needed-values (reporter/data r2)) #{}))
-    (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
+    (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
     (is (= (reporter/value r2) invalid))
     (is (= (current-tasks (:queue md))
            [[eval-expression-if-ready r2 md]]))
@@ -247,7 +248,7 @@
     (clear-md-queue)
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
-    (is (= (:subordinate-values (reporter/data r2)) {r1 :v1}))
+    (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
     (is (= (reporter/value r2) invalid))
     (is (= (current-tasks (:queue md)) ()))
     ;; Now pretend that we did the eval and got a value-source,
@@ -274,12 +275,13 @@
   (let [r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
                                   :value 3
+                                  :dependent-depth 0
                                   :expression [inc 2]
                                   :manager-type :eval)
         r (reporter/new-reporter :name :r
                                  :expression [inc r0]
                                  :needed-values #{r0}
-                                 :subordinate-values {r0 1})
+                                 :subordinate-values {r0 [1 -2]})
         rc (reporter/new-reporter :name :rc :value-source r)
         md (new-expression-manager-data (new-priority-task-queue 0))]
     (register-copy-value r rc)
@@ -293,7 +295,7 @@
     (is (= (reporter/value rc) 2))
     ;; Try when it is ready and computes a reporter.
     (swap! (reporter/data-atom r)
-           #(into % {:subordinate-values {r0 (fn [] r1)}
+           #(into % {:subordinate-values {r0 [(fn [] r1) 3]}
                      :expression [r0]
                      :value-source r1}))
     (register-copy-value r1 r)
@@ -325,7 +327,7 @@
     (register-copy-value r rc)
     (eval-manager r md)
     (is (= (:needed-values (reporter/data r)) #{}))
-    (is (= (:subordinate-values (reporter/data r)) {r0 1}))
+    (is (check (:subordinate-values (reporter/data r)) {r0 [1 (any)]}))
     ;; Run when there is no interest again.
     (swap! (reporter/data-atom rc) dissoc :value-source)
     (register-copy-value r rc)

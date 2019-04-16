@@ -45,6 +45,21 @@
 ;;;       :manager-type A keyword describing what kind of manager the
 ;;;                     reporter should have.
 ;;; Added by this manager:
+;;;     :dependent-depth The maximum added priority position of all the
+;;;                      reporters that this reporter's value depends on.
+;;;                      This is only valid when the value is valid.
+;;;                      This is used in making redetermining this reporter's
+;;;                      value source have a earlier priority than
+;;;                      reevaluating its value source. That way, if changes
+;;;                      mean that the reporter should have a new value source,
+;;;                      and that the valud of the old value source is
+;;;                      invalid, the old value source won't be reevaluated
+;;;                      until we know that it is still needed.
+;;;                      an earlier priority than reevaluating anything it
+;;;                      depends on, or on
+;;;                      The dependent depth of a reporter is one more than
+;;;                      the dependent depth of its value source plus the
+;;;                      largest dependent depth of its subordinates.
 ;;;        :value-source A reporter whose value should be the value of this
 ;;;                      reporter if we have no needed-values.
 ;;;    :old-value-source The previous :value-source, if we know it and
@@ -60,7 +75,7 @@
 ;;;                      to be kept active, so that if they
 ;;;                      were cached, they will be available for
 ;;;                      reuse by the subcomputations of the current
-;;;                      value source.
+;;;                      value source, even ones it hasn't generated yet.
 ;;; :arguments-unchanged Present, and equal to true, if we have not
 ;;;                      seen a valid value different from the ones
 ;;;                      used to compute old-value-source.
@@ -68,11 +83,12 @@
 ;;;                      to evaluate its expression and that it doesn't have a
 ;;;                      valid value for. Not present if nothing is
 ;;;                      attending to the reporter.
-;;;  :subordinate-values A map from reporters whose values this reporter needs
-;;;                      to evaluate its expression to the last
-;;;                      valid value it saw for them, even if they have gone
-;;;                      invalid subsequently. Not present if nothing
-;;;                      is attending to the reporter.
+;;;  :subordinate-values A map from reporters this reporter needs
+;;;                      for evaluating its expression to a pair of the last
+;;;                      valid value it saw for them and their dependent-depth.
+;;;                      The pair is kept even if the value later goes
+;;;                      invalid. The map is not present if
+;;;                      nothing is attending to the reporter.
 ;;;     :further-actions A list of [function arg arg ...] calls that
 ;;;                      need to be performed. (These will never actually
 ;;;                      be stored in a reporter, but are added to the
@@ -182,29 +198,45 @@
 (def manage)
 (def update-old-value-source)
 
-(defn update-value
-  "Given the data from a reporter, and the reporter, set the value in the data,
-  and request the appropriate propagation."
-  [data reporter value]
-  (if (= value (:value data))
+(defn subordinate-depth
+  "Return 1 + the max of the dependent depths of our subordinates."
+  [data]
+  (let [depths (map second (vals (:subordinate-values data)))]
+    (if (empty? depths)
+      0
+      (+ 1 (apply max depths)))))
+
+(defn update-value-and-dependent-depth
+  "Given the data from a reporter, and the reporter, set the value
+   and dependent-depth in the data,
+   and request the appropriate propagation."
+  [data reporter value dependent-depth]
+  (if (and (= value (:value data)) (= dependent-depth (:dependent-depth data)))
     data
     (-> data
-        (assoc :value value)
+        (assoc :value value
+               :dependent-depth dependent-depth)
         (update-new-further-action reporter/inform-attendees reporter))))
 
 (defn copy-value-callback
   [[_ to] from]
-  (with-latest-value [value (reporter/value from)]
+  (with-latest-value [[value dependent-depth]
+                      (let [data (reporter/data from)]
+                        [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
      to
-     (fn [data] (if (= (:value-source data) from)
-                  (cond-> (update-value data to value)
-                    (reporter/valid? value)
-                    ;; We have finished computing a value,
-                    ;; so the old source is not holding
-                    ;; onto anything useful.
-                    (update-old-value-source to nil))
-                  data)))))
+     (fn [data]
+       (if (= (:value-source data) from)
+         (cond-> (update-value-and-dependent-depth
+                  data to value
+                  (when (reporter/valid? value)
+                    (+ dependent-depth (subordinate-depth data))))
+           (reporter/valid? value)
+           ;; We have finished computing a value,
+           ;; so the old source is not holding
+           ;; onto anything useful.
+           (update-old-value-source to nil))
+         data)))))
 
 (defn null-callback
   [key reporter]
@@ -215,11 +247,14 @@
    the first reporter to become the value of the second."
   [from to]
   (with-latest-value
-    [callback (let [data (reporter/data to)]
-                (cond (= (:value-source data) from) [copy-value-callback]
-                      (= (:old-value-source data) from) [null-callback]))]    
+    [[callback priority]
+     (let [data (reporter/data to)]
+       (cond (= (:value-source data) from)
+             [[copy-value-callback] (+ (:priority data) 1)]
+             (= (:old-value-source data) from)
+             [[null-callback] Double/MAX_VALUE]))]
     (apply reporter/set-attendee!
-           from (list :copy-value to) 0 callback)))
+           from (list :copy-value to) priority callback)))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -244,32 +279,22 @@
        ;; subsidiary reporters common to both will always have demand.
        (filter identity [source original-source])))))
 
-(def clear-old-value-source)
-
 (defn update-old-value-source
   [data reporter source]
   (cond-> (update-value-source data reporter source :old true)
-    (not (nil? source))
-    ;; We want to keep demand for the old source, but we don't need to
-    ;; keep demand for its old source.
-    (update-new-further-action clear-old-value-source source)
     (nil? source)
     (dissoc :arguments-unchanged)))
 
-(defn clear-old-value-source
-  [reporter]
-  (modify-and-act
-   reporter
-   (fn [data] (update-old-value-source data reporter nil))))
-
 (defn copy-subordinate-callback
   [to from md]
-  (with-latest-value [value (reporter/value from)]
+  (with-latest-value [[value dependent-depth]
+                      (let [data (reporter/data from)]
+                        [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
      to
      (fn [data]
        (let [same-value
-             (= value (get-in data [:subordinate-values from] ::not-found))]
+             (= value (get-in data [:subordinate-values from 0] ::not-found))]
          (if (or (not (reporter/data-attended? data))
                  (not (contains? data :needed-values))
                  (if (contains? (:needed-values data) from)
@@ -280,7 +305,8 @@
            ;; We are invalid until the recomputation runs,
            ;; which may not be for a while.
            (let [current-source (:value-source data)
-                 newer-data (cond-> (update-value data to reporter/invalid)
+                 newer-data (cond-> (update-value-and-dependent-depth
+                                     data to reporter/invalid 0)
                               current-source
                               ;; We must do the copy from source to
                               ;; old-source before clearing source,
@@ -294,7 +320,8 @@
                      (cond-> (update-in newer-data [:needed-values] disj from)
                        (not same-value)
                        (#(-> %
-                             (assoc-in [:subordinate-values from] value)
+                             (assoc-in [:subordinate-values from]
+                                       [value dependent-depth])
                              (dissoc :arguments-unchanged))))]
                  (if (empty? (:needed-values new-data))
                    (if (:arguments-unchanged new-data)
@@ -346,7 +373,7 @@
           (not= (:needed-values data) #{}))
        data
        (let [value-map (:subordinate-values data)
-             application (map #(get value-map % %) (:expression data))
+             application (map #(first (get value-map % [%])) (:expression data))
              value (apply (first application) (rest application))]
          (if (reporter/reporter? value)
            (-> data
@@ -356,7 +383,8 @@
                (update-value-source reporter value)
                (update-new-further-action manage value md))
            (-> data
-               (update-value reporter value)
+               (update-value-and-dependent-depth
+                reporter value (subordinate-depth data))
                (update-value-source reporter nil)
                (update-old-value-source reporter nil))))))))
 
@@ -375,7 +403,8 @@
                           data
                           register-copy-subordinate
                           subordinate reporter md))
-                       (update-value data reporter reporter/invalid)
+                       (update-value-and-dependent-depth
+                        data reporter reporter/invalid 0)
                        subordinates)]
          (if (reporter/data-attended? new-data)
            (-> new-data
@@ -501,6 +530,3 @@
         (compute md)
         (reporter/value r))
     r))
-
-
-

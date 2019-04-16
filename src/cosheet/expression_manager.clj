@@ -89,6 +89,9 @@
 ;;;                      The pair is kept even if the value later goes
 ;;;                      invalid. The map is not present if
 ;;;                      nothing is attending to the reporter.
+;;;  :requested-priority The priority that we have used to determine
+;;;                      our requests' priorities. If our :priority changes
+;;;                      from that, we have to redo our requests.
 ;;;     :further-actions A list of [function arg arg ...] calls that
 ;;;                      need to be performed. (These will never actually
 ;;;                      be stored in a reporter, but are added to the
@@ -199,7 +202,7 @@
 (def update-old-value-source)
 
 (defn subordinate-depth
-  "Return 1 + the max of the dependent depths of our subordinates."
+  "Return the max of the priorities of our subordinates relative to ours."
   [data]
   (let [depths (map second (vals (:subordinate-values data)))]
     (if (empty? depths)
@@ -227,15 +230,13 @@
      to
      (fn [data]
        (if (= (:value-source data) from)
-         (cond-> (update-value-and-dependent-depth
-                  data to value
-                  (when (reporter/valid? value)
-                    (+ dependent-depth (subordinate-depth data))))
-           (reporter/valid? value)
-           ;; We have finished computing a value,
-           ;; so the old source is not holding
-           ;; onto anything useful.
-           (update-old-value-source to nil))
+         (let [our-depth (when (reporter/valid? value)
+                           (+ dependent-depth 1 (subordinate-depth data)))]
+           (cond-> (update-value-and-dependent-depth data to value our-depth)
+             (reporter/valid? value)
+             ;; We have finished computing a value,  so the old source
+             ;; is not holding onto anything useful.
+             (update-old-value-source to nil)))
          data)))))
 
 (defn null-callback
@@ -247,12 +248,13 @@
    the first reporter to become the value of the second."
   [from to]
   (with-latest-value
-    [[callback priority]
+    [[priority callback]
      (let [data (reporter/data to)]
        (cond (= (:value-source data) from)
-             [[copy-value-callback] (+ (:priority data) 1)]
+             [(+ (:priority data) (subordinate-depth data))
+              [copy-value-callback]]
              (= (:old-value-source data) from)
-             [[null-callback] Double/MAX_VALUE]))]
+             [Double/MAX_VALUE [null-callback]]))]
     (apply reporter/set-attendee!
            from (list :copy-value to) priority callback)))
 
@@ -342,11 +344,21 @@
   for use as an argument of the second."
   [from to md]
   (with-latest-value
-    [callback (let [data (reporter/data to)]
-                (when (or (contains? (get data :needed-values #{}) from)
-                          (contains? (:subordinate-values data) from))
-                  [copy-subordinate-callback md]))]
-    (apply reporter/set-attendee! from to 0 callback)))
+    [[priority callback]
+     (let [data (reporter/data to)]
+       (when (or (contains? (get data :needed-values #{}) from)
+                 (contains? (:subordinate-values data) from))
+         [(+ (:priority data) 1) [copy-subordinate-callback md]]))]
+    (apply reporter/set-attendee! from to priority callback)))
+
+(defn request-each-register-copy-subordinate
+  "Register all the subordinateds this reporter needs."
+  [data subordinates reporter md]
+  (reduce
+   (fn [data subordinate]
+     (update-new-further-action
+      data register-copy-subordinate subordinate reporter md))
+   data subordinates))
 
 (defn eval-expression-if-ready
   "If all the arguments for an eval reporter are ready, and we don't have
@@ -394,30 +406,38 @@
   (modify-and-act
    reporter
    (fn [data]
-     (if (= (reporter/data-attended? data) (contains? data :needed-values))
-       data
-       (let [subordinates (set (filter reporter/reporter? (:expression data)))
-             new-data (reduce
-                       (fn [data subordinate]
-                         (update-new-further-action
-                          data
-                          register-copy-subordinate
-                          subordinate reporter md))
-                       (update-value-and-dependent-depth
-                        data reporter reporter/invalid 0)
-                       subordinates)]
-         (if (reporter/data-attended? new-data)
-           (-> new-data
-               (assoc :needed-values subordinates)
-               (assoc :subordinate-values {})
+     (let [same-attended (= (reporter/data-attended? data)
+                            (contains? data :needed-values))
+           same-priority (or (= (:priority data) (:requested-priority data))
+                             (not (reporter/data-attended? data)))]
+       (if (and same-attended same-priority)
+         data
+         (let [subordinates (set (filter reporter/reporter? (:expression data)))
+               new-data (-> data
+                            (request-each-register-copy-subordinate
+                             subordinates reporter md)
+                            (assoc :requested-priority (:priority data)))]
+           (if same-attended
+             ;; Only the priority changed. We need only also re-register for
+             ;; the value copying, to update the priority we pass down.
+             (cond-> new-data
+               (:value-source new-data)
                (update-new-further-action
-                add-task (:queue md)
-                eval-expression-if-ready reporter md))
-           (-> new-data
-               (dissoc :needed-values)
-               (dissoc :subordinate-values)
-               (update-value-source reporter nil)
-               (update-old-value-source reporter nil))))))))
+                register-copy-value (:value-source new-data) reporter))
+             (let [new-data (update-value-and-dependent-depth
+                             new-data reporter reporter/invalid 0)]
+               (if (reporter/data-attended? new-data)
+                 (-> new-data
+                     (assoc :needed-values subordinates)
+                     (assoc :subordinate-values {})
+                     (update-new-further-action
+                      add-task (:queue md)
+                      eval-expression-if-ready reporter md))
+                 (-> new-data
+                     (dissoc :needed-values)
+                     (dissoc :subordinate-values)
+                     (update-value-source reporter nil)
+                     (update-old-value-source reporter nil)))))))))))
 
 (defn manage-eval
   "Have the reporter managed by the eval-manager,

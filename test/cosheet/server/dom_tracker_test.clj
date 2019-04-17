@@ -157,13 +157,13 @@
 
 (deftest update-attending-test
   (let [r (new-reporter)
-        component-map {:key :a :reporter r}
+        component-map {:key :a :reporter r :depth 2}
         a (atom {})]
     (swap-and-act a #(-> %
                          (assoc-in [:components :a] component-map)
                          (update-request-set-attending component-map))) 
     (is (= (:attendees (reporter/data r))
-           {[:dom-request :a] [0 dom-callback a]}))
+           {[:dom-request :a] [2000 dom-callback a]}))
     (swap-and-act a #(-> %
                          (dissoc-in [:components :a])
                          (update-request-set-attending component-map)))

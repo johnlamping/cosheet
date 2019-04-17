@@ -329,12 +329,14 @@
      for the key."
   [data-atom reporter key]
   (with-latest-value
-    [should-attend
-     (= (get-in @data-atom [:components key :reporter]) reporter)]
+    [[should-attend priority]
+     (let [component-map (get-in @data-atom [:components key])]
+       [(= (:reporter component-map) reporter)
+        (* 1000 (or (:depth component-map) 0))])]
     ;; Note: The key we use to subscribe might be the same as other
     ;; dom trackers use, but we only subscribe to reporters that we
     ;; create, so there will never be a conflict.
-    (apply reporter/set-attendee! reporter [:dom-request key] 0
+    (apply reporter/set-attendee! reporter [:dom-request key] priority
            (when should-attend
              [dom-callback data-atom]))))
 

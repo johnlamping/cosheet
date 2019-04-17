@@ -83,7 +83,8 @@
                              [:attendees `(:copy-value ~reporter)])
                      ;; TODO: replace the (any) by (:priority data)
                      ;;       then replace check by is above
-                     (into [(any)] [copy-value-callback])))
+                     (into [(any #(> % (:priority data) )) ]
+                           [copy-value-callback])))
           (conj need-checking source))
       need-checking)))
 
@@ -281,31 +282,37 @@
         r (reporter/new-reporter :name :r
                                  :expression [inc r0]
                                  :needed-values #{r0}
-                                 :subordinate-values {r0 [1 -2]})
+                                 :subordinate-values {r0 [1 0]})
         rc (reporter/new-reporter :name :rc :value-source r)
         md (new-expression-manager-data (new-priority-task-queue 0))]
+    ;; Give rc priority 6
+    (reporter/set-attendee! rc :test 6 (fn [key r] nil))
     (register-copy-value r rc)
-    ;; Try when the expression is not ready.
+    (is (= (:priority (reporter/data r)) 7))
+   ;; Try when the expression is not ready.
     (eval-expression-if-ready r md)
     (is (= (reporter/value r) invalid))
+    (is (= (:dependent-depth (reporter/data r)) nil))
     (swap! (reporter/data-atom r) assoc :needed-values #{})
     ;; Try when it is ready and computes a constant.
     (eval-expression-if-ready r md)
     (is (= (reporter/value r) 2))
+    (is (= (:dependent-depth (reporter/data r)) 1))
     (is (= (reporter/value rc) 2))
+    (is (= (:dependent-depth (reporter/data r)) 1))    
     ;; Try when it is ready and computes a reporter.
     (swap! (reporter/data-atom r)
-           #(into % {:subordinate-values {r0 [(fn [] r1) 3]}
+           #(into % {:subordinate-values {r0 [(fn [] r1) 0]}
                      :expression [r0]
                      :value-source r1}))
     (register-copy-value r1 r)
+    (is (= (:dependent-depth (reporter/data r)) 2))    
     (is (check (:attendees (reporter/data r1))
-               ;; TODO: Put in priority
-               {[:copy-value r] (into [(any)] [copy-value-callback])}))
+               {[:copy-value r] (into [(+ 6 3)] [copy-value-callback])}))
     (is (= (:manager (reporter/data r1)) nil))
     (reporter/set-value! r invalid)
     (eval-expression-if-ready r md)
-    ;; r won't get a value yet, because r1 will have been set invalid.
+    ;; r won't get a value yet, because r1 is invalid.
     (is (= (reporter/value r) invalid))
     (is (= (reporter/value rc) invalid))
     (is (= (:attendees (reporter/data r0)) nil))
@@ -320,6 +327,8 @@
                                  :manager-type :eval)
         rc (reporter/new-reporter :value-source r)
         md (new-expression-manager-data (new-priority-task-queue 0))]
+    ;; Give rc priority 6
+    (reporter/set-attendee! rc :test 6 (fn [key r] nil))
     ;; Run manager when there is no interest.
     (eval-manager r md)
     (is (= (reporter/value r) invalid))
@@ -327,7 +336,10 @@
     (register-copy-value r rc)
     (eval-manager r md)
     (is (= (:needed-values (reporter/data r)) #{}))
-    (is (check (:subordinate-values (reporter/data r)) {r0 [1 (any)]}))
+    (is (= (:subordinate-values (reporter/data r)) {r0 [1 0]}))
+    (eval-expression-if-ready r md)
+    (is (= (reporter/value r) 2))
+    (is (= (:dependent-depth (reporter/data r)) 1))    
     ;; Run when there is no interest again.
     (swap! (reporter/data-atom rc) dissoc :value-source)
     (register-copy-value r rc)

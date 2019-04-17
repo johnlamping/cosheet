@@ -251,7 +251,7 @@
     [[priority callback]
      (let [data (reporter/data to)]
        (cond (= (:value-source data) from)
-             [(+ (:priority data) (subordinate-depth data))
+             [(+ (:priority data) 1 (subordinate-depth data))
               [copy-value-callback]]
              (= (:old-value-source data) from)
              [Double/MAX_VALUE [null-callback]]))]

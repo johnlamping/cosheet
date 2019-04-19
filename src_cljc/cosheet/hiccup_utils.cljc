@@ -12,7 +12,8 @@
           (or m1 {}) (or m2 {})))
 
 (defn map-combiner
-  "Combine maps. Otherwise, just return the second."
+  "If both arguments are maps, combine them.
+   Otherwise, just return the second."
   [key v1 v2]
   (if (and (map? v1) (map? v2))
     (combine-maps map-combiner v1 v2)

@@ -46,10 +46,10 @@
   appropriate item.
   A pattern is of the form [:pattern <number>? :subject? <template>?]
     number indicates which of the items in the list to use, defaulting to 0.
-    :subject, if present, indicates that the result of the pattern is the
-      subject of the match, rather than the match, itself.
+    :subject, if present, indicates that the result of the pattern should be
+      the subject of the match, rather than the match, itself.
     template, if present, must contains a variable named :v, and will return
-      the part of the item matching that variable. An empty; otherwise, the
+      the part of the item matching that variable. Otherwise, the
       entire item is used."
   [pattern items]
   (let [[_ & args] pattern
@@ -124,7 +124,7 @@
     response))
 
 (defn do-add-element
-  [store arguments attributes]
+  [store arguments]
   (let [{:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
@@ -137,7 +137,7 @@
          target-key)))))
 
 (defn do-add-label
-  [store arguments attributes]
+  [store arguments]
   (let [{:keys [select-pattern target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
@@ -155,7 +155,7 @@
                        :label [:pattern])) target-key)))))))
 
 (defn do-add-twin
-  [store arguments attributes]
+  [store arguments]
   (let [{:keys [target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
@@ -176,14 +176,14 @@
                         select-pattern target-key)))
 
 (defn do-add-virtual
-  [store arguments attributes]
+  [store arguments]
   (let [{:keys [referent select-pattern target-key]} arguments]
     (add-virtual store target-key referent select-pattern)))
 
 (defn do-add-row
-  [store arguments attributes]
+  [store arguments]
   (println "adding row")
-  (let [{:keys [row column]} attributes]
+  (let [{:keys [row column]} arguments]
     (add-virtual
      store (:target-key arguments)
      (virtual-referent (:template row) nil (:referent row))
@@ -196,7 +196,7 @@
 
 (defn do-delete
   "Remove item(s)." 
-  [store arguments attributes]
+  [store arguments]
   (when-let [to-delete (:referent arguments)]
     (let [;; distinct should not be necessary, but is a
           ;; safety measure to make sure we don't delete twice
@@ -205,9 +205,9 @@
       (reduce update-delete store items))))
 
 (defn do-set-content
-  [store arguments attributes]
-  (let [{:keys [immutable]} attributes
-        {:keys [from to referent select-pattern target-key]} arguments]
+  [store arguments]
+  (let [{:keys [from to referent select-pattern target-key immutable]}
+        arguments]
     (when (and from to (not immutable))
       (let [to (parse-string-as-number (clojure.string/trim to))]
         (let [[items new-ids store] (instantiate-or-create-referent
@@ -234,7 +234,7 @@
               new-store)))))))
 
 (defn do-expand
-  [store arguments attributes]
+  [store arguments]
   (let [{:keys [referent session-state]} arguments]
     (when (referent? referent)
       ;; If the target is a single item with no elements, switch the target
@@ -254,7 +254,7 @@
          :open (cond-> (str (:url-path session-state)
                             "?referent=" (referent->string referent)))}))))
 
-(defn do-selected [store arguments attributes]
+(defn do-selected [store arguments]
   (let [referent (:referent arguments)
         client-state (:client-state (:session-state arguments))]
     (cond
@@ -263,13 +263,13 @@
           {:store store
            :set-url (str (:url-path (:session-state arguments))
                          "?referent=" (referent->string referent))})
-      ;; TODO: This has no effect. It should create a tab; see why not.
       (= (:special arguments) :new-tab)
       (do-set-content
-       store (:target attributes) (into attributes {:from "" :to ""})))))
+       store (merge-with (partial map-combiner nil)
+                         arguments (:target arguments) {:from "" :to ""})))))
 
 (defn do-batch-edit
-  [store {:keys [referent session-state]} attributes]
+  [store {:keys [referent session-state]}]
   (when referent
     (let [target (first (instantiate-referent referent store))
           client-state (:client-state session-state)
@@ -331,8 +331,8 @@
              [store {:store store}]))))))
 
 (defn get-contextual-handler
-  "Return the handler for the command, and the key from the attributes
-   which holds the arguments for the command."
+  "Return the handler for the command, and the key that holds
+   the additional arguments for the command."
   [action]
   ({:add-element [do-add-element :target]
     :add-label [do-add-label :target]
@@ -363,28 +363,30 @@
         dom-attributes (key->attributes tracker target-key)
         ;; We take the arguments for the context key and override any
         ;; specific to the action type,
-        dom-arguments (->> (map dom-attributes [arguments-key action-type])
-                           (remove nil?)
-                           (apply merge-with (partial map-combiner nil)))
-        ;; We augment the arguments from the dom with anything provided
-        ;; by the client, and also provide the target key and session
+        action-specific-arguments
+        (apply merge-with (partial map-combiner nil)
+               (map dom-attributes [arguments-key action-type]))
+        ;; We augment attributes of the dom with the action specific arguments
+        ;; pulled from that dom, with anything provided
+        ;; by the client, and with the target key and session
         ;; state.
-        arguments (-> dom-arguments
-                      (into client-args)
-                      (assoc :target-key target-key
-                             :session-state session-state))]
+        arguments (merge-with (partial map-combiner nil)
+                              dom-attributes
+                              action-specific-arguments
+                              client-args
+                              {:target-key target-key
+                               :session-state session-state})]
     (if handler
-      (if (or dom-arguments (= action-type :batch-edit))
+      (if (or action-specific-arguments (= action-type :batch-edit))
         (do
           (println "command: " (map simplify-for-print
                                     (list* action-type target-key
                                            (map concat (seq client-args)))))
           (println "arguments: " (simplify-for-print
                                   (dissoc arguments :session-state)))
-          (println "attributes: " (simplify-for-print dom-attributes))
           (let [result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
-                          handler arguments dom-attributes)]
+                          handler arguments)]
             (dissoc result :store)))
         (println "No context for action:" action-type
                  dom-attributes))

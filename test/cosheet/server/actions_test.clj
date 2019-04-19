@@ -98,8 +98,7 @@
   (let [result (do-add-element
                 store
                 {:referent (item-referent jane-age)
-                 :target-key ["jane-age"]}
-                {})
+                 :target-key ["jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -111,8 +110,7 @@
   (let [result (do-add-label
                 store
                 {:referent (item-referent jane-age)
-                 :target-key ["jane-age"]}
-                {})
+                 :target-key ["jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane-age) new-store)))
@@ -125,8 +123,7 @@
                 store
                 {:referent (item-referent jane-age)
                  :template '(anything ("age" :tag))
-                 :target-key ["jane" "jane-age"]}
-                {})
+                 :target-key ["jane" "jane-age"]})
         new-store (:store result)]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane) new-store)))
@@ -145,8 +142,7 @@
                                    (union-referent [(item-referent jane)])
                                    (item-referent jane) :position :after)
                  :select-pattern ["jane" [:pattern]]
-                 :target-key ["jane" "jane-age"]}
-                {})]
+                 :target-key ["jane" "jane-age"]})]
     (is (check (item->canonical-semantic
                 (to-list (description->entity (:item-id jane) (:store result))))
                (canonicalize-list '("Jane"
@@ -159,8 +155,8 @@
 (deftest do-add-row-test
   (let [result (do-add-row
                 store
-                {:target-key ["jane" "jane-age"]}
-                {:row {:referent (item-referent jane)
+                {:target-key ["jane" "jane-age"]
+                 :row {:referent (item-referent jane)
                        :template '("a" :new-row)
                        :key ["x" "y"]}
                  :column {:referent (item-referent joe)}})
@@ -174,8 +170,7 @@
   (let [new-store (do-delete
                    store
                    {:referent (item-referent jane-age)
-                    :target-key "jane"}
-                   {})]
+                    :target-key "jane"})]
     (is (check (canonicalize-list
                 (to-list (description->entity jane-id new-store)))
                (canonicalize-list `("Jane" (~o1 :order :non-semantic)
@@ -192,16 +187,16 @@
     ;; Test delete of the only element of a header.
     (let [new-store (do-delete
                      store
-                     {:referent (item-referent column1)}
-                     {:target-key "name"})]
+                     {:referent (item-referent column1)
+                      :target-key "name"})]
       (is (not (id-valid? new-store column1-id))))
     ;; Test when it is not in header position.
     (let [new-store (do-delete
                      store
                      {:referent (union-referent
                                       [(item-referent joe)
-                                       (item-referent name-header)])}
-                     {:target-key "name"})]
+                                       (item-referent name-header)])
+                      :target-key "name"})]
       (is (id-valid? new-store column1-id)))))
 
 (deftest do-set-content-test
@@ -211,8 +206,7 @@
            (do-set-content store
                            {:referent (item-referent joe-age)
                             :target-key "joe"
-                            :from "45" :to "46"}
-                           {})))
+                            :from "45" :to "46"})))
          46))
   ;; Test making the new content be 'anything.
   (let [[store id] (add-entity store joe-id '(:selector :non-semantic))]
@@ -222,8 +216,7 @@
              (do-set-content store
                              {:referent (item-referent joe-age)
                               :target-key "joe"
-                              :from "45" :to ""}
-                             {})))
+                              :from "45" :to ""})))
            'anything)))
   ;; Test doing nothing when the old doesn't match.
   (is (= (content
@@ -231,8 +224,7 @@
            joe-id (do-set-content store
                                   {:referent (item-referent joe)
                                    :target-key "joe"
-                                   :from "Wrong" :to "Jim"}
-                                  {})))
+                                   :from "Wrong" :to "Jim"})))
          "Joe"))
   ;; Now, try calling it when there is a parallel referent.
   (let [modified (do-set-content
@@ -241,8 +233,7 @@
                                    [(item-referent joe-age-tag)
                                     (item-referent jane-age-tag)])
                    :target-key "both"
-                   :from "age" :to "oldness"}
-                  {})]
+                   :from "age" :to "oldness"})]
     (is (= (item->canonical-semantic
             (description->entity (:item-id joe-age-tag) modified))
            (canonicalize-list '("oldness" :tag))))
@@ -256,8 +247,7 @@
                               '(anything :tag) (item-referent joe-male)
                               (item-referent joe-male) :position :after)
                    :target-key ["joe-male"]
-                   :from "" :to "gender"}
-                  {})]
+                   :from "" :to "gender"})]
       (is (= (immutable-semantic-to-list
               (description->entity (:item-id joe-male) result))
              ["male" ["gender" :tag]]))))
@@ -266,8 +256,7 @@
   (is (check (do-expand store
                         {:referent (item-referent joe)
                          :target-key "joe"
-                         :session-state {:url-path "foo"}}
-                        {})
+                         :session-state {:url-path "foo"}})
              {:store store
               :open (str "foo?referent="
                          (referent->string (item-referent joe)))})))
@@ -293,8 +282,7 @@
     (let [tab-selected (do-selected store
                                     {:special :tab
                                      :referent true
-                                     :session-state session-state}
-                                    {})]
+                                     :session-state session-state})]
       (is (= tab-selected
              {:store store
               :set-url "Path?referent=T"}))

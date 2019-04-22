@@ -189,6 +189,39 @@
      (virtual-referent (:template row) nil (:referent row))
      (conj (vec (butlast (:key row))) [:pattern] (:referent column)))))
 
+(defn update-set-content
+  [store item from to]
+  (let [to (if (and (= to "")
+                    (selector? item))
+             'anything
+             to)
+        modified (update-set-content-if-matching
+                  from to store item)]
+    (abandon-problem-changes store modified item)))
+
+(defn do-set-content
+  [store arguments]
+  (let [{:keys [from to referent select-pattern target-key immutable]}
+        arguments]
+    (when (and from to (not immutable))
+      (let [to (parse-string-as-number (clojure.string/trim to))]
+        (let [[items new-ids store] (instantiate-or-create-referent
+                                      referent store)]
+          (println "updating " (count items) " items")
+          (let [new-store (reduce
+                           (fn [store item]
+                             (update-set-content store item from to))
+                           store items)]
+            ;; If we have set a virtual item, tell the client to select it.
+            (if (and (or (virtual-referent? referent)
+                         (virtual-union-referent? referent))
+                     select-pattern
+                     (seq items))
+              (add-select-request
+               new-store (map #(description->entity % new-store) new-ids)
+               select-pattern target-key)
+              new-store)))))))
+
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
   [store item]
@@ -203,37 +236,11 @@
           ;; safety measure to make sure we don't delete twice
           items (distinct (instantiate-referent to-delete store))]
       (println "total items:" (count items))
-      (reduce update-delete store items))))
-
-(defn do-set-content
-  [store arguments]
-  (let [{:keys [from to referent select-pattern target-key immutable]}
-        arguments]
-    (when (and from to (not immutable))
-      (let [to (parse-string-as-number (clojure.string/trim to))]
-        (let [[items new-ids store] (instantiate-or-create-referent
-                                      referent store)]
-          (println "updating " (count items) " items")
-          (let [new-store (reduce
-                           (fn [store item]
-                             (let [to (if (and (= to "")
-                                               (not= from "\u00A0...")
-                                               (selector? item))
-                                        'anything
-                                        to)
-                                   modified (update-set-content-if-matching
-                                             from to store item)]
-                               (abandon-problem-changes store modified item)))
-                           store items)]
-            ;; If we have set a virtual item, tell the client to select it.
-            (if (and (or (virtual-referent? referent)
-                         (virtual-union-referent? referent))
-                     select-pattern
-                     (seq items))
-              (add-select-request
-               new-store (map #(description->entity % new-store) new-ids)
-               select-pattern target-key)
-              new-store)))))))
+      (if (:clear-only arguments)
+        (reduce (fn [store item]
+                  (update-set-content store item (content item) ""))
+                store items)
+        (reduce update-delete store items)))))
 
 (defn do-expand
   [store arguments]

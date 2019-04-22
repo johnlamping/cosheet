@@ -227,7 +227,8 @@
                     (assoc :expand {:referent column-referent}))]))
       (:leaves node)
       (add-inherited-attribute [#{:content}
-                                {:delete {:referent nil}}])
+                                {:add-twin {:referent nil}
+                                 :delete {:clear-only true}}])
       (and (:leaves node) (#{'anything 'anything-immutable} content))
       (add-inherited-attribute [#{:content}
                                 {:class "placeholder"}])
@@ -271,9 +272,7 @@
               :class "item"})]]
           (if (empty? (:child-nodes node))
             (item-content-and-elements-DOM-R
-             content example-elements false
-             (add-inherited-attribute
-              inherited-down [#{:content} {:add-twin {:referent nil}}]))
+             content example-elements false inherited-down)
             (labels-and-elements-DOM-R
              example-elements false false true :vertical inherited-down)))))))
 

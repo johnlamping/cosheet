@@ -206,7 +206,7 @@
                  "single"]
                 [:div {:class "indent-wrapper"}
                  [:div {:delete-column {:referent first-column-referent},
-                        :delete {:referent nil}
+                        :delete {:clear-only true}
                         :add-column first-column-add
                         :add-twin {:referent nil}
                         :class "placeholder content-text editable item"

@@ -229,7 +229,7 @@
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
-  [{:keys [top-level rows-referent]}
+  [{:keys [top-level]}
    node content example-elements column-referent inherited]
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
@@ -270,8 +270,7 @@
 
 (defn table-header-properties-DOM-R
   "Generate the DOM for the properties of a node in the hierarchy."
-  [node {:keys [shadowing-nodes rows-referent]
-         :as function-info}
+  [node {:keys [shadowing-nodes] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (union-referent
@@ -317,8 +316,6 @@
      :shadowing-nodes    The column shouldn't match elements that also match
                          these
      :top-level          If this is a top level node
-     :rows-referent      all the row items from which this header selects
-                         elements
   Inherited describes the column requests."
   [node function-info inherited]
   (let [children (:child-nodes node)]
@@ -355,14 +352,12 @@
   "Generate the dom for a top level subtree of a table header hierarchy.
   If the node has no properties then the column shouldn't match
   elements that are also matches by shadowing-nodes.
-  rows-referent should specify all the row items from which this
-  header selects elements. Inherited describes the column requests."
-  [node rows-referent inherited]
+  Inherited describes the column requests."
+  [node inherited]
   (hierarchy-node-DOM-R
    node table-header-node-DOM-R table-header-child-info
    {:shadowing-nodes nil
-    :top-level true
-    :rows-referent rows-referent}
+    :top-level true}
    inherited)
   )
 
@@ -397,7 +392,7 @@
   gives what new elements of a header request need to satisfy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-  [hierarchy rows-referent inherited]
+  [hierarchy inherited]
   (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)
                               (:subject-referent inherited))
@@ -405,7 +400,7 @@
                         hierarchy adjacent-referent inherited)]
     (expr-let [columns (expr-seq
                         map #(table-header-top-level-subtree-DOM-R
-                              % rows-referent inherited)
+                              % inherited)
                         hierarchy)]
       (into [:div {:class "column-header-sequence"}]
             (concat columns [virtual-header])))))
@@ -594,7 +589,7 @@
 (defn table-top-DOM-R
   "Return a hiccup representation for the top of a table, the part that
   holds its condition."
-  [row-condition-item rows-referent inherited]
+  [row-condition-item inherited]
   (let [subject-referent (union-referent [(item-referent row-condition-item)])]
     (expr-let [condition-elements (table-condition-elements-R
                                    row-condition-item)
@@ -644,12 +639,7 @@
                                                table-item :row-condition))]
       ;; Don't do anything if we don't yet have the table information filled in.
       (when row-condition-item
-        (let [;; We have to use the item in the referent's condition, so
-              ;; it doesn't contain strings or other non-serializable stuff.
-              rows-referent (query-referent
-                             (list (item-referent row-condition-item)
-                                   ':top-level))
-              headers-inherited (update
+        (let [headers-inherited (update
                                  (assoc
                                   inherited
                                   :subject-referent (item-referent
@@ -664,9 +654,9 @@
                hierarchy (add-content-to-hierarchy-R
                           (hierarchy-by-all-elements-R columns))
                headers (table-header-DOM-R
-                        hierarchy rows-referent headers-inherited)
+                        hierarchy headers-inherited)
                condition-dom (table-top-DOM-R
-                              row-condition-item rows-referent inherited)]
+                              row-condition-item inherited)]
             (let [column-descriptions (mapcat
                                        table-hierarchy-node-column-descriptions
                                        hierarchy)

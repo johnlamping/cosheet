@@ -114,7 +114,6 @@
           row-template '(anything (anything ("age" :tag)) :top-level)
           row-condition (list (item-referent query)
                               :top-level)
-          rows-referent (query-referent row-condition)
           first-column-referent (union-referent [(item-referent c1)])
           delete-column-referent (item-referent c1)
           tag-pattern '[:pattern (nil (:variable (:v :name)

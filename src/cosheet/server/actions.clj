@@ -20,7 +20,7 @@
    (cosheet.server
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
-    [model-utils :refer [selector? semantic-elements-R]]
+    [model-utils :refer [selector? semantic-elements-R abandon-problem-changes]]
     [table-render :refer [batch-edit-pattern]]
     [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
@@ -192,7 +192,8 @@
 (defn update-delete
   "Given an item, remove it and all its elements from the store"
   [store item]
-  (remove-entity-by-id store (:item-id item)))
+  (let [modified (remove-entity-by-id store (:item-id item))]
+    (abandon-problem-changes store modified (subject item))))
 
 (defn do-delete
   "Remove item(s)." 
@@ -219,10 +220,11 @@
                                                (not= from "\u00A0...")
                                                (selector? item))
                                         'anything
-                                        to)]
-                               (update-set-content-if-matching
-                                from to store item)))
-                                  store items)]
+                                        to)
+                                   modified (update-set-content-if-matching
+                                             from to store item)]
+                               (abandon-problem-changes store modified item)))
+                           store items)]
             ;; If we have set a virtual item, tell the client to select it.
             (if (and (or (virtual-referent? referent)
                          (virtual-union-referent? referent))

@@ -13,7 +13,7 @@
                                         common-canonical-multisets]])
             (cosheet.server
              [referent :refer [item-referent exemplar-referent
-                               query-referent referent?
+                               query-referent referent? item-referent?
                                union-referent-if-needed union-referent
                                virtual-referent item-or-exemplar-referent]]
              [hierarchy :refer [hierarchy-node? hierarchy-node-descendants
@@ -138,30 +138,6 @@
            (map canonical-to-list (:property-canonicals %))))
        cover)))
 
-(defn table-node-delete-referent
-  "Generate the referent for the elements to be deleted when the only
-  item of a table header node is deleted. If we have no descendants,
-  then deletion is not allowed, and we return nil. Otherwise, we
-  return a referent to the columns of all descendants that have more than just
-  the node does.
-  The arguments are the node, a referent to the rows of the table,
-  and to the subject of the header requests.
-  When the referent is instantiated, the first group must be all the elements
-  in table requests, while subsequent groups contain elements in rows brought
-  up by the header."
-  [node header-subject]
-  (let [deeper-descendants (filter #(not= (multiset (:property-canonicals %))
-                                          (:cumulative-properties node))
-                                   (hierarchy-node-descendants node))]
-    (when (seq deeper-descendants)
-      (let [exemplar-item (first (hierarchy-node-example-elements node))
-            referent-for-leaf #(item-or-exemplar-referent
-                                (:item %) header-subject)]
-        (item-or-exemplar-referent
-         exemplar-item
-         (union-referent-if-needed
-          (map referent-for-leaf deeper-descendants)))))))
-
 (defn new-header-template
   "Return the template for a new header. new-elements-template gives
   the template for new elements in the header, while inherited gives
@@ -258,18 +234,10 @@
       (= (count example-elements) 1)
       (add-inherited-attribute
        [#{:label :element} #{:content}
-        (cond-> {:expand {:referent column-referent}}
-          ;; If we are a child, it is OK to delete our last element, as
-          ;; our parent will still contribute an element. But if we
-          ;; are a top level node, we can't, in general, delete our
-          ;; last element, or there would be nothing left in the node.
-          top-level
-          (assoc :delete
-                 {:referent (table-node-delete-referent
-                             node (:subject-referent inherited))}))]))))
+        {:expand {:referent column-referent}}]))))
 
-(defn table-header-properties-DOM-R
-  "Generate the DOM for the properties of a node in the hierarchy."
+(defn table-header-node-DOM-R
+  "Generate the DOM for a node in the hierarchy, not including its children."
   [node {:keys [shadowing-nodes] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
@@ -299,7 +267,7 @@
             (add-attributes
              (item-content-DOM
               column-referent content inherited-down)
-             {:key (:key-prefix inherited)
+             {:key (conj (:key-prefix inherited) (:item-id item))
               :class "item"})]]
           (if (empty? (:child-nodes node))
             (item-content-and-elements-DOM-R
@@ -328,11 +296,11 @@
                  #(add-elements-to-entity-list
                    % (canonical-set-to-list (:properties node)))))]))
 
-(defn table-header-node-DOM-R
+(defn table-header-subtree-DOM-R
   "Generate the dom for a subtree of a table header hierarchy, given
-  the dom particular the node, and doms for all the children."
+  the dom particular to the node, and doms for all the children."
   [node child-doms function-info inherited]
-  (expr-let [properties-dom (table-header-properties-DOM-R
+  (expr-let [node-dom (table-header-node-DOM-R
                              node function-info inherited)]
     (let [is-leaf (empty? child-doms)
           elements-template (table-header-element-template
@@ -343,10 +311,10 @@
       (if child-doms
         [:div {:class (cond-> class
                         is-tag (str " tag"))}
-         (add-attributes properties-dom {:class "with-children"})
+         (add-attributes node-dom {:class "with-children"})
          (into [:div {:class "column-header-sequence"}]
                child-doms)]
-        (add-attributes properties-dom {:class class})))))
+        (add-attributes node-dom {:class class})))))
 
 (defn table-header-top-level-subtree-DOM-R
   "Generate the dom for a top level subtree of a table header hierarchy.
@@ -355,7 +323,7 @@
   Inherited describes the column requests."
   [node inherited]
   (hierarchy-node-DOM-R
-   node table-header-node-DOM-R table-header-child-info
+   node table-header-subtree-DOM-R table-header-child-info
    {:shadowing-nodes nil
     :top-level true}
    inherited)

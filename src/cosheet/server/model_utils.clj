@@ -342,15 +342,16 @@
        (some #(= (content %) :column) (elements immutable-item))
        (not-any? semantic-element? (elements immutable-item))))
 
-(defn avoid-problems
+(defn abandon-problem-changes
   "Given an old store, a new store, both immutable, and an item where
    changes were made, return the new store if the changes don't have any
    problems, otherwise the old store."
   [old-store new-store item]
-  (let [item (in-different-store item new-store)]
-    (if (column-header-problem item)
-      old-store
-      new-store)))
+  (if (and item
+           (let [item (in-different-store item new-store)]
+             (column-header-problem item)))
+    old-store
+    new-store))
 
 ;;; CSV file importing
 

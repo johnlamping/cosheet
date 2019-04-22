@@ -202,8 +202,7 @@
                                       first-column-referent]}
                   :add-column first-column-add
                   :delete-column {:referent first-column-referent}
-                  :expand {:referent first-column-referent}
-                  :delete {:referent nil}}
+                  :expand {:referent first-column-referent}}
                  "single"]
                 [:div {:class "indent-wrapper"}
                  [:div {:delete-column {:referent first-column-referent},

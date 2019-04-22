@@ -252,7 +252,7 @@
   (updating-call-with-immutable item item->canonical-visible))
 
 (defn selector?
-  "Return whether the item is a selector."
+  "Return whether the item is (or is part of) a selector."
   [immutable-item]
   (or (some #(= (content %) :selector) (elements immutable-item))
       (if-let [subj (subject immutable-item)]
@@ -283,9 +283,9 @@
     (first tabs)))
 
 (def table-header-template
-  ;; A table header is an element of the condition, so that batch edit changes
-  ;; can match table headers. But a header doesn't count as a semantic part
-  ;; of the condition, because it shouldn't affect what rows are selected.
+  ;; A table header is an element of the row condition, so that batch
+  ;; edit changes can match table headers. We strip the headers out when
+  ;; we get the table condition.
   '(anything :column))
 
 (defn table-tab-non-semantic-elements
@@ -311,7 +311,7 @@
   (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))
 
 (defn starting-store
-  "Return an initial store. If a tab name is provided, the store
+  "Return an initial immutable store. If a tab name is provided, the store
   will have a single tab with that name and a table with that name."
   [tab-name]
   (let [[store orderable-id] (add-entity
@@ -330,6 +330,27 @@
                 store tabs-holder-id tab                   
                 (description->entity orderable-id store) :after false)))
       store)))
+
+;;; Consistency checks
+
+(defn column-header-problem
+  "Return something truthy if the given immutable item is a column header
+   with a problem."
+  [immutable-item]
+  ;; A header is a problem if it has the vacuous condition
+  (and ({'anything 'anything-immutable} (content immutable-item))
+       (some #(= (content %) :column) (elements immutable-item))
+       (not-any? semantic-element? (elements immutable-item))))
+
+(defn avoid-problems
+  "Given an old store, a new store, both immutable, and an item where
+   changes were made, return the new store if the changes don't have any
+   problems, otherwise the old store."
+  [old-store new-store item]
+  (let [item (in-different-store item new-store)]
+    (if (column-header-problem item)
+      old-store
+      new-store)))
 
 ;;; CSV file importing
 
@@ -391,3 +412,4 @@
   (let [rows-template `("" (~table-name :tag) :top-level)
         [store headers] (add-rows store rows rows-template)]
     (add-table-tab store table-name headers)))
+

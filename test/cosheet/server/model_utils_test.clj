@@ -1,8 +1,9 @@
 (ns cosheet.server.model-utils-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet [orderable :as orderable]
-                     [store :refer [new-element-store]]
-                     [store-utils :refer [add-entity]]
+                     [entity :refer [in-different-store]]
+                     [store :refer [new-element-store update-content]]
+                     [store-utils :refer [add-entity remove-entity-by-id]]
                      [query :refer [matching-items matching-elements]]
                      [entity :refer [description->entity label->elements
                                      to-list]]
@@ -147,3 +148,17 @@
                ['(anything ("a" :tag))
                 '(anything ("b" :tag))]))))
 
+(deftest avoid-problems-test
+  (let [store (starting-store "test")
+        column (first (matching-items '(nil :column) store))
+        label (first (semantic-elements-R column))
+        bad-store (remove-entity-by-id store (:item-id label))
+        good-store (update-content bad-store (:item-id column) "something")]
+    (println (simplify-for-print ["XXXX" column label]))
+    (is (not (column-header-problem column)))
+    (is (column-header-problem (in-different-store column bad-store)))
+    (is (not (column-header-problem (in-different-store column good-store))))
+    (is (= (avoid-problems store bad-store column)
+           store))
+    (is (= (avoid-problems bad-store good-store column)
+           good-store))))

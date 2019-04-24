@@ -239,7 +239,7 @@
 
 (defn table-header-node-DOM-R
   "Generate the DOM for a node in the hierarchy, not including its children."
-  [node {:keys [shadowing-nodes] :as function-info}
+  [node {:keys [shadowing-nodes top-level] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (union-referent
@@ -250,10 +250,11 @@
                             function-info node content example-elements
                             column-referent inherited)]
         (if (empty? (:properties node))
-          ;; TODO: This needs to check for not being a tag, and doing something
-          ;;       different in that case.
           [:div {:style {:width (str base-table-column-width "px")}
-                 :class "column-header tag wrapped-element merge-with-parent"}
+                 :class (cond->
+                            "column-header tag wrapped-element virtual-wrapper"
+                          (not top-level)
+                          (str " merge-with-parent"))}
            (cond-> (virtual-element-DOM
                     column-referent :after
                     (-> inherited-down
@@ -263,7 +264,9 @@
                                                      [:pattern]))))
              (is-tag-template? (table-header-element-template
                                 (keys (:cumulative-properties node))))
-             (add-attributes {:class "tag content-text"}))
+             (add-attributes {:class "tag"})
+             (not top-level)
+             (add-attributes {:class "merge-with-parent"}))
            [:div {:class "indent-wrapper tag"}
             (add-attributes
              (item-content-DOM

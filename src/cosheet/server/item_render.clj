@@ -167,7 +167,7 @@
     (non-empty-labels-wrapper-DOM-R dom label-elements :vertical inherited)
     (if (not must-show-label)
       dom
-      [:div {:class "horizontal-tags-element tag narrow"}
+      [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
        (virtual-label-DOM inherited)
        dom])))
 
@@ -254,6 +254,8 @@
                   (if must-show-labels
                     (cond-> (add-labels-DOM properties-dom descendants-dom
                                             (opposite-direction direction))
+                      true
+                      (add-attributes {:class "virtual-wrapper"})
                       (= direction :vertical)
                       (add-attributes {:class "narrow"}))
                     descendants-dom)

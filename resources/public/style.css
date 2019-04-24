@@ -379,8 +379,9 @@ body {
     background-color: white;
 }
 
-.editable.tag.tag.tag.tag:not(.content-text),
-.tag.tag.tag.tag > .editable:not(.content-text) {
+.editable.tag.tag.tag.tag:not(.content-text):not(.merge-with-parent),
+.tag.tag.tag.tag > .editable:not(.content-text):not(.merge-with-parent),
+.tag.tag.tag.virtual-wrapper:not(.merge-with-parent){
     background-color: hsl(194, 50%, 88%);
 }
 
@@ -748,7 +749,7 @@ body {
 
 
 /* Make the header fill all the available space, for a better selection box. */
-.column-header > :first-child.content-text {
+.column-header > :first-child.editable {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;

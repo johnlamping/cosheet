@@ -158,7 +158,7 @@
                [:div {:class "indent-wrapper"}
                 [:div (any) "two"]]]]]]
            ;; None
-           [:div {:class "horizontal-tags-element tag narrow added2"}
+           [:div {:class "horizontal-tags-element tag virtual-wrapper narrow added2"}
             [:div {:class "editable tag"
                    :key (conj (conj age-key :label (:item-id none)) :virtual)
                    :target {:referent (virtual-referent
@@ -373,7 +373,7 @@
                        [dom item]))]
     (let [item-key [:root (:item-id item)]]
       (is (check dom
-                 [:div {:class "horizontal-tags-element tag narrow"}
+                 [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
                   [:div {:class "editable tag"
                          :key (conj item-key :tags :virtual)
                          :expand {:referent (item-referent item)}

@@ -1,6 +1,7 @@
 (ns cosheet.server.model-utils
   (:require (cosheet [debug :refer [simplify-for-print]]
                      [utils :refer [thread-map prewalk-seqs]]
+                     [entity :as entity]
                      [orderable :as orderable]
                      [expression :refer [expr expr-let expr-seq]]
                      [canonical :refer [canonicalize-list]]
@@ -163,12 +164,17 @@
          (number? cont)
          (#{:tag 'anything 'anything-immutable} cont))))
 
+(defn semantic-elements
+  "Return the elements of an entity that are semantic to it."
+  [immutable-entity]
+  (filter semantic-element? (elements immutable-entity)))
+
 (defn semantic-elements-R
   "Return the elements of an entity that are semantic to it."
   [entity]
   (updating-with-immutable
    [immutable entity]
-   (let [semantic (filter semantic-element? (elements immutable))]
+   (let [semantic (semantic-elements immutable)]
      (if (= immutable entity)
        semantic
        (map #(in-different-store % entity) semantic)))))
@@ -337,19 +343,26 @@
   "Return something truthy if the given immutable item is a column header
    with a problem."
   [immutable-item]
-  ;; A header is a problem if it has the vacuous condition
-  (and ({'anything 'anything-immutable} (content immutable-item))
+  ;; A header is a problem if it has the vacuous condition.
+  (and (#{'anything 'anything-immutable} (content immutable-item))
        (some #(= (content %) :column) (elements immutable-item))
-       (not-any? semantic-element? (elements immutable-item))))
+       (let [semantic (semantic-elements immutable-item)]
+         (or (empty? semantic)
+             (and (empty? (rest semantic))
+                  (#{'anything 'anything-immutable}
+                   (content (first semantic)))
+                  (every? #(= (content %) :tag)
+                          (semantic-elements (first semantic))))))))
 
 (defn abandon-problem-changes
   "Given an old store, a new store, both immutable, and an item where
    changes were made, return the new store if the changes don't have any
    problems, otherwise the old store."
-  [old-store new-store item]
-  (if (and item
-           (let [item (in-different-store item new-store)]
-             (column-header-problem item)))
+  [old-store new-store immutable-item]
+  (if (and immutable-item
+           (let [revised-item (in-different-store immutable-item new-store)]
+             (or (column-header-problem revised-item)
+                 (column-header-problem (entity/subject revised-item)))))
     old-store
     new-store))
 

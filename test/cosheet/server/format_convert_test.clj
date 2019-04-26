@@ -44,6 +44,11 @@
                         ("name" :tag (~o1 :order :non-semantic))
                         (~o2 :order :non-semantic)
                         (:column :non-semantic)
+                        (:non-semantic :non-semantic))
+                       (42
+                        ("answer" :tag (~o1 :order :non-semantic))
+                        (~o1 :order :non-semantic)
+                        (:column :non-semantic)
                         (:non-semantic :non-semantic)))
         table-list-1 `("table"
                        :table
@@ -57,6 +62,11 @@
                         (~'anything-immutable
                          ("name" :tag (~o1 :order :non-semantic))
                          (~o2 :order :non-semantic)
+                         (:column :non-semantic)
+                         (:non-semantic :non-semantic))
+                        (42
+                         ("answer" :tag (~o1 :order :non-semantic))
+                         (~o1 :order :non-semantic)
                          (:column :non-semantic)
                          (:non-semantic :non-semantic))))
         table-list-3 `("table"
@@ -73,6 +83,11 @@
                          ("name" :tag (~o1 :order :non-semantic))
                          (~o2 :order :non-semantic)
                          (:column :non-semantic)
+                         (:non-semantic :non-semantic))
+                        (42
+                         ("answer" :tag (~o1 :order :non-semantic))
+                         (~o1 :order :non-semantic)
+                         (:column :non-semantic)
                          (:non-semantic :non-semantic))))
         table-list-4 `("table"
                        :table
@@ -86,6 +101,10 @@
                         (~'anything ("name" :tag (~o1 :order :non-semantic))
                          (~o2 :order :non-semantic)
                          (:column :non-semantic)
+                         (:non-semantic :non-semantic))
+                        (42 ("answer" :tag (~o1 :order :non-semantic))
+                         (~o1 :order :non-semantic)
+                         (:column :non-semantic)
                          (:non-semantic :non-semantic))))
         table-list-5 `("table"
                        :table
@@ -97,6 +116,9 @@
                          :column)
                         (~'anything ("name" :tag (~o1 :order))
                          (~o2 :order)
+                         :column)
+                        (42 ("answer" :tag (~o1 :order))
+                         (~o1 :order)
                          :column)))]
     (let [store-0 (first (add-entity (new-element-store) nil table-list-0))
           store-1 (convert-from-0-to-1 store-0)

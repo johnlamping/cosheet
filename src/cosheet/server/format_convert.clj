@@ -67,12 +67,16 @@
 
 (defn convert-from-4-to-5
   "Convert a store from format 4 to 5.
-  The only difference is that where was any element that had :non-semantic,
-  remove the :non-semantic, and if its contents was the empty string,
-  replace it with :blank to make the element non-semantic."
+  The only difference is that where there was any element that had
+  :non-semantic, remove the :non-semantic, and if it was not a column
+  header and its contents was a string or number, replace the contents
+  with :blank to make the element non-semantic."
   [store]
   (let [format (first (matching-items '(nil :format) store))
-        wrongly-semantic (filter #(string? (content %))
+        column-headers (set (matching-items '(nil :column) store))
+        wrongly-semantic (filter #(and (or (string? (content %))
+                                           (number? (content %)))
+                                       (not (column-headers %)))
                                  (matching-items '(nil :non-semantic) store))]
     (assert (= (content format) 4))
     (as-> store store

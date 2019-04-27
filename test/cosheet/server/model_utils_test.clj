@@ -62,6 +62,27 @@
                          "spy" 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
 
+(deftest labels-R-test
+  (let [[[a] [b] [c] [d] labels non-labels [split-labels split-non-labels]]
+        (let-mutated [it '("test"
+                            ("a" (~o1 :order))
+                            ("b " "x" (~o2 :order))
+                            ("c" :tag (~o3 :order))
+                            ("d" :tag (~o4 :order)))]
+          (expr-let [labels (visible-labels-R it)
+                     non-labels (visible-non-labels-R it)
+                     split (expr split-out-labels-R (visible-elements-R it))
+                     a (matching-elements "a" it)
+                     b (matching-elements "b" it)
+                     c (matching-elements "c" it)
+                     d (matching-elements "d" it)]
+            [a b c d labels non-labels split]))]
+    (println (simplify-for-print [a b c d labels split-labels non-labels split-non-labels]))
+    (is (= (set non-labels) #{a b}))
+    (is (= (set split-non-labels) #{a b}))
+    (is (= (set labels) #{c d}))
+    (is (= (set split-labels) #{c d}))))
+
 (deftest visible-test
   (let [expected #{"male"
                    "married"
@@ -154,7 +175,6 @@
         label (first (semantic-elements-R column))
         bad-store (remove-entity-by-id store (:item-id label))
         good-store (update-content bad-store (:item-id column) "something")]
-    (println (simplify-for-print ["XXXX" column label]))
     (is (not (column-header-problem column)))
     (is (column-header-problem (in-different-store column bad-store)))
     (is (not (column-header-problem (in-different-store column good-store))))

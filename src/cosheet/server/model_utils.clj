@@ -3,7 +3,7 @@
                      [utils :refer [thread-map prewalk-seqs]]
                      [entity :as entity]
                      [orderable :as orderable]
-                     [expression :refer [expr expr-let expr-seq]]
+                     [expression :refer [expr expr-let expr-seq expr-filter]]
                      [canonical :refer [canonicalize-list]]
                      [store :refer [new-element-store update-content]]
                      [entity :refer [atom? description->entity elements
@@ -12,7 +12,7 @@
                                      updating-with-immutable
                                      in-different-store]]
                      [store-utils :refer [add-entity]]
-                     [query :refer [matching-items]])
+                     [query :refer [matching-items matching-elements]])
             (cosheet.server
              [referent :refer [referent?]]
              [order-utils :refer [order-items-R order-element-for-item
@@ -225,6 +225,31 @@
   (expr-let [semantic (semantic-elements-R entity)
              invisible (label->elements entity :invisible)]
     (remove (set invisible) semantic)))
+
+(defn split-out-labels-R
+  "Given a list of items, return two lists:
+   those that are labels and those that aren't."
+  [items]
+  (expr-let
+      [tags (expr-seq map #(matching-elements :tag %) items)]
+    (let [pairs (map vector tags items)
+          labels (seq (keep (fn [[tags item]] (when (seq tags) item))
+                            pairs))
+          non-labels (seq (keep (fn [[tags item]] (when (empty? tags) item))
+                                pairs))]
+      [labels non-labels])))
+
+(defn visible-labels-R
+  "Return the elements of an entity that are visible labels about it."
+  [entity]
+  (expr-filter visible-item?-R (matching-elements '(nil :tag) entity)))
+
+(defn visible-non-labels-R
+  "Return the visible elements of an entity that are not labels."
+  [entity]
+  (expr-let [elements (visible-elements-R entity)
+             split (split-out-labels-R elements)]
+     (second split)))
 
 (defn immutable-visible-to-list
   "Given an immutable item, make a list representation of the

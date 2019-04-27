@@ -109,7 +109,7 @@
   [item]
   (let [id (coerce-item-to-id item)]
     (assert (satisfies? StoredItemDescription id)
-            (simplify-for-print id))
+            ["Value:" (simplify-for-print id)])
     id))
 
 (defn item-referent

@@ -24,14 +24,14 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 6)))
+                        (range 7)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
 (def o5 (nth orderables 4))
 (def o6 (nth orderables 5))
-(def unused-orderable (nth orderables 6))
+(def o7 (nth orderables 6))
 
 (deftest table-DOM-test
   (let [inherited {:priority 1
@@ -93,6 +93,9 @@
              (~'anything ("6-2" (~o1 :order)
                           ("height" :tag (~o2 :order)))
               (~o6 :order)
+              :column)
+             ("something" ("child" (~o1 :order))
+              (~o7 :order)
               :column)))
           [dom table joe jane test] (let-mutated [table table-list
                                              joe joe-list
@@ -110,6 +113,7 @@
           name2-tag-spec (first (current-value (entity/elements name2)))
           c3 (first (current-value (label->elements query o3)))
           c6 (first (current-value (label->elements query o6)))
+          c7 (first (current-value (label->elements query o7)))
           table-key [:foo (:item-id table)]
           row-template '(anything (anything ("age" :tag)) :top-level)
           row-condition (list (item-referent query)
@@ -217,20 +221,40 @@
                (any)
                (any)
                (any)
-               [:div {:class "editable column-header virtual-column"
+               ;; A column with no label, but content and a sub-element.
+               [:div {:style {:width "150px"}
+                      :class (str "column-header tag wrapped-element"
+                                  " virtual-wrapper leaf")}
+                ;; The virtual label
+                [:div {:add-column (any)
+                       :delete-column (any)
+                       :expand (any)
+                       :class "editable tag"
+                       :key (conj table-key (:item-id c7) :label :virtual)
+                       :target (any)}]
+                ;;; The content and sub-element.
+                [:div {:class "indent-wrapper tag"}
+                 [:div {:class "item with-elements"
+                        :key (conj table-key (:item-id c7))}
+                  [:div (any) "something"]
+                  [:div {:class (str "horizontal-tags-element tag"
+                                     " virtual-wrapper narrow")}
+                   [:div (any)]
+                   [:div (any) "child"]]]]]
+               [:div {:class "editable column-header virtual-column tag"
                       :key (conj table-key :virtualColumn :virtual)
                       :target {:referent
                                (virtual-referent
-                                ""
+                                '(anything :tag)
                                 (virtual-referent
                                  '(anything
                                    :column)
                                  (item-referent query)
-                                 (item-referent c6))
-                                (item-referent c6))
+                                 (item-referent c7))
+                                (item-referent c7))
                                :select-pattern (conj table-key
                                                      [:pattern :subject]
-                                                     [:pattern] )}}]]
+                                                     [:pattern])}}]]
               [:div {:class "table-rows"}
                [:component {:key (conj table-key (:item-id joe))
                             :class "table-row"}
@@ -251,13 +275,14 @@
                   (any)
                   (any)
                   (any)
+                  (any)
                   {:column-id :virtualColumn
                    :template (virtual-referent
                               '(anything
                                 :column
-                                (???))
+                                (??? :tag))
                               (item-referent query)
-                              (item-referent c6))
+                              (item-referent c7))
                    :exclusions nil}]
                  {:priority 3 :width 3.0 :key-prefix table-key}]]
                [:component {:key (conj table-key :virtualRow)
@@ -270,7 +295,7 @@
                    :query '(nil ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
-                  (any) (any) (any) (any) (any)]
+                  (any) (any) (any) (any) (any) (any)]
                  {:priority 1 :width 3.0 :key-prefix table-key}]]]]]]))
       (let [table-body (nth dom 3)
             table-main (nth table-body 3)
@@ -314,6 +339,7 @@
               (any)
               (any)
               (any)
+              (any)
               [:div {:class "editable table-cell virtual-column has-border"
                      :key (conj table-key (:item-id joe) :virtualColumn :virtual)
                      :row {:referent (item-referent joe)
@@ -325,9 +351,9 @@
                                (virtual-referent
                                 '(anything
                                   :column
-                                  (???))
+                                  (??? :tag))
                                 (item-referent query)
-                                (item-referent c6))
+                                (item-referent c7))
                                (item-referent joe))
                               :select-pattern (conj table-key
                                                     (:item-id joe)

@@ -6,7 +6,7 @@
              [expression :refer [expr-let expr-seq]])
             (cosheet.server
              [model-utils :refer [item->canonical-visible-R
-                                  visible-elements-R]]
+                                  visible-elements-R visible-labels-R]]
              [referent :refer [union-referent-if-needed
                                item-referent item-or-exemplar-referent]])))
 
@@ -213,6 +213,14 @@
   (expr-let
       [items-elements (expr-seq map visible-elements-R items)
        item-maps (item-maps-by-elements-R items items-elements)]
+    (hierarchy-by-canonical-info item-maps)))
+
+(defn hierarchy-by-labels-R
+  "Given a sequence of items, generate a hierarchy based on all their labels."
+  [items]
+  (expr-let
+      [items-labels (expr-seq map visible-labels-R items)
+       item-maps (item-maps-by-elements-R items items-labels)]
     (hierarchy-by-canonical-info item-maps)))
 
 (defn hierarchy-node-example-elements

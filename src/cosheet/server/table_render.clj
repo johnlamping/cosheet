@@ -21,13 +21,14 @@
                                 hierarchy-node-leaves
                                 hierarchy-node-next-level
                                 hierarchy-nodes-extent
-                                hierarchy-by-all-elements-R
+                                hierarchy-by-labels-R
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
                                   semantic-to-list-R
                                   semantic-elements-R
-                                  visible-elements-R visible-to-list-R
+                                  visible-elements-R visible-non-labels-R
+                                  visible-to-list-R
                                   table-header-template
                                   pattern-to-query query-to-template]]
              [render-utils :refer [make-component virtual-element-DOM
@@ -41,6 +42,7 @@
              [item-render :refer [elements-DOM-R virtual-element-with-label-DOM
                                   labels-and-elements-DOM-R
                                   item-content-and-elements-DOM-R
+                                  item-content-and-non-label-elements-DOM-R
                                   item-content-DOM]])))
 
 (def base-table-column-width 150)
@@ -245,37 +247,40 @@
         column-referent (union-referent
                          [(hierarchy-node-items-referent node inherited)])
         item (:item (first (hierarchy-node-descendants node))) ]
-    (expr-let [content (when item (entity/content item))]
+    (expr-let [content (when item (entity/content item))
+               non-labels (when item (visible-non-labels-R item))]
       (let [inherited-down (table-header-properties-inherited
                             function-info node content example-elements
                             column-referent inherited)]
         (if (empty? (:properties node))
-          [:div {:style {:width (str base-table-column-width "px")}
-                 :class (cond->
-                            "column-header tag wrapped-element virtual-wrapper"
-                          (not top-level)
-                          (str " merge-with-parent"))}
-           (cond-> (virtual-element-DOM
-                    column-referent :after
-                    (-> inherited-down
-                        transform-inherited-for-labels
-                        (update :key-prefix #(conj % :label))
-                        (assoc :select-pattern (conj (:key-prefix inherited)
-                                                     [:pattern]))))
-             (is-tag-template? (table-header-element-template
-                                (keys (:cumulative-properties node))))
-             (add-attributes {:class "tag"})
-             (not top-level)
-             (add-attributes {:class "merge-with-parent"}))
-           [:div {:class "indent-wrapper tag"}
-            (add-attributes
-             (item-content-DOM
-              column-referent content inherited-down)
-             {:key (conj (:key-prefix inherited) (:item-id item))
-              :class "item"})]]
+          (expr-let [inner-dom (item-content-and-non-label-elements-DOM-R
+                                content non-labels inherited-down)]
+            ;; TODO: Only set width if there is no content and non-elements.
+            [:div {:style {:width (str base-table-column-width "px")}
+                   :class (cond->
+                              "column-header tag wrapped-element virtual-wrapper"
+                            (not top-level)
+                            (str " merge-with-parent"))}
+             (cond-> (virtual-element-DOM
+                      column-referent :after
+                      (-> inherited-down
+                          transform-inherited-for-labels
+                          (update :key-prefix #(conj % :label))
+                          (assoc :select-pattern (conj (:key-prefix inherited)
+                                                       [:pattern]))))
+               (is-tag-template? (table-header-element-template
+                                  (keys (:cumulative-properties node))))
+               (add-attributes {:class "tag"})
+               (not top-level)
+               (add-attributes {:class "merge-with-parent"}))
+             [:div {:class "indent-wrapper tag"}
+              (add-attributes
+               inner-dom
+               {:key (conj (:key-prefix inherited) (:item-id item))
+                :class "item"})]])
           (if (empty? (:child-nodes node))
             (item-content-and-elements-DOM-R
-             content example-elements false inherited-down)
+             content (concat example-elements non-labels) false inherited-down)
             (labels-and-elements-DOM-R
              example-elements false false true :vertical inherited-down)))))))
 
@@ -622,7 +627,7 @@
                columns (expr order-items-R
                          (entity/label->elements row-condition-item :column))
                hierarchy (add-content-to-hierarchy-R
-                          (hierarchy-by-all-elements-R columns))
+                          (hierarchy-by-labels-R columns))
                headers (table-header-DOM-R
                         hierarchy headers-inherited)
                condition-dom (table-top-DOM-R

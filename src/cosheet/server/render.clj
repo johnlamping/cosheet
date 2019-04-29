@@ -225,22 +225,23 @@
                                               content-names)))]
       (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
 
-;;; If we are batch editing and there is a non-trivial batch edit query,
+;;; If we are batch editing and there is a non-trivial batch edit selector,
 ;;; return it.
-(defn batch-editing-query-item [store temporary-id client-state]
+(defn batch-editing-selector-item [store temporary-id client-state]
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (when batch-editing
       (let [temporary-item (description->entity temporary-id store)]
-        (expr-let [query-item (expr first
-                                (label->elements temporary-item :batch-query))
-                   query-content (semantic-to-list-R query-item)]
+        (expr-let [selector-item (expr first
+                                   (label->elements temporary-item
+                                                    :batch-selector))
+                   query-content (semantic-to-list-R selector-item)]
           (when (not= query-content 'anything)
-            query-item))))))
+            selector-item))))))
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   [store temporary-id client-state]
-  (expr-let [batch-editing-item (batch-editing-query-item
+  (expr-let [batch-editing-item (batch-editing-selector-item
                                  store temporary-id client-state)]
     (if batch-editing-item
       (batch-edit-DOM-R batch-editing-item store starting-inherited)

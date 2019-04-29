@@ -58,7 +58,7 @@
 
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
-(defn batch-edit-pattern
+(defn batch-edit-selector
   "Given an item, return the list form of the batch query that matches
   everything 'like' the item. For a column header, this is everything
   that would go in its column, while for an element, it is all

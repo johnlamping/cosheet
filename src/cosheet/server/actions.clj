@@ -21,7 +21,7 @@
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector? semantic-elements-R abandon-problem-changes]]
-    [table-render :refer [batch-edit-pattern]]
+    [table-render :refer [batch-edit-selector]]
     [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
@@ -291,22 +291,22 @@
                           (first (label->elements topic :row-condition)))
           temporary-id (:temporary-id session-state)
           temporary-item (description->entity temporary-id store)
-          current-batch-query (first (label->elements
-                                      temporary-item :batch-query))
-          new-batch-query (when (and target row-condition)
-                            (when-let [pattern (batch-edit-pattern
-                                                target row-condition)]
-                              (apply list (concat
-                                           pattern
-                                           [':batch-query ':selector]))))]
-      (when new-batch-query
+          current-batch-selector (first (label->elements
+                                         temporary-item :batch-selector))
+          new-batch-selector (when (and target row-condition)
+                               (when-let [selector (batch-edit-selector
+                                                    target row-condition)]
+                                 (apply list (concat
+                                              selector
+                                              [':batch-selector ':selector]))))]
+      (when new-batch-selector
         (state-map-reset! client-state :batch-editing true)
         (as-> store store
-          (if current-batch-query
-            (remove-entity-by-id store (:item-id current-batch-query))
+          (if current-batch-selector
+            (remove-entity-by-id store (:item-id current-batch-selector))
             store)
           (update-valid-undo-point
-           (first (add-entity store temporary-id new-batch-query))
+           (first (add-entity store temporary-id new-batch-selector))
            false))))))
 
 (defn do-storage-update-action

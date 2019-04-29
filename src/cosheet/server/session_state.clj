@@ -168,7 +168,7 @@
   [immutable-store]
   (let [[store id] (add-entity immutable-store nil
                                   '(:root-temporary
-                                    (anything :batch-query :selector)))]
+                                    (anything :batch-selector :selector)))]
     (declare-temporary-id store id)))
 
 (defn temporary-element-id [store]

@@ -137,10 +137,10 @@
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
-      ;; First, test batch-edit-pattern.
+      ;; First, test batch-edit-selector.
       (let [immutable-query (entity/current-version query)]
         ;; When the item is part of the row condition.
-        (is (check (batch-edit-pattern
+        (is (check (batch-edit-selector
                     (first (filter #(= (immutable-semantic-to-list %)
                                         `(~'anything ("age" :tag)))
                                    (elements immutable-query)))
@@ -151,7 +151,7 @@
                       (~(any) :order))
                      (~(any) :order))))
         ;; When the item is part of a column header.
-        (is (check (batch-edit-pattern (first (matching-elements
+        (is (check (batch-edit-selector (first (matching-elements
                                            `(~'anything ("single" :tag))
                                            immutable-query))
                                    immutable-query)
@@ -166,7 +166,7 @@
         ;; When the item is an element in the table.
         ;; In this case, the item is a refinement of a table condition,
         ;; so it should replace the condition.
-        (is (check (batch-edit-pattern (first (matching-items
+        (is (check (batch-edit-selector (first (matching-items
                                                '(45 ("age" :tag))
                                                (:store immutable-query)))
                                        immutable-query)
@@ -181,7 +181,7 @@
         (let [test-row (first (matching-items '(nil :top-level :test)
                                               (:store immutable-query)))
               test-item (first (label->elements test-row "age"))]
-          (is (check (batch-edit-pattern test-item immutable-query)
+          (is (check (batch-edit-selector test-item immutable-query)
                      `(~'anything
                        (~'anything
                         ("age" :tag (~(any) :order))

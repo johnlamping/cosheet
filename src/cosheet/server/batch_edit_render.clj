@@ -70,11 +70,11 @@
 
 (defn batch-edit-stack-DOM-R
   "Return the dom for the edit stack part of the batch edit display."
-  [query-item store inherited]
-  (let [top-level-matches-referent (top-level-items-referent query-item)
-        table-header-matches-referent (table-headers-referent query-item)
+  [selector-item store inherited]
+  (let [top-level-matches-referent (top-level-items-referent selector-item)
+        table-header-matches-referent (table-headers-referent selector-item)
         matches-referent (union-referent
-                          [(item-referent query-item)
+                          [(item-referent selector-item)
                            top-level-matches-referent
                            table-header-matches-referent])
         inherited-for-batch
@@ -84,12 +84,12 @@
             (update :key-prefix #(conj % :batch-stack)))]
     (expr-let
         [virtual-dom (batch-edit-stack-virtual-DOM-R
-                      query-item store inherited-for-batch)
+                      selector-item store inherited-for-batch)
          ;; We need to take the current versions of the query elements,
          ;; as :match-all only works with immutable items.
          current-query-elements
          (expr-seq map #(entity/updating-call-with-immutable % identity)
-                   (semantic-elements-R query-item))
+                   (semantic-elements-R selector-item))
          batch-dom
          (let [inherited
                (-> inherited-for-batch
@@ -123,13 +123,13 @@
   "Return the DOM for batch editing, given the item specifying the query,
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
-  [query-item store inherited]
+  [selector-item store inherited]
   (let [inherited-for-query
         (-> inherited
-            (assoc :subject-referent (item-referent query-item))
-            (update :key-prefix #(conj % :batch-query)))]
+            (assoc :subject-referent (item-referent selector-item))
+            (update :key-prefix #(conj % :batch-selector)))]
     (expr-let
-        [stack-dom (batch-edit-stack-DOM-R query-item store inherited)]
+        [stack-dom (batch-edit-stack-DOM-R selector-item store inherited)]
       [:div
        [:div#quit-batch-edit.tool
               [:img {:src "../icons/table_view.gif"}]

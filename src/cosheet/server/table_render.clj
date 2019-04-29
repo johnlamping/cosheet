@@ -26,6 +26,7 @@
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
                                   semantic-to-list-R
+                                  immutable-semantic-to-list
                                   semantic-elements-R
                                   visible-elements-R visible-non-labels-R
                                   visible-to-list-R
@@ -83,10 +84,14 @@
                         immutable-row-condition-item))
                   item-condition (immutable-visible-to-list item)
                   redundant (best-template-match
-                             (map pattern-to-query condition-elements)
+                             (map #(immutable-semantic-to-list
+                                    (pattern-to-query %))
+                                  condition-elements)
                              item-condition)
                   non-redundant (remove-first
-                                 #(= (pattern-to-query %) redundant)
+                                 #(= (immutable-semantic-to-list
+                                      (pattern-to-query %))
+                                     redundant)
                                  condition-elements)
                   skip-element (when (not redundant)
                                  (let [query (pattern-to-query item-condition)]
@@ -505,29 +510,39 @@
       row-key new-row-template adjacent-referent column-descriptions
       inherited])))
 
-(defn add-content-to-hierarchy-R
-  "Given a hierarchy, add an additional :content field to each info map."
+(defn add-content-and-query-to-hierarchy-leaf-R
+  "Given a hierarchy leaf, and the node it is from,
+   add additional fields to its info map:
+      :content  the content of the item
+      :query    the query items in cells of the column must satisfy"
+  [leaf node]
+  (let [item (:item leaf)]
+    (expr-let [content (entity/content item)
+               non-labels (visible-non-labels-R item)
+               as-lists (expr-seq map visible-to-list-R non-labels)]
+      (assoc leaf
+             :content content
+             :query (pattern-to-query
+                     (cons content
+                           (concat (canonical-set-to-list
+                                    (:cumulative-properties node))
+                                   as-lists)))))))
+
+(defn add-content-and-query-to-hierarchy-R
+  "Given a hierarchy, add additional fields to each info map:
+      :content  the content of the item
+      :query    the query items in cells of the column must satisfy"
   [hierarchy]
   (expr-seq map
     (fn [node]
-      (expr-let [leaves (expr-seq map
-                          (fn [leaf]
-                            (expr-let [content (entity/content (:item leaf))]
-                              (assoc leaf :content content)))
-                          (:leaves node))
-                 children (add-content-to-hierarchy-R (:child-nodes node))]
+      (expr-let [leaves (expr-seq
+                         map #(add-content-and-query-to-hierarchy-leaf-R % node)
+                         (:leaves node))
+                 children (add-content-and-query-to-hierarchy-R
+                           (:child-nodes node))]
         (cond-> (assoc node :leaves leaves)
           children (assoc :child-nodes children))))
     hierarchy))
-
-(defn table-hierarchy-node-query
-  "Given a hierarchy element for a column, and its immediately containing node,
-  return the condition that all elements under the column satisfy."
-  [element node]
-  (let [content (:content element)]
-    (pattern-to-query
-     (cons content
-           (canonical-set-to-list (:cumulative-properties node))))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -542,9 +557,9 @@
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              (let [query (table-hierarchy-node-query node-or-element node)]
+              (let [query (:query node-or-element)]
                 [{:column-id (:item-id (:item node-or-element))
-                  :query (table-hierarchy-node-query node-or-element node)
+                  :query query
                   :template (query-to-template query)
                   :exclusions (table-hierarchy-node-exclusions node)}])))
           (hierarchy-node-next-level node)))
@@ -626,7 +641,7 @@
                                          store row-condition-item)
                columns (expr order-items-R
                          (entity/label->elements row-condition-item :column))
-               hierarchy (add-content-to-hierarchy-R
+               hierarchy (add-content-and-query-to-hierarchy-R
                           (hierarchy-by-labels-R columns))
                headers (table-header-DOM-R
                         hierarchy headers-inherited)

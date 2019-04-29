@@ -77,7 +77,6 @@
                      c (matching-elements "c" it)
                      d (matching-elements "d" it)]
             [a b c d labels non-labels split]))]
-    (println (simplify-for-print [a b c d labels split-labels non-labels split-non-labels]))
     (is (= (set non-labels) #{a b}))
     (is (= (set split-non-labels) #{a b}))
     (is (= (set labels) #{c d}))

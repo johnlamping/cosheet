@@ -24,7 +24,7 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 7)))
+                        (range 8)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
@@ -32,6 +32,7 @@
 (def o5 (nth orderables 4))
 (def o6 (nth orderables 5))
 (def o7 (nth orderables 6))
+(def o8 (nth orderables 7))
 
 (deftest table-DOM-test
   (let [inherited {:priority 1
@@ -43,19 +44,19 @@
                    ("male" (~o1 :order))
                    ("married" (~o2 :order))
                    (39 (~o3 :order)
-                       ("age" :tag)
-                       ("doubtful" "confidence"))
+                       ("age" :tag (~o3 :order))
+                       ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
                    (45 (~o4 :order)
-                       ("age" :tag))
+                       ("age" :tag (~o3 :order)))
                    ("Joe" (~o5 :order)
-                          ("name" :tag))
+                          ("name" :tag (~o3 :order)))
                    ("Joseph" (~o6 :order)
                              ("name" :tag (~o1 :order))
                              ("id" :tag (~o2 :order))))
         jane-list `("Jane"
                     :top-level
                     (~o1 :order)
-                    "plain" "plain")
+                    ("plain" (~o2 :order)) ("plain" (~o3 :order)))
         test-list `("TEST"
                     :top-level
                     :test
@@ -64,12 +65,14 @@
                     ;; something that is less specific than the table condition
                     ;; to test that it will cause the condition to be
                     ;; eliminated in batch edits.
-                    (~'anything "age"))]
+                    (~'anything (~o3 :order) ("age" :tag (~o3 :order))))]
     (let [table-list
           `("table"
             (~'anything
-             (~'anything ("age" :tag))
              :row-condition
+             (~'anything
+              ("age" :tag (~o1 :order))
+              (~o8 :order))
              (~'anything ("single" :tag (~o1 :order))
               (~o1 :order)
               :column)
@@ -261,15 +264,15 @@
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
                  [{:column-id (:item-id c1)
-                   :query '(nil ("single" :tag))
+                   :query '(nil (nil :order) ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   {:column-id (:item-id c2)
-                   :query '(nil ("name" :tag))
+                   :query '(nil (nil :order) ("name" :tag))
                    :template '("" ("name" :tag))
                    :exclusions '((nil ("name" :tag) ("id" :tag)))}
                   {:column-id (:item-id c3)
-                   :query '(nil ("name" :tag) ("id" :tag))
+                   :query '(nil (nil :order) ("name" :tag) ("id" :tag))
                    :template '("" ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
@@ -285,14 +288,15 @@
                               (item-referent c7))
                    :exclusions nil}]
                  {:priority 3 :width 3.0 :key-prefix table-key}]]
+               (any) ; The test row.
                [:component {:key (conj table-key :virtualRow)
                             :class "table-row"}
                 [table-virtual-row-DOM
                  (conj table-key :virtualRow)
                  '(anything (anything ("age" :tag)) :top-level)
-                 (item-referent joe)
+                 (item-referent test)
                  [{:column-id (:item-id c1)
-                   :query '(nil ("single" :tag))
+                   :query '(nil (nil :order) ("single" :tag))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any) (any)]

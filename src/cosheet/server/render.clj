@@ -28,10 +28,12 @@
 ;;; reporters. Their names have a suffix of -R.
 
 ;;; For a basic entity, we show its contents and its visible semantic
-;;; elements. We don't show its non-semantic elements, which are
-;;; identified by, themselves, having a content other than a number string,
-;;; :tag, 'anything, or 'anything-immutable. And we
-;;; don't show its invisible elements, which are identified by having
+;;; elements. We don't show its non-semantic elements. Two independent
+;;; properties each idependently characterize semantic elements:
+;;;   * They have a content other than a number, string, :tag, 'anything,
+;;;     or 'anything-immutable.
+;;;   * The have a content of :tag or have an element with label :order
+;;; We also don't show its invisible elements, which are identified by having
 ;;; :invisible elements. An invisible element in a condition requires
 ;;; that any match to the condition also has a matching element, while
 ;;; non-semantic elements in conditions are ignored.

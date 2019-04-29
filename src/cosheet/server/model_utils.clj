@@ -89,27 +89,31 @@
 
 (defn pattern-to-query
   "Given a pattern, alter it to work as a query. Specifically,
-  replace 'anything and 'anything-immutable by nil
+  replace 'anything and 'anything-immutable by (nil (nil :order))
   to make them work as a wild card that avoids matching non-user editable
   elements."
   [pattern]
   (flatten-nested-content ;; Because we can add nested content.
-   (clojure.walk/postwalk
+   (prewalk-seqs
     (fn [item] (if (#{'anything 'anything-immutable} item)
-                 nil
+                 '(nil (nil :order))
                  item))
     pattern)))
 
 (defn query-to-template
-  "Given a query, turn it into a template by replacing any nil
-   by the specified replacement, or the empty string by default."
+  "Given a query, turn it into a template by removing any (nil :order),
+   and by replacing any nil by the specified replacement,
+   which defaults to the empty string."
   ([query]
    (query-to-template query ""))
   ([query nil-replacement]
-   (prewalk-seqs
-    (fn [query]
-      (if (nil? query) nil-replacement query))
-    query)))
+   (prewalk-seqs (fn [query] (cond (nil? query)
+                                   nil-replacement
+                                   (seq? query)
+                                   (remove #(= % '(nil :order)) query)
+                                   true
+                                   query))
+                 query)))
 
 (defn specialize-template
   "Adjust a template to make it ready for adding as an

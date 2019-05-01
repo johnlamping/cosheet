@@ -28,20 +28,6 @@
 
 (def ^:dynamic verbose false)
 
-;;; There are three levels of matching:
-;;;        extended-by?:  Takes two entities.
-;;;                       Says whether one is an extension of the other.
-;;;    template-matches:  Takes an entity, a template, which may have
-;;;                       variables, and an environment.
-;;;                       Returns a set of extensions of the environment
-;;;                       that cause the entity to be an extension
-;;;                       of the template.
-;;;       query-matches:  Takes a database, a template, which may have
-;;;                       variables, and an environment.
-;;;                       Returns a set of extensions of the environment
-;;;                       that cause some entity in the database to be
-;;;                       an extension of the template.
-
 (defn conj-disjoint-combinations
   "Given a sequence of collections of elements, and a sequence of elements,
   choose all combinations of a collection and an element not in the collection,
@@ -74,29 +60,31 @@
         labels (map atomic-value annotations)]
     (first (filter (partial not= nil) labels))))
 
-(defn elements-satisfying [element target]
-  "Return a list of the target elements satisfying the given element."
+(defn elements-satisfying [template target]
+  "Return a list of the target elements satisfying the given template."
   (when (not (atom? target))
-    (if (and (seq? element)
-             (nil? (first element))
-             (atom? (second element))
-             (= (count element) 2))
-      (label->elements target (atomic-value (second element)))
-      (let [label (label-for-element element)]
+    ;; Check for the special case where being in the label index guarantees
+    ;; satisfing the template.
+    (if (and (seq? template)
+             (nil? (first template))
+             (atom? (second template))
+             (= (count template) 2))
+      (label->elements target (atomic-value (second template)))
+      (let [label (label-for-element template)]
         (expr-let
             [candidates (if (not (nil? label))
                           (label->elements target label)
                           (elements target))
-             extended-by (expr-seq map (partial extended-by? element)
+             extended-by (expr-seq map (partial extended-by? template)
                                    candidates)]
           (keep-indexed (fn [index candidate]
                           (when (nth extended-by index) candidate))
                         candidates))))))
 
-(defn has-element-satisfying? [element target]
+(defn has-element-satisfying? [template target]
   "Return true if the target item has an element satisfying
-  the given element)."
-  (expr-let [satisfying (elements-satisfying element target)]
+  the given template)."
+  (expr-let [satisfying (elements-satisfying template target)]
     (not (empty? satisfying))))
 
 (defn extended-by? [template target]
@@ -109,7 +97,7 @@
                                 (content template)
                                 (content target))]
           (when content-extended
-            (expr-let [template-elements (elements template)]
+            (let [template-elements (elements template)]
               (or (empty? template-elements)
                   (expr-let
                       [satisfied-elements (expr-seq
@@ -231,28 +219,28 @@
 (defn element-match-map
   "Return a map from environment to seq of elements that match in that
   environment."
-  [element env target]
-  (when verbose (println "element-match-map" element (deep-to-list target)))
+  [template env target]
+  (when verbose (println "element-match-map" target (deep-to-list target)))
   ;; Test for the special case of looking for any element with a specific label.
-  (if (and (seq? element)
-           (nil? (first element))
-           (atom? (second element))
-           (= (count element) 2))
+  (if (and (seq? template)
+           (nil? (first template))
+           (atom? (second template))
+           (= (count template) 2))
     (expr-let [matching-elements (label->elements
-                                  target (atomic-value (second element)))]
+                                  target (atomic-value (second template)))]
       (if (empty? matching-elements) {} {env matching-elements}))
-    (let [label (if (variable? element)
-                  (let [condition (label->content element :condition)]
+    (let [label (if (variable? template)
+                  (let [condition (label->content template :condition)]
                     (label-for-element condition))
                   (let [candidate-elements
                         (map #(atomic-value (bind-entity % env))
-                             (elements element))]
+                             (elements template))]
                     (first (filter #(and (not= % nil) (not= % :variable))
                                    candidate-elements))))]
       (expr-let [candidates (if (not (nil? label))
                               (label->elements target label)
                               (elements target))
-                 match-envs (expr-seq map (partial template-matches element env)
+                 match-envs (expr-seq map (partial template-matches template env)
                                       candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -260,8 +248,8 @@
                           result matching-envs))
                 {} (map vector candidates match-envs))))))
 
-(defn element-matches [element env target]  
-  (expr-let [match-map (element-match-map element env target)]
+(defn element-matches [template env target]  
+  (expr-let [match-map (element-match-map template env target)]
     (keys match-map)))
 
 (defn concat-maps
@@ -287,21 +275,21 @@
    {} match-map))
 
 (defn multiple-element-matches
-  "Given a sequence of elements, a map from environments to collections
+  "Given a sequence of templates, a map from environments to collections
   of disallowed elements, and a target, return a sequence of environments
-  where each element matches a different element in the target,
+  where each template matches a different element in the target,
   and not a disallowed element."
-  [elements env-map target]
-  (if (empty? elements)
+  [templates env-map target]
+  (if (empty? templates)
     (keys env-map)
     (expr-let [matching-maps
-               (expr-seq map #(element-match-map (first elements) % target)
+               (expr-seq map #(element-match-map (first templates) % target)
                          (keys env-map))]
       (let [disjoint-map (concat-maps
                           (map conj-disjoint-maps
                                (vals env-map) matching-maps))]
         (multiple-element-matches
-         (rest elements) disjoint-map target)))))
+         (rest templates) disjoint-map target)))))
 
 (defn item-matches [item env target]
   (when verbose (println "item-matches"))

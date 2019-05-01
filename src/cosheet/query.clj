@@ -3,6 +3,20 @@
             [cosheet.store :as store]
             [cosheet.expression :refer [expr expr-seq expr-let]]))
 
+;;; There are three levels of matching:
+;;;        extended-by?:  Takes a template with no variables and an
+;;;                       entity. Says whether the entity extends the template.
+;;;    template-matches:  Takes a template, which may have
+;;;                       variables, an environment, and an entity.
+;;;                       Returns a set of extensions of the environment
+;;;                       that cause the entity to be an extension
+;;;                       of the template.
+;;;       query-matches:  Takes a template, which may have
+;;;                       variables, an environment, and a store.
+;;;                       Returns a set of extensions of the environment
+;;;                       that cause some entity in the store to be
+;;;                       an extension of the template.
+;;;
 ;;; Variables are represented as items of the form
 ;;; (:variable (<name> :name)
 ;;;            (<condition> :condition)

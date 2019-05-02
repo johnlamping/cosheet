@@ -62,6 +62,49 @@
 
 (def extended-by?)
 
+(defn labels-for-element
+  "Given an entity that is an element of a template, find atoms that can serve
+   as labels for finding matching elements of a target. Returns either '(),
+   meaning that no labels were found; a sequence of labels, any of which
+   will work; or a single label, which means a perfect fit: an element
+   of a target will match the template iff and only if it has that label."
+  [element]
+  (loop [labels '()
+         annotations (elements element)]
+    (if (empty? annotations)
+      labels
+      (let [annotation (first annotations)
+            label (atomic-value annotation)]
+        (cond (or (nil? label) (= label :not) (= label :variable))
+              (recur labels (rest annotations))
+              (and (= label (content annotation))
+                   (not (seq? label))
+                   (empty? (elements annotation)))
+              label
+              true
+              (recur (conj labels label) (rest annotations)))))))
+
+(defn candidate-elements
+  "Given a target, and labels that all the elements we are looking for
+   will have, return a set of candidate elements that is guaranteed
+   to include all the possible matches."
+  [labels target]
+  (if (empty? labels)
+    (elements target)
+    (expr-let [candidateses (expr-seq
+                             map #(label->elements target %) labels)]
+      (loop [best nil
+             candidateses candidateses]
+        (if (empty? candidateses)
+          best
+          (let [candidates (first candidateses)]
+            (if (empty? candidates)
+              nil
+              (recur (if (or (nil? best) (< (count candidates) (count best)))
+                       candidates
+                       best)
+                     (rest candidateses)))))))))
+
 (defn label-for-element
   "Given an entity that is an element, find an atom that can serve as
   a label for that element."
@@ -73,23 +116,14 @@
 (defn elements-satisfying [template target]
   "Return a list of the target elements satisfying the given template."
   (when (not (atom? target))
-    ;; Check for the special case where being in the label index guarantees
-    ;; satisfing the template.
-    (if (and (seq? template)
-             (nil? (first template))
-             (atom? (second template))
-             (= (count template) 2))
-      (label->elements target (atomic-value (second template)))
-      (let [label (label-for-element template)]
+    (let [labels (labels-for-element template)]
+      (if (seq? labels)
         (expr-let
-            [candidates (if (not (nil? label))
-                          (label->elements target label)
-                          (elements target))
-             extended-by (expr-seq map (partial extended-by? template)
-                                   candidates)]
-          (keep-indexed (fn [index candidate]
-                          (when (nth extended-by index) candidate))
-                        candidates))))))
+            [candidates (candidate-elements labels target)]
+          (expr-filter #(extended-by? template %) candidates))
+        ;; The special case where being in the label index guarantees
+        ;; satisfing the template.
+        (label->elements target labels)))))
 
 (defn has-element-satisfying? [template target]
   "Return true if the target item has an element satisfying
@@ -347,8 +381,7 @@
                     positive (zipmap content-match-envs (repeat [[]])) target))]
               (if (empty? negative)
                 envs
-                (expr-filter #(no-element-matches
-                               negative % target)
+                (expr-filter #(no-element-matches negative % target)
                              envs)))))))))
 
 (defn template-matches [template env target]

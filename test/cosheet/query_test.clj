@@ -65,8 +65,22 @@
     (is (not (extended-by? element2 4)))
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
-    (is (extended-by? 3 (entity/content-reference element0)))))
-
+    (is (extended-by? 3 (entity/content-reference element0)))
+    (is (let-mutated [a 1] (extended-by? '(1 (:not :x)) a)))
+    (is (not (let-mutated [a '(1 :a)] (extended-by? '(1 (:not :a)) a))))
+    (is (let-mutated [a '(1 :a (:b :c))]
+          (extended-by? '(1 :a :b (:not :x) (:not :u)) a)))
+    (is (not (let-mutated [a '(1 :a (:b :c))]
+               (extended-by? '(1 :a :b :c (:not :x) (:not :u)) a))))
+    (is (not (let-mutated [a '(1 :a (:b :c))]
+               (extended-by? '(1 :a :b (:not :x) (:not :u) (:not :a)) a))))
+    (is (let-mutated [a '(1 :a (:b :c))]
+          (extended-by? '(1 :a (:b (:not :x)) (:not (:b (:not :c)))) a)))
+    (is (not (let-mutated [a '(1 :a (:b :c))]
+               (extended-by? '(1 :a (:b (:not :c))) a))))
+    (is (not (let-mutated [a '(1 :a (:b :c))]
+               (extended-by? '(1 :a :b (:not (:b (:not :d)))) a))))))
+;; 
 (defn variable
   ([name] (variable name nil nil))
   ([name condition] (variable name condition nil nil))
@@ -279,7 +293,34 @@
                       {:a :b "foo" 3 "bar" 2}
                       {:a :b "foo" 3 "bar" 4}
                       {:a :b "foo" 4 "bar" 2}
-                      {:a :b "foo" 4 "bar" 3}]))))
+                      {:a :b "foo" 4 "bar" 3}])))
+  (is (= (let-mutated [a 1] (template-matches '(1 (:not :x)) a))
+         [{}]))
+  (is (empty? (let-mutated [a '(1 :a)] (template-matches '(1 (:not :a)) a))))
+  (is (= (let-mutated [a '(1 :a :b)]
+           (template-matches '(1 :a :b (:not :x) (:not :u)) a))
+         [{}]))
+  (is (empty? (let-mutated [a '(1 :a :b)]
+                (template-matches '(1 :a :b :c (:not :x) (:not :u)) a))))
+  (is (empty? (let-mutated [a '(1 :a :b)]
+                (template-matches
+                 '(1 :a :b (:not :x) (:not :u) (:not :a)) a))))
+  (is (= (let-mutated [a '(1 :a (:b :c))]
+           (template-matches '(1 :a (:b (:not :x)) (:not (:b (:not :c)))) a))
+         [{}]))
+  (is (empty? (let-mutated [a '(1 :a (:b :c))]
+                (template-matches '(1 :a (:b (:not :c))) a))))
+  (is (empty? (let-mutated [a '(1 :a (:b :c))]
+                (template-matches '(1 :a :b (:not (:b (:not :d)))) a))))
+  (is (= (let-mutated [a '(1 (:a :b) (:c :d))]
+           (template-matches `(1 (:a ~(variable "foo" nil))
+                                 (:not (:c ~(variable "foo" nil))))
+                             a))
+         [{"foo" :b}]))
+  (is (empty? (let-mutated [a '(1 (:a :b) (:c :b))]
+                (template-matches `(1 (:a ~(variable "foo" nil))
+                                      (:not (:c ~(variable "foo" nil))))
+                                  a)))))
 
 (deftest best-template-match-test
   (is (check (let [x '(1)]

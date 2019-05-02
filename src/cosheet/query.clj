@@ -26,13 +26,25 @@
 ;;;    A variable without a name is considered distinct from any
 ;;; other variable.
 ;;;    A variable with a condition can only match entities satisfying
-;;; the condition.
+;;; the condition, which may not contain variables, itself.
 ;;;    A bound variable with value-may-extend will match any extension of
 ;;; its value.
 ;;;    A variable with :reference binds to a reference to an item
 ;;; in the store, rather than to the item considered as a value. Only
 ;;; one instance of each reference variable should occur in a query,
 ;;; since it can never match two different structures.
+;;;
+;;; In addition to variables, a template can contain one of the special forms:
+;;; (:not template)             matches if the template does not match.
+;;; (:and template template)    matches if both templates match
+;;; (:forall variable template) matches if the template matches for every way
+;;;                             the variable can be bound to satisfy its
+;;;                             condition.
+;;; (:exists variable template) matches if the template matches for some way
+;;;                             the variable can be bound to satisfy its
+;;;                             condition.
+;;; A :not form can occur as a sub-element of a template, while the other
+;;; forms cannot. Currently, a :not form can only occur there.
 
 (defmulti extended-by-m?
   (fn [template target] true))

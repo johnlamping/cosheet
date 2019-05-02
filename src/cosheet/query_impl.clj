@@ -12,7 +12,7 @@
                                     template-matches-m
                                     best-template-match-m
                                     query-matches-m]]
-                     [expression :refer [expr expr-let expr-seq]]
+                     [expression :refer [expr expr-let expr-seq expr-filter]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
                      [debug :refer [trace-current
                                     simplify-for-print]])))
@@ -50,6 +50,16 @@
             (map vector (first sequences))
             (rest sequences))))
 
+(defn separate-negations
+  "Given a seq of templates, return two seqs, one of positive templates,
+   and one of negated templates."
+  [templates]
+  (let [grouped (group-by (fn [template]
+                            (if (and (seq? template) (= (first template) :not))
+                              :negation :regular))
+                          templates)]
+    [(:regular grouped) (map second (:negation grouped))]))
+
 (def extended-by?)
 
 (defn label-for-element
@@ -58,7 +68,7 @@
   [element]
   (let [annotations (elements element)
         labels (map atomic-value annotations)]
-    (first (filter (partial not= nil) labels))))
+    (first (filter #(and (not= nil %) (not= :not %)) labels))))
 
 (defn elements-satisfying [template target]
   "Return a list of the target elements satisfying the given template."
@@ -97,14 +107,20 @@
                                 (content template)
                                 (content target))]
           (when content-extended
-            (let [template-elements (elements template)]
-              (or (empty? template-elements)
-                  (expr-let
-                      [satisfied-elements (expr-seq
-                                           map #(elements-satisfying % target)
-                                           template-elements)]
-                    (not (empty? (disjoint-combinations
-                                  satisfied-elements)))))))))))
+            (or (empty? (elements template))
+                (let [[positive negative] (separate-negations
+                                           (elements template))]
+                  (expr-let [positive-satisfying
+                             (expr-seq map #(elements-satisfying % target)
+                                       positive)
+                             negative-satisfying
+                             (expr-seq map #(elements-satisfying % target)
+                                       negative)]
+                    (and (or (empty? positive)
+                             (not (empty? (disjoint-combinations
+                                           positive-satisfying))))
+                         (not-any? #(not (empty? %))
+                                   negative-satisfying))))))))))
 
 (defmethod extended-by-m? true [template target]
   (extended-by? template target))
@@ -235,7 +251,9 @@
                   (let [candidate-elements
                         (map #(atomic-value (bind-entity % env))
                              (elements template))]
-                    (first (filter #(and (not= % nil) (not= % :variable))
+                    (first (filter #(and (not= % nil)
+                                         (not= % :variable)
+                                         (not= % :not))
                                    candidate-elements))))]
       (expr-let [candidates (if (not (nil? label))
                               (label->elements target label)
@@ -291,6 +309,16 @@
         (multiple-element-matches
          (rest templates) disjoint-map target)))))
 
+(defn no-element-matches
+  "Return true if none of the templates are matched
+   by any elements of the target, given the environment."
+  [templates env target]
+  (if (empty? templates)
+    true
+    (expr-let [matches (element-matches (first templates) env target)]
+      (when (empty? matches)
+        (no-element-matches (rest templates) env target)))))
+
 (defn item-matches [item env target]
   (when verbose (println "item-matches"))
   (expr-let [content-match-envs
@@ -300,19 +328,28 @@
                [env])]
     (when (seq content-match-envs)
       (let [item-elements (elements item)]
-        (cond (empty? item-elements)
-              content-match-envs
-              (empty? (rest item-elements))
-              (expr-let [env-matches
-                         (expr-seq map #(element-matches
-                                         (first item-elements) % target)
-                                   content-match-envs)]
-                (seq (distinct (apply concat env-matches))))
-              true
-              (multiple-element-matches item-elements
-                                        (zipmap content-match-envs
-                                                (repeat [[]]))
-                                        target))))))
+        (if (empty? item-elements)
+          content-match-envs
+          (let [[positive negative] (separate-negations item-elements)]
+            (expr-let
+                [envs
+                 (cond
+                   (empty? positive)
+                   content-match-envs
+                   (empty? (rest positive))
+                   (expr-let [env-matches
+                              (expr-seq map #(element-matches
+                                              (first positive) % target)
+                                        content-match-envs)]
+                     (seq (distinct (apply concat env-matches))))
+                   true
+                   (multiple-element-matches
+                    positive (zipmap content-match-envs (repeat [[]])) target))]
+              (if (empty? negative)
+                envs
+                (expr-filter #(no-element-matches
+                               negative % target)
+                             envs)))))))))
 
 (defn template-matches [template env target]
   (assert (not (mutable-entity? template)))

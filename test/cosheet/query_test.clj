@@ -475,9 +475,9 @@
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
                    (query-matches `(:and ((nil (~(variable "v"))) :first)
-                                          ((nil (nil ~(variable "v"))) :second))
+                                         ((nil (nil ~(variable "v"))) :second))
                                    store))))
-           #{{"v" 3} {"v" 4} {"v" 5}}))
+           #{{"v" 2} {"v" 3} {"v" 4} {"v" 5}}))
     ;; exists
     (is (= (let-mutated-store [store s0 mutator]
              (query-matches `(:exists ("v" :variable-name)

@@ -55,10 +55,11 @@
    and one of negated templates."
   [templates]
   (let [grouped (group-by (fn [template]
-                            (if (and (seq? template) (= (first template) :not))
+                            (if (and (not (atom? template))
+                                     (= (content template) :not))
                               :negation :regular))
                           templates)]
-    [(:regular grouped) (map second (:negation grouped))]))
+    [(:regular grouped) (map #(first (elements %)) (:negation grouped))]))
 
 (def extended-by?)
 
@@ -79,7 +80,8 @@
               (recur labels (rest annotations))
               (and (= label (content annotation))
                    (not (seq? label))
-                   (empty? (elements annotation)))
+                   (empty? (elements annotation))
+                   (nil? (content element)))
               label
               true
               (recur (conj labels label) (rest annotations)))))))
@@ -104,14 +106,6 @@
                        candidates
                        best)
                      (rest candidateses)))))))))
-
-(defn label-for-element
-  "Given an entity that is an element, find an atom that can serve as
-  a label for that element."
-  [element]
-  (let [annotations (elements element)
-        labels (map atomic-value annotations)]
-    (first (filter #(and (not= nil %) (not= :not %)) labels))))
 
 (defn elements-satisfying [template target]
   "Return a list of the target elements satisfying the given template."
@@ -237,7 +231,7 @@
     entity))
 
 (defn variable-matches [var env target]
-  (expr-let [name (label->content var :name)
+  (let [name (label->content var :name)
              condition (label->content var :condition)
              value-may-extend (label->content var :value-may-extend)
              reference (label->content var :reference)]
@@ -267,38 +261,37 @@
                 envs))))))))
 
 (defn element-match-map
-  "Return a map from environment to seq of elements that match in that
-  environment."
+  "Return a map from environment to seq of elements of the target that match
+   the template in the environment."
   [template env target]
   (when verbose (println "element-match-map" target (deep-to-list target)))
-  ;; Test for the special case of looking for any element with a specific label.
-  (if (and (seq? template)
-           (nil? (first template))
-           (atom? (second template))
-           (= (count template) 2))
-    (expr-let [matching-elements (label->elements
-                                  target (atomic-value (second template)))]
-      (if (empty? matching-elements) {} {env matching-elements}))
-    (let [label (if (variable? template)
-                  (let [condition (label->content template :condition)]
-                    (label-for-element condition))
-                  (let [candidate-elements
-                        (map #(atomic-value (bind-entity % env))
-                             (elements template))]
-                    (first (filter #(and (not= % nil)
-                                         (not= % :variable)
-                                         (not= % :not))
-                                   candidate-elements))))]
-      (expr-let [candidates (if (not (nil? label))
-                              (label->elements target label)
-                              (elements target))
-                 match-envs (expr-seq map (partial template-matches template env)
+  (let [labels (labels-for-element
+                (bind-entity (if (variable? template)
+                               (or (env (label->content template :name))
+                                   (label->content template :condition))
+                               template)
+                             env))]
+    (if (seq? labels)
+      (expr-let [candidates (candidate-elements labels target)
+                 match-envs (expr-seq map #(template-matches template env %)
                                       candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
                             (update result env #(conj (or % []) candidate)))
                           result matching-envs))
-                {} (map vector candidates match-envs))))))
+                {} (map vector candidates match-envs)))
+      ;; The special case of looking for any element with a specific label.
+      (expr-let [matching-elements (label->elements target labels)]
+        (cond (empty? matching-elements)
+              {}
+              (variable? template)
+              (let [name (label->content template :name)]
+                (reduce (fn [result element]
+                          (let [new-env (assoc env name element)]
+                            (assoc result new-env [element])))
+                        {} matching-elements))
+              true
+              {env matching-elements})))))
 
 (defn element-matches [template env target]  
   (expr-let [match-map (element-match-map template env target)]

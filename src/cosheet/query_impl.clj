@@ -424,10 +424,7 @@
       (if reference
         [env]
         (expr-let [value-as-immutable (current-entity-value value)
-                   ;; TODO: We need this test because atoms aren't allowed
-                   ;; as queries. But is that a bug?
-                   matches (when (not (atom? value-as-immutable))
-                             (query-matches value-as-immutable env store))]
+                   matches (query-matches value-as-immutable env store)]
           (when matches [env]))))))
 
 (defn exists-matches-in-store [exists env store]
@@ -495,16 +492,15 @@
    (when verbose
      (println "query" query "env"
               (zipmap (keys env) (map deep-to-list (vals env)))))
-   (if (atom? query)
-     (assert false "queries may not be atoms.")
-     (let [query-content (content query)]
-       (if (keyword? query-content)
-         (case query-content
-           :variable (variable-matches-in-store query env store)
-           :exists (exists-matches-in-store query env store)
-           :forall (forall-matches-in-store query env store)
-           :and (and-matches-in-store query env store))
-         (item-matches-in-store query env store))))))
+   (let [query-content (content query)]
+     (if (keyword? query-content)
+       (case query-content
+         :variable (variable-matches-in-store query env store)
+         :exists (exists-matches-in-store query env store)
+         :forall (forall-matches-in-store query env store)
+         :and (and-matches-in-store query env store)
+         (item-matches-in-store query env store))
+       (item-matches-in-store query env store)))))
 
 (defmethod query-matches-m true [query env store]
   (query-matches query env store))

@@ -364,6 +364,12 @@
         mutator (fn [s]
                   (store-utils/add-entity! s nil '(:a (1 (2 3)) (3 (4 5))))
                   (store-utils/add-entity! s nil '(:b (1 (2 4)))))]
+    ;; atoms
+    (is (= (let-mutated-store [store s0 mutator]
+             (query-matches :a store))
+           [{}]))
+    (is (empty? (let-mutated-store [store s0 mutator]
+             (query-matches :x store))))
     ;; elements
     (is (= (let-mutated-store [store s0 mutator]
                               (query-matches '(1 (2)) store)) [{}]))

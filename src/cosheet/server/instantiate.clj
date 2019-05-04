@@ -9,8 +9,7 @@
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? update-content]]
                      [store-utils :refer [add-entity]]
-                     [query :refer [matching-elements matching-items
-                                    template-matches]])
+                     [query :refer [matching-elements matching-items]])
             (cosheet.server
              [referent :refer [referent? item-referent? virtual-referent?
                                union-referent? virtual-union-referent?

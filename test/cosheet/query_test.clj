@@ -126,101 +126,101 @@
     (is (= (map entity/to-list (entity/label->elements partially-bound 9))
            ()))))
 
-(deftest template-matches-test
-  (is (= (current-value (template-matches 1 {} 1)) [{}]))
-  (is (= (current-value (template-matches "a" {} "A")) [{}]))
-  (is (= (current-value (template-matches "A" {} "a")) [{}]))
-  (is (= (current-value (template-matches 1 {} 2)) nil))
-  (is (= (current-value (template-matches 1 {:a :b} 1)) [{:a :b}]))
-  (is (= (current-value (template-matches '(1) {:a :b} 1)) [{:a :b}]))
-  (is (= (let-mutated [x '(1)] (template-matches 1 {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [x '(1)] (template-matches '(1) {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [x '(1 2)] (template-matches 1 {:a :b} x)) [{:a :b}]))
-  (is (= (let-mutated [y '(1 2)] (template-matches '(1) {:a :b} y))
+(deftest matching-extensions-test
+  (is (= (current-value (matching-extensions 1 {} 1)) [{}]))
+  (is (= (current-value (matching-extensions "a" {} "A")) [{}]))
+  (is (= (current-value (matching-extensions "A" {} "a")) [{}]))
+  (is (= (current-value (matching-extensions 1 {} 2)) nil))
+  (is (= (current-value (matching-extensions 1 {:a :b} 1)) [{:a :b}]))
+  (is (= (current-value (matching-extensions '(1) {:a :b} 1)) [{:a :b}]))
+  (is (= (let-mutated [x '(1)] (matching-extensions 1 {:a :b} x)) [{:a :b}]))
+  (is (= (let-mutated [x '(1)] (matching-extensions '(1) {:a :b} x)) [{:a :b}]))
+  (is (= (let-mutated [x '(1 2)] (matching-extensions 1 {:a :b} x)) [{:a :b}]))
+  (is (= (let-mutated [y '(1 2)] (matching-extensions '(1) {:a :b} y))
          [{:a :b}]))
   (is (= (let [x '(1 2)]
-           (let-mutated [y x] (template-matches x {:a :b} y))) [{:a :b}]))
+           (let-mutated [y x] (matching-extensions x {:a :b} y))) [{:a :b}]))
   (is (= (let [x '(1 2 3)]
            (let-mutated [ y '(1 (2 3))]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          nil))
   (is (= (let [x '(1 (2 3))]
            (let-mutated [y '(1 2 3)]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          nil))
   ;; The next two test a special case optimization.
   (is (= (let-mutated [y '(1 (2 3 4))]
-                      (template-matches '(nil (nil 3)) {:a :b} y))
+                      (matching-extensions '(nil (nil 3)) {:a :b} y))
          [{:a :b}]))
   (is (= (let-mutated [y '(1 (2 3 4))]
-           (template-matches '(nil (nil 2)) {:a :b} y))
+           (matching-extensions '(nil (nil 2)) {:a :b} y))
          nil))
   (is (= (let [x '(1 (4 6))]
            (let-mutated [y x]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          [{:a :b}]))
   (is (= (let [x '((1 2) 3 (4 (5 6)))]
            (let-mutated [y x]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          [{:a :b}]))
   ;; Duplicates in template
   (is (empty? (let [x '(1 2 2)]
            (let-mutated [y '(1 2)]
-             (template-matches x {:a :b} y)))))
+             (matching-extensions x {:a :b} y)))))
   (is (= (let [x '(1 2 2)]
            (let-mutated [y '(1 2 2 2)]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          [{:a :b}]))
   (is (= (let [x '(1 2 2)]
            (let-mutated [y '(1 2 2)]
-             (template-matches x {:a :b} y)))
+             (matching-extensions x {:a :b} y)))
          [{:a :b}]))
   ;; Variables
   (is (= (let-mutated [x 2]
-                      (template-matches (variable "foo") {:a :b} x))
+                      (matching-extensions (variable "foo") {:a :b} x))
          [{:a :b, "foo" 2}]))
   (is (= (let-mutated [x '(1 (2 3))]
-                      (template-matches (variable "foo") {:a :b} x))
+                      (matching-extensions (variable "foo") {:a :b} x))
          [{:a :b, "foo" '(1 (2 3))}]))
   (is (= (let [v `(1 ~(variable "foo"))]
            (let-mutated [x '(1 2)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable "foo") :foo))]
            (let-mutated [x '(1 (2 :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable "foo") :foo))]
            (let-mutated [x '(1 (2 :bar :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable "foo") :foo))]
            (let-mutated [x '(1 (2 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (let [v `(1 (~(variable "foo") :foo))]
            (let-mutated [x '(1 2)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (let [v `(1 (~(variable "foo") false))]
            (let-mutated [x '(1 (2 false))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable "foo") false))]
            (let-mutated [x '(1 (2 true))]
-             (template-matches v  {:a :b} x)))
+             (matching-extensions v  {:a :b} x)))
            nil))
   (is (= (set (let [v `(1 (~(variable "foo") :foo))]
                 (let-mutated [x '(1 (2 :foo) (3 :foo) (2 :foo) (4 :bar))]
-                  (template-matches v {:a :b} x))))
+                  (matching-extensions v {:a :b} x))))
          #{{:a :b, "foo" 2} {:a :b, "foo" 3}}))
   (is (= (let [v `(1 (~(variable "foo") :foo)
                      (~(variable "foo") :bar))]
            (let-mutated [x '(1 (2 :foo) (2 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let-mutated [x '(1 (2 :foo) (2 :bar))]
-                      (template-matches `(nil (~(variable "foo") :foo)
+                      (matching-extensions `(nil (~(variable "foo") :foo)
                                               (~(variable "foo") :bar))
                                         {:a :b}
                                         x))
@@ -228,72 +228,72 @@
   (is (= (let [v `(2 (~(variable "foo") :foo)
                      (~(variable "foo") :bar))]
            (let-mutated [x '(1 (2 :foo) (2 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (println "start")
   (is (= (let [v `(~(variable "foo"))]
            (let-mutated [x '(1)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 1}]))
   (println "done")
   (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
            (let-mutated [x '(1 1)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 1}]))
   (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
            (let-mutated [x '(1 2)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
            (let-mutated [x '(1 2 3 1)]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 1}]))
   (is (= (let [v `(1 (~(variable "foo") :foo)
                      (~(variable "foo") :bar))]
            (let-mutated [x '(1 (2 :foo) (3 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (set (let [v `(1 (~(variable "foo") :foo)
                           (~(variable "foo") :bar))]
                 (let-mutated [x '(1 (1 :foo) (2 :foo)
                                     (1 :bar) (2 :bar) (3 :bar))]
-                  (template-matches v {:a :b} x))))
+                  (matching-extensions v {:a :b} x))))
          #{{:a :b, "foo" 1} {:a :b, "foo" 2}}))
   (is (= (let [v `(1 (~(variable "foo") :foo)
                      (~(variable "bar") :bar))]
            (let-mutated [x '(1 (2 :foo) (3 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2, "bar" 3}]))
   (is (= (let [v `(1 (~(variable "foo") :foo)
                      (~(variable nil) :bar))]
            (let-mutated [x '(1 (2 :foo) (3 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable nil) :foo)
                      (~(variable nil) :bar))]
            (let-mutated [x '(1 (2 :foo) (3 :bar))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b}]))
   (is (= (let [v `(1 (~(variable "foo" 2) :foo))]
            (let-mutated [x '(1 (2 :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 2}]))
   (is (= (let [v `(1 (~(variable "foo" 2) :foo))]
            (let-mutated [x '(1 (3 :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (let [v `(~(variable "foo" 1) ~(variable "foo"))]
            (let-mutated [x '(1 (1 :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          nil))
   (is (= (let [v `(~(variable "foo" 1)
                    ~(variable "foo" nil true))]
            (let-mutated [x '(1 (1 :foo))]
-             (template-matches v {:a :b} x)))
+             (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 1}]))
   (is (check (let [x `(1 ~(variable "foo") ~(variable "bar"))]
                (let-mutated [y '(1 2 3 4)]
-                 (template-matches x {:a :b} y)))
+                 (matching-extensions x {:a :b} y)))
              (as-set [{:a :b "foo" 2 "bar" 3}
                       {:a :b "foo" 2 "bar" 4}
                       {:a :b "foo" 3 "bar" 2}
@@ -301,37 +301,38 @@
                       {:a :b "foo" 4 "bar" 2}
                       {:a :b "foo" 4 "bar" 3}])))
   ;; not in elements
-  (is (= (let-mutated [a 1] (template-matches `(1 ~(not-query :x)) a))
+  (is (= (let-mutated [a 1] (matching-extensions `(1 ~(not-query :x)) a))
          [{}]))
   (is (empty? (let-mutated [a '(1 :a)]
-                (template-matches `(1 ~(not-query :a)) a))))
+                (matching-extensions `(1 ~(not-query :a)) a))))
   (is (= (let-mutated [a '(1 :a :b)]
-           (template-matches `(1 :a :b ~(not-query :x) ~(not-query :u)) a))
+           (matching-extensions `(1 :a :b ~(not-query :x) ~(not-query :u)) a))
          [{}]))
   (is (empty? (let-mutated [a '(1 :a :b)]
-                (template-matches `(1 :a :b :c ~(not-query :x) ~(not-query :u))
+                (matching-extensions `(1 :a :b :c ~(not-query :x)
+                                         ~(not-query :u))
                                   a))))
   (is (empty? (let-mutated [a '(1 :a :b)]
-                (template-matches
+                (matching-extensions
                  `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
                  a))))
   (is (= (let-mutated [a '(1 :a (:b :c))]
-           (template-matches `(1 :a (:b ~(not-query :x))
+           (matching-extensions `(1 :a (:b ~(not-query :x))
                                  ~(not-query `(:b ~(not-query :c))))
                              a))
          [{}]))
   (is (empty? (let-mutated [a '(1 :a (:b :c))]
-                (template-matches `(1 :a (:b ~(not-query :c))) a))))
+                (matching-extensions `(1 :a (:b ~(not-query :c))) a))))
   (is (empty? (let-mutated [a '(1 :a (:b :c))]
-                (template-matches `(1 :a :b ~(not-query `(:b ~(not-query :d))))
+                (matching-extensions `(1 :a :b ~(not-query `(:b ~(not-query :d))))
                                   a))))
   (is (= (let-mutated [a '(1 (:a :b) (:c :d))]
-           (template-matches `(1 (:a ~(variable "foo" nil))
+           (matching-extensions `(1 (:a ~(variable "foo" nil))
                                  ~(not-query `(:c ~(variable "foo" nil))))
                              a))
          [{"foo" :b}]))
   (is (empty? (let-mutated [a '(1 (:a :b) (:c :b))]
-                (template-matches `(1 (:a ~(variable "foo" nil))
+                (matching-extensions `(1 (:a ~(variable "foo" nil))
                                       ~(not-query `(:c ~(variable "foo" nil))))
                                   a)))))
 

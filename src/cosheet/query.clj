@@ -3,12 +3,11 @@
             [cosheet.store :as store]
             [cosheet.expression :refer [expr expr-seq expr-let]]
             [cosheet.utils :refer [add-elements-to-entity-list]]))
-;;; TODO: rename template-matches to matching-extensions
 
 ;;; There are three levels of matching:
 ;;;        extended-by?:  Takes a template, which may not have variables, and an
 ;;;                       entity. Says whether the entity extends the template.
-;;;    template-matches:  Takes a template, which may have
+;;; matching-extensions:  Takes a template, which may have
 ;;;                       variables, an environment, and an entity.
 ;;;                       Returns a set of extensions of the environment
 ;;;                       that cause the entity to be an extension
@@ -111,15 +110,15 @@
   [template target]
   (extended-by-m? template target))
 
-(defmulti template-matches-m
+(defmulti matching-extensions-m
   (fn [template env target] true))
 
-(defn template-matches
+(defn matching-extensions
   "Return a lazy seq of environments that are extensions of the given
   environment and where the target matches the template, which must be
   immutable."
-  ([template target] (template-matches-m template {} target))
-  ([template env target] (template-matches-m template env target)))
+  ([template target] (matching-extensions-m template {} target))
+  ([template env target] (matching-extensions-m template env target)))
 
 (defmulti best-template-match-m
   (fn [templates env target] true))
@@ -144,9 +143,9 @@
         ;; Optimized case to not build reporters for all the subsidiary tests. 
         (expr-let [matches (entity/updating-with-immutable
                             [immutable target]
-                            (template-matches template immutable))]
+                            (matching-extensions template immutable))]
           (map #(entity/in-different-store (::v %) target) matches))
-        (expr-let [matches (template-matches template target)]
+        (expr-let [matches (matching-extensions template target)]
           (map ::v matches))))))
   
 (defmulti query-matches-m

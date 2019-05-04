@@ -15,7 +15,7 @@
     [entity :refer [StoredEntity description->entity to-list
                     content elements label->elements label->content subject]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
-    [query :refer [matching-elements template-matches]]
+    [query :refer [matching-elements matching-extensions]]
     query-impl)
    (cosheet.server
     [session-state :refer [queue-to-log]]
@@ -61,7 +61,7 @@
                           [false args])
         template (first args)
         match (if template
-                (let [matches (template-matches template item)
+                (let [matches (matching-extensions template item)
                       value (:v (first matches))]
                   (assert value)
                   value)

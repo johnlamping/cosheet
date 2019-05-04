@@ -10,7 +10,7 @@
                                      to-list deep-to-list current-version]]
                      [query :as query
                             :refer [extended-by-m?
-                                    template-matches-m
+                                    matching-extensions-m
                                     best-template-match-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
@@ -235,7 +235,7 @@
              (env (label->content entity ::query/name)))
         (->BoundEntity entity env))))
 
-(def template-matches)
+(def matching-extensions)
 
 (defn current-entity-value
   [entity]
@@ -267,7 +267,7 @@
             (expr-let
                 [envs (if (nil? template)
                         [env]
-                        (template-matches template env target))]
+                        (matching-extensions template env target))]
               (if (not (nil? name))
                 (expr-let [value (if reference target target-as-immutable)]
                   (seq (map #(assoc % name value) envs)))
@@ -285,7 +285,7 @@
                              env))]
     (if (seq? labels)
       (expr-let [candidates (candidate-elements labels target)
-                 match-envs (expr-seq map #(template-matches query env %)
+                 match-envs (expr-seq map #(matching-extensions query env %)
                                       candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -361,7 +361,7 @@
 (defn item-matches [item env target]
   (expr-let [content-match-envs
              (if-let [item-content (content item)]
-               (expr template-matches
+               (expr matching-extensions
                  item-content env (content-reference target))
                [env])]
     (when (seq content-match-envs)
@@ -388,7 +388,7 @@
                 (expr-filter #(no-element-matches negative % target)
                              envs)))))))))
 
-(defn template-matches [query env target]
+(defn matching-extensions [query env target]
   (assert (not (mutable-entity? query)))
   (let [answer
         (if (atom? query)
@@ -399,18 +399,18 @@
             (item-matches query env target)))]
     answer))
 
-(defmethod template-matches-m true [query env target]
-  (template-matches query env target))
+(defmethod matching-extensions-m true [query env target]
+  (matching-extensions query env target))
 
 (defmethod best-template-match-m true [queries env target]
-  (expr-let [matches (expr-seq map #(template-matches % env target) queries)]
+  (expr-let [matches (expr-seq map #(matching-extensions % env target) queries)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))
                                    matches queries)
                                (remove nil?)
                                (seq))]
       (reduce (fn [best query]
-                (if (seq (template-matches best env query))
+                (if (seq (matching-extensions best env query))
                   query
                   best))
               (first candidates) (rest candidates)))))
@@ -487,7 +487,7 @@
              (expr apply concat
                    (expr-seq
                     map
-                    (partial template-matches item env)
+                    (partial matching-extensions item env)
                     (expr map
                       #(description->entity % store)
                       (expr store/candidate-matching-ids

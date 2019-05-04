@@ -3,22 +3,23 @@
             [cosheet.store :as store]
             [cosheet.expression :refer [expr expr-seq expr-let]]
             [cosheet.utils :refer [add-elements-to-entity-list]]))
+;;; TODO: rename template-matches to matching-extensions
 
 ;;; There are three levels of matching:
-;;;        extended-by?:  Takes a template with no variables and an
+;;;        extended-by?:  Takes a template, which may not have variables, and an
 ;;;                       entity. Says whether the entity extends the template.
 ;;;    template-matches:  Takes a template, which may have
 ;;;                       variables, an environment, and an entity.
 ;;;                       Returns a set of extensions of the environment
 ;;;                       that cause the entity to be an extension
 ;;;                       of the template.
-;;;       query-matches:  Takes a template, which may have
+;;;       query-matches:  Takes a query, which may have
 ;;;                       variables, an environment, and a store.
 ;;;                       Returns a set of extensions of the environment
 ;;;                       that cause some entity in the store to be
 ;;;                       an extension of the template.
 ;;;
-;;; Templates are entities. Normally, they require a straight match, but
+;;; Queries are entities. Normally, they require a straight match, but
 ;;; a few special forms are recognized, all indicated by their content
 ;;; being ::special-form and an element (<special-form> :type)
 ;;; A variable can match anything, and what it matches is recorded
@@ -48,14 +49,14 @@
 ;;; A forall matches if its template matches for every way its variable
 ;;;   can be bound.
 ;;;   (::special-form (:forall ::type)
-;;;                   <variable (::template :variable)>
-;;;                   <template (::template :template)>
+;;;                   <variable ::variable>
+;;;                   <template ::template>
 ;;; An exists matches if the template matches for some way its variable
 ;;;   can be bound.
 ;;;   (::special-form (:exists ::type)
-;;;                   <variable (::template :variable)>
-;;;                   <template (::template :template)>
-;;; Only variables and negations may appear as elements in a template,
+;;;                   <variable ::variable>
+;;;                   <template ::template>
+;;; Only variables and negations may appear as elements in a query,
 ;;; and :not may currently only appear there.
 
 (defn variable-query
@@ -72,10 +73,34 @@
            value-may-extend (conj '(true ::value-may-extend)))))
 
 (defn not-query
-  [template]
-  `(::special-form)
-  `(::special-form (:not ::type)
-                   ~(add-elements-to-entity-list template [::template])))
+  [query]
+  `(::special-form
+    (:not ::type)
+    ~(add-elements-to-entity-list query ['(::template :first)])))
+
+(defn and-query
+  [query1 query2]
+  `(::special-form
+    (:and ::type)
+    ~(add-elements-to-entity-list query1 ['(::template :first)])
+    ~(add-elements-to-entity-list query2 ['(::template :second)])))
+
+(defn forall-quqery
+  [variable-name variable-template query]
+  `(::special-form
+    (:forall ::type)
+    ~(add-elements-to-entity-list
+      (variable-query variable-name :template variable-template) [::variable])
+    ~(add-elements-to-entity-list query [::template])))
+
+;;; TODO: Get rid of template for exists
+(defn exists-query
+  [variable-name variable-template query]
+  `(::special-form
+    (:exists ::type)
+    ~(add-elements-to-entity-list
+      (variable-query variable-name :template variable-template) [::variable])
+    ~(add-elements-to-entity-list query [::template])))
 
 (defmulti extended-by-m?
   (fn [template target] true))

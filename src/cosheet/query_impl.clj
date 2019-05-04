@@ -54,15 +54,17 @@
    and one of negated queries. Discard any queries with content ::template."
   [queries]
   (let [grouped (group-by (fn [query]
-                            (cond (and (not (atom? query))
-                                       (= (content query) :not))
+                            (cond (and (= (content query) ::query/special-form)
+                                       (= (label->content query ::query/type)
+                                          :not))
                                   :negation
                                   (= (content query) ::query/template)
                                   :template
                                   true
                                   :regular))
                           queries)]
-    [(:regular grouped) (map #(first (elements %)) (:negation grouped))]))
+    [(:regular grouped) (map #(first (label->elements % ::query/template))
+                             (:negation grouped))]))
 
 (def extended-by?)
 
@@ -80,7 +82,7 @@
         labels
         (let [annotation (first annotations)
               label (atomic-value annotation)]
-          (cond (or (nil? label) (= label :not) (= label ::query/special-form))
+          (cond (or (nil? label) (= label ::query/special-form))
                 (recur labels (rest annotations))
                 (and (= label (content annotation))
                      (not (seq? label))
@@ -176,7 +178,8 @@
                                   (to-list (current-version query))
                                   query)]
                       (if (seq? value)
-                        (let [removed (remove #(= ::query/template %) value)]
+                        (let [removed (remove #(= ::query/template (content %))
+                                              value)]
                           (if (empty? (rest removed))
                             (first removed)
                             removed))
@@ -433,24 +436,24 @@
           (when matches [env]))))))
 
 (defn exists-matches-in-store [exists env store]
-  (let [names (expr-seq map content
-                        (label->elements exists :variable-name))
-        qualifier (label->content exists :qualifier)
-        body (label->content exists :body)]
+  (let [var (first (label->elements exists ::query/variable))
+        name (label->content var ::query/name)
+        qualifier (first (label->elements var ::query/template))
+        body (first (label->elements exists ::query/template))]
     (expr-let [matches (if qualifier
                          (expr apply concat
                                (expr-seq map #(query-matches body % store)
                                          (query-matches qualifier env store)))
                          (query-matches body env store))]
-      (seq (distinct (map #(apply dissoc % names) matches))))))
+      (seq (distinct (map #(dissoc % name) matches))))))
 
 (defn forall-matches-in-store [forall env store]
-  (let [names (expr-seq map content
-                             (label->elements forall :variable-name))
-             qualifier (label->content forall :qualifier)
-        body (label->content forall :body)]
+  (let [var (first (label->elements forall ::query/variable))
+        name (label->content var ::query/name)
+        qualifier (first (label->elements var ::query/template))
+        body (first (label->elements forall ::query/template))]
     (expr-let [matches (query-matches qualifier env store)]
-      (let [groups (group-by #(apply dissoc % names) matches)]
+      (let [groups (group-by #(dissoc % name) matches)]
         ;; Get [for each group of bindings matching the qualifier
         ;;       [for each binding in the group (which will bind the vars)
         ;;         [each extension of the binding satisfying the body]]]
@@ -465,13 +468,15 @@
                 (fn [binding-group]
                   (apply clojure.set/intersection
                          (map (fn [extensions]
-                                (set (map #(apply dissoc % names) extensions)))
+                                (set (map #(dissoc % name) extensions)))
                               binding-group)))
                 binding-groups)))))))
 
 (defn and-matches-in-store [and env store]
-  (let [first (label->content and :first)
-        second (label->content and :second)]
+  (let [templates (label->elements and ::query/template)
+        [first second] (if (label->content (first templates) :first)
+                         templates
+                         (reverse templates))]
     (expr-let [matches (expr apply concat
                              (expr-seq map #(query-matches-m second % store)
                                        (query-matches-m first env store)))]
@@ -494,16 +499,14 @@
   ([query store] (query-matches query {} store))
   ([query env store]
    (assert (not (mutable-entity? query)))
-   (if (variable? query)
-     (variable-matches-in-store query env store)
-     (let [query-content (content query)]
-       (if (keyword? query-content)
-         (case query-content
-           :exists (exists-matches-in-store query env store)
-           :forall (forall-matches-in-store query env store)
-           :and (and-matches-in-store query env store)
-           (item-matches-in-store query env store))
-         (item-matches-in-store query env store))))))
+   (let [query-content (content query)]
+     (if (= ::query/special-form query-content)
+       (case (label->content query ::query/type)
+         :variable (variable-matches-in-store query env store)
+         :exists (exists-matches-in-store query env store)
+         :forall (forall-matches-in-store query env store)
+         :and (and-matches-in-store query env store))
+       (item-matches-in-store query env store)))))
 
 (defmethod query-matches-m true [query env store]
   (query-matches query env store))

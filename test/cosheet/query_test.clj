@@ -8,7 +8,7 @@
                      [query :refer :all]
                      [query-impl :refer [bind-entity turn-into-template]]
                      [expression-manager :refer [current-value]]
-                     [debug :refer [envs-to-list]]
+                     [debug :refer [envs-to-list simplify-for-print]]
                      [test-utils :refer [check as-set
                                          let-mutated let-mutated-store]]
                      )
@@ -66,20 +66,25 @@
     (is (extended-by? 3 element1))
     (is (not (extended-by? element1 3)))
     (is (extended-by? 3 (entity/content-reference element0)))
-    (is (let-mutated [a 1] (extended-by? '(1 (:not :x)) a)))
-    (is (not (let-mutated [a '(1 :a)] (extended-by? '(1 (:not :a)) a))))
+    (is (let-mutated [a 1] (extended-by? `(1 ~(not-query :x)) a)))
+    (is (not (let-mutated [a '(1 :a)] (extended-by? `(1 ~(not-query :a)) a))))
     (is (let-mutated [a '(1 :a (:b :c))]
-          (extended-by? '(1 :a :b (:not :x) (:not :u)) a)))
+          (extended-by? `(1 :a :b ~(not-query :x) ~(not-query :u)) a)))
     (is (not (let-mutated [a '(1 :a (:b :c))]
-               (extended-by? '(1 :a :b :c (:not :x) (:not :u)) a))))
+               (extended-by? `(1 :a :b :c ~(not-query :x) ~(not-query :u)) a))))
     (is (not (let-mutated [a '(1 :a (:b :c))]
-               (extended-by? '(1 :a :b (:not :x) (:not :u) (:not :a)) a))))
+               (extended-by?
+                `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
+                a))))
     (is (let-mutated [a '(1 :a (:b :c))]
-          (extended-by? '(1 :a (:b (:not :x)) (:not (:b (:not :c)))) a)))
+          (extended-by?
+           `(1 :a (:b ~(not-query :x))  ~(not-query `(:b ~(not-query :c))))
+           a)))
     (is (not (let-mutated [a '(1 :a (:b :c))]
-               (extended-by? '(1 :a (:b (:not :c))) a))))
+               (extended-by? `(1 :a (:b ~(not-query :c))) a))))
     (is (not (let-mutated [a '(1 :a (:b :c))]
-               (extended-by? '(1 :a :b (:not (:b (:not :d)))) a))))))
+               (extended-by? `(1 :a :b ~(not-query `(:b ~(not-query :d))))
+                             a))))))
 
 (defn variable
   ([name] (variable-query name))
@@ -295,32 +300,39 @@
                       {:a :b "foo" 3 "bar" 4}
                       {:a :b "foo" 4 "bar" 2}
                       {:a :b "foo" 4 "bar" 3}])))
-  (is (= (let-mutated [a 1] (template-matches '(1 (:not :x)) a))
+  ;; not in elements
+  (is (= (let-mutated [a 1] (template-matches `(1 ~(not-query :x)) a))
          [{}]))
-  (is (empty? (let-mutated [a '(1 :a)] (template-matches '(1 (:not :a)) a))))
+  (is (empty? (let-mutated [a '(1 :a)]
+                (template-matches `(1 ~(not-query :a)) a))))
   (is (= (let-mutated [a '(1 :a :b)]
-           (template-matches '(1 :a :b (:not :x) (:not :u)) a))
+           (template-matches `(1 :a :b ~(not-query :x) ~(not-query :u)) a))
          [{}]))
   (is (empty? (let-mutated [a '(1 :a :b)]
-                (template-matches '(1 :a :b :c (:not :x) (:not :u)) a))))
+                (template-matches `(1 :a :b :c ~(not-query :x) ~(not-query :u))
+                                  a))))
   (is (empty? (let-mutated [a '(1 :a :b)]
                 (template-matches
-                 '(1 :a :b (:not :x) (:not :u) (:not :a)) a))))
+                 `(1 :a :b ~(not-query :x) ~(not-query :u) ~(not-query :a))
+                 a))))
   (is (= (let-mutated [a '(1 :a (:b :c))]
-           (template-matches '(1 :a (:b (:not :x)) (:not (:b (:not :c)))) a))
+           (template-matches `(1 :a (:b ~(not-query :x))
+                                 ~(not-query `(:b ~(not-query :c))))
+                             a))
          [{}]))
   (is (empty? (let-mutated [a '(1 :a (:b :c))]
-                (template-matches '(1 :a (:b (:not :c))) a))))
+                (template-matches `(1 :a (:b ~(not-query :c))) a))))
   (is (empty? (let-mutated [a '(1 :a (:b :c))]
-                (template-matches '(1 :a :b (:not (:b (:not :d)))) a))))
+                (template-matches `(1 :a :b ~(not-query `(:b ~(not-query :d))))
+                                  a))))
   (is (= (let-mutated [a '(1 (:a :b) (:c :d))]
            (template-matches `(1 (:a ~(variable "foo" nil))
-                                 (:not (:c ~(variable "foo" nil))))
+                                 ~(not-query `(:c ~(variable "foo" nil))))
                              a))
          [{"foo" :b}]))
   (is (empty? (let-mutated [a '(1 (:a :b) (:c :b))]
                 (template-matches `(1 (:a ~(variable "foo" nil))
-                                      (:not (:c ~(variable "foo" nil))))
+                                      ~(not-query `(:c ~(variable "foo" nil))))
                                   a)))))
 
 (deftest best-template-match-test
@@ -396,8 +408,8 @@
                  {"v" 3}}))
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
-                   (query-matches `(:and ((1 ~(variable "v")) :first)
-                                         (~(variable "v") :second))
+                   (query-matches (and-query `(1 ~(variable "v"))
+                                             (variable "v"))
                                    store))))
            #{{"v" '(2 3)} {"v" '(2 4)}}))
     ;; variables inside items
@@ -430,8 +442,8 @@
            [{"v" 3}]))
     (let [matches (let-mutated-store [store s0 mutator]
                     (query-matches
-                     `(:and ((1 (~(variable "v" nil nil true) 3)) :first)
-                            ((nil (~(variable "v") 4)) :second))
+                     (and-query `(1 (~(variable "v" nil nil true) 3))
+                                `(nil (~(variable "v") 4)))
                      store))]
       (is (= (count matches) 1))
       (is (= (keys (first matches)) ["v"]))
@@ -439,104 +451,88 @@
       (is (= (current-value (entity/to-list ((first matches) "v")))) 2))
     (is (= (envs-to-list
             (let-mutated-store [store s0 mutator]
-              (query-matches `(:and ((nil (~(variable "v") 4))
-                                      :first)
-                                     ((1 (~(variable "v" nil nil true) 3))
-                                      :second))
+              (query-matches (and-query `(nil (~(variable "v") 4))
+                                        `(1 (~(variable "v" nil nil true) 3)))
                               store)))
            nil))
     ;; and
     (is (= (envs-to-list
             (let-mutated-store [store s0 mutator]
-              (query-matches `(:and ((1 (~(variable "v") 3)) :first)
-                                     ((nil (~(variable "v") 4)) :second))
+              (query-matches (and-query `(1 (~(variable "v") 3))
+                                        `(nil (~(variable "v") 4)))
                               store)))
            [{"v" 2}]))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:and ((1 (~(variable "v" nil nil true) 3))
-                                     :first)
-                                    ((nil (~(variable "v" nil nil true) 4))
-                                     :second))
+             (query-matches (and-query `(1 (~(variable "v" nil nil true) 3))
+                                       `(nil (~(variable "v" nil nil true) 4)))
                              store))
            nil))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:and ((1 (~(variable "v") 3)) :first)
-                                    ((nil (~(variable "v") 5)) :second))
+             (query-matches (and-query `(1 (~(variable "v") 3))
+                                       `(nil (~(variable "v") 5)))
                              store))
            nil))
     (is (= (envs-to-list
             (let-mutated-store [store s0 mutator]
-              (query-matches `(:and ((~(variable "c") (~(variable "v") 3))
-                                      :first)
-                                     ((~(variable "c") (~(variable "v") 4))
-                                      :second))
+              (query-matches (and-query `(~(variable "c") (~(variable "v") 3))
+                                        `(~(variable "c") (~(variable "v") 4)))
                               store)))
            [{"v" 2, "c" 1}]))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:and ((~(variable "v") (~(variable "c") 3))
-                                     :first)
-                                    ((~(variable "c") (~(variable "v") 4))
-                                     :second))
+             (query-matches (and-query `(~(variable "v") (~(variable "c") 3))
+                                       `(~(variable "c") (~(variable "v") 4)))
                              store))
            nil))
     (is (= (set (envs-to-list
                  (let-mutated-store [store s0 mutator]
-                   (query-matches `(:and ((nil (~(variable "v"))) :first)
-                                         ((nil (nil ~(variable "v"))) :second))
+                   (query-matches (and-query `(nil (~(variable "v")))
+                                             `(nil (nil ~(variable "v"))))
                                    store))))
            #{{"v" 2} {"v" 3} {"v" 4} {"v" 5}}))
     ;; exists
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:exists ("v" :variable-name)
-                                       ((nil (1 ~(variable "v"))
-                                             (3 ~(variable "v")))
-                                        :body))
+             (query-matches (exists-query "v" nil
+                                       `(nil (1 ~(variable "v"))
+                                             (3 ~(variable "v"))))
                              store))
            nil)) 
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:exists ("v" :variable-name)
-                                       ((nil (1 (2 ~(variable "v")))
-                                             (~(variable "v")))
-                                        :body))
+             (query-matches (exists-query "v" nil
+                                       `(nil (1 (2 ~(variable "v")))
+                                             (~(variable "v"))))
                              store))
            [{}]))
     (is (= (envs-to-list
             (let-mutated-store [store s0 mutator]
-              (query-matches `(:exists ("c" :variable-name)
-                                        ((nil (1 (2 ~(variable "v")))
-                                              (~(variable "v")))
-                                         :body))
+              (query-matches (exists-query "c" nil
+                                        `(nil (1 (2 ~(variable "v")))
+                                              (~(variable "v"))))
                               store)))
            [{"v" 3}]))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:exists  ("v" :variable-name)
-                                        ((1 (~(variable "v") 3)) :qualifier)
-                                        ((nil (~(variable "v") 4)) :body))
+             (query-matches (exists-query  "v"  `(1 (~(variable "v") 3))
+                                           `(nil (~(variable "v") 4)))
                              store))
            [{}]))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:exists  ("v" :variable-name)
-                                        ((1 ~(variable "v")) :qualifier)
-                                        ((3 ~(variable "v")) :body))
+             (query-matches (exists-query  "v" `(1 ~(variable "v"))
+                                           `(3 ~(variable "v")))
                              store))
            nil))
     ;; forall
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:forall ("v" :variable-name)
-                                       ((1 (~(variable "v") 3)) :qualifier)
-                                       ((1 (~(variable "v") 4)) :body))
+             (query-matches (forall-query "v" `(1 (~(variable "v") 3))
+                                          `(1 (~(variable "v") 4)))
                              store))
            [{}]))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:forall ("v" :variable-name)
-                                       ((1 (~(variable "v") 3)) :qualifier)
-                                       ((1 (2 ~(variable "v"))) :body))
+             (query-matches (forall-query "v" `(1 (~(variable "v") 3))
+                                          `(1 (2 ~(variable "v"))))
                              store))
            nil))
     (is (= (let-mutated-store [store s0 mutator]
-             (query-matches `(:forall ("v" :variable-name)
-                                       ((1 ~(variable "v")) :qualifier)
-                                       (~(variable "v") :body))
+             (query-matches (forall-query "v"  `(1 ~(variable "v"))
+                                          (variable "v"))
                              store))
            [{}]))))
 

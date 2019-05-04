@@ -80,18 +80,19 @@
                (extended-by? '(1 :a (:b (:not :c))) a))))
     (is (not (let-mutated [a '(1 :a (:b :c))]
                (extended-by? '(1 :a :b (:not (:b (:not :d)))) a))))))
-;; 
+
 (defn variable
-  ([name] (variable name nil nil))
-  ([name condition] (variable name condition nil nil))
-  ([name condition value-may-extend]
-     (variable name condition value-may-extend nil))
-  ([name condition value-may-extend reference]
-     `(:variable
-       ~@(if name `((~name :name)))
-       ~@(if condition `((~condition :condition)))
-       ~@(if value-may-extend `((true :value-may-extend)))
-       ~@(if reference `((true :reference))))))
+  ([name] (variable-query name))
+  ([name template] (variable-query name :template template))
+  ([name template value-may-extend]
+   (variable-query name
+                   :template template
+                   :value-may-extend value-may-extend))
+  ([name template value-may-extend reference]
+   (variable-query name
+                   :template template
+                   :value-may-extend value-may-extend
+                   :reference reference)))
 
 (deftest turn-into-template-test
   (is (= (turn-into-template `(~(variable "foo")
@@ -102,15 +103,15 @@
          `(nil nil (:foo 5)))))
 
 (deftest bound-entity-test
-  (let [entity `(~(variable "foo")
-                 (4 ~(variable "bar")))
+  (let [entity `(~(variable-query "foo")
+                 (4 ~(variable-query "bar")))
         partially-bound (bind-entity entity {"foo" 7})
         bound (bind-entity entity {"foo" 7, "bar" 9})]
     (is (= (entity/content bound) 7))
     (is (= (entity/mutable-entity? bound) false))
     (is (= (entity/atom? bound) false))
     (is (= (entity/to-list partially-bound)
-           '(7 (4 (:variable ("bar" :name))))))
+           `(7 (4 ~(variable-query "bar")))))
     (is (= (entity/to-list bound)
            '(7 (4 9))))
     (is (= (map entity/to-list (entity/label->elements bound 9))

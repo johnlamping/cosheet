@@ -1,7 +1,8 @@
 (ns cosheet.query
   (:require [cosheet.entity :as entity]
             [cosheet.store :as store]
-            [cosheet.expression :refer [expr expr-seq expr-let]]))
+            [cosheet.expression :refer [expr expr-seq expr-let]]
+            [cosheet.utils :refer [add-elements-to-entity-list]]))
 
 ;;; There are three levels of matching:
 ;;;        extended-by?:  Takes a template with no variables and an
@@ -17,34 +18,64 @@
 ;;;                       that cause some entity in the store to be
 ;;;                       an extension of the template.
 ;;;
-;;; Variables are represented as items of the form
-;;; (:variable (<name> :name)
-;;;            (<condition> :condition)
-;;;            (true :value-may-extend)
-;;;            (true :reference) 
-;;; where each of the elements is optional
-;;;    A variable without a name is considered distinct from any
-;;; other variable.
-;;;    A variable with a condition can only match entities satisfying
-;;; the condition, which may not contain variables, itself.
-;;;    A bound variable with value-may-extend will match any extension of
-;;; its value.
-;;;    A variable with :reference binds to a reference to an item
-;;; in the store, rather than to the item considered as a value. Only
-;;; one instance of each reference variable should occur in a query,
-;;; since it can never match two different structures.
-;;;
-;;; In addition to variables, a template can contain one of the special forms:
-;;; (:not template)             matches if the template does not match.
-;;; (:and template template)    matches if both templates match
-;;; (:forall variable template) matches if the template matches for every way
-;;;                             the variable can be bound to satisfy its
-;;;                             condition.
-;;; (:exists variable template) matches if the template matches for some way
-;;;                             the variable can be bound to satisfy its
-;;;                             condition.
-;;; A :not form can occur as a sub-element of a template, while the other
-;;; forms cannot. Currently, a :not form can only occur there.
+;;; Templates are entities. Normally, they require a straight match, but
+;;; a few special forms are recognized, all indicated by their content
+;;; being ::special-form and an element (<special-form> :type)
+;;; A variable can match anything, and what it matches is recorded
+;;;   (::special-form (:variable ::type)
+;;;                   (<name> ::name)
+;;;                   <template ::template>
+;;;                   (true ::value-may-extend)
+;;;                   (true ::reference)
+;;;   Each of the additional elements is optional.
+;;;   A variable without a name is considered distinct from any
+;;;   other variable.
+;;;   A variable with a template can only match entities satisfying
+;;;   the template, which may not contain variables.
+;;;   A bound variable with value-may-extend will match any extension of
+;;;   its value.
+;;;   A variable with :reference binds to a reference to an item
+;;;   in the store, rather than to the item considered as a value. Only
+;;;   one instance of each reference variable should occur in a query,
+;;;   since it can never match two different structures.
+;;; A not matches if its template does not match.
+;;;   (::special-form (:not ::type) <template ::parameter>)
+;;; An and matches if both its templates match, with consistent
+;;;   variable bidings.
+;;;   (::special-form (:and ::type)
+;;;                   <template (::template :first)>
+;;;                   <template (::template :second)>
+;;; A forall matches if its template matches for every way its variable
+;;;   can be bound.
+;;;   (::special-form (:forall ::type)
+;;;                   <variable (::template :variable)>
+;;;                   <template (::template :template)>
+;;; An exists matches if the template matches for some way its variable
+;;;   can be bound.
+;;;   (::special-form (:exists ::type)
+;;;                   <variable (::template :variable)>
+;;;                   <template (::template :template)>
+;;; Only variables and negations may appear as elements in a template,
+;;; and :not may currently only appear there.
+
+(defn variable-query
+  [name & {:keys [template reference value-may-extend]
+           :as keywords}]
+  (assert (every? #{:template :reference :value-may-extend} (keys keywords)))
+  (when reference (assert (= reference true)))
+  (when value-may-extend (assert (= value-may-extend true)))
+  (apply list
+         (cond-> [::special-form '(:variable ::type)]
+           name (conj `(~name ::name))
+           template (conj (add-elements-to-entity-list template [::template]))
+           reference (conj '(true ::reference))
+           value-may-extend (conj '(true ::value-may-extend)))))
+
+(defn not-query
+  [template]
+  `(::special-form)
+  `(::special-form (:not ::type)
+                   ~(add-elements-to-entity-list template [::template])))
 
 (defmulti extended-by-m?
   (fn [template target] true))
@@ -75,24 +106,23 @@
   ([templates env target] (best-template-match-m templates env target)))
 
 (defn matching-elements
-  "Return all elements of the target that match the condition (which
+  "Return all elements of the target that match the template (which
   must be immutable.)"
-  [condition target]
-  (assert (not (entity/mutable-entity? condition)))
-  (if (or (nil? condition) (= condition '()))
+  [template target]
+  (assert (not (entity/mutable-entity? template)))
+  (if (or (nil? template) (= template '()))
     (entity/elements target)
-    (let [template `(nil (:variable (:v :name)
-                                    (~condition :condition)
-                                    (true :reference)))]
+    (let [template `(nil ~(variable-query
+                           ::v :template template :reference true))]
       (if (and (entity/mutable-entity? target)
                (satisfies? entity/StoredEntity target))
         ;; Optimized case to not build reporters for all the subsidiary tests. 
         (expr-let [matches (entity/updating-with-immutable
                             [immutable target]
                             (template-matches template immutable))]
-          (map #(entity/in-different-store (:v %) target) matches))
+          (map #(entity/in-different-store (::v %) target) matches))
         (expr-let [matches (template-matches template target)]
-          (map :v matches))))))
+          (map ::v matches))))))
   
 (defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given
@@ -106,22 +136,19 @@
   ([query env store] (query-matches-m query env store)))
 
 (defn matching-items
-  "Return all items in the store that match the condition."
-  [condition store]
-  (expr-let [condition condition]
-    (let [template `(:variable (:v :name)
-                               (~condition :condition)
-                               (true :reference))]
-      (if (satisfies? store/MutableStore store)
-        ;; Optimized case to not build reporters for all the subsidiary tests. 
-        (expr-let [matches (store/call-dependent-on-id
-                            store nil #(query-matches template %))]
-          (map #(-> %
-                    :v  ;; item that is the value of variable :v
-                    :item-id  ;; its item id
-                    (entity/description->entity store)) 
-               matches))
-        (expr-let [matches (query-matches template store)]
-          (map :v matches))))))
+  "Return all items in the store that match the template."
+  [template store]
+  (let [template (variable-query ::v :template template :reference true)]
+    (if (satisfies? store/MutableStore store)
+      ;; Optimized case to not build reporters for all the subsidiary tests. 
+      (expr-let [matches (store/call-dependent-on-id
+                          store nil #(query-matches template %))]
+        (map #(-> %
+                  ::v  ;; item that is the value of variable ::v
+                  :item-id  ;; its item id
+                  (entity/description->entity store)) 
+             matches))
+      (expr-let [matches (query-matches template store)]
+        (map ::v matches)))))
 
   

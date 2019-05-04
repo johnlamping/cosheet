@@ -116,7 +116,6 @@
         non-selector-child (first (matching-elements 'child non-selector-root))
         non-selector-grandchild (first (matching-elements 'grandchild
                                                           non-selector-child))]
-    
     (is (selector? (first (label->elements
                            (first (label->elements
                                    (first-tab-R s) :tab-topic))

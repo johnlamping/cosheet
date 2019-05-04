@@ -8,7 +8,8 @@
                                      content elements label->elements
                                      label->content atomic-value
                                      to-list deep-to-list current-version]]
-                     [query :refer [extended-by-m?
+                     [query :as query
+                            :refer [extended-by-m?
                                     template-matches-m
                                     best-template-match-m
                                     query-matches-m]]
@@ -25,8 +26,6 @@
 ;;;    The environment must include variable numbers, for renaming,
 ;;;    and an indication of the number of the current term, which must
 ;;;    be the highest number.
-
-(def ^:dynamic verbose false)
 
 (defn conj-disjoint-combinations
   "Given a sequence of collections of elements, and a sequence of elements,
@@ -51,40 +50,45 @@
             (rest sequences))))
 
 (defn separate-negations
-  "Given a seq of templates, return two seqs, one of positive templates,
-   and one of negated templates."
-  [templates]
-  (let [grouped (group-by (fn [template]
-                            (if (and (not (atom? template))
-                                     (= (content template) :not))
-                              :negation :regular))
-                          templates)]
+  "Given a seq of queries, return two seqs, one of positive queries,
+   and one of negated queries. Discard any queries with content ::template."
+  [queries]
+  (let [grouped (group-by (fn [query]
+                            (cond (and (not (atom? query))
+                                       (= (content query) :not))
+                                  :negation
+                                  (= (content query) ::query/template)
+                                  :template
+                                  true
+                                  :regular))
+                          queries)]
     [(:regular grouped) (map #(first (elements %)) (:negation grouped))]))
 
 (def extended-by?)
 
 (defn labels-for-element
-  "Given an entity that is an element of a template, find atoms that can serve
+  "Given an entity that is an element of a query, find atoms that can serve
    as labels for finding matching elements of a target. Returns either '(),
    meaning that no labels were found; a sequence of labels, any of which
    will work; or a single label, which means a perfect fit: an element
-   of a target will match the template iff and only if it has that label."
+   of a target will match the query iff and only if it has that label."
   [element]
-  (loop [labels '()
-         annotations (elements element)]
-    (if (empty? annotations)
-      labels
-      (let [annotation (first annotations)
-            label (atomic-value annotation)]
-        (cond (or (nil? label) (= label :not) (= label :variable))
-              (recur labels (rest annotations))
-              (and (= label (content annotation))
-                   (not (seq? label))
-                   (empty? (elements annotation))
-                   (nil? (content element)))
-              label
-              true
-              (recur (conj labels label) (rest annotations)))))))
+  (let [[positive negative] (separate-negations (elements element))]
+    (loop [labels '()
+           annotations positive]
+      (if (empty? annotations)
+        labels
+        (let [annotation (first annotations)
+              label (atomic-value annotation)]
+          (cond (or (nil? label) (= label :not) (= label ::query/special-form))
+                (recur labels (rest annotations))
+                (and (= label (content annotation))
+                     (not (seq? label))
+                     (empty? (elements annotation))
+                     (nil? (content element)))
+                label
+                true
+                (recur (conj labels label) (rest annotations))))))))
 
 (defn candidate-elements
   "Given a target, and labels that all the elements we are looking for
@@ -153,25 +157,31 @@
 (defmethod extended-by-m? true [template target]
   (extended-by? template target))
 
-(defn variable? [template]
-  (= (content template) :variable))
+(defn variable? [query]
+  (and (= (content query) ::query/special-form)
+        (= (label->content query ::query/type) :variable)))
 
-(defn variable-condition [variable]
-  (let [conditions (label->elements variable :condition)]
-    (when conditions (content (first conditions)))))
+(defn variable-template [variable]
+  (let [queries (label->elements variable ::query/template)]
+    (when queries (first queries))))
 
 (defn turn-into-template
-  "Remove the variables in a item, replacing them with their condition.
-   and replace item referents with their ids"
-  [template]
-  (prewalk-seqs (fn [template]
-                  (cond (variable? template)
-                        (turn-into-template (variable-condition template))
-                        (satisfies? StoredEntity template)
-                        (atomic-value (current-version template))
-                        true
-                        template))
-                template))
+  "Remove the variables in a item, replacing them with their template.
+   and replacing item referents with their values"
+  [query]
+  (prewalk-seqs (fn [query]
+                  (if (variable? query)
+                    (turn-into-template (variable-template query))
+                    (let [value (if (satisfies? StoredEntity query)
+                                  (to-list (current-version query))
+                                  query)]
+                      (if (seq? value)
+                        (let [removed (remove #(= ::query/template %) value)]
+                          (if (empty? (rest removed))
+                            (first removed)
+                            removed))
+                        value))))
+                query))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -219,7 +229,7 @@
   (if (atom? entity)
     (atomic-value entity)
     (or (and (variable? entity)
-             (env (label->content entity :name)))
+             (env (label->content entity ::query/name)))
         (->BoundEntity entity env))))
 
 (def template-matches)
@@ -231,10 +241,10 @@
     entity))
 
 (defn variable-matches [var env target]
-  (let [name (label->content var :name)
-             condition (label->content var :condition)
-             value-may-extend (label->content var :value-may-extend)
-             reference (label->content var :reference)]
+  (let [name (label->content var ::query/name)
+        template (variable-template var)
+        value-may-extend (label->content var ::query/value-may-extend)
+        reference (label->content var ::query/reference)]
     (let [value (env name)]
       (if (not (nil? value))
         (if reference
@@ -252,9 +262,9 @@
         (expr-let [target-as-immutable (current-entity-value target)]
           (when (not (nil? target-as-immutable))
             (expr-let
-                [envs (if (nil? condition)
+                [envs (if (nil? template)
                         [env]
-                        (template-matches condition env target))]
+                        (template-matches template env target))]
               (if (not (nil? name))
                 (expr-let [value (if reference target target-as-immutable)]
                   (seq (map #(assoc % name value) envs)))
@@ -262,18 +272,17 @@
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the target that match
-   the template in the environment."
-  [template env target]
-  (when verbose (println "element-match-map" target (deep-to-list target)))
+   the query in the environment."
+  [query env target]
   (let [labels (labels-for-element
-                (bind-entity (if (variable? template)
-                               (or (env (label->content template :name))
-                                   (label->content template :condition))
-                               template)
+                (bind-entity (if (variable? query)
+                               (or (env (label->content query ::query/name))
+                                   (label->content query ::query/template))
+                               query)
                              env))]
     (if (seq? labels)
       (expr-let [candidates (candidate-elements labels target)
-                 match-envs (expr-seq map #(template-matches template env %)
+                 match-envs (expr-seq map #(template-matches query env %)
                                       candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -284,8 +293,8 @@
       (expr-let [matching-elements (label->elements target labels)]
         (cond (empty? matching-elements)
               {}
-              (variable? template)
-              (let [name (label->content template :name)]
+              (variable? query)
+              (let [name (label->content query ::query/name)]
                 (reduce (fn [result element]
                           (let [new-env (assoc env name element)]
                             (assoc result new-env [element])))
@@ -293,8 +302,8 @@
               true
               {env matching-elements})))))
 
-(defn element-matches [template env target]  
-  (expr-let [match-map (element-match-map template env target)]
+(defn element-matches [query env target]  
+  (expr-let [match-map (element-match-map query env target)]
     (keys match-map)))
 
 (defn concat-maps
@@ -320,34 +329,33 @@
    {} match-map))
 
 (defn multiple-element-matches
-  "Given a sequence of templates, a map from environments to collections
+  "Given a sequence of queries, a map from environments to collections
   of disallowed elements, and a target, return a sequence of environments
-  where each template matches a different element in the target,
+  where each query matches a different element in the target,
   and not a disallowed element."
-  [templates env-map target]
-  (if (empty? templates)
+  [queries env-map target]
+  (if (empty? queries)
     (keys env-map)
     (expr-let [matching-maps
-               (expr-seq map #(element-match-map (first templates) % target)
+               (expr-seq map #(element-match-map (first queries) % target)
                          (keys env-map))]
       (let [disjoint-map (concat-maps
                           (map conj-disjoint-maps
                                (vals env-map) matching-maps))]
         (multiple-element-matches
-         (rest templates) disjoint-map target)))))
+         (rest queries) disjoint-map target)))))
 
 (defn no-element-matches
-  "Return true if none of the templates are matched
+  "Return true if none of the queries are matched
    by any elements of the target, given the environment."
-  [templates env target]
-  (if (empty? templates)
+  [queries env target]
+  (if (empty? queries)
     true
-    (expr-let [matches (element-matches (first templates) env target)]
+    (expr-let [matches (element-matches (first queries) env target)]
       (when (empty? matches)
-        (no-element-matches (rest templates) env target)))))
+        (no-element-matches (rest queries) env target)))))
 
 (defn item-matches [item env target]
-  (when verbose (println "item-matches"))
   (expr-let [content-match-envs
              (if-let [item-content (content item)]
                (expr template-matches
@@ -377,41 +385,38 @@
                 (expr-filter #(no-element-matches negative % target)
                              envs)))))))))
 
-(defn template-matches [template env target]
-  (assert (not (mutable-entity? template)))
-  (when verbose
-    (println "(template-matches " template
-             (zipmap (keys env) (map deep-to-list (vals env)))
-             (simplify-for-print target)
-             ")"))
-  (if (atom? template)
-    (expr-let [extended (extended-by? template target)]
-      (when extended [env]))
-    (if (variable? template)
-      (variable-matches template env target)
-      (item-matches template env target))))
+(defn template-matches [query env target]
+  (assert (not (mutable-entity? query)))
+  (let [answer
+        (if (atom? query)
+          (expr-let [extended (extended-by? query target)]
+            (when extended [env]))
+          (if (variable? query)
+            (variable-matches query env target)
+            (item-matches query env target)))]
+    answer))
 
-(defmethod template-matches-m true [template env target]
-  (template-matches template env target))
+(defmethod template-matches-m true [query env target]
+  (template-matches query env target))
 
-(defmethod best-template-match-m true [templates env target]
-  (expr-let [matches (expr-seq map #(template-matches % env target) templates)]
-    (when-let [candidates (->> (map (fn [match template]
-                                      (when (seq match) template))
-                                   matches templates)
+(defmethod best-template-match-m true [queries env target]
+  (expr-let [matches (expr-seq map #(template-matches % env target) queries)]
+    (when-let [candidates (->> (map (fn [match query]
+                                      (when (seq match) query))
+                                   matches queries)
                                (remove nil?)
                                (seq))]
-      (reduce (fn [best template]
-                (if (seq (template-matches best env template))
-                  template
+      (reduce (fn [best query]
+                (if (seq (template-matches best env query))
+                  query
                   best))
               (first candidates) (rest candidates)))))
 
 (def query-matches)
 
 (defn variable-matches-in-store [var env store]
-  (let [name (label->content var :name)
-        reference (label->content var :reference)
+  (let [name (label->content var ::query/name)
+        reference (label->content var ::query/reference)
         value (env name)]
     (if (nil? value)
       (expr-let [candidate-ids (store/candidate-matching-ids
@@ -489,18 +494,16 @@
   ([query store] (query-matches query {} store))
   ([query env store]
    (assert (not (mutable-entity? query)))
-   (when verbose
-     (println "query" query "env"
-              (zipmap (keys env) (map deep-to-list (vals env)))))
-   (let [query-content (content query)]
-     (if (keyword? query-content)
-       (case query-content
-         :variable (variable-matches-in-store query env store)
-         :exists (exists-matches-in-store query env store)
-         :forall (forall-matches-in-store query env store)
-         :and (and-matches-in-store query env store)
-         (item-matches-in-store query env store))
-       (item-matches-in-store query env store)))))
+   (if (variable? query)
+     (variable-matches-in-store query env store)
+     (let [query-content (content query)]
+       (if (keyword? query-content)
+         (case query-content
+           :exists (exists-matches-in-store query env store)
+           :forall (forall-matches-in-store query env store)
+           :and (and-matches-in-store query env store)
+           (item-matches-in-store query env store))
+         (item-matches-in-store query env store))))))
 
 (defmethod query-matches-m true [query env store]
   (query-matches query env store))

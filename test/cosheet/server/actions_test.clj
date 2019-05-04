@@ -14,7 +14,7 @@
              [debug :refer [profile-and-print-reporters
                             store-as-list simplify-for-print]]
              entity-impl
-             [query :refer [matching-elements matching-items]]
+             [query :refer [matching-elements matching-items variable-query]]
              [store :refer [new-element-store new-mutable-store
                             current-store id-valid?]]
              [store-impl :refer [->ItemId]]
@@ -75,15 +75,15 @@
 
 (deftest substitute-in-key-test
   (let [key [[:pattern]
-             [:pattern '(nil (:variable (:v :name)
-                                        ((nil "age" "doubtful") :condition)
-                                        (:true :reference)))]
-             [:pattern '(nil (:variable (:v :name)
-                                        ("male" :condition)
-                                        (:true :reference)))]
-             [:pattern :subject '(nil (39 (:variable (:v :name)
-                                                     ("age" :condition)
-                                                     (:true :reference))))]
+             [:pattern `(nil ~(variable-query
+                               :v :template '(nil "age" "doubtful")
+                               :reference true))]
+             [:pattern `(nil ~(variable-query
+                               :v :template "male"
+                               :reference true))]
+             [:pattern :subject `(nil (39 ~(variable-query
+                                            :v :template "age"
+                                            :reference true)))]
              :foo "bar"]]
     (is (check (substitute-in-key key [joe])
                [(:item-id joe)

@@ -11,7 +11,7 @@
                      [query :as query
                             :refer [extended-by-m?
                                     matching-extensions-m
-                                    best-template-match-m
+                                    best-matching-query-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
@@ -58,12 +58,12 @@
                                        (= (label->content query ::query/type)
                                           :not))
                                   :negation
-                                  (= (content query) ::query/template)
+                                  (= (content query) ::query/sub-query)
                                   :template
                                   true
                                   :regular))
                           queries)]
-    [(:regular grouped) (map #(first (label->elements % ::query/template))
+    [(:regular grouped) (map #(first (label->elements % ::query/sub-query))
                              (:negation grouped))]))
 
 (def extended-by?)
@@ -164,7 +164,7 @@
         (= (label->content query ::query/type) :variable)))
 
 (defn variable-template [variable]
-  (let [queries (label->elements variable ::query/template)]
+  (let [queries (label->elements variable ::query/sub-query)]
     (when queries (first queries))))
 
 (defn turn-into-template
@@ -178,7 +178,7 @@
                                   (to-list (current-version query))
                                   query)]
                       (if (seq? value)
-                        (let [removed (remove #(= ::query/template (content %))
+                        (let [removed (remove #(= ::query/sub-query (content %))
                                               value)]
                           (if (empty? (rest removed))
                             (first removed)
@@ -280,7 +280,7 @@
   (let [labels (labels-for-element
                 (bind-entity (if (variable? query)
                                (or (env (label->content query ::query/name))
-                                   (label->content query ::query/template))
+                                   (label->content query ::query/sub-query))
                                query)
                              env))]
     (if (seq? labels)
@@ -402,7 +402,7 @@
 (defmethod matching-extensions-m true [query env target]
   (matching-extensions query env target))
 
-(defmethod best-template-match-m true [queries env target]
+(defmethod best-matching-query-m true [queries env target]
   (expr-let [matches (expr-seq map #(matching-extensions % env target) queries)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))
@@ -438,8 +438,8 @@
 (defn exists-matches-in-store [exists env store]
   (let [var (first (label->elements exists ::query/variable))
         name (label->content var ::query/name)
-        qualifier (first (label->elements var ::query/template))
-        body (first (label->elements exists ::query/template))]
+        qualifier (first (label->elements var ::query/sub-query))
+        body (first (label->elements exists ::query/sub-query))]
     (expr-let [matches (if qualifier
                          (expr apply concat
                                (expr-seq map #(query-matches body % store)
@@ -450,8 +450,8 @@
 (defn forall-matches-in-store [forall env store]
   (let [var (first (label->elements forall ::query/variable))
         name (label->content var ::query/name)
-        qualifier (first (label->elements var ::query/template))
-        body (first (label->elements forall ::query/template))]
+        qualifier (first (label->elements var ::query/sub-query))
+        body (first (label->elements forall ::query/sub-query))]
     (expr-let [matches (query-matches qualifier env store)]
       (let [groups (group-by #(dissoc % name) matches)]
         ;; Get [for each group of bindings matching the qualifier
@@ -473,7 +473,7 @@
                 binding-groups)))))))
 
 (defn and-matches-in-store [and env store]
-  (let [templates (label->elements and ::query/template)
+  (let [templates (label->elements and ::query/sub-query)
         [first second] (if (label->content (first templates) :first)
                          templates
                          (reverse templates))]

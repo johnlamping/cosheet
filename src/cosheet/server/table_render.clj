@@ -3,7 +3,7 @@
                                     add-elements-to-entity-list remove-first]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items
-                                    best-template-match extended-by?]]
+                                    best-matching-query extended-by?]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
@@ -83,7 +83,7 @@
                        (table-condition-elements-R
                         immutable-row-condition-item))
                   item-condition (immutable-visible-to-list item)
-                  redundant (best-template-match
+                  redundant (best-matching-query
                              (map #(immutable-semantic-to-list
                                     (pattern-to-query %))
                                   condition-elements)

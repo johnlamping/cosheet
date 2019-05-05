@@ -88,14 +88,14 @@
 
 (defn variable
   ([name] (variable-query name))
-  ([name template] (variable-query name :template template))
+  ([name template] (variable-query name :qualifier template))
   ([name template value-may-extend]
    (variable-query name
-                   :template template
+                   :qualifier template
                    :value-may-extend value-may-extend))
   ([name template value-may-extend reference]
    (variable-query name
-                   :template template
+                   :qualifier template
                    :value-may-extend value-may-extend
                    :reference reference)))
 
@@ -336,18 +336,18 @@
                                       ~(not-query `(:c ~(variable "foo" nil))))
                                   a)))))
 
-(deftest best-template-match-test
+(deftest best-matching-query-test
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-template-match ['(1) '(1 2) '(1 2 5)] {:a :b} y)))
+                 (best-matching-query ['(1) '(1 2) '(1 2 5)] {:a :b} y)))
              '(1 2)))
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-template-match ['(1 2 5) '(1 2) '(1)] {:a :b} y)))
+                 (best-matching-query ['(1 2 5) '(1 2) '(1)] {:a :b} y)))
              '(1 2)))
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-template-match ['(1 2 5)] {:a :b} y)))
+                 (best-matching-query ['(1 2 5)] {:a :b} y)))
              nil)))
 
 (deftest matching-elements-test

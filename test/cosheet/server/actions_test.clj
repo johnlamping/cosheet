@@ -76,13 +76,13 @@
 (deftest substitute-in-key-test
   (let [key [[:pattern]
              [:pattern `(nil ~(variable-query
-                               :v :template '(nil "age" "doubtful")
+                               :v :qualifier '(nil "age" "doubtful")
                                :reference true))]
              [:pattern `(nil ~(variable-query
-                               :v :template "male"
+                               :v :qualifier "male"
                                :reference true))]
              [:pattern :subject `(nil (39 ~(variable-query
-                                            :v :template "age"
+                                            :v :qualifier "age"
                                             :reference true)))]
              :foo "bar"]]
     (is (check (substitute-in-key key [joe])

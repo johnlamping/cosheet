@@ -113,50 +113,49 @@
     ~(add-elements-to-entity-list query [::sub-query])))
 
 (defmulti extended-by-m?
-  (fn [template target] true))
+  (fn [fixed-term target] true))
 
 (defn extended-by?
-  "Return true if the template, which must be immutable and not have
-  variables, is extended by the target"
-  [template target]
-  (extended-by-m? template target))
+  "Return true if the fixed-term is extended by the target"
+  [fixed-term target]
+  (extended-by-m? fixed-term target))
 
 (defmulti matching-extensions-m
-  (fn [template env target] true))
+  (fn [term env target] true))
 
 (defn matching-extensions
   "Return a lazy seq of environments that are extensions of the given
-  environment and where the target matches the template, which must be
+  environment and where the target matches the term, which must be
   immutable."
-  ([template target] (matching-extensions-m template {} target))
-  ([template env target] (matching-extensions-m template env target)))
+  ([term target] (matching-extensions-m term {} target))
+  ([term env target] (matching-extensions-m term env target)))
 
 (defmulti best-matching-query-m
-  (fn [templates env target] true))
+  (fn [terms env target] true))
 
 (defn best-matching-query
-  "Given a sequence of immutable templates, return the most specific
+  "Given a sequence of immutable terms, return the most specific
   of those that matches the target, if any."
-  ([templates target] (best-matching-query-m templates {} target))
-  ([templates env target] (best-matching-query-m templates env target)))
+  ([terms target] (best-matching-query-m terms {} target))
+  ([terms env target] (best-matching-query-m terms env target)))
 
 (defn matching-elements
-  "Return all elements of the target that match the template (which
+  "Return all elements of the target that match the term (which
   must be immutable.)"
-  [template target]
-  (assert (not (entity/mutable-entity? template)))
-  (if (or (nil? template) (= template '()))
+  [term target]
+  (assert (not (entity/mutable-entity? term)))
+  (if (or (nil? term) (= term '()))
     (entity/elements target)
-    (let [template `(nil ~(variable-query
-                           ::v :qualifier template :reference true))]
+    (let [term `(nil ~(variable-query
+                        ::v :qualifier term :reference true))]
       (if (and (entity/mutable-entity? target)
                (satisfies? entity/StoredEntity target))
         ;; Optimized case to not build reporters for all the subsidiary tests. 
         (expr-let [matches (entity/updating-with-immutable
                             [immutable target]
-                            (matching-extensions template immutable))]
+                            (matching-extensions term immutable))]
           (map #(entity/in-different-store (::v %) target) matches))
-        (expr-let [matches (matching-extensions template target)]
+        (expr-let [matches (matching-extensions term target)]
           (map ::v matches))))))
   
 (defmulti query-matches-m

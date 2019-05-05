@@ -50,19 +50,19 @@
             (rest sequences))))
 
 (defn separate-negations
-  "Given a seq of queries, return two seqs, one of positive queries,
-   and one of negated queries. Discard any queries with content ::template."
-  [queries]
-  (let [grouped (group-by (fn [query]
-                            (cond (and (= (content query) ::query/special-form)
-                                       (= (label->content query ::query/type)
+  "Given a seq of terms, return two seqs, one of positive terms,
+   and one of negated terms. Discard any terms with content ::template."
+  [terms]
+  (let [grouped (group-by (fn [term]
+                            (cond (and (= (content term) ::query/special-form)
+                                       (= (label->content term ::query/type)
                                           :not))
                                   :negation
-                                  (= (content query) ::query/sub-query)
+                                  (= (content term) ::query/sub-query)
                                   :template
                                   true
                                   :regular))
-                          queries)]
+                          terms)]
     [(:regular grouped) (map #(first (label->elements % ::query/sub-query))
                              (:negation grouped))]))
 
@@ -113,37 +113,37 @@
                        best)
                      (rest candidateses)))))))))
 
-(defn elements-satisfying [template target]
-  "Return a list of the target elements satisfying the given template."
+(defn elements-satisfying [fixed-term target]
+  "Return a list of the target elements satisfying the given fixed-term."
   (when (not (atom? target))
-    (let [labels (labels-for-element template)]
+    (let [labels (labels-for-element fixed-term)]
       (if (seq? labels)
         (expr-let
             [candidates (candidate-elements labels target)]
-          (expr-filter #(extended-by? template %) candidates))
+          (expr-filter #(extended-by? fixed-term %) candidates))
         ;; The special case where being in the label index guarantees
-        ;; satisfing the template.
+        ;; satisfing the fixed-term.
         (label->elements target labels)))))
 
-(defn has-element-satisfying? [template target]
+(defn has-element-satisfying? [fixed-term target]
   "Return true if the target item has an element satisfying
-  the given template)."
-  (expr-let [satisfying (elements-satisfying template target)]
+  the given fixed-term)."
+  (expr-let [satisfying (elements-satisfying fixed-term target)]
     (not (empty? satisfying))))
 
-(defn extended-by? [template target]
-  (or (nil? template)
-      (if (atom? template)
+(defn extended-by? [fixed-term target]
+  (or (nil? fixed-term)
+      (if (atom? fixed-term)
         (expr-let [target-value (atomic-value target)]
-          (equivalent-atoms? (atomic-value template) target-value))
+          (equivalent-atoms? (atomic-value fixed-term) target-value))
         (expr-let
             [content-extended (expr extended-by?
-                                (content template)
+                                (content fixed-term)
                                 (content target))]
           (when content-extended
-            (or (empty? (elements template))
+            (or (empty? (elements fixed-term))
                 (let [[positive negative] (separate-negations
-                                           (elements template))]
+                                           (elements fixed-term))]
                   (expr-let [positive-satisfying
                              (expr-seq map #(elements-satisfying % target)
                                        positive)
@@ -156,24 +156,25 @@
                          (not-any? #(not (empty? %))
                                    negative-satisfying))))))))))
 
-(defmethod extended-by-m? true [template target]
-  (extended-by? template target))
+(defmethod extended-by-m? true [fixed-term target]
+  (extended-by? fixed-term target))
 
 (defn variable? [query]
   (and (= (content query) ::query/special-form)
         (= (label->content query ::query/type) :variable)))
 
-(defn variable-template [variable]
+(defn variable-qualifier [variable]
   (let [queries (label->elements variable ::query/sub-query)]
     (when queries (first queries))))
 
-(defn turn-into-template
-  "Remove the variables in a item, replacing them with their template.
-   and replacing item referents with their values"
+(defn turn-into-fixed
+  "Remove the variables in a item, replacing them with their qualifier.
+   Replace item referents with their current values.
+   Remove any ::query/sub-query annotations."
   [query]
   (prewalk-seqs (fn [query]
                   (if (variable? query)
-                    (turn-into-template (variable-template query))
+                    (turn-into-fixed (variable-qualifier query))
                     (let [value (if (satisfies? StoredEntity query)
                                   (to-list (current-version query))
                                   query)]
@@ -245,7 +246,7 @@
 
 (defn variable-matches [var env target]
   (let [name (label->content var ::query/name)
-        template (variable-template var)
+        qualifier (variable-qualifier var)
         value-may-extend (label->content var ::query/value-may-extend)
         reference (label->content var ::query/reference)]
     (let [value (env name)]
@@ -265,9 +266,9 @@
         (expr-let [target-as-immutable (current-entity-value target)]
           (when (not (nil? target-as-immutable))
             (expr-let
-                [envs (if (nil? template)
+                [envs (if (nil? qualifier)
                         [env]
-                        (matching-extensions template env target))]
+                        (matching-extensions qualifier env target))]
               (if (not (nil? name))
                 (expr-let [value (if reference target target-as-immutable)]
                   (seq (map #(assoc % name value) envs)))
@@ -280,7 +281,7 @@
   (let [labels (labels-for-element
                 (bind-entity (if (variable? query)
                                (or (env (label->content query ::query/name))
-                                   (label->content query ::query/sub-query))
+                                   (variable-qualifier query))
                                query)
                              env))]
     (if (seq? labels)
@@ -423,7 +424,7 @@
         value (env name)]
     (if (nil? value)
       (expr-let [candidate-ids (store/candidate-matching-ids
-                                store (turn-into-template var))
+                                store (turn-into-fixed var))
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
@@ -491,7 +492,7 @@
                     (expr map
                       #(description->entity % store)
                       (expr store/candidate-matching-ids
-                        store (turn-into-template
+                        store (turn-into-fixed
                                (to-list (bind-entity item env)))))))]
     (seq (distinct matches))))
 

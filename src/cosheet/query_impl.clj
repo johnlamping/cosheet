@@ -276,17 +276,17 @@
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the target that match
-   the query in the environment."
-  [query env target]
+   the term in the environment."
+  [term env target]
   (let [labels (labels-for-element
-                (bind-entity (if (variable? query)
-                               (or (env (label->content query ::query/name))
-                                   (variable-qualifier query))
-                               query)
+                (bind-entity (if (variable? term)
+                               (or (env (label->content term ::query/name))
+                                   (variable-qualifier term))
+                               term)
                              env))]
     (if (seq? labels)
       (expr-let [candidates (candidate-elements labels target)
-                 match-envs (expr-seq map #(matching-extensions query env %)
+                 match-envs (expr-seq map #(matching-extensions term env %)
                                       candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
@@ -297,8 +297,8 @@
       (expr-let [matching-elements (label->elements target labels)]
         (cond (empty? matching-elements)
               {}
-              (variable? query)
-              (let [name (label->content query ::query/name)]
+              (variable? term)
+              (let [name (label->content term ::query/name)]
                 (reduce (fn [result element]
                           (let [new-env (assoc env name element)]
                             (assoc result new-env [element])))
@@ -306,8 +306,8 @@
               true
               {env matching-elements})))))
 
-(defn element-matches [query env target]  
-  (expr-let [match-map (element-match-map query env target)]
+(defn element-matches [term env target]  
+  (expr-let [match-map (element-match-map term env target)]
     (keys match-map)))
 
 (defn concat-maps
@@ -333,21 +333,21 @@
    {} match-map))
 
 (defn multiple-element-matches
-  "Given a sequence of queries, a map from environments to collections
+  "Given a sequence of terms, a map from environments to collections
   of disallowed elements, and a target, return a sequence of environments
-  where each query matches a different element in the target,
+  where each term matches a different element in the target,
   and not a disallowed element."
-  [queries env-map target]
-  (if (empty? queries)
+  [terms env-map target]
+  (if (empty? terms)
     (keys env-map)
     (expr-let [matching-maps
-               (expr-seq map #(element-match-map (first queries) % target)
+               (expr-seq map #(element-match-map (first terms) % target)
                          (keys env-map))]
       (let [disjoint-map (concat-maps
                           (map conj-disjoint-maps
                                (vals env-map) matching-maps))]
         (multiple-element-matches
-         (rest queries) disjoint-map target)))))
+         (rest terms) disjoint-map target)))))
 
 (defn no-element-matches
   "Return true if none of the queries are matched
@@ -403,11 +403,11 @@
 (defmethod matching-extensions-m true [query env target]
   (matching-extensions query env target))
 
-(defmethod best-matching-query-m true [queries env target]
-  (expr-let [matches (expr-seq map #(matching-extensions % env target) queries)]
+(defmethod best-matching-query-m true [terms env target]
+  (expr-let [matches (expr-seq map #(matching-extensions % env target) terms)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))
-                                   matches queries)
+                                   matches terms)
                                (remove nil?)
                                (seq))]
       (reduce (fn [best query]
@@ -474,10 +474,10 @@
                 binding-groups)))))))
 
 (defn and-matches-in-store [and env store]
-  (let [templates (label->elements and ::query/sub-query)
-        [first second] (if (label->content (first templates) :first)
-                         templates
-                         (reverse templates))]
+  (let [queries (label->elements and ::query/sub-query)
+        [first second] (if (label->content (first queries) :first)
+                         queries
+                         (reverse queries))]
     (expr-let [matches (expr apply concat
                              (expr-seq map #(query-matches-m second % store)
                                        (query-matches-m first env store)))]

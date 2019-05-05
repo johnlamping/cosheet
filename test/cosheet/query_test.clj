@@ -336,18 +336,18 @@
                                       ~(not-query `(:c ~(variable "foo" nil))))
                                   a)))))
 
-(deftest best-matching-query-test
+(deftest best-matching-term-test
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-matching-query ['(1) '(1 2) '(1 2 5)] {:a :b} y)))
+                 (best-matching-term ['(1) '(1 2) '(1 2 5)] {:a :b} y)))
              '(1 2)))
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-matching-query ['(1 2 5) '(1 2) '(1)] {:a :b} y)))
+                 (best-matching-term ['(1 2 5) '(1 2) '(1)] {:a :b} y)))
              '(1 2)))
   (is (check (let [x '(1)]
                (let-mutated [y '(1 2 3 4)]
-                 (best-matching-query ['(1 2 5)] {:a :b} y)))
+                 (best-matching-term ['(1 2 5)] {:a :b} y)))
              nil)))
 
 (deftest matching-elements-test

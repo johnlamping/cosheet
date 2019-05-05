@@ -130,14 +130,14 @@
   ([term target] (matching-extensions-m term {} target))
   ([term env target] (matching-extensions-m term env target)))
 
-(defmulti best-matching-query-m
+(defmulti best-matching-term-m
   (fn [terms env target] true))
 
-(defn best-matching-query
+(defn best-matching-term
   "Given a sequence of immutable terms, return the most specific
   of those that matches the target, if any."
-  ([terms target] (best-matching-query-m terms {} target))
-  ([terms env target] (best-matching-query-m terms env target)))
+  ([terms target] (best-matching-term-m terms {} target))
+  ([terms env target] (best-matching-term-m terms env target)))
 
 (defn matching-elements
   "Return all elements of the target that match the term (which

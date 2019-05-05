@@ -11,7 +11,7 @@
                      [query :as query
                             :refer [extended-by-m?
                                     matching-extensions-m
-                                    best-matching-query-m
+                                    best-matching-term-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
@@ -403,7 +403,7 @@
 (defmethod matching-extensions-m true [query env target]
   (matching-extensions query env target))
 
-(defmethod best-matching-query-m true [terms env target]
+(defmethod best-matching-term-m true [terms env target]
   (expr-let [matches (expr-seq map #(matching-extensions % env target) terms)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))

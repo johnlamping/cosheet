@@ -147,24 +147,15 @@
   ([terms target] (best-matching-term-m terms {} target))
   ([terms env target] (best-matching-term-m terms env target)))
 
+
+(defmulti matching-elements-m
+  "Return all elements of the target that match the term."
+  (fn [term target] true))
+
 (defn matching-elements
-  "Return all elements of the target that match the term (which
-  must be immutable.)"
+   "Return all elements of the target that match the term."
   [term target]
-  (assert (not (entity/mutable-entity? term)))
-  (if (or (nil? term) (= term '()))
-    (entity/elements target)
-    (let [term `(nil ~(variable-query
-                        ::v :qualifier term :reference true))]
-      (if (and (entity/mutable-entity? target)
-               (satisfies? entity/StoredEntity target))
-        ;; Optimized case to not build reporters for all the subsidiary tests. 
-        (expr-let [matches (entity/updating-with-immutable
-                            [immutable target]
-                            (matching-extensions term immutable))]
-          (map #(entity/in-different-store (::v %) target) matches))
-        (expr-let [matches (matching-extensions term target)]
-          (map ::v matches))))))
+  (matching-elements-m term target))
 
 (defmulti matching-items-m
   "Return all items in the store that match the term."

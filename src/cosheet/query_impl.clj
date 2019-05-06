@@ -7,11 +7,14 @@
                                      description->entity
                                      content elements label->elements
                                      label->content atomic-value
-                                     to-list deep-to-list current-version]]
+                                     to-list deep-to-list current-version
+                                     in-different-store
+                                     updating-with-immutable]]
                      [query :as query
                             :refer [extended-by-m?
                                     matching-extensions-m
                                     best-matching-term-m
+                                    matching-elements-m
                                     matching-items-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
@@ -415,6 +418,29 @@
                   query
                   best))
               (first candidates) (rest candidates)))))
+
+(defn matching-elements
+  [term target]
+  (if (or (nil? term) (= term '()))
+    (elements target)
+    (if (and (mutable-entity? target)
+             (satisfies? cosheet.entity/StoredEntity target))
+      ;; Optimize to not build reporters for all the subsidiary tests. 
+      (expr-let [matches
+                 (updating-with-immutable
+                  [immutable target]
+                  (when (not (nil? immutable))
+                    (expr-let [match-map (element-match-map term {} immutable)]
+                      (let [elems (vals match-map)]
+                        (if (= (count elems) 1)
+                          (first elems)
+                          (distinct (apply concat elems)))))))]
+        (map #(in-different-store % target) matches))
+      (expr-let [match-map (element-match-map term {} target)]
+        (distinct (apply concat (vals match-map)))))))
+
+(defmethod matching-elements-m true [term target]
+  (matching-elements term target))
 
 (defn matching-items [term store]
   (if (satisfies? store/MutableStore store)

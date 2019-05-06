@@ -3,8 +3,7 @@
                       :as reporter
                       :refer [set-value! set-manager!
                               attended? new-reporter invalid]]
-                     [task-queue :refer [new-priority-task-queue
-                                         add-tasks-with-priorities]]
+                     [task-queue :refer [add-tasks-with-priorities]]
                      [utils :refer [with-latest-value
                                     update-in-clean-up
                                     swap-control-return!]])))

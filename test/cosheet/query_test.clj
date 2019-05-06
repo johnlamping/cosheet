@@ -6,7 +6,7 @@
                      [store-utils :as store-utils]
                      [entity :as entity]
                      [query :refer :all]
-                     [query-impl :refer [bind-entity turn-into-template]]
+                     [query-impl :refer [bind-entity turn-into-fixed]]
                      [expression-manager :refer [current-value]]
                      [debug :refer [envs-to-list simplify-for-print]]
                      [test-utils :refer [check as-set
@@ -99,11 +99,11 @@
                    :value-may-extend value-may-extend
                    :reference reference)))
 
-(deftest turn-into-template-test
-  (is (= (turn-into-template `(~(variable "foo")
-                               ~(entity/description->entity
-                                (store/make-id "test")
-                                (store/new-element-store))
+(deftest turn-into-fixed-test
+  (is (= (turn-into-fixed `(~(variable "foo")
+                            ~(entity/description->entity
+                              (store/make-id "test")
+                              (store/new-element-store))
                                (:foo ~(variable "foo" (variable "bar" 5)))))
          `(nil nil (:foo 5)))))
 

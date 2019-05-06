@@ -12,6 +12,7 @@
                             :refer [extended-by-m?
                                     matching-extensions-m
                                     best-matching-term-m
+                                    matching-items-m
                                     query-matches-m]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
@@ -19,8 +20,6 @@
                                     simplify-for-print]])))
 
 ;;; TODO:
-;;; Change the special form syntax so all special forms have content
-;;;    :special-form.
 ;;; Add a term syntax that lets variables bind to the subject.
 ;;; Add a unification operation on terms, so rule matching can work.
 ;;;    The environment must include variable numbers, for renaming,
@@ -168,9 +167,10 @@
     (when queries (first queries))))
 
 (defn turn-into-fixed
-  "Remove the variables in a item, replacing them with their qualifier.
-   Replace item referents with their current values.
-   Remove any ::query/sub-query annotations."
+  "Given an item:
+      Remove the variables, replacing them with their qualifier.
+      Replace item referents with their current values.
+      Remove any ::query/sub-query annotations."
   [query]
   (prewalk-seqs (fn [query]
                   (if (variable? query)
@@ -185,7 +185,7 @@
                             (first removed)
                             removed))
                         value))))
-                query))
+                (to-list query)))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -416,6 +416,29 @@
                   best))
               (first candidates) (rest candidates)))))
 
+(defn matching-items [term store]
+  (if (satisfies? store/MutableStore store)
+    ;; Rather than build reporters for all subsidiary tests, fix the store
+    ;; and recompute the whole query whenever the store changes.
+    (expr-let [ids (store/call-dependent-on-id
+                    store nil
+                    (fn [immutable-store]
+                      (filter
+                       #(let [entity (description->entity % immutable-store)]
+                          (partial matching-extensions term {}))
+                       (store/candidate-matching-ids
+                        immutable-store (turn-into-fixed term)))))]
+      (map #(description->entity % store) ids))
+    (expr-filter
+     (partial matching-extensions term {})
+     (expr map
+       #(description->entity % store)
+       (store/candidate-matching-ids
+        store (turn-into-fixed term))))))
+
+(defmethod matching-items-m true [term store]
+  (matching-items term store))
+
 (def query-matches)
 
 (defn variable-matches-in-store [var env store]
@@ -491,9 +514,9 @@
                     (partial matching-extensions item env)
                     (expr map
                       #(description->entity % store)
-                      (expr store/candidate-matching-ids
+                      (store/candidate-matching-ids
                         store (turn-into-fixed
-                               (to-list (bind-entity item env)))))))]
+                               (bind-entity item env))))))]
     (seq (distinct matches))))
 
 (defn query-matches

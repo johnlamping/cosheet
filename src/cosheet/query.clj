@@ -15,15 +15,23 @@
 ;;;               with the same name have to match the same value.
 ;;;        query  May also have quantifiers and conjunctions.
 
-;;; There are also three levels of scope of querying. They support progressively
-;;; larger generality of querying, and accept progressively more general
-;;; expressions
+;;; There are several querying operations, that differ in how elaborate
+;;; a kind of query they take and in whether their target is a single entity
+;;; or the whole store.
 ;;;        extended-by?:  Takes a fixed-term and an entity
 ;;;                       Says whether the entity extends the term.
 ;;; matching-extensions:  Takes a term, an environment, and an entity.
 ;;;                       Returns a set of extensions of the environment
 ;;;                       that cause the term to be an extension
 ;;;                       of the term.
+;;;   matching-elements:  Takes a term and a target. Returns a seq of all
+;;;                       elements of the target that are extensions of
+;;;                       the term.
+;;;  best-matching-term:  Takes a seq of terms and a target. Returns the most
+;;;                       specific of the terms for which the target is an
+;;;                       extension.
+;;;        item-matches:  Takes a term and a store. Returns a seq of all
+;;;                       items in the store that are extensions of the term.
 ;;;       query-matches:  Takes a query, an environment, and a store.
 ;;;                       Returns a set of extensions of the environment
 ;;;                       that cause some entity in the store to be
@@ -157,6 +165,13 @@
           (map #(entity/in-different-store (::v %) target) matches))
         (expr-let [matches (matching-extensions term target)]
           (map ::v matches))))))
+
+(defmulti matching-items-m
+  "Return all items in the store that match the term."
+  (fn [term store] true))
+
+(defn matching-items [term store]
+  (matching-items-m term store))
   
 (defmulti query-matches-m
   "Return a lazy seq of environments that are extensions of the given
@@ -169,20 +184,4 @@
   ([query store] (query-matches-m query {} store))
   ([query env store] (query-matches-m query env store)))
 
-(defn matching-items
-  "Return all items in the store that match the template."
-  [template store]
-  (let [template (variable-query ::v :qualifier template :reference true)]
-    (if (satisfies? store/MutableStore store)
-      ;; Optimized case to not build reporters for all the subsidiary tests. 
-      (expr-let [matches (store/call-dependent-on-id
-                          store nil #(query-matches template %))]
-        (map #(-> %
-                  ::v  ;; item that is the value of variable ::v
-                  :item-id  ;; its item id
-                  (entity/description->entity store)) 
-             matches))
-      (expr-let [matches (query-matches template store)]
-        (map ::v matches)))))
 
-  

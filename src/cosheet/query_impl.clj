@@ -33,7 +33,7 @@
 
 (defn conj-disjoint-combinations
   "Given a sequence of collections of elements, and a sequence of elements,
-  choose all combinations of a collection and an element not in the collection,
+   choose all combinations of a collection and an element not in the collection,
   returning a sequence of such combinations."
   [combinations elements]
   (mapcat (fn [combination]
@@ -45,13 +45,22 @@
 
 (defn disjoint-combinations
   "Given a sequence of sequences of elements,
-  return all disjoint combinations of one element from each sequence."
+   return all disjoint combinations of one element from each sequence."
   [sequences]
   (if (empty? sequences)
     [[]]
     (reduce conj-disjoint-combinations
             (map vector (first sequences))
             (rest sequences))))
+
+(defn distinct-concat
+  "Given a sequence of sequences, each sequence having internally distinct
+   elements, return the concatenation of the sequences, with duplicates across
+   sequences removed."
+  [sequences]
+  (if (empty? (rest sequences))
+    (first sequences)
+    (seq (distinct (apply concat sequences)))))
 
 (defn separate-negations
   "Given a seq of terms, return two seqs, one of positive terms,
@@ -386,9 +395,7 @@
                               (expr-seq map #(element-matches
                                               (first positive) % target)
                                         content-match-envs)]
-                     (if (empty? (rest env-matches))
-                       (first env-matches)
-                       (seq (distinct (apply concat env-matches)))))
+                     (distinct-concat env-matches))
                    true
                    (multiple-element-matches
                     positive (zipmap content-match-envs (repeat [[]])) target))]
@@ -436,16 +443,10 @@
                   [immutable target]
                   (when (not (nil? immutable))
                     (expr-let [match-map (element-match-map term {} immutable)]
-                      (let [elems (vals match-map)]
-                        (if (empty? (rest elems))
-                          (first elems)
-                          (distinct (apply concat elems)))))))]
+                      (distinct-concat (vals match-map)))))]
         (map #(in-different-store % target) matches))
       (expr-let [match-map (element-match-map term {} target)]
-        (let [values (vals match-map)]
-          (if (empty? (rest values))
-            (first values)
-            (distinct (apply concat values))))))))
+        (distinct-concat (vals match-map))))))
 
 (defmethod matching-elements-m true [term target]
   (matching-elements term target))
@@ -486,9 +487,7 @@
                           map #(variable-matches
                                 var env (description->entity % store))
                           candidate-ids)]
-        (if (empty? (rest matches))
-          (first matches)
-          (seq (distinct (apply concat matches)))))
+        (distinct-concat matches))
       (if reference
         [env]
         (expr-let [value-as-immutable (current-entity-value value)
@@ -540,9 +539,7 @@
     (expr-let [first-matches (query-matches first-q env store)
                both-matches (expr-seq map #(query-matches second-q % store)
                                       first-matches)]
-      (if (empty? (rest both-matches))
-        (first both-matches)
-        (seq (distinct (apply concat both-matches)))))))
+      (distinct-concat both-matches))))
 
 (defn item-matches-in-store [item env store]
   (expr-let [candidates (expr map
@@ -551,9 +548,7 @@
                            store (closest-template item env)))
              matches (expr-seq map (partial matching-extensions item env)
                                candidates)]
-    (if (empty? (rest matches))
-      (first matches)
-      (seq (distinct (apply concat matches))))))
+    (distinct-concat matches)))
 
 (defn query-matches
   ([query store] (query-matches query {} store))

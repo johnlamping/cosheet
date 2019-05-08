@@ -136,13 +136,9 @@
                 ;; leaves have content, we don't know which ones
                 ;; subsume the others, and so use them all.
                 descendants)]
-    ;; TODO: Why do we replace 'anything here, since pattern-to-query will do that.
     (map #(pattern-to-query
            (cons
-            (let [content (:content %)]
-              (if (#{'anything 'anything-immutable} content)
-                nil
-                content))
+            (:content %)
             (map canonical-to-list (:property-canonicals %))))
        cover)))
 

@@ -74,7 +74,7 @@
 ;;; its value.
 ;;; A variable with :reference binds to a reference to an item
 ;;; in the store, rather than to the value of the item. Only
-;;; one instance of reference variable with a given name should occur
+;;; one instance of a reference variable with a given name should occur
 ;;; in a query,
 ;;; since it can never match two different structures.
 (defn variable-query
@@ -95,7 +95,7 @@
   [query]
   `(::special-form
     (:not ::type)
-    ~(add-elements-to-entity-list query ['(::sub-query :first)])))
+    ~(add-elements-to-entity-list query [::sub-query])))
 
 (defn and-query
   [query1 query2]
@@ -119,6 +119,18 @@
     ~(add-elements-to-entity-list
       (variable-query variable-name :qualifier variable-qualifier) [::variable])
     ~(add-elements-to-entity-list query [::sub-query])))
+
+(defn special-form?
+  [query]
+  (and (seq? query) (= (first query) ::special-form)))
+
+(defn variable-query? [query]
+  (and (= (entity/content query) ::special-form)
+        (= (entity/label->content query ::type) :variable)))
+
+(defn variable-qualifier [variable]
+  (let [queries (entity/label->elements variable ::sub-query)]
+    (when queries (first queries))))
 
 (defmulti extended-by-m?
   (fn [fixed-term target] true))

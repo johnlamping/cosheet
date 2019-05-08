@@ -3,7 +3,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet
              [orderable :as orderable]
-             [query :refer [matching-items matching-elements]]
+             [query :refer [matching-items matching-elements not-query]]
              [entity :as entity  :refer [label->elements elements]]
              [expression :refer [expr expr-let expr-seq]]
              [expression-manager :refer [current-value]]
@@ -264,15 +264,17 @@
                 [table-row-DOM-R
                  joe (conj table-key (:item-id joe)) row-template
                  [{:column-id (:item-id c1)
-                   :query '(nil (nil :order) ("single" :tag))
+                   :query `(nil ("single" :tag) ~(not-query :tag) (nil :order))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   {:column-id (:item-id c2)
-                   :query '(nil (nil :order) ("name" :tag))
+                   :query `(nil ("name" :tag) ~(not-query :tag) (nil :order))
                    :template '("" ("name" :tag))
-                   :exclusions '((nil ("name" :tag) ("id" :tag)))}
+                   :exclusions `((nil ("name" :tag) ("id" :tag)
+                                      ~(not-query :tag) (nil :order)))}
                   {:column-id (:item-id c3)
-                   :query '(nil (nil :order) ("name" :tag) ("id" :tag))
+                   :query `(nil ("name" :tag) ("id" :tag)
+                                ~(not-query :tag) (nil :order))
                    :template '("" ("name" :tag) ("id" :tag))
                    :exclusions ()}
                   (any)
@@ -296,7 +298,7 @@
                  '(anything (anything ("age" :tag)) :top-level)
                  (item-referent test)
                  [{:column-id (:item-id c1)
-                   :query '(nil (nil :order) ("single" :tag))
+                   :query `(nil ("single" :tag) ~(not-query :tag) (nil :order))
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any) (any)]
@@ -308,7 +310,8 @@
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]
-        (println (simplify-for-print [c1 c2 c3]))
+        (println (simplify-for-print ["Cs" c1 c2 c3]))
+        (println (simplify-for-print ["ROW DOM" row-dom]))
         (is (check
              row-dom
              [:div {}

@@ -136,13 +136,14 @@
                 ;; leaves have content, we don't know which ones
                 ;; subsume the others, and so use them all.
                 descendants)]
+    ;; TODO: Why do we replace 'anything here, since pattern-to-query will do that.
     (map #(pattern-to-query
-         (cons
-          (let [content (:content %)]
-            (if (#{'anything 'anything-immutable} content)
-              nil
-              content))
-           (map canonical-to-list (:property-canonicals %))))
+           (cons
+            (let [content (:content %)]
+              (if (#{'anything 'anything-immutable} content)
+                nil
+                content))
+            (map canonical-to-list (:property-canonicals %))))
        cover)))
 
 (defn new-header-template
@@ -427,9 +428,7 @@
       (table-virtual-column-cell-DOM row-item inherited-down)
       (expr-let [matches (matching-elements query row-item)
                  do-not-show (when exclusions
-                               (expr-seq map #(matching-elements
-                                               (pattern-to-query %)
-                                               row-item)
+                               (expr-seq map #(matching-elements % row-item)
                                          exclusions))]
         (let [elements (seq (clojure.set/difference
                              (set matches)

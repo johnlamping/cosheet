@@ -16,7 +16,9 @@
                                     best-matching-term-m
                                     matching-elements-m
                                     matching-items-m
-                                    query-matches-m]]
+                                    query-matches-m
+                                    variable-query?
+                                    variable-qualifier]]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
                      [utils :refer [equivalent-atoms? prewalk-seqs]]
                      [debug :refer [trace-current
@@ -70,29 +72,40 @@
 
 (def extended-by?)
 
+(defn contextualize-variable
+  "If the term is a variable, replace it by it's value in the environment,
+  or, if there is no value, then its qualifier."
+  [term env]
+  (if (variable-query? term)
+    (or (env (label->content term ::query/name))
+        (contextualize-variable (variable-qualifier term) env))
+    term))
+
 (defn labels-for-element
-  "Given an entity that is an element of a query, find atoms that can serve
+  "Given an entity that is an element of a term, find atoms that can serve
    as labels for finding matching elements of a target. Returns either '(),
    meaning that no labels were found; a sequence of labels, any of which
    will work; or a single label, which means a perfect fit: an element
    of a target will match the query iff and only if it has that label."
-  [element]
-  (let [[positive negative] (separate-negations (elements element))]
-    (loop [labels '()
-           annotations positive]
-      (if (empty? annotations)
-        labels
-        (let [annotation (first annotations)
-              label (atomic-value annotation)]
-          (cond (or (nil? label) (= label ::query/special-form))
-                (recur labels (rest annotations))
-                (and (= label (content annotation))
-                     (not (seq? label))
-                     (empty? (elements annotation))
-                     (nil? (content element)))
-                label
-                true
-                (recur (conj labels label) (rest annotations))))))))
+  [element env]
+  (let [contextualized (contextualize-variable element env)
+        elems (map #(contextualize-variable % env)
+                   (elements contextualized))
+        [positive negative] (separate-negations elems)]
+    ;; Test for the special case of looking for any element with a given atomic
+    ;; tag. That is the case where we can return a single label which is a
+    ;; perfect fit.
+    (if (and (nil? (content contextualized))
+             (empty? negative)
+             (not (empty? positive))
+             (empty? (rest positive))
+             (empty? (elements (first positive))))
+      (content (first positive))
+      (mapcat #(let [label (atomic-value %)]
+                 (when (and (not (nil? label))
+                            (not= label ::query/special-form))
+                   [label]))
+              positive))))
 
 (defn candidate-elements
   "Given a target, and labels that all the elements we are looking for
@@ -118,7 +131,7 @@
 (defn elements-satisfying [fixed-term target]
   "Return a list of the target elements satisfying the given fixed-term."
   (when (not (atom? target))
-    (let [labels (labels-for-element fixed-term)]
+    (let [labels (labels-for-element fixed-term {})]
       (if (seq? labels)
         (expr-let
             [candidates (candidate-elements labels target)]
@@ -161,34 +174,29 @@
 (defmethod extended-by-m? true [fixed-term target]
   (extended-by? fixed-term target))
 
-(defn variable? [query]
-  (and (= (content query) ::query/special-form)
-        (= (label->content query ::query/type) :variable)))
-
-(defn variable-qualifier [variable]
-  (let [queries (label->elements variable ::query/sub-query)]
-    (when queries (first queries))))
-
-(defn turn-into-fixed
-  "Given an item:
-      Remove the variables, replacing them with their qualifier.
+(defn closest-template
+  "Given a term, return a template that the store can use to find candidate
+   ids, and that is as close to the term as possible:
+      Remove variables, replacing them with their value in the environment,
+      or their qualifier.
       Replace item referents with their current values.
-      Remove any ::query/sub-query annotations."
-  [query]
-  (prewalk-seqs (fn [query]
-                  (if (variable? query)
-                    (turn-into-fixed (variable-qualifier query))
-                    (let [value (if (satisfies? StoredEntity query)
-                                  (to-list (current-version query))
-                                  query)]
-                      (if (seq? value)
-                        (let [removed (remove #(= ::query/sub-query (content %))
-                                              value)]
-                          (if (empty? (rest removed))
-                            (first removed)
-                            removed))
-                        value))))
-                (to-list query)))
+      Remove any ::query/sub-query annotations.
+      Remove any other special forms (to eliminate any not-query)."
+  [term env]
+  (let [current (if (satisfies? StoredEntity term)
+                  (current-version term)
+                  term)
+        contextualized (contextualize-variable current env)
+        as-list (to-list contextualized)]
+    (if (seq? as-list)
+      (let [converted (map #(closest-template % env) as-list) 
+            kept-elements (remove #(#{::query/sub-query ::query/special-form}
+                                    (content %))
+                                  (rest converted))]
+        (if (empty? kept-elements)
+          (first converted)
+          (cons (first converted) kept-elements)))
+      as-list)))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -235,7 +243,7 @@
   (assert (not (mutable-entity? entity)))
   (if (atom? entity)
     (atomic-value entity)
-    (or (and (variable? entity)
+    (or (and (variable-query? entity)
              (env (label->content entity ::query/name)))
         (->BoundEntity entity env))))
 
@@ -281,13 +289,8 @@
   "Return a map from environment to seq of elements of the target that match
    the term in the environment."
   [term env target]
-  (let [labels (labels-for-element
-                (bind-entity (if (variable? term)
-                               (or (env (label->content term ::query/name))
-                                   (variable-qualifier term))
-                               term)
-                             env))]
-    (if (seq? labels)
+  (let [labels (labels-for-element term env)]
+    (if (or (nil? labels) (seq? labels))
       (expr-let [candidates (candidate-elements labels target)
                  match-envs (expr-seq map #(matching-extensions term env %)
                                       candidates)]
@@ -300,7 +303,7 @@
       (expr-let [matching-elements (label->elements target labels)]
         (cond (empty? matching-elements)
               {}
-              (variable? term)
+              (variable-query? term)
               (let [name (label->content term ::query/name)]
                 (reduce (fn [result element]
                           (let [new-env (assoc env name element)]
@@ -309,7 +312,7 @@
               true
               {env matching-elements})))))
 
-(defn element-matches [term env target]  
+(defn element-matches [term env target]
   (expr-let [match-map (element-match-map term env target)]
     (keys match-map)))
 
@@ -383,7 +386,9 @@
                               (expr-seq map #(element-matches
                                               (first positive) % target)
                                         content-match-envs)]
-                     (seq (distinct (apply concat env-matches))))
+                     (if (empty? (rest env-matches))
+                       (first env-matches)
+                       (seq (distinct (apply concat env-matches)))))
                    true
                    (multiple-element-matches
                     positive (zipmap content-match-envs (repeat [[]])) target))]
@@ -398,7 +403,7 @@
         (if (atom? query)
           (expr-let [extended (extended-by? query target)]
             (when extended [env]))
-          (if (variable? query)
+          (if (variable-query? query)
             (variable-matches query env target)
             (item-matches query env target)))]
     answer))
@@ -432,12 +437,15 @@
                   (when (not (nil? immutable))
                     (expr-let [match-map (element-match-map term {} immutable)]
                       (let [elems (vals match-map)]
-                        (if (= (count elems) 1)
+                        (if (empty? (rest elems))
                           (first elems)
                           (distinct (apply concat elems)))))))]
         (map #(in-different-store % target) matches))
       (expr-let [match-map (element-match-map term {} target)]
-        (distinct (apply concat (vals match-map)))))))
+        (let [values (vals match-map)]
+          (if (empty? (rest values))
+            (first values)
+            (distinct (apply concat values))))))))
 
 (defmethod matching-elements-m true [term target]
   (matching-elements term target))
@@ -453,14 +461,14 @@
                        #(let [entity (description->entity % immutable-store)]
                           (partial matching-extensions term {}))
                        (store/candidate-matching-ids
-                        immutable-store (turn-into-fixed term)))))]
+                        immutable-store (closest-template term {})))))]
       (map #(description->entity % store) ids))
     (expr-filter
      (partial matching-extensions term {})
      (expr map
        #(description->entity % store)
        (store/candidate-matching-ids
-        store (turn-into-fixed term))))))
+        store (closest-template term {}))))))
 
 (defmethod matching-items-m true [term store]
   (matching-items term store))
@@ -473,12 +481,14 @@
         value (env name)]
     (if (nil? value)
       (expr-let [candidate-ids (store/candidate-matching-ids
-                                store (turn-into-fixed var))
+                                store (closest-template var env))
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
                           candidate-ids)]
-        (seq (distinct (apply concat matches))))
+        (if (empty? (rest matches))
+          (first matches)
+          (seq (distinct (apply concat matches)))))
       (if reference
         [env]
         (expr-let [value-as-immutable (current-entity-value value)
@@ -524,26 +534,26 @@
 
 (defn and-matches-in-store [and env store]
   (let [queries (label->elements and ::query/sub-query)
-        [first second] (if (label->content (first queries) :first)
-                         queries
-                         (reverse queries))]
-    (expr-let [matches (expr apply concat
-                             (expr-seq map #(query-matches-m second % store)
-                                       (query-matches-m first env store)))]
-      (seq (distinct matches)))))
+        [first-q second-q] (if (label->content (first queries) :first)
+                             queries
+                             (reverse queries))]
+    (expr-let [first-matches (query-matches first-q env store)
+               both-matches (expr-seq map #(query-matches second-q % store)
+                                      first-matches)]
+      (if (empty? (rest both-matches))
+        (first both-matches)
+        (seq (distinct (apply concat both-matches)))))))
 
 (defn item-matches-in-store [item env store]
-  (expr-let [matches
-             (expr apply concat
-                   (expr-seq
-                    map
-                    (partial matching-extensions item env)
-                    (expr map
-                      #(description->entity % store)
-                      (store/candidate-matching-ids
-                        store (turn-into-fixed
-                               (bind-entity item env))))))]
-    (seq (distinct matches))))
+  (expr-let [candidates (expr map
+                          #(description->entity % store)
+                          (store/candidate-matching-ids
+                           store (closest-template item env)))
+             matches (expr-seq map (partial matching-extensions item env)
+                               candidates)]
+    (if (empty? (rest matches))
+      (first matches)
+      (seq (distinct (apply concat matches))))))
 
 (defn query-matches
   ([query store] (query-matches query {} store))

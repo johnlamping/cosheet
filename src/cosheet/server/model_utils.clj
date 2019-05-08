@@ -12,7 +12,8 @@
                                      updating-with-immutable
                                      in-different-store]]
                      [store-utils :refer [add-entity]]
-                     [query :refer [matching-items matching-elements]])
+                     [query :refer [matching-items matching-elements
+                                    not-query special-form?]])
             (cosheet.server
              [referent :refer [referent?]]
              [order-utils :refer [order-items-R order-element-for-item
@@ -88,21 +89,32 @@
    item))
 
 (defn pattern-to-query
-  "Given a pattern, alter it to work as a query. Specifically,
-  replace 'anything and 'anything-immutable by (nil (nil :order))
-  to make them work as a wild card that avoids matching non-user editable
-  elements."
+  "Given a pattern, alter it to work as a query. Specifically:
+    Replace 'anything and 'anything-immutable by (nil (nil :order))
+    to make them work as a wild card that avoids matching non-user editable
+    elements.
+    If an element is not a label, then require it not to have a :tag element."
   [pattern]
-  (flatten-nested-content ;; Because we can add nested content.
-   (prewalk-seqs
-    (fn [item] (if (#{'anything 'anything-immutable} item)
-                 '(nil (nil :order))
-                 item))
-    pattern)))
+  (let [new-content
+        (if (#{'anything 'anything-immutable} (content pattern))
+          nil
+          (content pattern))
+        is-label (some #{:tag} (map content (elements pattern)))
+        new-elements (cond-> (map pattern-to-query (elements pattern))
+                       (and (not is-label)
+                            (or (nil? new-content)
+                                (string? new-content)
+                                (number? new-content)))
+                       (concat [(not-query :tag)])
+                       (nil? new-content)
+                       (concat ['(nil :order)]))]
+    (if (seq new-elements)
+      (cons new-content new-elements)
+      new-content)))
 
 (defn query-to-template
   "Given a query, turn it into a template by removing any (nil :order),
-   and by replacing any nil by the specified replacement,
+   removing any negations, and replacing any nil by the specified replacement,
    which defaults to the empty string."
   ([query]
    (query-to-template query ""))
@@ -110,7 +122,9 @@
    (prewalk-seqs (fn [query] (cond (nil? query)
                                    nil-replacement
                                    (seq? query)
-                                   (remove #(= % '(nil :order)) query)
+                                   (remove #(or (= % '(nil :order))
+                                                (special-form? %))
+                                           query)
                                    true
                                    query))
                  query)))

@@ -101,22 +101,24 @@
   (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age joe-bogus-age]))))
+  ;;; TODO: Why isn't this failing?
   (let [referent (query-referent '(nil (nil "age")))]
     (is (check (instantiate-referent referent store)
                (as-set [joe jane]))))
   (let [referent (exemplar-referent joe-age
-                                    (query-referent '(nil (nil "age"))))]
+                                    (query-referent '(nil (nil ("age" :tag)))))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age]))))
   ;; An elements referent with an item for its condition.
   (is (check (instantiate-referent
               (elements-referent age-condition-id
-                                 (query-referent '(nil (nil "age")))) store)
+                                 (query-referent '(nil (nil ("age" :tag)))))
+              store)
              (as-set [joe-age joe-bogus-age jane-age])))
   (let [referent (union-referent
                [(item-referent joe-age)
-                (elements-referent '(nil "age") (item-referent jane))
-                (query-referent '(nil (nil "age")))])]
+                (elements-referent '(nil ("age" :tag)) (item-referent jane))
+                (query-referent '(nil (nil ("age" :tag))))])]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age joe jane]))))
   ;; Exemplar of union
@@ -125,7 +127,7 @@
                                                      (item-referent jane)]))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age]))))
-  (let [referent (difference-referent (query-referent '(nil (nil "age")))
+  (let [referent (difference-referent (query-referent '(nil (nil ("age" :tag))))
                                       (item-referent joe))]
     (is (check (instantiate-referent referent store)
                [jane])))

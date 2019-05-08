@@ -6,7 +6,7 @@
                      [store-utils :as store-utils]
                      [entity :as entity]
                      [query :refer :all]
-                     [query-impl :refer [bind-entity turn-into-fixed]]
+                     [query-impl :refer [bind-entity closest-template]]
                      [expression-manager :refer [current-value]]
                      [debug :refer [envs-to-list simplify-for-print]]
                      [test-utils :refer [check as-set
@@ -88,24 +88,25 @@
 
 (defn variable
   ([name] (variable-query name))
-  ([name template] (variable-query name :qualifier template))
-  ([name template value-may-extend]
+  ([name qualifier] (variable-query name :qualifier qualifier))
+  ([name qualifier value-may-extend]
    (variable-query name
-                   :qualifier template
+                   :qualifier qualifier
                    :value-may-extend value-may-extend))
-  ([name template value-may-extend reference]
+  ([name qualifier value-may-extend reference]
    (variable-query name
-                   :qualifier template
+                   :qualifier qualifier
                    :value-may-extend value-may-extend
                    :reference reference)))
 
-(deftest turn-into-fixed-test
-  (is (= (turn-into-fixed `(~(variable "foo")
-                            ~(entity/description->entity
-                              (store/make-id "test")
-                              (store/new-element-store))
-                               (:foo ~(variable "foo" (variable "bar" 5)))))
-         `(nil nil (:foo 5)))))
+(deftest closest-template-test
+  (is (= (closest-template `(~(variable "foo" 5)
+                             ~(entity/description->entity
+                               (store/make-id "test")
+                               (store/new-element-store))
+                             (:foo ~(variable "baz" (variable "bar"))))
+                           {"bar" 7})
+         `(5 nil (:foo 7)))))
 
 (deftest bound-entity-test
   (let [entity `(~(variable-query "foo")
@@ -163,7 +164,7 @@
            (let-mutated [y x]
              (matching-extensions x {:a :b} y)))
          [{:a :b}]))
-  ;; Duplicates in template
+  ;; Duplicates in term
   (is (empty? (let [x '(1 2 2)]
            (let-mutated [y '(1 2)]
              (matching-extensions x {:a :b} y)))))
@@ -230,12 +231,10 @@
            (let-mutated [x '(1 (2 :foo) (2 :bar))]
              (matching-extensions v {:a :b} x)))
          nil))
-  (println "start")
   (is (= (let [v `(~(variable "foo"))]
            (let-mutated [x '(1)]
              (matching-extensions v {:a :b} x)))
          [{:a :b, "foo" 1}]))
-  (println "done")
   (is (= (let [v `(~(variable "foo") ~(variable "foo"))]
            (let-mutated [x '(1 1)]
              (matching-extensions v {:a :b} x)))
@@ -334,7 +333,7 @@
   (is (empty? (let-mutated [a '(1 (:a :b) (:c :b))]
                 (matching-extensions `(1 (:a ~(variable "foo" nil))
                                       ~(not-query `(:c ~(variable "foo" nil))))
-                                  a)))))
+                                     a)))))
 
 (deftest best-matching-term-test
   (is (check (let [x '(1)]
@@ -443,8 +442,7 @@
            [{"v" 3}]))
     (let [matches (let-mutated-store [store s0 mutator]
                     (query-matches
-                     (and-query `(1 (~(variable "v" nil nil true) 3))
-                                `(nil (~(variable "v") 4)))
+                     `(1 (~(variable "v" nil nil true) 3))
                      store))]
       (is (= (count matches) 1))
       (is (= (keys (first matches)) ["v"]))
@@ -535,7 +533,19 @@
              (query-matches (forall-query "v"  `(1 ~(variable "v"))
                                           (variable "v"))
                              store))
-           [{}]))))
+           [{}]))
+    ;; not inside
+    (is (= (let-mutated-store [store s0 mutator]
+             (query-matches `(2 ~(not-query 7))
+                            store))
+           [{}]))
+    (is (= (let-mutated-store [store s0 mutator]
+             (query-matches (variable "v"`(2 ~(not-query 3)))
+                            store))
+           [{"v" '(2 4)}]))
+    (is (empty? (let-mutated-store [store s0 mutator]
+             (query-matches `(1 ~(not-query 2))
+                            store))))))
 
 (deftest matching-items-test
   (let [ia (->ItemId "A")

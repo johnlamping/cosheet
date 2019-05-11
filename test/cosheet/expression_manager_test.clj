@@ -236,26 +236,19 @@
     (reporter/set-attendee! r3 :k 0 (constantly nil))
     ;; Register, and check that the information is copied.
     (register-copy-subordinate r1 r2 md)
+    (compute md)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v (any)]}))
     (is (= (reporter/value r2) invalid))
-    (is (= (current-tasks (:queue md))
-           [[eval-expression-if-ready r2 md]]))
-    ;; Change the subordinate value, and make sure it got propagated.
-    (clear-md-queue)
     (reporter/set-value! r1 :v1)
+    (compute md)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
     (is (= (reporter/value r2) invalid))
-    (is (= (current-tasks (:queue md))
-           [[eval-expression-if-ready r2 md]]))
-    ;; Send a spurious update, and make sure things are unchanged.
-    (clear-md-queue)
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
     (is (= (reporter/value r2) invalid))
-    (is (= (current-tasks (:queue md)) ()))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
     (clear-md-queue)
@@ -274,6 +267,7 @@
     ;; Now set the value back to the original value, and check the consequences.
     ;; We don't need to compute, because it is just value copying.
     (reporter/set-value! r1 :v1)
+    (compute md)
     (is (= (:value-source (reporter/data r2)) r0)) ;; Same source.
     (compute md)
     (is (= (reporter/value r2) :r0))
@@ -341,11 +335,13 @@
     ;; Give rc priority 6
     (reporter/set-attendee! rc :test 6 (fn [key r] nil))
     ;; Run manager when there is no interest.
-    (eval-manager r md)
+    (do-eval-management r md)
+    (compute md)
     (is (= (reporter/value r) invalid))
     ;; Run when there is interest.
     (register-copy-value r rc md)
-    (eval-manager r md)
+    (do-eval-management r md)
+    (compute md)
     (is (= (:needed-values (reporter/data r)) #{}))
     (is (= (:subordinate-values (reporter/data r)) {r0 [1 0]}))
     (eval-expression-if-ready r md)
@@ -354,7 +350,8 @@
     ;; Run when there is no interest again.
     (swap! (reporter/data-atom rc) dissoc :value-source)
     (register-copy-value r rc md)
-    (eval-manager r md)
+    (do-eval-management r md)
+    (compute md)
     (is (not (contains? (reporter/data r) :needed-values)))
     (is (not (contains? (reporter/data r) :subordinate-values)))
     (is (empty? (:attendees (reporter/data r0))))))

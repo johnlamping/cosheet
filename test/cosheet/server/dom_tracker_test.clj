@@ -370,6 +370,7 @@
       (doseq [reporter reporters]
         (= (count (:attendees @(:data reporter))) 0))
       (is (= (count (vals (:components @tracker)))  0))
+      (compute md)
       (is (= (count (:subscriptions @(:manager-data ms))) 0)))))
 
 (deftest request-client-refresh-test

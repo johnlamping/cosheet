@@ -10,12 +10,6 @@
                      [reporter :as reporter]
                      [mutable-map :as mm])))
 
-(defn check-depth
-  []
-  (let [depth (count (.getStackTrace (java.lang.Thread/currentThread)))]
-    (when (> depth 200)
-      (assert false (str "Depth: " depth)))))
-
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
 
@@ -248,8 +242,6 @@
 
 (defn copy-value-callback
   [[_ to] from md]
-  ; (check-depth)
-  ;; Propagate invalid with priority.
   (add-task-with-priority
    ;; Propagating has to be prioritized before computing, as an early
    ;; priority computation may depend on a lower priority value, and needs
@@ -311,9 +303,8 @@
     (nil? source)
     (dissoc :arguments-unchanged)))
 
-(defn copy-subordinate-callback
+(defn copy-subordinate
   [to from md]
-  ; (check-depth)
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
@@ -366,6 +357,15 @@
                             [eval-expression-if-ready to md]))
                    new-data))
                (update-in newer-data [:needed-values] conj from)))))))))
+
+(defn copy-subordinate-callback
+  [to from md]
+  (add-task-with-priority
+   ;; Propagating has to be prioritized before computing, as an early
+   ;; priority computation may depend on a lower priority value, and needs
+   ;; to be informed if that value changes.
+   (:queue md) (- (:priority (reporter/data to)) 1e6)
+   copy-subordinate to from md))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
@@ -428,10 +428,9 @@
                (update-value-source reporter nil md)
                (update-old-value-source reporter nil md))))))))
 
-(defn eval-manager
-  "Manager for an eval reporter."
+(defn do-eval-management
+  "The management work for an eval reporter."
   [reporter md]
-  ; (check-depth)
   (modify-and-act
    reporter
    (fn [data]
@@ -467,6 +466,12 @@
                      (dissoc :subordinate-values)
                      (update-value-source reporter nil md)
                      (update-old-value-source reporter nil md)))))))))))
+
+(defn eval-manager
+  [reporter md]
+  (add-task-with-priority
+   (:queue md) (:priority (reporter/data reporter))
+   do-eval-management reporter md))
 
 (defn manage-eval
   "Have the reporter managed by the eval-manager,

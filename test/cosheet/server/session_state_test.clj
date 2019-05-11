@@ -11,7 +11,7 @@
              [store :refer [new-element-store new-mutable-store]]
              [query :refer [matching-items]]
              [state-map :refer [new-state-map state-map-get-current-value]]
-             [expression-manager :refer [new-expression-manager-data]]
+             [expression-manager :refer [new-expression-manager-data compute]]
              [task-queue :refer [new-priority-task-queue]])
             (cosheet.server
              [session-state :refer :all]
@@ -121,4 +121,5 @@
       (is (seq (:subscriptions @(:manager-data ms))))
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
+      (compute md)
       (is (not (seq (:subscriptions @(:manager-data ms))))))))

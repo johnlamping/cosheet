@@ -1,5 +1,6 @@
 (ns cosheet.expression-manager
   (:require (cosheet [task-queue :refer [new-priority-task-queue add-task
+                                         add-task-with-priority
                                          run-all-pending-tasks
                                          run-some-pending-tasks]]
                      [utils :refer [dissoc-in update-in-clean-up
@@ -8,6 +9,12 @@
                                     with-latest-value]]
                      [reporter :as reporter]
                      [mutable-map :as mm])))
+
+(defn check-depth
+  []
+  (let [depth (count (.getStackTrace (java.lang.Thread/currentThread)))]
+    (when (> depth 200)
+      (assert false (str "Depth: " depth)))))
 
 ;;; Trivial scheduler that just runs everything and returns the
 ;;; current value.
@@ -221,8 +228,8 @@
                :dependent-depth dependent-depth)
         (update-new-further-action reporter/inform-attendees reporter))))
 
-(defn copy-value-callback
-  [[_ to] from]
+(defn copy-value
+  [to from md]
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
@@ -236,26 +243,43 @@
              (reporter/valid? value)
              ;; We have finished computing a value,  so the old source
              ;; is not holding onto anything useful.
-             (update-old-value-source to nil)))
+             (update-old-value-source to nil md)))
          data)))))
 
+(defn copy-value-callback
+  [[_ to] from md]
+  ; (check-depth)
+  ;; Propagate invalid with priority.
+  (add-task-with-priority
+   ;; Propagating has to be prioritized before computing, as an early
+   ;; priority computation may depend on a lower priority value, and needs
+   ;; to be informed if that value changes.
+   (:queue md) (- (:priority (reporter/data to)) 1e6)
+   copy-value to from md))
+
 (defn null-callback
+  "We use this when we want to preserve demand for a reporter,
+   but don't currently care about it's value."
   [key reporter]
   nil)
 
 (defn register-copy-value
   "Register the need to copy (or not copy) the value from
    the first reporter to become the value of the second."
-  [from to]
+  [from to md]
   (with-latest-value
     [[priority callback]
      (let [data (reporter/data to)]
        (cond (= (:value-source data) from)
              [(+ (:priority data) 1 (subordinate-depth data))
-              [copy-value-callback]]
+              [copy-value-callback md]]
              (= (:old-value-source data) from)
              [Double/MAX_VALUE [null-callback]]))]
     (apply reporter/set-attendee!
+           ;; It is possible, with caching, for the same reporter to be
+           ;; both our value source and one of our subordinates. We
+           ;; need to have a different key for the two cases, or the
+           ;; reporter will only record one of them.
            from (list :copy-value to) priority callback)))
 
 (defn update-value-source
@@ -263,7 +287,7 @@
    to the given source, and request the appropriate registrations.
    If the optional keyword :old true is passed,
    update the old-value-source, rather than value-source."
-  [data reporter source & {:keys [old]}]
+  [data reporter source md & {:keys [old]}]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
   (assert (or (nil? source) (reporter/data-attended? data)))
@@ -273,7 +297,7 @@
       data
       (reduce
        (fn [data src]
-         (update-new-further-action data register-copy-value src reporter))
+         (update-new-further-action data register-copy-value src reporter md))
        (if source
          (assoc data source-key source)
          (dissoc data source-key))
@@ -282,13 +306,14 @@
        (filter identity [source original-source])))))
 
 (defn update-old-value-source
-  [data reporter source]
-  (cond-> (update-value-source data reporter source :old true)
+  [data reporter source md]
+  (cond-> (update-value-source data reporter source md :old true)
     (nil? source)
     (dissoc :arguments-unchanged)))
 
 (defn copy-subordinate-callback
   [to from md]
+  ; (check-depth)
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
@@ -314,9 +339,10 @@
                               ;; old-source before clearing source,
                               ;; so the old source always has attendees.
                               (#(-> %
-                                    (update-old-value-source to current-source)
+                                    (update-old-value-source
+                                     to current-source md)
                                     (assoc :arguments-unchanged true)
-                                    (update-value-source to nil))))]
+                                    (update-value-source to nil md))))]
              (if (reporter/valid? value)
                (let [new-data
                      (cond-> (update-in newer-data [:needed-values] disj from)
@@ -330,9 +356,11 @@
                      ;; We have re-confirmed all old values for
                      ;; the old source. Make it current again.
                      (-> new-data
-                         (update-value-source to (:old-value-source new-data))
-                         (update-old-value-source to nil))
+                         (update-value-source
+                          to (:old-value-source new-data) md)
+                         (update-old-value-source to nil md))
                      ;; Some value changed. Schedule recomputation.
+                     ;; TODO: Add priority here.
                      (apply update-new-further-action new-data 
                             add-task (:queue md)
                             [eval-expression-if-ready to md]))
@@ -392,17 +420,18 @@
                ;; We have to set our value source first, so we
                ;; generate demand for the new value, before we
                ;; manage it.
-               (update-value-source reporter value)
+               (update-value-source reporter value md)
                (update-new-further-action manage value md))
            (-> data
                (update-value-and-dependent-depth
                 reporter value (subordinate-depth data))
-               (update-value-source reporter nil)
-               (update-old-value-source reporter nil))))))))
+               (update-value-source reporter nil md)
+               (update-old-value-source reporter nil md))))))))
 
 (defn eval-manager
   "Manager for an eval reporter."
   [reporter md]
+  ; (check-depth)
   (modify-and-act
    reporter
    (fn [data]
@@ -423,7 +452,7 @@
              (cond-> new-data
                (:value-source new-data)
                (update-new-further-action
-                register-copy-value (:value-source new-data) reporter))
+                register-copy-value (:value-source new-data) reporter md))
              (let [new-data (update-value-and-dependent-depth
                              new-data reporter reporter/invalid 0)]
                (if (reporter/data-attended? new-data)
@@ -436,8 +465,8 @@
                  (-> new-data
                      (dissoc :needed-values)
                      (dissoc :subordinate-values)
-                     (update-value-source reporter nil)
-                     (update-old-value-source reporter nil)))))))))))
+                     (update-value-source reporter nil md)
+                     (update-old-value-source reporter nil md)))))))))))
 
 (defn manage-eval
   "Have the reporter managed by the eval-manager,
@@ -491,7 +520,8 @@
            (update-value-source data reporter
                                 ;; Might have stopped being attended.
                                 (when (reporter/data-attended? data)
-                                  value-source))))
+                                  value-source)
+                                md)))
         ;; We can't manage the source until the registration is done,
         ;; or its manager will take it out of the cache.
         (when value-source

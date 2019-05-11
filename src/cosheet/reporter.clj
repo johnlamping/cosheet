@@ -31,7 +31,7 @@
        The special value, ::invalid, indicates that there is no current
        valid value.
        One or more callbacks can attend to the value of the reporter. Each
-       is contains a key, a priority, a function and optionally some
+       contains a key, a priority, a function and optionally some
        additional arguments. The priority indicates how important it is
        for this reporter to be recomputed earlier, if multiple reporters
        are out of date (lower priority first). The effective priority
@@ -187,6 +187,8 @@
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (let [data @(:data s)]
     (.write w "<Reporter")
+    (if-let [name (:name data)]
+      (.write w (str " name:" name)))    
     (if-let [value (:value data)]
       (.write w (str " value:" value)))
     (if-let [type (:manager-type data)]

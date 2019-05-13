@@ -246,8 +246,7 @@
   [node {:keys [shadowing-nodes top-level] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
-        column-referent (union-referent
-                         [(hierarchy-node-items-referent node inherited)])
+        column-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node))) ]
     (expr-let [content (when item (entity/content item))
                non-labels (when item (visible-non-labels-R item))]

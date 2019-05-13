@@ -121,7 +121,7 @@
           row-template '(anything (anything ("age" :tag)) :top-level)
           row-condition (list (item-referent query)
                               :top-level)
-          first-column-referent (union-referent [(item-referent c1)])
+          first-column-referent (item-referent c1)
           delete-column-referent (item-referent c1)
           tag-pattern '[:pattern (nil (:variable (:v :name)
                                                  ((nil :tag) :condition)
@@ -204,9 +204,7 @@
                  {:key (conj table-key (:item-id c1) (:item-id single) :content)
                   :class "content-text editable item tag"
                   :target {:template '(anything :tag)
-                           :referent [:exemplar
-                                      (item-referent single)
-                                      first-column-referent]}
+                           :referent (item-referent single)}
                   :add-column first-column-add
                   :delete-column {:referent first-column-referent}
                   :expand {:referent first-column-referent}}
@@ -310,8 +308,6 @@
             row-command (nth row-component 2)
             row-dom (current-value
                      (apply (first row-command) (rest row-command)))]
-        (println (simplify-for-print ["Cs" c1 c2 c3]))
-        (println (simplify-for-print ["ROW DOM" row-dom]))
         (is (check
              row-dom
              [:div {}

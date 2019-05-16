@@ -16,6 +16,7 @@
                             [referent :refer [item-referent exemplar-referent
                                               elements-referent query-referent
                                               union-referent difference-referent
+                                              fallback-referent
                                               virtual-referent]]
                             [model-utils :refer [semantic-elements-R
                                                  semantic-to-list-R]]
@@ -101,10 +102,13 @@
   (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age joe-bogus-age]))))
-  ;;; TODO: Why isn't this failing?
-  (let [referent (query-referent '(nil (nil "age")))]
+  (let [referent (query-referent '(nil (nil ("age" :tag))))]
     (is (check (instantiate-referent referent store)
                (as-set [joe jane]))))
+  ;; Check that a non-tag doesn't match a tag.
+  (let [referent (query-referent '(nil (nil "age")))]
+    (is (check (instantiate-referent referent store)
+               [])))
   (let [referent (exemplar-referent joe-age
                                     (query-referent '(nil (nil ("age" :tag)))))]
     (is (check (instantiate-referent referent store)
@@ -115,22 +119,34 @@
                                  (query-referent '(nil (nil ("age" :tag)))))
               store)
              (as-set [joe-age joe-bogus-age jane-age])))
+  ;; Union
   (let [referent (union-referent
-               [(item-referent joe-age)
-                (elements-referent '(nil ("age" :tag)) (item-referent jane))
-                (query-referent '(nil (nil ("age" :tag))))])]
+                  [(item-referent joe-age)
+                   (elements-referent '(nil ("age" :tag)) (item-referent jane))
+                   (query-referent '(nil (nil ("age" :tag))))])]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age joe jane]))))
+  ;; Difference
+  (let [referent (difference-referent (query-referent '(nil (nil ("age" :tag))))
+                                      (item-referent joe))]
+    (is (check (instantiate-referent referent store)
+               [jane])))
+  ;; Fallback
+  (let [joe-jane-referent (union-referent [(item-referent joe)
+                                           (item-referent jane)])
+        referent (fallback-referent
+                  (elements-referent '(nil ("age" :tag) "doubtful")
+                                     joe-jane-referent)
+                  (elements-referent '(nil ("age" :tag))
+                                     joe-jane-referent))]
+    (is (check (instantiate-referent referent store)
+               (as-set [joe-bogus-age jane-age]))))
   ;; Exemplar of union
   (let [referent (exemplar-referent joe-age
                                     (union-referent [(item-referent joe)
                                                      (item-referent jane)]))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age]))))
-  (let [referent (difference-referent (query-referent '(nil (nil ("age" :tag))))
-                                      (item-referent joe))]
-    (is (check (instantiate-referent referent store)
-               [jane])))
   ;; Exemplar of union of elements
   (let [referent (exemplar-referent
                (item-referent joe-age-tag)
@@ -151,8 +167,10 @@
              [dup-female-2]))
   ;; Union of non-trivial sequences
   (let [referent (union-referent
-                  [(elements-referent 45 (query-referent '(nil (nil "age"))))
-                   (elements-referent 39 (query-referent '(nil (nil "age"))))])]
+                  [(elements-referent
+                    45 (query-referent '(nil (nil ("age" :tag)))))
+                   (elements-referent
+                    39 (query-referent '(nil (nil ("age" :tag)))))])]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age joe-bogus-age])))))
 
@@ -192,8 +210,8 @@
               '("Jane" "female" (45 ("age" :tag)) "male"))))))
   ;; Multiple subjects
   (let [referent (virtual-referent '("hi" :tag)
-                                   (query-referent '(nil (nil "age")))
-                                   (query-referent '(nil (nil "age")))
+                                   (query-referent '(nil (nil ("age" :tag))))
+                                   (query-referent '(nil (nil ("age" :tag))))
                                    :position :before)
         [items new-ids store] (instantiate-or-create-referent
                                 referent store)]

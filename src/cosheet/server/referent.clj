@@ -20,52 +20,60 @@
 ;;; condition corresponding to their list expansion.
 
 ;;; The kinds of referent are:
-;;;            item  <an item-id>
-;;;                  Refers to the single item.
-;;;        exemplar  [:exemplar <item-id> <sequence-referent>]
-;;;                  For each item refered to by sequence-referent,
-;;;                  refers to an element, if there is one, whose semantic
-;;;                  information includes that of the item. If there are
-;;;                  several matching items, chooses the one with the least
-;;;                  additional stuff.
-;;;        elements  [:elements <condition> <sequence-referent>]
-;;;                  For each item refered to by sequence-referent,
-;;;                  refers to all elements whose semantic information
-;;;                  matches the condition.
-;;;           query  [:query <condition>]
-;;;                  Refers to all items that satisfy the condition.
-;;;           union  [:union  <referent> ...]
-;;;                  Refers to all items that any of the referents refers to.
-;;;                  Replications are removed
-;;;      difference  [:difference <referent> <referent>]
-;;;                  Refers to all items refered to by the first referent
-;;;                  and not by the second.
-;;;         virtual  [:virtual <exemplar-referent> <subject-referent>
-;;;                            <adjacent-referents> <position> <use-bigger>]
-;;;                  For each item refered to by subject-referent,
-;;;                  refers to a new item matching the exemplar
-;;;                  referent. The exemplar may be a condition, with nils,
-;;;                  and may be a template, with 'anything or refer to an
-;;;                  item that is a template. It can also be
-;;;                  virtual or contain virtual referents. The subject
-;;;                  referent can be virtual, or may be nil, in which case
-;;;                  one element is created for each item in adjacent.
-;;;                  Adjacent-referent is a list of referents, each of which
-;;;                  gives items the new items could be adjacent to in the
-;;;                  order. Each of the adjacent
-;;;                  referents must yield the same number of items,
-;;;                  which must be the same number as subject, if it is
-;;;                  present. If there are multiple adjacent referents, the
-;;;                  new item will be adjacent to the furthest in the direction
-;;;                  of position. If there are no adjacent-referents,
-;;;                  subject-referent
-;;;                  must not be nil, and the element of the subject furthest
-;;;                  in the position direction is used for adjacent, or
-;;;                  subject, itself, if it has no ordered elements.
-;;;                  Position and use-bigger say where the new
-;;;                  item should go relative to the adjacent item(s).
-;;;                  Virtual referents may not be nested inside non-virtual
-;;;                  referents, except union referents.
+;;;           item  <an item-id>
+;;;                 Refers to the single item.
+;;;       exemplar  [:exemplar <condition> <subject-referent>]
+;;;                 For each item referred to by subject-referent,
+;;;                 refers to an element, if there is one, whose semantic
+;;;                 information includes that of the condition. If there are
+;;;                 several matching items, chooses the one with the least
+;;;                 additional stuff.
+;;;       elements  [:elements <condition> <subject-referent>]
+;;;                 For each item referred to by subject-referent,
+;;;                 refers to all elements whose semantic information
+;;;                 matches the condition.
+;;;          query  [:query <condition>]
+;;;                 Refers to all items that satisfy the condition.
+;;;          union  [:union  <referent> ...]
+;;;                 Refers to all items that any of the referents refers to.
+;;;                 Replications are removed
+;;;     difference  [:difference <referent> <referent>]
+;;;                 Refers to all items referred to by the first referent
+;;;                 and not by the second.
+;;;       fallback  [:fallback <primary-referent> <secondary-referent>]
+;;;                 Refers to what the primary-referent refers to, plus
+;;;                 to any items that the secondary referent refers to
+;;;                 whose subject is not among the subjects of the
+;;;                 referents of the primary referent.
+;;;                 As a rule, both referents will have the same subject
+;;;                 referent, so this will use the secondary referent
+;;;                 for those subjects where the primary referent finds nothing.
+;;;        virtual  [:virtual <exemplar-referent> <subject-referent>
+;;;                           <adjacent-referents> <position> <use-bigger>]
+;;;                 For each item referred to by subject-referent,
+;;;                 refers to a new item matching the exemplar
+;;;                 referent. The exemplar may be a condition, with nils,
+;;;                 and may be a template, with 'anything or refer to an
+;;;                 item that is a template. It can also be
+;;;                 virtual or contain virtual referents. The subject
+;;;                 referent can be virtual, or may be nil, in which case
+;;;                 one element is created for each item in adjacent.
+;;;                 Adjacent-referent is a list of referents, each of which
+;;;                 gives items the new items could be adjacent to in the
+;;;                 order. Each of the adjacent
+;;;                 referents must yield the same number of items,
+;;;                 which must be the same number as subject, if it is
+;;;                 present. If there are multiple adjacent referents, the
+;;;                 new item will be adjacent to the furthest in the
+;;;                 direction of position. If there are no
+;;;                 adjacent-referents, subject-referent must
+;;;                 not be nil, and the element of the subject furthest
+;;;                 in the position direction is used for adjacent, or
+;;;                 subject, itself, if it has no ordered elements.
+;;;                 Position and use-bigger say where the new
+;;;                 item should go relative to the adjacent item(s).
+;;;                 Virtual referents may not be nested inside non-virtual
+;;;                 referents, except union referents.
 
 (defn item-referent? [referent]
   (satisfies? StoredItemDescription referent))
@@ -87,7 +95,7 @@
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :query :union :difference :virtual}
+           (#{:exemplar :elements :query :union :difference :fallback :virtual}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -155,6 +163,13 @@
   (assert (referent? minus))
   [:difference plus minus])
 
+(defn fallback-referent
+  "Create a difference referent."
+  [primary secondary]
+  (assert (referent? primary))
+  (assert (referent? secondary))
+  [:fallback primary secondary])
+
 (defn virtual-referent
   "Create a virtual referent."
   ([exemplar subject]
@@ -215,6 +230,7 @@
    \Q :query
    \U :union
    \D :difference
+   \F :fallback
    \V :virtual})
 (def type->letters (clojure.set/map-invert letters->type))
 

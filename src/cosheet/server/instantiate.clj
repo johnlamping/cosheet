@@ -4,7 +4,7 @@
                      [debug :refer [simplify-for-print]]
                      [entity
                       :as Entity
-                      :refer [elements content label->elements
+                      :refer [subject elements content label->elements
                               description->entity in-different-store]]
                      [canonical :refer [canonicalize-list]]
                      [store :as store :refer [id-valid? update-content]]
@@ -109,6 +109,20 @@
                   (remove
                    (set (instantiate-referent minus immutable-store))
                    (instantiate-referent plus immutable-store)))
+    ;; TODO: Fallback referents often have the same subject referent for their
+    ;;       primary and secondary referents. This code will evaluate them
+    ;;       each separately. For nested fallback referents, this means
+    ;;       2^depth total evaluations. Adding a cache of already evaluated
+    ;;       sub-referents would avoid that problem.
+    :fallback (let [[_ primary secondary] referent
+                    primary-items (instantiate-referent
+                                   primary immutable-store)
+                    primary-subjects (set (map subject primary-items))
+                    secondary-items (instantiate-referent
+                                     secondary immutable-store)
+                    fallbacks (remove #(primary-subjects (subject %))
+                                      secondary-items)]
+                (concat primary-items fallbacks))
     :virtual []))
 
 (defn create-possible-selector-elements

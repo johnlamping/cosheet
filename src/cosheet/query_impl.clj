@@ -72,11 +72,11 @@
                                           :not))
                                   :negation
                                   (= (content term) ::query/sub-query)
-                                  :template
+                                  :ignore
                                   true
-                                  :regular))
+                                  :positive))
                           terms)]
-    [(:regular grouped) (map #(first (label->elements % ::query/sub-query))
+    [(:positive grouped) (map #(first (label->elements % ::query/sub-query))
                              (:negation grouped))]))
 
 (def extended-by?)
@@ -460,16 +460,16 @@
                     (fn [immutable-store]
                       (filter
                        #(let [entity (description->entity % immutable-store)]
-                          (partial matching-extensions term {}))
+                          (not (empty? (matching-extensions term {} entity))))
                        (store/candidate-matching-ids
                         immutable-store (closest-template term {})))))]
       (map #(description->entity % store) ids))
-    (expr-filter
-     (partial matching-extensions term {})
-     (expr map
-       #(description->entity % store)
-       (store/candidate-matching-ids
-        store (closest-template term {}))))))
+    ;; The store is immutable.
+    (filter
+     #(not (empty? (matching-extensions term {} %)))     
+     (map #(description->entity % store)
+          (store/candidate-matching-ids
+           store (closest-template term {}))))))
 
 (defmethod matching-items-m true [term store]
   (matching-items term store))

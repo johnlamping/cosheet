@@ -566,4 +566,8 @@
     (let [matches (let-mutated-store
                    [store s0 mutator]
                    (matching-items '(nil (2 3)) store))]
-      (= (map :item-id matches) [ia]))))
+      (= (map :item-id matches) [ia]))
+    (let [matches (let-mutated-store
+                   [store s0 mutator]
+                    (matching-items '(nil (2 (not-query 3))) store))]
+      (= (map :item-id matches) [ib]))))

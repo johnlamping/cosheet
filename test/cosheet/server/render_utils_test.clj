@@ -13,6 +13,7 @@
             (cosheet.server
              [render-utils :refer :all]
              [referent :refer [elements-referent exemplar-referent
+                               non-competing-elements-referent
                                union-referent]])
             ; :reload
             ))
@@ -141,10 +142,35 @@
              {:class "foo bar baz"
               :other "hi"})))
 
+(deftest competing-siblings-test
+  (let [[s1 joe-id] (add-entity
+                    (new-element-store) nil
+                    '("joe"
+                      anything (anything 1) (anything 1)
+                      (2 1) (2 3)))
+        [s2 item-a1-id] (add-entity s1 joe-id '(anything 1))
+        [s3 item-b3-id] (add-entity s2 joe-id '("" 3))
+        [store item-21-id] (add-entity s3 joe-id '(2 1))
+        joe (description->entity joe-id store)
+        item-a1 (description->entity item-a1-id store)
+        item-b3 (description->entity item-b3-id store)
+        item-21 (description->entity item-21-id store)]
+    (let [competing (competing-siblings item-a1)]
+      (is (check (map entity/to-list competing)
+                 (as-set ['(anything 1) '(2 1) '(2 3) '("" 3)])))
+      (is (not-any? #(= % item-a1) competing)))
+    (let [competing (competing-siblings item-21)]
+      (is (check (map entity/to-list competing)
+                 (as-set ['(2 1) '(2 3)])))
+      (is (not-any? #(= % item-21) competing)))
+    (let [competing (competing-siblings item-b3)]
+      (is (check (map entity/to-list competing)
+                 ['(anything 1)])))))
+
 (deftest item-referent-given-inherited-test
   (let [s0 (new-element-store)
         [s1 joe-id] (add-entity s0 nil "joe")
-        [store joe-age-id] (add-entity s1 joe-id '(anything ("age" :tag)))
+        [store joe-age-id] (add-entity s1 joe-id '(50 ("age" :tag)))
         joe (description->entity joe-id store)
         joe-age (description->entity joe-age-id store)]
     (is (check (item-referent-given-inherited joe-age {})
@@ -157,18 +183,28 @@
     (is (check (item-referent-given-inherited
                 joe-age  {:subject-referent (union-referent [joe-id])})
                (exemplar-referent joe-age-id (union-referent [joe-id]))))
-    ;; Check that we go to an exemplar referent if there is a
+    ;; Check that we go to a non-competing-elements referent if there is a
     ;; sibling that is more specific.
-    (let [[store _] (add-entity store joe-id '(50 ("age" :tag) ("fake" :tag)))]
+    (let [[store joe-fake-age-id]
+          (add-entity store joe-id '(50 ("age" :tag) ("fake" :tag)))
+          ;; A sibling that is non-competing with the age ones.
+          [store _] (add-entity store joe-id "Hi")]
       (is (check (item-referent-given-inherited
                   (description->entity joe-age-id store)
                   {:match-all true :subject-referent joe-id})
-                 (exemplar-referent joe-age-id joe-id)))
-      ;; Check that we go back to entity if the sibling is no longer
+                 (non-competing-elements-referent
+                  joe-age-id joe-id [joe-fake-age-id])))
+      ;; Check that the less specific is not competing with the more specific
+      (is (check (item-referent-given-inherited
+                  (description->entity joe-fake-age-id store)
+                  {:match-all true :subject-referent joe-id})
+                 (elements-referent joe-fake-age-id joe-id)))
+      ;; Check that the sibling is still competing if neither sibling is
       ;; more specific.
       (let [[store _] (add-entity store joe-age-id '("true" :tag))]
         (is (check (item-referent-given-inherited
                     (description->entity joe-age-id store)
                     {:match-all true :subject-referent joe-id})
-                   (elements-referent joe-age-id joe-id))))))) 
+                   (non-competing-elements-referent
+                  joe-age-id joe-id [joe-fake-age-id]))))))) 
 

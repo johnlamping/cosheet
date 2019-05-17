@@ -52,14 +52,14 @@
 ;;;     difference  [:difference <referent> <referent>]
 ;;;                 Refers to all items referred to by the first referent
 ;;;                 and not by the second.
-;;;        virtual  [:virtual <exemplar-referent> <subject-referent>
+;;;        virtual  [:virtual <exemplar> <subject-referent>
 ;;;                           <adjacent-referents> <position> <use-bigger>]
 ;;;                 For each item referred to by subject-referent,
 ;;;                 refers to a new item matching the exemplar
 ;;;                 referent. The exemplar may be a condition, with nils,
 ;;;                 and may be a template, with 'anything or refer to an
 ;;;                 item that is a template. It can also be
-;;;                 virtual or contain virtual referents. The subject
+;;;                 a virtual referent or contain virtual referents. The subject
 ;;;                 referent can be virtual, or may be nil, in which case
 ;;;                 one element is created for each item in adjacent.
 ;;;                 Adjacent-referent is a list of referents, each of which
@@ -132,9 +132,9 @@
 
 (defn exemplar-referent
   "Create an exemplar referent."
-  [exemplar subject]
+  [condition subject]
   (assert (referent? subject))
-  [:exemplar (require-item-or-id exemplar) subject])
+  [:exemplar (coerce-item-to-id condition) subject])
 
 (defn elements-referent
   "Create an elements referent."
@@ -207,14 +207,15 @@
 (defn item-or-exemplar-referent
   "Make an item or an exemplar referent, as necessary,
    depending on the subject."
-  [item subject-referent]
-  (if (or (nil? subject-referent)
+  [condition subject-referent]
+  (if (or (and (nil? subject-referent)
+               (item-referent? (coerce-item-to-id condition)))
           (and (item-referent? subject-referent)
-               (satisfies? cosheet.entity/StoredEntity item)
-               (if-let [subj (cosheet.entity/subject item)]
+               (satisfies? cosheet.entity/StoredEntity condition)
+               (if-let [subj (cosheet.entity/subject condition)]
                  (= (item-referent subj) subject-referent))) )
-    (item-referent item)
-    (exemplar-referent item subject-referent)))
+    (item-referent condition)
+    (exemplar-referent condition subject-referent)))
 
 (defn referent->exemplar-and-subject
   "Given a referent, return an exemplar and subject such that

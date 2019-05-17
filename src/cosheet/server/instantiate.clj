@@ -82,16 +82,15 @@
         referent))
     pattern)))
 
-;;; TODO: Have this take the query, not the exemplar.
 (defn best-exemplar-picker
-  [exemplar immutable-store]
+  [condition immutable-store]
   (let [query (pattern-to-query
-               (expand-pattern-items exemplar immutable-store))]
-    (if (and (item-referent? exemplar)
-             (id-valid? immutable-store exemplar))
-      ;; The exemplar is an item. Always return it for its subject,
+               (expand-pattern-items condition immutable-store))]
+    (if (and (item-referent? condition)
+             (id-valid? immutable-store condition))
+      ;; The condition is an item. Always return it for its subject,
       ;; even if another element of its subject is as good a match.
-      (let [exemplar-item (description->entity exemplar immutable-store)
+      (let [exemplar-item (description->entity condition immutable-store)
             subj (Entity/subject exemplar-item)]
         #(if (= % subj)
            [exemplar-item]
@@ -105,8 +104,8 @@
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
-    :exemplar (let [[_ exemplar subject-ref] referent ]
-                (mapcat (best-exemplar-picker exemplar immutable-store)
+    :exemplar (let [[_ condition subject-ref] referent ]
+                (mapcat (best-exemplar-picker condition immutable-store)
                         (instantiate-referent subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
                     query (pattern-to-query

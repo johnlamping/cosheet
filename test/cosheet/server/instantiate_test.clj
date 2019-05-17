@@ -99,7 +99,8 @@
   (let [referent (exemplar-referent joe-age (item-referent jane))]
     (is (= (instantiate-referent referent store)
            [jane-age])))
-  (let [referent (exemplar-referent jane-age (item-referent joe))]
+  ;; Check that exemplar returns the simplest.
+  (let [referent (exemplar-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (= (instantiate-referent referent store)
            [joe-age])))
   (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]

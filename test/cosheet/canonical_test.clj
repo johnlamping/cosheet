@@ -27,6 +27,12 @@
     (is (check (canonicalize-list (canonical-to-list canonical))
                canonical))))
 
+(deftest update-canonical-content-test
+  (is (= (update-canonical-content (canonicalize-list jane-list) "Jeanette")
+         (canonicalize-list `("Jeanette" "plain" "plain"))))
+  (is (= (update-canonical-content (canonicalize-list "Jane") "Jeanette")
+         (canonicalize-list "Jeanette"))))
+
 (deftest common-canonical-test
   (is (= (common-canonical "joe" "joe") "joe"))
   (is (= (common-canonical "joe" "jane") nil))
@@ -79,3 +85,9 @@
   (is (not (canonical-extended-by
             (canonicalize-list '("joe" "a" ("name" "c" "e") ("name" "c")))
             (canonicalize-list '("joe" ("name" "e" "c") ("name" "c") "b"))))))
+
+(deftest canonical-have-common-elaboration-test
+  (is (canonical-have-common-elaboration '("joe" "a") '("joe" "b")))
+  (is (canonical-have-common-elaboration '(nil "a") '("joe" "b")))
+  (is (canonical-have-common-elaboration '("joe" "a") '(nil "b")))
+  (is (not (canonical-have-common-elaboration '("joe" "a") '("fred" "a")))))

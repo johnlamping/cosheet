@@ -50,10 +50,16 @@
 
 (def common-canonical)
 
-(defn content
+(defn canonical-content
   "Return the content of a canonical representation."
   [r]
   (if (sequential? r) (first r) r))
+
+(defn update-canonical-content
+  "Update the content of a canonical representation."
+  [r c]
+  (let [ac (canonical-atom-form c)]
+    (if (sequential? r) [ac (second r)] ac)))
 
 (defn common-canonical-multisets-for-same-content
   "Given two non-empty multisets of canonical representations,
@@ -78,7 +84,7 @@
               (let [count (min first-count second-count)]
                 (multiset-conj both common count)))))
         (when (not (empty? both)) both)
-        (multiset-conj {} (content (first (keys s1)))))))
+        (multiset-conj {} (canonical-content (first (keys s1)))))))
 
 (defn map-by-content
   "Given a multiset of canonical representations, partition by content,
@@ -87,7 +93,7 @@
   [m]
   (reduce
    (fn [accum [item count]]
-     (update accum (content item)
+     (update accum (canonical-content item)
              #(multiset-conj (or % {}) item count)))
    {} (seq m)))
 
@@ -113,8 +119,8 @@
   with elements of the second, and the pairs have commonality, then
   those commonalities are elements of the overall commonality."
   [c1 c2]
-  (let [content1 (content c1)
-        content2 (content c2)]
+  (let [content1 (canonical-content c1)
+        content2 (canonical-content c2)]
     (when (= content1 content2)
       (if (and (sequential? c1) (sequential? c2))
         (let [common-elements (common-canonical-multisets
@@ -129,11 +135,18 @@
    Doesn't currently recognize all cases, where an element of the
    first list corrresponds to an extension of it in the second."
   [c1 c2]
-  (let [content1 (content c1)
-        content2 (content c2)]
+  (let [content1 (canonical-content c1)
+        content2 (canonical-content c2)]
     (when (or (nil? content1) (= content1 content2))
       (or (not (sequential? c1))
           (and (sequential? c2)
                (let [common-elements (common-canonical-multisets
                                       (second c1) (second c2))]
                  (= common-elements (second c1))))))))
+
+(defn canonical-have-common-elaboration
+  "Return true if there is a common elaboration of c1 and c2."
+  [c1 c2]
+  (let [content1 (canonical-content c1)
+        content2 (canonical-content c2)]
+    (or (nil? content1) (nil? content2) (= content1 content2))))

@@ -16,7 +16,7 @@
                             [referent :refer [item-referent exemplar-referent
                                               elements-referent query-referent
                                               union-referent difference-referent
-                                              fallback-referent
+                                              non-competing-elements-referent
                                               virtual-referent]]
                             [model-utils :refer [semantic-elements-R
                                                  semantic-to-list-R]]
@@ -99,6 +99,9 @@
   (let [referent (exemplar-referent joe-age (item-referent jane))]
     (is (= (instantiate-referent referent store)
            [jane-age])))
+  (let [referent (exemplar-referent jane-age (item-referent joe))]
+    (is (= (instantiate-referent referent store)
+           [joe-age])))
   (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age joe-bogus-age]))))
@@ -119,6 +122,24 @@
                                  (query-referent '(nil (nil ("age" :tag)))))
               store)
              (as-set [joe-age joe-bogus-age jane-age])))
+  ;; non-competing-elements
+  (let [joe-jane-referent (union-referent [(item-referent joe)
+                                           (item-referent jane)])
+        referent (non-competing-elements-referent
+                  '(nil ("age" :tag))
+                  joe-jane-referent
+                  ['(nil ("age" :tag) "doubtful")])]
+    (is (check (instantiate-referent referent store)
+               (as-set [joe-age jane-age]))))
+  (let [joe-jane-referent (union-referent [(item-referent joe)
+                                           (item-referent jane)])
+        referent (non-competing-elements-referent
+                  '(nil ("age" :tag))
+                  joe-jane-referent
+                  ['(nil ("age" :tag))])
+        instantiated (instantiate-referent referent store)]
+    (is (check instantiated
+               (as-set [joe-age jane-age]))))
   ;; Union
   (let [referent (union-referent
                   [(item-referent joe-age)
@@ -131,16 +152,6 @@
                                       (item-referent joe))]
     (is (check (instantiate-referent referent store)
                [jane])))
-  ;; Fallback
-  (let [joe-jane-referent (union-referent [(item-referent joe)
-                                           (item-referent jane)])
-        referent (fallback-referent
-                  (elements-referent '(nil ("age" :tag) "doubtful")
-                                     joe-jane-referent)
-                  (elements-referent '(nil ("age" :tag))
-                                     joe-jane-referent))]
-    (is (check (instantiate-referent referent store)
-               (as-set [joe-bogus-age jane-age]))))
   ;; Exemplar of union
   (let [referent (exemplar-referent joe-age
                                     (union-referent [(item-referent joe)

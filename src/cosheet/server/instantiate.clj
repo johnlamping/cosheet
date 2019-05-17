@@ -6,10 +6,12 @@
                       :as Entity
                       :refer [subject elements content label->elements
                               description->entity in-different-store]]
-                     [canonical :refer [canonicalize-list]]
+                     [canonical :refer [canonicalize-list
+                                        update-canonical-content]]
                      [store :as store :refer [id-valid? update-content]]
                      [store-utils :refer [add-entity]]
-                     [query :refer [matching-elements matching-items]])
+                     [query :refer [matching-elements matching-items
+                                    extended-by?]])
             (cosheet.server
              [referent :refer [referent? item-referent? virtual-referent?
                                union-referent? virtual-union-referent?
@@ -41,8 +43,20 @@
                                          (item->canonical-semantic %)]
                                      (or (= canonical-match canonical1)
                                          (= canonical-match canonical2)))
-                                  matches)]
-      (first (if (empty? perfect-matches) matches perfect-matches)))
+                                  matches)
+          ;; A good match is something identical to the template, except
+          ;; that the template has nil content while the match has non-nil
+          ;; content.
+          good-matches (when (and (empty? perfect-matches)
+                                  (nil? (content semantic)))
+                         (let [canonical (canonicalize-list semantic)]
+                           (filter #(let [canonical-match
+                                         (item->canonical-semantic %)]
+                                      (= (update-canonical-content
+                                          canonical-match nil)
+                                         canonical))
+                                  matches)))]
+      (first (or (seq perfect-matches) (seq good-matches) matches)))
     (first matches)))
 
 (defn best-matching-element
@@ -68,6 +82,22 @@
         referent))
     pattern)))
 
+;;; TODO: Have this take the query, not the exemplar.
+(defn best-exemplar-picker
+  [exemplar immutable-store]
+  (let [query (pattern-to-query
+               (expand-pattern-items exemplar immutable-store))]
+    (if (and (item-referent? exemplar)
+             (id-valid? immutable-store exemplar))
+      ;; The exemplar is an item. Always return it for its subject,
+      ;; even if another element of its subject is as good a match.
+      (let [exemplar-item (description->entity exemplar immutable-store)
+            subj (Entity/subject exemplar-item)]
+        #(if (= % subj)
+           [exemplar-item]
+           (best-matching-element query %)))
+      #(best-matching-element query %))))
+
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
   virtual referents."
@@ -75,29 +105,33 @@
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
-    :exemplar (let [[_ exemplar subject-ref] referent
-                    query (pattern-to-query
-                           (expand-pattern-items exemplar immutable-store))
-                    picker (if (and (item-referent? exemplar)
-                                    (id-valid? immutable-store exemplar))
-                             ;; If the exemplar is an item, then always
-                             ;; return it for its subject, even if another
-                             ;; element of its subject is as good a match.
-                             (let [exemplar-item
-                                   (description->entity
-                                    exemplar immutable-store)
-                                   subj (Entity/subject exemplar-item)]
-                               #(if (= % subj)
-                                  [exemplar-item]
-                                  (best-matching-element query %)))
-                             #(best-matching-element query %))]
-                (mapcat picker
+    :exemplar (let [[_ exemplar subject-ref] referent ]
+                (mapcat (best-exemplar-picker exemplar immutable-store)
                         (instantiate-referent subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
                     query (pattern-to-query
                            (expand-pattern-items condition immutable-store))]
                 (mapcat #(matching-elements query %)
                         (instantiate-referent subject-ref immutable-store)))
+    :non-competing-elements
+    (let [[_ condition subject-ref & competing-conditions] referent
+          subjects (instantiate-referent subject-ref immutable-store)
+          query (pattern-to-query
+                 (expand-pattern-items condition immutable-store))
+          competing-queries (map #(pattern-to-query
+                                   (expand-pattern-items % immutable-store))
+                                 competing-conditions)]
+      (mapcat (fn [subject]
+                (let [items (matching-elements query subject)
+                      filtered (reduce
+                                (fn [items competing-query]
+                                  (remove #(extended-by? competing-query %)
+                                          items))
+                                items competing-queries)]
+                  (if (empty? filtered)
+                    ((best-exemplar-picker condition immutable-store) subject)
+                    filtered)))
+              subjects))
     :query (let [[_ condition] referent
                  query (pattern-to-query
                         (expand-pattern-items condition immutable-store))]
@@ -109,20 +143,6 @@
                   (remove
                    (set (instantiate-referent minus immutable-store))
                    (instantiate-referent plus immutable-store)))
-    ;; TODO: Fallback referents often have the same subject referent for their
-    ;;       primary and secondary referents. This code will evaluate them
-    ;;       each separately. For nested fallback referents, this means
-    ;;       2^depth total evaluations. Adding a cache of already evaluated
-    ;;       sub-referents would avoid that problem.
-    :fallback (let [[_ primary secondary] referent
-                    primary-items (instantiate-referent
-                                   primary immutable-store)
-                    primary-subjects (set (map subject primary-items))
-                    secondary-items (instantiate-referent
-                                     secondary immutable-store)
-                    fallbacks (remove #(primary-subjects (subject %))
-                                      secondary-items)]
-                (concat primary-items fallbacks))
     :virtual []))
 
 (defn create-possible-selector-elements

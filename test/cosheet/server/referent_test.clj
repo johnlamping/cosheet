@@ -22,8 +22,11 @@
                                            '(nil (:root :A_a))
                                            'b))
                      (item-referent (->ItemId 6789)))
-                    (fallback-referent (item-referent (->ItemId 11))
-                                       (item-referent (->ItemId 33)))
+                    (non-competing-elements-referent
+                     'a
+                     (item-referent (->ItemId 11))
+                     [(item-referent (->ItemId 33))
+                      (item-referent (->ItemId 44))])
                     (virtual-referent (item-referent (->ItemId 1234))
                                       (item-referent (->ItemId 2345))
                                       [(item-referent (->ItemId 3456))]

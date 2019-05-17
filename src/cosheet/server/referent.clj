@@ -32,6 +32,18 @@
 ;;;                 For each item referred to by subject-referent,
 ;;;                 refers to all elements whose semantic information
 ;;;                 matches the condition.
+;;; non-competing-elements
+;;;                 [:non-competing-elements
+;;;                  <condition> <subject-referent> <competing-condition>* ]
+;;;                 For each item referred to by subject-referent,
+;;;                 refers to all elements whose semantic information
+;;;                 matches the condition, and does not match any of the
+;;;                 competing conditions. If there are no such elements,
+;;;                 refers to the best exemplar of the condition, if any.
+;;;                 This is used to determine what is affected by selectors
+;;;                 in batch edit. The idea is to pick up the items elements
+;;;                 not already picked up by the competing conditions, but to
+;;;                 always pick up one item.
 ;;;          query  [:query <condition>]
 ;;;                 Refers to all items that satisfy the condition.
 ;;;          union  [:union  <referent> ...]
@@ -40,14 +52,6 @@
 ;;;     difference  [:difference <referent> <referent>]
 ;;;                 Refers to all items referred to by the first referent
 ;;;                 and not by the second.
-;;;       fallback  [:fallback <primary-referent> <secondary-referent>]
-;;;                 Refers to what the primary-referent refers to, plus
-;;;                 to any items that the secondary referent refers to
-;;;                 whose subject is not among the subjects of the
-;;;                 referents of the primary referent.
-;;;                 As a rule, both referents will have the same subject
-;;;                 referent, so this will use the secondary referent
-;;;                 for those subjects where the primary referent finds nothing.
 ;;;        virtual  [:virtual <exemplar-referent> <subject-referent>
 ;;;                           <adjacent-referents> <position> <use-bigger>]
 ;;;                 For each item referred to by subject-referent,
@@ -95,7 +99,8 @@
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :query :union :difference :fallback :virtual}
+           (#{:exemplar :elements :non-competing-elements
+              :query :union :difference :virtual}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -136,6 +141,13 @@
   [condition subject]
   (assert (referent? subject))
   [:elements (coerce-item-to-id condition) subject])
+
+(defn non-competing-elements-referent
+  "Create an elements referent."
+  [condition subject competing-conditions]
+  (assert (referent? subject))
+  (concat [:non-competing-elements (coerce-item-to-id condition) subject]
+          (map coerce-item-to-id competing-conditions)))
 
 (defn query-referent
   "Create an query referent."
@@ -227,10 +239,10 @@
 (def letters->type
   {\X :exemplar
    \E :elements
+   \C :non-competing-elements
    \Q :query
    \U :union
    \D :difference
-   \F :fallback
    \V :virtual})
 (def type->letters (clojure.set/map-invert letters->type))
 

@@ -8,7 +8,8 @@
                      [query :refer [matching-elements]]
                      [orderable :as orderable]
                      [canonical :refer [canonicalize-list
-                                        canonical-extended-by]]
+                                        canonical-extended-by
+                                        canonical-have-common-elaboration]]
                      [hiccup-utils
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
@@ -21,6 +22,7 @@
              [referent :refer [referent?
                                virtual-referent
                                elements-referent exemplar-referent
+                               non-competing-elements-referent
                                item-referent item-or-exemplar-referent
                                union-referent-if-needed]]
              [hierarchy :refer [hierarchy-node-descendants]])))
@@ -215,6 +217,47 @@
   [inherited]
   (:subject-referent inherited))
 
+(defn item->canonical-query
+  "Return the canonical list version of the semantic parts of an item."
+  [item]
+  (-> item
+      immutable-semantic-to-list
+      (replace-in-seqs 'anything nil)
+      (replace-in-seqs 'anything-immutable nil)
+      canonicalize-list))
+
+(defn competing-siblings
+  "Given an item that is functioning as a query, return a seq of its siblings
+   that compete with matching for it. This all siblings that have a common
+   elaboration and for which the item is not a pure elaboration.
+   In other words, the sibling has to either be identical, or not contradict
+   the item and have something that the item doesn't have.
+   Don't include redundant siblings more than once."
+  [item]
+  (let [item-canonical (item->canonical-query item)
+        siblings (entity/elements (entity/subject item))
+        matching (filter #(= item-canonical (item->canonical-query %))
+                         siblings)]
+    (cond-> (vals
+             ;; We make a map from canonical to sibling, so we can not
+             ;; add redunant siblings.
+             (reduce (fn [so-far sibling]
+                       (let [sibling-canonical (item->canonical-query sibling)]
+                         (cond-> so-far
+                           (and (canonical-have-common-elaboration
+                                 item-canonical sibling-canonical)
+                                (not (canonical-extended-by
+                                      sibling-canonical item-canonical))
+                                (not (so-far sibling-canonical)))
+                           (assoc sibling-canonical sibling))))
+                     {} siblings))
+      ;; The matching list includes the item, so there is an identical sibling
+      ;; if there is more than one element.
+      (not (empty? (rest matching)))
+      ;; We only need one matching sibling. If the items are distinguishable,
+      ;; choose one different from the item we started with.
+      (conj (or (first (remove #(= % item) matching)) (first matching))))))
+
 (defn item-referent-given-inherited
   "Return the proper referent for the item, given inherited."
   [item inherited]
@@ -225,24 +268,14 @@
         (assert (not (entity/mutable-entity? item)))
         (if (nil? subject-referent)
           item-ref
-          ;; Even if :match-all is set, we don't match all items if there
-          ;; is a sibling that is at least as specific. Otherwise, we would
-          ;; refer to the sibling too.
-          (let [parent (entity/subject item)
-                item->canonical (fn [item]
-                                  (-> item
-                                      immutable-semantic-to-list
-                                      (replace-in-seqs 'anything nil)
-                                      (replace-in-seqs 'anything-immutable nil)
-                                      canonicalize-list))
-                sibling-canonicals (->> (entity/elements parent)
-                                       (filter #(not= % item))
-                                       (map item->canonical))
-                item-canonical (item->canonical item)]
-            (if (some #(canonical-extended-by item-canonical %)
-                      sibling-canonicals)
-              (exemplar-referent item-ref subject-referent)
-              (elements-referent item-ref subject-referent)))))
+          ;; Even if :match-all is set, we don't match items that should
+          ;; be matched by siblings, as the UI suggests that those items
+          ;; are accessible via the siblings.
+          (let [competing (competing-siblings item)]
+            (if (empty? competing)
+              (elements-referent item-ref subject-referent)
+              (non-competing-elements-referent
+               item-ref subject-referent competing)))))
       (item-or-exemplar-referent item subject-referent))))
 
 (defn item-component

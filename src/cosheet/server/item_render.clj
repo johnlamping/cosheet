@@ -435,10 +435,7 @@
       (non-empty-labels-wrapper-DOM-R elements-dom labels direction
                                       inherited)
       labels
-      (label-stack-DOM-R elements
-                         (-> inherited
-                             transform-inherited-for-labels
-                             (add-inherited-attribute {:class "tag"})))
+      (label-stack-DOM-R elements (transform-inherited-for-labels inherited))
       (and must-show-label elements-dom)
       (wrap-with-labels-DOM
        (virtual-label-DOM inherited) elements-dom direction)

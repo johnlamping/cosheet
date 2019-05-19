@@ -42,6 +42,7 @@
                                    hierarchy-node-DOM-R]]
              [item-render :refer [elements-DOM-R virtual-element-with-label-DOM
                                   labels-and-elements-DOM-R
+                                  label-stack-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-content-and-non-label-elements-DOM-R
                                   item-content-DOM]])))
@@ -282,8 +283,9 @@
           (if (empty? (:child-nodes node))
             (item-content-and-elements-DOM-R
              content (concat example-elements non-labels) false inherited-down)
-            (labels-and-elements-DOM-R
-             example-elements false false true :vertical inherited-down)))))))
+            (label-stack-DOM-R
+             example-elements
+             (transform-inherited-for-labels inherited-down))))))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of

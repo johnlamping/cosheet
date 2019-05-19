@@ -141,22 +141,24 @@
    {:class "tag"}))
 
 (defn label-stack-DOM-R
-  "Given a non-empty list of label elements, return a stack of their doms."
+  "Given a non-empty list of label elements, return a stack of their doms.
+   Inherited should be halfway transformed to children."
   [label-elements inherited]
   (expr-let [ordered-labels (order-items-R label-elements)
              tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
                             ordered-labels)]
     (item-stack-DOM-R item-without-labels-DOM-R
                       ordered-labels tags :vertical
-                      (add-inherited-attribute inherited {:class "tag"}))))
+                      (-> inherited
+                          transform-inherited-for-labels
+                          (add-inherited-attribute {:class "tag"})))))
 
 (defn non-empty-labels-wrapper-DOM-R
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item.
   Inherited should be half way to the children."
   [inner-dom label-elements direction inherited]
-  (expr-let [stack (label-stack-DOM-R
-                    label-elements (transform-inherited-for-labels inherited))]
+  (expr-let [stack (label-stack-DOM-R label-elements inherited)]
     (wrap-with-labels-DOM stack inner-dom direction)))
 
 (defn labels-wrapper-DOM-R
@@ -202,25 +204,23 @@
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
         tags-key-prefix (conj (:key-prefix inherited) :label)
-        inherited-for-tags (-> inherited
-                               (transform-inherited-attributes :label)
-                               (add-adjacent-sibling-command hierarchy-node)
-                               (assoc :key-prefix tags-key-prefix
-                                      :template '(anything :tag)
-                                      :subject-referent items-referent))]
+        inherited-for-children (-> inherited
+                                   (add-adjacent-sibling-command hierarchy-node)
+                                   (transform-inherited-for-children
+                                    tags-key-prefix items-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-element-DOM
                 nil :after
                 (->
-                 inherited-for-tags
+                 (transform-inherited-for-labels inherited-for-children)
                  (update :key-prefix
                          ;; Need to make it different from sibling virtuals.
                          #(conj % (:item-id (:item example-descendant))))
                  (assoc :select-pattern (conj tags-key-prefix [:pattern]))))
                (label-stack-DOM-R
                 (hierarchy-node-example-elements hierarchy-node)
-                inherited-for-tags))]
+                inherited-for-children))]
         ;; Even if stacked, we need to mark the stack as "tag" too.
         (add-attributes dom {:class "tag"}))))
 
@@ -435,7 +435,7 @@
       (non-empty-labels-wrapper-DOM-R elements-dom labels direction
                                       inherited)
       labels
-      (label-stack-DOM-R elements (transform-inherited-for-labels inherited))
+      (label-stack-DOM-R elements inherited)
       (and must-show-label elements-dom)
       (wrap-with-labels-DOM
        (virtual-label-DOM inherited) elements-dom direction)

@@ -283,9 +283,7 @@
           (if (empty? (:child-nodes node))
             (item-content-and-elements-DOM-R
              content (concat example-elements non-labels) false inherited-down)
-            (label-stack-DOM-R
-             example-elements
-             (transform-inherited-for-labels inherited-down))))))))
+            (label-stack-DOM-R example-elements inherited-down)))))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of

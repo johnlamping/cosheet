@@ -235,7 +235,7 @@
                            (+ dependent-depth 1 (subordinate-depth data)))]
            (cond-> (update-value-and-dependent-depth data to value our-depth)
              (reporter/valid? value)
-             ;; We have finished computing a value,  so the old source
+             ;; We have finished computing a value, so the old source
              ;; is not holding onto anything useful.
              (update-old-value-source to nil md)))
          data)))))

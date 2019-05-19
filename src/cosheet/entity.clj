@@ -86,9 +86,9 @@
   If the entity is mutable, a reporter is returned whose value is the result
   of running the body on the immutable version of the entity, getting
   re-called whenever the entity changes."
-  [[var expression] & body]
+  [[var entity] & body]
   `(updating-call-with-immutable
-    ~expression
+    ~entity
     (fn [~var] ~@body)))
 
 ;;; Utility functions that work on entities

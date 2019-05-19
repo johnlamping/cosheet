@@ -468,7 +468,7 @@
 (defn table-virtual-row-cell-DOM
   "Return the dom for one cell of a virtual row of a table."
   [adjacent-referent
-   {:keys [column-id template exclusions]} ;; A column header description
+   {:keys [column-id template]} ;; A column header description
    inherited]
   (let [select (conj (vec (butlast (:key-prefix inherited)))
                      [:pattern :subject] ;; The new row's id
@@ -619,10 +619,12 @@
                         table-item (:subject-referent inherited))
         table-key (conj (:key-prefix inherited) table-referent)
         inherited (assoc inherited :key-prefix table-key)]
-    (expr-let [row-condition-item (expr first (entity/label->elements
-                                               table-item :row-condition))]
+    (expr-let [immutable-item (entity/updating-with-immutable
+                               [immutable table-item]
+                               immutable)]
       ;; Don't do anything if we don't yet have the table information filled in.
-      (when row-condition-item
+      (when-let [row-condition-item (first (entity/label->elements
+                                            immutable-item :row-condition))]
         (let [headers-inherited (update
                                  (assoc
                                   inherited
@@ -672,4 +674,5 @@
                 [:div {:class "table-main"}
                  headers
                  (into [:div {:class "table-rows"}]
-                       (concat rows [virtual-row]))]]])))))))
+                       (concat rows [virtual-row]))]]])))))
+    ))

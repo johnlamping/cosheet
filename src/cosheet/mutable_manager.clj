@@ -9,11 +9,13 @@
                                     swap-control-return!]])))
 
 ;;; This is code that knows how to recompute reporters that depend on
-;;; a function of a value that can change. Each function is associated
-;;; with a list of keys that it depends on, and each update to the
-;;; value is associated with a list of keys that the may have changed.
-;;; When the atom is updated, all possibly affected functions are
-;;; re-evaluated.
+;;; a function of a value that can change. The function, itself, must
+;;; not return a reporter.
+
+;;; Each function is associated with a list of keys that it depends on,
+;;; and each update to the value is associated with a list of keys that
+;;; the may have changed. When the atom is updated, all possibly affected
+;;; functions are re-evaluated.
 
 ;;; It sets :application in reporters that it manages to be the
 ;;; function that should be called, together with any additional

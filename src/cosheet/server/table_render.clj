@@ -631,26 +631,26 @@
                                   :subject-referent (item-referent
                                                      row-condition-item)
                                   :template table-header-template)
-                                 :priority inc)]
-          (expr-let
-              [[row-template row-items] (row-template-and-items-R
-                                         store row-condition-item)
-               columns (expr order-items-R
-                         (entity/label->elements row-condition-item :column))
-               hierarchy (add-content-and-query-to-hierarchy-R
-                          (hierarchy-by-labels-R columns))
-               headers (table-header-DOM-R
-                        hierarchy headers-inherited)
-               condition-dom (table-top-DOM-R
-                              row-condition-item inherited)]
-            (let [column-descriptions (mapcat
+                                 :priority inc)
+              columns (order-items-R
+                       (entity/label->elements row-condition-item :column))
+              hierarchy (add-content-and-query-to-hierarchy-R
+                         (hierarchy-by-labels-R columns))
+              headers (table-header-DOM-R
+                       hierarchy headers-inherited)
+              condition-dom (table-top-DOM-R
+                             row-condition-item inherited)
+              column-descriptions (mapcat
                                        table-hierarchy-node-column-descriptions
                                        hierarchy)
-                  new-column-template (new-header-template
-                                       (table-virtual-header-element-template
-                                        hierarchy)
-                                       headers-inherited)
-                  virtual-template (virtual-referent
+              new-column-template (new-header-template
+                                   (table-virtual-header-element-template
+                                    hierarchy)
+                                   headers-inherited)]
+          (expr-let
+              [[row-template row-items] (row-template-and-items-R
+                                         store row-condition-item)]
+            (let [virtual-template (virtual-referent
                                     new-column-template
                                     (item-referent row-condition-item)
                                     (item-referent (or (last columns)
@@ -659,8 +659,9 @@
                                               :template virtual-template
                                               :exclusions nil}
                   rows (map #(table-row-DOM-component
-                              % row-template (concat column-descriptions
-                                                     [virtual-column-description])
+                              % row-template (concat
+                                              column-descriptions
+                                              [virtual-column-description])
                               (update inherited :priority (partial + 2)))
                             row-items)
                   virtual-row (table-virtual-row-DOM-component
@@ -674,5 +675,4 @@
                 [:div {:class "table-main"}
                  headers
                  (into [:div {:class "table-rows"}]
-                       (concat rows [virtual-row]))]]])))))
-    ))
+                       (concat rows [virtual-row]))]]])))))))

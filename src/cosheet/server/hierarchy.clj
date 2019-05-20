@@ -3,10 +3,12 @@
              [entity :as entity]
              [utils :refer [multiset multiset-diff multiset-sum
                             multiset-to-generating-values update-last]]
+             [query :refer [extended-by?]]
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
             (cosheet.server
              [model-utils :refer [item->canonical-visible-R
+                                  item->fixed-term-with-negations
                                   visible-elements-R visible-labels-R]]
              [referent :refer [union-referent-if-needed
                                item-referent item-or-exemplar-referent]])))
@@ -141,6 +143,17 @@
     (:leaves node-or-leaf)
     [node-or-leaf]))
 
+(defn hierarchy-node-logical-leaves
+  "Return the leaves at the level of the hierarchy node, plus the leaves
+   of any children that have no properties."
+  [node-or-leaf]
+  (if (hierarchy-node? node-or-leaf)
+    (concat (:leaves node-or-leaf)
+            (mapcat hierarchy-node-logical-leaves
+                    (filter #(empty? (:properties %))
+                            (:child-nodes node-or-leaf))))
+    [node-or-leaf]))
+
 (defn hierarchy-node-properties
   "Return the local properties of the hierarchy node."
   [node-or-leaf]
@@ -235,25 +248,33 @@
        (:property-canonicals example)
        (:property-elements example)))))
 
-;; TODO: Fix this to account for elements, as well as content.
 (defn hierarchy-node-descendant-cover
   "Given a hierarchy node from a hierarchy whose leaves are item maps with
-   immutable :item values, return a seq of its descendants, such that the
-   item of each descendant different from a leaf of the node is an extension
-   of one of the items of nodes in the seq."
+   immutable :item values, and whose properties reflect some class of the
+   elements of its items, return a seq of its descendants, such that the
+   item of each descendant of the node is an extension of one of the items
+   of nodes in the seq."
   [node]
-  (let [descendants (->> (:child-nodes node)
-                         (filter #(not (empty? (:properties %))))
-                         (mapcat hierarchy-node-descendants)) ]
-    (if (every? #(#{'anything 'anything-immutable}
-                            (entity/content (:item %)))
-                          descendants)
-                ;; We may not need to match all child nodes, just
-                ;; a subset that subsumes all of them.
-                (->> (hierarchy-node-next-level node)
-                     (filter hierarchy-node?)
-                     (hierarchy-nodes-extent))
-                ;; The hierarchy ignores content, so if any of the
-                ;; leaves have content, we don't know which ones
-                ;; subsume the others, and so use them all.
-                descendants)))
+  (let [logical-leaves (hierarchy-node-logical-leaves node)
+        leaf-queries (map #(item->fixed-term-with-negations (:item %))
+                          logical-leaves)]
+    (concat logical-leaves
+            (filter (fn [descendant]
+                      (not-any? (fn [leaf-query]
+                                  (extended-by? leaf-query (:item descendant)))
+                                leaf-queries))
+                    (mapcat hierarchy-node-descendant-cover
+                            (filter #(not (empty? (:properties %)))
+                                    (:child-nodes node)))))))
+
+(defn hierarchy-node-non-immediate-descendant-cover
+  "Given a hierarchy node from a hierarchy whose leaves are item maps with
+   immutable :item values, and whose properties reflect some class of the
+   elements of its items, return a seq of its descendants, such that the
+   item of each descendant of the node, other than a leaf or logical leaf,
+   is an extension of one of the items of nodes in the seq."
+  [node]
+  (->> (:child-nodes node)
+       ;; Don't consider logical leaves, either.
+       (filter #(not (empty? (:properties %))))
+       (mapcat hierarchy-node-descendant-cover)))

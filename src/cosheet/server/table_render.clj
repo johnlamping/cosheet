@@ -23,7 +23,7 @@
                                 hierarchy-nodes-extent
                                 hierarchy-by-labels-R
                                 hierarchy-node-example-elements
-                                hierarchy-node-descendant-cover]]
+                                hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
                                   semantic-to-list-R
@@ -123,7 +123,7 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (let [cover (hierarchy-node-descendant-cover node)]
+  (let [cover (hierarchy-node-non-immediate-descendant-cover node)]
     (map #(pattern-to-query
            (cons
             (entity/content (:item %))

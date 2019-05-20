@@ -330,6 +330,19 @@
                               :cumulative-properties {:a 1 :b 1 :d 1 :g 1}}
                              ]}]}]}]))))
 
+(deftest hierarchy-node-logical-leaves-test
+  (is (check (set (hierarchy-node-logical-leaves
+                   {:hierarchy-node true
+                    :properties {:a 1}
+                    :leaves [:i]
+                    :child-nodes [{:hierarchy-node true
+                                   :properties {:b 1}
+                                   :leaves [:j]}
+                                  {:hierarchy-node true
+                                   :properties {}
+                                   :leaves [:k]}]}))
+             #{:i :k})))
+
 (deftest hierarchy-node-descendants-test
   (is (check (set (hierarchy-node-descendants
                    {:hierarchy-node true
@@ -392,4 +405,26 @@
                         :leaves [{:property-canonicals [:a :c]
                                    :item `(:k (3 :order :non-semantic))}]}]}])))
 
-
+(deftest hierarchy-node-descendant-cover-test
+  (let [h {:hierarchy-node true
+           :properties {:a 1}
+           :leaves [{:item '(:j :a)}]
+           :child-nodes [{:hierarchy-node true
+                          :properties {:b 1}
+                          :leaves [{:item '(:j :a :b)}]
+                          :child-nodes [{:hierarchy-node true
+                                         :properties {:c 1}
+                                         :leaves [{:item '(:j :a :b :c)}
+                                                  {:item '(:jj :a :b :c)}]}]}
+                         {:hierarchy-node true
+                          :properties {}
+                          :leaves [{:item '(:k :a)}]}]}]
+    (is (check (set (hierarchy-node-descendant-cover h))
+               #{{:item '(:j :a)}
+                 ;; Not {:item '(:j :a :b)} or {:item '(:j :a :b :c)}
+                 {:item '(:jj :a :b :c)}
+                 {:item '(:k :a)}}))
+    (is (check (set (hierarchy-node-non-immediate-descendant-cover h))
+               #{{:item '(:j :a :b)}
+                 ;; Not {:item '(:j :a :b :c)}
+                 {:item '(:jj :a :b :c)}}))))

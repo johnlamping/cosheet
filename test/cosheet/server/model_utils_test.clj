@@ -4,7 +4,8 @@
                      [entity :refer [in-different-store]]
                      [store :refer [new-element-store update-content]]
                      [store-utils :refer [add-entity remove-entity-by-id]]
-                     [query :refer [matching-items matching-elements]]
+                     [query :refer [matching-items matching-elements
+                                    not-query]]
                      [entity :refer [description->entity label->elements
                                      to-list]]
                      [expression :refer [expr expr-let expr-seq]]
@@ -37,6 +38,19 @@
                 (45 (~o4 :order)
                     ("age" :tag (~o3 :order)))
                 ("spy" :invisible)))
+
+(deftest transform-pattern-toward-query-test
+  (let [pattern '(anything anything-immutable ("a" :tag))]
+    (is (= (transform-pattern-toward-query pattern)
+           '(nil nil ("a" :tag))))
+    (is (= (transform-pattern-toward-query pattern :add-nots true)
+           `(nil (nil ~(not-query :tag)) ("a" :tag) ~(not-query :tag))))
+    (is (= (transform-pattern-toward-query
+            pattern :add-nots true :add-orders true)
+           `(nil (nil ~(not-query :tag) (nil :order))
+                 ("a" :tag)
+                 ~(not-query :tag)
+                 (nil :order))))))
 
 (deftest specialize-template-test
   (let [[c1 s1] (specialize-template '("x" (??? :a) (??? 22))

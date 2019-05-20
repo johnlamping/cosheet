@@ -1,6 +1,6 @@
 (ns cosheet.server.model-utils
   (:require (cosheet [debug :refer [simplify-for-print]]
-                     [utils :refer [thread-map prewalk-seqs]]
+                     [utils :refer [thread-map prewalk-seqs replace-in-seqs]]
                      [entity :as entity]
                      [orderable :as orderable]
                      [expression :refer [expr expr-let expr-seq expr-filter]]
@@ -87,78 +87,6 @@
        (apply list (concat (first item) (rest item)))
        item))
    item))
-
-(defn pattern-to-query
-  "Given a pattern, alter it to work as a query. Specifically:
-    Replace 'anything and 'anything-immutable by (nil (nil :order))
-    to make them work as a wild card that avoids matching non-user editable
-    elements.
-    If an element is not a label, then require it not to have a :tag element."
-  [pattern]
-  (let [new-content
-        (if (#{'anything 'anything-immutable} (content pattern))
-          nil
-          (content pattern))
-        is-label (some #{:tag} (map content (elements pattern)))
-        new-elements (cond-> (map pattern-to-query (elements pattern))
-                       (and (not is-label)
-                            (or (nil? new-content)
-                                (string? new-content)
-                                (number? new-content)))
-                       (concat [(not-query :tag)])
-                       (nil? new-content)
-                       (concat ['(nil :order)]))]
-    (if (seq new-elements)
-      (cons new-content new-elements)
-      new-content)))
-
-(defn query-to-template
-  "Given a query, turn it into a template by removing any (nil :order),
-   removing any negations, and replacing any nil by the specified replacement,
-   which defaults to the empty string."
-  ([query]
-   (query-to-template query ""))
-  ([query nil-replacement]
-   (prewalk-seqs (fn [query] (cond (nil? query)
-                                   nil-replacement
-                                   (seq? query)
-                                   (remove #(or (= % '(nil :order))
-                                                (special-form? %))
-                                           query)
-                                   true
-                                   query))
-                 query)))
-
-(defn specialize-template
-  "Adjust a template to make it ready for adding as an
-  element. Specifically, replace each '??? with a new unique string
-  with a leading non-breaking space. Allocating new strings will require
-  updating the store. Return the specialized template and the new store."
-  [template store]
-  (cond
-    (= template '???)
-    (let [[string new-store] (get-new-string store)]
-      [(str "\u00A0" string) new-store])
-    (and (sequential? template) (not (referent? template)))
-    (thread-map specialize-template template store)
-    true
-    [template store]))
-
-(defn template-to-possible-non-selector-template
-  "Given a template alter it to work as a template for a possible non-selector.
-   Specifically, replace 'anything, and 'anything-immutable by the empty
-   string, unless in a part of the template that is marked as a selector,
-   in which case don't modify it."
-  [pattern]
-  (if (sequential? pattern)
-    (if (some #(or (= % :selector)
-                   (and (sequential? %) (= (first %) :selector)))
-              (rest pattern))
-      pattern
-      (map template-to-possible-non-selector-template pattern))
-    (if (#{'anything 'anything-immutable} pattern)
-      ""
-      pattern)))
 
 ;;; For purposes of comparing two entities, not all of their elements
 ;;; matter. In particular, order information, or other information
@@ -306,6 +234,109 @@
   (or (some #(= (content %) :selector) (elements immutable-item))
       (if-let [subj (subject immutable-item)]
         (selector? subj))))
+
+(defn transform-pattern-toward-query
+  "Given a pattern, alter it in accordance with the options. Specifically:
+    * Replace 'anything and 'anything-immutable by nil.
+    * If add-nots and an element is not a label, then require it not to
+      have a :tag element.
+    * If add-orders and an item has nil content, add a '(nil :order) element
+      to make it only match user editable elements."
+  [pattern & {:keys [add-nots add-orders]}]
+  (let [new-content
+        (if (#{'anything 'anything-immutable} (content pattern))
+          nil
+          (content pattern))
+        is-label (some #{:tag} (map content (elements pattern)))
+        new-elements (cond-> (map #(transform-pattern-toward-query
+                                    % :add-nots add-nots :add-orders add-orders)
+                                  (elements pattern))
+                       (and add-nots
+                            (not is-label)
+                            (or (nil? new-content)
+                                (string? new-content)
+                                (number? new-content)))
+                       (concat [(not-query :tag)])
+                       (and (nil? new-content) add-orders)
+                       (concat ['(nil :order)]))]
+    (if (seq new-elements)
+      (apply list (cons new-content new-elements))
+      new-content)))
+
+(defn item->fixed-term
+  "Convert the item to a list, and change 'anything and 'anything-immutable
+   to nil."
+  [item]
+  (-> item
+      immutable-semantic-to-list
+      transform-pattern-toward-query))
+
+(defn item->fixed-term-with-negations
+    "Given an item, alter it to work as a query that assumes everything
+     it is querying over is semantic. Specifically:
+    * Replace 'anything and 'anything-immutable by nil.
+    * If an element is not a label, then require it not to have a :tag element."
+  [item]
+  (-> item
+      immutable-semantic-to-list
+      (transform-pattern-toward-query :add-nots true)))
+
+(defn pattern-to-query
+  "Given a pattern, alter it to work as a query. Specifically:
+    * Replace 'anything and 'anything-immutable by nil.
+    * If an element is not a label, then require it not to have a :tag element.
+    * If an item has nil content, add a '(nil :order) element to make
+      it only match user editable elements."
+  [pattern]
+  (transform-pattern-toward-query pattern :add-nots true :add-orders true))
+
+(defn query-to-template
+  "Given a query, turn it into a template by removing any (nil :order),
+   removing any negations, and replacing any nil by the specified replacement,
+   which defaults to the empty string."
+  ([query]
+   (query-to-template query ""))
+  ([query nil-replacement]
+   (prewalk-seqs (fn [query] (cond (nil? query)
+                                   nil-replacement
+                                   (seq? query)
+                                   (remove #(or (= % '(nil :order))
+                                                (special-form? %))
+                                           query)
+                                   true
+                                   query))
+                 query)))
+
+(defn specialize-template
+  "Adjust a template to make it ready for adding as an
+  element. Specifically, replace each '??? with a new unique string
+  with a leading non-breaking space. Allocating new strings will require
+  updating the store. Return the specialized template and the new store."
+  [template store]
+  (cond
+    (= template '???)
+    (let [[string new-store] (get-new-string store)]
+      [(str "\u00A0" string) new-store])
+    (and (sequential? template) (not (referent? template)))
+    (thread-map specialize-template template store)
+    true
+    [template store]))
+
+(defn template-to-possible-non-selector-template
+  "Given a template alter it to work as a template for a possible non-selector.
+   Specifically, replace 'anything, and 'anything-immutable by the empty
+   string, unless in a part of the template that is marked as a selector,
+   in which case don't modify it."
+  [pattern]
+  (if (sequential? pattern)
+    (if (some #(or (= % :selector)
+                   (and (sequential? %) (= (first %) :selector)))
+              (rest pattern))
+      pattern
+      (map template-to-possible-non-selector-template pattern))
+    (if (#{'anything 'anything-immutable} pattern)
+      ""
+      pattern)))
 
 (defn create-selector-or-non-selector-element
   "Create an element, modifying the template if the subject is not a

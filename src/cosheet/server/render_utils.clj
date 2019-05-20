@@ -16,9 +16,10 @@
             (cosheet.server
              [model-utils :refer [semantic-element?-R
                                   semantic-elements-R
+                                  item->fixed-term
+                                  item->fixed-term-with-negations
                                   item->canonical-semantic
-                                  item->canonical-semantic-R
-                                  immutable-semantic-to-list]]
+                                  item->canonical-semantic-R]]
              [referent :refer [referent?
                                virtual-referent
                                elements-referent exemplar-referent
@@ -217,15 +218,13 @@
   [inherited]
   (:subject-referent inherited))
 
-(defn item->canonical-query
-  "Return the canonical list version of the semantic parts of an item."
+(defn item->canonical-term
+  "Return the canonical list version of the semantic parts of an item,
+  with anything and anything-immutable changed to nil."
   [item]
-  (-> item
-      immutable-semantic-to-list
-      (replace-in-seqs 'anything nil)
-      (replace-in-seqs 'anything-immutable nil)
-      canonicalize-list))
+  (canonicalize-list (item->fixed-term item)))
 
+;;; TODO: See if these can match tags to non-tags, and fix if so.
 (defn competing-siblings
   "Given an item that is functioning as a query, return a seq of its siblings
    that compete with matching for it. This all siblings that have a common
@@ -234,15 +233,15 @@
    the item and have something that the item doesn't have.
    Don't include redundant siblings more than once."
   [item]
-  (let [item-canonical (item->canonical-query item)
+  (let [item-canonical (item->canonical-term item)
         siblings (entity/elements (entity/subject item))
-        matching (filter #(= item-canonical (item->canonical-query %))
+        matching (filter #(= item-canonical (item->canonical-term %))
                          siblings)]
     (cond-> (vals
              ;; We make a map from canonical to sibling, so we can not
              ;; add redunant siblings.
              (reduce (fn [so-far sibling]
-                       (let [sibling-canonical (item->canonical-query sibling)]
+                       (let [sibling-canonical (item->canonical-term sibling)]
                          (cond-> so-far
                            (and (canonical-have-common-elaboration
                                  item-canonical sibling-canonical)

@@ -22,7 +22,8 @@
                                 hierarchy-node-next-level
                                 hierarchy-nodes-extent
                                 hierarchy-by-labels-R
-                                hierarchy-node-example-elements]]
+                                hierarchy-node-example-elements
+                                hierarchy-node-descendant-cover]]
              [order-utils :refer [order-items-R add-order-elements]]
              [model-utils :refer [immutable-visible-to-list
                                   semantic-to-list-R
@@ -122,24 +123,10 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (let [descendants (->> (:child-nodes node)
-                         (filter #(not (empty? (:properties %))))
-                         (mapcat hierarchy-node-descendants))
-        cover (if (every? #(#{'anything 'anything-immutable}
-                            (:content %))
-                          descendants)
-                ;; We may not need to match all child nodes, just
-                ;; a subset that subsumes all of them.
-                (->> (hierarchy-node-next-level node)
-                     (filter hierarchy-node?)
-                     (hierarchy-nodes-extent))
-                ;; The hierarchy ignores content, so if any of the
-                ;; leaves have content, we don't know which ones
-                ;; subsume the others, and so use them all.
-                descendants)]
+  (let [cover (hierarchy-node-descendant-cover node)]
     (map #(pattern-to-query
            (cons
-            (:content %)
+            (entity/content (:item %))
             (map canonical-to-list (:property-canonicals %))))
        cover)))
 
@@ -330,7 +317,6 @@
   elements that are also matches by shadowing-nodes.
   Inherited describes the column requests."
   [node inherited]
-  (println (simplify-for-print node))
   (hierarchy-node-DOM-R
    node table-header-subtree-DOM table-header-child-info
    {:shadowing-nodes nil
@@ -512,7 +498,7 @@
   (let [item (:item leaf)
         content (entity/content item)
         non-labels (visible-non-labels-R item)
-        as-lists (expr-seq map immutable-visible-to-list non-labels)]
+        as-lists (map immutable-visible-to-list non-labels)]
     (assoc leaf
            :content content
            :query (pattern-to-query

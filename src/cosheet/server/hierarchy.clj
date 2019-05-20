@@ -1,5 +1,6 @@
 (ns cosheet.server.hierarchy
   (:require (cosheet
+             [entity :as entity]
              [utils :refer [multiset multiset-diff multiset-sum
                             multiset-to-generating-values update-last]]
              [debug :refer [simplify-for-print]]
@@ -234,3 +235,25 @@
        (:property-canonicals example)
        (:property-elements example)))))
 
+;; TODO: Fix this to account for elements, as well as content.
+(defn hierarchy-node-descendant-cover
+  "Given a hierarchy node from a hierarchy whose leaves are item maps with
+   immutable :item values, return a seq of its descendants, such that the
+   item of each descendant different from a leaf of the node is an extension
+   of one of the items of nodes in the seq."
+  [node]
+  (let [descendants (->> (:child-nodes node)
+                         (filter #(not (empty? (:properties %))))
+                         (mapcat hierarchy-node-descendants)) ]
+    (if (every? #(#{'anything 'anything-immutable}
+                            (entity/content (:item %)))
+                          descendants)
+                ;; We may not need to match all child nodes, just
+                ;; a subset that subsumes all of them.
+                (->> (hierarchy-node-next-level node)
+                     (filter hierarchy-node?)
+                     (hierarchy-nodes-extent))
+                ;; The hierarchy ignores content, so if any of the
+                ;; leaves have content, we don't know which ones
+                ;; subsume the others, and so use them all.
+                descendants)))

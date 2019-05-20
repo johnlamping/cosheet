@@ -96,7 +96,7 @@
             children (when-let [children (:child-nodes node)]
                        (replace-hierarchy-leaves-by-nodes children))]
         (if (and (seq leaves)
-                 (or (> (count leaves) 1) (:child-nodes node)))
+                 (or (> (count leaves) 1) (seq (:child-nodes node))))
           (let [children (vec (concat
                                (map (fn [leaf]
                                       {:hierarchy-node true

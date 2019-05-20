@@ -242,48 +242,48 @@
        [#{:label :element} #{:content}
         {:expand {:referent column-referent}}]))))
 
-(defn table-header-node-DOM-R
+(defn table-header-node-DOM
   "Generate the DOM for a node in the hierarchy, not including its children."
   [node {:keys [shadowing-nodes top-level] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (hierarchy-node-items-referent node inherited)
-        item (:item (first (hierarchy-node-descendants node))) ]
-    (expr-let [content (when item (entity/content item))
+        item (:item (first (hierarchy-node-descendants node)))
+        content (when item (entity/content item))
                non-labels (when item (visible-non-labels-R item))]
-      (let [inherited-down (table-header-properties-inherited
-                            function-info node content example-elements
-                            column-referent inherited)]
-        (if (empty? (:properties node))
-          (expr-let [inner-dom (item-content-and-non-label-elements-DOM-R
-                                content non-labels inherited-down)]
-            ;; TODO: Only set width if there is no content and non-elements.
-            [:div {:style {:width (str base-table-column-width "px")}
-                   :class (cond->
-                              "column-header tag wrapped-element virtual-wrapper"
-                            (not top-level)
-                            (str " merge-with-parent"))}
-             (cond-> (virtual-element-DOM
-                      column-referent :after
-                      (-> inherited-down
-                          transform-inherited-for-labels
-                          (update :key-prefix #(conj % :label))
-                          (assoc :select-pattern (conj (:key-prefix inherited)
-                                                       [:pattern]))))
-               (is-tag-template? (table-header-element-template
-                                  (keys (:cumulative-properties node))))
-               (add-attributes {:class "tag"})
-               (not top-level)
-               (add-attributes {:class "merge-with-parent"}))
-             [:div {:class "indent-wrapper tag"}
-              (add-attributes
-               inner-dom
-               {:key (conj (:key-prefix inherited) (:item-id item))
-                :class "item"})]])
-          (if (empty? (:child-nodes node))
-            (item-content-and-elements-DOM-R
-             content (concat example-elements non-labels) false inherited-down)
-            (label-stack-DOM-R example-elements inherited-down)))))))
+    (let [inherited-down (table-header-properties-inherited
+                          function-info node content example-elements
+                          column-referent inherited)]
+      (if (empty? (:properties node))
+        (let [inner-dom (item-content-and-non-label-elements-DOM-R
+                              content non-labels inherited-down)]
+          ;; TODO: Only set width if there is no content and non-elements.
+          [:div {:style {:width (str base-table-column-width "px")}
+                 :class (cond->
+                            "column-header tag wrapped-element virtual-wrapper"
+                          (not top-level)
+                          (str " merge-with-parent"))}
+           (cond-> (virtual-element-DOM
+                    column-referent :after
+                    (-> inherited-down
+                        transform-inherited-for-labels
+                        (update :key-prefix #(conj % :label))
+                        (assoc :select-pattern (conj (:key-prefix inherited)
+                                                     [:pattern]))))
+             (is-tag-template? (table-header-element-template
+                                (keys (:cumulative-properties node))))
+             (add-attributes {:class "tag"})
+             (not top-level)
+             (add-attributes {:class "merge-with-parent"}))
+           [:div {:class "indent-wrapper tag"}
+            (add-attributes
+             inner-dom
+             {:key (conj (:key-prefix inherited) (:item-id item))
+              :class "item"})]])
+        (if (empty? (:child-nodes node))
+          (item-content-and-elements-DOM-R
+           content (concat example-elements non-labels) false inherited-down)
+          (label-stack-DOM-R example-elements inherited-down))))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of
@@ -304,34 +304,35 @@
                  #(add-elements-to-entity-list
                    % (canonical-set-to-list (:properties node)))))]))
 
-(defn table-header-subtree-DOM-R
+(defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
   the dom particular to the node, and doms for all the children."
   [node child-doms function-info inherited]
-  (expr-let [node-dom (table-header-node-DOM-R
-                             node function-info inherited)]
-    (let [is-leaf (empty? child-doms)
-          elements-template (table-header-element-template
-                             (keys (:cumulative-properties node)))
-          is-tag (is-tag-template? elements-template)
-          class (cond-> "column-header"
-                  is-leaf (str " leaf"))]
-      (if child-doms
-        [:div {:class (cond-> class
-                        is-tag (str " tag"))}
-         (add-attributes node-dom {:class "with-children"})
-         (into [:div {:class "column-header-sequence"}]
-               child-doms)]
-        (add-attributes node-dom {:class class})))))
+  (let [node-dom (table-header-node-DOM
+                  node function-info inherited)
+        is-leaf (empty? child-doms)
+        elements-template (table-header-element-template
+                           (keys (:cumulative-properties node)))
+        is-tag (is-tag-template? elements-template)
+        class (cond-> "column-header"
+                is-leaf (str " leaf"))]
+    (if (empty? child-doms)
+      (add-attributes node-dom {:class class})
+      [:div {:class (cond-> class
+                      is-tag (str " tag"))}
+       (add-attributes node-dom {:class "with-children"})
+       (into [:div {:class "column-header-sequence"}]
+             child-doms)])))
 
-(defn table-header-top-level-subtree-DOM-R
+(defn table-header-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
   If the node has no properties then the column shouldn't match
   elements that are also matches by shadowing-nodes.
   Inherited describes the column requests."
   [node inherited]
+  (println (simplify-for-print node))
   (hierarchy-node-DOM-R
-   node table-header-subtree-DOM-R table-header-child-info
+   node table-header-subtree-DOM table-header-child-info
    {:shadowing-nodes nil
     :top-level true}
    inherited)
@@ -363,7 +364,7 @@
                (is-tag-template? template)
                (str " tag"))})))
 
-(defn table-header-DOM-R
+(defn table-header-DOM
   "Generate DOM for column headers given the hierarchy. elements-template
   gives what new elements of a header request need to satisfy.
   The column will contain those elements of the rows that match the templates
@@ -373,13 +374,11 @@
         adjacent-referent (or (hierarchy-last-item-referent hierarchy)
                               (:subject-referent inherited))
         virtual-header (table-virtual-header-node-DOM
-                        hierarchy adjacent-referent inherited)]
-    (expr-let [columns (expr-seq
-                        map #(table-header-top-level-subtree-DOM-R
-                              % inherited)
-                        hierarchy)]
-      (into [:div {:class "column-header-sequence"}]
-            (concat columns [virtual-header])))))
+                        hierarchy adjacent-referent inherited)
+        columns (map #(table-header-top-level-subtree-DOM % inherited)
+                     hierarchy)]
+    (into [:div {:class "column-header-sequence"}]
+          (concat columns [virtual-header]))))
 
 (defn table-cell-items-DOM-R
   "Return the dom for one cell of a table, given its items.
@@ -504,39 +503,38 @@
       row-key new-row-template adjacent-referent column-descriptions
       inherited])))
 
-(defn add-content-and-query-to-hierarchy-leaf-R
+(defn add-content-and-query-to-hierarchy-leaf
   "Given a hierarchy leaf, and the node it is from,
    add additional fields to its info map:
       :content  the content of the item
       :query    the query items in cells of the column must satisfy"
   [leaf node]
-  (let [item (:item leaf)]
-    (expr-let [content (entity/content item)
-               non-labels (visible-non-labels-R item)
-               as-lists (expr-seq map visible-to-list-R non-labels)]
-      (assoc leaf
-             :content content
-             :query (pattern-to-query
-                     (cons content
-                           (concat (canonical-set-to-list
-                                    (:cumulative-properties node))
-                                   as-lists)))))))
+  (let [item (:item leaf)
+        content (entity/content item)
+        non-labels (visible-non-labels-R item)
+        as-lists (expr-seq map immutable-visible-to-list non-labels)]
+    (assoc leaf
+           :content content
+           :query (pattern-to-query
+                   (cons content
+                         (concat (canonical-set-to-list
+                                  (:cumulative-properties node))
+                                 as-lists))))))
 
-(defn add-content-and-query-to-hierarchy-R
+(defn add-content-and-query-to-hierarchy
   "Given a hierarchy, add additional fields to each info map:
       :content  the content of the item
       :query    the query items in cells of the column must satisfy"
   [hierarchy]
-  (expr-seq map
-    (fn [node]
-      (expr-let [leaves (expr-seq
-                         map #(add-content-and-query-to-hierarchy-leaf-R % node)
-                         (:leaves node))
-                 children (add-content-and-query-to-hierarchy-R
-                           (:child-nodes node))]
-        (cond-> (assoc node :leaves leaves)
-          children (assoc :child-nodes children))))
-    hierarchy))
+  (map
+   (fn [node]
+     (let [leaves (map #(add-content-and-query-to-hierarchy-leaf % node)
+                       (:leaves node))
+           children (add-content-and-query-to-hierarchy
+                     (:child-nodes node))]
+       (cond-> (assoc node :leaves leaves)
+         children (assoc :child-nodes children))))
+   hierarchy))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -634,9 +632,9 @@
                                  :priority inc)
               columns (order-items-R
                        (entity/label->elements row-condition-item :column))
-              hierarchy (add-content-and-query-to-hierarchy-R
+              hierarchy (add-content-and-query-to-hierarchy
                          (hierarchy-by-labels-R columns))
-              headers (table-header-DOM-R
+              headers (table-header-DOM
                        hierarchy headers-inherited)
               condition-dom (table-top-DOM-R
                              row-condition-item inherited)

@@ -123,12 +123,8 @@
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
   [node]
-  (let [cover (hierarchy-node-non-immediate-descendant-cover node)]
-    (map #(pattern-to-query
-           (cons
-            (entity/content (:item %))
-            (map canonical-to-list (:property-canonicals %))))
-       cover)))
+  (map #(pattern-to-query (immutable-semantic-to-list (:item %)))
+       (hierarchy-node-non-immediate-descendant-cover node)))
 
 (defn new-header-template
   "Return the template for a new header. new-elements-template gives
@@ -489,38 +485,12 @@
       row-key new-row-template adjacent-referent column-descriptions
       inherited])))
 
-(defn add-content-and-query-to-hierarchy-leaf
+(defn query-for-hierarchy-leaf
   "Given a hierarchy leaf, and the node it is from,
-   add additional fields to its info map:
-      :content  the content of the item
-      :query    the query items in cells of the column must satisfy"
-  [leaf node]
-  (let [item (:item leaf)
-        content (entity/content item)
-        non-labels (visible-non-labels-R item)
-        as-lists (map immutable-visible-to-list non-labels)]
-    (assoc leaf
-           :content content
-           :query (pattern-to-query
-                   (cons content
-                         (concat (canonical-set-to-list
-                                  (:cumulative-properties node))
-                                 as-lists))))))
-
-(defn add-content-and-query-to-hierarchy
-  "Given a hierarchy, add additional fields to each info map:
-      :content  the content of the item
-      :query    the query items in cells of the column must satisfy"
-  [hierarchy]
-  (map
-   (fn [node]
-     (let [leaves (map #(add-content-and-query-to-hierarchy-leaf % node)
-                       (:leaves node))
-           children (add-content-and-query-to-hierarchy
-                     (:child-nodes node))]
-       (cond-> (assoc node :leaves leaves)
-         children (assoc :child-nodes children))))
-   hierarchy))
+   return the query that items in cells of the column must satisfy.
+   (Not worrying about exclusions.)"
+  [leaf]
+  (pattern-to-query (immutable-visible-to-list (:item leaf))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -535,7 +505,7 @@
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              (let [query (:query node-or-element)]
+              (let [query (query-for-hierarchy-leaf node-or-element)]
                 [{:column-id (:item-id (:item node-or-element))
                   :query query
                   :template (query-to-template query)
@@ -618,8 +588,7 @@
                                  :priority inc)
               columns (order-items-R
                        (entity/label->elements row-condition-item :column))
-              hierarchy (add-content-and-query-to-hierarchy
-                         (hierarchy-by-labels-R columns))
+              hierarchy (hierarchy-by-labels-R columns)
               headers (table-header-DOM
                        hierarchy headers-inherited)
               condition-dom (table-top-DOM-R

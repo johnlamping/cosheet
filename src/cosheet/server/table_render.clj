@@ -48,8 +48,6 @@
                                   item-content-and-non-label-elements-DOM-R
                                   item-content-DOM]])))
 
-(def base-table-column-width 150)
-
 ;;; The condition elements of a table are its visible elements
 ;;; that are not column headers.
 (defn table-condition-elements-R [row-condition-item]
@@ -201,8 +199,7 @@
                            (keys (:cumulative-properties node)))]
     (cond-> (-> inherited
                 (assoc :subject-referent descendants-referent
-                       :template elements-template
-                       :width (* 0.75 (count descendants)))
+                       :template elements-template)
                 (update :key-prefix
                         #(conj % (:item-id item)))
                 (add-inherited-attribute
@@ -240,7 +237,6 @@
       (if (empty? (:properties node))
         (let [inner-dom (item-content-and-non-label-elements-DOM-R
                               content non-labels inherited-down)]
-          ;; TODO: Only set width if there is no content and non-elements.
           [:div {:class (cond->
                             "column-header tag wrapped-element virtual-wrapper"
                           (not top-level)

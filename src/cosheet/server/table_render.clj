@@ -241,8 +241,7 @@
         (let [inner-dom (item-content-and-non-label-elements-DOM-R
                               content non-labels inherited-down)]
           ;; TODO: Only set width if there is no content and non-elements.
-          [:div {:style {:width (str base-table-column-width "px")}
-                 :class (cond->
+          [:div {:class (cond->
                             "column-header tag wrapped-element virtual-wrapper"
                           (not top-level)
                           (str " merge-with-parent"))}

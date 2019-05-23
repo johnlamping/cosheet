@@ -223,8 +223,7 @@
                (any)
                (any)
                ;; A column with no label, but content and a sub-element.
-               [:div {:style {:width "150px"}
-                      :class (str "column-header tag wrapped-element"
+               [:div {:class (str "column-header tag wrapped-element"
                                   " virtual-wrapper leaf")}
                 ;; The virtual label
                 [:div {:add-column (any)

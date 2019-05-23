@@ -194,13 +194,13 @@
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
   [{:keys [top-level]}
-   node content example-elements column-referent inherited]
+   node content example-elements descendants-referent inherited]
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
         elements-template (table-header-element-template
                            (keys (:cumulative-properties node)))]
     (cond-> (-> inherited
-                (assoc :subject-referent column-referent
+                (assoc :subject-referent descendants-referent
                        :template elements-template
                        :width (* 0.75 (count descendants)))
                 (update :key-prefix
@@ -210,9 +210,9 @@
                   (cond-> (attributes-for-header-add-column-command
                            node elements-template inherited)
                     (= (count descendants) 1)
-                    (assoc :delete-column {:referent column-referent})
+                    (assoc :delete-column {:referent descendants-referent})
                     (empty? example-elements)
-                    (assoc :expand {:referent column-referent}))]))
+                    (assoc :expand {:referent descendants-referent}))]))
       (:leaves node)
       (add-inherited-attribute [#{:content}
                                 {:add-twin {:referent nil}
@@ -223,20 +223,20 @@
       (= (count example-elements) 1)
       (add-inherited-attribute
        [#{:label :element} #{:content}
-        {:expand {:referent column-referent}}]))))
+        {:expand {:referent descendants-referent}}]))))
 
 (defn table-header-node-DOM
   "Generate the DOM for a node in the hierarchy, not including its children."
   [node {:keys [top-level] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
-        column-referent (hierarchy-node-items-referent node inherited)
+        descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node)))
         content (when item (entity/content item))
                non-labels (when item (visible-non-labels-R item))]
     (let [inherited-down (table-header-properties-inherited
                           function-info node content example-elements
-                          column-referent inherited)]
+                          descendants-referent inherited)]
       (if (empty? (:properties node))
         (let [inner-dom (item-content-and-non-label-elements-DOM-R
                               content non-labels inherited-down)]
@@ -247,7 +247,7 @@
                           (not top-level)
                           (str " merge-with-parent"))}
            (cond-> (virtual-element-DOM
-                    column-referent :after
+                    descendants-referent :after
                     (-> inherited-down
                         transform-inherited-for-labels
                         (update :key-prefix #(conj % :label))

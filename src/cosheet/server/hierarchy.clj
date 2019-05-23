@@ -250,8 +250,7 @@
 
 (defn hierarchy-node-descendant-cover
   "Given a hierarchy node from a hierarchy whose leaves are item maps with
-   immutable :item values, and whose properties reflect some class of the
-   elements of its items, return a seq of its descendants, such that the
+   immutable :item values, return a seq of its descendants, such that the
    item of each descendant of the node is an extension of one of the items
    of nodes in the seq."
   [node]
@@ -269,8 +268,7 @@
 
 (defn hierarchy-node-non-immediate-descendant-cover
   "Given a hierarchy node from a hierarchy whose leaves are item maps with
-   immutable :item values, and whose properties reflect some class of the
-   elements of its items, return a seq of its descendants, such that the
+   immutable :item values, return a seq of its descendants, such that the
    item of each descendant of the node, other than a leaf or logical leaf,
    is an extension of one of the items of nodes in the seq."
   [node]

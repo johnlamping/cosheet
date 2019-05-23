@@ -363,7 +363,6 @@
   (let [row-referent (:subject-referent inherited)
         inherited
         (-> inherited
-            (assoc :width 0.75)
             (add-inherited-attribute
              [#{:label :element :recursive :optional} #{:content}
               {:column {:referent column-id}}]))]

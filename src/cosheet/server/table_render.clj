@@ -227,7 +227,7 @@
 
 (defn table-header-node-DOM
   "Generate the DOM for a node in the hierarchy, not including its children."
-  [node {:keys [shadowing-nodes top-level] :as function-info}
+  [node {:keys [top-level] :as function-info}
    inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         column-referent (hierarchy-node-items-referent node inherited)
@@ -272,14 +272,11 @@
   "Generate the function-info and inherited for children of
   a hierarchy node.
   The function-info is a map with
-     :shadowing-nodes    The column shouldn't match elements that also match
-                         these
      :top-level          If this is a top level node
   Inherited describes the column requests."
   [node function-info inherited]
   (let [children (:child-nodes node)]
     [(assoc function-info
-            :shadowing-nodes (filter #(seq (:properties %)) children)
             :top-level false)
      (-> inherited
          (update :key-prefix  #(conj % :nested))
@@ -309,14 +306,11 @@
 
 (defn table-header-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
-  If the node has no properties then the column shouldn't match
-  elements that are also matches by shadowing-nodes.
   Inherited describes the column requests."
   [node inherited]
   (hierarchy-node-DOM-R
    node table-header-subtree-DOM table-header-child-info
-   {:shadowing-nodes nil
-    :top-level true}
+   {:top-level true}
    inherited)
   )
 

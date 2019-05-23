@@ -365,8 +365,8 @@
      (node-f node child-doms function-info inherited)
   where child-doms are the results of calling node-f for all the child
   nodes.  Before doing calls for a child, calls
-     (child-information-f node function-info inherited)
-  It must return the function-info and inherited to be used for the children.
+     (child-info-f node function-info inherited)
+  This must return the function-info and inherited to be used for the children.
   Either of the functions may return reporters.
   child-information-f and function-info may be left out, in which case
   node-f is called without function-info, and always with the same value

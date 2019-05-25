@@ -17,18 +17,18 @@
 ;;; based on a multiset of "properties" associated with each leaf.
 ;;; The hierarchy consists of a vector of nodes, each of which is a map that
 ;;; has:
-;;;       :hierarchy-node  true (used to identify hierarchy nodes)
-;;;           :properties  A multiset of the properties added by this node.
-;;; :cumulatve-properties  The multiset union of the properties of this node
-;;;                        and all its ancestors.
-;;;               :leaves  A vector of leaves whose properties exactly
-;;;                        match the cumulative-properties of this node.
-;;;                        All leaves must come before all children in the
-;;;                        order from which the hierarchy was built. This means 
-;;;                        that some children may contain leaves that would
-;;;                        have qualified to be leaves of the node,
-;;;                        except for coming after other non-leaves.
-;;;          :child-nodes  An optional vector of child nodes.
+;;;        :hierarchy-node  true (used to identify hierarchy nodes)
+;;;            :properties  A multiset of the properties added by this node.
+;;; :cumulative-properties  The multiset union of the properties of this node
+;;;                         and all its ancestors.
+;;;                :leaves  A vector of leaves whose properties exactly
+;;;                         match the cumulative-properties of this node.
+;;;                         All leaves must come before all children in the
+;;;                         order from which the hierarchy was built. This
+;;;                         means that some children may contain leaves that
+;;;                         would have qualified to be leaves of the node,
+;;;                         except for coming after other non-leaves.
+;;;           :child-nodes  An optional vector of child nodes.
 ;;;
 ;;; All the functions below that take a node-or-leaf argument also work
 ;;; on non-hierarchy nodes, which are assumed to be leaves of the hierarchy.

@@ -165,10 +165,12 @@
   {:add-column (target-for-header-add-column-command
                 node elements-template inherited)})
 
+;;; TODO: We need to also handle the case where there is no new element,
+;;;       but a content with a new value.
 (defn table-header-element-template
   "Return a template for new elements of a table header. It should include
   what is common to the specified elements, which should be in canonical
-  list form."
+  list form. Always returns a seq."
   [canonical-elements]
   (if (seq canonical-elements)
     (or (when (every? sequential? canonical-elements)
@@ -179,15 +181,16 @@
               ;; only copies whether or not it has a tag.
               (if (contains? firsts-sub-elements :tag)
                 '(anything :tag)
-                "")
+                '(anything))
               (let [common (reduce common-canonical-multisets
                                    firsts-sub-elements
                                    remainder-sub-elements)]
                 (if (not (empty? common))
                   (cons 'anything (canonical-set-to-list common))
-                  "")))))
+                  '(anything))))))
         '(anything))
-    '(anything :tag)))
+    '(anything :tag))
+  '(anything :tag))
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
@@ -196,10 +199,11 @@
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
         elements-template (table-header-element-template
+                           ;; TODO: The keys below means that multiplicites of
+                           ;;       properties are forgotten, which is wrong.
                            (keys (:cumulative-properties node)))]
     (cond-> (-> inherited
-                (assoc :subject-referent descendants-referent
-                       :template elements-template)
+                (assoc :subject-referent descendants-referent)
                 (update :key-prefix
                         #(conj % (:item-id item)))
                 (add-inherited-attribute
@@ -230,38 +234,37 @@
         descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node)))
         content (when item (entity/content item))
-               non-labels (when item (visible-non-labels-R item))]
-    (let [inherited-down (table-header-properties-inherited
-                          function-info node content example-elements
-                          descendants-referent inherited)]
-      (if (empty? (:properties node))
-        (let [inner-dom (item-content-and-non-label-elements-DOM-R
-                              content non-labels inherited-down)]
-          [:div {:class (cond->
-                            "column-header tag wrapped-element virtual-wrapper"
-                          (not top-level)
-                          (str " merge-with-parent"))}
-           (cond-> (virtual-element-DOM
-                    descendants-referent :after
-                    (-> inherited-down
-                        transform-inherited-for-labels
-                        (update :key-prefix #(conj % :label))
-                        (assoc :select-pattern (conj (:key-prefix inherited)
-                                                     [:pattern]))))
-             (is-tag-template? (table-header-element-template
-                                (keys (:cumulative-properties node))))
-             (add-attributes {:class "tag"})
-             (not top-level)
-             (add-attributes {:class "merge-with-parent"}))
-           [:div {:class "indent-wrapper tag"}
-            (add-attributes
-             inner-dom
-             {:key (conj (:key-prefix inherited) (:item-id item))
-              :class "item"})]])
-        (if (empty? (:child-nodes node))
-          (item-content-and-elements-DOM-R
-           content (concat example-elements non-labels) false inherited-down)
-          (label-stack-DOM-R example-elements inherited-down))))))
+        non-labels (when item (visible-non-labels-R item))
+        inherited-down (table-header-properties-inherited
+                        function-info node content example-elements
+                        descendants-referent inherited)]
+    (if (empty? (:properties node))
+      (let [inner-dom (item-content-and-non-label-elements-DOM-R
+                       content non-labels inherited-down)]
+        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
+                        (not top-level)
+                        (str " merge-with-parent"))}
+         (cond-> (virtual-element-DOM
+                  descendants-referent :after
+                  (-> inherited-down
+                      transform-inherited-for-labels
+                      (update :key-prefix #(conj % :label))
+                      (assoc :select-pattern (conj (:key-prefix inherited)
+                                                   [:pattern]))))
+           (is-tag-template? (table-header-element-template
+                              (keys (:cumulative-properties node))))
+           (add-attributes {:class "tag"})
+           (not top-level)
+           (add-attributes {:class "merge-with-parent"}))
+         [:div {:class "indent-wrapper tag"}
+          (add-attributes
+           inner-dom
+           {:key (conj (:key-prefix inherited) (:item-id item))
+            :class "item"})]])
+      (if (empty? (:child-nodes node))
+        (item-content-and-elements-DOM-R
+         content (concat example-elements non-labels) false inherited-down)
+        (label-stack-DOM-R example-elements inherited-down)))))
 
 (defn table-header-child-info
   "Generate the function-info and inherited for children of
@@ -336,8 +339,7 @@
                (str " tag"))})))
 
 (defn table-header-DOM
-  "Generate DOM for column headers given the hierarchy. elements-template
-  gives what new elements of a header request need to satisfy.
+  "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [hierarchy inherited]

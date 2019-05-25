@@ -216,15 +216,15 @@
                         :add-twin {:referent nil}
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
-                                 :template '(anything :tag)}
+                                 :template '(anything :column)}
                         :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
                (any)
                (any)
                (any)
                ;; A column with no label, but content and a sub-element.
-               [:div {:class (str "column-header tag wrapped-element"
-                                  " virtual-wrapper leaf")}
+               [:div {:class (str "tag wrapped-element"
+                                  " virtual-wrapper column-header leaf")}
                 ;; The virtual label
                 [:div {:add-column (any)
                        :delete-column (any)

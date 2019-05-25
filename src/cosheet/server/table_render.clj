@@ -194,8 +194,7 @@
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
-  [{:keys [top-level]}
-   node content example-elements descendants-referent inherited]
+  [node content descendants-referent inherited]
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
         elements-template (table-header-element-template
@@ -211,20 +210,14 @@
                   (cond-> (attributes-for-header-add-column-command
                            node elements-template inherited)
                     (= (count descendants) 1)
-                    (assoc :delete-column {:referent descendants-referent})
-                    (empty? example-elements)
-                    (assoc :expand {:referent descendants-referent}))]))
+                    (assoc :delete-column {:referent descendants-referent}))]))
       (:leaves node)
       (add-inherited-attribute [#{:content}
                                 {:add-twin {:referent nil}
                                  :delete {:clear-only true}}])
       (and (:leaves node) (#{'anything 'anything-immutable} content))
       (add-inherited-attribute [#{:content}
-                                {:class "placeholder"}])
-      (= (count example-elements) 1)
-      (add-inherited-attribute
-       [#{:label :element} #{:content}
-        {:expand {:referent descendants-referent}}]))))
+                                {:class "placeholder"}]))))
 
 (defn table-header-node-DOM
   "Generate the DOM for a node in the hierarchy, not including its children."
@@ -235,8 +228,7 @@
         item (:item (first (hierarchy-node-descendants node)))
         content (when item (entity/content item))
         non-labels (when item (visible-non-labels-R item))
-        inherited-down (table-header-properties-inherited
-                        function-info node content example-elements
+        inherited-down (table-header-properties-inherited node content
                         descendants-referent inherited)]
     (if (empty? (:properties node))
       (let [inner-dom (item-content-and-non-label-elements-DOM-R

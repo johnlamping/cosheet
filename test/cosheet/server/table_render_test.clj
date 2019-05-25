@@ -206,8 +206,7 @@
                   :target {:template '(anything :tag)
                            :referent (item-referent single)}
                   :add-column first-column-add
-                  :delete-column {:referent first-column-referent}
-                  :expand {:referent first-column-referent}}
+                  :delete-column {:referent first-column-referent}}
                  "single"]
                 [:div {:class "indent-wrapper"}
                  [:div {:delete-column {:referent first-column-referent},
@@ -228,7 +227,6 @@
                 ;; The virtual label
                 [:div {:add-column (any)
                        :delete-column (any)
-                       :expand (any)
                        :class "editable tag"
                        :key (conj table-key (:item-id c7) :label :virtual)
                        :target (any)}]

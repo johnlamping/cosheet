@@ -46,7 +46,9 @@
                                   label-stack-DOM-R
                                   item-content-and-elements-DOM-R
                                   item-content-and-non-label-elements-DOM-R
-                                  item-content-DOM]])))
+                                  item-content-DOM
+                                  horizontal-label-hierarchy-node-DOM
+                                  element-hierarchy-child-info]])))
 
 ;;; The condition elements of a table are its visible elements
 ;;; that are not column headers.
@@ -194,7 +196,7 @@
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
-  [node content descendants-referent inherited]
+  [node descendants-referent inherited]
   (let [descendants (hierarchy-node-descendants node)
         item (:item (first descendants))
         elements-template (table-header-element-template
@@ -215,70 +217,16 @@
       (add-inherited-attribute [#{:content}
                                 {:add-twin {:referent nil}
                                  :delete {:clear-only true}}])
-      (and (:leaves node) (#{'anything 'anything-immutable} content))
+      (and (:leaves node)
+           (#{'anything 'anything-immutable} (entity/content item)))
       (add-inherited-attribute [#{:content}
                                 {:class "placeholder"}]))))
-
-(defn table-header-node-DOM
-  "Generate the DOM for a node in the hierarchy, not including its children."
-  [node {:keys [top-level] :as function-info}
-   inherited]
-  (let [example-elements (hierarchy-node-example-elements node) 
-        descendants-referent (hierarchy-node-items-referent node inherited)
-        item (:item (first (hierarchy-node-descendants node)))
-        content (when item (entity/content item))
-        non-labels (when item (visible-non-labels-R item))
-        inherited-down (table-header-properties-inherited node content
-                        descendants-referent inherited)]
-    (if (empty? (:properties node))
-      (let [inner-dom (item-content-and-non-label-elements-DOM-R
-                       content non-labels inherited-down)]
-        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
-                        (not top-level)
-                        (str " merge-with-parent"))}
-         (cond-> (virtual-element-DOM
-                  descendants-referent :after
-                  (-> inherited-down
-                      transform-inherited-for-labels
-                      (update :key-prefix #(conj % :label))
-                      (assoc :select-pattern (conj (:key-prefix inherited)
-                                                   [:pattern]))))
-           (is-tag-template? (table-header-element-template
-                              (keys (:cumulative-properties node))))
-           (add-attributes {:class "tag"})
-           (not top-level)
-           (add-attributes {:class "merge-with-parent"}))
-         [:div {:class "indent-wrapper tag"}
-          (add-attributes
-           inner-dom
-           {:key (conj (:key-prefix inherited) (:item-id item))
-            :class "item"})]])
-      (if (empty? (:child-nodes node))
-        (item-content-and-elements-DOM-R
-         content (concat example-elements non-labels) false inherited-down)
-        (label-stack-DOM-R example-elements inherited-down)))))
-
-(defn table-header-child-info
-  "Generate the function-info and inherited for children of
-  a hierarchy node.
-  The function-info is a map with
-     :top-level          If this is a top level node
-  Inherited describes the column requests."
-  [node function-info inherited]
-  (let [children (:child-nodes node)]
-    [(assoc function-info
-            :top-level false)
-     (-> inherited
-         (update :key-prefix  #(conj % :nested))
-         (update :template
-                 #(add-elements-to-entity-list
-                   % (canonical-set-to-list (:properties node)))))]))
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
   the dom particular to the node, and doms for all the children."
   [node child-doms function-info inherited]
-  (let [node-dom (table-header-node-DOM
+  (let [node-dom (horizontal-label-hierarchy-node-DOM
                   node function-info inherited)
         is-leaf (empty? child-doms)
         elements-template (table-header-element-template
@@ -299,8 +247,9 @@
   Inherited describes the column requests."
   [node inherited]
   (hierarchy-node-DOM-R
-   node table-header-subtree-DOM table-header-child-info
-   {:top-level true}
+   node table-header-subtree-DOM element-hierarchy-child-info
+   {:top-level true
+    :downward-inherited-converter table-header-properties-inherited}
    inherited)
   )
 

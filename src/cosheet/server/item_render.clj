@@ -11,7 +11,8 @@
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [model-utils :refer [visible-elements-R visible-item?-R
-                                  split-out-labels-R visible-labels-R]]
+                                  split-out-labels-R
+                                  visible-non-labels-R visible-labels-R]]
              [referent :refer [item-referent virtual-referent ]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
@@ -545,3 +546,63 @@
                       content (remove (set excluded-elements) elements)
                       must-show-label inherited-down))]
       (add-attributes dom (inherited-attributes inherited item)))))
+
+(defn horizontal-label-hierarchy-node-DOM
+  "Generate the DOM for a node in a hierarchy that groups items by their
+   labels, has at most one leaf per node and is laid our horizontally.
+   Don't generate the DOM for its children.
+   downward-inherited-converter must take the node, a referent to all
+   its descenants, and the incoming inherited, and return the inherited
+   for the node,
+   "
+  [node {:keys [top-level downward-inherited-converter] :as function-info}
+   inherited]
+  (let [example-elements (hierarchy-node-example-elements node) 
+        descendants-referent (hierarchy-node-items-referent node inherited)
+        item (:item (first (hierarchy-node-descendants node)))
+        content (entity/content item)
+        non-labels (when item (visible-non-labels-R item))
+        inherited-down (downward-inherited-converter
+                        node descendants-referent inherited)]
+    (if (empty? (:properties node))
+      (let [inner-dom (item-content-and-non-label-elements-DOM-R
+                       content non-labels inherited-down)]
+        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
+                        (not top-level)
+                        (str " merge-with-parent"))}
+         (cond-> (virtual-element-DOM
+                  descendants-referent :after
+                  (-> inherited-down
+                      transform-inherited-for-labels
+                      (update :key-prefix #(conj % :label))
+                      (assoc :select-pattern (conj (:key-prefix inherited)
+                                                   [:pattern]))))
+           true
+           (add-attributes {:class "tag"})
+           (not top-level)
+           (add-attributes {:class "merge-with-parent"}))
+         [:div {:class "indent-wrapper tag"}
+          (add-attributes
+           inner-dom
+           {:key (conj (:key-prefix inherited) (:item-id item))
+            :class "item"})]])
+      (if (empty? (:child-nodes node))
+        (item-content-and-elements-DOM-R
+         content (concat example-elements non-labels) false inherited-down)
+        (label-stack-DOM-R example-elements inherited-down)))))
+
+(defn element-hierarchy-child-info
+  "Generate the function-info and inherited for children of
+   a hierarchy node of an element hierarchy.
+  The function-info is a map with at least
+     :top-level          If this is a top level node
+  Inherited describes the column requests."
+  [node function-info inherited]
+  (let [children (:child-nodes node)]
+    [(assoc function-info
+            :top-level false)
+     (-> inherited
+         (update :key-prefix  #(conj % :nested))
+         (update :template
+                 #(add-elements-to-entity-list
+                   % (canonical-set-to-list (:properties node)))))]))

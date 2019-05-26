@@ -342,6 +342,9 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
+;;; TODO: Remember a select request sent to the client, so we
+;;; can keep re-sending it in case the DOM it refers to wasn't
+;;; sent to the client initially.
 (defn ajax-response [tracker client-state actions client-info]
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we
@@ -352,16 +355,10 @@
         doms (when in-sync (response-doms @tracker 100))
         select (let [[select if-selected] (:select client-info)]
                  (when select
-                   (let [select-key
-                         (first (filter
-                                 #(dom-for-key? tracker %)
-                                 [(conj select :content) select]))
-                         select-id (when select-key
-                                     (key->id tracker select-key))]
-                     [select-id
-                      (filter identity
-                              (map (partial key->id tracker)
-                                   if-selected))])))
+                   [(key->id tracker select)
+                    (filter identity
+                            (map (partial key->id tracker)
+                                 if-selected))]))
         answer (cond-> (select-keys client-info
                                     [:open :set-url])
                  (seq doms) (assoc :doms doms)
@@ -416,7 +413,7 @@
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
-            (compute manager-data 1000)
+            (compute manager-data 10000)
             (check-propagation-if-quiescent tracker)
             (ajax-response tracker client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

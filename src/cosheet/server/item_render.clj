@@ -553,7 +553,7 @@
   "Generate the DOM for a node in a hierarchy that groups items by their
    labels, has at most one leaf per node and is laid our horizontally.
    Don't generate the DOM for its children."
-  [node {:keys [top-level] function-info} inherited]
+  [node {:keys [top-level]} inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node)))

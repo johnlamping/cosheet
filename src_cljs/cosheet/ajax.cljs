@@ -131,6 +131,19 @@
                    ;; into [cosheet.client/component {attributes} id]
                    (replace-in-struct {:component component} (vec doms)))))
 
+(defn adjust-target
+  "If DOM for the target id doesn't exist, try the id with _:content appended.
+   Return the corrected id and the DOM that it matches."
+  [target-id]
+  (when target-id
+    (let [target (js/document.getElementById target-id)]
+      (if target
+        [target-id target]
+        (let [target-id (str target-id "_:content")
+              target (js/document.getElementById target-id)]
+          (when target
+            [target-id target]))))))
+
 (defn handle-ajax-select
   "Do the selection requested by the ajax response, or if none,
   but the old selection was temporarily cleared, restore that selection."
@@ -142,7 +155,7 @@
                           request-id
                           (nil? @selected)
                           previously-selected-id)
-          select-target (and target-id (js/document.getElementById target-id))]
+          [target-id select-target] (adjust-target target-id)]
       (when select-target
         (timed-log "doing select.")
         (select select-target)

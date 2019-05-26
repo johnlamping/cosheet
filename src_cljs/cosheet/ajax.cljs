@@ -6,9 +6,10 @@
               replace-in-struct into-atom-map reset-atom-map-versions!
               add-pending-action add-pending-replay add-pending-clean
               process-response-for-pending take-pending-params]]
-            [cosheet.interaction-state :refer [close-edit-field
-                                               edit-field-open-on
-                                               select selected deselect]]
+            [cosheet.interaction-state :refer
+             [close-edit-field edit-field-open-on select deselect selected
+              select-and-clear-pending
+              pending-server-selection-request-id]]
             ))
 
 (declare ajax-handler)
@@ -131,9 +132,10 @@
                    ;; into [cosheet.client/component {attributes} id]
                    (replace-in-struct {:component component} (vec doms)))))
 
-(defn adjust-target
-  "If DOM for the target id doesn't exist, try the id with _:content appended.
-   Return the corrected id and the DOM that it matches."
+(defn find-target
+  "Find the DOM for the target id. If that doesn't exist, try the id
+   with _:content appended.
+   Return the id that works, in any, and the DOM that it matches."
   [target-id]
   (when target-id
     (let [target (js/document.getElementById target-id)]
@@ -144,26 +146,42 @@
           (when target
             [target-id target]))))))
 
-;;; TODO: If there is no DOM for a select request, remember the request
-;;; so we execute it in case the DOM it refers to is sent later.
+(defn first-valid-target
+  "Given a seq of target ids, return the triple of
+     [target-id adjusted target-id target]
+  of the first one that matches a target (after possible adjustment."
+  [target-ids]
+  (if (empty? target-ids)
+    nil
+    (let [[target-id & remaining-target-ids] target-ids
+          [adjusted-target-id target] (find-target target-id)]
+      (if target
+        [target-id adjusted-target-id target]
+        (find-target remaining-target-ids)))))
+
 (defn handle-ajax-select
   "Do the selection requested by the ajax response, or if none,
-  but the old selection was temporarily cleared, restore that selection."
+   but the old selection was temporarily cleared, restore that selection."
   [response previously-selected-id]
-  (when (nil? @edit-field-open-on)
-    (let [[request-id if-selected] (:select response)
-          target-id (cond (or (nil? previously-selected-id)
-                              (some #{previously-selected-id} if-selected))
-                          request-id
-                          (nil? @selected)
-                          previously-selected-id)
-          [target-id select-target] (adjust-target target-id)]
-      (when select-target
-        (timed-log "doing select.")
-        (select select-target)
-        (when request-id
-          ;; Tell the server that their selection request went through.
-          (add-pending-action [:selected target-id]))))))
+  (if (nil? @edit-field-open-on)
+    (do (let [[request-id if-selected] (:select response)]
+          (when (and request-id
+                     (or (nil? previously-selected-id)
+                         (some #{previously-selected-id} if-selected)))
+            (reset! pending-server-selection-request-id request-id)))
+        (let [request-id @pending-server-selection-request-id
+              [target-id adjusted-target-id select-target]
+              (first-valid-target
+               [request-id
+                (when (nil? @selected) previously-selected-id)])]
+          (when select-target
+            (timed-log "doing select.")
+            (select select-target)
+            (when (= target-id request-id)
+              (reset! pending-server-selection-request nil)
+              ;; Tell the server that we did the selection.
+              (add-pending-action [:selected adjusted-target-id])))))
+    (reset! pending-server-selection-request nil)))
 
 (defn handle-ajax-open
   "Handle an open window request in an ajax response."
@@ -192,7 +210,8 @@
       (reset-poll-delay))
     (if (:reload response)
       (js/location.reload)
-      (let [previously-selected-id (and @selected (.-id @selected))]
+      (let [;; Remember the current selection before we mess with the DOM.
+            previously-selected-id (and @selected (.-id @selected))]
         (handle-ajax-reset-versions response)
         (handle-ajax-doms response)
         (reagent/flush)  ;; Must update the dom before the select is processed.

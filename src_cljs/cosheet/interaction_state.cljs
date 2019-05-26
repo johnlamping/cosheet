@@ -38,7 +38,13 @@
       (reset! edit-field-open-on nil)
       (.remove (.-classList select-holder) "editing"))))
 
-(def selected (atom nil)) ;; The currently selected dom.
+;; The currently selected dom.
+(def selected (atom nil))
+
+;; The last valid selection request id we have received from the client,
+;; if we we haven't already done it, and if the user hasn't made a
+;; different selection since we got it.
+(def pending-server-selection-request-id (atom nil))
 
 (defn set-special-class
   "Set a specific dom to have a specified class, and record which dom it is.
@@ -72,4 +78,8 @@
     (.log js/console (str "Selected id " (.-id target) "."))
     (reset! selected target)
     (scroll-to-be-visible target)))
+
+(defn select-and-clear-pending [target]
+  (select target)
+  (reset! pending-server-selection-request-id nil))
 

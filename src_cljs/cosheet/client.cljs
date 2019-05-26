@@ -17,7 +17,8 @@
                                   ajax-request ajax-if-pending]]
             [cosheet.interaction-state :refer [edit-field-open-on
                                                open-edit-field close-edit-field
-                                               selected select deselect]]
+                                               selected deselect
+                                               select-and-clear-pending]]
             ))
 
 (reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
@@ -98,7 +99,7 @@
           (let [editable (find-editable effective-target event)]
             (when (not= editable @selected)
               (if editable
-                (select editable)
+                (select-and-clear-pending editable)
                 (deselect))
               (request-action [:selected (and editable (.-id editable))]))))))))
 
@@ -116,7 +117,7 @@
       (close-edit-field)
       (let [editable (find-editable effective-target event)]
         (if editable
-          (do (select editable)
+          (do (select-and-clear-pending editable)
               (when (not (is-immutable? editable))
                 (open-edit-field editable (dom-text editable))))
           (deselect))
@@ -199,7 +200,7 @@
             (when-let [selection @selected]
               (when (not (find-ancestor-with-class selection "tabs-holder"))
                 (when-let [next (next-mutable-editable selection)]
-                  (select next)))))
+                  (select-and-clear-pending next)))))
           (key-codes/isCharacterKey key-code)
           (when (and @selected
                      (not (is-immutable? @selected))

@@ -410,7 +410,7 @@
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
-            (compute manager-data 10000)
+            (compute manager-data 1000)
             (check-propagation-if-quiescent tracker)
             (ajax-response tracker client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

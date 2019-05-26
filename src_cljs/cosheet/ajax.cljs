@@ -144,6 +144,8 @@
           (when target
             [target-id target]))))))
 
+;;; TODO: If there is no DOM for a select request, remember the request
+;;; so we execute it in case the DOM it refers to is sent later.
 (defn handle-ajax-select
   "Do the selection requested by the ajax response, or if none,
   but the old selection was temporarily cleared, restore that selection."

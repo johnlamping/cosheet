@@ -342,9 +342,6 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
-;;; TODO: Remember a select request sent to the client, so we
-;;; can keep re-sending it in case the DOM it refers to wasn't
-;;; sent to the client initially.
 (defn ajax-response [tracker client-state actions client-info]
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we

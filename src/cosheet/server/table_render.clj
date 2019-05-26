@@ -210,7 +210,10 @@
                   (cond-> (attributes-for-header-add-column-command
                            node elements-template inherited)
                     (= (count descendants) 1)
-                    (assoc :delete-column {:referent descendants-referent}))]))
+                    (assoc :delete-column {:referent descendants-referent}))])
+                ;; Let item-render figure out whether to use narrow
+                ;; or wide format.
+                (assoc :width (* 0.75 (count descendants))))
       (:leaves node)
       (add-inherited-attribute [#{:content}
                                 {:add-twin {:referent nil}
@@ -299,6 +302,7 @@
   (let [row-referent (:subject-referent inherited)
         inherited
         (-> inherited
+            (assoc :width 0.75)  ;; Tell item-render to use the narrow format.
             (add-inherited-attribute
              [#{:label :element :recursive :optional} #{:content}
               {:column {:referent column-id}}]))]

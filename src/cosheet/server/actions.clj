@@ -151,8 +151,14 @@
             (add-select-request
              store [(first added)]
              (or select-pattern
-                 (conj (subvec target-key 0 (- (count target-key) 1))
-                       :label [:pattern])) target-key)))))))
+                 ;; Labels don't include their item in their key,
+                 ;; so back up to just before the target to make the
+                 ;; pattern.
+                 (let [item-back-in-key
+                       (if (= (last target-key) :content) 2 1)]
+                   (conj (subvec
+                          target-key 0 (- (count target-key) item-back-in-key))
+                         :label [:pattern]))) target-key)))))))
 
 (defn do-add-twin
   [store arguments]

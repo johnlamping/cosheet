@@ -196,17 +196,15 @@
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
-  [node descendants-referent inherited]
+  [node inherited]
   (let [descendants (hierarchy-node-descendants node)
+        descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first descendants))
         elements-template (table-header-element-template
                            ;; TODO: The keys below means that multiplicites of
                            ;;       properties are forgotten, which is wrong.
                            (keys (:cumulative-properties node)))]
     (cond-> (-> inherited
-                (assoc :subject-referent descendants-referent)
-                (update :key-prefix
-                        #(conj % (:item-id item)))
                 (add-inherited-attribute
                  [#{:label :element :recursive :optional} #{:content}
                   (cond-> (attributes-for-header-add-column-command
@@ -227,7 +225,8 @@
   the dom particular to the node, and doms for all the children."
   [node child-doms function-info inherited]
   (let [node-dom (horizontal-label-hierarchy-node-DOM
-                  node function-info inherited)
+                  node function-info
+                  (table-header-properties-inherited node inherited))
         is-leaf (empty? child-doms)
         elements-template (table-header-element-template
                            (keys (:cumulative-properties node)))
@@ -248,8 +247,7 @@
   [node inherited]
   (hierarchy-node-DOM-R
    node table-header-subtree-DOM element-hierarchy-child-info
-   {:top-level true
-    :downward-inherited-converter table-header-properties-inherited}
+   {:top-level true}
    inherited)
   )
 

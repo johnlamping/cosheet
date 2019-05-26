@@ -547,23 +547,22 @@
                       must-show-label inherited-down))]
       (add-attributes dom (inherited-attributes inherited item)))))
 
+
+;;; TODO: Move the downward inherited computation to the caller.
 (defn horizontal-label-hierarchy-node-DOM
   "Generate the DOM for a node in a hierarchy that groups items by their
    labels, has at most one leaf per node and is laid our horizontally.
-   Don't generate the DOM for its children.
-   downward-inherited-converter must take the node, a referent to all
-   its descenants, and the incoming inherited, and return the inherited
-   for the node,
-   "
-  [node {:keys [top-level downward-inherited-converter] :as function-info}
-   inherited]
+   Don't generate the DOM for its children."
+  [node {:keys [top-level] function-info} inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node)))
+        inherited-down (-> inherited
+                           (assoc :subject-referent descendants-referent )
+                           (update :key-prefix
+                                   #(conj % (:item-id item))))
         content (entity/content item)
-        non-labels (when item (visible-non-labels-R item))
-        inherited-down (downward-inherited-converter
-                        node descendants-referent inherited)]
+        non-labels (when item (visible-non-labels-R item))]
     (if (empty? (:properties node))
       (let [inner-dom (item-content-and-non-label-elements-DOM-R
                        content non-labels inherited-down)]
@@ -575,7 +574,7 @@
                   (-> inherited-down
                       transform-inherited-for-labels
                       (update :key-prefix #(conj % :label))
-                      (assoc :select-pattern (conj (:key-prefix inherited)
+                      (assoc :select-pattern (conj (:key-prefix inherited-down)
                                                    [:pattern]))))
            true
            (add-attributes {:class "tag"})
@@ -584,7 +583,7 @@
          [:div {:class "indent-wrapper tag"}
           (add-attributes
            inner-dom
-           {:key (conj (:key-prefix inherited) (:item-id item))
+           {:key (:key-prefix inherited-down)
             :class "item"})]])
       (if (empty? (:child-nodes node))
         (item-content-and-elements-DOM-R

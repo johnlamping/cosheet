@@ -547,55 +547,65 @@
                       must-show-label inherited-down))]
       (add-attributes dom (inherited-attributes inherited item)))))
 
-
-;;; TODO: Move the downward inherited computation to the caller.
 (defn horizontal-label-hierarchy-node-DOM
   "Generate the DOM for a node in a hierarchy that groups items by their
-   labels, has at most one leaf per node and is laid our horizontally.
-   Don't generate the DOM for its children."
-  [node {:keys [top-level]} inherited]
+   labels, has at most one leaf per node and is laid out horizontally.
+   Don't generate the DOM for its children.
+   If remainder-referent is present, it gives the referent for the leaf,
+   if the node has no properties, and thus indicates a remainder of its
+   parent node."
+  [node {:keys [remainder-referent top-level]} inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         descendants-referent (hierarchy-node-items-referent node inherited)
         item (:item (first (hierarchy-node-descendants node)))
-        inherited-down (-> inherited
-                           (assoc :subject-referent descendants-referent )
-                           (update :key-prefix
-                                   #(conj % (:item-id item))))
-        content (entity/content item)
+        content (when item (entity/content item))
         non-labels (when item (visible-non-labels-R item))]
     (if (empty? (:properties node))
-      (let [inner-dom (item-content-and-non-label-elements-DOM-R
+      ;; We must be a leaf of a node that has children. We put a virtual
+      ;; cell where our labels would go.
+      (let [remainder-referent (or remainder-referent descendants-referent)
+            inherited-down (-> inherited
+                               (assoc :subject-referent remainder-referent)
+                               (update :key-prefix #(conj % (:item-id item))))
+            label-dom (cond->
+                          (virtual-element-DOM
+                           remainder-referent :after
+                           (-> inherited-down
+                               transform-inherited-for-labels
+                               (update :key-prefix #(conj % :label))
+                               (assoc :select-pattern
+                                      (conj (:key-prefix inherited)
+                                            [:pattern]))))
+                        true
+                        (add-attributes {:class "tag"})
+                        (not top-level)
+                        (add-attributes {:class "merge-with-parent"}))
+            inner-dom (item-content-and-non-label-elements-DOM-R
                        content non-labels inherited-down)]
         [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
-         (cond-> (virtual-element-DOM
-                  descendants-referent :after
-                  (-> inherited-down
-                      transform-inherited-for-labels
-                      (update :key-prefix #(conj % :label))
-                      (assoc :select-pattern (conj (:key-prefix inherited-down)
-                                                   [:pattern]))))
-           true
-           (add-attributes {:class "tag"})
-           (not top-level)
-           (add-attributes {:class "merge-with-parent"}))
+         label-dom
          [:div {:class "indent-wrapper tag"}
           (add-attributes
            inner-dom
            {:key (:key-prefix inherited-down)
             :class "item"})]])
-      (if (empty? (:child-nodes node))
-        (item-content-and-elements-DOM-R
-         content (concat example-elements non-labels) false inherited-down)
-        (label-stack-DOM-R example-elements inherited-down)))))
+      (let [inherited-down (assoc inherited :subject-referent
+                                  descendants-referent)]
+        (if (empty? (:child-nodes node))
+          (let [all-elements (concat example-elements non-labels) ]
+            (item-content-and-elements-DOM-R
+             content all-elements false
+             (update inherited-down :key-prefix #(conj % (:item-id item)))))
+          (label-stack-DOM-R example-elements inherited-down))))))
 
 (defn element-hierarchy-child-info
   "Generate the function-info and inherited for children of
    a hierarchy node of an element hierarchy.
   The function-info is a map with at least
-     :top-level          If this is a top level node
-  Inherited describes the column requests."
+     :top-level  Whether this is a top level node.
+  Inherited describes the items."
   [node function-info inherited]
   (let [children (:child-nodes node)]
     [(assoc function-info

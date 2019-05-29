@@ -698,7 +698,7 @@ body {
     margin-top: -2px;
 }
 
-.column-header-sequence {
+.column-header-sequence, .horizontal-label-sequence {
     flex: none;
     display: flex;
     align-items: stretch;
@@ -708,7 +708,7 @@ body {
     border-bottom-width: 2px;
 }
 
-.column-header-sequence > * {
+.column-header-sequence > *, .horizontal-label-sequence > * {
     flex: 0 0 auto;
 }
 

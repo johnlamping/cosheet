@@ -251,8 +251,7 @@
   (hierarchy-node-DOM-R
    node table-header-subtree-DOM element-hierarchy-child-info
    {:top-level true}
-   inherited)
-  )
+   inherited))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

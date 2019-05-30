@@ -44,7 +44,6 @@
              [item-render :refer [elements-DOM-R virtual-element-with-label-DOM
                                   labels-and-elements-DOM-R
                                   label-stack-DOM-R
-                                  item-content-and-elements-DOM-R
                                   item-content-and-non-label-elements-DOM-R
                                   item-content-DOM
                                   horizontal-label-hierarchy-node-DOM

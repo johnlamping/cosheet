@@ -201,7 +201,7 @@
               [:div {:class "column-header-sequence"}
                [:div {:class "wrapped-element tag column-header leaf"}
                 [:div
-                 {:key (conj table-key (:item-id c1) (:item-id single) :content)
+                 {:key (conj table-key (:item-id single) :content)
                   :class "content-text editable item tag"
                   :target {:template '(anything :tag)
                            :referent (item-referent single)}
@@ -228,7 +228,7 @@
                 [:div {:add-column (any)
                        :delete-column (any)
                        :class "editable tag"
-                       :key (conj table-key (:item-id c7) :label :virtual)
+                       :key (conj table-key (:item-id c7) :virtual)
                        :target (any)}]
                 ;;; The content and sub-element.
                 [:div {:class "indent-wrapper tag"}

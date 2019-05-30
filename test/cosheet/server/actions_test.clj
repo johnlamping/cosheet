@@ -116,7 +116,7 @@
                 (to-list (description->entity (:item-id jane-age) new-store)))
                (canonicalize-list '(45 ("age" :tag) (anything :tag)))))
     (is (check (:select result)
-               [[:label (any)] [["jane-age"]]]))))
+               [[(any)] [["jane-age"]]]))))
 
 (deftest do-add-twin-test
   (let [result (do-add-twin

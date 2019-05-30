@@ -158,7 +158,8 @@
                        (if (= (last target-key) :content) 2 1)]
                    (conj (subvec
                           target-key 0 (- (count target-key) item-back-in-key))
-                         :label [:pattern]))) target-key)))))))
+                         [:pattern])))
+             target-key)))))))
 
 (defn do-add-twin
   [store arguments]

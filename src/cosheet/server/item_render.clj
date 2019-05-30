@@ -13,7 +13,7 @@
              [model-utils :refer [visible-elements-R visible-item?-R
                                   split-out-labels-R
                                   visible-non-labels-R visible-labels-R]]
-             [referent :refer [item-referent virtual-referent ]]
+             [referent :refer [item-referent virtual-referent]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
                                 hierarchy-node-leaves
@@ -166,13 +166,14 @@
   "Given a dom for an item, not including its labels, and a list of labels,
   make a dom that includes any necessary labels wrapping the item.
   inherited should be half way to the children." 
-  [dom label-elements must-show-label inherited]
+  [item dom label-elements must-show-label inherited]
   (if (not (empty? label-elements))
     (non-empty-labels-wrapper-DOM-R dom label-elements :vertical inherited)
     (if (not must-show-label)
       dom
       [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
-       (virtual-label-DOM inherited)
+       (virtual-label-DOM
+        (update inherited :key-prefix #(conj % (:item-id item))))
        dom])))
 
 (defn virtual-element-with-label-DOM
@@ -204,21 +205,21 @@
                         hierarchy-node inherited)
         example-descendant (first (hierarchy-node-descendants
                                    hierarchy-node))
-        tags-key-prefix (conj (:key-prefix inherited) :label)
         inherited-for-children (-> inherited
                                    (add-adjacent-sibling-command hierarchy-node)
                                    (transform-inherited-for-children
-                                    tags-key-prefix items-referent))]
+                                    (:key-prefix inherited) items-referent))]
     (expr-let
         [dom (if (empty? (:properties hierarchy-node))
                (virtual-element-DOM
                 nil :after
-                (->
-                 (transform-inherited-for-labels inherited-for-children)
-                 (update :key-prefix
-                         ;; Need to make it different from sibling virtuals.
-                         #(conj % (:item-id (:item example-descendant))))
-                 (assoc :select-pattern (conj tags-key-prefix [:pattern]))))
+                (-> inherited-for-children
+                    transform-inherited-for-labels 
+                    (update :key-prefix
+                            ;; Need to make it different from sibling virtuals.
+                            #(conj % (:item-id (:item example-descendant))))
+                    (assoc :select-pattern
+                           (conj (:key-prefix inherited) [:pattern]))))
                (label-stack-DOM-R
                 (hierarchy-node-example-elements hierarchy-node)
                 inherited-for-children))]
@@ -487,13 +488,14 @@
 (defn item-content-and-elements-DOM-R
   "Make a dom for a content and a group of elements, all of the same item.
   Inherited should be half way to the children."
-  [content elements must-show-label inherited]
+  [item content elements must-show-label inherited]
   (expr-let [[labels non-labels] (split-out-labels-R elements)
              content-and-elements-dom
              (item-content-and-non-label-elements-DOM-R
               content non-labels inherited)]
     (labels-wrapper-DOM-R
-     content-and-elements-dom labels must-show-label inherited)))
+     item content-and-elements-dom labels must-show-label
+     (update inherited :key-prefix #(vec (butlast %))))))
 
 (defn item-without-labels-DOM-R
   "Make a dom for an item or exemplar for a group of items,
@@ -543,7 +545,7 @@
                       elements nil must-show-label true :vertical
                       inherited-down)
                      (item-content-and-elements-DOM-R
-                      content (remove (set excluded-elements) elements)
+                      item content (remove (set excluded-elements) elements)
                       must-show-label inherited-down))]
       (add-attributes dom (inherited-attributes inherited item)))))
 
@@ -572,7 +574,6 @@
                            remainder-referent :after
                            (-> inherited-down
                                transform-inherited-for-labels
-                               (update :key-prefix #(conj % :label))
                                (assoc :select-pattern
                                       (conj (:key-prefix inherited)
                                             [:pattern]))))
@@ -596,7 +597,7 @@
         (if (empty? (:child-nodes node))
           (let [all-elements (concat example-elements non-labels) ]
             (item-content-and-elements-DOM-R
-             content all-elements false
+             item content all-elements false
              (update inherited-down :key-prefix #(conj % (:item-id item)))))
           (label-stack-DOM-R example-elements inherited-down))))))
 

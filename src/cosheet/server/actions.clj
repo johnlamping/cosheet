@@ -298,22 +298,28 @@
                           (first (label->elements topic :row-condition)))
           temporary-id (:temporary-id session-state)
           temporary-item (description->entity temporary-id store)
-          current-batch-selector (first (label->elements
-                                         temporary-item :batch-selector))
-          new-batch-selector (when (and target row-condition)
-                               (when-let [selector (batch-edit-selector
-                                                    target row-condition)]
-                                 (apply list (concat
-                                              selector
-                                              [':batch-selector ':selector]))))]
-      (when new-batch-selector
+          current-batch-selectors (label->elements
+                                   temporary-item :batch-selector)
+          new-batch-selectors (when (and target row-condition)
+                                (when-let [selector (batch-edit-selector
+                                                     target row-condition)]
+                                  [(apply list
+                                          (concat
+                                           selector
+                                           [:batch-selector :selector]))]))]
+      (println (simplify-for-print ["XXX" target top-item topic row-condition
+                                    temporary-id temporary-item
+                                    current-batch-selectors new-batch-selectors]))
+      (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
         (as-> store store
-          (if current-batch-selector
-            (remove-entity-by-id store (:item-id current-batch-selector))
-            store)
+          (reduce (fn [s selector]
+                    (remove-entity-by-id s (:item-id selector)))
+                  store current-batch-selectors)
           (update-valid-undo-point
-           (first (add-entity store temporary-id new-batch-selector))
+           (reduce (fn [s selector]
+                     (first (add-entity s temporary-id selector)))
+                   store new-batch-selectors)
            false))))))
 
 (defn do-storage-update-action

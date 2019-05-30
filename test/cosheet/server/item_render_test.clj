@@ -374,7 +374,7 @@
                  [:div {:class
                         "horizontal-tags-element tag virtual-wrapper narrow"}
                   [:div {:class "editable tag"
-                         :key (conj item-key  :tags :virtual)
+                         :key (conj item-key :tags :virtual)
                          :expand {:referent (item-referent item)}
                          :target {:referent (virtual-referent
                                              '(anything :tag)

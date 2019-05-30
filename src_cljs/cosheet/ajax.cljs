@@ -157,7 +157,7 @@
           [adjusted-target-id target] (find-target target-id)]
       (if target
         [target-id adjusted-target-id target]
-        (find-target remaining-target-ids)))))
+        (first-valid-target remaining-target-ids)))))
 
 (defn handle-ajax-select
   "Do the selection requested by the ajax response, or if none,
@@ -171,17 +171,14 @@
             (reset! pending-server-selection-request-id request-id)))
         (let [request-id @pending-server-selection-request-id
               [target-id adjusted-target-id select-target]
-              (first-valid-target
-               [request-id
-                (when (nil? @selected) previously-selected-id)])]
+              (first-valid-target [request-id previously-selected-id])]
           (when select-target
-            (timed-log "doing select.")
             (select select-target)
             (when (= target-id request-id)
-              (reset! pending-server-selection-request nil)
+              (reset! pending-server-selection-request-id nil)
               ;; Tell the server that we did the selection.
               (add-pending-action [:selected adjusted-target-id])))))
-    (reset! pending-server-selection-request nil)))
+    (reset! pending-server-selection-request-id nil)))
 
 (defn handle-ajax-open
   "Handle an open window request in an ajax response."

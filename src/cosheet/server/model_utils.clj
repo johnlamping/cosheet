@@ -371,7 +371,7 @@
 (defn table-tab-non-semantic-elements
   "Return the non-semantic elements for a new tab for a table
   with the given row condition and column conditions."
-  [row-condition-elements header-conditions-elements]
+  [row-condition-elements header-condition-elements]
   `(:tab
     (:blank
      :tab-topic
@@ -379,16 +379,16 @@
      ~(apply list (concat
                    ['anything]
                    row-condition-elements
-                   (map (fn [header-condition-elements]
+                   (map (fn [header-condition-element]
                           (apply list (concat
                                        table-header-template
-                                       header-condition-elements)))
-                        header-conditions-elements)
+                                       [header-condition-element])))
+                        header-condition-elements)
                    [:row-condition
                     :selector])))))
 
 (def new-tab-elements
-  (table-tab-non-semantic-elements ['(??? :tag)] [['(??? :tag)]]))
+  (table-tab-non-semantic-elements ['(??? :tag)] ['(??? :tag)]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store
@@ -404,7 +404,7 @@
                              (cons "" (cons tab-name
                                             (table-tab-non-semantic-elements
                                              [`(~tab-name :tag)]
-                                             [['(??? :tag)]])))
+                                             ['(??? :tag)])))
                              store)]
         (first (update-add-entity-adjacent-to
                 store tabs-holder-id tab                   
@@ -488,7 +488,7 @@
                          (cons "" (cons table-name
                                         (table-tab-non-semantic-elements
                                          [`(~table-name :tag)]
-                                         (map (fn [header] [`(~header :tag)])
+                                         (map (fn [header] `(~header :tag))
                                               headers))))
                          last-tab :after true)]
     store))

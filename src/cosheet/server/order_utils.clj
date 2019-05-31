@@ -148,12 +148,14 @@
                            elements
                            [`(~before :order)]))
        after])
-    (or (nil? entity) (= entity :tag))
-    [entity order]
-    true
+    (or (string? entity)
+        (number? entity)
+        (#{'anything 'anything-immutable} entity))
     (let [[before after] (split order :after)]
       [`(~entity (~before :order))
-       after])))
+       after])
+    true
+    [entity order]))
 
 (defn add-order-elements
   "Given the list form of the semantic part of an item, add order

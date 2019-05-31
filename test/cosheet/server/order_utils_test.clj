@@ -127,12 +127,12 @@
   (is (= (furthest-element joe :before) joe-male)))
 
 (deftest add-order-elements-test
-  (let [ordered (add-order-elements `(a (b c) d (e :tag)))]
+  (let [ordered (add-order-elements `("a" ("b" "c") "d" ("e" :tag)))]
     (is (check ordered
-               `(a (b (c (~(any) :order))
+               `("a" ("b" ("c" (~(any) :order))
                       (~(any) :order))
-                   (d (~(any) :order))
-                   (e :tag (~(any) :order))
+                   ("d" (~(any) :order))
+                   ("e" :tag (~(any) :order))
                    (~(any) :order))))
     (is (orderable/earlier? (-> ordered second second second first)
                            (-> ordered second (nth 2) first)))

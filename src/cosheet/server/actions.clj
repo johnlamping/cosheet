@@ -21,7 +21,7 @@
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector? semantic-elements-R abandon-problem-changes]]
-    [table-render :refer [batch-edit-selector]]
+    [table-render :refer [batch-edit-selectors]]
     [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
@@ -301,12 +301,7 @@
           current-batch-selectors (label->elements
                                    temporary-item :batch-selector)
           new-batch-selectors (when (and target row-condition)
-                                (when-let [selector (batch-edit-selector
-                                                     target row-condition)]
-                                  [(apply list
-                                          (concat
-                                           selector
-                                           [:batch-selector :selector]))]))]
+                                (batch-edit-selectors target row-condition))]
       (println (simplify-for-print ["XXX" target top-item topic row-condition
                                     temporary-id temporary-item
                                     current-batch-selectors new-batch-selectors]))

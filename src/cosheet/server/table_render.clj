@@ -59,7 +59,7 @@
 
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
-(defn batch-edit-selector
+(defn batch-edit-selectors
   "Given an item, return the list form of the batch query that matches
   everything 'like' the item. For a column header, this is everything
   that would go in its column, while for an element, it is all
@@ -109,7 +109,9 @@
             parent-item
             (recur parent-item))))
       add-order-elements
-      (replace-in-seqs 'anything-immutable 'anything)))
+      (replace-in-seqs 'anything-immutable 'anything)
+      (concat [:batch-selector :selector])
+      (#(vector (apply list %)))))
 
 (defn is-tag-template?
   "Return true if the template describes a label."

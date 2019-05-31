@@ -140,53 +140,57 @@
       ;; First, test batch-edit-selector.
       (let [immutable-query (entity/current-version query)]
         ;; When the item is part of the row condition.
-        (is (check (batch-edit-selector
+        (is (check (batch-edit-selectors
                     (first (filter #(= (immutable-semantic-to-list %)
                                         `(~'anything ("age" :tag)))
                                    (elements immutable-query)))
                     immutable-query)
-                   `(~'anything
-                     (~'anything
-                      ("age" :tag (~(any) :order))
-                      (~(any) :order))
-                     (~(any) :order))))
+                   [`(~'anything
+                      (~'anything
+                       ("age" :tag (~(any) :order))
+                       (~(any) :order))
+                      (~(any) :order)
+                      :batch-selector :selector)]))
         ;; When the item is part of a column header.
-        (is (check (batch-edit-selector (first (matching-elements
+        (is (check (batch-edit-selectors (first (matching-elements
                                            `(~'anything ("single" :tag))
                                            immutable-query))
                                    immutable-query)
-               `(~'anything
-                 (~'anything
-                  ("age" :tag (~(any) :order))
-                  (~(any) :order))
-                 (~'anything
-                  ("single" :tag (~(any) :order))
-                  (~(any) :order))
-                 (~(any) :order))))
+                   [`(~'anything
+                      (~'anything
+                       ("age" :tag (~(any) :order))
+                       (~(any) :order))
+                      (~'anything
+                       ("single" :tag (~(any) :order))
+                       (~(any) :order))
+                      (~(any) :order)
+                      :batch-selector :selector)]))
         ;; When the item is an element in the table.
         ;; In this case, the item is a refinement of a table condition,
         ;; so it should replace the condition.
-        (is (check (batch-edit-selector (first (matching-items
+        (is (check (batch-edit-selectors (first (matching-items
                                                '(45 ("age" :tag))
                                                (:store immutable-query)))
                                        immutable-query)
-                   `(~'anything
-                     (45
-                      ("age" :tag (~(any) :order))
-                      (~(any) :order))
-                     (~(any) :order))))
+                   [`(~'anything
+                      (45
+                       ("age" :tag (~(any) :order))
+                       (~(any) :order))
+                      (~(any) :order)
+                      :batch-selector :selector)]))
         ;; Again, the item is in the table, but this time, the condition
         ;; is a refinement of the item, so just the condition should appear
         ;; in the edit pattern.
         (let [test-row (first (matching-items '(nil :top-level :test)
                                               (:store immutable-query)))
               test-item (first (label->elements test-row "age"))]
-          (is (check (batch-edit-selector test-item immutable-query)
-                     `(~'anything
-                       (~'anything
-                        ("age" :tag (~(any) :order))
-                        (~(any) :order))
-                       (~(any) :order)))))
+          (is (check (batch-edit-selectors test-item immutable-query)
+                     [`(~'anything
+                        (~'anything
+                         ("age" :tag (~(any) :order))
+                         (~(any) :order))
+                        (~(any) :order)
+                        :batch-selector :selector)])))
         )
       (is (check
            dom

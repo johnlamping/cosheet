@@ -411,6 +411,10 @@
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
             (compute manager-data 1000)
+            ;; If we have no doms ready for the client yet, try computing
+            ;; some more.
+            (when (empty? (response-doms tracker 1))
+              (compute manager-data 10000))
             (check-propagation-if-quiescent tracker)
             (ajax-response tracker client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

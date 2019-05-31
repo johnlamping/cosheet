@@ -150,7 +150,7 @@
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
                       (~(any) :order)
-                      :batch-selector :selector)]))
+                      :batch-selector :batch-row-selector :selector)]))
         ;; When the item is part of a column header.
         (is (check (batch-edit-selectors (first (matching-elements
                                            `(~'anything ("single" :tag))
@@ -164,7 +164,7 @@
                        ("single" :tag (~(any) :order))
                        (~(any) :order))
                       (~(any) :order)
-                      :batch-selector :selector)]))
+                      :batch-selector :batch-row-selector :selector)]))
         ;; When the item is an element in the table.
         ;; In this case, the item is a refinement of a table condition,
         ;; so it should replace the condition.
@@ -177,7 +177,7 @@
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
                       (~(any) :order)
-                      :batch-selector :selector)]))
+                      :batch-selector :batch-row-selector :selector)]))
         ;; Again, the item is in the table, but this time, the condition
         ;; is a refinement of the item, so just the condition should appear
         ;; in the edit pattern.
@@ -190,7 +190,7 @@
                          ("age" :tag (~(any) :order))
                          (~(any) :order))
                         (~(any) :order)
-                        :batch-selector :selector)])))
+                        :batch-selector :batch-row-selector :selector)])))
         )
       (is (check
            dom

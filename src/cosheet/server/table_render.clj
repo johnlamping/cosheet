@@ -110,7 +110,7 @@
             (recur parent-item))))
       add-order-elements
       (replace-in-seqs 'anything-immutable 'anything)
-      (concat [:batch-selector :selector])
+      (concat [:batch-selector :batch-row-selector :selector])
       (#(vector (apply list %)))))
 
 (defn is-tag-template?

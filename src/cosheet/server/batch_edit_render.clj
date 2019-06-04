@@ -2,11 +2,13 @@
   (:require (cosheet [store :refer [call-dependent-on-id get-unique-number
                                     current-store]]
                      [entity :as entity]
-                     [query :refer [matching-elements matching-items]]
+                     [query :refer [matching-elements matching-items
+                                    extended-by?]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
-                     [expression :refer [expr expr-let expr-seq]])
+                     [expression-manager :refer [current-value]]
+                     [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [item-referent item-or-exemplar-referent
                                elements-referent query-referent
@@ -27,6 +29,7 @@
                                   visible-non-labels-R visible-elements-R]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [add-labels-DOM
+                                  item-DOM-R
                                   labels-and-elements-DOM-R
                                   element-hierarchy-child-info
                                   horizontal-label-hierarchy-node-DOM]])))
@@ -96,18 +99,20 @@
 
 ;;; The subject referent should give the match to the rows, the headers,
 ;;; and the item that specifies the hierarchy.
-(defn horizontal-label-DOM
+(defn horizontal-label-DOM-R
   "Generate DOM for a horizontal layout of the visible elements of the item,
    with their labels shown in a hierarchy above them."
   [item inherited]
-  (let [elements (order-items-R (visible-elements-R item))
-        hierarchy (-> (hierarchy-by-labels-R elements)
-                      replace-hierarchy-leaves-by-nodes)
-        doms (map #(horizontal-label-top-level-subtree-DOM % inherited)
-                  hierarchy)]
-    (into [:div {:class "horizontal-label-sequence"}] doms)))
+  (entity/updating-with-immutable
+   [immutable-item item]
+   (let [elements (order-items-R (visible-elements-R immutable-item))
+         hierarchy (-> (hierarchy-by-labels-R elements)
+                       replace-hierarchy-leaves-by-nodes)
+         doms (map #(horizontal-label-top-level-subtree-DOM % inherited)
+                   hierarchy)]
+     (into [:div {:class "horizontal-label-sequence"}] doms))))
 
-(defn batch-edit-stack-virtual-DOM-R
+(defn batch-row-selector-virtual-DOM-R
   "Return the DOM for a virtual element in the edit stack part of the display,
    that is an element of the query item."
   [query-item store inherited]
@@ -147,31 +152,26 @@
                  {:class "tag"})]
     (add-labels-DOM tag-dom dom :vertical)))
 
-(defn batch-edit-stack-DOM-R
-  "Return the dom for the edit stack part of the batch edit display."
-  [selector-item store inherited]
-  (let [top-level-matches-referent (top-level-items-referent selector-item)
-        table-header-matches-referent (table-headers-referent selector-item)
+(defn batch-row-selector-DOM-R
+  "Return the dom row selector."
+  [row-selector store inherited]
+  (let [top-level-matches-referent (top-level-items-referent row-selector)
+        table-header-matches-referent (table-headers-referent row-selector)
         matches-referent (union-referent
-                          [(item-referent selector-item)
+                          [(item-referent row-selector)
                            top-level-matches-referent
-                           table-header-matches-referent])
-        inherited-for-batch
-        (-> inherited
-            (assoc :match-all true)
-            ;; Make its doms have different keys.
-            (update :key-prefix #(conj % :batch-stack)))]
+                           table-header-matches-referent])]
     (expr-let
-        [virtual-dom (batch-edit-stack-virtual-DOM-R
-                      selector-item store inherited-for-batch)
+        [virtual-dom (batch-row-selector-virtual-DOM-R
+                      row-selector store inherited)
          ;; We need to take the current versions of the query elements,
          ;; as :match-all only works with immutable items.
          current-query-elements
          (expr-seq map #(entity/updating-call-with-immutable % identity)
-                   (semantic-elements-R selector-item))
+                   (semantic-elements-R row-selector))
          batch-dom
          (let [inherited
-               (-> inherited-for-batch
+               (-> inherited
                    (assoc :subject-referent matches-referent
                           :template 'anything)
                    ;; TODO: This should not be necessary any more,
@@ -185,35 +185,62 @@
            ;; TODO: Add-twin is a problem here with not knowing
            ;; what template to use.
            (labels-and-elements-DOM-R current-query-elements virtual-dom
-                                      true true :horizontal inherited))
-         count-dom
-         (call-dependent-on-id
-          store nil
-          (fn [store]
-            (let [header (count (instantiate-referent
-                                 table-header-matches-referent store))
-                  non-header (count (instantiate-referent
-                                     top-level-matches-referent store))]
-              [:div {:class "batch-query-match-counts"}
-               (str non-header " row matches.  "
-                    header " table header matches.")])))]
-      [count-dom
-       (add-attributes batch-dom {:class "batch-stack"})])))
+                                      true true :horizontal inherited))]
+      batch-dom)))
+
+(defn count-DOM-R
+  "Return DOM describing the number of matches."
+  [row-selector store]
+  (call-dependent-on-id
+   store nil
+   (fn [store]
+     (let [header (count (instantiate-referent
+                          (table-headers-referent row-selector) store))
+           non-header (count (instantiate-referent
+                              (top-level-items-referent row-selector) store))]
+       [:div {:class "batch-query-match-counts"}
+        (str non-header " row matches.  "
+             header " table header matches.")]))))
 
 (defn batch-edit-DOM-R
   "Return the DOM for batch editing, given the item specifying the query,
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
-  [selector-item store inherited]
-  (let [inherited-for-query
-        (-> inherited
-            (assoc :subject-referent (item-referent selector-item))
-            (update :key-prefix #(conj % :batch-selector)))]
+  [selector-items store inherited]
+  (let [inherited (-> inherited
+                      (assoc :match-all true)
+                      (assoc :template "")
+                      ;; Make sure our doms have unique keys.
+                      (update :key-prefix #(conj % :batch)))]
     (expr-let
-        [stack-dom (batch-edit-stack-DOM-R selector-item store inherited)]
+        [row-selector (expr first
+                        (expr-filter
+                         #(extended-by? '(nil :batch-row-selector) %)
+                         selector-items))
+         elements-item (expr first
+                        (expr-filter
+                         #(extended-by? '(nil :batch-elements) %)
+                         selector-items))
+         count-dom (count-DOM-R row-selector store)
+         row-dom (batch-row-selector-DOM-R
+                    row-selector store
+                    (assoc inherited :subject-referent
+                           (item-referent row-selector)))
+         inner-dom (cond
+                     elements-item
+                     (expr-let [elements-dom (horizontal-label-DOM-R
+                                              elements-item inherited)]
+                       [:div {:class "batch-stack-wrapper"}
+                        count-dom
+                        [:div {:class "horizontal-tags-element batch-stack"}
+                         row-dom
+                         [:div {:class "batch-stack"} elements-dom]]])
+                     true
+                     [:div {:class "batch-stack-wrapper"}
+                      count-dom
+                      (add-attributes row-dom {:class "batch-stack"})])]
       [:div
        [:div#quit-batch-edit.tool
-              [:img {:src "../icons/table_view.gif"}]
+        [:img {:src "../icons/table_view.gif"}]
         [:div.tooltip "table view (C-Q)"]]
-       [:div {:class "query-result-wrapper"}
-        (into [:div {:class "batch-stack-wrapper"}] stack-dom)]])))
+       [:div {:class "query-result-wrapper"} inner-dom]])))

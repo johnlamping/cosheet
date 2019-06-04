@@ -17,6 +17,7 @@
             hierarchy-test order-utils-test
             format-convert-test session_state_test
             render-utils-test render-test item-render-test table-render-test
-            tabs-render-test dom-tracker-test actions-test)
+            tabs-render-test batch-edit-render-test
+            dom-tracker-test actions-test)
            :reload
            ))

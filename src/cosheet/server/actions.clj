@@ -285,7 +285,7 @@
                          arguments (:target arguments) {:from "" :to ""})))))
 
 (defn do-batch-edit
-  [store {:keys [referent session-state]}]
+  [store {:keys [referent batch-edit-items session-state]}]
   (when referent
     (let [target (first (instantiate-referent referent store))
           client-state (:client-state session-state)
@@ -301,10 +301,8 @@
           current-batch-selectors (label->elements
                                    temporary-item :batch-selector)
           new-batch-selectors (when (and target row-condition)
-                                (batch-edit-selectors target row-condition))]
-      (println (simplify-for-print ["XXX" target top-item topic row-condition
-                                    temporary-id temporary-item
-                                    current-batch-selectors new-batch-selectors]))
+                                (batch-edit-selectors
+                                 target batch-edit-items row-condition))]
       (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
         (as-> store store

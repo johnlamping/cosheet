@@ -81,7 +81,7 @@
    :set-content
    :expand
    :selected
-   :batch-edit
+   :batch-edit-items
    ])
 
 ;;; The value of the style attribute is represented with its own map,
@@ -226,25 +226,27 @@
       (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
 
 ;;; If we are batch editing and there is a non-trivial batch edit selector,
-;;; return it.
-(defn batch-editing-selector-item [store temporary-id client-state]
+;;; return the batch edit selector items.
+(defn batch-editing-selector-items [store temporary-id client-state]
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (when batch-editing
       (let [temporary-item (description->entity temporary-id store)]
-        (expr-let [selector-item (expr first
-                                   (label->elements temporary-item
-                                                    :batch-selector))
-                   query-content (semantic-to-list-R selector-item)]
-          (when (not= query-content 'anything)
-            selector-item))))))
+        (expr-let [selector-items (label->elements
+                                   temporary-item :batch-selector)
+                   row-selector (expr first
+                                  (label->elements
+                                   temporary-item :batch-row-selector))
+                   query-content (semantic-to-list-R row-selector)]
+          (when (and query-content (not= query-content 'anything))
+            selector-items))))))
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   [store temporary-id client-state]
-  (expr-let [batch-editing-item (batch-editing-selector-item
-                                 store temporary-id client-state)]
-    (if batch-editing-item
-      (batch-edit-DOM-R batch-editing-item store starting-inherited)
+  (expr-let [batch-editing-items (batch-editing-selector-items
+                                  store temporary-id client-state)]
+    (if (seq batch-editing-items)
+      (batch-edit-DOM-R batch-editing-items store starting-inherited)
       (expr-let [referent (state-map-get client-state :referent)
              subject-referent (state-map-get client-state :subject-referent)
              immutable-item (call-dependent-on-id

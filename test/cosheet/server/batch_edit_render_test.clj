@@ -33,18 +33,50 @@
                      :subject-referent nil
                      :width 2.0})
 
-(deftest item-DOM-R-test-simple
+(def orderables (reduce (fn [os _]
+                          (vec (concat (pop os)
+                                       (orderable/split (peek os) :after))))
+                        [orderable/initial]
+                        (range 6)))
+(def o1 (nth orderables 0))
+(def o2 (nth orderables 1))
+(def o3 (nth orderables 2))
+(def o4 (nth orderables 3))
+(def o5 (nth orderables 4))
+(def o6 (nth orderables 5))
+
+(deftest batch-edit-DOM-R-test
   ;; Test a simple cell
-  (let [age-as-list `(39 ("high"
-                          ("confidence" :tag (~o1 :order :non-semantic))
-                          (~o2 :order :non-semantic)))
-        age (let-mutated [age age-as-list] age)
-        store (:store age)]
-    (let [high (first (current-value (matching-elements "high" age)))
-          confidence (first (current-value
-                             (matching-elements "confidence" high)))]
-      ;; TODO: Add some tests of the results here.
-      (current-value
-       (expr-let [dom (batch-edit-DOM-R age nil store base-inherited)]))
-      (current-value
-       (expr-let [dom (batch-edit-DOM-R age high store base-inherited)])))))
+  (let [joe-list `("Joe"
+                   :top-level
+                   (~o2 :order)
+                   ("male" (~o1 :order))
+                   ("married" (~o2 :order))
+                   (39 (~o3 :order)
+                       ("age" :tag (~o3 :order))
+                       ("doubtful" (~o1 :order) ("confidence" (~o3 :order))))
+                   (45 (~o4 :order)
+                       ("age" :tag (~o3 :order)))
+                   ("Joe" (~o5 :order)
+                          ("name" :tag (~o3 :order)))
+                   ("Joseph" (~o6 :order)
+                             ("name" :tag (~o1 :order))
+                             ("id" :tag (~o2 :order))))
+        row-selector-list '(anything
+                            (anything ("age" :tag))
+                            :batch-row-selector :batch-selector :selector)
+        batch-elements-list '(anything
+                              (anything ("age" :tag))
+                              (anything ("age" :tag) ("doubtful" :tag))
+                              :batch-elements :batch-selector :selector)
+        [joe row-selector batch-elements]
+        (let-mutated [joe joe-list
+                      row-selector row-selector-list
+                      batch-elements batch-elements-list]
+          [joe row-selector batch-elements])
+        store (:store joe)]
+    ;; TODO: Add some tests of the results here.
+    (println
+     (simplify-for-print
+      (current-value (batch-edit-DOM-R [row-selector batch-elements]
+                                       store base-inherited))))))

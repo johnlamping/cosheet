@@ -144,6 +144,7 @@
                     (first (filter #(= (immutable-semantic-to-list %)
                                         `(~'anything ("age" :tag)))
                                    (elements immutable-query)))
+                    nil
                     immutable-query)
                    [`(~'anything
                       (~'anything
@@ -155,7 +156,8 @@
         (is (check (batch-edit-selectors (first (matching-elements
                                            `(~'anything ("single" :tag))
                                            immutable-query))
-                                   immutable-query)
+                                         nil
+                                         immutable-query)
                    [`(~'anything
                       (~'anything
                        ("age" :tag (~(any) :order))
@@ -171,7 +173,8 @@
         (is (check (batch-edit-selectors (first (matching-items
                                                '(45 ("age" :tag))
                                                (:store immutable-query)))
-                                       immutable-query)
+                                         nil
+                                         immutable-query)
                    [`(~'anything
                       (45
                        ("age" :tag (~(any) :order))
@@ -184,7 +187,7 @@
         (let [test-row (first (matching-items '(nil :top-level :test)
                                               (:store immutable-query)))
               test-item (first (label->elements test-row "age"))]
-          (is (check (batch-edit-selectors test-item immutable-query)
+          (is (check (batch-edit-selectors test-item nil immutable-query)
                      [`(~'anything
                         (~'anything
                          ("age" :tag (~(any) :order))

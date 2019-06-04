@@ -60,58 +60,47 @@
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
 (defn batch-edit-selectors
-  "Given an item, return the list form of the batch query that matches
-  everything 'like' the item. For a column header, this is everything
-  that would go in its column, while for an element, it is all
-  elements with its content.  For the table header, it is all matching
-  rows."
-  [immutable-item immutable-row-condition-item]
+  "Given an item, a list of batch-edit-items from a DOM, and the table
+   row condition, return the list form of the appropriate batch selectors.
+   These will always inclde the row condition, tagged with :batch-row-selector.
+   For a column header, batch-edit-items will be present, and will be
+   elements of an item tagged :batch-elements. For an element in a cell,
+   It should be an element of an item tagged :batch-elements."
+  [immutable-item batch-edit-items immutable-row-condition-item]
   ;; We walk up containing items, until we find an item that is either
   ;; column condition, an element of a row, or the entire row condition.
   ;; Then we return the appropriate thing for that situation.
-  (-> (loop [item immutable-item]
-        (let [parent-item (entity/subject item)]
-          (cond
-            ;; If we have reached a top level row or header element,
-            ;; add it to the row condition.
-            ;; But if it implies part of the row condition, don't include
-            ;; that redundant part, while if a row condition implies the
-            ;; element, don't include the element.
-            (or (seq (matching-elements :column item))  
-                (seq (matching-elements :top-level parent-item)))
-            (let [condition-elements
-                  (map immutable-visible-to-list
-                       (table-condition-elements-R
-                        immutable-row-condition-item))
-                  item-condition (immutable-visible-to-list item)
-                  redundant (best-matching-term
-                             (map #(immutable-semantic-to-list
-                                    (pattern-to-query %))
-                                  condition-elements)
-                             item-condition)
-                  non-redundant (remove-first
-                                 #(= (immutable-semantic-to-list
-                                      (pattern-to-query %))
-                                     redundant)
-                                 condition-elements)
-                  skip-element (when (not redundant)
-                                 (let [query (pattern-to-query item-condition)]
-                                   (some #(extended-by? query %)
-                                         condition-elements)))]
-              (apply list (concat ['anything]
-                                  non-redundant
-                                  (if skip-element [] [item-condition]))))
-            ;; If the item is part of the row condition, just return that.
-            (seq (matching-elements :row-condition item))
-            (concat '(anything)
-                    (map immutable-visible-to-list
-                         (table-condition-elements-R item)))
-            parent-item
-            (recur parent-item))))
-      add-order-elements
-      (replace-in-seqs 'anything-immutable 'anything)
-      (concat [:batch-selector :batch-row-selector :selector])
-      (#(vector (apply list %)))))
+  (let [row-condition
+        (concat '(anything)
+                (map immutable-visible-to-list
+                     (table-condition-elements-R immutable-row-condition-item))
+                [:batch-row-selector])
+        selectors
+        (if (seq batch-edit-items)
+          ;; We are told what items to show.
+          [row-condition
+               (concat '(anything)
+                       (map immutable-visible-to-list batch-edit-items)
+                       [:batch-elements])]
+          (loop [item immutable-item]
+            (let [parent-item (entity/subject item)]
+              (cond
+                (seq (matching-elements :top-level parent-item))
+                ;; We have reached a top level row. Add the item as
+                ;; an element of the rows.
+                [row-condition
+                 `(anything ~(immutable-visible-to-list item) :batch-elements)]
+                (seq (matching-elements :row-condition item))
+                ;; The item is part of the row condition. We just show that.
+                [row-condition]
+                parent-item
+                (recur parent-item)))))]
+    (map (fn [selector] (-> selector
+                            add-order-elements
+                            (replace-in-seqs 'anything-immutable 'anything)
+                            (concat [:batch-selector :selector])
+                            (#(apply list %))))
+         selectors)))
 
 (defn is-tag-template?
   "Return true if the template describes a label."
@@ -252,7 +241,10 @@
   (hierarchy-node-DOM-R
    node table-header-subtree-DOM element-hierarchy-child-info
    {:top-level true}
-   inherited))
+   (add-inherited-attribute
+    inherited
+    [#{:label :element :recursive :optional} #{:content}
+     {:batch-edit-items (map :item (hierarchy-node-descendants node))}])))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."
@@ -366,7 +358,7 @@
     ;; unchanged parts.)
     (expr-let [cells (entity/updating-with-immutable
                       [immutable row-item]
-                      (expr-seq map #(table-cell-DOM-R immutable % inherited)
+                      (map #(table-cell-DOM-R immutable % inherited)
                                 column-descriptions))]
       (into [:div {}] cells))))
 

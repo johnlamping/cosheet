@@ -97,8 +97,8 @@
    node horizontal-label-subtree-DOM element-hierarchy-child-info
    {:top-level true} inherited))
 
-;;; The subject referent should give the match to the rows, the headers,
-;;; and the item that specifies the hierarchy.
+;;; The subject referent should give the match to the rows, to the headers,
+;;; and to the items that specify the pattern.
 (defn horizontal-label-DOM-R
   "Generate DOM for a horizontal layout of the visible elements of the item,
    with their labels shown in a hierarchy above them."
@@ -113,8 +113,10 @@
      (into [:div {:class "horizontal-label-sequence"}] doms))))
 
 (defn batch-row-selector-virtual-DOM-R
-  "Return the DOM for a virtual element in the edit stack part of the display,
+  "Return the DOM for a virtual element in the row selector part of the display,
    that is an element of the query item."
+  ;; TODO: Take an optional elements item, and make a copy of that,
+  ;;       and of table headers.
   [query-item store inherited]
   (let [[unique _] (get-unique-number (current-store store))
         invisible `(~unique
@@ -170,22 +172,10 @@
          (expr-seq map #(entity/updating-call-with-immutable % identity)
                    (semantic-elements-R row-selector))
          batch-dom
-         (let [inherited
-               (-> inherited
-                   (assoc :subject-referent matches-referent
-                          :template 'anything)
-                   ;; TODO: This should not be necessary any more,
-                   ;;       as the consistency check should catch it.
-                   ;; If the selected item is the whole query, then a
-                   ;; delete could remove the whole condition of a
-                   ;; table. Have it just remove top level rows, instead.
-                   (add-inherited-attribute
-                    [#{:content}
-                     {:delete {:referent top-level-matches-referent}}]))]
-           ;; TODO: Add-twin is a problem here with not knowing
-           ;; what template to use.
-           (labels-and-elements-DOM-R current-query-elements virtual-dom
-                                      true true :horizontal inherited))]
+         ;; TODO: Add-twin is a problem here with not knowing
+         ;; what template to use.
+         (labels-and-elements-DOM-R current-query-elements virtual-dom
+                                    true true :horizontal inherited)]
       batch-dom)))
 
 (defn count-DOM-R
@@ -207,40 +197,47 @@
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
   [selector-items store inherited]
-  (let [inherited (-> inherited
-                      (assoc :match-all true)
-                      (assoc :template "")
-                      ;; Make sure our doms have unique keys.
-                      (update :key-prefix #(conj % :batch)))]
-    (expr-let
-        [row-selector (expr first
-                        (expr-filter
-                         #(extended-by? '(nil :batch-row-selector) %)
-                         selector-items))
-         elements-item (expr first
-                        (expr-filter
-                         #(extended-by? '(nil :batch-elements) %)
-                         selector-items))
-         count-dom (count-DOM-R row-selector store)
-         row-dom (batch-row-selector-DOM-R
-                    row-selector store
-                    (assoc inherited :subject-referent
-                           (item-referent row-selector)))
-         inner-dom (cond
-                     elements-item
-                     (expr-let [elements-dom (horizontal-label-DOM-R
-                                              elements-item inherited)]
+  (expr-let [row-selector (expr first
+                            (expr-filter
+                             #(extended-by? '(nil :batch-row-selector) %)
+                             selector-items))
+             elements-item (expr first
+                             (expr-filter
+                              #(extended-by? '(nil :batch-elements) %)
+                              selector-items))]
+    (let [top-level-matches-referent (top-level-items-referent row-selector)
+          table-header-matches-referent (table-headers-referent row-selector)
+          matches-referent (union-referent
+                            (cond-> [(item-referent row-selector)
+                                     top-level-matches-referent
+                                     table-header-matches-referent]
+                              elements-item
+                              (conj (item-referent elements-item))))
+          inherited (-> inherited
+                        (assoc :subject-referent matches-referent
+                               :match-all true
+                               :template "")
+                        ;; Make sure our doms have unique keys.
+                        (update :key-prefix #(conj % :batch)))]
+      (expr-let
+          [count-dom (count-DOM-R row-selector store)
+           row-dom (batch-row-selector-DOM-R
+                    row-selector store inherited)
+           inner-dom (cond
+                       elements-item
+                       (expr-let [elements-dom (horizontal-label-DOM-R
+                                                elements-item inherited)]
+                         [:div {:class "batch-stack-wrapper"}
+                          count-dom
+                          [:div {:class "horizontal-tags-element batch-stack"}
+                           row-dom
+                           [:div {:class "batch-stack"} elements-dom]]])
+                       true
                        [:div {:class "batch-stack-wrapper"}
                         count-dom
-                        [:div {:class "horizontal-tags-element batch-stack"}
-                         row-dom
-                         [:div {:class "batch-stack"} elements-dom]]])
-                     true
-                     [:div {:class "batch-stack-wrapper"}
-                      count-dom
-                      (add-attributes row-dom {:class "batch-stack"})])]
-      [:div
-       [:div#quit-batch-edit.tool
-        [:img {:src "../icons/table_view.gif"}]
-        [:div.tooltip "table view (C-Q)"]]
-       [:div {:class "query-result-wrapper"} inner-dom]])))
+                        (add-attributes row-dom {:class "batch-stack"})])]
+        [:div
+         [:div#quit-batch-edit.tool
+          [:img {:src "../icons/table_view.gif"}]
+          [:div.tooltip "table view (C-Q)"]]
+         [:div {:class "query-result-wrapper"} inner-dom]]))))

@@ -6,7 +6,7 @@
                      [store-utils :as store-utils]
                      [entity :as entity]
                      [query :refer :all]
-                     [query-impl :refer [bind-entity closest-template]]
+                     [query-impl :refer [bind-entity closest-template-R]]
                      [expression-manager :refer [current-value]]
                      [debug :refer [envs-to-list simplify-for-print]]
                      [test-utils :refer [check as-set
@@ -100,13 +100,18 @@
                    :reference reference)))
 
 (deftest closest-template-test
-  (is (= (closest-template `(~(variable "foo" 5)
-                             ~(entity/description->entity
-                               (store/make-id "test")
-                               (store/new-element-store))
-                             (:foo ~(variable "baz" (variable "bar"))))
-                           {"bar" 7})
-         `(5 nil (:foo 7)))))
+  (is (= (closest-template-R `(~(variable "foo" 5)
+                               ~(entity/description->entity
+                                 (store/make-id "test")
+                                 (store/new-element-store))
+                               (:foo ~(variable "baz" (variable "bar")))
+                               ~(not-query 8))
+                             {"bar" 7})
+         `(5 (:foo 7))))
+  (is (thrown? java.lang.AssertionError
+               (closest-template-R `(~(and-query (variable "foo" 5)
+                                                 (variable "bar" 6)))
+                                   {"bar" 7}))))
 
 (deftest bound-entity-test
   (let [entity `(~(variable-query "foo")

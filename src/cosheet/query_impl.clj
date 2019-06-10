@@ -1,6 +1,5 @@
 (ns cosheet.query-impl
-  (:require [clojure.pprint :refer [pprint]]
-            (cosheet [store :as store]
+  (:require (cosheet [store :as store]
                      [entity :refer [Entity StoredEntity
                                      mutable-entity? atom?
                                      content-reference
@@ -183,29 +182,35 @@
 (defmethod extended-by-m? true [fixed-term target]
   (extended-by? fixed-term target))
 
-(defn closest-template
+(defn closest-template-R
   "Given a term, return a template that the store can use to find candidate
    ids, and that is as close to the term as possible:
       Remove variables, replacing them with their value in the environment,
       or their qualifier.
-      Replace item referents with their current values.
+      Replace bound variables with their current values.
       Remove any ::query/sub-query annotations.
-      Remove any other special forms (to eliminate any not-query)."
+      Remove any other special forms (to eliminate any not-query terms)."
   [term env]
   (let [current (if (satisfies? StoredEntity term)
                   (current-version term)
                   term)
-        contextualized (contextualize-variable current env)
-        as-list (to-list contextualized)]
-    (if (seq? as-list)
-      (let [converted (map #(closest-template % env) as-list) 
-            kept-elements (remove #(#{::query/sub-query ::query/special-form}
-                                    (content %))
-                                  (rest converted))]
-        (if (empty? kept-elements)
-          (first converted)
-          (cons (first converted) kept-elements)))
-      as-list)))
+        contextualized (contextualize-variable current env)]
+    ;; While the term is guaranteed to be immutable, its contextualized
+    ;; value might be an item in a mutable store.
+    (expr-let [as-list (to-list contextualized)]
+      (if (#{::query/sub-query ::query/special-form} (content as-list))
+        (do (assert (not (and (= ::query/special-form (content as-list))
+                              (not= :not
+                                    (label->content as-list ::query/type)))))
+            nil)
+        (if (seq? as-list)
+          (expr-let [converted (expr-seq map #(closest-template-R % env)
+                                         as-list) 
+                     kept-elements (remove nil? (rest converted))]
+            (if (empty? kept-elements)
+              (first converted)
+              (cons (first converted) kept-elements)))
+          as-list)))))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -455,21 +460,22 @@
   (if (satisfies? store/MutableStore store)
     ;; Rather than build reporters for all subsidiary tests, fix the store
     ;; and recompute the whole query whenever the store changes.
-    (expr-let [ids (store/call-dependent-on-id
+    (expr-let [template (closest-template-R term {})
+               ids (store/call-dependent-on-id
                     store nil
                     (fn [immutable-store]
                       (filter
                        #(let [entity (description->entity % immutable-store)]
                           (not (empty? (matching-extensions term {} entity))))
                        (store/candidate-matching-ids
-                        immutable-store (closest-template term {})))))]
+                        immutable-store template))))]
       (map #(description->entity % store) ids))
     ;; The store is immutable.
     (filter
      #(not (empty? (matching-extensions term {} %)))     
      (map #(description->entity % store)
           (store/candidate-matching-ids
-           store (closest-template term {}))))))
+           store (closest-template-R term {}))))))
 
 (defmethod matching-items-m true [term store]
   (matching-items term store))
@@ -481,8 +487,8 @@
         reference (label->content var ::query/reference)
         value (env name)]
     (if (nil? value)
-      (expr-let [candidate-ids (store/candidate-matching-ids
-                                store (closest-template var env))
+      (expr-let [template (closest-template-R var env)
+                 candidate-ids (store/candidate-matching-ids store template)
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
@@ -542,10 +548,10 @@
       (distinct-concat both-matches))))
 
 (defn item-matches-in-store [item env store]
-  (expr-let [candidates (expr map
+  (expr-let [template (closest-template-R item env)
+             candidates (expr map
                           #(description->entity % store)
-                          (store/candidate-matching-ids
-                           store (closest-template item env)))
+                          (store/candidate-matching-ids store template))
              matches (expr-seq map (partial matching-extensions item env)
                                candidates)]
     (distinct-concat matches)))

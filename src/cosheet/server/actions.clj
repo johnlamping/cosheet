@@ -285,9 +285,10 @@
                          arguments (:target arguments) {:from "" :to ""})))))
 
 (defn do-batch-edit
-  [store {:keys [referent batch-edit-items session-state]}]
+  [store {:keys [referent batch-edit-ids session-state]}]
   (when referent
     (let [target (first (instantiate-referent referent store))
+          batch-edit-items (map #(description->entity % store) batch-edit-ids)
           client-state (:client-state session-state)
           top-item (first
                     (instantiate-referent

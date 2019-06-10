@@ -150,51 +150,50 @@
                       (~'anything
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
+                       :batch-row-selector
                       (~(any) :order)
-                      :batch-selector :batch-row-selector :selector)]))
-        ;; When the item is part of a column header.
-        (is (check (batch-edit-selectors (first (matching-elements
+                      :batch-selector :selector)]))
+        ;; When the item is part of a column header. In that case,
+        ;; it is presented in the explicit list of batch edit items.
+        (is (check (batch-edit-selectors nil
+                                         [(first (matching-elements
                                            `(~'anything ("single" :tag))
-                                           immutable-query))
-                                         nil
+                                           immutable-query))]
                                          immutable-query)
                    [`(~'anything
                       (~'anything
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
+                      :batch-row-selector
+                      (~(any) :order)
+                      :batch-selector :selector)
+                    `(~'anything
                       (~'anything
                        ("single" :tag (~(any) :order))
                        (~(any) :order))
+                      :batch-elements
                       (~(any) :order)
-                      :batch-selector :batch-row-selector :selector)]))
+                      :batch-selector :selector)]))
         ;; When the item is an element in the table.
-        ;; In this case, the item is a refinement of a table condition,
-        ;; so it should replace the condition.
         (is (check (batch-edit-selectors (first (matching-items
                                                '(45 ("age" :tag))
                                                (:store immutable-query)))
                                          nil
                                          immutable-query)
                    [`(~'anything
+                      (~'anything
+                       ("age" :tag (~(any) :order))
+                       (~(any) :order))
+                      :batch-row-selector
+                      (~(any) :order)
+                      :batch-selector :selector)
+                    `(~'anything
                       (45
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
+                      :batch-elements
                       (~(any) :order)
-                      :batch-selector :batch-row-selector :selector)]))
-        ;; Again, the item is in the table, but this time, the condition
-        ;; is a refinement of the item, so just the condition should appear
-        ;; in the edit pattern.
-        (let [test-row (first (matching-items '(nil :top-level :test)
-                                              (:store immutable-query)))
-              test-item (first (label->elements test-row "age"))]
-          (is (check (batch-edit-selectors test-item nil immutable-query)
-                     [`(~'anything
-                        (~'anything
-                         ("age" :tag (~(any) :order))
-                         (~(any) :order))
-                        (~(any) :order)
-                        :batch-selector :batch-row-selector :selector)])))
-        )
+                      :batch-selector :selector)])))
       (is (check
            dom
            [:div {:class "table"}
@@ -213,10 +212,12 @@
                   :target {:template '(anything :tag)
                            :referent (item-referent single)}
                   :add-column first-column-add
+                  :batch-edit-ids [(:item-id c1)]
                   :delete-column {:referent first-column-referent}}
                  "single"]
                 [:div {:class "indent-wrapper"}
                  [:div {:delete-column {:referent first-column-referent},
+                        :batch-edit-ids [(:item-id c1)]
                         :delete {:clear-only true}
                         :add-column first-column-add
                         :add-twin {:referent nil}
@@ -236,7 +237,8 @@
                        :delete-column (any)
                        :class "editable tag"
                        :key (conj table-key (:item-id c7) :virtual)
-                       :target (any)}]
+                       :target (any)
+                       :batch-edit-ids [(:item-id c7)]}]
                 ;;; The content and sub-element.
                 [:div {:class "indent-wrapper tag"}
                  [:div {:class "item with-elements"

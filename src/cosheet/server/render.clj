@@ -81,7 +81,7 @@
    :set-content
    :expand
    :selected
-   :batch-edit-items
+   :batch-edit-ids
    ])
 
 ;;; The value of the style attribute is represented with its own map,

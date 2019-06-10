@@ -89,7 +89,8 @@
                 ;; We have reached a top level row. Add the item as
                 ;; an element of the rows.
                 [row-condition
-                 `(anything ~(immutable-visible-to-list item) :batch-elements)]
+                 `(~'anything
+                   ~(immutable-visible-to-list item) :batch-elements)]
                 (seq (matching-elements :row-condition item))
                 ;; The item is part of the row condition. We just show that.
                 [row-condition]
@@ -244,7 +245,8 @@
    (add-inherited-attribute
     inherited
     [#{:label :element :recursive :optional} #{:content}
-     {:batch-edit-items (map :item (hierarchy-node-descendants node))}])))
+     {:batch-edit-ids (map #(:item-id (:item %))
+                           (hierarchy-node-descendants node))}])))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

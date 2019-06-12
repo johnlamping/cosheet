@@ -44,6 +44,12 @@
 ;;;                 in batch edit. The idea is to pick up the items elements
 ;;;                 not already picked up by the competing conditions, but to
 ;;;                 always pick up one item.
+;;; element-restriction
+;;;                 [:element-restriction <condition> <referent>]
+;;;                 Refers to the same items as the referent refers to. But,
+;;;                 any element or exemplar referent with this referent
+;;;                 as its subject will only return elements that match the
+;;;                 condition.
 ;;;          query  [:query <condition>]
 ;;;                 Refers to all items that satisfy the condition.
 ;;;          union  [:union  <referent> ...]
@@ -85,6 +91,9 @@
 (defn exemplar-referent? [referent]
   (and (sequential? referent) (= (first referent) :exemplar)))
 
+(defn element-restriction-referent? [referent]
+  (and (sequential? referent) (= (first referent) :element-restriction)))
+
 (defn union-referent? [referent]
   (and (sequential? referent) (= (first referent) :union)))
 
@@ -100,7 +109,7 @@
   (or (item-referent? referent)
       (and (sequential? referent)
            (#{:exemplar :elements :non-competing-elements
-              :query :union :difference :virtual}
+              :element-restriction :query :union :difference :virtual}
             (first referent)))))
 
 (defn referent-type [referent]
@@ -143,11 +152,17 @@
   [:elements (coerce-item-to-id condition) subject])
 
 (defn non-competing-elements-referent
-  "Create an elements referent."
+  "Create a non-competing elements referent."
   [condition subject competing-conditions]
   (assert (referent? subject))
   (concat [:non-competing-elements (coerce-item-to-id condition) subject]
           (map coerce-item-to-id competing-conditions)))
+
+(defn element-restriction-referent
+  "Create an element restriction referent."
+  [condition referent]
+  (assert (referent? referent))
+  [:element-restriction (coerce-item-to-id condition) referent])
 
 (defn query-referent
   "Create an query referent."
@@ -241,6 +256,7 @@
   {\X :exemplar
    \E :elements
    \C :non-competing-elements
+   \R :element-restriction
    \Q :query
    \U :union
    \D :difference

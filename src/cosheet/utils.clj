@@ -262,6 +262,8 @@
 
 (defn add-elements-to-entity-list
   [entity elements]
-  (concat (if (sequential? entity) entity (list entity))
-          elements))
+  (if (empty? elements)
+    entity
+    (concat (if (sequential? entity) entity (list entity))
+            elements)))
 

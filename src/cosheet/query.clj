@@ -159,7 +159,6 @@
   ([terms target] (best-matching-term-m terms {} target))
   ([terms env target] (best-matching-term-m terms env target)))
 
-
 (defmulti matching-elements-m
   "Return all elements of the target that match the term."
   (fn [term target] true))

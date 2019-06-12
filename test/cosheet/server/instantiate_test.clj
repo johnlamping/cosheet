@@ -7,7 +7,7 @@
                                                  in-different-store]]
                      [store :refer [new-element-store]]
                      [store-utils :refer [add-entity]]
-                     [query :refer [matching-elements]]
+                     [query :refer [matching-elements not-query]]
                      [expression :refer [expr expr-let expr-seq]]
                      [canonical :refer [canonicalize-list]]
                      [debug :refer [simplify-for-print]]
@@ -16,6 +16,7 @@
                             [referent :refer [item-referent exemplar-referent
                                               elements-referent query-referent
                                               union-referent difference-referent
+                                              element-restriction-referent
                                               non-competing-elements-referent
                                               virtual-referent]]
                             [model-utils :refer [semantic-elements-R
@@ -103,6 +104,13 @@
   (let [referent (exemplar-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (= (instantiate-referent referent store)
            [joe-age])))
+  ;; But that it checks with element-restriction
+  (let [referent (exemplar-referent
+                  '(nil ("age" :tag))
+                  (element-restriction-referent
+                   '(nil ("doubtful")) (item-referent joe)))]
+    (is (= (instantiate-referent referent store)
+           [joe-bogus-age])))  
   (let [referent (elements-referent '(nil ("age" :tag)) (item-referent joe))]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age joe-bogus-age]))))
@@ -123,6 +131,22 @@
                                  (query-referent '(nil (nil ("age" :tag)))))
               store)
              (as-set [joe-age joe-bogus-age jane-age])))
+  ;; An element-restriction referent wrapping the same thing
+  (is (check (instantiate-referent
+              (element-restriction-referent
+               '(nil "doubtful")
+               (elements-referent age-condition-id
+                                  (query-referent '(nil (nil ("age" :tag))))))
+              store)
+             (as-set [joe-age joe-bogus-age jane-age])))
+  ;; With the subject wrapped in an element-restriction
+  (is (check (instantiate-referent
+              (elements-referent age-condition-id
+                                 (element-restriction-referent
+                                  `(nil ~(not-query "doubtful"))
+                                  (query-referent '(nil (nil ("age" :tag))))))
+              store)
+             (as-set [joe-age jane-age])))
   ;; non-competing-elements
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
@@ -132,15 +156,18 @@
                   ['(nil ("age" :tag) "doubtful")])]
     (is (check (instantiate-referent referent store)
                (as-set [joe-age jane-age]))))
+  ;; with an element-restriction
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
         referent (non-competing-elements-referent
                   '(nil ("age" :tag))
-                  joe-jane-referent
+                  (element-restriction-referent
+                   '(nil ("doubtful")) joe-jane-referent)
                   ['(nil ("age" :tag))])
         instantiated (instantiate-referent referent store)]
     (is (check instantiated
-               (as-set [joe-age jane-age]))))
+               (as-set [joe-bogus-age]))))
+  
   ;; Union
   (let [referent (union-referent
                   [(item-referent joe-age)

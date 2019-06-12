@@ -16,7 +16,9 @@
                   (item-referent (->ItemId 0))
                   (union-referent
                    [(elements-referent (item-referent (->ItemId 1))
-                                       (item-referent (->ItemId 3)))
+                                       (element-restriction-referent
+                                        '(nil :foo)
+                                        (item-referent (->ItemId 3))))
                     (difference-referent
                      (query-referent (list (item-referent (->ItemId 3))
                                            '(nil (:root :A_a))

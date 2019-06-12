@@ -26,7 +26,11 @@
                  ]
   :jvm-opts ["-XX:+UnlockCommercialFeatures"
              "-XX:+FlightRecorder"
-             "-XX:FlightRecorderOptions=stackdepth=256"]
+             "-XX:FlightRecorderOptions=stackdepth=256"
+             ;; TODO: The following line avoids empty stack traces for some
+             ;;       exceptions, but may slow down some libraries.
+             ;;       remove it for production code.
+             "-XX:-OmitStackTraceInFastThrow"]
   :plugins [[lein-cljsbuild "1.1.3"]
             [lein-ring "0.9.7"]
             [cider/cider-nrepl "0.11.0"]]

@@ -224,6 +224,7 @@
                                   :value :x
                                   :dependent-depth 1
                                   :needed-values #{r1}
+                                  :expression [identity r1]
                                   :subordinate-values {})
         r3 (reporter/new-reporter :name :r3 :value-source r2)
         queue (new-priority-task-queue 0)
@@ -239,16 +240,16 @@
     (compute md)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v (any)]}))
-    (is (= (reporter/value r2) invalid))
+    (is (= (reporter/value r2) :v))
     (reporter/set-value! r1 :v1)
     (compute md)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
-    (is (= (reporter/value r2) invalid))
+    (is (= (reporter/value r2) :v1))1
     (reporter/inform-attendees r1)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v1 (any)]}))
-    (is (= (reporter/value r2) invalid))
+    (is (= (reporter/value r2) :v1))
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
     (clear-md-queue)
@@ -269,7 +270,6 @@
     (reporter/set-value! r1 :v1)
     (compute md)
     (is (= (:value-source (reporter/data r2)) r0)) ;; Same source.
-    (compute md)
     (is (= (reporter/value r2) :r0))
     (is (= (reporter/value r3) :r0))))
 

@@ -147,6 +147,16 @@
                                   (query-referent '(nil (nil ("age" :tag))))))
               store)
              (as-set [joe-age jane-age])))
+  ;; With the element-restriction wrapped in a union
+  (is (check (instantiate-referent
+              (elements-referent age-condition-id
+                                 (union-referent
+                                  [(element-restriction-referent
+                                     `(nil ~(not-query "doubtful"))
+                                     (query-referent
+                                      '(nil (nil ("age" :tag)))))]))
+              store)
+             (as-set [joe-age jane-age])))
   ;; non-competing-elements
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
@@ -193,13 +203,13 @@
                                 (elements-referent 45 (item-referent jane))]))]
     (is (check (instantiate-referent referent store)
                [joe-age-tag jane-age-tag])))
-  ;; Preference of Exemplar of for exemplar element
+  ;; Preference of exemplar for exemplar element
   (is (check (instantiate-referent
               (exemplar-referent (item-referent dup-female-1)
                                  (item-referent dup))
               store)
              [dup-female-1]))
-    (is (check (instantiate-referent
+  (is (check (instantiate-referent
               (exemplar-referent (item-referent dup-female-2)
                                  (item-referent dup))
               store)

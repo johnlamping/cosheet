@@ -3,7 +3,7 @@
                                     current-store]]
                      [entity :as entity]
                      [query :refer [matching-elements matching-items
-                                    extended-by?]]
+                                    not-query extended-by?]]
                      [debug :refer [simplify-for-print]]
                      [hiccup-utils :refer [dom-attributes
                                            into-attributes add-attributes]]
@@ -11,6 +11,7 @@
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [referent :refer [item-referent item-or-exemplar-referent
+                               element-restriction-referent
                                elements-referent query-referent
                                virtual-referent exemplar-referent
                                difference-referent union-referent
@@ -40,9 +41,15 @@
   (query-referent (list (item-referent query-item) :top-level)))
 
 (defn table-headers-referent
-  "All table conditions matching the query."
+  "Return a union of a referent to the table condition, and to its columns.
+   They are both stored in the same item, but we use a union, so that
+   an exemplar referent for an element will return one of each."
   [query-item]
-  (query-referent (list (item-referent query-item) :row-condition)))
+  (let [row-ref (query-referent
+                       (list (item-referent query-item) :row-condition))]
+    (union-referent
+     [(element-restriction-referent '(nil :column) row-ref)
+      (element-restriction-referent `(nil ~(not-query :column)) row-ref)])))
 
 (defn table-header-style-hierarchy
   ;; Return the hierarchy given the root item of a table style header.
@@ -215,7 +222,6 @@
                               (conj (item-referent elements-item))))
           inherited (-> inherited
                         (assoc :subject-referent matches-referent
-                               :match-all true
                                :template "")
                         ;; Make sure our doms have unique keys.
                         (update :key-prefix #(conj % :batch)))]
@@ -225,13 +231,14 @@
                     row-selector store inherited)
            inner-dom (cond
                        elements-item
-                       (expr-let [elements-dom (horizontal-label-DOM-R
-                                                elements-item inherited)]
-                         [:div {:class "batch-stack-wrapper"}
-                          count-dom
-                          [:div {:class "horizontal-tags-element batch-stack"}
-                           row-dom
-                           [:div {:class "batch-stack"} elements-dom]]])
+                       (let [inherited (assoc inherited :match-all true)]
+                         (expr-let [elements-dom (horizontal-label-DOM-R
+                                                  elements-item inherited)]
+                           [:div {:class "batch-stack-wrapper"}
+                            count-dom
+                            [:div {:class "horizontal-tags-element batch-stack"}
+                             row-dom
+                             [:div {:class "batch-stack"} elements-dom]]]))
                        true
                        [:div {:class "batch-stack-wrapper"}
                         count-dom

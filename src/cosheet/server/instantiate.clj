@@ -87,44 +87,58 @@
   "Given two conditions, return a merged condition that requires both of them
    to be met."
   [c1 c2]
-  (let [merged-content (or (content c1) (content c2))]
-    ;; Our current implementation requires c1 and c2 to have compatible
-    ;; contents and disjoint elements.
-    ;; Check that that is the case.
-    (assert (extended-by? (content c1) merged-content))
-    (assert (extended-by? (content c2) merged-content))
-    (assert (every? #(empty? (matching-elements % c2)) (elements c1)))
-    (assert (every? #(empty? (matching-elements % c1)) (elements c2)))
-    (add-elements-to-entity-list merged-content
-                                 (concat (elements c1) (elements c2)))))
+  (cond
+    (nil? c1) c2
+    (nil? c2) c1
+    true (let [merged-content (or (content c1) (content c2))]
+           ;; Our current implementation requires c1 and c2 to have compatible
+           ;; contents and disjoint elements.
+           ;; Check that that is the case.
+           (assert (extended-by? (content c1) merged-content))
+           (assert (extended-by? (content c2) merged-content))
+           (assert (every? #(empty? (matching-elements % c2)) (elements c1)))
+           (assert (every? #(empty? (matching-elements % c1)) (elements c2)))
+           (add-elements-to-entity-list merged-content
+                                        (concat (elements c1) (elements c2))))))
 
-(defn adjust-condition-for-element-restriction
-  "Given a referent and condition, return the condition, adjusted if
-   the referent is an element-restriction."
-  [referent condition]
-  (if (element-restriction-referent? referent)
-    (let [[_ cond ref] referent]
-      (merge-conditions condition cond))
-    condition))
+(defn best-exemplar
+  "Return the element of the subject best matching the condition and 
+   the restriction."
+  [condition restriction subject]
+  (let [immutable-store (:store subject)]
+    (or
+     ;; If the condition is an item and satisfies the restriction, return it
+     ;; for its subject, even if another element of its subject is as good
+     ;; a match.
+     (when (and (item-referent? condition)
+                (id-valid? immutable-store condition))
+       (let [exemplar-item (description->entity condition immutable-store)
+             subj (Entity/subject exemplar-item)]
+         (when (and (= subject subj)
+                    (extended-by? restriction exemplar-item))
+           [exemplar-item])))
+     (best-matching-element
+      (pattern-to-query (merge-conditions
+                         (expand-pattern-items condition immutable-store)
+                         restriction))
+      subject))))
 
-(defn best-exemplar-picker
-  "Return a function of a subject that returns the element of the subject
-   best matching the condition."
-  [condition subject-ref immutable-store]
-  (let [query (pattern-to-query
-               (adjust-condition-for-element-restriction
-                subject-ref
-                (expand-pattern-items condition immutable-store)))]
-    (if (and (item-referent? condition)
-             (id-valid? immutable-store condition))
-      ;; The condition is an item. Always return it for its subject,
-      ;; even if another element of its subject is as good a match.
-      (let [exemplar-item (description->entity condition immutable-store)
-            subj (Entity/subject exemplar-item)]
-        #(if (= % subj)
-           [exemplar-item]
-           (best-matching-element query %)))
-      #(best-matching-element query %))))
+(def instantiate-referent)
+
+(defn instantiate-referent-with-restrictions
+  "For each item the referent refers to, return a pair of the item and any
+   element restriction on that item."
+  [referent immutable-store]
+  (case (referent-type referent)
+    :element-restriction (let [[_ condition ref] referent]
+                           (map #(vector % condition)
+                                (instantiate-referent ref immutable-store)))
+    :union (let [[_ & referents] referent]
+             (distinct (mapcat #(instantiate-referent-with-restrictions
+                                 % immutable-store)
+                               referents)))
+    (map #(vector %  nil)
+         (instantiate-referent referent immutable-store))))
 
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
@@ -134,36 +148,42 @@
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
     :exemplar (let [[_ condition subject-ref] referent]
-                (mapcat (best-exemplar-picker
-                         condition subject-ref immutable-store)
-                        (instantiate-referent subject-ref immutable-store)))
+                (mapcat (fn [[subject restriction]]
+                          (best-exemplar condition restriction subject))
+                        (instantiate-referent-with-restrictions
+                         subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
-                    query (pattern-to-query
-                           (adjust-condition-for-element-restriction
-                            subject-ref
-                            (expand-pattern-items condition immutable-store)))]
-                (mapcat #(matching-elements query %)
-                        (instantiate-referent subject-ref immutable-store)))
+                    condition (expand-pattern-items condition immutable-store)]
+                (mapcat (fn [[subject restriction]]
+                          (matching-elements
+                           (pattern-to-query
+                            (merge-conditions condition restriction))
+                           subject))
+                        (instantiate-referent-with-restrictions
+                         subject-ref immutable-store)))
     :non-competing-elements
     (let [[_ condition subject-ref & competing-conditions] referent
-          subjects (instantiate-referent subject-ref immutable-store)
-          query (pattern-to-query
-                 (expand-pattern-items condition immutable-store))
           competing-queries (map #(pattern-to-query
                                    (expand-pattern-items % immutable-store))
                                  competing-conditions)]
-      (mapcat (fn [subject]
-                (let [items (matching-elements query subject)
+      (mapcat (fn [[subject restriction]]
+                (let [items (matching-elements
+                             (pattern-to-query
+                              (merge-conditions
+                               (expand-pattern-items condition immutable-store)
+                               restriction))
+                             subject)
                       filtered (reduce
                                 (fn [items competing-query]
                                   (remove #(extended-by? competing-query %)
                                           items))
                                 items competing-queries)]
                   (if (empty? filtered)
-                    ((best-exemplar-picker
-                      condition subject-ref immutable-store) subject)
+                    ;; If all matches have competitors, take the best exemplar.
+                    (best-exemplar condition restriction subject)
                     filtered)))
-              subjects))
+              (instantiate-referent-with-restrictions
+                    subject-ref immutable-store)))
     :element-restriction
     (let [[_ condition ref] referent]
       (instantiate-referent ref immutable-store))

@@ -94,10 +94,13 @@
            ;; Our current implementation requires c1 and c2 to have compatible
            ;; contents and disjoint elements.
            ;; Check that that is the case.
-           (assert (extended-by? (content c1) merged-content))
-           (assert (extended-by? (content c2) merged-content))
-           (assert (every? #(empty? (matching-elements % c2)) (elements c1)))
-           (assert (every? #(empty? (matching-elements % c1)) (elements c2)))
+           (assert (and (extended-by? (content c1) merged-content)
+                        (extended-by? (content c2) merged-content)
+                        (every? #(empty? (matching-elements % c2))
+                                (elements c1))
+                        (every? #(empty? (matching-elements % c1))
+                                (elements c2)))
+                   [c1 c2 merged-content])
            (add-elements-to-entity-list merged-content
                                         (concat (elements c1) (elements c2))))))
 
@@ -123,7 +126,7 @@
                          restriction))
       subject))))
 
-(def instantiate-referent)
+(declare instantiate-referent)
 
 (defn instantiate-referent-with-restrictions
   "For each item the referent refers to, return a pair of the item and any
@@ -204,22 +207,24 @@
   "Create elements, specializing the template as appropriate, depending on
    whether each subject is a selector. Return the new items and the updated
    store."
-  [template subjects adjacents position use-bigger store]
+  [template restrictions subjects adjacents position use-bigger store]
   (let [[specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
+        restrictions (or restrictions (repeat (count subjects) nil))
         [new-ids store]
         (thread-map
-         (fn [[subject adjacent] store]
+         (fn [[restriction subject adjacent] store]
            (let [[store id] (create-selector-or-non-selector-element
-                             flattened-template
+                             (merge-conditions flattened-template restriction)
                              subject adjacent position use-bigger store)]
              [id store]))
-         (map vector subjects adjacents)
+         (map vector restrictions subjects adjacents)
          store)]
     [(map #(description->entity % store) new-ids)
      store]))
 
 (declare instantiate-or-create-referent)
+(declare instantiate-or-create-referent-with-restrictions)
 
 (defn instantiate-or-create-template
   "Run instantiate-or-create-referent on all referents in the template."
@@ -273,20 +278,20 @@
         referent
         [template new-template-ids store]
         (instantiate-or-create-template template original-store store)
-        [subjects new-subject-ids store]
+        [subject-pairs new-subject-ids store]
         (if (nil? subject-referent)
-          [nil nil store]
-          (instantiate-or-create-referent
+          [[nil nil] nil store]
+          (instantiate-or-create-referent-with-restrictions
            subject-referent original-store store))
-        subjects (map #(in-different-store % store) subjects)
+        subjects (map #(in-different-store (first %) store) subject-pairs)
+        restrictions (map second subject-pairs)
         adjacents (find-adjacents adjacent-referents subjects
                                   position original-store store)
-        subjects
-        (if (nil? subject-referent)
-          (map (constantly nil) adjacents)
-          subjects)
+        subjects (if (nil? subject-referent)
+                   (repeat (count adjacents) nil)
+                   subjects)
         [items store] (create-possible-selector-elements
-                        template subjects adjacents
+                        template restrictions subjects adjacents
                         position use-bigger store)]
     [items
      (concat [(:item-id (first items))]
@@ -312,7 +317,7 @@
 
 (defn instantiate-or-create-referent
   "Find the items that the referent refers to, creating items
-  for virtual referents. Return the items a seq of the ids of first item
+  for virtual referents. Return the items, a seq of the ids of first item
   created for this referent and each nested virtual referent, 
   and the updated store.
   Evaluate non-virtual sub-parts in the original store, so that
@@ -329,3 +334,50 @@
      (create-virtual-union-referent referent original-store store)
      true
      [(instantiate-referent referent original-store) nil store])))
+
+(defn instantiate-or-create-union-referent-with-restrictions
+  "Does instantiate-or-create-referent-with-restrictions
+   on each referent of a union, and combines the results."
+  [referent original-store store]
+  (let [[item-pairs ids store]
+        (reduce (fn [[accum-item-pairs first-ids store] referent]
+                  (let [[item-pairs ids store]
+                        (instantiate-or-create-referent-with-restrictions
+                         referent original-store store)]
+                    [(concat accum-item-pairs item-pairs)
+                     (or first-ids ids)
+                     store]))
+                [[] nil store]
+                (rest referent))]
+    ;; Some items may have the original store or only the partially
+    ;; updated store. Make them all have the latest store.
+    [(map #(let [[item restriction] %]
+             [(in-different-store item store) restriction])
+          item-pairs)
+     ids
+     store]))
+
+(defn instantiate-or-create-referent-with-restrictions
+  "Find the items that the referent refers to, creating items
+  for virtual referents. Return pairs of the items and any element restriction,
+  a seq of the ids of first item created for this referent and each
+  nested virtual referent, and the updated store."
+  [referent original-store store]
+  (case (referent-type referent)
+    :element-restriction (let [[_ condition ref] referent
+                               [item-pairs ids store]
+                               (instantiate-or-create-referent-with-restrictions
+                                ref original-store store)]
+                           [(map #(let [[item restriction] %]
+                                    [item
+                                     (merge-conditions
+                                      condition
+                                      ;; Get rid of any not-query.
+                                      (query-to-template restriction nil))])
+                                 item-pairs)
+                            ids store])
+    :union (instantiate-or-create-union-referent-with-restrictions
+            referent original-store store)
+    (let [[items ids store] (instantiate-or-create-referent
+                             referent original-store store)]
+      [(map #(vector % nil) items) ids store])))

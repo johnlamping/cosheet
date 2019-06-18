@@ -129,7 +129,7 @@
     (when-let [referent (:referent arguments)]
       (let [items (instantiate-referent referent store)
             [added store] (create-possible-selector-elements
-                           'anything items items :after true store)]
+                           'anything nil items items :after true store)]
         (add-select-request
          store [(first added)]
          (or select-pattern
@@ -146,7 +146,7 @@
                      (seq (matching-elements :tag sample-item)))]
         (when (not is-tag)
           (let [[added store] (create-possible-selector-elements
-                               '(anything :tag) items items
+                               '(anything :tag) nil items items
                                :after true store)]
             (add-select-request
              store [(first added)]
@@ -169,7 +169,7 @@
         (let [items (instantiate-referent referent store)
               subjects (map subject items)
               [added store] (create-possible-selector-elements
-                             condition subjects items :after true store)
+                             condition nil subjects items :after true store)
               item-key (pop-content-from-key target-key)]
           (add-select-request
            store [(first added)]

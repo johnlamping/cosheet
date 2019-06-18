@@ -242,6 +242,24 @@
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
               '("Jane" "female" (45 ("age" :tag)) "male"))))))
+  ;; With a restriction
+  (let [referent (virtual-referent "male" 
+                                   (element-restriction-referent
+                                    `(nil "foo" ~(not-query "bar"))
+                                    (item-referent jane))
+                                   (item-referent jane-age))
+        [items new-ids store0] (instantiate-or-create-referent
+                                 referent store)]
+    (is (check items [(any)]))
+    (is (= new-ids [(:item-id (first items))]))
+    (let [[item] items
+          new-jane (in-different-store jane item)]
+      (is (= (:store item) store0))
+      (is (= (entity/subject item) new-jane))
+      (is (= (semantic-to-list-R item) '("male" "foo")))
+      (is (= (canonicalize-list (semantic-to-list-R new-jane))
+             (canonicalize-list
+              '("Jane" "female" (45 ("age" :tag)) ("male" "foo")))))))
   ;; A referent for the exemplar.
   (let [referent (virtual-referent joe-male (item-referent jane)
                                    (item-referent jane-age))
@@ -382,7 +400,9 @@
   ;; A union of virtual referents
   (let [r1 (virtual-referent "male" (item-referent jane)
                              (item-referent jane-age))
-        r2 (virtual-referent "hello" (item-referent joe))
+        r2 (virtual-referent "hello" (element-restriction-referent
+                                      '(nil "foo")
+                                      (item-referent joe)))
         [items new-ids store0] (instantiate-or-create-referent
                                  (union-referent [r1 r2]) store)]
     (is (check items [(any) (any)]))
@@ -395,7 +415,31 @@
       (is (= (entity/subject item1) new-jane))
       (is (= (entity/subject item2) new-joe))
       (is (= (semantic-to-list-R item1) "male"))
+      (is (= (semantic-to-list-R item2) '("hello" "foo")))
+      (is (= (canonicalize-list (semantic-to-list-R new-jane))
+             (canonicalize-list
+              '("Jane" "female" (45 ("age" :tag)) "male"))))))
+  ;;A test with a union inside the virtual, and the union having a restriction.
+  (let [r (virtual-referent
+           "hello"
+           (union-referent [(element-restriction-referent
+                             '(nil "foo")
+                             (item-referent jane))
+                            (item-referent joe)]))
+        [items new-ids store0] (instantiate-or-create-referent
+                                 r store)]
+    (is (check items [(any) (any)]))
+    (is (= new-ids [(:item-id (first items))]))
+    (let [[item1 item2] items
+          new-jane (in-different-store jane store0)
+          new-joe (in-different-store joe store0)]
+      (is (= (:store item1) store0))
+      (is (= (:store item2) store0))
+      (is (= (entity/subject item1) new-jane))
+      (is (= (entity/subject item2) new-joe))
+      (is (= (semantic-to-list-R item1) '("hello" "foo")))
       (is (= (semantic-to-list-R item2) "hello"))
       (is (= (canonicalize-list (semantic-to-list-R new-jane))
              (canonicalize-list
-              '("Jane" "female" (45 ("age" :tag)) "male")))))))
+              '("Jane" "female" (45 ("age" :tag)) ("hello" "foo")))))))
+)

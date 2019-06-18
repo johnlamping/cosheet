@@ -76,7 +76,5 @@
           [joe row-selector batch-elements])
         store (:store joe)]
     ;; TODO: Add some tests of the results here.
-    (println
-     (simplify-for-print
-      (current-value (batch-edit-DOM-R [row-selector batch-elements]
-                                       store base-inherited))))))
+    (batch-edit-DOM-R [row-selector batch-elements]
+                      store base-inherited)))

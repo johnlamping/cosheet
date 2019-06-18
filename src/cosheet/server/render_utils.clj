@@ -15,7 +15,8 @@
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
              [model-utils :refer [semantic-element?-R
-                                  semantic-elements-R
+                                  semantic-elements-R semantic-elements
+                                  split-out-labels-R
                                   item->fixed-term
                                   item->fixed-term-with-negations
                                   item->canonical-semantic
@@ -224,7 +225,6 @@
   [item]
   (canonicalize-list (item->fixed-term item)))
 
-;;; TODO: See if these can match tags to non-tags, and fix if so.
 (defn competing-siblings
   "Given an item that is functioning as a query, return a seq of its siblings
    that compete with matching for it. This all siblings that have a common
@@ -234,26 +234,29 @@
    Don't include redundant siblings more than once."
   [item]
   (let [item-canonical (item->canonical-term item)
-        siblings (entity/elements (entity/subject item))
+        siblings (semantic-elements (entity/subject item))
+        [labels non-labels] (split-out-labels-R siblings)
+        candidates (if ((set labels) item) labels non-labels)
         matching (filter #(= item-canonical (item->canonical-term %))
-                         siblings)]
+                         candidates)]
     (cond-> (vals
-             ;; We make a map from canonical to sibling, so we can not
-             ;; add redunant siblings.
-             (reduce (fn [so-far sibling]
-                       (let [sibling-canonical (item->canonical-term sibling)]
+             ;; We make a map from canonical to candidate so we can not
+             ;; add redunant candidate
+             (reduce (fn [so-far candidate]
+                       (let [candidate-canonical (item->canonical-term
+                                                  candidate)]
                          (cond-> so-far
                            (and (canonical-have-common-elaboration
-                                 item-canonical sibling-canonical)
+                                 item-canonical candidate-canonical)
                                 (not (canonical-extended-by
-                                      sibling-canonical item-canonical))
-                                (not (so-far sibling-canonical)))
-                           (assoc sibling-canonical sibling))))
-                     {} siblings))
-      ;; The matching list includes the item, so there is an identical sibling
-      ;; if there is more than one element.
+                                      candidate-canonical item-canonical))
+                                (not (so-far candidate-canonical)))
+                           (assoc candidate-canonical candidate))))
+                     {} candidates))
+      ;; The matching list includes the item, so there is an identical
+      ;; candidate if there is more than one element.
       (not (empty? (rest matching)))
-      ;; We only need one matching sibling. If the items are distinguishable,
+      ;; We only need one matching candidate. If the items are distinguishable,
       ;; choose one different from the item we started with.
       (conj (or (first (remove #(= % item) matching)) (first matching))))))
 

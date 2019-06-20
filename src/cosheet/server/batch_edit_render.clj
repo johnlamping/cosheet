@@ -20,6 +20,7 @@
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-example-elements
                                 hierarchy-node-descendants
+                                hierarchy-node-logical-leaves
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels-R]]
              [render-utils :refer [add-inherited-attribute
@@ -61,13 +62,11 @@
 
 (defn horizontal-label-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
-  the dom particular to the node, and doms for all the children."
+  the doms for all the children."
   [node child-doms function-info inherited]
   (let [is-leaf (empty? child-doms)
         node-dom (horizontal-label-hierarchy-node-DOM
                   node function-info inherited)
-        elements-template (cons 'anything
-                           (keys (:cumulative-properties node)))
         class (cond-> "column-header tag"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
@@ -77,23 +76,39 @@
        (into [:div {:class "horizontal-label-sequence"}]
              child-doms)])))
 
+;; While :match-all is set for these nodes, it can only apply to their
+;; elements not to the nodes themselves. This is because :match-all is
+;; designed for exemplars of an item, not a column selector. A column
+;; selector with its own properties doesn't compete with its siblings, and one
+;; without its own properties doesn't force a match if out-competed by
+;; siblings.
+(defn horizontal-label-hierarchy-node-leaf-referent-f
+  "Return the referent to use for the leaf of the node,
+   given the excluding cover of its parent. parent-excluding-cover is the
+  excluding cover of the node's parent."
+  [parent-excluding-cover node inherited]
+  (let [subject-ref (:subject-referent inherited)
+        elements-ref (elements-referent (:item (first (:leaves node)))
+                                        subject-ref)]
+    (if (and (empty? (:properties node)) 
+             (not (empty? parent-excluding-cover)))
+      (difference-referent
+       elements-ref
+       (union-referent-if-needed
+        (map #(elements-referent (:item %) subject-ref)
+             parent-excluding-cover)))
+      elements-ref)))
+
 (defn horizontal-label-child-info
-  "Add :remainder-referent to the function-info, giving a referent to
-   all items that match a child of the node that has no properties
-   of its own."
+  "Update :referent-f in the function-info, giving how to compute the
+   referent of child nodes."
   [node function-info inherited]
   (let [[child-info inherited] (element-hierarchy-child-info
                                 node function-info inherited)
         excluding-cover (hierarchy-node-non-immediate-descendant-cover node)]
-    [(if (empty? excluding-cover)
-       (dissoc child-info :remainder-referent)
-       (let [subject-referent (:subject-referent inherited)
-             item (:item (first (hierarchy-node-descendants node)))]
-         (assoc child-info :remainder-referent
-                (difference-referent
-                 (item-or-exemplar-referent item subject-referent)
-                 (union-referent-if-needed (map item-or-exemplar-referent
-                                                excluding-cover))))))
+    [(assoc child-info :referent-f
+            (partial horizontal-label-hierarchy-node-leaf-referent-f
+                     excluding-cover))
      inherited]))
 
 (defn horizontal-label-top-level-subtree-DOM
@@ -101,8 +116,10 @@
   Inherited describes the column requests."
   [node inherited]
   (hierarchy-node-DOM-R
-   node horizontal-label-subtree-DOM element-hierarchy-child-info
-   {:top-level true} inherited))
+   node horizontal-label-subtree-DOM horizontal-label-child-info
+   {:top-level true
+    :referent-f (partial horizontal-label-hierarchy-node-leaf-referent-f nil)}
+   inherited))
 
 ;;; The subject referent should give the match to the rows, to the headers,
 ;;; and to the items that specify the pattern.
@@ -164,26 +181,20 @@
 (defn batch-row-selector-DOM-R
   "Return the dom row selector."
   [row-selector store inherited]
-  (let [top-level-matches-referent (top-level-items-referent row-selector)
-        table-header-matches-referent (table-headers-referent row-selector)
-        matches-referent (union-referent
-                          [(item-referent row-selector)
-                           top-level-matches-referent
-                           table-header-matches-referent])]
-    (expr-let
-        [virtual-dom (batch-row-selector-virtual-DOM-R
-                      row-selector store inherited)
-         ;; We need to take the current versions of the query elements,
-         ;; as :match-all only works with immutable items.
-         current-query-elements
-         (expr-seq map #(entity/updating-call-with-immutable % identity)
-                   (semantic-elements-R row-selector))
-         batch-dom
-         ;; TODO: Add-twin is a problem here with not knowing
-         ;; what template to use.
-         (labels-and-elements-DOM-R current-query-elements virtual-dom
-                                    true true :horizontal inherited)]
-      batch-dom)))
+  (expr-let
+      [virtual-dom (batch-row-selector-virtual-DOM-R
+                    row-selector store inherited)
+       ;; We need to take the current versions of the query elements,
+       ;; as :match-all only works with immutable items.
+       current-query-elements
+       (expr-seq map #(entity/updating-call-with-immutable % identity)
+                 (semantic-elements-R row-selector))
+       batch-dom
+       ;; TODO: Add-twin is a problem here with not knowing
+       ;; what template to use.
+       (labels-and-elements-DOM-R current-query-elements virtual-dom
+                                  true true :horizontal inherited)]
+    batch-dom))
 
 (defn count-DOM-R
   "Return DOM describing the number of matches."
@@ -215,7 +226,9 @@
     (let [top-level-matches-referent (top-level-items-referent row-selector)
           table-header-matches-referent (table-headers-referent row-selector)
           matches-referent (union-referent
-                            (cond-> [(item-referent row-selector)
+                            (cond-> [;; The row selector must be first
+                                     ;; so selection on new content will work.
+                                     (item-referent row-selector)
                                      top-level-matches-referent
                                      table-header-matches-referent]
                               elements-item

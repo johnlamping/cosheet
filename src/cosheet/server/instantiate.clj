@@ -186,7 +186,7 @@
                     (best-exemplar condition restriction subject)
                     filtered)))
               (instantiate-referent-with-restrictions
-                    subject-ref immutable-store)))
+               subject-ref immutable-store)))
     :element-restriction
     (let [[_ condition ref] referent]
       (instantiate-referent ref immutable-store))
@@ -207,8 +207,9 @@
   "Create elements, specializing the template as appropriate, depending on
    whether each subject is a selector. Return the new items and the updated
    store."
-  [template restrictions subjects adjacents position use-bigger store]
-  (let [[specialized-template store] (specialize-template template store)
+  [query restrictions subjects adjacents position use-bigger store]
+  (let [template (query-to-template query)
+        [specialized-template store] (specialize-template template store)
         flattened-template (flatten-nested-content specialized-template)
         restrictions (or restrictions (repeat (count subjects) nil))
         [new-ids store]
@@ -311,7 +312,7 @@
                      store]))
                 [[] nil store]
                 (rest referent))]
-    ;; Some items may have the original store or only the partially
+    ;; Some items may have the original store or a partially
     ;; updated store. Make them all have the latest store.
     [(map #(in-different-store % store) items) ids store]))
 
@@ -349,8 +350,8 @@
                      store]))
                 [[] nil store]
                 (rest referent))]
-    ;; Some items may have the original store or only the partially
-    ;; updated store. Make them all have the latest store.
+    ;; Some items may have the original store or a partially
+    ;; updated store. Make them all have the final store.
     [(map #(let [[item restriction] %]
              [(in-different-store item store) restriction])
           item-pairs)
@@ -370,10 +371,7 @@
                                 ref original-store store)]
                            [(map #(let [[item restriction] %]
                                     [item
-                                     (merge-conditions
-                                      condition
-                                      ;; Get rid of any not-query.
-                                      (query-to-template restriction nil))])
+                                     (merge-conditions condition restriction)])
                                  item-pairs)
                             ids store])
     :union (instantiate-or-create-union-referent-with-restrictions

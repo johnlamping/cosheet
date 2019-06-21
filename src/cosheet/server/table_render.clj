@@ -158,32 +158,35 @@
   {:add-column (target-for-header-add-column-command
                 node elements-template inherited)})
 
+;;; TODO: Currently, this just returns a generic tag. Fix it to be better.
 ;;; TODO: We need to also handle the case where there is no new element,
 ;;;       but a content with a new value.
 (defn table-header-element-template
-  "Return a template for new elements of a table header. It should include
-  what is common to the specified elements, which should be in canonical
-  list form. Always returns a seq."
+  "Return a template for one new element of a table header (not the entire
+   header). The element should include what is common to the specified
+   elements, which should be in canonical list form. Always returns a seq."
   [canonical-elements]
-  (if (seq canonical-elements)
-    (or (when (every? sequential? canonical-elements)
-          (let [firsts-sub-elements (second (first canonical-elements))
-                remainder-sub-elements (map second (rest canonical-elements))]
-            (if (empty? remainder-sub-elements)
-              ;; If there is only one current element, then the next one
-              ;; only copies whether or not it has a tag.
-              (if (contains? firsts-sub-elements :tag)
-                '(anything :tag)
-                '(anything))
-              (let [common (reduce common-canonical-multisets
-                                   firsts-sub-elements
-                                   remainder-sub-elements)]
-                (if (not (empty? common))
-                  (cons 'anything (canonical-set-to-list common))
-                  '(anything))))))
-        '(anything))
-    '(anything :tag))
-  '(anything :tag))
+  (or
+   ;; We always return this, for now.
+   '(anything :tag)
+   (if (seq canonical-elements)
+     (or (when (every? sequential? canonical-elements)
+           (let [firsts-sub-elements (second (first canonical-elements))
+                 remainder-sub-elements (map second (rest canonical-elements))]
+             (if (empty? remainder-sub-elements)
+               ;; If there is only one current element, then the next one
+               ;; only copies whether or not it has a tag.
+               (if (contains? firsts-sub-elements :tag)
+                 '(anything :tag)
+                 '(anything))
+               (let [common (reduce common-canonical-multisets
+                                    firsts-sub-elements
+                                    remainder-sub-elements)]
+                 (if (not (empty? common))
+                   (cons 'anything (canonical-set-to-list common))
+                   '(anything))))))
+         '(anything))
+     '(anything :tag))))
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."

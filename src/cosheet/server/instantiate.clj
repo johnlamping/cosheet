@@ -129,19 +129,38 @@
 (declare instantiate-referent)
 
 (defn instantiate-referent-with-restrictions
-  "For each item the referent refers to, return a pair of the item and any
-   element restriction on that item."
+  "Return two lists: one with each item the referent refers tom and ont
+   with any restriction on elements of the corresponding item."
   [referent immutable-store]
   (case (referent-type referent)
-    :element-restriction (let [[_ condition ref] referent]
-                           (map #(vector % condition)
-                                (instantiate-referent ref immutable-store)))
-    :union (let [[_ & referents] referent]
-             (distinct (mapcat #(instantiate-referent-with-restrictions
-                                 % immutable-store)
-                               referents)))
-    (map #(vector %  nil)
-         (instantiate-referent referent immutable-store))))
+    :element-restriction (let [[_ condition ref] referent
+                               items (instantiate-referent ref immutable-store)]
+                           [items (repeat (count items) condition)])
+    :union (let [[_ & referents] referent
+                 [items conditions _]
+                 (reduce (fn [[accum-items accum-conditions item-set] referent]
+                           (let [[items conditions]
+                                 (instantiate-referent-with-restrictions
+                                  referent immutable-store)]
+                             [(concat accum-items (remove item-set items))
+                              (concat accum-conditions
+                                      (mapcat (fn [item condition]
+                                                (when (not (item-set item))
+                                                  [condition]))
+                                              items conditions))
+                              (into item-set items)]))
+                         [[] [] #{}]
+                         referents)]
+             [items conditions])
+    (let [items (instantiate-referent referent immutable-store)]
+      [items (repeat (count items) nil)])))
+
+(defn instantiate-referent-inheriting-restrictions
+  "For each item the referent refers to, return a pair of the item and any
+   restriction for which that item was an element."
+  [referent immutable-store]
+  ;; TODO: Code this.
+  nil)
 
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
@@ -151,42 +170,43 @@
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
     :exemplar (let [[_ condition subject-ref] referent]
-                (mapcat (fn [[subject restriction]]
-                          (best-exemplar condition restriction subject))
-                        (instantiate-referent-with-restrictions
-                         subject-ref immutable-store)))
+                (apply mapcat (fn [subject restriction]
+                                (best-exemplar condition restriction subject))
+                       (instantiate-referent-with-restrictions
+                        subject-ref immutable-store)))
     :elements (let [[_ condition subject-ref] referent
                     condition (expand-pattern-items condition immutable-store)]
-                (mapcat (fn [[subject restriction]]
-                          (matching-elements
-                           (pattern-to-query
-                            (merge-conditions condition restriction))
-                           subject))
-                        (instantiate-referent-with-restrictions
-                         subject-ref immutable-store)))
+                (apply mapcat (fn [subject restriction]
+                                (matching-elements
+                                 (pattern-to-query
+                                  (merge-conditions condition restriction))
+                                 subject))
+                       (instantiate-referent-with-restrictions
+                        subject-ref immutable-store)))
     :non-competing-elements
     (let [[_ condition subject-ref & competing-conditions] referent
           competing-queries (map #(pattern-to-query
                                    (expand-pattern-items % immutable-store))
                                  competing-conditions)]
-      (mapcat (fn [[subject restriction]]
-                (let [items (matching-elements
-                             (pattern-to-query
-                              (merge-conditions
-                               (expand-pattern-items condition immutable-store)
-                               restriction))
-                             subject)
-                      filtered (reduce
-                                (fn [items competing-query]
-                                  (remove #(extended-by? competing-query %)
-                                          items))
-                                items competing-queries)]
-                  (if (empty? filtered)
-                    ;; If all matches have competitors, take the best exemplar.
-                    (best-exemplar condition restriction subject)
-                    filtered)))
-              (instantiate-referent-with-restrictions
-               subject-ref immutable-store)))
+      (apply mapcat
+             (fn [subject restriction]
+               (let [items (matching-elements
+                            (pattern-to-query
+                             (merge-conditions
+                              (expand-pattern-items condition immutable-store)
+                              restriction))
+                            subject)
+                     filtered (reduce
+                               (fn [items competing-query]
+                                 (remove #(extended-by? competing-query %)
+                                         items))
+                               items competing-queries)]
+                 (if (empty? filtered)
+                   ;; If all matches have competitors, take the best exemplar.
+                   (best-exemplar condition restriction subject)
+                   filtered)))
+             (instantiate-referent-with-restrictions
+              subject-ref immutable-store)))
     :element-restriction
     (let [[_ condition ref] referent]
       (instantiate-referent ref immutable-store))
@@ -265,8 +285,7 @@
                                   (instantiate-referent
                                    referent original-store)))
                         adjacent-referents)]
-      (apply map (fn [& items]
-                   (furthest-item items position))
+      (apply map (fn [& items] (furthest-item items position))
              adjacentses))))
 
 (defn create-virtual-referent
@@ -279,13 +298,11 @@
         referent
         [template new-template-ids store]
         (instantiate-or-create-template template original-store store)
-        [subject-pairs new-subject-ids store]
+        [subjects restrictions new-subject-ids store]
         (if (nil? subject-referent)
-          [[nil nil] nil store]
+          [nil nil nil store]
           (instantiate-or-create-referent-with-restrictions
            subject-referent original-store store))
-        subjects (map #(in-different-store (first %) store) subject-pairs)
-        restrictions (map second subject-pairs)
         adjacents (find-adjacents adjacent-referents subjects
                                   position original-store store)
         subjects (if (nil? subject-referent)
@@ -340,42 +357,40 @@
   "Does instantiate-or-create-referent-with-restrictions
    on each referent of a union, and combines the results."
   [referent original-store store]
-  (let [[item-pairs ids store]
-        (reduce (fn [[accum-item-pairs first-ids store] referent]
-                  (let [[item-pairs ids store]
+  (let [[items restrictions ids store]
+        (reduce (fn [[accum-items accum-restrictions first-ids store] referent]
+                  (let [[items restrictions ids store]
                         (instantiate-or-create-referent-with-restrictions
                          referent original-store store)]
-                    [(concat accum-item-pairs item-pairs)
+                    [(concat accum-items items)
+                     (concat accum-restrictions restrictions)
                      (or first-ids ids)
                      store]))
-                [[] nil store]
+                [nil nil nil store]
                 (rest referent))]
     ;; Some items may have the original store or a partially
     ;; updated store. Make them all have the final store.
-    [(map #(let [[item restriction] %]
-             [(in-different-store item store) restriction])
-          item-pairs)
+    [(map #(in-different-store % store) items)
+     restrictions
      ids
      store]))
 
 (defn instantiate-or-create-referent-with-restrictions
   "Find the items that the referent refers to, creating items
-  for virtual referents. Return pairs of the items and any element restriction,
+  for virtual referents. Return the items, the restrictions on each item
   a seq of the ids of first item created for this referent and each
   nested virtual referent, and the updated store."
   [referent original-store store]
   (case (referent-type referent)
     :element-restriction (let [[_ condition ref] referent
-                               [item-pairs ids store]
+                               [items restrictions ids store]
                                (instantiate-or-create-referent-with-restrictions
                                 ref original-store store)]
-                           [(map #(let [[item restriction] %]
-                                    [item
-                                     (merge-conditions condition restriction)])
-                                 item-pairs)
+                           [items
+                            (map #(merge-conditions condition %) restrictions)
                             ids store])
     :union (instantiate-or-create-union-referent-with-restrictions
             referent original-store store)
     (let [[items ids store] (instantiate-or-create-referent
                              referent original-store store)]
-      [(map #(vector % nil) items) ids store])))
+      [items (repeat (count items) nil) ids store])))

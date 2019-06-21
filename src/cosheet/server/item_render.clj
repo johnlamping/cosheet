@@ -564,7 +564,11 @@
         non-labels (when item (visible-non-labels-R item))
         node-referent (if referent-f
                         (referent-f node inherited)
-                        descendants-referent)]
+                        descendants-referent)
+        ;; Set template to what a new leaf has to have.
+        inherited (assoc inherited :template
+                         (concat '("") (canonical-set-to-list
+                                        (:cumulative-properties node))))]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
@@ -616,6 +620,8 @@
             :top-level false)
      (-> inherited
          (update :key-prefix  #(conj % :nested))
+         ;; Set :template to the minimum to be a child node.
+         ;; This is used by the virtual column of a table header.
          (update :template
                  #(add-elements-to-entity-list
                    % (canonical-set-to-list (:properties node)))))]))

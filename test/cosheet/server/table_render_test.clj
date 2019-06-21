@@ -223,7 +223,7 @@
                         :add-twin {:referent nil}
                         :class "placeholder content-text editable item"
                         :target {:referent first-column-referent
-                                 :template '(anything :column)}
+                                 :template '("" ("single" :tag))}
                         :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
                (any)

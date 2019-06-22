@@ -28,6 +28,7 @@
                       item-referent virtual-referent]]
     [instantiate :refer [instantiate-or-create-referent
                          instantiate-referent
+                         instantiate-referent-inheriting-restrictions
                          create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 
@@ -166,11 +167,12 @@
   (let [{:keys [target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
-        ;; TODO: Call instantiate-referent-inheriting-restrictions
-        (let [items (instantiate-referent referent store)
+        (let [[items restrictions] (instantiate-referent-inheriting-restrictions
+                                  referent store)
               subjects (map subject items)
               [added store] (create-possible-selector-elements
-                             condition nil subjects items :after true store)
+                             condition restrictions subjects items
+                             :after true store)
               item-key (pop-content-from-key target-key)]
           (add-select-request
            store [(first added)]

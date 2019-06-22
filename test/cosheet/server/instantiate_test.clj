@@ -175,9 +175,19 @@
                    '(nil ("doubtful")) joe-jane-referent)
                   ['(nil ("age" :tag))])
         instantiated (instantiate-referent referent store)]
-    (is (check instantiated
-               (as-set [joe-bogus-age]))))
-  
+    (is (check instantiated [joe-bogus-age])))
+  ;; Getting back the restrictions too
+  (let [joe-jane-referent (union-referent [(item-referent joe)
+                                           (item-referent jane)])
+        referent (non-competing-elements-referent
+                  '(nil ("age" :tag))
+                  (element-restriction-referent
+                   '(nil ("doubtful")) joe-jane-referent)
+                  ['(nil ("age" :tag))])
+        [instantiated restrictions]
+        (instantiate-referent-inheriting-restrictions referent store)]
+    (is (check instantiated [joe-bogus-age]))
+    (is (check restrictions ['(nil ("doubtful"))])))
   ;; Union
   (let [referent (union-referent
                   [(item-referent joe-age)

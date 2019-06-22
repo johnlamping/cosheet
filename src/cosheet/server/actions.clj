@@ -166,6 +166,7 @@
   (let [{:keys [target-key]} arguments]
     (when-let [referent (:referent arguments)]
       (when-let [condition (:template arguments)]
+        ;; TODO: Call instantiate-referent-inheriting-restrictions
         (let [items (instantiate-referent referent store)
               subjects (map subject items)
               [added store] (create-possible-selector-elements

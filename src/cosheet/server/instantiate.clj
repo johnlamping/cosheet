@@ -155,12 +155,63 @@
     (let [items (instantiate-referent referent immutable-store)]
       [items (repeat (count items) nil)])))
 
+(defn map-over-subjects-and-restrictions
+  "Instantiate the subject referent.
+   Then apply the function to each subject/restriction pair.
+   The function should return a list of items. Return the concatenation
+   of the items, and, for each item, the restriction that participated
+   in creating it."
+  [fun subject-referent immutable-store]
+  (let [[subjects restrictions] (instantiate-referent-with-restrictions
+                                 subject-referent immutable-store)
+        itemses (map fun subjects restrictions)]
+    [(apply concat itemses)
+     (mapcat (fn [items restriction] (repeat (count items) restriction))
+             itemses restrictions)]))
+
 (defn instantiate-referent-inheriting-restrictions
   "For each item the referent refers to, return a pair of the item and any
    restriction for which that item was an element."
   [referent immutable-store]
-  ;; TODO: Code this.
-  nil)
+  (case (referent-type referent)      
+    :exemplar (let [[_ condition subject-ref] referent]
+                (map-over-subjects-and-restrictions
+                 (fn [subject restriction]
+                   (best-exemplar condition restriction subject))
+                 subject-ref immutable-store))
+    :elements (let [[_ condition subject-ref] referent
+                    condition (expand-pattern-items condition immutable-store)]
+                (map-over-subjects-and-restrictions
+                 (fn [subject restriction]
+                   (matching-elements
+                    (pattern-to-query (merge-conditions condition restriction))
+                    subject))
+                 subject-ref immutable-store))
+    :non-competing-elements
+    (let [[_ condition subject-ref & competing-conditions] referent
+          competing-queries (map #(pattern-to-query
+                                   (expand-pattern-items % immutable-store))
+                                 competing-conditions)]
+      (map-over-subjects-and-restrictions
+       (fn [subject restriction]
+         (let [items (matching-elements
+                      (pattern-to-query
+                       (merge-conditions
+                        (expand-pattern-items condition immutable-store)
+                        restriction))
+                      subject)
+               filtered (reduce
+                         (fn [items competing-query]
+                           (remove #(extended-by? competing-query %)
+                                   items))
+                         items competing-queries)]
+           (if (empty? filtered)
+             ;; If all matches have competitors, take the best exemplar.
+             (best-exemplar condition restriction subject)
+             filtered)))
+       subject-ref immutable-store))
+    (let [items (instantiate-referent referent immutable-store)]
+      [items (repeat (count items) nil)])))
 
 (defn instantiate-referent
   "Return the items that the referent refers to. Does not handle
@@ -169,44 +220,9 @@
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
-    :exemplar (let [[_ condition subject-ref] referent]
-                (apply mapcat (fn [subject restriction]
-                                (best-exemplar condition restriction subject))
-                       (instantiate-referent-with-restrictions
-                        subject-ref immutable-store)))
-    :elements (let [[_ condition subject-ref] referent
-                    condition (expand-pattern-items condition immutable-store)]
-                (apply mapcat (fn [subject restriction]
-                                (matching-elements
-                                 (pattern-to-query
-                                  (merge-conditions condition restriction))
-                                 subject))
-                       (instantiate-referent-with-restrictions
-                        subject-ref immutable-store)))
-    :non-competing-elements
-    (let [[_ condition subject-ref & competing-conditions] referent
-          competing-queries (map #(pattern-to-query
-                                   (expand-pattern-items % immutable-store))
-                                 competing-conditions)]
-      (apply mapcat
-             (fn [subject restriction]
-               (let [items (matching-elements
-                            (pattern-to-query
-                             (merge-conditions
-                              (expand-pattern-items condition immutable-store)
-                              restriction))
-                            subject)
-                     filtered (reduce
-                               (fn [items competing-query]
-                                 (remove #(extended-by? competing-query %)
-                                         items))
-                               items competing-queries)]
-                 (if (empty? filtered)
-                   ;; If all matches have competitors, take the best exemplar.
-                   (best-exemplar condition restriction subject)
-                   filtered)))
-             (instantiate-referent-with-restrictions
-              subject-ref immutable-store)))
+    (:exemplar :elements :non-competing-elements)
+    (first (instantiate-referent-inheriting-restrictions
+            referent immutable-store))
     :element-restriction
     (let [[_ condition ref] referent]
       (instantiate-referent ref immutable-store))

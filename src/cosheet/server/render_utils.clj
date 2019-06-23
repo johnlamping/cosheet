@@ -24,7 +24,7 @@
              [referent :refer [referent?
                                virtual-referent
                                elements-referent exemplar-referent
-                               non-competing-elements-referent
+                               exclusive-elements-referent
                                item-referent item-or-exemplar-referent
                                union-referent-if-needed]]
              [hierarchy :refer [hierarchy-node-descendants]])))
@@ -264,19 +264,19 @@
   "Return the proper referent for the item, given inherited."
   [item inherited]
   (let [subject-referent (:subject-referent inherited)]
-    (if (:match-all inherited)
+    (if (or (:match-all inherited) (:match-all-exclusive inherited))
       (let [item-ref (item-referent item)]
         (assert (satisfies? entity/StoredEntity item))
         (assert (not (entity/mutable-entity? item)))
         (if (nil? subject-referent)
           item-ref
-          ;; Even if :match-all is set, we don't match items that should
-          ;; be matched by siblings, as the UI suggests that those items
-          ;; are accessible via the siblings.
-          (let [competing (competing-siblings item)]
+          ;; if :match-all-exclusive is set, we don't match items that
+          ;; are matched by siblings.
+          (let [competing (when (:match-all-exclusive inherited)
+                            (competing-siblings item))]
             (if (empty? competing)
               (elements-referent item-ref subject-referent)
-              (non-competing-elements-referent
+              (exclusive-elements-referent
                item-ref subject-referent competing)))))
       (item-or-exemplar-referent item subject-referent))))
 

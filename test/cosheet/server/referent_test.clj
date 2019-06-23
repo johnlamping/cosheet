@@ -24,7 +24,7 @@
                                            '(nil (:root :A_a))
                                            'b))
                      (item-referent (->ItemId 6789)))
-                    (non-competing-elements-referent
+                    (exclusive-elements-referent
                      'a
                      (item-referent (->ItemId 11))
                      [(item-referent (->ItemId 33))

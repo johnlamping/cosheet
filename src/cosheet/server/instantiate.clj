@@ -187,7 +187,7 @@
                     (pattern-to-query (merge-conditions condition restriction))
                     subject))
                  subject-ref immutable-store))
-    :non-competing-elements
+    :exclusive-elements
     (let [[_ condition subject-ref & competing-conditions] referent
           competing-queries (map #(pattern-to-query
                                    (expand-pattern-items % immutable-store))
@@ -220,7 +220,7 @@
   (case (referent-type referent)
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
-    (:exemplar :elements :non-competing-elements)
+    (:exemplar :elements :exclusive-elements)
     (first (instantiate-referent-inheriting-restrictions
             referent immutable-store))
     :element-restriction

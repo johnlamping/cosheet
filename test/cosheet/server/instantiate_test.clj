@@ -17,7 +17,7 @@
                                               elements-referent query-referent
                                               union-referent difference-referent
                                               element-restriction-referent
-                                              non-competing-elements-referent
+                                              exclusive-elements-referent
                                               virtual-referent]]
                             [model-utils :refer [semantic-elements-R
                                                  semantic-to-list-R]]
@@ -157,10 +157,10 @@
                                       '(nil (nil ("age" :tag)))))]))
               store)
              (as-set [joe-age jane-age])))
-  ;; non-competing-elements
+  ;; exclusive-elements
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
-        referent (non-competing-elements-referent
+        referent (exclusive-elements-referent
                   '(nil ("age" :tag))
                   joe-jane-referent
                   ['(nil ("age" :tag) "doubtful")])]
@@ -169,7 +169,7 @@
   ;; with an element-restriction
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
-        referent (non-competing-elements-referent
+        referent (exclusive-elements-referent
                   '(nil ("age" :tag))
                   (element-restriction-referent
                    '(nil ("doubtful")) joe-jane-referent)
@@ -179,7 +179,7 @@
   ;; Getting back the restrictions too
   (let [joe-jane-referent (union-referent [(item-referent joe)
                                            (item-referent jane)])
-        referent (non-competing-elements-referent
+        referent (exclusive-elements-referent
                   '(nil ("age" :tag))
                   (element-restriction-referent
                    '(nil ("doubtful")) joe-jane-referent)

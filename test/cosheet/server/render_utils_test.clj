@@ -13,7 +13,7 @@
             (cosheet.server
              [render-utils :refer :all]
              [referent :refer [elements-referent exemplar-referent
-                               non-competing-elements-referent
+                               exclusive-elements-referent
                                union-referent]])
             ; :reload
             ))
@@ -183,28 +183,34 @@
     (is (check (item-referent-given-inherited
                 joe-age  {:subject-referent (union-referent [joe-id])})
                (exemplar-referent joe-age-id (union-referent [joe-id]))))
-    ;; Check that we go to a non-competing-elements referent if there is a
-    ;; sibling that is more specific.
+    ;; Check that we go to an exclusive-elements referent if there is a
+    ;; sibling that is not just more general.
     (let [[store joe-fake-age-id]
           (add-entity store joe-id '(50 ("age" :tag) ("fake" :tag)))
-          ;; A sibling that is non-competing with the age ones.
+          ;; A sibling that never competes with the age ones.
           [store _] (add-entity store joe-id "Hi")]
+      ;; match-all doesn't care about competitors
       (is (check (item-referent-given-inherited
                   (description->entity joe-age-id store)
                   {:match-all true :subject-referent joe-id})
-                 (non-competing-elements-referent
+                 (elements-referent joe-age-id joe-id)))
+      ;; match-all-exclusive does care about competitors.
+      (is (check (item-referent-given-inherited
+                  (description->entity joe-age-id store)
+                  {:match-all-exclusive true :subject-referent joe-id})
+                 (exclusive-elements-referent
                   joe-age-id joe-id [joe-fake-age-id])))
       ;; Check that the less specific is not competing with the more specific
       (is (check (item-referent-given-inherited
                   (description->entity joe-fake-age-id store)
-                  {:match-all true :subject-referent joe-id})
+                  {:match-all-exclusive true :subject-referent joe-id})
                  (elements-referent joe-fake-age-id joe-id)))
       ;; Check that the sibling is still competing if neither sibling is
       ;; more specific.
       (let [[store _] (add-entity store joe-age-id '("true" :tag))]
         (is (check (item-referent-given-inherited
                     (description->entity joe-age-id store)
-                    {:match-all true :subject-referent joe-id})
-                   (non-competing-elements-referent
+                    {:match-all-exclusive true :subject-referent joe-id})
+                   (exclusive-elements-referent
                   joe-age-id joe-id [joe-fake-age-id]))))))) 
 

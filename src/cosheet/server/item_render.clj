@@ -17,6 +17,7 @@
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
                                 hierarchy-node-leaves
+                                hierarchy-node-logical-leaves
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements-R
                                 hierarchy-node-example-elements]]
@@ -553,28 +554,27 @@
   "Generate the DOM for a node in a hierarchy that groups items by their
    labels, has at most one leaf per node and is laid out horizontally.
    Don't generate the DOM for its children.
-   If leaf-referent is present, it gives the referent for the leaf,
-   if the node has no properties, and thus indicates a remainder of its
-   parent node."
-  [node {:keys [referent-f top-level]} inherited]
+   If referent-f is present, it computes the referent for the leaf, given
+   the node and inherited."
+  [node {:keys [referent-f inherited-transformer top-level]} inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
-        descendants-referent (hierarchy-node-items-referent node inherited)
-        item (:item (first (hierarchy-node-descendants node)))
+        item (:item (first (hierarchy-node-logical-leaves node)))
         content (when item (entity/content item))
         non-labels (when item (visible-non-labels-R item))
         node-referent (if referent-f
                         (referent-f node inherited)
-                        descendants-referent)
+                        (hierarchy-node-items-referent node inherited))
         ;; Set template to what a new leaf has to have.
-        inherited (assoc inherited :template
-                         (concat '("") (canonical-set-to-list
-                                        (:cumulative-properties node))))]
+        inherited (assoc inherited
+                         :template (concat '("")
+                                           (canonical-set-to-list
+                                            (:cumulative-properties node)))
+                         :subject-referent node-referent)]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
-      (let [inherited-down (-> inherited
-                               (assoc :subject-referent node-referent)
-                               (update :key-prefix #(conj % (:item-id item))))
+      (let [inherited-down (update inherited :key-prefix
+                                   #(conj % (:item-id item)))
             label-dom (cond->
                           (virtual-element-DOM
                            node-referent :after
@@ -599,14 +599,11 @@
            {:key (:key-prefix inherited-down)
             :class "item"})]])
       (if (empty? (:child-nodes node))
-        (let [all-elements (concat example-elements non-labels)
-              inherited-down (assoc inherited :subject-referent node-referent)]
+        (let [all-elements (concat example-elements non-labels)]
             (item-content-and-elements-DOM-R
              item content all-elements false
-             (update inherited-down :key-prefix #(conj % (:item-id item)))))
-          (let [inherited-down (assoc inherited :subject-referent
-                                      descendants-referent)]
-            (label-stack-DOM-R example-elements inherited-down))))))
+             (update inherited :key-prefix #(conj % (:item-id item)))))
+        (label-stack-DOM-R example-elements inherited)))))
 
 (defn element-hierarchy-child-info
   "Generate the function-info and inherited for children of

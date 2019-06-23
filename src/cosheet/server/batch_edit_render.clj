@@ -76,28 +76,23 @@
        (into [:div {:class "horizontal-label-sequence"}]
              child-doms)])))
 
-;; While :match-all is set for these nodes, it can only apply to their
-;; elements not to the nodes themselves. This is because :match-all is
-;; designed for exemplars of an item, not a column selector. A column
-;; selector with its own properties doesn't compete with its siblings, and one
-;; without its own properties doesn't force a match if out-competed by
-;; siblings.
-(defn horizontal-label-hierarchy-node-leaf-referent-f
-  "Return the referent to use for the leaf of the node,
-   given the excluding cover of its parent. parent-excluding-cover is the
-  excluding cover of the node's parent."
+;; While :match-all-exclusive is set in our inherited, to properly
+;; handle exemplars of an item, for these nodes, we want to match
+;; everything, except that a column selector without its own
+;; properties is competed with by any children.
+(defn horizontal-label-hierarchy-node-referent-f
+  "Return the referent to use for the the node,
+   given parent-excluding-cover, the excluding cover of its parent."
   [parent-excluding-cover node inherited]
-  (let [subject-ref (:subject-referent inherited)
-        elements-ref (elements-referent (:item (first (:leaves node)))
-                                        subject-ref)]
+  (let [subject-ref (:subject-referent inherited) ]
     (if (and (empty? (:properties node)) 
              (not (empty? parent-excluding-cover)))
       (difference-referent
-       elements-ref
+       (elements-referent (:item (first (:leaves node))) subject-ref)
        (union-referent-if-needed
         (map #(elements-referent (:item %) subject-ref)
              parent-excluding-cover)))
-      elements-ref)))
+      (hierarchy-node-items-referent node (assoc inherited :match-all true)))))
 
 (defn horizontal-label-child-info
   "Update :referent-f in the function-info, giving how to compute the
@@ -107,7 +102,7 @@
                                 node function-info inherited)
         excluding-cover (hierarchy-node-non-immediate-descendant-cover node)]
     [(assoc child-info :referent-f
-            (partial horizontal-label-hierarchy-node-leaf-referent-f
+            (partial horizontal-label-hierarchy-node-referent-f
                      excluding-cover))
      inherited]))
 
@@ -118,7 +113,7 @@
   (hierarchy-node-DOM-R
    node horizontal-label-subtree-DOM horizontal-label-child-info
    {:top-level true
-    :referent-f (partial horizontal-label-hierarchy-node-leaf-referent-f nil)}
+    :referent-f (partial horizontal-label-hierarchy-node-referent-f nil)}
    inherited))
 
 ;;; The subject referent should give the match to the rows, to the headers,
@@ -244,7 +239,8 @@
                     row-selector store inherited)
            inner-dom (cond
                        elements-item
-                       (let [inherited (assoc inherited :match-all true)]
+                       (let [inherited (assoc inherited :match-all-exclusive
+                                              true)]
                          (expr-let [elements-dom (horizontal-label-DOM-R
                                                   elements-item inherited)]
                            [:div {:class "batch-stack-wrapper"}

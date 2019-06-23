@@ -136,11 +136,17 @@
 ;       :subject-referent  ; The referent of the subject(s) of the item
                            ; the dom is about, if any. Only required to
                            ; be present if the item is an exemplar.
-;              :match-all  ; If true, then referents for all children
-                           ; should match all matches, not just one exemplar,
-                           ; unless the child has sibling that is at
-                           ; least as specific.
-                           ; If this is set, then the item must be immutable,
+;              :match-all  ; If true, then referents for a child
+                           ; should match all matches, not just one exemplar.
+                           ; The item must be immutable,
+                           ; as item-referent-given-inherited only supports
+                           ; this for immutable items.
+;     match-all-exclusive  ; If true, then referents for a child
+                           ; should match all matches that match the child
+                           ; and that don't match any of the child's siblings
+                           ; that are not more general. See
+                           ; exclusive-elements-referent for more details.
+                           ; The item must be immutable,
                            ; as item-referent-given-inherited only supports
                            ; this for immutable items.
               :template "" ; The template that the twins of this dom

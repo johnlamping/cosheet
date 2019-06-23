@@ -32,8 +32,8 @@
 ;;;                 For each item referred to by subject-referent,
 ;;;                 refers to all elements whose semantic information
 ;;;                 matches the condition.
-;;; non-competing-elements
-;;;                 [:non-competing-elements
+;;; exclusive-elements
+;;;                 [:exclusive-elements
 ;;;                  <condition> <subject-referent> <competing-condition>* ]
 ;;;                 For each item referred to by subject-referent,
 ;;;                 refers to all elements whose semantic information
@@ -108,7 +108,7 @@
 (defn referent? [referent]
   (or (item-referent? referent)
       (and (sequential? referent)
-           (#{:exemplar :elements :non-competing-elements
+           (#{:exemplar :elements :exclusive-elements
               :element-restriction :query :union :difference :virtual}
             (first referent)))))
 
@@ -151,11 +151,11 @@
   (assert (referent? subject))
   [:elements (coerce-item-to-id condition) subject])
 
-(defn non-competing-elements-referent
-  "Create a non-competing elements referent."
+(defn exclusive-elements-referent
+  "Create a exclusive elements referent."
   [condition subject competing-conditions]
   (assert (referent? subject))
-  (concat [:non-competing-elements (coerce-item-to-id condition) subject]
+  (concat [:exclusive-elements (coerce-item-to-id condition) subject]
           (map coerce-item-to-id competing-conditions)))
 
 (defn element-restriction-referent
@@ -255,7 +255,7 @@
 (def letters->type
   {\X :exemplar
    \E :elements
-   \C :non-competing-elements
+   \P :exclusive-elements
    \R :element-restriction
    \Q :query
    \U :union

@@ -194,14 +194,18 @@
   "Set the batch edit ids in inherited to be the ones appropriate for
    items that span this node or that don't have any properties of their own."
   [node inherited]
-  (if (empty? (:properties node))
-    inherited
-    (-> inherited
-        (remove-inherited-attribute :batch-edit-ids)
-        (add-inherited-attribute
-         [#{:label :element :recursive :optional} #{:content}
-          {:batch-edit-ids (map #(:item-id (:item %))
-                                (hierarchy-node-descendants node))}]))))
+  (let [cleaned (remove-inherited-attribute inherited :batch-edit-id)]
+    (if (and (empty? (:properties node))
+             (not= (seq (:attributes cleaned)) (seq (:attributes inherited))))
+      ;; We have no hierarchy properties of our own, so we refer to whatever
+      ;; our sibling column's don't, and we need to keep the
+      ;; batch-edit-id that our parent set, if there was one.
+      inherited
+      (-> cleaned
+          (add-inherited-attribute
+           [#{:label :element :recursive :optional} #{:content}
+            {:batch-edit-ids (map #(:item-id (:item %))
+                                  (hierarchy-node-descendants node))}])))))
 
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."

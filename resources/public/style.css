@@ -85,6 +85,7 @@ body {
 
 .content-text {
     min-height: 20px;
+    min-width: 50px;
     overflow-wrap: break-word;
 }
 

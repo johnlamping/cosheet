@@ -137,21 +137,17 @@
                                items (instantiate-referent ref immutable-store)]
                            [items (repeat (count items) condition)])
     :union (let [[_ & referents] referent
-                 [items conditions _]
-                 (reduce (fn [[accum-items accum-conditions item-set] referent]
-                           (let [[items conditions]
-                                 (instantiate-referent-with-restrictions
-                                  referent immutable-store)]
-                             [(concat accum-items (remove item-set items))
-                              (concat accum-conditions
-                                      (mapcat (fn [item condition]
-                                                (when (not (item-set item))
-                                                  [condition]))
-                                              items conditions))
-                              (into item-set items)]))
-                         [[] [] #{}]
-                         referents)]
-             [items conditions])
+                 item-condition-pairs
+                 (-> (mapcat #(let [[items conditions]
+                                    (instantiate-referent-with-restrictions
+                                     % immutable-store)]
+                                (map vector items conditions))
+                             referents)
+                     ;; Remove the duplicates, which must match on both
+                     ;; item and condition.
+                     distinct)]
+             [(map first item-condition-pairs)
+              (map second item-condition-pairs)])
     (let [items (instantiate-referent referent immutable-store)]
       [items (repeat (count items) nil)])))
 
@@ -221,8 +217,8 @@
     :item (when (id-valid? immutable-store referent)
             [(description->entity referent immutable-store)])
     (:exemplar :elements :exclusive-elements)
-    (first (instantiate-referent-inheriting-restrictions
-            referent immutable-store))
+    (distinct (first (instantiate-referent-inheriting-restrictions
+                      referent immutable-store)))
     :element-restriction
     (let [[_ condition ref] referent]
       (instantiate-referent ref immutable-store))

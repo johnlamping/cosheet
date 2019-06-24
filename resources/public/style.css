@@ -83,7 +83,8 @@ body {
     min-width: 7px;
 }
 
-.content-text {
+/* Override other min-width values. */
+.content-text.content-text.content-text.content-text {
     min-height: 20px;
     min-width: 50px;
     overflow-wrap: break-word;

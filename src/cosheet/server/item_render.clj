@@ -556,7 +556,7 @@
    Don't generate the DOM for its children.
    If referent-f is present, it computes the referent for the leaf, given
    the node and inherited."
-  [node {:keys [referent-f inherited-transformer top-level]} inherited]
+  [node {:keys [referent-f top-level]} inherited]
   (let [example-elements (hierarchy-node-example-elements node) 
         item (:item (first (hierarchy-node-logical-leaves node)))
         content (when item (entity/content item))
@@ -616,7 +616,7 @@
     [(assoc function-info
             :top-level false)
      (-> inherited
-         (update :key-prefix  #(conj % :nested))
+         (update :key-prefix #(conj % :nested))
          ;; Set :template to the minimum to be a child node.
          ;; This is used by the virtual column of a table header.
          (update :template

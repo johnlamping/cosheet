@@ -37,6 +37,7 @@
                                    transform-inherited-for-children
                                    transform-inherited-for-labels
                                    add-inherited-attribute
+                                   remove-inherited-attribute
                                    hierarchy-node-items-referent
                                    hierarchy-node-items-referents
                                    hierarchy-last-item-referent
@@ -188,6 +189,19 @@
          '(anything))
      '(anything :tag))))
 
+(defn set-batch-edit-ids
+  "Set the batch edit ids in inherited to be the ones appropriate for
+   items that span this node or that don't have any properties of their own."
+  [node inherited]
+  (if (empty? (:properties node))
+    inherited
+    (-> inherited
+        (remove-inherited-attribute :batch-edit-ids)
+        (add-inherited-attribute
+         [#{:label :element :recursive :optional} #{:content}
+          {:batch-edit-ids (map #(:item-id (:item %))
+                                (hierarchy-node-descendants node))}]))))
+
 (defn table-header-properties-inherited
   "Return the inherited to use for the properties of a table header."
   [node inherited]
@@ -198,7 +212,7 @@
                            ;; TODO: The keys below means that multiplicites of
                            ;;       properties are forgotten, which is wrong.
                            (keys (:cumulative-properties node)))]
-    (cond-> (-> inherited
+    (cond-> (-> (set-batch-edit-ids node inherited)
                 (add-inherited-attribute
                  [#{:label :element :recursive :optional} #{:content}
                   (cond-> (attributes-for-header-add-column-command
@@ -219,7 +233,7 @@
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
-  the dom particular to the node, and doms for all the children."
+  the doms for all the children."
   [node child-doms function-info inherited]
   (let [node-dom (horizontal-label-hierarchy-node-DOM
                   node function-info
@@ -238,18 +252,23 @@
        (into [:div {:class "column-header-sequence"}]
              child-doms)])))
 
+(defn table-header-child-info
+  "In addition to what element-hierarchy-child-info does, set the
+   batch-edit-ids to what our children with no properties of their own need."
+  [node function-info inherited]
+  (let [[function-info inherited] (element-hierarchy-child-info
+                                   node function-info inherited)]
+    [function-info
+     (set-batch-edit-ids node inherited)]))
+
 (defn table-header-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
   Inherited describes the column requests."
   [node inherited]
   (hierarchy-node-DOM-R
-   node table-header-subtree-DOM element-hierarchy-child-info
+   node table-header-subtree-DOM table-header-child-info
    {:top-level true}
-   (add-inherited-attribute
-    inherited
-    [#{:label :element :recursive :optional} #{:content}
-     {:batch-edit-ids (map #(:item-id (:item %))
-                           (hierarchy-node-descendants node))}])))
+   inherited))
 
 (defn table-virtual-header-element-template
   "Return a template for new elements of a virtual table header."

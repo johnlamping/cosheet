@@ -238,7 +238,9 @@
                        :class "editable tag"
                        :key (conj table-key (:item-id c7) :virtual)
                        :target (any)
-                       :batch-edit-ids [(:item-id c7)]}]
+                       ;; TODO: This should be here.
+                       ; :batch-edit-ids [(:item-id c7)]
+                       }]
                 ;;; The content and sub-element.
                 [:div {:class "indent-wrapper tag"}
                  [:div {:class "item with-elements"

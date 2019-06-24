@@ -61,12 +61,13 @@
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
 (defn batch-edit-selectors
-  "Given an item, a list of batch-edit-items from a DOM, and the table
-   row condition, return the list form of the appropriate batch selectors.
-   These will always inclde the row condition, tagged with :batch-row-selector.
-   For a column header, batch-edit-items will be present, and will be
-   elements of an item tagged :batch-elements. For an element in a cell,
-   It should be an element of an item tagged :batch-elements."
+  "Given either an item, or a list of batch-edit-items from a DOM, and
+  the table row condition, return the list form of the appropriate
+  batch selectors.  These will always inclde the row condition, tagged
+  with :batch-row-selector.  For a column header, batch-edit-items
+  will be present, and will be elements of an item tagged
+  :batch-elements. For an element in a cell, It should be an element
+  of an item tagged :batch-elements."
   [immutable-item batch-edit-items immutable-row-condition-item]
   ;; We walk up containing items, until we find an item that is either
   ;; column condition, an element of a row, or the entire row condition.

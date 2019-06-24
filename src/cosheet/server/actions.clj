@@ -304,7 +304,8 @@
           temporary-item (description->entity temporary-id store)
           current-batch-selectors (label->elements
                                    temporary-item :batch-selector)
-          new-batch-selectors (when (and target row-condition)
+          new-batch-selectors (when (and (or target batch-edit-items)
+                                         row-condition)
                                 (batch-edit-selectors
                                  target batch-edit-items row-condition))]
       (when (not (empty? new-batch-selectors))

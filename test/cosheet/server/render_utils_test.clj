@@ -175,10 +175,10 @@
         joe-age (description->entity joe-age-id store)]
     (is (check (item-referent-given-inherited joe-age {})
                joe-age-id))
-    (is (check (item-referent-given-inherited joe-age {:match-all true})
+    (is (check (item-referent-given-inherited joe-age {:match-multiple :all})
                joe-age-id))
     (is (check (item-referent-given-inherited
-                joe-age {:match-all true :subject-referent joe-id})
+                joe-age {:match-multiple :all :subject-referent joe-id})
                (elements-referent joe-age-id joe-id)))
     (is (check (item-referent-given-inherited
                 joe-age  {:subject-referent (union-referent [joe-id])})
@@ -192,25 +192,25 @@
       ;; match-all doesn't care about competitors
       (is (check (item-referent-given-inherited
                   (description->entity joe-age-id store)
-                  {:match-all true :subject-referent joe-id})
+                  {:match-multiple :all :subject-referent joe-id})
                  (elements-referent joe-age-id joe-id)))
       ;; match-all-exclusive does care about competitors.
       (is (check (item-referent-given-inherited
                   (description->entity joe-age-id store)
-                  {:match-all-exclusive true :subject-referent joe-id})
+                  {:match-multiple :exclusive :subject-referent joe-id})
                  (exclusive-elements-referent
                   joe-age-id joe-id [joe-fake-age-id])))
       ;; Check that the less specific is not competing with the more specific
       (is (check (item-referent-given-inherited
                   (description->entity joe-fake-age-id store)
-                  {:match-all-exclusive true :subject-referent joe-id})
+                  {:match-multiple :exclusive :subject-referent joe-id})
                  (elements-referent joe-fake-age-id joe-id)))
       ;; Check that the sibling is still competing if neither sibling is
       ;; more specific.
       (let [[store _] (add-entity store joe-age-id '("true" :tag))]
         (is (check (item-referent-given-inherited
                     (description->entity joe-age-id store)
-                    {:match-all-exclusive true :subject-referent joe-id})
+                    {:match-multiple :exclusive :subject-referent joe-id})
                    (exclusive-elements-referent
                   joe-age-id joe-id [joe-fake-age-id]))))))) 
 

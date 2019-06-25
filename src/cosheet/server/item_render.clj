@@ -603,7 +603,12 @@
             (item-content-and-elements-DOM-R
              item content all-elements false
              (update inherited :key-prefix #(conj % (:item-id item)))))
-        (label-stack-DOM-R example-elements inherited)))))
+        (label-stack-DOM-R example-elements
+                           ;; A generic label could match many, which we don't
+                           ;; want. Rather than find all the competing labels
+                           ;; of all our children, don't match multiple at all.
+                           ;; TODO: Actually do go through all the children.
+                           (dissoc inherited :match-multiple))))))
 
 (defn element-hierarchy-child-info
   "Generate the function-info and inherited for children of

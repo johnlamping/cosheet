@@ -76,14 +76,13 @@
        (into [:div {:class "horizontal-label-sequence"}]
              child-doms)])))
 
-;; While :match-all-exclusive is set in our inherited, to properly
-;; handle exemplars of an item, for these nodes, we want to match
-;; everything, except that a column selector without its own
-;; properties is competed with by any children.
 (defn horizontal-label-hierarchy-node-referent-f
   "Return the referent to use for the the node,
    given parent-excluding-cover, the excluding cover of its parent."
   [parent-excluding-cover node inherited]
+  ;; We want to match the same items a column header would match,
+  ;; which means everything, except that a column selector without its own
+  ;; properties is competed with by any children.
   (let [subject-ref (:subject-referent inherited) ]
     (if (and (empty? (:properties node)) 
              (not (empty? parent-excluding-cover)))
@@ -92,7 +91,8 @@
        (union-referent-if-needed
         (map #(elements-referent (:item %) subject-ref)
              parent-excluding-cover)))
-      (hierarchy-node-items-referent node (assoc inherited :match-all true)))))
+      (hierarchy-node-items-referent
+       node (assoc inherited :match-multiple :all)))))
 
 (defn horizontal-label-child-info
   "Update :referent-f in the function-info, giving how to compute the
@@ -180,7 +180,7 @@
       [virtual-dom (batch-row-selector-virtual-DOM-R
                     row-selector store inherited)
        ;; We need to take the current versions of the query elements,
-       ;; as :match-all only works with immutable items.
+       ;; as :match-multiple only works with immutable items.
        current-query-elements
        (expr-seq map #(entity/updating-call-with-immutable % identity)
                  (semantic-elements-R row-selector))
@@ -239,8 +239,10 @@
                     row-selector store inherited)
            inner-dom (cond
                        elements-item
-                       (let [inherited (assoc inherited :match-all-exclusive
-                                              true)]
+                       ;; For elements of our items, we want to match all
+                       ;; exclusively matched elements.
+                       (let [inherited (assoc inherited :match-multiple
+                                              :exclusive)]
                          (expr-let [elements-dom (horizontal-label-DOM-R
                                                   elements-item inherited)]
                            [:div {:class "batch-stack-wrapper"}

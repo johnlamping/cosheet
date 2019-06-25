@@ -263,16 +263,17 @@
 (defn item-referent-given-inherited
   "Return the proper referent for the item, given inherited."
   [item inherited]
-  (let [subject-referent (:subject-referent inherited)]
-    (if (or (:match-all inherited) (:match-all-exclusive inherited))
+  (let [subject-referent (:subject-referent inherited)
+        multiple (:match-multiple inherited)]
+    (if multiple
       (let [item-ref (item-referent item)]
         (assert (satisfies? entity/StoredEntity item))
         (assert (not (entity/mutable-entity? item)))
         (if (nil? subject-referent)
           item-ref
-          ;; if :match-all-exclusive is set, we don't match items that
-          ;; are matched by siblings.
-          (let [competing (when (:match-all-exclusive inherited)
+          ;; if :match-multiple is :exclusive, we don't match items
+          ;; that are matched by siblings that are more general than us.
+          (let [competing (when (= multiple :exclusive)
                             (competing-siblings item))]
             (if (empty? competing)
               (elements-referent item-ref subject-referent)

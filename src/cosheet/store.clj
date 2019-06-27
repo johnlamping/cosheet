@@ -109,12 +109,17 @@
   (track-modified-ids [this]
     "Record the ids that have been modified.")
 
-  (valid-undo-point? [this]
-    "Return whether this store is a valid state for undoing to.")
+  (equivalent-undo-point? [this]
+    "Return whether this store is equivalent to the previous store as
+     an undo point. An undo/redo goes to the nearest store not equivalent to
+     the current one. This means that undo followed by redo won't
+     return the same store if it started at a later in a sequence of equivalent
+     ones.")
 
-  (update-valid-undo-point [this valid]
-    "Set whether this store is a valid state for undoing to. The validity
-     persists through other changes until explicitly changed.")
+  (update-equivalent-undo-point [this equivalent]
+    "Set whether this store is equivalent to the previous store as
+     an undo point. This state persists through other changes until
+     explicitly changed.")
 
   (fetch-and-clear-modified-ids [this]
     "Clear the record of modified ids.

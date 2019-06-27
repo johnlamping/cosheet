@@ -51,8 +51,8 @@
     8
     :modified-ids
     nil
-    :valid-undo-point
-    true}))
+    :equivalent-undo-point
+    false}))
 
 (def test-implicit-content (->ImplicitContentId (make-id "2")))
 
@@ -346,9 +346,11 @@
     (is (not (= id1 id2)))))
 
 (deftest valid-undo-point-test
-  (is (valid-undo-point? test-store))
-  (is (valid-undo-point? (update-valid-undo-point test-store true)))
-  (is (not (valid-undo-point? (update-valid-undo-point test-store false)))))
+  (is (not (equivalent-undo-point? test-store)))
+  (is (equivalent-undo-point?
+       (update-equivalent-undo-point test-store true)))
+  (is (not (equivalent-undo-point?
+            (update-equivalent-undo-point test-store false)))))
 
 (deftest write-read-test
   (let [store (first

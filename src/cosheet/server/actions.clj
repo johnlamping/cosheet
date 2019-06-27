@@ -6,7 +6,7 @@
                    swap-control-return! equivalent-atoms?]]
     [state-map :refer [state-map-get-current-value state-map-reset!
                        state-map-swap-control-return!]]
-    [store :refer [update-content update-valid-undo-point
+    [store :refer [update-content update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    do-update-control-return!
                    id->subject id-valid? undo! redo! current-store]]
@@ -314,11 +314,12 @@
           (reduce (fn [s selector]
                     (remove-entity-by-id s (:item-id selector)))
                   store current-batch-selectors)
-          (update-valid-undo-point
+          (update-equivalent-undo-point
            (reduce (fn [s selector]
                      (first (add-entity s temporary-id selector)))
                    store new-batch-selectors)
-           false))))))
+
+           true))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client
@@ -339,7 +340,8 @@
   [store-modifier handler & args]
   (store-modifier
    (fn [store]
-     (let [result (apply handler (update-valid-undo-point store true) args)]
+     (let [result (apply handler
+                         (update-equivalent-undo-point store false) args)]
        (if result
          (if (satisfies? cosheet.store/Store result)
            [result {:store result}]

@@ -9,8 +9,7 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   do-update-control-return! declare-temporary-id
-                   update-valid-undo-point]]
+                   do-update-control-return! declare-temporary-id]]
     store-impl
     mutable-store-impl
     [store-utils :refer [add-entity]]

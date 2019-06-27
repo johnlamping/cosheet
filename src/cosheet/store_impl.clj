@@ -378,8 +378,8 @@
    ;;; has been called.
    modified-ids
 
-   ;;; Whether this store state is a valid undo point. (Starts out true.)
-   valid-undo-point
+   ;;; Whether this store state is a equivalent do point. (Starts out false.)
+   equivalent-undo-point
    ]
 
   Store
@@ -474,11 +474,11 @@
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))
 
-  (valid-undo-point? [this]
-    (:valid-undo-point this))
+  (equivalent-undo-point? [this]
+    (:equivalent-undo-point this))
 
-  (update-valid-undo-point [this valid]
-    (assoc this :valid-undo-point valid))
+  (update-equivalent-undo-point [this equivalent]
+    (assoc this :equivalent-undo-point equivalent))
 
   (fetch-and-clear-modified-ids [this]
     [(assoc this :modified-ids #{})
@@ -552,7 +552,7 @@
                           :subject->label->ids {}
                           :next-id 0
                           :modified-ids nil
-                          :valid-undo-point true}))
+                          :equivalent-undo-point false}))
 
 (defmethod make-id true [id]
   ;;Integers are reserved for the store

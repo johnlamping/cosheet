@@ -29,8 +29,10 @@
 
 (deftest test-store
   (let [[store element]
-        (add-entity (new-element-store) nil '(77 ("test" :label)
-                                                 ("Fred" ("by" :label))))
+        (add-entity (new-element-store)
+                    nil '(77 ("test" :label)
+                             ("Fred" ("by" :label))))
+        initial-store (track-modified-ids store)
         queue (new-priority-task-queue 0)
         mutable-store (new-mutable-store store queue)
         modified-store (update-content store element 99)]
@@ -46,7 +48,7 @@
     (is (= (get-value (id->content-reference mutable-store element))
            (id->content-reference store element)))
     (is (= (get-value (call-dependent-on-id mutable-store element identity))
-           (track-modified-ids store)))
+           initial-store))
     (is (= (get-value (candidate-matching-ids mutable-store 77))
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))
@@ -67,7 +69,7 @@
       (set-attendee! candidate-ids :a 0 callback "arg")
       (set-attendee! tracking-store :a 0 callback "arg")
       (run-all-pending-tasks queue)
-      (is (= (value tracking-store) (track-modified-ids store)))
+      (is (= (value tracking-store) initial-store))
       (reset-store! mutable-store modified-store)
       (run-all-pending-tasks queue)
       (is (= (value tracking-store) (track-modified-ids modified-store)))
@@ -76,13 +78,15 @@
       (let [[store1 e] (add-simple-element store element "foo")
             [store2 _] (add-simple-element store1 e :label)
             store3 (declare-temporary-id store2 e)
-            revised-store (update-content store3 element 88)
+            revised-store (update-content store3 element 77)
             me (add-simple-element! mutable-store element "foo")
-            _ (do-update! mutable-store #(update-valid-undo-point % false))
             me1 (add-simple-element! mutable-store me :label)
-            _ (do-update! mutable-store #(update-valid-undo-point % true))
+            _ (do-update! mutable-store #(update-equivalent-undo-point % true))
             _ (declare-temporary-id! mutable-store me)
-            _ (update-content! mutable-store element 88)]
+            _ (update-content! mutable-store element 88)
+            _ (do-update! mutable-store #(update-equivalent-undo-point % false))
+            _ (update-content! mutable-store element 99)
+            _ (update-content! mutable-store element 77)]        
         (run-all-pending-tasks queue)
         (is (= (value content) (id->content revised-store element)))
         (is (= (value implicit-content)
@@ -93,10 +97,15 @@
                (set (id-label->element-ids revised-store element :label))))
         (is (= (set (value candidate-ids))
                (set (candidate-matching-ids revised-store nil))))
-        (is (= (value tracking-store)
+        (is (check (value tracking-store)
                (track-modified-ids revised-store)))
         
         ;; Test undo and redo.
+        
+        (is (can-undo? mutable-store))
+        (undo! mutable-store)
+        (is (can-undo? mutable-store))
+        (undo! mutable-store)
         (is (can-undo? mutable-store))
         (undo! mutable-store)
         (is (can-undo? mutable-store))
@@ -114,6 +123,10 @@
                (set (candidate-matching-ids store nil))))
         (is (= (value tracking-store)
                (track-modified-ids modified-store)))
+        (is (can-redo? mutable-store))
+        (redo! mutable-store)
+        (is (can-redo? mutable-store))
+        (redo! mutable-store)
         (is (can-redo? mutable-store))
         (redo! mutable-store)
         (is (can-redo? mutable-store))
@@ -136,6 +149,8 @@
         ;; of the reporters, and then changing back to the original store.
         (set-attendee! label-ids :a)
         (set-attendee! label-ids :demand)
+        (undo! mutable-store)
+        (undo! mutable-store)
         (undo! mutable-store)
         (is (can-redo? mutable-store))
         (remove-simple-id! mutable-store me)

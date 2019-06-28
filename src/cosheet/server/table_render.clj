@@ -194,12 +194,12 @@
   "Set the batch edit ids in inherited to be the ones appropriate for
    items that span this node or that don't have any properties of their own."
   [node inherited]
-  (let [cleaned (remove-inherited-attribute inherited :batch-edit-id)]
+  (let [cleaned (remove-inherited-attribute inherited :batch-edit-ids)]
     (if (and (empty? (:properties node))
              (not= (seq (:attributes cleaned)) (seq (:attributes inherited))))
       ;; We have no hierarchy properties of our own, so we refer to whatever
       ;; our sibling column's don't, and we need to keep the
-      ;; batch-edit-id that our parent set, if there was one.
+      ;; batch-edit-ids that our parent set, if there was one.
       inherited
       (-> cleaned
           (add-inherited-attribute

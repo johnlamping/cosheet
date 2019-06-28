@@ -115,8 +115,10 @@
           name2 (first (current-value (label->elements c2 :tag)))
           name2-tag-spec (first (current-value (entity/elements name2)))
           c3 (first (current-value (label->elements query o3)))
+          c4 (first (current-value (label->elements query o4)))
           c6 (first (current-value (label->elements query o6)))
           c7 (first (current-value (label->elements query o7)))
+          c2-c3-c4-ids [(:item-id c2) (:item-id c3) (:item-id c4)]
           table-key [:foo (:item-id table)]
           row-template '(anything (anything ("age" :tag)) :top-level)
           row-condition (list (item-referent query)
@@ -226,7 +228,69 @@
                                  :template '("" ("single" :tag))}
                         :key (conj table-key (:item-id c1) :content)}
                   " ..."]]]
-               (any)
+               [:div
+                {:class "column-header tag"}
+                [:div {:batch-edit-ids (as-set c2-c3-c4-ids)
+                       :add-column (any)
+                       :class "content-text editable item tag with-children",
+                       :target (any)
+                       :key (any)}
+                 "name"]
+                [:div {:class "column-header-sequence"}
+                 [:div {:class (str "tag wrapped-element virtual-wrapper"
+                                    " merge-with-parent column-header leaf")}
+                  [:div {:batch-edit-ids (as-set c2-c3-c4-ids)
+                         :add-column (any)
+                         :delete-column (any)
+                         :class "editable tag merge-with-parent"
+                         :key (any)
+                         :target (any)}]
+                  [:div {:class "indent-wrapper tag"}
+                   [:div {:batch-edit-ids (as-set c2-c3-c4-ids)
+                          :add-column (any)
+                          :delete-column (any)
+                          :add-twin (any)
+                          :delete {:clear-only true}
+                          :class "placeholder content-text editable item"
+                          :target (any)
+                          :key (any)}
+                    " ..."]]]
+                 [:div {:class "wrapped-element tag column-header leaf"}
+                  [:div {:batch-edit-ids [(:item-id c3)]
+                         :add-column (any)
+                         :delete-column (any)
+                         :class "content-text editable item tag"
+                         :target (any)
+                         :key (any)}
+                   "id"]
+                  [:div {:class "indent-wrapper"}
+                   [:div {:batch-edit-ids [(:item-id c3)]
+                          :add-column (any)
+                          :delete-column (any)
+                          :add-twin (any)
+                          :delete (any)
+                          :class "placeholder content-text editable item"
+                          :target (any)
+                          :key (any)}
+                    " ..."]]]
+                 [:div {:class (str "tag wrapped-element virtual-wrapper"
+                                    " merge-with-parent column-header leaf")}
+                  [:div {:batch-edit-ids (as-set c2-c3-c4-ids)
+                         :add-column (any)
+                         :delete-column (any)
+                         :class "editable tag merge-with-parent"
+                         :key (any)
+                         :target (any)}]
+                  [:div {:class "indent-wrapper tag"}
+                   [:div {:batch-edit-ids (as-set c2-c3-c4-ids)
+                          :add-column (any)
+                          :delete-column (any)
+                          :add-twin {:referent nil}
+                          :delete {:clear-only true}
+                          :class "placeholder content-text editable item"
+                          :target (any)
+                          :key (any)}
+                    " ..."]]]]]
                (any)
                (any)
                ;; A column with no label, but content and a sub-element.
@@ -238,8 +302,7 @@
                        :class "editable tag"
                        :key (conj table-key (:item-id c7) :virtual)
                        :target (any)
-                       :batch-edit-ids [(:item-id c7)]
-                       }]
+                       :batch-edit-ids [(:item-id c7)]}]
                 ;;; The content and sub-element.
                 [:div {:class "indent-wrapper tag"}
                  [:div {:class "item with-elements"

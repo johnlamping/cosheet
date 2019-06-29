@@ -27,7 +27,7 @@
                                    virtual-referent-DOM
                                    hierarchy-node-DOM-R
                                    hierarchy-node-items-referent]]
-             [model-utils :refer [semantic-elements-R table-header-template
+             [model-utils :refer [semantic-elements-R
                                   visible-non-labels-R visible-elements-R]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [add-labels-DOM
@@ -145,7 +145,7 @@
                                 `(~'anything ~invisible)
                                 (item-referent query-item))
         headers-virtual-referent (virtual-referent
-                                  (concat table-header-template [invisible])
+                                  ""
                                   (table-headers-referent query-item))
         matches-virtual-referent (virtual-referent
                                   `("" ~invisible)

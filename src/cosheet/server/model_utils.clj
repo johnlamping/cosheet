@@ -156,22 +156,6 @@
   [item]
   (updating-call-with-immutable item item->canonical-semantic))
 
-(defn visible-item?-R
-  "Return true if an item should be visible information."
-  [entity]
-  (expr-let [semantic (semantic-element?-R entity)
-             elements (elements entity)
-             element-contents (expr-seq map content elements)]
-    (and semantic
-         (not-any? #{:invisible} element-contents))))
-
-(defn visible-elements-R
-  "Return the elements of an entity that are visible information about it."
-  [entity]
-  (expr-let [semantic (semantic-elements-R entity)
-             invisible (label->elements entity :invisible)]
-    (remove (set invisible) semantic)))
-
 (defn split-out-labels-R
   "Given a list of items, return two lists:
    those that are labels and those that aren't."
@@ -185,48 +169,17 @@
                                 pairs))]
       [labels non-labels])))
 
-(defn visible-labels-R
-  "Return the elements of an entity that are visible labels about it."
+(defn semantic-labels-R
+  "Return the elements of an entity that are semantic labels about it."
   [entity]
-  (expr-filter visible-item?-R (matching-elements '(nil :tag) entity)))
+  (expr-filter semantic-element?-R (matching-elements '(nil :tag) entity)))
 
-(defn visible-non-labels-R
-  "Return the visible elements of an entity that are not labels."
+(defn semantic-non-labels-R
+  "Return the semantic elements of an entity that are not labels."
   [entity]
-  (expr-let [elements (visible-elements-R entity)
+  (expr-let [elements (semantic-elements-R entity)
              split (split-out-labels-R elements)]
      (second split)))
-
-(defn immutable-visible-to-list
-  "Given an immutable item, make a list representation of the
-  visible information of the item."
-  [item]
-  (if (atom? item)
-    (content item)
-    (let [content (content item)
-          elements (visible-elements-R item)
-          content-visible (immutable-visible-to-list content)
-          element-visibles (map immutable-visible-to-list elements)]
-      (if (empty? element-visibles)
-        content-visible
-        (apply list (into [content-visible] element-visibles))))))
-
-(defn visible-to-list-R
-  "Given an item, make a list representation of the
-  semantic information of the item."
-  [item]
-  (updating-call-with-immutable item immutable-visible-to-list))
-
-(defn item->canonical-visible
-  "Return the canonical form of the semantic information for the item.
-  Only works on immutable items."
-  [item]
-  (canonicalize-list (immutable-visible-to-list item)))
-
-(defn item->canonical-visible-R
-  "Return the canonical form of the semantic information for the item."
-  [item]
-  (updating-call-with-immutable item item->canonical-visible))
 
 (defn selector?
   "Return whether the item is (or is part of) a selector."

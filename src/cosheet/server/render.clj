@@ -14,7 +14,7 @@
                                item-referent?]]
              [instantiate :refer [instantiate-referent]]
              [model-utils :refer [tabs-holder-item-R first-tab-R
-                                  visible-item?-R semantic-to-list-R]]
+                                  semantic-element?-R semantic-to-list-R]]
              [render-utils :refer [make-component]]
              [item-render :refer [item-DOM-R]]
              [table-render :refer [table-DOM-R]]
@@ -27,16 +27,12 @@
 ;;; most functions don't take reporters as arguments, but may return
 ;;; reporters. Their names have a suffix of -R.
 
-;;; For a basic entity, we show its contents and its visible semantic
+;;; For a basic entity, we show its contents and its semantic
 ;;; elements. We don't show its non-semantic elements. Two independent
 ;;; properties each idependently characterize semantic elements:
 ;;;   * They have a content other than a number, string, :tag, 'anything,
 ;;;     or 'anything-immutable.
 ;;;   * The have a content of :tag or have an element with label :order
-;;; We also don't show its invisible elements, which are identified by having
-;;; :invisible elements. An invisible element in a condition requires
-;;; that any match to the condition also has a matching element, while
-;;; non-semantic elements in conditions are ignored.
 ;;; An element may be marked as a tag by having an element whose
 ;;; content is :tag. This make that element displayed like a tag, so
 ;;; the :tag mark is semantic.
@@ -46,8 +42,6 @@
 ;;; So, for example, the entity:
 ;;;    ("Joe"
 ;;;        ("married" (->Orderable 1 2) :order)
-;;;        ("spy" :invisible
-;;;               ((->Orderable 3 4 :order))
 ;;;        (39 ((->Orderable 5 6) :order)
 ;;;            ("age" :tag)
 ;;;            "doubtful"))
@@ -193,7 +187,7 @@
                                 (or subject-ref
                                     (when-let [subject (subject item)]
                                       (when (current-value
-                                             (visible-item?-R subject))
+                                             (semantic-element?-R subject))
                                         (item-referent subject))))))
               inherited (cond-> inherited
                           subject-ref

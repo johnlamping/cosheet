@@ -10,9 +10,9 @@
                       :refer [into-attributes add-attributes]]
                      [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet.server
-             [model-utils :refer [visible-elements-R visible-item?-R
+             [model-utils :refer [semantic-elements-R semantic-element?-R
                                   split-out-labels-R
-                                  visible-non-labels-R visible-labels-R]]
+                                  semantic-non-labels-R semantic-labels-R]]
              [referent :refer [item-referent virtual-referent]]
              [hierarchy :refer [replace-hierarchy-leaves-by-nodes
                                 hierarchy-node-descendants
@@ -372,7 +372,7 @@
   [elements must-show-labels implied-template direction inherited]
   (expr-let
       [ordered-elements (order-items-R elements)
-       all-labels (expr-seq map visible-labels-R ordered-elements)
+       all-labels (expr-seq map semantic-labels-R ordered-elements)
        excludeds (expr-seq map #(when implied-template
                                   (condition-satisfiers-R % implied-template))
                            ordered-elements)]
@@ -516,7 +516,7 @@
           inherited
           (conj (:key-prefix inherited) (:item-id item)) referent)]
      (expr-let [content (entity/content item)
-                elements (visible-elements-R item)
+                elements (semantic-elements-R item)
                 dom (item-content-and-non-label-elements-DOM-R
                      content (remove (set excluded-elements) elements)
                      inherited-down)]
@@ -540,7 +540,7 @@
             (add-inherited-attribute
              [#{:label} #{:content} {:expand {:referent referent}}]))]
     (expr-let [content (entity/content item)
-               elements (visible-elements-R item)
+               elements (semantic-elements-R item)
                dom (if do-not-show-content
                      (labels-and-elements-DOM-R
                       elements nil must-show-label true :vertical
@@ -560,7 +560,7 @@
   (let [example-elements (hierarchy-node-example-elements node) 
         item (:item (first (hierarchy-node-logical-leaves node)))
         content (when item (entity/content item))
-        non-labels (when item (visible-non-labels-R item))
+        non-labels (when item (semantic-non-labels-R item))
         node-referent (if referent-f
                         (referent-f node inherited)
                         (hierarchy-node-items-referent node inherited))

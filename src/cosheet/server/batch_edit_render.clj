@@ -27,8 +27,7 @@
                                    virtual-referent-DOM
                                    hierarchy-node-DOM-R
                                    hierarchy-node-items-referent]]
-             [model-utils :refer [semantic-elements-R
-                                  visible-non-labels-R visible-elements-R]]
+             [model-utils :refer [semantic-elements-R]]
              [order-utils :refer [order-items-R]]
              [item-render :refer [add-labels-DOM
                                   item-DOM-R
@@ -119,12 +118,12 @@
 ;;; The subject referent should give the match to the rows, to the headers,
 ;;; and to the items that specify the pattern.
 (defn horizontal-label-DOM-R
-  "Generate DOM for a horizontal layout of the visible elements of the item,
+  "Generate DOM for a horizontal layout of the semantic elements of the item,
    with their labels shown in a hierarchy above them."
   [item inherited]
   (entity/updating-with-immutable
    [immutable-item item]
-   (let [elements (order-items-R (visible-elements-R immutable-item))
+   (let [elements (order-items-R (semantic-elements-R immutable-item))
          hierarchy (-> (hierarchy-by-labels-R elements)
                        replace-hierarchy-leaves-by-nodes)
          doms (map #(horizontal-label-top-level-subtree-DOM % inherited)
@@ -138,33 +137,18 @@
   ;;       and of table headers.
   [query-item store inherited]
   (let [[unique _] (get-unique-number (current-store store))
-        invisible `(~unique
-                    :invisible
-                    :temporary)
-        query-virtual-referent (virtual-referent
-                                `(~'anything ~invisible)
-                                (item-referent query-item))
-        headers-virtual-referent (virtual-referent
-                                  ""
-                                  (table-headers-referent query-item))
-        matches-virtual-referent (virtual-referent
-                                  `("" ~invisible)
-                                  (top-level-items-referent query-item))
-        tag-referent (union-referent
-                      [(virtual-referent
-                        '(anything :tag) query-virtual-referent)
-                       (virtual-referent
-                        '("" :tag) headers-virtual-referent)
-                       (virtual-referent
-                        '("" :tag) matches-virtual-referent)])
+        subject-referent (union-referent
+                          [(item-referent query-item)
+                           (table-headers-referent query-item)
+                           (top-level-items-referent query-item)])
         dom (virtual-referent-DOM
-             (union-referent [query-virtual-referent
-                              headers-virtual-referent
-                              matches-virtual-referent])
+             (virtual-referent '(anything (anything :tag)) subject-referent)
              inherited)
         tag-dom (add-attributes
                  (virtual-referent-DOM
-                  tag-referent
+                  (virtual-referent
+                      '(anything :tag)
+                      (virtual-referent 'anything subject-referent))
                   (-> inherited
                       (update :key-prefix #(conj % :tags))
                       (assoc :select-pattern (conj (:key-prefix inherited)

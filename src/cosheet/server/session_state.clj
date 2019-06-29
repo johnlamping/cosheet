@@ -21,7 +21,7 @@
    (cosheet.server
     [order-utils :refer [update-add-entity-adjacent-to  order-element-for-item]]
     [model-utils :refer [starting-store add-table first-tab-R
-                         specialize-template visible-item?-R]]
+                         specialize-template semantic-element?-R]]
     [format-convert :refer [convert-to-current]]
     [referent :refer [item-referent referent->exemplar-and-subject
                       string->referent referent->string]]
@@ -312,7 +312,7 @@
                         (referent->exemplar-and-subject referent)
                         item (first (instantiate-referent
                                      referent immutable-store))]
-                    (when (and item (current-value (visible-item?-R item)))
+                    (when (and item (current-value (semantic-element?-R item)))
                       [referent subject-ref])))))
             (let [tab (first-tab-R immutable-store)]
               [(when tab (item-referent tab)) nil]))]

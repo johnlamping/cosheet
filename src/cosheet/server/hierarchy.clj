@@ -7,9 +7,9 @@
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
             (cosheet.server
-             [model-utils :refer [item->canonical-visible-R
+             [model-utils :refer [item->canonical-semantic-R
                                   item->fixed-term-with-negations
-                                  visible-elements-R visible-labels-R]]
+                                  semantic-elements-R semantic-labels-R]]
              [referent :refer [union-referent-if-needed
                                item-referent item-or-exemplar-referent]])))
 
@@ -188,7 +188,7 @@
 ;;; The following code assumes that the leaves of a hierarchy are maps,
 ;;; containing at least the following:
 ;;;                :item  The item that corresponds to the leaf.
-;;; :property-canonicals  A list of canonical-visible for each element in
+;;; :property-canonicals  A list of canonical-semantic for each element in
 ;;;                       :property-elements. These are the properties
 ;;;                       of the leaf in the hierarchy.
 ;;;   :property-elements  The elements of the item that contribute
@@ -209,7 +209,7 @@
   "Given an item and a seq of elements of the item that characterize how
    it should fit in a hierarchy, return an item info map."
   [item elements]
-  (expr-let [canonicals (expr-seq map item->canonical-visible-R elements)]
+  (expr-let [canonicals (expr-seq map item->canonical-semantic-R elements)]
        {:item item
         :property-elements elements
         :property-canonicals canonicals}))
@@ -225,7 +225,7 @@
   "Given a sequence of items, generate a hierarchy based on all their elements."
   [items]
   (expr-let
-      [items-elements (expr-seq map visible-elements-R items)
+      [items-elements (expr-seq map semantic-elements-R items)
        item-maps (item-maps-by-elements-R items items-elements)]
     (hierarchy-by-canonical-info item-maps)))
 
@@ -233,7 +233,7 @@
   "Given a sequence of items, generate a hierarchy based on all their labels."
   [items]
   (expr-let
-      [items-labels (expr-seq map visible-labels-R items)
+      [items-labels (expr-seq map semantic-labels-R items)
        item-maps (item-maps-by-elements-R items items-labels)]
     (hierarchy-by-canonical-info item-maps)))
 

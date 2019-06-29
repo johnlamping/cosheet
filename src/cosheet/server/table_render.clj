@@ -25,12 +25,9 @@
                                 hierarchy-node-example-elements
                                 hierarchy-node-non-immediate-descendant-cover]]
              [order-utils :refer [order-items-R add-order-elements]]
-             [model-utils :refer [immutable-visible-to-list
+             [model-utils :refer [immutable-semantic-to-list
+                                  semantic-elements-R semantic-non-labels-R
                                   semantic-to-list-R
-                                  immutable-semantic-to-list
-                                  semantic-elements-R
-                                  visible-elements-R visible-non-labels-R
-                                  visible-to-list-R
                                   table-header-template
                                   pattern-to-query query-to-template]]
              [render-utils :refer [make-component virtual-element-DOM
@@ -50,13 +47,13 @@
                                   horizontal-label-hierarchy-node-DOM
                                   element-hierarchy-child-info]])))
 
-;;; The condition elements of a table are its visible elements
+;;; The condition elements of a table are its semantic elements
 ;;; that are not column headers.
 (defn table-condition-elements-R [row-condition-item]
   (expr-let
-      [visible-elements (visible-elements-R row-condition-item)
+      [semantic-elements (semantic-elements-R row-condition-item)
        column-elements (entity/label->elements row-condition-item :column)]
-    (remove (set column-elements) visible-elements)))
+    (remove (set column-elements) semantic-elements)))
 
 ;;; This function is here, rather than in actions, because it knows about
 ;;; the structure of tables.
@@ -74,7 +71,7 @@
   ;; Then we return the appropriate thing for that situation.
   (let [row-condition
         (concat '(anything)
-                (map immutable-visible-to-list
+                (map immutable-semantic-to-list
                      (table-condition-elements-R immutable-row-condition-item))
                 [:batch-row-selector])
         selectors
@@ -82,7 +79,7 @@
           ;; We are told what items to show.
           [row-condition
                (concat '(anything)
-                       (map immutable-visible-to-list batch-edit-items)
+                       (map immutable-semantic-to-list batch-edit-items)
                        [:batch-elements])]
           (loop [item immutable-item]
             (let [parent-item (entity/subject item)]
@@ -92,7 +89,7 @@
                 ;; an element of the rows.
                 [row-condition
                  `(~'anything
-                   ~(immutable-visible-to-list item) :batch-elements)]
+                   ~(immutable-semantic-to-list item) :batch-elements)]
                 (seq (matching-elements :row-condition item))
                 ;; The item is part of the row condition. We just show that.
                 [row-condition]
@@ -444,7 +441,7 @@
    return the query that items in cells of the column must satisfy.
    (Not worrying about exclusions.)"
   [leaf]
-  (pattern-to-query (immutable-visible-to-list (:item leaf))))
+  (pattern-to-query (immutable-semantic-to-list (:item leaf))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,

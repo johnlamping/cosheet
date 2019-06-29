@@ -12,7 +12,8 @@
                      [store :as store :refer [id-valid? update-content]]
                      [store-utils :refer [add-entity]]
                      [query :refer [matching-elements matching-items
-                                    extended-by?]])
+                                    extended-by?]
+                      :as query])
             (cosheet.server
              [referent :refer [referent? item-referent? virtual-referent?
                                union-referent? virtual-union-referent?
@@ -88,21 +89,28 @@
    to be met."
   [c1 c2]
   (cond
-    (nil? c1) c2
-    (nil? c2) c1
-    true (let [merged-content (or (content c1) (content c2))]
-           ;; Our current implementation requires c1 and c2 to have compatible
-           ;; contents and disjoint elements.
-           ;; Check that that is the case.
-           (assert (and (extended-by? (content c1) merged-content)
-                        (extended-by? (content c2) merged-content)
-                        (every? #(empty? (matching-elements % c2))
-                                (elements c1))
-                        (every? #(empty? (matching-elements % c1))
-                                (elements c2)))
-                   [c1 c2 merged-content])
-           (add-elements-to-entity-list merged-content
-                                        (concat (elements c1) (elements c2))))))
+    (and (extended-by? c1 c2)
+         (not-any? #(= (content %) ::query/special-form)
+                   (elements c1)))
+    c2
+    (and (extended-by? c2 c1)
+         (not-any? #(= (content %) ::query/special-form)
+                   (elements c2)))
+    c1
+    true
+    (let [merged-content (or (content c1) (content c2))]
+      ;; Our current implementation requires c1 and c2 to have compatible
+      ;; contents and disjoint elements.
+      ;; Check that that is the case.
+      (assert (and (extended-by? (content c1) merged-content)
+                   (extended-by? (content c2) merged-content)
+                   (every? #(empty? (matching-elements % c2))
+                           (elements c1))
+                   (every? #(empty? (matching-elements % c1))
+                           (elements c2)))
+              [c1 c2 merged-content])
+      (add-elements-to-entity-list merged-content
+                                   (concat (elements c1) (elements c2))))))
 
 (defn best-exemplar
   "Return the element of the subject best matching the condition and 

@@ -94,6 +94,15 @@
           (expand-pattern-items `(~(item-referent jane) 1 (2 3)) store))
          (canonicalize-list '("Jane" "female" (45 ("age" :tag)) 1 (2 3))))))
 
+(deftest merge-conditions-test
+  (is (= (merge-conditions nil '(:a :b)) '(:a :b)))
+  (is (= (merge-conditions '(:a :b) nil) '(:a :b)))
+  (is (= (merge-conditions '(nil :b) '(:a :b)) '(:a :b)))
+  (is (= (merge-conditions '(:a :b) '(:a :b)) '(:a :b)))
+  (is (= (merge-conditions '(nil :c) '(:a :b)) '(:a :c :b)))
+  (is (= (merge-conditions `(nil ~(not-query :c)) '(:a :b))
+         `(:a ~(not-query :c) :b))))
+
 (deftest instantiate-referent-test
   (let [referent (item-referent joe)]
     (is (= (instantiate-referent referent store) [joe])))

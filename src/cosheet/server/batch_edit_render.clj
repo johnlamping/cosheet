@@ -154,13 +154,12 @@
                       [(virtual-referent
                         '(anything :tag) query-virtual-referent)
                        (virtual-referent
-                        '(anything :tag) headers-virtual-referent)
+                        '("" :tag) headers-virtual-referent)
                        (virtual-referent
                         '("" :tag) matches-virtual-referent)])
-        ;; If we are setting the content, then don't add to headers, since
-        ;; their content must always be 'anything-immutable.
         dom (virtual-referent-DOM
              (union-referent [query-virtual-referent
+                              headers-virtual-referent
                               matches-virtual-referent])
              inherited)
         tag-dom (add-attributes

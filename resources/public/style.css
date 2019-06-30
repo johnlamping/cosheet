@@ -85,9 +85,14 @@ body {
 
 /* Override other min-width values. */
 .content-text.content-text.content-text.content-text {
-    min-height: 20px;
+    min-height: 28px;
     min-width: 50px;
     overflow-wrap: break-word;
+}
+
+/* Override other min-width values. */
+.content-text.content-text.content-text.content-text.placeholder {
+    min-height: 14px;
 }
 
 .content-text.placeholder {

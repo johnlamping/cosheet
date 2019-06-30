@@ -88,6 +88,8 @@ body {
     min-height: 28px;
     min-width: 50px;
     overflow-wrap: break-word;
+    font-size: small;
+    font-family: sans-serif;
 }
 
 /* Override other min-width values. */

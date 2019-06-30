@@ -203,7 +203,7 @@
   [inherited]
   (-> inherited
       (transform-inherited-attributes :label)
-      (assoc :template '(anything :tag))))
+      (assoc :template (list (:elements-template inherited) :tag))))
 
 ;;; DOM creators that are used by several files.
 

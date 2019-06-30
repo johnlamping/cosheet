@@ -141,7 +141,9 @@
                            ; as item-referent-given-inherited only supports
                            ; this for immutable items.
               :template "" ; The template that the twins of this dom
-                           ; must satisfy.
+                                        ; must satisfy.
+ :elements-template 'anything ; elements should use this
+;                               as the template for their content.
 ;             :attributes  ; A set of attribute descriptions that parts
                            ; of the dom should have. Typically,
                            ; these are targets like row. See the comment in

@@ -37,7 +37,8 @@
 (deftest table-DOM-test
   (let [inherited {:priority 1
                    :width 3.0
-                   :key-prefix [:foo]}
+                   :key-prefix [:foo]
+                   :elements-template 'anything}
         joe-list `("Joe"
                    :top-level
                    (~o2 :order)
@@ -357,7 +358,7 @@
                               (item-referent query)
                               (item-referent c7))
                    :exclusions nil}]
-                 {:priority 3 :width 3.0 :key-prefix table-key}]]
+                 (assoc inherited :priority 3 :key-prefix table-key)]]
                (any) ; The test row.
                [:component {:key (conj table-key :virtualRow)
                             :class "table-row"}
@@ -370,7 +371,7 @@
                    :template '("" ("single" :tag))
                    :exclusions '()}
                   (any) (any) (any) (any) (any) (any)]
-                 {:priority 1 :width 3.0 :key-prefix table-key}]]]]]]))
+                 (assoc inherited :key-prefix table-key)]]]]]]))
       (let [table-body (nth dom 3)
             table-main (nth table-body 3)
             table-rows (nth table-main 3)

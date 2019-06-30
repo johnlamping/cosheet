@@ -51,7 +51,7 @@
                            (rest (add-elements-to-entity-list
                                   (:template inherited) nil)))]
     {:referent (virtual-referent
-                (list* 'anything conditions)
+                (list* (:elements-template inherited) conditions)
                 (subject-referent-given-inherited inherited)
                 (hierarchy-node-items-referents
                  hierarchy-node inherited))
@@ -80,7 +80,8 @@
         inherited-down (if (not (empty? property-list))
                          (assoc inherited :template
                                 (add-elements-to-entity-list
-                                 (or (:template inherited) 'anything)
+                                 (or (:template inherited)
+                                     (:elements-template inherited))
                                  property-list))
                          inherited)]
     (if (empty? leaves)
@@ -187,8 +188,9 @@
         virtual-ref (virtual-referent
                      template
                      (subject-referent-given-inherited inherited))
+        elements-template (:elements-template inherited)
         inherited-for-label (-> inherited
-                                (assoc :template '(anything :tag)
+                                (assoc :template (list elements-template :tag)
                                        :subject-referent virtual-ref))
         labels-dom (add-attributes
                     (virtual-element-DOM
@@ -480,7 +482,7 @@
       (let [inherited-down
             (-> (transform-inherited-attributes inherited :element)
                 (update :priority inc)
-                (assoc :template '(anything)))]
+                (assoc :template (list (:elements-template inherited))))]
         (expr-let [elements-dom (elements-DOM-R
                                  elements true nil :vertical inherited-down)]
           [:div {:class "item with-elements"}

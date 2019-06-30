@@ -123,7 +123,8 @@
   [item inherited]
   (entity/updating-with-immutable
    [immutable-item item]
-   (let [elements (order-items-R (semantic-elements-R immutable-item))
+   (let [inherited (assoc inherited :elements-template "")
+         elements (order-items-R (semantic-elements-R immutable-item))
          hierarchy (-> (hierarchy-by-labels-R elements)
                        replace-hierarchy-leaves-by-nodes)
          doms (map #(horizontal-label-top-level-subtree-DOM % inherited)

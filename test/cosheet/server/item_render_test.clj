@@ -35,7 +35,8 @@
 (def base-inherited {:priority 0
                      :key-prefix [:root]
                      :subject-referent nil
-                     :template ""})
+                     :template ""
+                     :elements-template 'anything})
 (deftest item-DOM-R-test-simple
   ;; Test a simple cell
   (let [[dom fred] (let-mutated [fred "Fred"]

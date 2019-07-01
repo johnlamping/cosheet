@@ -109,6 +109,7 @@
                                    [dom table joe jane test]))
           query (first (current-value (entity/label->elements
                                        table :row-condition)))
+          rc1 (first (current-value (label->elements query o8)))
           c1 (first (current-value (label->elements query o1)))
           single (first (current-value (label->elements c1 :tag)))
           single-tag-spec (first (current-value (entity/elements single)))
@@ -140,29 +141,39 @@
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
-      ;; First, test batch-edit-selector.
+      ;; First, test batch-edit-select-path
       (let [immutable-query (entity/current-version query)]
         ;; When the item is part of the row condition.
-        (is (check (batch-edit-selectors
-                    (first (filter #(= (immutable-semantic-to-list %)
-                                        `(~'anything ("age" :tag)))
-                                   (elements immutable-query)))
-                    nil
-                    immutable-query)
+        (let [rc1 (entity/current-version rc1)]
+          (is (check (batch-edit-select-path rc1)
+                     [[rc1] nil])))
+        ;; When the item is part of a column header. In that case,
+        ;; it is presented in the explicit list of batch edit items.
+        (let [c1 (entity/current-version c1)]
+          (is (check (batch-edit-select-path c1)
+                     [[c1] c1])))
+        ;; When the item is an element in the table.
+        (let [a45 (first (matching-items
+                           '(45 ("age" :tag))
+                           (:store immutable-query)))
+              a45a (first (label->elements a45 :tag))]
+          (is (check (batch-edit-select-path a45a)
+                     [[a45a] a45])))
+        ;; Now, check batch-edit-selectors
+        ;; First, with no elements
+        (is (check (batch-edit-selectors immutable-query nil)
                    [`(~'anything
                       (~'anything
                        ("age" :tag (~(any) :order))
                        (~(any) :order))
-                       :batch-row-selector
+                      :batch-row-selector
                       (~(any) :order)
                       :batch-selector :selector)]))
-        ;; When the item is part of a column header. In that case,
-        ;; it is presented in the explicit list of batch edit items.
-        (is (check (batch-edit-selectors nil
+        ;; Then with an element
+        (is (check (batch-edit-selectors immutable-query
                                          [(first (matching-elements
                                            `(~'anything ("single" :tag))
-                                           immutable-query))]
-                                         immutable-query)
+                                           immutable-query))])
                    [`(~'anything
                       (~'anything
                        ("age" :tag (~(any) :order))
@@ -173,26 +184,6 @@
                     `(~'anything
                       (~'anything
                        ("single" :tag (~(any) :order))
-                       (~(any) :order))
-                      :batch-elements
-                      (~(any) :order)
-                      :batch-selector :selector)]))
-        ;; When the item is an element in the table.
-        (is (check (batch-edit-selectors (first (matching-items
-                                               '(45 ("age" :tag))
-                                               (:store immutable-query)))
-                                         nil
-                                         immutable-query)
-                   [`(~'anything
-                      (~'anything
-                       ("age" :tag (~(any) :order))
-                       (~(any) :order))
-                      :batch-row-selector
-                      (~(any) :order)
-                      :batch-selector :selector)
-                    `(~'anything
-                      (45
-                       ("age" :tag (~(any) :order))
                        (~(any) :order))
                       :batch-elements
                       (~(any) :order)

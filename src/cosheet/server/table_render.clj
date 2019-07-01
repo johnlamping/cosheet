@@ -55,17 +55,37 @@
        column-elements (entity/label->elements row-condition-item :column)]
     (remove (set column-elements) semantic-elements)))
 
-;;; This function is here, rather than in actions, because it knows about
-;;; the structure of tables.
+;;; The next two functions are here, rather than in actions, because they
+;;; know about the structure of tables.
+(defn batch-edit-select-path
+  "Given an item, return: the sequence of items that form its key, 
+  and, if an ancestral container of the item should appear as an element of
+  the batch edit, also give that item.  Return nil if the item doesn't
+  determine a batch edit."
+  [immutable-item]
+  (loop [item immutable-item
+         ;; The key path up to and including the current item.
+         path (list immutable-item)]
+    (when-let [parent-item (entity/subject item)]
+      (cond
+        (seq (matching-elements :top-level parent-item))
+        [path item] 
+        (seq (matching-elements :row-condition parent-item))
+        [path (when (seq (matching-elements :column item)) item)]
+        true
+        (recur parent-item
+               (if (seq (matching-elements :tag item))
+                 path ; The parent item of labels is not part of the key.
+                 (cons parent-item path)))))))
+
 (defn batch-edit-selectors
-  "Given either an item, or a list of batch-edit-items from a DOM, and
-  the table row condition, return the list form of the appropriate
-  batch selectors.  These will always inclde the row condition, tagged
-  with :batch-row-selector.  For a column header, batch-edit-items
-  will be present, and will be elements of an item tagged
-  :batch-elements. For an element in a cell, It should be an element
-  of an item tagged :batch-elements."
-  [immutable-item batch-edit-items immutable-row-condition-item]
+  "Given the row condition item, and a (possibly empty) list of
+  element items, return a list containing the list form of a batch row
+  selector, tagged with :batch-row-selector, and, if there are any
+  element items, a list tagged :batch-elements, where each element is
+  the list form of each of the element items, and given :order
+  elements."
+  [immutable-row-condition-item immutable-element-items]
   ;; We walk up containing items, until we find an item that is either
   ;; column condition, an element of a row, or the entire row condition.
   ;; Then we return the appropriate thing for that situation.
@@ -74,27 +94,13 @@
                 (map immutable-semantic-to-list
                      (table-condition-elements-R immutable-row-condition-item))
                 [:batch-row-selector])
-        selectors
-        (if (seq batch-edit-items)
-          ;; We are told what items to show.
-          [row-condition
-               (concat '(anything)
-                       (map immutable-semantic-to-list batch-edit-items)
-                       [:batch-elements])]
-          (loop [item immutable-item]
-            (let [parent-item (entity/subject item)]
-              (cond
-                (seq (matching-elements :top-level parent-item))
-                ;; We have reached a top level row. Add the item as
-                ;; an element of the rows.
-                [row-condition
-                 `(~'anything
-                   ~(immutable-semantic-to-list item) :batch-elements)]
-                (seq (matching-elements :row-condition item))
-                ;; The item is part of the row condition. We just show that.
-                [row-condition]
-                parent-item
-                (recur parent-item)))))]
+        selectors (if (seq immutable-element-items)
+                    [row-condition
+                     (concat
+                      '(anything)
+                      (map immutable-semantic-to-list immutable-element-items)
+                      [:batch-elements])]
+                    [row-condition])]
     (map (fn [selector] (-> selector
                             add-order-elements
                             (replace-in-seqs 'anything-immutable 'anything)

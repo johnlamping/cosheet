@@ -21,7 +21,7 @@
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
     [model-utils :refer [selector? semantic-elements-R abandon-problem-changes]]
-    [table-render :refer [batch-edit-selectors]]
+    [table-render :refer [batch-edit-select-path batch-edit-selectors]]
     [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
@@ -304,10 +304,16 @@
           temporary-item (description->entity temporary-id store)
           current-batch-selectors (label->elements
                                    temporary-item :batch-selector)
-          new-batch-selectors (when (and (or target batch-edit-items)
-                                         row-condition)
-                                (batch-edit-selectors
-                                 target batch-edit-items row-condition))]
+          new-batch-selectors (when (and row-condition
+                                         (or target batch-edit-items))
+                                (let [[path item]
+                                    (when target
+                                      (batch-edit-select-path target))
+                                    elements (or (seq batch-edit-items)
+                                                 (when item [item]))]
+                                  (batch-edit-selectors
+                                   row-condition elements)))
+          ]
       (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
         (as-> store store

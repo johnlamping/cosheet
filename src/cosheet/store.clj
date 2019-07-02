@@ -113,8 +113,10 @@
     "Return whether this store is equivalent to the previous store as
      an undo point. An undo/redo goes to the nearest store not equivalent to
      the current one. This means that undo followed by redo won't
-     return the same store if it started at a later in a sequence of equivalent
-     ones.")
+     necessarily return the same store. This gives natural behavior when
+     persistent changes are interleaved with display changes, like selections,
+     because it means that after either an undo or a redo, the selection is
+     ends up at the item changed by the undo/redo.")
 
   (update-equivalent-undo-point [this equivalent]
     "Set whether this store is equivalent to the previous store as

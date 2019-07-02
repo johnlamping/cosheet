@@ -36,8 +36,7 @@
                                 (~o4 :order)) )
                 ("married" (~o2 :order))
                 (45 (~o4 :order)
-                    ("age" :tag (~o3 :order)))
-                ("spy" :invisible)))
+                    ("age" :tag (~o3 :order)))))
 
 (deftest transform-pattern-toward-query-test
   (let [pattern '(anything anything-immutable ("a" :tag))]
@@ -72,8 +71,7 @@
                          "married" 1
                          [39 {["age" {:tag 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
-                         [45 {["age" {:tag 1}] 1}] 1
-                         "spy" 1}]]
+                         [45 {["age" {:tag 1}] 1}] 1}]]
     (is (= (item->canonical-semantic joe-list) expected))))
 
 (deftest labels-R-test
@@ -83,9 +81,9 @@
                             ("b " "x" (~o2 :order))
                             ("c" :tag (~o3 :order))
                             ("d" :tag (~o4 :order)))]
-          (expr-let [labels (visible-labels-R it)
-                     non-labels (visible-non-labels-R it)
-                     split (expr split-out-labels-R (visible-elements-R it))
+          (expr-let [labels (semantic-labels-R it)
+                     non-labels (semantic-non-labels-R it)
+                     split (expr split-out-labels-R (semantic-elements-R it))
                      a (matching-elements "a" it)
                      b (matching-elements "b" it)
                      c (matching-elements "c" it)
@@ -95,22 +93,6 @@
     (is (= (set split-non-labels) #{a b}))
     (is (= (set labels) #{c d}))
     (is (= (set split-labels) #{c d}))))
-
-(deftest visible-test
-  (let [expected #{"male"
-                   "married"
-                   [39 {["age" {:tag 1}] 1
-                        ["doubtful" {"confidence" 1}] 1}]
-                   [45 {["age" {:tag 1}] 1}]}
-        visible (set (map item->canonical-semantic
-                          (visible-elements-R joe-list)))]
-    (is (check visible expected))
-    (let [expected ["joe" {"male" 1
-                           "married" 1
-                           [39 {["age" {:tag 1}] 1
-                              ["doubtful" {"confidence" 1}] 1}] 1
-                         [45 {["age" {:tag 1}] 1}] 1}]]
-    (is (= (item->canonical-visible joe-list) expected)))))
 
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-entity

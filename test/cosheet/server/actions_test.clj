@@ -289,6 +289,16 @@
       (is (= (state-map-get-current-value client-state :referent)
              true)))))
 
+(deftest batch-edit-select-key-test
+  (is (= (batch-edit-select-key
+          [joe joe-age joe-age-tag]
+          [jane joe])
+         [:batch (:item-id joe) (:item-id joe-age-tag)]))
+  (is (= (batch-edit-select-key
+          [joe joe-age joe-age-tag]
+          [jane])
+         nil)))
+
 (deftest do-actions-test
   (let [queue (new-priority-task-queue 0)
         mutable-store (new-mutable-store store queue)

@@ -57,26 +57,26 @@
 
 ;;; The next two functions are here, rather than in actions, because they
 ;;; know about the structure of tables.
-(defn batch-edit-select-path
-  "Given an item, return: the sequence of items that form its key, 
-  and, if an ancestral container of the item should appear as an element of
-  the batch edit, also give that item.  Return nil if the item doesn't
-  determine a batch edit."
+(defn batch-edit-containment-path
+  "Given an item, return the sequence of items that contain it, up to
+  the highest level that is reflected in the batch edit selectors,
+  starting from the outermost container. Also return whether the
+  outermost item should appear in the batch elements. Return nil if
+  the item doesn't determine a batch edit."
   [immutable-item]
-  (loop [item immutable-item
-         ;; The key path up to and including the current item.
-         path (list immutable-item)]
-    (when-let [parent-item (entity/subject item)]
-      (cond
-        (seq (matching-elements :top-level parent-item))
-        [path item] 
-        (seq (matching-elements :row-condition parent-item))
-        [path (when (seq (matching-elements :column item)) item)]
-        true
-        (recur parent-item
-               (if (seq (matching-elements :tag item))
-                 path ; The parent item of labels is not part of the key.
-                 (cons parent-item path)))))))
+  (when immutable-item
+    (loop [item immutable-item
+           ;; The sequence of containing items up to and including
+           ;; the current item.
+           containing-items (list immutable-item)]
+      (when-let [parent-item (entity/subject item)]
+        (cond
+          (seq (matching-elements :top-level parent-item))
+          [containing-items true] 
+          (seq (matching-elements :row-condition parent-item))
+          [containing-items (when (seq (matching-elements :column item)) true)]
+          true
+          (recur parent-item (cons parent-item containing-items)))))))
 
 (defn batch-edit-selectors
   "Given the row condition item, and a (possibly empty) list of

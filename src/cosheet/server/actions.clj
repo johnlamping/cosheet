@@ -20,13 +20,15 @@
    (cosheet.server
     [session-state :refer [queue-to-log]]
     [dom-tracker :refer [id->key key->attributes]]
-    [model-utils :refer [selector? semantic-elements-R abandon-problem-changes]]
-    [table-render :refer [batch-edit-select-path batch-edit-selectors]]
+    [model-utils :refer [selector? semantic-elements-R abandon-problem-changes
+                         immutable-semantic-to-list item->canonical-semantic]]
+    [table-render :refer [batch-edit-containment-path batch-edit-selectors]]
     [referent :refer [referent->string referent?
                       virtual-referent? virtual-union-referent?
                       referent->exemplar-and-subject
                       item-referent virtual-referent]]
-    [instantiate :refer [instantiate-or-create-referent
+    [instantiate :refer [best-matching-element
+                         instantiate-or-create-referent
                          instantiate-referent
                          instantiate-referent-inheriting-restrictions
                          create-possible-selector-elements]]
@@ -287,6 +289,38 @@
        store (merge-with (partial map-combiner nil)
                          arguments (:target arguments) {:from "" :to ""})))))
 
+(defn batch-edit-select-key
+  "Return the key for the item in the new batch edit that corresponds
+   to the path, given the store with the batch edit selectors added,
+   the temporary item that holds"
+  [containment-items batch-edit-selectors]
+  (some
+   (fn [selector]
+     (when (= (item->canonical-semantic (first containment-items))
+              (item->canonical-semantic selector))
+       (when-let
+           [key (first
+                 (reduce
+                  ;; Selector should be something on the batch edit side
+                  ;; that has an element matching element-item. Find that
+                  ;; matching element, add it to the key, and repeat one
+                  ;; level lower.
+                  (fn [[key selector] element-item]
+                    (when-let [match (first (best-matching-element
+                                             (immutable-semantic-to-list
+                                              element-item)
+                                             selector))]
+                      [(concat (if (seq (matching-elements :tag match))
+                                 ;; A label's parent does not go in the key.
+                                 (butlast key)
+                                 key)
+                               [(:item-id match)])
+                       match]))
+                  [[(:item-id selector)] selector]
+                  (rest containment-items)))]
+         (concat [:batch] key))))
+        batch-edit-selectors))
+
 (defn do-batch-edit
   [store {:keys [referent batch-edit-ids session-state]}]
   (when referent
@@ -300,32 +334,28 @@
           topic (first (label->elements top-item :tab-topic))
           row-condition (when topic
                           (first (label->elements topic :row-condition)))
-          temporary-id (:temporary-id session-state)
-          temporary-item (description->entity temporary-id store)
-          current-batch-selectors (label->elements
-                                   temporary-item :batch-selector)
+          [containing-items element-item?] (batch-edit-containment-path target)
+          elements (or (seq batch-edit-items)
+                       (when element-item? [(first containing-items)]))
           new-batch-selectors (when (and row-condition
                                          (or target batch-edit-items))
-                                (let [[path item]
-                                    (when target
-                                      (batch-edit-select-path target))
-                                    elements (or (seq batch-edit-items)
-                                                 (when item [item]))]
-                                  (batch-edit-selectors
-                                   row-condition elements)))
-          ]
+                                (batch-edit-selectors
+                                 row-condition elements))
+          temporary-id (:temporary-id session-state)
+          temporary-item (description->entity temporary-id store)]
       (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
-        (as-> store store
-          (reduce (fn [s selector]
-                    (remove-entity-by-id s (:item-id selector)))
-                  store current-batch-selectors)
-          (update-equivalent-undo-point
-           (reduce (fn [s selector]
-                     (first (add-entity s temporary-id selector)))
-                   store new-batch-selectors)
-
-           true))))))
+        (let [store
+              (as-> store store
+                (reduce (fn [s selector]
+                          (remove-entity-by-id s (:item-id selector)))
+                        store
+                        (label->elements temporary-item :batch-selector))
+                (reduce (fn [s selector]
+                          (first (add-entity s temporary-id selector)))
+                        store new-batch-selectors)
+                (update-equivalent-undo-point store true))]
+          store)))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client

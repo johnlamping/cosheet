@@ -141,24 +141,24 @@
                             :select-pattern (conj table-key
                                                   [:pattern :subject]
                                                   [:pattern])}]
-      ;; First, test batch-edit-select-path
+      ;; First, test batch-edit-containment-path
       (let [immutable-query (entity/current-version query)]
         ;; When the item is part of the row condition.
         (let [rc1 (entity/current-version rc1)]
-          (is (check (batch-edit-select-path rc1)
+          (is (check (batch-edit-containment-path rc1)
                      [[rc1] nil])))
         ;; When the item is part of a column header. In that case,
         ;; it is presented in the explicit list of batch edit items.
         (let [c1 (entity/current-version c1)]
-          (is (check (batch-edit-select-path c1)
-                     [[c1] c1])))
+          (is (check (batch-edit-containment-path c1)
+                     [[c1] true])))
         ;; When the item is an element in the table.
         (let [a45 (first (matching-items
                            '(45 ("age" :tag))
                            (:store immutable-query)))
               a45a (first (label->elements a45 :tag))]
-          (is (check (batch-edit-select-path a45a)
-                     [[a45a] a45])))
+          (is (check (batch-edit-containment-path a45a)
+                     [[a45 a45a] true])))
         ;; Now, check batch-edit-selectors
         ;; First, with no elements
         (is (check (batch-edit-selectors immutable-query nil)

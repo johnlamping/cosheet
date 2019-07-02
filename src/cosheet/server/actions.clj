@@ -291,8 +291,8 @@
 
 (defn batch-edit-select-key
   "Return the key for the item in the new batch edit that corresponds
-   to the path, given the store with the batch edit selectors added,
-   the temporary item that holds"
+   to the path, given the containment sequence to the currently selected item,
+   and the new selectors that might match it."
   [containment-items batch-edit-selectors]
   (some
    (fn [selector]
@@ -319,10 +319,10 @@
                   [[(:item-id selector)] selector]
                   (rest containment-items)))]
          (concat [:batch] key))))
-        batch-edit-selectors))
+   batch-edit-selectors))
 
 (defn do-batch-edit
-  [store {:keys [referent batch-edit-ids session-state]}]
+  [store {:keys [referent target-key batch-edit-ids session-state]}]
   (when referent
     (let [target (first (instantiate-referent referent store))
           batch-edit-items (map #(description->entity % store) batch-edit-ids)
@@ -335,17 +335,17 @@
           row-condition (when topic
                           (first (label->elements topic :row-condition)))
           [containing-items element-item?] (batch-edit-containment-path target)
-          elements (or (seq batch-edit-items)
-                       (when element-item? [(first containing-items)]))
+          batch-elements (or (seq batch-edit-items)
+                             (when element-item? [(first containing-items)]))
           new-batch-selectors (when (and row-condition
                                          (or target batch-edit-items))
                                 (batch-edit-selectors
-                                 row-condition elements))
-          temporary-id (:temporary-id session-state)
-          temporary-item (description->entity temporary-id store)]
+                                 row-condition batch-elements))]
       (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
-        (let [store
+        (let [temporary-id (:temporary-id session-state)
+              temporary-item (description->entity temporary-id store)
+              store
               (as-> store store
                 (reduce (fn [s selector]
                           (remove-entity-by-id s (:item-id selector)))
@@ -355,7 +355,17 @@
                           (first (add-entity s temporary-id selector)))
                         store new-batch-selectors)
                 (update-equivalent-undo-point store true))]
-          store)))))
+          (if-let [select (batch-edit-select-key
+                           containing-items
+                           (elements
+                            (first (label->elements
+                                    (description->entity temporary-id store)
+                                    (if element-item?
+                                      :batch-elements
+                                      :batch-row-selector)))))]
+            {:store store
+             :select [select [target-key]]}
+            store))))))
 
 (defn do-storage-update-action
   "Do an action that can update the store and also return any client

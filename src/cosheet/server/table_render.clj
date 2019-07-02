@@ -61,8 +61,9 @@
   "Given an item, return the sequence of items that contain it, up to
   the highest level that is reflected in the batch edit selectors,
   starting from the outermost container. Also return whether the
-  outermost item should appear in the batch elements. Return nil if
-  the item doesn't determine a batch edit."
+  outermost item should appear in the batch elements (as opposed to
+  in the row condition.
+  Return nil if the item doesn't determine a batch edit."
   [immutable-item]
   (when immutable-item
     (loop [item immutable-item
@@ -82,7 +83,7 @@
   "Given the row condition item, and a (possibly empty) list of
   element items, return a list containing the list form of a batch row
   selector, tagged with :batch-row-selector, and, if there are any
-  element items, a list tagged :batch-elements, where each element is
+  element items, by a list tagged :batch-elements, where each element is
   the list form of each of the element items, and given :order
   elements."
   [immutable-row-condition-item immutable-element-items]

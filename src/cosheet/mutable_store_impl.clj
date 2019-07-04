@@ -4,7 +4,8 @@
                       :refer [new-mutable-manager-data
                               mutable-manager-queue
                               current-mutable-value
-                              get-or-make-reporter reset-manager!
+                              get-or-make-reporter
+                              stop-tracking-suspended reset-manager-value!
                               describe-and-swap!
                               describe-and-swap-control-return!]]
                      [reporter
@@ -131,7 +132,8 @@
      [id] apply-to-store (:manager-data this) fun))
 
   (reset-store! [this new-store]
-    (reset-manager! (:manager-data this) (store-to-manager-data new-store)))
+    (reset-manager-value! (:manager-data this)
+                          (store-to-manager-data new-store)))
 
   (do-update! [this update-fn]
     (do-update-control-return! this (fn [store] [(update-fn store) nil])))
@@ -275,3 +277,9 @@
      {:manager-data (new-mutable-manager-data
                      (store-to-manager-data immutable-store)
                      queue)}))
+
+(defn stop-speculative-tracking
+  "Stop speculative tracking (tracking for any reporters that currently
+   have no attendees)."
+  [mutable-store]
+  (stop-tracking-suspended (:manager-data mutable-store)))

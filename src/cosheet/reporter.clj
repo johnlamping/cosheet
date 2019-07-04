@@ -22,16 +22,16 @@
       "A reporter is essentially an atom that provides monitoring not only
        of its value, but also of demand for its value. A computation
        may be associated with a reporter and will be re-evaluated as necessary
-       called to keep the reporter's value up to date, but only as long as
+       to keep the reporter's value up to date, but only as long as
        there is demand for the reporter's value.
        A reporter is implemented as a record holding an atom with
        a map of relevant information.
-       We warp the atom in a record only because that supports a special
+       We wrap the atom in a record only because that supports a special
        print method that can avoid printing circular references.
        The special value, ::invalid, indicates that there is no current
        valid value.
        One or more callbacks can attend to the value of the reporter. Each
-       contains a key, a priority, a function and optionally some
+       contains a key, a priority, a function, and optionally some
        additional arguments. The priority indicates how important it is
        for this reporter to be recomputed earlier, if multiple reporters
        are out of date (lower priority first). The effective priority
@@ -190,12 +190,15 @@
     (if-let [name (:name data)]
       (.write w (str " name:" name)))    
     (if-let [value (:value data)]
-      (.write w (str " value:" value)))
+      (.write w (str " value:" (if (seq? value) (doall value) value))))
     (if-let [type (:manager-type data)]
       (.write w (str " manager-type:" type)))
     (if-let [expression (:expression data)]
       (.write w (str " expression:"
                      (vec (map #(if (reporter? %) "<R>" %) expression)))))
+    (if-let [application (:application data)]
+      (.write w (str " application:"
+                     (vec (map #(if (reporter? %) "<R>" %) application)))))
     (.write w ">")))
 
 

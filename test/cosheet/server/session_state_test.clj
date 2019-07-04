@@ -9,6 +9,7 @@
              [test-utils :refer [check any as-set let-mutated]]
              [mutable-manager :refer [current-mutable-value]]
              [store :refer [new-element-store new-mutable-store]]
+             [mutable-store-impl :refer [stop-speculative-tracking]]
              [query :refer [matching-items]]
              [state-map :refer [new-state-map state-map-get-current-value]]
              [expression-manager :refer [new-expression-manager-data compute]]
@@ -122,4 +123,5 @@
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
       (compute md)
+      (stop-speculative-tracking ms)
       (is (not (seq (:subscriptions @(:manager-data ms))))))))

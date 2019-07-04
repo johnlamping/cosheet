@@ -17,7 +17,7 @@
                             new-element-store new-mutable-store
                             store-queue]]
              store-impl
-             mutable-store-impl 
+             [mutable-store-impl :refer [stop-speculative-tracking]] 
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]])
             (cosheet.server
@@ -371,6 +371,7 @@
         (= (count (:attendees @(:data reporter))) 0))
       (is (= (count (vals (:components @tracker)))  0))
       (compute md)
+      (stop-speculative-tracking ms)
       (is (= (count (:subscriptions @(:manager-data ms))) 0)))))
 
 (deftest request-client-refresh-test

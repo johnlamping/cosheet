@@ -86,6 +86,14 @@
         :else
         item))
 
+(defn print-current-stack
+  "Print the current stack."
+  []
+  (try (throw (Exception. ""))
+       (catch Exception e
+         (clojure.stacktrace/print-stack-trace e)
+         (println "XXXXX"))))
+
 (defn- unpack-if-trivial-nested [item]
   (cond (and (sequential? item)
              (= (count item) 1))

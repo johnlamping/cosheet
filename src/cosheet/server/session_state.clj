@@ -389,7 +389,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
-          session-temporary-id (add-temporary-element! store)
+          session-temporary-id (add-session-temporary-element! store)
           id (swap-control-return!
               session-info
               (fn [session-info]

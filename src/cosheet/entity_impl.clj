@@ -100,7 +100,7 @@
 
   (updating-call-with-immutable [this fun]
     (call-dependent-on-id
-     store item-id  #(fun (description->entity item-id %))))
+     store item-id #(fun (description->entity item-id %))))
 
   (current-version [this]
     (description->entity item-id (current-store store))))

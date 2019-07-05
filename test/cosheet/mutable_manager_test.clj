@@ -41,7 +41,7 @@
     (describe-and-swap! mm (fn [v] [(assoc v :a 5) [:b :c]]))
     (run-all-pending-tasks queue)
     (is (= (value ra) 3))
-    (reset-manager! mm {:a 6 :f 2})
+    (reset-manager-value! mm {:a 6 :f 2})
     (run-all-pending-tasks queue)
     (is (= (value ra) 6))
     (is (= @execution-count 3))

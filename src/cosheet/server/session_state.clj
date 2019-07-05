@@ -163,15 +163,16 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn add-temporary-element!
-  "Add a temporary element to the store, and return its id."
+(defn add-session-temporary-element!
+  "Add a session temporary element to the store, and return its id."
   [store]
   (do-update-control-return!
    store
    (fn [immutable-store]
      (let [[store id] (add-entity immutable-store nil
                                   '(:root-temporary
-                                    (anything :batch-selector :selector)))]
+                                    (anything :batch-selector :selector)
+                                    (false :batch-editing)))]
        [(declare-temporary-id store id)
         id]))))
 
@@ -284,14 +285,14 @@
 
 ;;; (:sessions @session-info) is a map from id to session state.
 ;;; Session state consists of a map
-;;;             :id  The session id identifying the client.
-;;;      :file-path  The file path (with suffix omitted) corresponding
-;;;                  to the store.
-;;;          :store  The store that holds the data.
-;;;    :temporary-id The id of the root temporary item in the store
-;;;                  used for holding information specific to this session.
-;;;        :tracker  The tracker for the session.
-;;;   :client-state  A state-map holding these keys:
+;;;                   :id  The session id identifying the client.
+;;;            :file-path  The file path (with suffix omitted) corresponding
+;;;                        to the store.
+;;;                :store  The store that holds the data.
+;;; :session-temporary-id  The id of the root temporary item in the store used
+;;;                        for holding information specific to this session.
+;;;              :tracker  The tracker for the session.
+;;;         :client-state  A state-map holding these keys:
 ;;;                :last-time  The last time we accessed this session.
 ;;;                  :in-sync  True if the client is ready to accept doms.
 ;;;                 :referent  The referent for the root of the display or
@@ -388,7 +389,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
-          temporary-id (add-temporary-element! store)
+          session-temporary-id (add-temporary-element! store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -400,9 +401,9 @@
                              {:file-path (:without-suffix store-info)
                               :id id
                               :store store
-                              :temporary-id temporary-id
+                              :session-temporary-id session-temporary-id
                               :tracker (create-tracker
-                                        store temporary-id client-state
+                                        store session-temporary-id client-state
                                         manager-data)
                               :client-state client-state})
                    id])))]
@@ -434,11 +435,11 @@
          ;; attach to a new session.
          (do (remove-all-doms (:tracker state))
              (Thread/sleep 100)
-             (let [temporary-id (:temporary-id state)]
+             (let [session-temporary-id (:session-temporary-id state)]
                (do-update!
                 (:store state)
-                (fn [store] (if (id-valid? store temporary-id)
-                              (remove-entity-by-id store temporary-id)
+                (fn [store] (if (id-valid? store session-temporary-id)
+                              (remove-entity-by-id store session-temporary-id)
                               store))))
              (assoc session-info :sessions
                     (dissoc session-map session-id)))

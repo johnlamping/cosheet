@@ -226,10 +226,10 @@
 
 ;;; If we are batch editing and there is a non-trivial batch edit selector,
 ;;; return the batch edit selector items.
-(defn batch-editing-selector-items [store temporary-id client-state]
+(defn batch-editing-selector-items [store session-temporary-id client-state]
   (expr-let [batch-editing (state-map-get client-state :batch-editing)]
     (when batch-editing
-      (let [temporary-item (description->entity temporary-id store)]
+      (let [temporary-item (description->entity session-temporary-id store)]
         (expr-let [selector-items (label->elements
                                    temporary-item :batch-selector)
                    row-selector (expr first
@@ -241,9 +241,9 @@
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
-  [store temporary-id client-state]
+  [store session-temporary-id client-state]
   (expr-let [batch-editing-items (batch-editing-selector-items
-                                  store temporary-id client-state)]
+                                  store session-temporary-id client-state)]
     (if (seq batch-editing-items)
       (batch-edit-DOM-R batch-editing-items store starting-inherited)
       (expr-let [referent (state-map-get client-state :referent)
@@ -286,8 +286,8 @@
 
 (defn DOM-for-client-R
   "Return a reporter giving the DOM specified by the client."
-  [store temporary-id client-state]
+  [store session-temporary-id client-state]
   (expr-let [dom (top-level-DOM-R
-                  store temporary-id client-state)]
+                  store session-temporary-id client-state)]
     (into dom [(make-component {:key [:label-values]}
                                 [label-datalist-DOM-R store])])))

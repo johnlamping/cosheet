@@ -343,7 +343,7 @@
                                  row-condition batch-elements))]
       (when (not (empty? new-batch-selectors))
         (state-map-reset! client-state :batch-editing true)
-        (let [temporary-id (:temporary-id session-state)
+        (let [temporary-id (:session-temporary-id session-state)
               temporary-item (description->entity temporary-id store)
               store
               (as-> store store

@@ -171,8 +171,7 @@
    (fn [immutable-store]
      (let [[store id] (add-entity immutable-store nil
                                   '(:root-temporary
-                                    (anything :batch-selector :selector)
-                                    (false :batch-editing)))]
+                                    (anything :batch-selector :selector)))]
        [(declare-temporary-id store id)
         id]))))
 

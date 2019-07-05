@@ -342,7 +342,6 @@
                                 (batch-edit-selectors
                                  row-condition batch-elements))]
       (when (not (empty? new-batch-selectors))
-        (state-map-reset! client-state :batch-editing true)
         (let [temporary-id (:session-temporary-id session-state)
               temporary-item (description->entity temporary-id store)
               store
@@ -364,7 +363,8 @@
                                       :batch-elements
                                       :batch-row-selector)))))]
             {:store store
-             :select [select [target-key]]}
+             :select [select [target-key]]
+             :batch-editing true}
             store))))))
 
 (defn do-storage-update-action
@@ -382,7 +382,10 @@
         :select  The key of the dom to be selected, and a list of keys,
                  one of which should already be selected.
           :open  The key of an item to appear in a new tab.
-       :set-url  The new url for the client."
+       :set-url  The new url for the client.
+ :batch-editing  Whether we should be batch editing (not sent to client).
+                   (We shouldn't set it until after the store has been
+                    changed, so it is passed back as a request.)"
   [store-modifier handler & args]
   (store-modifier
    (fn [store]
@@ -455,7 +458,10 @@
           (let [result (do-storage-update-action
                           (partial do-update-control-return! mutable-store)
                           handler arguments)]
-            (dissoc result :store)))
+            (when (contains? result :batch-editing)
+              (state-map-reset! (:client-state session-state) :batch-editing
+                                (:batch-editing result)))
+            (dissoc result :store :batch-editing)))
         (println "No context for action:" action-type
                  dom-attributes))
       (do 

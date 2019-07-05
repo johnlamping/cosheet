@@ -334,8 +334,7 @@
   (let [definition [DOM-for-client-R store temporary-id client-state]
         tracker (new-dom-tracker manager-data)]
     (add-dom tracker "root" [] definition)
-    (println (new java.util.Date) "created tracker"
-             (simplify-for-print definition))
+    (println (new java.util.Date) "created tracker")
     tracker))
 
 (defn new-id [session-map]
@@ -421,25 +420,28 @@
         (get-session-state session-id))))
 
 (defn forget-session
-  "The session is no longer needed. Forget about it."
-  ;; TODO: first remove the session info from the map, returning it.
-  ;; Then to the rest of the cleanup.
+  "The session is no longer used Forget about it."
   [session-id]
-  (swap! session-info
-         (fn [session-info]
-           (let [session-map (:sessions session-info)]
+  (swap!
+   session-info
+   (fn [session-info]
+     (let [session-map (:sessions session-info)
+           state (session-map session-id)]
+       (if state
+         ;; We remove all uses of the session before we remove it from the map,
+         ;; so nothing will be looking for it. We don't have to worry about
+         ;; a new client asking for the session, as new clients can only
+         ;; attach to a new session.
+         (do (remove-all-doms (:tracker state))
+             (Thread/sleep 100)
+             (let [temporary-id (:temporary-id state)]
+               (do-update!
+                (:store state)
+                (fn [store] (if (id-valid? store temporary-id)
+                              (remove-entity-by-id store temporary-id)
+                              store))))
              (assoc session-info :sessions
-                    (if-let [state (session-map session-id)]
-                      (do (let [temporary-id (:temporary-id state)]
-                            (do-update! (:store state)
-                                        (fn [store]
-                                          (if (id-valid? store temporary-id)
-                                            (remove-entity-by-id
-                                             store temporary-id)
-                                            store))))
-                          (remove-all-doms (:tracker state))
-                          (Thread/sleep 100)
-                          (dissoc session-map session-id))
-                      session-map))))))
+                    (dissoc session-map session-id)))
+         session-info)))))
 
 

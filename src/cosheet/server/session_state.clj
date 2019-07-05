@@ -9,10 +9,11 @@
     [orderable :as orderable]
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
-                   do-update-control-return! declare-temporary-id]]
+                   do-update-control-return! declare-temporary-id
+                   do-update! id-valid?]]
     store-impl
     mutable-store-impl
-    [store-utils :refer [add-entity]]
+    [store-utils :refer [add-entity remove-entity-by-id]]
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
     [expression-manager :refer [compute]]
@@ -162,13 +163,17 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
-(defn update-add-temporary-element
-  "Add a root temporary element to an immutable store."
-  [immutable-store]
-  (let [[store id] (add-entity immutable-store nil
+(defn add-temporary-element!
+  "Add a temporary element to the store, and return its id."
+  [store]
+  (do-update-control-return!
+   store
+   (fn [immutable-store]
+     (let [[store id] (add-entity immutable-store nil
                                   '(:root-temporary
                                     (anything :batch-selector :selector)))]
-    (declare-temporary-id store id)))
+       [(declare-temporary-id store id)
+        id]))))
 
 (defn temporary-element-id [store]
   (let [matches (matching-items :root-temporary (current-store store))]
@@ -193,7 +198,7 @@
                          (starting-store name)))
                      (= suffix ".csv")
                      (read-csv file-path name))]
-        (update-add-temporary-element (convert-to-current store))))))
+        (convert-to-current store)))))
 
 (defn write-store-file-if-different
   "Function for running in the :agent of (:stores @session-info).
@@ -284,7 +289,7 @@
 ;;;                  to the store.
 ;;;          :store  The store that holds the data.
 ;;;    :temporary-id The id of the root temporary item in the store
-;;;                  for this session.
+;;;                  used for holding information specific to this session.
 ;;;        :tracker  The tracker for the session.
 ;;;   :client-state  A state-map holding these keys:
 ;;;                :last-time  The last time we accessed this session.
@@ -384,7 +389,7 @@
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
-          temporary-id (temporary-element-id store)
+          temporary-id (add-temporary-element! store)
           id (swap-control-return!
               session-info
               (fn [session-info]
@@ -417,14 +422,22 @@
 
 (defn forget-session
   "The session is no longer needed. Forget about it."
-  ;; TODO: Remove its temporary item from the store.
+  ;; TODO: first remove the session info from the map, returning it.
+  ;; Then to the rest of the cleanup.
   [session-id]
   (swap! session-info
          (fn [session-info]
            (let [session-map (:sessions session-info)]
              (assoc session-info :sessions
                     (if-let [state (session-map session-id)]
-                      (do (remove-all-doms (:tracker state))
+                      (do (let [temporary-id (:temporary-id state)]
+                            (do-update! (:store state)
+                                        (fn [store]
+                                          (if (id-valid? store temporary-id)
+                                            (remove-entity-by-id
+                                             store temporary-id)
+                                            store))))
+                          (remove-all-doms (:tracker state))
                           (Thread/sleep 100)
                           (dissoc session-map session-id))
                       session-map))))))

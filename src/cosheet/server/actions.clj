@@ -9,7 +9,10 @@
     [store :refer [update-content update-equivalent-undo-point
                    fetch-and-clear-modified-ids
                    do-update-control-return!
-                   id->subject id-valid? undo! redo! current-store]]
+                   id->subject id-label->element-ids id-valid? undo! redo!
+                   current-store
+                   id-label->element-ids]]
+    [store-impl :refer [id->string string->id]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
     [entity :refer [StoredEntity description->entity to-list
@@ -38,6 +41,59 @@
 ;;; crash.
 
 ;;; TODO: Replace the asserts with log messages, so things are robust.
+
+(defn key-item->non-semantic
+  "Convert an item from a key to a non-semantic item can be put in the store."
+  [item]
+  (cond (keyword? item)
+        item
+        (satisfies? StoredItemDescription item)
+        (symbol (str "I" (id->string item))) ; So a number makes a good name.
+        true
+        (assert false (str "Unexpected key component type " item))))
+
+(defn non-semantic->key-item
+  "Undo key-item->non-semantic."
+  [item]
+  (cond (keyword? item) item
+        (symbol? item) (string->id (subs (str item) 1))
+        true (assert false (str "Unexpected translated key component " item))))
+
+;;; Paths are stored as a nested sequence of items of the form
+;;; (path-item :path-item) with a final item of :end-path.
+;;; For example, the path [:a :b] would be stored as
+;;; (:a :path-item (:b :path-item (:path-end :path-item)))
+;;; This way, all the path counts as non-semantic, and we reuse path elements
+;;; when we override, rather than create new ones.
+(defn update-store-with-path
+  "Make the path at the subject of the store be the given path."
+  [store subject path]
+  (first
+   (reduce
+    (fn [[store subject] item]
+      (let [non-semantic (key-item->non-semantic item)
+            element-id (first (id-label->element-ids
+                               store subject :path-item))]
+        (if element-id
+          [(update-content store element-id non-semantic)
+           element-id]
+          (add-entity store subject (list non-semantic :path-item)))))
+    [store subject]
+    (concat path [:path-end]))))
+
+(defn path-in-item
+  "Return the path below the given item."
+  [item]
+  ()
+  (loop [path []
+         item item]
+    (let [path-element (first (label->elements item :path-item))]
+      (when path-element
+        (let [cont (content path-element)]
+          (if (= cont :path-end)
+            path
+            (recur (conj path (non-semantic->key-item cont))
+                   path-element)))))))
 
 (defn pop-content-from-key
   "If the last item of the key is :content, remove it."

@@ -73,6 +73,17 @@
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 
+(deftest path-test
+  (let [path1 [:a jane-id :b]
+        store1 (update-store-with-path store joe-id path1)
+        recovered-path1 (path-in-item (description->entity joe-id store1))
+        ;; Now, try overwriting an existing path.
+        path2 [jane-id]
+        store2 (update-store-with-path store1 joe-id path2)
+        recovered-path2 (path-in-item (description->entity joe-id store2))] 
+    (is (= path1 recovered-path1))
+    (is (= path2 recovered-path2))))
+
 (deftest substitute-in-key-test
   (let [key [[:pattern]
              [:pattern `(nil ~(variable-query

@@ -32,10 +32,10 @@
 ;;; properties each idependently characterize semantic elements:
 ;;;   * They have a content other than a number, string, :tag, 'anything,
 ;;;     or 'anything-immutable.
-;;;   * The have a content of :tag or have an element with label :order
+;;;   * They have a content of :tag or have an element with label :order
 ;;; An element may be marked as a tag by having an element whose
 ;;; content is :tag. This make that element displayed like a tag, so
-;;; the :tag mark is semantic.
+;;; the :tag mark is semantic. (We use tag and label synonymously.)
 ;;; Every semantic element that is not :tag must have an :order
 ;;; element, to indicate its display position relative to the other
 ;;; elements.

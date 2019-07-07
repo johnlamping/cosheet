@@ -59,8 +59,8 @@
      ;;;              attendees. If there are no attendees, it will be
      ;;;              Double/MAX_VALUE.
      ;;;   :manager   If present, the manager for this reporter.
-     ;;;   :attendees If present, a map from key [priority fn &args] of
-     ;;;              attendees to the reporter.
+     ;;;   :attendees If present, a map from key to [priority fn &args] for
+     ;;;              each attendee to the reporter.
    data]
   )
 

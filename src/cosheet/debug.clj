@@ -12,7 +12,8 @@
                      [orderable]
                      [expression-manager :refer [current-value]]
                      store-utils
-                     [mutable-map :as mm])
+                     [mutable-map :as mm]
+                     [task-queue :refer [current-tasks]])
             (cosheet.server [order-utils :refer [order-items-R]])))
 
 (defn- function-name [f]
@@ -158,6 +159,24 @@
 (defn print-backtrace [reporter]
   (doseq [r (generate-backtrace reporter)]
     (println r)))
+
+(defn delayed-print-backtrack-from-queue
+  "Wait the given number of seconds (default 1), then print the number
+   of tasks in the queue, and if there is at least one, print the first
+   one. If the task involves a reporter, print the reporter's backtrace
+   of requesters."
+  ([queue] (delayed-print-backtrack-from-queue queue 1.0))
+  ([queue delay]
+   (let [millis (* 1000 delay)]
+     (future
+       (Thread/sleep millis)
+       (let [tasks (current-tasks queue)]
+         (println ["!!! PENDING TASKS:" (count tasks)])
+         (when (seq tasks)
+           (let [task (first tasks)]
+             (when-let [rep (first (filter reporter? task))]
+               (println ["Backtrace for first task:" rep])
+               (print-backtrace rep)))))))))
 
 ;;; Code to walk reporters and generate a profile.
 ;;; See doc for reporters-profile for a description of the output.

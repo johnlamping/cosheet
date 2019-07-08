@@ -425,8 +425,7 @@
   ElementStore
 
   (id->subject [this id]
-    (when
-      (instance? ItemId id)
+    (when (instance? ItemId id)
       (get-in this [:id->subject id])))
   
   ImmutableStore

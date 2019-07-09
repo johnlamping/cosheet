@@ -109,11 +109,12 @@
 
 (deftest forget-session-test
   (let [stream (new java.io.StringReader "a, b")
-        store (add-table (update-add-temporary-element (starting-store nil))
+        store (add-table (starting-store nil)
                          "Hello" [["a" "b"] [1 2] [3]])
         queue (new-priority-task-queue 0)
         ms (new-mutable-store store queue)
         md (new-expression-manager-data queue)]
+    (add-session-temporary-element! ms)
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})

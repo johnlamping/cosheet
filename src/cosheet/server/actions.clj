@@ -11,7 +11,8 @@
                    do-update-control-return!
                    id->subject id-label->element-ids id-valid? undo! redo!
                    current-store
-                   id-label->element-ids]]
+                   id-label->element-ids
+                   StoredItemDescription]]
     [store-impl :refer [id->string string->id]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
@@ -331,19 +332,29 @@
          :open (cond-> (str (:url-path session-state)
                             "?referent=" (referent->string referent)))}))))
 
-(defn do-selected [store arguments]
-  (let [referent (:referent arguments)
-        client-state (:client-state (:session-state arguments))]
+(defn do-selected
+  [store {:keys [referent session-state target-key special] :as arguments}]
+  (let [client-state (:client-state session-state)
+        temporary-id (:session-temporary-id session-state)
+        temporary-item (description->entity temporary-id store)
+        key-changed (not= target-key (path-in-item temporary-item))
+        store (if key-changed
+                (-> store
+                    (update-store-with-path temporary-id target-key)
+                    (update-equivalent-undo-point true))
+                store)]
     (cond
-      (= (:special arguments) :tab)
+      (= special :tab)
       (do (state-map-reset! client-state :referent referent)
           {:store store
-           :set-url (str (:url-path (:session-state arguments))
+           :set-url (str (:url-path session-state)
                          "?referent=" (referent->string referent))})
-      (= (:special arguments) :new-tab)
+      (= special :new-tab)
       (do-set-content
        store (merge-with (partial map-combiner nil)
-                         arguments (:target arguments) {:from "" :to ""})))))
+                         arguments (:target arguments) {:from "" :to ""}))
+      true
+      (when key-changed store))))
 
 (defn batch-edit-select-key
   "Return the key for the item in the new batch edit that corresponds
@@ -523,15 +534,26 @@
       (do 
         (println "unhandled action type:" action-type)))))
 
+(defn request-selection-from-store
+  "Return a client request asking it to select the target saved in the
+   temporary item of the store."
+  [mutable-store old-store session-state]
+  (let [store (current-store mutable-store)
+        temporary-id (:session-temporary-id session-state)]
+    {:select [(path-in-item (description->entity temporary-id store))
+              [(path-in-item (description->entity temporary-id old-store))]]}))
+
 (defn do-undo
   [mutable-store session-state]
-  (undo! mutable-store)
-  nil)
+  (let [old-store (current-store mutable-store)]
+    (undo! mutable-store)
+    (request-selection-from-store mutable-store old-store session-state)))
 
 (defn do-redo
   [mutable-store session-state]
-  (redo! mutable-store)
-  nil)
+  (let [old-store (current-store mutable-store)]
+    (redo! mutable-store)
+    (request-selection-from-store mutable-store old-store session-state)))
 
 (defn do-quit-batch-edit
   [mutable-store session-state]

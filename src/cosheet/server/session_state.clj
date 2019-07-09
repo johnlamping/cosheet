@@ -10,7 +10,7 @@
     [store :refer [new-element-store new-mutable-store current-store
                    read-store write-store store-to-data data-to-store
                    do-update-control-return! declare-temporary-id
-                   do-update! id-valid?]]
+                   do-update! id-valid? update-equivalent-undo-point]]
     store-impl
     mutable-store-impl
     [store-utils :refer [add-entity remove-entity-by-id]]
@@ -172,7 +172,9 @@
      (let [[store id] (add-entity immutable-store nil
                                   '(:root-temporary
                                     (anything :batch-selector :selector)))]
-       [(declare-temporary-id store id)
+       [(-> store
+            (declare-temporary-id id)
+            (update-equivalent-undo-point true))
         id]))))
 
 (defn temporary-element-id [store]

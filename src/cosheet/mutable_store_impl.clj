@@ -81,6 +81,13 @@
       (cons [(distinct (concat top-modified modified-keys)) top-store]
             remainder))))
 
+(defn can-undo-impl
+  [store history]
+  (when (not (empty? history))
+    (or (not (equivalent-undo-point? store))
+        (let [[[modified-keys store] & remaining-history] history]
+          (can-undo-impl store remaining-history)))))
+
 (defrecord MutableStoreImpl
     ^{:doc
       "A store that contains an immutable store,
@@ -198,24 +205,13 @@
 
   (can-undo? [this]
     (let [{:keys [store history]} (:value @(:manager-data this))]
-      (loop [store store
-             history history]
-        (if (empty? history)
-          false
-          (if (not (equivalent-undo-point? store))
-            true
-            (let [[[[modified-keys store]] & remaining-history]
-                  history]
-              (recur store remaining-history)))))))
+      (can-undo-impl store history)))
 
   (undo! [this]
     (describe-and-swap!
      (:manager-data this)
      (fn [{:keys [store history future] :as state}]
-       (if (or (empty? history)
-               (and (equivalent-undo-point? store)
-                    (empty? (rest history))))
-         [state []]
+       (if (can-undo-impl store history)
          ;; Loop until we find a store that is not equivalent to its
          ;; predecessor. We need to undo to the store before that.
          ;; (Even though we try to avoid having several equivalent stores
@@ -243,7 +239,8 @@
                [{:store prev-store
                  :history remaining-history
                  :future (cons [cum-modified-keys store] future)}
-                cum-modified-keys])))))))
+                cum-modified-keys])))
+         [state []]))))
 
   (can-redo? [this]
     (let [future (:future (:value @(:manager-data this)))]

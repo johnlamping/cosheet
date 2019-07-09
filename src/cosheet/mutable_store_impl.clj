@@ -26,32 +26,38 @@
      ;; modified-ids gives the ids that change between that store and
      ;; the previous one in the sequence.
      
-     ;; :history is a list of [modified-ids, store] pairs going backward
+     ;; :history is a list of [modified-keys, store] pairs going backward
      ;; in time.
      :history nil
-     ;; :future is a list of [modified-ids, store] pairs going forward
+     ;; :future is a list of [modified-keys, store] pairs going forward
      ;; in time, starting from the next one after the current store.
      :future nil
      }))
 
 (defn item-ids-affected-by-id
-  "Return a seq of item ids that might be affected by a change to the given id."
-  [id old-store new-store]
-  (loop [item (when id (non-implicit-id id))
+  "Return a seq of ids in the store that contain the given id, and thus
+   might are affected by a change to it."
+  [id store]
+  (loop [id (when id (non-implicit-id id))
          affected nil]
-    (if (not (nil? item))
-      (recur (or (id->subject new-store item) (id->subject old-store item))
-             (conj affected item))
-      affected)))
+    (if (nil? id)
+      affected
+      (recur (id->subject store id)
+             (conj affected id)))))
 
 (defn keys-affected-by-ids
-  "Return a seq of keys that might be affected by the set of modified ids.
-   The set must be non-empty."
+  "Return a collection of keys that might be affected by a change to a set of
+   modified ids.  We are given both the old store and the new one, as
+   some modified ids might be in only one of the two stores."
   [modified-ids old-store new-store]
-  (reduce (fn [accum id]
-            (into accum (item-ids-affected-by-id id old-store new-store)))
-          #{nil} ; We have to always inform reporters keyed by nil.
-          modified-ids))
+  (when (seq modified-ids)
+    (reduce (fn [accum id]
+              (-> accum
+                  (into (item-ids-affected-by-id id old-store))
+                  (into (item-ids-affected-by-id id new-store))))
+            ;; We have to inform reporters keyed by nil if anything changed.
+            #{nil} 
+            modified-ids)))
 
 (defn apply-to-store
   "Return the result of the operation on the store
@@ -66,13 +72,13 @@
   [ids & args]
   (apply get-or-make-reporter (map #(when % (non-implicit-id %)) ids) args))
 
-(defn add-to-modified-ids-in-sequence
-  "Given a history or future sequence, add the specified modified ids to
-   the modified ids for the top item."
-  [history modified-ids]
+(defn add-to-modified-keys-in-sequence
+  "Given a history or future sequence, add the specified modified keys to
+   the modified keys for the top item."
+  [history modified-keys]
   (when (seq history)
     (let [[[top-modified top-store] & remainder] history]
-      (cons [(distinct (concat top-modified modified-ids)) top-store]
+      (cons [(distinct (concat top-modified modified-keys)) top-store]
             remainder))))
 
 (defrecord MutableStoreImpl
@@ -141,9 +147,10 @@
      (fn [{:keys [store history future] :as state}]
        (let [[updated-store result] (update-fn store)
              [new-store modified-ids] (fetch-and-clear-modified-ids
-                                       updated-store)]
+                                       updated-store)
+             modified-keys (keys-affected-by-ids modified-ids store new-store)]
          [(if (not= new-store store)
-            (if (seq modified-ids)
+            (if (seq modified-keys)
               (if (equivalent-undo-point? new-store)
                 (if (equivalent-undo-point? store)
                   ;; The new store and the current one are both
@@ -154,27 +161,27 @@
                   ;; But we do have to update the modified ids to be relative
                   ;; to the new store.
                   {:store new-store
-                   :history (add-to-modified-ids-in-sequence
-                             history modified-ids)
-                   :future (add-to-modified-ids-in-sequence
-                            future modified-ids)}
+                   :history (add-to-modified-keys-in-sequence
+                             history modified-keys)
+                   :future (add-to-modified-keys-in-sequence
+                            future modified-keys)}
                   ;; The new store is equivalent to the current one.
                   ;; We still need to push the current one, as an undo
                   ;; followed by redo should land us there.
                   ;; We don't have to wipe out the future, but we do need
                   ;; to update its modified ids.
                   {:store new-store
-                   :history (cons [modified-ids store] history)
-                   :future (add-to-modified-ids-in-sequence
-                            future modified-ids)})
+                   :history (cons [modified-keys store] history)
+                   :future (add-to-modified-keys-in-sequence
+                            future modified-keys)})
                 {:store new-store
-                 :history (cons [modified-ids store] history)
+                 :history (cons [modified-keys store] history)
                  :future nil})
               ;; Only some ancilliary information unrelated to the content
               ;; changed.
               (assoc state :store new-store))
             state)
-          (keys-affected-by-ids modified-ids store new-store)
+          modified-keys
           result]))))
 
   (add-simple-element! [this subject content]
@@ -197,7 +204,7 @@
           false
           (if (not (equivalent-undo-point? store))
             true
-            (let [[[[modified-ids store]] & remaining-history]
+            (let [[[[modified-keys store]] & remaining-history]
                   history]
               (recur store remaining-history)))))))
 
@@ -217,18 +224,8 @@
          (loop [store store
                 history history
                 future future
-                cum-modified-ids nil
-                ;; We have to track the modified keys as well, as
-                ;; chasing the modifications requires the intermediate
-                ;; stores.
                 cum-modified-keys nil]
-           (let [[[modified-ids prev-store] & remaining-history] history
-                 cum-modified-ids (if cum-modified-ids
-                                    (distinct (concat modified-ids
-                                                      cum-modified-ids))
-                                     modified-ids)
-                 modified-keys (keys-affected-by-ids
-                                modified-ids store prev-store)
+           (let [[[modified-keys prev-store] & remaining-history] history
                  cum-modified-keys (if cum-modified-keys
                                      (distinct (concat modified-keys
                                                        cum-modified-keys))
@@ -241,17 +238,16 @@
                         ;; final future store, as a redo would want
                         ;; to go beyond that, and couldn't.
                         future
-                        (cons [modified-ids store] future))
-                      cum-modified-ids
+                        (cons [modified-keys store] future))
                       cum-modified-keys)
                [{:store prev-store
                  :history remaining-history
-                 :future (cons [cum-modified-ids store] future)}
+                 :future (cons [cum-modified-keys store] future)}
                 cum-modified-keys])))))))
 
   (can-redo? [this]
     (let [future (:future (:value @(:manager-data this)))]
-      (some (fn [[modified-ids store]]
+      (some (fn [[modified-keys store]]
               (not (equivalent-undo-point? store)))
             future)))
 
@@ -260,26 +256,16 @@
      (:manager-data this)
      (fn [{:keys [store history future] :as state}]
        (if (or (empty? future)
-               (let [[[modified-ids next-store] & remaining-future] future]
+               (let [[[modified-keys next-store] & remaining-future] future]
                  (and (equivalent-undo-point? next-store)
                       (empty? remaining-future))))
          [state []]
          (loop [store store
                 history history
                 future future
-                cum-modified-ids nil
-                ;; We have to track the modified keys as well, as
-                ;; chasing the modifications requires the intermediate
-                ;; stores.
                 cum-modified-keys nil]
-           (let [[[modified-ids next-store] & remaining-future] future
-                 history (cons [modified-ids store] history)
-                 cum-modified-ids (if cum-modified-ids
-                                    (distinct (concat modified-ids
-                                                      cum-modified-ids))
-                                    modified-ids)
-                 modified-keys (keys-affected-by-ids
-                                modified-ids next-store store)
+           (let [[[modified-keys next-store] & remaining-future] future
+                 history (cons [modified-keys store] history)
                  cum-modified-keys (if cum-modified-keys
                                      (distinct (concat modified-keys
                                                        cum-modified-keys))
@@ -289,7 +275,6 @@
                 next-store
                 history
                 remaining-future
-                cum-modified-ids
                 cum-modified-keys)
                [{:store next-store
                  :history history

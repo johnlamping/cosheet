@@ -171,6 +171,13 @@
 
 ;;; Misc
 
+(defn union-seqs
+  "Given two seqs, return the seq of their union."
+  [s1 s2]
+  (cond (empty? s1) s2
+        (empty? s2) s1
+        true (distinct (concat s1 s2))))
+
 (defn remove-first
   "Remove the first item of the seq that matches the pred"
   [pred coll]

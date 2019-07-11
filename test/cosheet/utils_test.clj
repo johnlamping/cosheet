@@ -21,6 +21,11 @@
                {:a 1 :b 2} [:a :a :a :b :b :b] [:a1 :a2 :a3 :b1 :b2 :b3]))
          (set [:a3 :b2 :b3]))))
 
+(deftest union-seqs-test
+  (is (= (union-seqs [] [1 3]) [1 3]))
+  (is (= (union-seqs [1 3] []) [1 3]))
+  (is (= (union-seqs [1 2 3] [4 3 2]) [1 2 3 4])))
+
 (deftest remove-first-test
   (is (= (remove-first even? [1 2 3 2 4])
          [1 3 2 4])))

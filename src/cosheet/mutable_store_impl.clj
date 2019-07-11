@@ -10,7 +10,7 @@
                               describe-and-swap-control-return!]]
                      [reporter
                       :refer [set-value! set-manager!]]
-                     [utils :refer [call-with-latest-value
+                     [utils :refer [call-with-latest-value union-seqs
                                     update-in-clean-up
                                     swap-control-return!]]
                      [debug :refer [simplify-for-print]])))
@@ -31,7 +31,23 @@
      :history nil
      ;; :future is a list of [modified-keys, store] pairs going forward
      ;; in time, starting from the next one after the current store.
+     ;; Usually, when a new action is done, future is cleared out. However,
+     ;; if a new state is undo-equivalent, then the future is not changed.
+     ;; If this is followed by a redo command, then it will be as if the
+     ;; latest change never happened. In particular, the most recent change
+     ;; will not become part of the history. This means that a redo followed
+     ;; by an undo will return to the state just before the redone action
+     ;; was originally taken.
      :future nil
+     ;; :futures-state will only be present if equivalent-undo-point
+     ;; stores have been created, causing a push onto history, but without
+     ;; changing future. In that case, :futures-state holds the state
+     ;; that was current when :future was created.
+     :futures-state nil
+     ;; :futures-modified-ids is present when :futures-state is
+     ;; present, and holds the modified ids between the current :store
+     ;; and the :store in :futures-modified-ids.
+     :futures-modified-ids nil
      }))
 
 (defn item-ids-affected-by-id
@@ -87,6 +103,58 @@
     (or (not (equivalent-undo-point? store))
         (let [[[modified-keys store] & remaining-history] history]
           (can-undo-impl store remaining-history)))))
+
+(defn rearrange-for-undo
+  "Given a state, return the new state after an undo (ignoring
+  futures-state), and also return the modified ids."
+  [state]
+  ;; Loop until we find a store that is not equivalent to its
+  ;; predecessor. We need to undo to the store before that.  (Even
+  ;; though we try to avoid having several equivalent stores in the
+  ;; history, that can happen if a new store is an equivalent store
+  ;; and the future holds one, as well.)
+  (loop [store (:store state)
+         history (:history state)
+         future (:future state)
+         cum-modified-keys nil]
+     (let [[[modified-keys prev-store] & remaining-history] history
+           cum-modified-keys (union-seqs modified-keys cum-modified-keys)]
+       (if (equivalent-undo-point? store)
+         (recur prev-store
+                remaining-history
+                (if (empty? future)
+                  ;; Don't push an equivalent undo point as the
+                  ;; final future store, as a redo would want
+                  ;; to go beyond that, and couldn't.
+                  nil
+                  (cons [modified-keys store] future))
+                cum-modified-keys)
+         [{:store prev-store
+           :history remaining-history
+           :future (cons [modified-keys store] future)}
+          cum-modified-keys]))))
+
+(defn rearrange-for-redo
+  "Given a state, return the new state after a redo (ignoring
+  futures-state), and also return the modified ids."
+  [state]
+  (loop [store (:store state)
+         history (:history state)
+         future (:future state)
+         cum-modified-keys nil]
+    (let [[[modified-keys next-store] & remaining-future] future
+          history (cons [modified-keys store] history)
+          cum-modified-keys (union-seqs modified-keys cum-modified-keys)]
+      (if (equivalent-undo-point? next-store)
+        (recur
+         next-store
+         history
+         remaining-future
+         cum-modified-keys)
+        [{:store next-store
+          :history history
+          :future remaining-future}
+         cum-modified-keys]))))
 
 (defrecord MutableStoreImpl
     ^{:doc
@@ -159,28 +227,31 @@
          [(if (not= new-store store)
             (if (seq modified-keys)
               (if (equivalent-undo-point? new-store)
-                (if (equivalent-undo-point? store)
-                  ;; The new store and the current one are both
-                  ;; equivalent to the top one in the history. This
-                  ;; means that undo will never go to the current
-                  ;; store, so we don't need to push it onto the
-                  ;; history, and we don't need to wipe out the future.
-                  ;; But we do have to update the modified ids to be relative
-                  ;; to the new store.
-                  {:store new-store
-                   :history (add-to-modified-keys-in-sequence
-                             history modified-keys)
-                   :future (add-to-modified-keys-in-sequence
-                            future modified-keys)}
-                  ;; The new store is equivalent to the current one.
-                  ;; We still need to push the current one, as an undo
-                  ;; followed by redo should land us there.
-                  ;; We don't have to wipe out the future, but we do need
-                  ;; to update its modified ids.
-                  {:store new-store
-                   :history (cons [modified-keys store] history)
-                   :future (add-to-modified-keys-in-sequence
-                            future modified-keys)})
+                ;; Since the new store is logically equivalent, we don't
+                ;; need to wipe out the future. We just need to make some
+                ;; changes to the history.
+                (let [new-history
+                      (if (equivalent-undo-point? store)
+                        ;; The new store and the current one are both
+                        ;; equivalent to the top one in the history. This
+                        ;; means that undo will never go to the current
+                        ;; store, so we don't need to push it onto the
+                        ;; history.
+                        (add-to-modified-keys-in-sequence
+                         history modified-keys)
+                         ;; The new store is equivalent to the current one.
+                         ;; We still need to push the current one, as an undo
+                         ;; followed by redo should land us there.
+                        (cons [modified-keys store] history))]
+                  (let [{:keys [futures-state futures-modified-ids]} state]
+                    (cond-> {:store new-store
+                             :history new-history
+                             :future future}
+                      future
+                      (assoc :futures-state (or futures-state state)
+                             :futures-modified-ids (union-seqs
+                                                    futures-modified-ids
+                                                    modified-ids)))))
                 {:store new-store
                  :history (cons [modified-keys store] history)
                  :future nil})
@@ -210,36 +281,13 @@
   (undo! [this]
     (describe-and-swap!
      (:manager-data this)
-     (fn [{:keys [store history future] :as state}]
+     (fn [{:keys [store history future futures-state] :as state}]
        (if (can-undo-impl store history)
-         ;; Loop until we find a store that is not equivalent to its
-         ;; predecessor. We need to undo to the store before that.
-         ;; (Even though we try to avoid having several equivalent stores
-         ;; in the history, that can happen if a new store is an equivalent
-         ;; store and the future holds one, as well.)
-         (loop [store store
-                history history
-                future future
-                cum-modified-keys nil]
-           (let [[[modified-keys prev-store] & remaining-history] history
-                 cum-modified-keys (if cum-modified-keys
-                                     (distinct (concat modified-keys
-                                                       cum-modified-keys))
-                                     modified-keys)]
-             (if (equivalent-undo-point? store)
-               (recur prev-store
-                      remaining-history
-                      (if (empty? future)
-                        ;; Don't push an equivalent undo point as the
-                        ;; final future store, as a redo would want
-                        ;; to go beyond that, and couldn't.
-                        future
-                        (cons [modified-keys store] future))
-                      cum-modified-keys)
-               [{:store prev-store
-                 :history remaining-history
-                 :future (cons [cum-modified-keys store] future)}
-                cum-modified-keys])))
+         (if (empty? futures-state)
+           (rearrange-for-undo state)
+           (let [[state modified-ids] (rearrange-for-undo futures-state)]
+             [state
+              (union-seqs modified-ids (:futures-modified-ids state))]))
          [state []]))))
 
   (can-redo? [this]
@@ -251,32 +299,17 @@
   (redo! [this]
     (describe-and-swap!
      (:manager-data this)
-     (fn [{:keys [store history future] :as state}]
+     (fn [{:keys [store history future futures-state] :as state}]
        (if (or (empty? future)
                (let [[[modified-keys next-store] & remaining-future] future]
                  (and (equivalent-undo-point? next-store)
                       (empty? remaining-future))))
          [state []]
-         (loop [store store
-                history history
-                future future
-                cum-modified-keys nil]
-           (let [[[modified-keys next-store] & remaining-future] future
-                 history (cons [modified-keys store] history)
-                 cum-modified-keys (if cum-modified-keys
-                                     (distinct (concat modified-keys
-                                                       cum-modified-keys))
-                                     modified-keys)]
-             (if (equivalent-undo-point? next-store)
-               (recur
-                next-store
-                history
-                remaining-future
-                cum-modified-keys)
-               [{:store next-store
-                 :history history
-                 :future remaining-future}
-                cum-modified-keys]))))))))
+         (if (empty? futures-state)
+           (rearrange-for-redo state)
+           (let [[state modified-ids] (rearrange-for-redo futures-state)]
+             [state
+              (union-seqs modified-ids (:futures-modified-ids state))])))))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
   (.write w "Mutable:")

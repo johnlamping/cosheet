@@ -78,48 +78,51 @@
       (when (not (empty? result))
         result))))
 
-;;; A psuedo-set is either nil, a non-nil atom, or a set, representing
-;;; either the empty set, a singleton item, or a set with multiple items.
+;;; A pseudo-set is an implementation of a set that is more efficient
+;;; when the set is small. It is either nil, a non-nil atom, or a set,
+;;; representing either the empty set, a singleton item,
+;;; or a set with multiple items.
 ;;; TODO: If the set is a small, use a vector?
-(defn psuedo-set-seq [psuedo-set]
-  (cond (nil? psuedo-set)
-        nil
-        (set? psuedo-set)
-        (seq psuedo-set)
-        true
-        (seq [psuedo-set])))
 
-(defn psuedo-set-contains? [psuedo-set item]
-  (cond (nil? psuedo-set)
+(defn pseudo-set-seq [pseudo-set]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (seq pseudo-set)
+        true
+        (seq [pseudo-set])))
+
+(defn pseudo-set-contains? [pseudo-set item]
+  (cond (nil? pseudo-set)
         false
-        (set? psuedo-set)
-        (contains? psuedo-set item)
+        (set? pseudo-set)
+        (contains? pseudo-set item)
         true
-        (= psuedo-set item)))
+        (= pseudo-set item)))
 
-(defn psuedo-set-conj [psuedo-set item]
-  (cond (nil? psuedo-set)
+(defn pseudo-set-conj [pseudo-set item]
+  (cond (nil? pseudo-set)
         item
-        (set? psuedo-set)
-        (conj psuedo-set item)
+        (set? pseudo-set)
+        (conj pseudo-set item)
         true
-        #{psuedo-set item}))
+        #{pseudo-set item}))
 
-(defn psuedo-set-disj [psuedo-set item]
-  (cond (nil? psuedo-set)
+(defn pseudo-set-disj [pseudo-set item]
+  (cond (nil? pseudo-set)
         nil
-        (set? psuedo-set)
-        (let [result (disj psuedo-set item)]
+        (set? pseudo-set)
+        (let [result (disj pseudo-set item)]
           (cond (empty? result)
                 nil
                 (= (count result) 1)
                 (first result)
                 true
                 result))
-        (= item psuedo-set)
+        (= item pseudo-set)
         nil
         true
-        psuedo-set))
+        pseudo-set))
 
 ;;; Chase contents until an atomic value is found.
 (defn atomic-value [store description]
@@ -162,7 +165,7 @@
   [store id]
   (let [content (get-in store [:id->content-map id])]
     (update-in store [:content->ids (canonical-atom-form content)]
-               #(psuedo-set-conj % id))))
+               #(pseudo-set-conj % id))))
 
 (defn deindex-subject
   "Undo indexing to reflect the effect of the item on its subject.
@@ -206,7 +209,7 @@
   [store id]
   (let [content (get-in store [:id->content-map id])]
     (update-in-clean-up store [:content->ids (canonical-atom-form content)]
-                        #(psuedo-set-disj % id))))
+                        #(pseudo-set-disj % id))))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -222,7 +225,7 @@
   [store id]
   (if (:modified-ids store)
     (reduce (fn [store, subject] (add-modified-id store subject))
-            store (psuedo-set-seq (:containing-ids store id)))
+            store (pseudo-set-seq (:containing-ids store id)))
     store))
 
 (defn add-triple
@@ -292,7 +295,7 @@
   "Return all items that contain the content, possibly through
    a chain of containment."
   [store content]
-  (let [items (psuedo-set-seq
+  (let [items (pseudo-set-seq
                (get-in store [:content->ids (canonical-atom-form content)]))]
     (concat items (mapcat #(eventually-containing-items store %) items))))
 
@@ -359,7 +362,7 @@
    ;;; the method id->content
    id->content-map
 
-   ;;; A derived index from content to a psuedo-set of ids with that content.
+   ;;; A derived index from content to a pseudo-set of ids with that content.
    content->ids
 
    ;;; A set of ids that have been declared temporary.
@@ -432,7 +435,7 @@
 
   (id-is-content? [this id exceptions]
     (not-every? (set exceptions)
-                (psuedo-set-seq (get-in this [:content->ids id]))))
+                (pseudo-set-seq (get-in this [:content->ids id]))))
 
   (add-simple-element [this subject content]
     (assert (not (nil? content)))

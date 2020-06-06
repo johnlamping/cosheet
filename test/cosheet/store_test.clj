@@ -123,30 +123,30 @@
   (is (= (remove-from-vector [1] 1) nil))
   (is (= (remove-from-vector nil 1) nil)))
 
-(deftest psuedo-set-test
+(deftest pseudo-set-test
   (let [ps (loop [ps nil in [] out [1 2 3 4 5]]
-             (is (= (set (psuedo-set-seq ps)) (set in)))
-             (doseq [x in] (is (psuedo-set-contains? ps x)))
-             (doseq [x out] (is (not (psuedo-set-contains? ps x))))
+             (is (= (set (pseudo-set-seq ps)) (set in)))
+             (doseq [x in] (is (pseudo-set-contains? ps x)))
+             (doseq [x out] (is (not (pseudo-set-contains? ps x))))
              (cond (empty? in)
                    (is (nil? ps))
                    (= (count in) 1)
                    (is (= ps (first in))))
              (if (not (empty? out))
-               (recur (psuedo-set-conj ps (first out))
+               (recur (pseudo-set-conj ps (first out))
                       (conj in (first out))
                       (rest out))
                ps))]
     (loop [ps ps in [1 2 3 4 5] out []]
-      (is (= (set (psuedo-set-seq ps)) (set in)))
-      (doseq [x in] (is (psuedo-set-contains? ps x)))
-      (doseq [x out] (is (not (psuedo-set-contains? ps x))))
+      (is (= (set (pseudo-set-seq ps)) (set in)))
+      (doseq [x in] (is (pseudo-set-contains? ps x)))
+      (doseq [x out] (is (not (pseudo-set-contains? ps x))))
       (cond (empty? in)
             (is (nil? ps))
             (= (count in) 1)
             (is (= ps (first in))))
       (when (not (empty? in))
-        (recur (psuedo-set-disj ps (first in))
+        (recur (pseudo-set-disj ps (first in))
                (rest in)
                (conj out (first in)))))))
 

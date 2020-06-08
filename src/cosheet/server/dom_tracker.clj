@@ -24,7 +24,7 @@
 ;;; containing dom, not by the definition that yields the
 ;;; component. There are thus two ways that a dom for a particular
 ;;; identity can change: the containing dom can change the definition
-;;; for the dom it wants in that spot, or the database can change to
+;;; for the dom it wants in that spot, or the database can change the
 ;;; content that that definition displays. We use a map to track the
 ;;; former, which points to a reporter that tracks the
 ;;; latter. Whenever a piece of dom changes, we check all the
@@ -436,11 +436,6 @@
   [tracker key]
   (or (get-in @tracker [:key->id key])
       (key->string key)))
-
-(defn dom-for-key?
-  "Return whether there is dom for the given key."
-  [tracker key]
-  (not (nil? (get-in @tracker [:key->dom key]))))
 
 (defn key->attributes
   "Return the attributes for the dom with the given key,

@@ -29,7 +29,7 @@
       [item-render :refer [item-content-DOM]]
       [dom-tracker :refer [request-client-refresh
                            process-acknowledgements response-doms
-                           key->id dom-for-key?]]
+                           key->id]]
       [session-state :refer [create-session ensure-session forget-session
                              create-client-state url-path-to-file-path
                              get-userdata-path

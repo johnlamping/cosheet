@@ -23,8 +23,7 @@
                                 hierarchy-node-logical-leaves
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels-R]]
-             [render-utils :refer [add-inherited-attribute
-                                   virtual-referent-DOM
+             [render-utils :refer [virtual-referent-DOM
                                    hierarchy-node-DOM-R
                                    hierarchy-node-items-referent]]
              [model-utils :refer [semantic-elements-R]]

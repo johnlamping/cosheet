@@ -53,7 +53,7 @@
 ;;;                      value source have a earlier priority than
 ;;;                      reevaluating its value source. That way, if changes
 ;;;                      mean that the reporter should have a new value source,
-;;;                      and that the valud of the old value source is
+;;;                      and that the value of the old value source is
 ;;;                      invalid, the old value source won't be reevaluated
 ;;;                      until we know that it is still needed.
 ;;;                      an earlier priority than reevaluating anything it

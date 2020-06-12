@@ -17,3 +17,7 @@ test/.DS_Store
 
 *.command
 /bin/
+test/cosheet/#expression_manager_test.clj#
+src/cosheet2/#utils.clj#
+test/.DS_Store
+test/.DS_Store

@@ -16,7 +16,7 @@
   (is (= (value 2) 2))
   (let [history (atom [])
         callback (fn [& args] (swap! history #(conj % args)))]
-    (set-attendee! 2 :key 5 callback)
+    (set-attendee-and-call! 2 :key 5 callback)
     (is (= @history
            [[:key :key :reporter 2 :description nil :categories nil]]))))
 
@@ -61,7 +61,7 @@
     (is (reporter? r))
     (is (not (reporter? 2)))
     (is (not (attended? r)))
-    (set-attendee! r :foo 1 (partial callback :f))
+    (set-attendee-and-call! r :foo 1 (partial callback :f))
     (is (= (value r) 2))
     (is (= (:extra (data r)) :e))
     (is (= (:priority (data r)) 1))
@@ -85,25 +85,22 @@
     (reset! history [])
     (set-attendee! r :bar 3 (partial callback :b))
     (is (check @history
-               [[:m r]
-                [:b :key :bar :reporter r :description nil :categories nil]]))
-    (set-attendee! r :tst 5 (partial callback :t))
+               [[:m r]]))
+    (set-attendee-and-call! r :tst 5 (partial callback :t))
     (is (check @history
                [[:m r]
-                [:b :key :bar :reporter r :description nil :categories nil]
                 [:t :key :tst :reporter r :description nil :categories nil]]))
     (is (= (:priority (data r)) 3))
     (set-value! r 4)
     (is (check (multiset @history)
                (multiset
                 [[:m r]
-                 [:b :key :bar :reporter r :description nil :categories nil]
                  [:t :key :tst :reporter r :description nil :categories nil]
                  [:b :key :bar :reporter r :description nil :categories nil]
                  [:t :key :tst :reporter r :description nil :categories nil]])))
     ;; Check priority updates
     (reset! history [])
-    (set-attendee! r :foo 1 (partial callback :f))
+    (set-attendee-and-call! r :foo 1 (partial callback :f))
     (is (= (:priority (data r)) 1))
     (is (check @history
                [[:m r]
@@ -113,14 +110,14 @@
     (is (check @history
                [[:m r]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
-    (set-attendee! r :foo 4 (partial callback :f))
+    (set-attendee-and-call! r :foo 4 (partial callback :f))
     (is (= (:priority (data r)) 4))
     (is (check @history
                [[:m r]
                 [:f :key :foo :reporter r :description nil :categories nil]
                 [:m r]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
-    (set-attendee! r :foo)
+    (remove-attendee! r :foo)
     (is (= (:priority (data r)) 5))
     (is (check @history
                [[:m r]
@@ -141,38 +138,34 @@
     (is (thrown? java.lang.AssertionError
                  (set-calculator! r 1)))
     (set-calculator! r calculator)
-    (set-selective-attendee! r :sel 1 [:a :b] (partial callback :s))
+    (set-attendee-and-call! r :sel 1 [:a :b] (partial callback :s))
     (set-attendee! r :all 1 (partial callback :a))
     (is (check @history
                [[:m r]
-                [:s :key :sel :reporter r :description nil :categories nil]
-                [:a :key :all :reporter r :description nil :categories nil]]))
+                [:s :key :sel :reporter r :description nil :categories nil]]))
     (set-value! r 3)
     (is (check (multiset @history)
                (multiset
                 [[:m r]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]])))
-    (make-change! r (fn [v] [(+ v 1) :increment [:c]]))
+    (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
     (is (= (value r) 4))
     (is (check (multiset @history)
                (multiset
                 [[:m r]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r
                   :description :increment :categories [:c]]])))
-    (make-change! r (fn [v] [(* v 2) :double [:c :a]]))
+    (change-value! r (fn [v] [(* v 2) :double [:c :a]]))
     (is (= (value r) 8))
     (is (check (multiset @history)
                (multiset
                 [[:m r]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:a :key :all :reporter r :description nil :categories nil]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r

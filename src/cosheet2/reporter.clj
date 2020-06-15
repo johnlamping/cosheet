@@ -16,6 +16,10 @@
   "A special value indicating that the reporter does not have a valid value"
   ::invalid)
 
+(def universal-category
+  "A special category of change that includes all changes"
+  ::universal-category)
+
 (defn valid? [value]
   (not= value invalid))
 
@@ -142,7 +146,7 @@
         reporter-keys (if (nil? categories)
                         (keys (:attendees data))
                         (set (mapcat (partial get (:selections data))
-                                     (conj categories ::universal-category))))]
+                                     (conj categories universal-category))))]
     (doseq [key reporter-keys]    
       (let [[priority classes callback] (get-in data [:attendees key])]
         (callback :key key
@@ -158,9 +162,9 @@
     (if (not= (:value old) (:value current))
       (inform-attendees r nil nil))))
 
-;; TODO: Add make-change-control-return
+;; TODO: Add change-control-return
 
-(defn make-change!
+(defn change-value!
   "Call the function with the current value of the reporter.  It must
    return a new value, a description of the change, and the categories
    of the change. Set the value of the reporter to the new value, and
@@ -226,8 +230,8 @@
         data))
     data))
 
-(defn update-and-inform-calculator!
-  "Run the update on the reporter, and inform the calculator if there
+(defn change-and-inform-calculator!
+  "Run the change on the reporter, and inform the calculator if there
    has been a change in whether it is attended to."
   [r f]
   (let [[old current] (swap-returning-both! (:data r) f)]
@@ -240,39 +244,34 @@
 (defn remove-attendee!
   "Remove the attendee with the given key."
   [r key]
-  (update-and-inform-calculator! r #(update-remove-attendee % key)))
-
-(defn set-selective-attendee!
-  "Add an attending callback to a reporter, under a key that must be
-   unique to each callback. If a callback is provided, the remaining
-   arguments are a priority, a vector of categories, a function, and
-   added arguments to the function, and the callback is called.
-   If no callback is provided, remove any callback with the key."
-  ([r key]
-   (remove-attendee! r key))
-  ([r key priority categories callback]
-   (check-callback callback)
-   (if (reporter? r)
-     (do
-       (update-and-inform-calculator!
-        r #(-> %
-               (update-remove-attendee key)
-               (update-add-attendee key priority categories callback)))
-       (call-callback-for-undescribed-change callback :key key :reporter r))
-     ;; r is not a reporter, so it will never change. We just have to make
-     ;; the initial call to the callback.
-     (call-callback-for-undescribed-change callback :key key :reporter r))))
+  (change-and-inform-calculator! r #(update-remove-attendee % key)))
 
 (defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be unique
    to each callback. If a callback is provided, the remaining arguments are
    a priority, a function, and added arguments to the function, and the
    callback is called immediately.
-   If no callback is provided, remove any callback .with the given key"
+   If no callback is provided, remove any callback with the given key"
   ([r key]
    (remove-attendee! r key))
   ([r key priority callback]
-   (set-selective-attendee! r key priority [::universal-category] callback)))
+   (set-attendee! r key priority [universal-category] callback))
+  ([r key priority categories callback]
+   (check-callback callback)
+   (change-and-inform-calculator!
+    r #(-> %
+           (update-remove-attendee key)
+           (update-add-attendee key priority categories callback)))))
+
+(defn set-attendee-and-call!
+  "Add an attending callback, and call it immediately"
+  ([r key priority callback]
+   (set-attendee-and-call! r key priority [universal-category] callback))
+  ([r key priority categories callback]
+   (set-attendee! r key priority categories callback)
+   (call-callback-for-undescribed-change callback :key key :reporter r)))
+
+;;; TODO: Add methods to add/remove categories from an attendee?
 
 (defn new-reporter
   [& {calculator :calculator :as args}]

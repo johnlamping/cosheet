@@ -67,40 +67,49 @@
        callback when we want to remove it, while an identical closure
        can't.)
 
-       Typically, a reporter has a calculator registered with it. The
+       Typically, a reporter is created with a calculator. The
        calculator is in charge of keeping the reporter's value up to
-       date, as long as there is demand for it. To do that, it is
-       informed when there is a change to whether there is demand for
-       the reporter's value. It will be called, with the reporter, the
-       first time there are any attendees to the reporter, whenever
-       there is a transition in whether there are attendees, and
-       whenever the priority of the reporter changes. These callbacks
-       let it do things like registering for callbacks to update its
-       state, or cancelling those callbacks when there is no more
-       interest. The calculator can put additional information on the
-       reporter to support its functionality.
+       date, as long as there is demand for it. First, the calculator
+       must be activated by setting the calculator-data. Then, the
+       calculator is informed whenever there is a change in the nature
+       of the demand for the reporter's value.
+
+       It will be called, with the calculator data and the reporter,
+       the first time there are any attendees to the reporter. It will
+       be called again whenever there is a change in: whether or not
+       there is demand, the priority of the demand, and the categories
+       requested. These callbacks let it do things like registering
+       for callbacks to update its state, or cancelling those
+       callbacks when there is no more interest. The calculator can
+       put additional information on the reporter to support its
+       functionality.
 
        A reporter is implemented as a record holding an atom with
        a map of relevant information. By wrapping the atom in a record,
        we can define a special print method that can avoid printing
        circular references.
-."}
+      "}
     [;;; An atom holding a map consisting of
-     ;;;   :value       The value of the reporter.
-     ;;;   :priority    The priority for recomputing this reporter
-     ;;;                (lower first)
-     ;;;                This will be the minimum of the priorities of all
-     ;;;                attendees. If there are no attendees, it will be
-     ;;;                Double/MAX_VALUE.
-     ;;;   :calculator  If present, the calculator for this reporter.
-     ;;;   :attendees   If present, a map from key to
-     ;;;                [priority categories callback] 
-     ;;;                for each attendee to the reporter.
-     ;;;   :selections  A map from category to the set of keys of attendees
-     ;;;                that have requested that category.
-     ;;;                (::universal-category matches everything, and is used
-     ;;;                for attendees that haven't narrowed down their
-     ;;;                interest.
+     ;;;   :value            The value of the reporter.
+     ;;;   :priority         The priority for recomputing this reporter
+     ;;;                     (lower first)
+     ;;;                     This will be the minimum of the priorities of all
+     ;;;                     attendees. If there are no attendees, it will be
+     ;;;                     Double/MAX_VALUE.
+     ;;;   :attendees        If present, a map from key to
+     ;;;                     [priority categories callback] 
+     ;;;                     for each attendee to the reporter.
+     ;;;   :selections       A map from category to the set of keys of attendees
+     ;;;                     that have requested that category.
+     ;;;                     (::universal-category matches everything, and is
+     ;;;                     used for attendees that haven't narrowed down
+     ;;;                     their interest.
+     ;;;   :calculator       The calculator for this reporter. It is set
+     ;;;                     when the reporter is created, and can not change.
+     ;;;   :calculator-data  If present, the auxilliary data for the
+     ;;;                     reporter's calculator. This is typically global
+     ;;;                     information shared across many reporters. Once
+     ;;;                     set, it can not be changed.
    data]
   )
 
@@ -180,19 +189,35 @@
     (if changed
       (inform-attendees r description categories))))
 
-(defn set-calculator!
-  "Set the calculator for the reporter.
-   Once set, the calculator can never be changed."
-  [reporter calculator]
-  (check-callback calculator)
-  (let [[old current]
-        (swap-returning-both! (:data reporter) assoc :calculator calculator)]
-    (when-let [old-calculator (:calculator old)]
-      (assert (= old-calculator calculator)
-              (format "Cannot change calculator: expression %s."
-                      (:expression old))))
-    (when (data-attended? current)
-      (calculator :reporter reporter))))
+(defn set-calculator-data-if-needed!
+  "If the calculator data is not already present, set it
+   and call the calculator if there is any demand.
+   Once set, the calculator data can never be changed."
+  [reporter calculator-data]
+  (assert (not (nil? calculator-data)))
+  (when
+      (swap-control-return! (:data reporter)
+                            (fn [data]
+                              (if (and (nil? (:calculator-data data))
+                                       (not (nil? (:calculator data))))
+                                [(assoc data :calculator-data calculator-data)
+                                 true]
+                                [data
+                                 false])))
+    
+    (let [data (data reporter)]
+      (when (data-attended? data)
+        ((:calculator data) (:calculator-data data) reporter)))))
+
+(defn set-calculator-data!
+  "Set the calculator data for the reporter, and call the calculator
+   if there is any demand.
+   Once set, the calculator data can never be changed."
+  [reporter calculator-data]
+  (let [data (data reporter)]
+    (assert (nil? (:calculator-data data)))
+    (assert (not (nil? (:calculator data)))))
+  (set-calculator-data-if-needed! reporter calculator-data))
 
 (defn update-add-attendee
   "Add the described attendee to the data, which must not already have
@@ -232,14 +257,19 @@
 
 (defn change-and-inform-calculator!
   "Run the change on the reporter, and inform the calculator if there
-   has been a change in whether it is attended to."
+   has been a change in the nature of the demand."
   [r f]
-  (let [[old current] (swap-returning-both! (:data r) f)]
-    (when (and (:calculator current)
+  (let [[old current] (swap-returning-both! (:data r) f)
+        calculator (:calculator current)
+        calculator-data (:calculator-data current)]
+    (when (and calculator
+               calculator-data
                (or
                 (not= (data-attended? old) (data-attended? current))
+                (not= (set (keys (:selections old)))
+                      (set (keys (:selections current))))
                 (not= (:priority old) (:priority current))))
-      ((:calculator current) r))))
+      (calculator calculator-data r))))
 
 (defn remove-attendee!
   "Remove the attendee with the given key."
@@ -275,13 +305,10 @@
 
 (defn new-reporter
   [& {calculator :calculator :as args}]
-  (let [reporter (->ReporterImpl
-                  (atom (-> (merge {:value invalid} args)
-                            (dissoc :calculator)
-                            (assoc :priority Double/MAX_VALUE))))]
-    (when calculator
-      (set-calculator! reporter calculator))
-    reporter))
+  (when calculator (check-callback calculator))
+  (->ReporterImpl
+   (atom (-> (merge {:value invalid} args)
+             (assoc :priority Double/MAX_VALUE)))))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (let [data @(:data s)]
@@ -290,8 +317,6 @@
       (.write w (str " name:" name)))    
     (if-let [value (:value data)]
       (.write w (str " value:" (if (seq? value) (doall value) value))))
-    (if-let [type (:calculator-type data)]
-      (.write w (str " calculator-type:" type)))
     (if-let [expression (:expression data)]
       (.write w (str " expression:"
                      (vec (map #(if (reporter? %) "<R>" %) expression)))))

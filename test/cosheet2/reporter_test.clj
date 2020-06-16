@@ -135,9 +135,9 @@
         callback (fn [& args] (swap! history #(conj % args)))
         calculator (partial callback :c)
         r (new-reporter :value 2 :calculator calculator)]
-    (is (thrown? java.lang.AssertionError
-                 (set-calculator! r 1)))
     (set-calculator-data! r :cd)
+    (is (thrown? java.lang.AssertionError
+                 (set-calculator-data! r 1)))
     (set-attendee-and-call! r :sel 1 [:a :b] (partial callback :s))
     (set-attendee! r :all 1 (partial callback :a))
     (is (check @history

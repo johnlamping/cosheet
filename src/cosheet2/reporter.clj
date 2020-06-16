@@ -4,14 +4,6 @@
                                     swap-returning-both!
                                     swap-control-return!]])))
 
-(defn check-callback [callback]
-  (assert (fn? callback)
-          ["Callback isn't a function." callback])
-  callback)
-
-(defn call-callback-for-undescribed-change [callback & args]
-  (apply callback (concat args [:description nil :categories nil])))
-
 (def invalid
   "A special value indicating that the reporter does not have a valid value"
   ::invalid)
@@ -196,15 +188,15 @@
   [reporter calculator-data]
   (assert (not (nil? calculator-data)))
   (when
-      (swap-control-return! (:data reporter)
-                            (fn [data]
-                              (if (and (nil? (:calculator-data data))
-                                       (not (nil? (:calculator data))))
-                                [(assoc data :calculator-data calculator-data)
-                                 true]
-                                [data
-                                 false])))
-    
+      (swap-control-return!
+       (:data reporter)
+       (fn [data]
+         (if (and (nil? (:calculator-data data))
+                  (not (nil? (:calculator data))))
+           [(assoc data :calculator-data calculator-data)
+            true]
+           [data
+            false])))
     (let [data (data reporter)]
       (when (data-attended? data)
         ((:calculator data) (:calculator-data data) reporter)))))
@@ -212,6 +204,7 @@
 (defn set-calculator-data!
   "Set the calculator data for the reporter, and call the calculator
    if there is any demand.
+   This is also called activating the reporter.
    Once set, the calculator data can never be changed."
   [reporter calculator-data]
   (let [data (data reporter)]
@@ -271,6 +264,14 @@
                 (not= (:priority old) (:priority current))))
       (calculator calculator-data r))))
 
+(defn check-callback [callback]
+  (assert (fn? callback)
+          ["Callback isn't a function." callback])
+  callback)
+
+(defn call-callback-for-undescribed-change [callback & args]
+  (apply callback (concat args [:description nil :categories nil])))
+
 (defn remove-attendee!
   "Remove the attendee with the given key."
   [r key]
@@ -288,10 +289,11 @@
    (set-attendee! r key priority [universal-category] callback))
   ([r key priority categories callback]
    (check-callback callback)
-   (change-and-inform-calculator!
-    r #(-> %
-           (update-remove-attendee key)
-           (update-add-attendee key priority categories callback)))))
+   (when (reporter? r)
+     (change-and-inform-calculator!
+      r #(-> %
+             (update-remove-attendee key)
+             (update-add-attendee key priority categories callback))))))
 
 (defn set-attendee-and-call!
   "Add an attending callback, and call it immediately"
@@ -317,9 +319,6 @@
       (.write w (str " name:" name)))    
     (if-let [value (:value data)]
       (.write w (str " value:" (if (seq? value) (doall value) value))))
-    (if-let [expression (:expression data)]
-      (.write w (str " expression:"
-                     (vec (map #(if (reporter? %) "<R>" %) expression)))))
     (if-let [application (:application data)]
       (.write w (str " application:"
                      (vec (map #(if (reporter? %) "<R>" %) application)))))

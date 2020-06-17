@@ -4,17 +4,6 @@
                                     swap-returning-both!
                                     swap-control-return!]])))
 
-(def invalid
-  "A special value indicating that the reporter does not have a valid value"
-  ::invalid)
-
-(def universal-category
-  "A special category of change that includes all changes"
-  ::universal-category)
-
-(defn valid? [value]
-  (not= value invalid))
-
 (defrecord ReporterImpl
     ^{:doc
       "A reporter is essentially an atom that provides monitoring of
@@ -108,14 +97,6 @@
 (defn reporter? [r]
   (instance? ReporterImpl r))
 
-(defn value
-  "Return the current value of the reporter. If it is not a reporter, treat
-   it as a constant reporter, and return the object."
-  [r]
-  (if (reporter? r)
-    (:value @(:data r))
-    r))
-
 (defn data-atom
   "Return the atom holding the reporter's data. If any of the standard fields
    in this atom are changed, the appropriate notifications must be done."
@@ -127,11 +108,33 @@
   [r]
   @(:data r))
 
+(defn data-value [data]
+  (:value data))
+
+(defn value
+  "Return the current value of the reporter. If it is not a reporter, treat
+   it as a constant reporter, and return the object."
+  [r]
+  (if (reporter? r)
+    (data-value @(:data r))
+    r))
+
+(def invalid
+  "A special value indicating that the reporter does not have a valid value"
+  ::invalid)
+
+(defn valid? [r]
+  (not= (value r) invalid))
+
 (defn data-attended? [data]
   (not (empty? (:attendees data))))
 
 (defn attended? [r]
   (data-attended? @(:data r)))
+
+(def universal-category
+  "A special category of change that includes all changes"
+  ::universal-category)
 
 (defn inform-attendees
   "Notify the attendees that the value may have changed."

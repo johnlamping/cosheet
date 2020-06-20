@@ -79,7 +79,7 @@
                              [:attendees `(:copy-value ~reporter)])
                      [(any #(> % (:priority data)))
                       [reporter/universal-category]
-                      (any)]))
+                      copy-value-callback]))
           (conj need-checking source))
       need-checking)))
 
@@ -93,7 +93,7 @@
                              [:attendees `(:copy-value ~reporter)])
                      [(any)
                       [reporter/universal-category]
-                      (any)]))
+                      null-callback]))
           (conj need-checking old-source))
       need-checking)))
 
@@ -195,21 +195,21 @@
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r1 (reporter/new-reporter :value :v)
-        r2 (reporter/new-reporter :value-source r1)
-        r3 (reporter/new-reporter :old-value-source r1)]
-    (register-copy-value r1 r2 cd)
+        r2 (reporter/new-reporter :value-source r1 :calculator-data cd)
+        r3 (reporter/new-reporter :old-value-source r1 :calculator-data cd)]
+    (register-copy-value r2 r1 cd)
     (compute cd)
     (is (= (reporter/value r2) :v))
     (reporter/set-value! r1 :w)
     (compute cd)
     (is (= (reporter/value r2) :w))
     (swap! (reporter/data-atom r2) dissoc :value-source)
-    (register-copy-value r1 r2 cd)
+    (register-copy-value r2 r1 cd)
     (compute cd)
     (reporter/set-value! r1 :x)
     (compute cd)
     (is (= (reporter/value r2) :w))
-    (register-copy-value r1 r3 cd)
+    (register-copy-value r3 r1 cd)
     (compute cd)
     (is (= (reporter/value r3) invalid))
     (is (check
@@ -217,17 +217,19 @@
          [Double/MAX_VALUE [reporter/universal-category] null-callback]))))
 
 (deftest copy-subordinate-test
-  (let [r0 (reporter/new-reporter :name :r0 :value :r0)
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        r0 (reporter/new-reporter :name :r0 :value :r0)
         r1 (reporter/new-reporter :name :r1 :value :v :dependent-depth 1)
         r2 (reporter/new-reporter :name :r2
                                   :value :x
                                   :dependent-depth 1
                                   :needed-values #{r1}
                                   :application [identity r1]
-                                  :subordinate-values {})
-        r3 (reporter/new-reporter :name :r3 :value-source r2)
-        queue (new-priority-task-queue 0)
-        cd (new-calculator-data queue)
+                                  :subordinate-values {}
+                                  :calculator-data cd)
+        r3 (reporter/new-reporter :name :r3
+                                  :value-source r2
+                                  :calculator-data cd)
         ;; Since cd is immutable, we can't replace its queue, but we
         ;; can set the content of its queue to the content of a fresh queue.
         clear-cd-queue #(reset! (:queue cd) @(new-priority-task-queue 0))]
@@ -235,7 +237,7 @@
     (reporter/set-attendee! r2 :k 0 (constantly nil))
     (reporter/set-attendee! r3 :k 0 (constantly nil))
     ;; Register, and check that the information is copied.
-    (register-copy-subordinate r1 r2 cd)
+    (register-copy-subordinate r2 r1 cd)
     (compute cd)
     (is (= (:needed-values (reporter/data r2)) #{}))
     (is (check (:subordinate-values (reporter/data r2)) {r1 [:v (any)]}))
@@ -253,8 +255,8 @@
     ;; then change the input to undefined, and check all the consequences.
     (clear-cd-queue)
     (swap! (reporter/data-atom r2) assoc :value-source r0)
-    (register-copy-value r0 r2 cd)
-    (register-copy-value r2 r3 cd)
+    (register-copy-value r2 r0 cd)
+    (register-copy-value r3 r2 cd)
     (compute cd)
     (is (= (reporter/value r3) :r0))
     (reporter/set-value! r1 invalid)
@@ -273,21 +275,24 @@
     (is (= (reporter/value r3) :r0))))
 
 (deftest run-application-if-ready-test
-  (let [r0 (reporter/new-reporter :name :r0 :value 1)
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
+                                  :calculator application-calculator
                                   :value 3
                                   :dependent-depth 0
-                                  :application [inc 2]
-                                  :calculator application-calculator)
+                                  :application [inc 2])
         r (reporter/new-reporter :name :r
                                  :application [inc r0]
                                  :needed-values #{r0}
-                                 :subordinate-values {r0 [1 0]})
-        rc (reporter/new-reporter :name :rc :value-source r)
-        cd (new-calculator-data (new-priority-task-queue 0))]
+                                 :subordinate-values {r0 [1 0]}
+                                 :calculator-data cd)
+        rc (reporter/new-reporter :name :rc
+                                  :value-source r
+                                  :calculator-data cd)]
     ;; Give rc priority 6
     (reporter/set-attendee! rc :test 6 (fn [& _] nil))
-    (register-copy-value r rc cd)
+    (register-copy-value rc r cd)
     (is (= (:priority (reporter/data r)) 7))
    ;; Try when the application is not ready.
     (run-application-if-ready r cd)
@@ -302,20 +307,25 @@
     (is (= (reporter/value rc) 2))
     (is (= (:dependent-depth (reporter/data r)) 1))    
     ;; Try when it is ready and computes a reporter.
+    (swap! (reporter/data-atom r0)
+           #(into % {:value (fn [] r1)}))
     (swap! (reporter/data-atom r)
            #(into % {:subordinate-values {r0 [(fn [] r1) 0]}
                      :application [r0]
                      :value-source r1}))
-    (register-copy-value r1 r cd)
+    (register-copy-value r r1 cd)
+    (is (= (:calculator-data (reporter/data r1)) nil))
     (compute cd)
     (is (= (:dependent-depth (reporter/data r)) 2))    
     (is (check (:attendees (reporter/data r1))
                {[:copy-value r] [(+ 6 3) [reporter/universal-category] (any)]}))
-    (is (= (:calculator-data (reporter/data r1)) nil))
-    (reporter/set-value! r invalid)
+    (swap! (reporter/data-atom r)
+           #(into % {:value-source nil
+                     :value invalid}))
     (run-application-if-ready r cd)
-    ;; r won't get a value yet, because r1 is invalid.
+    ;; r won't get a value yet, because it doesn't have the value from r1.
     (is (= (reporter/value r) invalid))
+    ;; Propagate the value
     (compute cd)
     (is (= (reporter/value rc) 3))
     (is (= (:attendees (reporter/data r0)) nil))
@@ -326,19 +336,27 @@
     (is (= (reporter/value rc) 3))))
 
 (deftest application-calculator-test
-  (let [r0 (reporter/new-reporter :value 1)
-        r (reporter/new-reporter :application [inc r0]
-                                 :calculator application-calculator)
-        rc (reporter/new-reporter :value-source r)
-        cd (new-calculator-data (new-priority-task-queue 0))]
-    ;; Give rc priority 6
-    (reporter/set-attendee! rc :test 6 (fn [& _] nil))
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        r0 (reporter/new-reporter :name :r0
+                                  :value 1)
+        r (reporter/new-reporter :name :r
+                                 :application [inc r0]
+                                 :calculator application-calculator
+                                 :calculator-data cd)
+        rc (reporter/new-reporter :name :rc
+                                  :value 2
+                                  :application [identity r]
+                                  :value-source r
+                                  :calculator application-calculator
+                                  :calculator-data cd)]
     ;; Run manager when there is no interest.
     (do-application-calculate r cd)
     (compute cd)
     (is (= (reporter/value r) invalid))
     ;; Run when there is interest.
-    (register-copy-value r rc cd)
+    ;; Give rc priority 6
+    (reporter/set-attendee! rc :test 6 (fn [& _] nil))
+    (register-copy-value rc r cd)
     (do-application-calculate r cd)
     (compute cd)
     (is (= (:needed-values (reporter/data r)) #{}))
@@ -347,8 +365,8 @@
     (is (= (reporter/value r) 2))
     (is (= (:dependent-depth (reporter/data r)) 1))    
     ;; Run when there is no interest again.
-    (swap! (reporter/data-atom rc) dissoc :value-source)
-    (register-copy-value r rc cd)
+    (reporter/remove-attendee! rc :test)
+    (register-copy-value rc r cd)
     (do-application-calculate r cd)
     (compute cd)
     (is (not (contains? (reporter/data r) :needed-values)))

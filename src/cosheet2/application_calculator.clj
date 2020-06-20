@@ -94,26 +94,6 @@
 ;;; was copied still matches the latest information, and redo the copy
 ;;; if it doesn't.
 
-;;; SUGGESTION: if it become important to pass around deltas, the way
-;;; to do that is to have value information contain a promise of the
-;;; next version of that value and the delta between those versions.
-;;; Then, anything with a handle to an old value can chase the change
-;;; path, while GC will get rid of change information for which there
-;;; are no longer handles.
-
-;;; TODO: Priorities need to be implemented. Specifically, the
-;;; priority of the arguments for a reporter must be higher (lower
-;;; value) than the priority of a reporter returned as its value. That
-;;; ensures that the arguments will be re-evaluated before the
-;;; returned reporter is, since they may cause the returned reporter
-;;; to become irrelevant. Further, propagation of invalid information
-;;; should also be done by priority, so that it won't propagate to a
-;;; reporter that ends up being irrelevant. That propagation still
-;;; needs to be higher than for recomputation of the otherwise same
-;;; priority, so that recomputations won't happen on stale
-;;; information. Also, mutable stores need to hook into the task queue
-;;; so their reporters work the same way.
-
 ;;; TODO: Approximations need to be implemented.
 ;;; They logically unfold the dependency graph, with only the last
 ;;; unfolding being kept around, but all unfoldings being invalidated
@@ -176,32 +156,33 @@
         (update-new-further-action reporter/inform-attendees reporter))))
 
 (defn copy-value
-  [from to cd]
+  [reporter from cd]
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
-     to
+     reporter
      (fn [data]
        (if (= (:value-source data) from)
          (let [our-depth (when (reporter/valid? value)
                            (+ dependent-depth 1 (subordinate-depth data)))]
-           (cond-> (update-value-and-dependent-depth data to value our-depth)
+           (cond-> (update-value-and-dependent-depth
+                    data reporter value our-depth)
              (reporter/valid? value)
              ;; We have finished computing a value, so the old source
              ;; is not holding onto anything useful.
-             (update-old-value-source to nil cd)))
+             (update-old-value-source reporter nil cd)))
          data)))))
 
-(defn copy-value-callback-generator
-  [cd]
-  (fn [& {[_ to] :key from :reporter}]
+(defn copy-value-callback
+  [& {[_ reporter] :key from :reporter}]
+  (let [cd (:calculator-data (reporter/data reporter))]
     (add-task-with-priority
      ;; Propagating has to be prioritized before computing, as an early
      ;; priority computation may depend on a lower priority value, and needs
      ;; to be informed if that value changes.
-     (:queue cd) (- (:priority (reporter/data to)) 1e6)
-     copy-value from to cd)))
+     (:queue cd) (- (:priority (reporter/data reporter)) 1e6)
+     copy-value reporter from cd)))
 
 (defn null-callback
   "We use this when we want to preserve demand for a reporter,
@@ -210,34 +191,28 @@
   nil)
 
 (defn register-copy-value
-  "Register the need to copy (or not copy) the value from
-   the first reporter to become the value of the second."
-  [from to cd]
-  ;; We have to create the bound callback outside of the
-  ;; with-latest-value, because successive calls to
-  ;; copy-value-callback-generator generate non-equal object, so
-  ;; putting it inside makes with-latest-value think the value keeps
-  ;; changing.
-  (let [bound-callback (copy-value-callback-generator cd)]
-    (with-latest-value
-      [[priority callback]
-       (let [data (reporter/data to)]
-         (cond (= (:value-source data) from)
-               [(+ (:priority data) 1 (subordinate-depth data))
-                bound-callback]
-               (= (:old-value-source data) from)
-               [Double/MAX_VALUE
-                ;; We don't care about the value, but we want to keep
-                ;; demand
-                null-callback]))]
+  "Register the need to copy (or not copy) the value from the second
+   reporter to become the value of our reporter."
+  [reporter from cd]
+  (with-latest-value
+    [[priority callback]
+     (let [data (reporter/data reporter)]
+       (cond (= (:value-source data) from)
+             [(+ (:priority data) 1 (subordinate-depth data))
+              copy-value-callback]
+             (= (:old-value-source data) from)
+             [Double/MAX_VALUE
+              ;; We don't care about the value, but we want to keep up
+              ;; demand.
+              null-callback]))]
+    ;; It is possible, with caching, for the same reporter to be
+    ;; both our value source and one of our subordinates. We
+    ;; need to have a different key for the two cases, or the
+    ;; reporter will only record one of them.
+    (let [key (list :copy-value reporter)]
       (if (nil? callback)
-        (reporter/remove-attendee! from (list :copy-value to))
-        (reporter/set-attendee-and-call!
-         ;; It is possible, with caching, for the same reporter to be
-         ;; both our value source and one of our subordinates. We
-         ;; need to have a different key for the two cases, or the
-         ;; reporter will only record one of them.
-         from (list :copy-value to) priority callback)))))
+        (reporter/remove-attendee! from key)
+        (reporter/set-attendee-and-call! from key priority callback)))))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -254,7 +229,7 @@
       data
       (reduce
        (fn [data src]
-         (update-new-further-action data register-copy-value src reporter cd))
+         (update-new-further-action data register-copy-value reporter src cd))
        (if source
          (assoc data source-key source)
          (dissoc data source-key))
@@ -269,12 +244,12 @@
     (dissoc :arguments-unchanged)))
 
 (defn copy-subordinate
-  [from to cd]
+  [reporter from cd]
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
-     to
+     reporter
      (fn [data]
        (let [same-value
              (= value (get-in data [:subordinate-values from 0] ::not-found))]
@@ -289,16 +264,16 @@
            ;; which may not be for a while.
            (let [current-source (:value-source data)
                  newer-data (cond-> (update-value-and-dependent-depth
-                                     data to reporter/invalid 0)
+                                     data reporter reporter/invalid 0)
                               current-source
                               ;; We must do the copy from source to
                               ;; old-source before clearing source,
                               ;; so the old source always has attendees.
                               (#(-> %
                                     (update-old-value-source
-                                     to current-source cd)
+                                     reporter current-source cd)
                                     (assoc :arguments-unchanged true)
-                                    (update-value-source to nil cd))))]
+                                    (update-value-source reporter nil cd))))]
              (if (reporter/valid? value)
                (let [new-data
                      (cond-> (update-in newer-data [:needed-values] disj from)
@@ -313,55 +288,51 @@
                      ;; the old source. Make it current again.
                      (-> new-data
                          (update-value-source
-                          to (:old-value-source new-data) cd)
-                         (update-old-value-source to nil cd))
+                          reporter (:old-value-source new-data) cd)
+                         (update-old-value-source reporter nil cd))
                      ;; Some value changed. Schedule recomputation.
                      ;; TODO: Add priority here.
                      (apply update-new-further-action new-data 
                             add-task (:queue cd)
-                            [run-application-if-ready to cd]))
+                            [run-application-if-ready reporter cd]))
                    new-data))
                (update-in newer-data [:needed-values] conj from)))))))))
 
-(defn copy-subordinate-callback-generator
-  [cd]
-  (fn [& {to :key from :reporter :as keys}]
+(defn copy-subordinate-callback
+  [& {reporter :key from :reporter :as keys}]
+  (let [data  (reporter/data reporter)
+        cd (:calculator-data data)]
     (add-task-with-priority
      ;; Propagating has to be prioritized before computing, as an early
-     ;; priority computation may depend on a lower priority value, and needs
+     ;; priority computation may depend on a worse priority value, and needs
      ;; to be informed if that value changes.
-     ;; TODO: Is this right? Shouldn't computing subordinate reporters
-     ;; be more urgent, as nothing can be done without them.
-     (:queue cd) (- (:priority (reporter/data to)) 1e6)
-     copy-subordinate from to cd)))
+     (:queue cd) (- (:priority data) 1e6)
+     copy-subordinate reporter from cd)))
 
 (defn register-copy-subordinate
   "Register the need to copy (or not copy) the value from the first reporter
   for use as an argument of the second."
-  [from to cd]
-  ;; We have to create the bound callback outside of the
-  ;; with-latest-value, because successive calls to
-  ;; copy-subordinate-callback-generator generate non-equal functions,
-  ;; so putting it inside makes with-latest-value think the value
-  ;; keeps changing.
-  (let [bound-callback (copy-subordinate-callback-generator cd)]
-    (with-latest-value
-      [[priority callback]
-       (let [data (reporter/data to)]
-         (when (or (contains? (get data :needed-values #{}) from)
-                   (contains? (:subordinate-values data) from))
-           [(+ (:priority data) 1) bound-callback]))]
-      (if (nil? callback)
-        (reporter/remove-attendee! from to)
-        (reporter/set-attendee-and-call! from to priority callback)))))
+  [reporter from cd]
+  (with-latest-value
+    [[priority callback]
+     (let [data (reporter/data reporter)]
+       (when (or (contains? (get data :needed-values #{}) from)
+                 (contains? (:subordinate-values data) from))
+         ;; We make the priority of calculating our subordinate
+         ;; one worse. That way, shallow computations will finish before
+         ;; deep ones, as their subordinates will have better priorities.
+         [(+ (:priority data) 1) copy-subordinate-callback]))]
+    (if (nil? callback)
+      (reporter/remove-attendee! from reporter)
+      (reporter/set-attendee-and-call! from reporter priority callback))))
 
 (defn request-each-register-copy-subordinate
   "Register all the subordinateds this reporter needs."
-  [data subordinates reporter cd]
+  [data reporter subordinates cd]
   (reduce
    (fn [data subordinate]
      (update-new-further-action
-      data register-copy-subordinate subordinate reporter cd))
+      data register-copy-subordinate reporter subordinate cd))
    data subordinates))
 
 (defn run-application-if-ready
@@ -421,7 +392,7 @@
                                          (:application data)))
                new-data (-> data
                             (request-each-register-copy-subordinate
-                             subordinates reporter cd)
+                             reporter subordinates cd)
                             (assoc :requested-priority (:priority data)))]
            (if same-attended
              ;; Only the priority changed. We need only also re-register for
@@ -429,7 +400,7 @@
              (cond-> new-data
                (:value-source new-data)
                (update-new-further-action
-                register-copy-value (:value-source new-data) reporter cd))
+                register-copy-value reporter (:value-source new-data) cd))
              (let [new-data (update-value-and-dependent-depth
                              new-data reporter reporter/invalid 0)]
                (if (reporter/data-attended? new-data)

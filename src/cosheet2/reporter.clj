@@ -138,25 +138,27 @@
 
 (defn inform-attendees
   "Notify the attendees that the value may have changed."
-  [r description categories]
+  ([r]
+   (inform-attendees r nil nil))
+  ([r description categories]
   ;;; Since the only guarantee is eventual callback, we can fetch the
   ;;; attendees map outside of any lock, since anything that changed
   ;;; the attendees will also request callbacks if appropriate.
   ;;; This does mean that an attendee may be called after it has cancelled
   ;;; its request.
-  (let [data (data r) 
-        ;; Avoid calling the same reporter twice if several of its
-        ;; categories match
-        reporter-keys (if (nil? categories)
-                        (keys (:attendees data))
-                        (set (mapcat (partial get (:selections data))
-                                     (conj categories universal-category))))]
-    (doseq [key reporter-keys]    
-      (let [[priority classes callback] (get-in data [:attendees key])]
-        (callback :key key
-                  :reporter r
-                  :description description
-                  :categories categories)))))
+   (let [data (data r) 
+         ;; Avoid calling the same reporter twice if several of its
+         ;; categories match
+         reporter-keys (if (nil? categories)
+                         (keys (:attendees data))
+                         (set (mapcat (partial get (:selections data))
+                                      (conj categories universal-category))))]
+     (doseq [key reporter-keys]    
+       (let [[priority classes callback] (get-in data [:attendees key])]
+         (callback :key key
+                   :reporter r
+                   :description description
+                   :categories categories))))))
 
 (defn set-value!
   "Set the value of the reporter, informing any attendees."
@@ -164,7 +166,7 @@
   (let [[old current]
         (swap-returning-both! (:data r) #(assoc % :value value))]
     (if (not= (:value old) (:value current))
-      (inform-attendees r nil nil))))
+      (inform-attendees r))))
 
 ;; TODO: Add change-control-return
 
@@ -202,7 +204,7 @@
             false])))
     (let [data (data reporter)]
       (when (data-attended? data)
-        ((:calculator data) (:calculator-data data) reporter)))))
+        ((:calculator data) reporter (:calculator-data data))))))
 
 (defn set-calculator-data!
   "Set the calculator data for the reporter, and call the calculator
@@ -265,7 +267,7 @@
                 (not= (set (keys (:selections old)))
                       (set (keys (:selections current))))
                 (not= (:priority old) (:priority current))))
-      (calculator calculator-data r))))
+      (calculator r calculator-data))))
 
 (defn check-callback [callback]
   (assert (fn? callback)
@@ -326,5 +328,3 @@
       (.write w (str " application:"
                      (vec (map #(if (reporter? %) "<R>" %) application)))))
     (.write w ">")))
-
-

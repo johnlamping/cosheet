@@ -38,7 +38,7 @@
 (defn request
   "Request computation of a reporter, returning the reporter."
   [r cd]
-  (set-attendee! r ::computation-request 0 (fn [key value] nil))
+  (set-attendee! r ::computation-request 0 (fn [& _] nil))
   (propagate-calculator-data! r cd)
   r)
 

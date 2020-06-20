@@ -67,35 +67,35 @@
     (is (= (:extra (data r)) :e))
     (is (= (:priority (data r)) 1))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-value! r 3)
     (is (= (value r) 3))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-attendee! r :foo)
     (is (not (attended? r)))
     (is (> (:priority (data r)) 1e20))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
                 [:f :key :foo :reporter r :description nil :categories nil]
-                [:c :cd r]]))
+                [:c r :cd]]))
     (reset! history [])
     (set-attendee! r :bar 3 (partial callback :b))
     (is (check @history
-               [[:c :cd r]]))
+               [[:c r :cd]]))
     (set-attendee-and-call! r :tst 5 (partial callback :t))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:t :key :tst :reporter r :description nil :categories nil]]))
     (is (= (:priority (data r)) 3))
     (set-value! r 4)
     (is (check (multiset @history)
                (multiset
-                [[:c :cd r]
+                [[:c r :cd]
                  [:t :key :tst :reporter r :description nil :categories nil]
                  [:b :key :bar :reporter r :description nil :categories nil]
                  [:t :key :tst :reporter r :description nil :categories nil]])))
@@ -104,28 +104,28 @@
     (set-attendee-and-call! r :foo 1 (partial callback :f))
     (is (= (:priority (data r)) 1))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-attendee! r :bar)
     (is (= (:priority (data r)) 1))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (set-attendee-and-call! r :foo 4 (partial callback :f))
     (is (= (:priority (data r)) 4))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
-                [:c :cd r]
+                [:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
     (remove-attendee! r :foo)
     (is (= (:priority (data r)) 5))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
-                [:c :cd r]
+                [:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]
-                [:c :cd r]]))
+                [:c r :cd]]))
     
     (is (thrown? java.lang.AssertionError (set-attendee! r :foo 0 1)))
     (is (thrown? java.lang.AssertionError (set-calculator-data! r :stuff))))
@@ -141,24 +141,24 @@
     (set-attendee-and-call! r :sel 1 [:a :b] (partial callback :s))
     (set-attendee! r :all 1 (partial callback :a))
     (is (check @history
-               [[:c :cd r]
+               [[:c r :cd]
                 [:s :key :sel :reporter r :description nil :categories nil]
-                [:c :cd r]]))
+                [:c r :cd]]))
     (set-value! r 3)
     (is (check (multiset @history)
                (multiset
-                [[:c :cd r]
+                [[:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c :cd r]
+                 [:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]])))
     (change-value! r (fn [v] [(+ v 1) :increment [:c]]))
     (is (= (value r) 4))
     (is (check (multiset @history)
                (multiset
-                [[:c :cd r]
+                [[:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c :cd r]
+                 [:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r
@@ -167,9 +167,9 @@
     (is (= (value r) 8))
     (is (check (multiset @history)
                (multiset
-                [[:c :cd r]
+                [[:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
-                 [:c :cd r]
+                 [:c r :cd]
                  [:s :key :sel :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r

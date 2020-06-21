@@ -6,6 +6,9 @@
                       [utils :refer [swap-control-return!
                                      with-latest-value]])))
 
+;;; Split out update-value-source and update-old-value-source.
+;;; Similarly for register-copy-value.
+
 ;;; Manage the (re)computation of application reporters using a priority queue.
 
 ;;; The following fields are used in reporters, in addition to the
@@ -41,6 +44,10 @@
 ;;;                      so that if they were cached, they will be available
 ;;;                      for reuse by the subcomputations of the current
 ;;;                      value source, even ones it hasn't generated yet.
+;;; :value-source-priority-delta The amount that we add to our priority
+;;;                              to get the priority we give to our value
+;;;                              source. Only needs to valid when there is
+;;;                              a value source
 ;;; :arguments-unchanged Present, and equal to true, if we have an
 ;;;                      old-value-source and we have not
 ;;;                      seen a valid value different from the ones
@@ -157,7 +164,7 @@
 
 (defn copy-value
   [reporter from cd]
-  (with-latest-value [[value dependent-depth]
+  (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
@@ -165,7 +172,8 @@
      (fn [data]
        (if (= (:value-source data) from)
          (let [our-depth (when (reporter/valid? value)
-                           (+ dependent-depth 1 (subordinate-depth data)))]
+                           (+ value-dependent-depth
+                              (:value-source-priority-delta data)))]
            (cond-> (update-value-and-dependent-depth
                     data reporter value our-depth)
              (reporter/valid? value)
@@ -198,7 +206,7 @@
     [[priority callback]
      (let [data (reporter/data reporter)]
        (cond (= (:value-source data) from)
-             [(+ (:priority data) 1 (subordinate-depth data))
+             [(+ (:priority data) (:value-source-priority-delta data))
               copy-value-callback]
              (= (:old-value-source data) from)
              [Double/MAX_VALUE
@@ -362,17 +370,19 @@
        (let [value-map (:subordinate-values data)
              application (map #(first (get value-map % [%]))
                               (:application data))
-             value (apply (first application) (rest application))]
+             value (apply (first application) (rest application))
+             subordinate-depth (subordinate-depth data)]
          (if (reporter/reporter? value)
            (-> data
                ;; We have to set our value source first, so we
                ;; generate demand for the new value, before we
                ;; activate it.
                (update-value-source reporter value cd)
+               (assoc :value-source-priority-delta (+ 1 subordinate-depth))
                (update-new-further-action propagate-calculator-data! value cd))
            (-> data
                (update-value-and-dependent-depth
-                reporter value (subordinate-depth data))
+                reporter value subordinate-depth)
                (update-value-source reporter nil cd)
                (update-old-value-source reporter nil cd))))))))
 

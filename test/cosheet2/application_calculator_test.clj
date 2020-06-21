@@ -195,8 +195,12 @@
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r1 (reporter/new-reporter :value :v)
-        r2 (reporter/new-reporter :value-source r1 :calculator-data cd)
-        r3 (reporter/new-reporter :old-value-source r1 :calculator-data cd)]
+        r2 (reporter/new-reporter :value-source r1
+                                  :value-source-priority-delta 1
+                                  :calculator-data cd)
+        r3 (reporter/new-reporter :old-value-source r1
+                                  :value-source-priority-delta 1
+                                  :calculator-data cd)]
     (register-copy-value r2 r1 cd)
     (compute cd)
     (is (= (reporter/value r2) :v))
@@ -211,6 +215,8 @@
     (is (= (reporter/value r2) :w))
     (register-copy-value r3 r1 cd)
     (compute cd)
+    ;; r3 had r1 as its old source, so the copy value should throw away
+    ;; the result.
     (is (= (reporter/value r3) invalid))
     (is (check
          ((:attendees (reporter/data r1)) [:copy-value r3])
@@ -229,6 +235,7 @@
                                   :calculator-data cd)
         r3 (reporter/new-reporter :name :r3
                                   :value-source r2
+                                  :value-source-priority-delta 1
                                   :calculator-data cd)
         ;; Since cd is immutable, we can't replace its queue, but we
         ;; can set the content of its queue to the content of a fresh queue.
@@ -254,7 +261,8 @@
     ;; Now pretend that we did the eval and got a value-source,
     ;; then change the input to undefined, and check all the consequences.
     (clear-cd-queue)
-    (swap! (reporter/data-atom r2) assoc :value-source r0)
+    (swap! (reporter/data-atom r2)
+           assoc :value-source r0 :value-source-priority-delta 1)
     (register-copy-value r2 r0 cd)
     (register-copy-value r3 r2 cd)
     (compute cd)
@@ -289,6 +297,7 @@
                                  :calculator-data cd)
         rc (reporter/new-reporter :name :rc
                                   :value-source r
+                                  :value-source-priority-delta 1
                                   :calculator-data cd)]
     ;; Give rc priority 6
     (reporter/set-attendee! rc :test 6 (fn [& _] nil))
@@ -312,7 +321,8 @@
     (swap! (reporter/data-atom r)
            #(into % {:subordinate-values {r0 [(fn [] r1) 0]}
                      :application [r0]
-                     :value-source r1}))
+                     :value-source r1
+                     :value-source-priority-delta 2}))
     (register-copy-value r r1 cd)
     (is (= (:calculator-data (reporter/data r1)) nil))
     (compute cd)
@@ -347,6 +357,7 @@
                                   :value 2
                                   :application [identity r]
                                   :value-source r
+                                  :value-source-priority-delta 1
                                   :calculator application-calculator
                                   :calculator-data cd)]
     ;; Run manager when there is no interest.

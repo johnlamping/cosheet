@@ -14,32 +14,28 @@
 (defn- mm-ref [mm key]
   (mm (mod (hash key) (count mm))))
 
-(defn- mm! [fun mm key & args]
-  (apply fun @(mm-ref mm key) key args))
+(defn mm-get [mm key] (get @(mm-ref mm key) key))
+(defn mm-get-in [mm keys] (get-in @(mm-ref mm (first keys)) keys))
 
-(defn- mm-in! [fun mm keys & args]
-  (apply fun @(mm-ref mm (first keys)) keys args))
-
-(def get! (partial mm! get))
-(def get-in! (partial mm-in! get-in))
-
+;;; We reverse the usual order of function and map in the swap functions,
+;;; so we can use partial to bind the function.
 (defn- mm-swap! [fun mm key & args]
-  ((swap! (mm-ref mm key) #(apply fun % key args)) key))
-
+  (get (swap! (mm-ref mm key) #(apply fun % key args))
+       key))
 (defn- mm-swap-in! [fun mm keys & args]
   (get-in (swap! (mm-ref mm (first keys)) #(apply fun % keys args))
           keys))
-
 (defn- mm-swap-in-returning-both! [fun mm keys & args]
   (for [info (swap-returning-both! (mm-ref mm (first keys))
                                    #(apply fun % keys args))]
     (get-in info keys)))
 
-(def update! (partial mm-swap! (fn [map key f & args]
-                                 (apply update-in map [key] f args))))
+;;; The following functions do the names thing to the map.
+(def update! (partial mm-swap! update))
 (def update-in! (partial mm-swap-in! update-in))
 (def update-in-returning-both!
   (partial mm-swap-in-returning-both! update-in))
+
 (def assoc-in! (partial mm-swap-in! assoc-in))
 (def dissoc-in! (partial mm-swap-in! dissoc-in))
 (def update-in-clean-up! (partial mm-swap-in! update-in-clean-up))

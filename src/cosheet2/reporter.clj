@@ -141,11 +141,11 @@
   ([r]
    (inform-attendees r nil nil))
   ([r description categories]
-  ;;; Since the only guarantee is eventual callback, we can fetch the
-  ;;; attendees map outside of any lock, since anything that changed
-  ;;; the attendees will also request callbacks if appropriate.
-  ;;; This does mean that an attendee may be called after it has cancelled
-  ;;; its request.
+  ;; Since the only guarantee is eventual callback, we can fetch the
+  ;; attendees map outside of any lock, since anything that changed
+  ;; the attendees will also request callbacks if appropriate.
+  ;; This does mean that an attendee may be called after it has cancelled
+  ;; its request.
    (let [data (data r) 
          ;; Avoid calling the same reporter twice if several of its
          ;; categories match

@@ -118,7 +118,7 @@
                 [:f :key :foo :reporter r :description nil :categories nil]
                 [:c r :cd]
                 [:f :key :foo :reporter r :description nil :categories nil]]))
-    (remove-attendee! r :foo)
+    (set-attendee-and-call! r :foo 1 nil) ; Should remove attendee.
     (is (= (:priority (data r)) 5))
     (is (check @history
                [[:c r :cd]

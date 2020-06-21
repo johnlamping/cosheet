@@ -287,18 +287,22 @@
    to each callback. If a callback is provided, the remaining arguments are
    a priority, a function, and added arguments to the function, and the
    callback is called immediately.
-   If no callback is provided, remove any callback with the given key"
+   If no callback is provided, or the callback is nil, remove any callback
+   with the given key"
   ([r key]
    (remove-attendee! r key))
   ([r key priority callback]
    (set-attendee! r key priority [universal-category] callback))
   ([r key priority categories callback]
-   (check-callback callback)
-   (when (reporter? r)
-     (change-and-inform-calculator!
-      r #(-> %
-             (update-remove-attendee key)
-             (update-add-attendee key priority categories callback))))))
+   (if (nil? callback)
+     (remove-attendee! r key)
+     (do
+       (check-callback callback)
+       (when (reporter? r)
+         (change-and-inform-calculator!
+          r #(-> %
+                 (update-remove-attendee key)
+                 (update-add-attendee key priority categories callback))))))))
 
 (defn set-attendee-and-call!
   "Add an attending callback, and call it immediately"
@@ -306,7 +310,8 @@
    (set-attendee-and-call! r key priority [universal-category] callback))
   ([r key priority categories callback]
    (set-attendee! r key priority categories callback)
-   (call-callback-for-undescribed-change callback :key key :reporter r)))
+   (when callback
+     (call-callback-for-undescribed-change callback :key key :reporter r))))
 
 ;;; TODO: Add methods to add/remove categories from an attendee?
 

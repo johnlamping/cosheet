@@ -2,12 +2,15 @@
   (:require (cosheet2 [reporter :refer [reporter? data data-atom data-value
                                         value valid? attended?
                                         set-calculator-data-if-needed!
-                                        set-attendee! remove-attendee!
+                                        set-attendee! set-attendee-and-call!
+                                        remove-attendee!
                                         inform-attendees]]
                       [mutable-map :as mm]
                       [task-queue :refer [run-all-pending-tasks
-                                          run-some-pending-tasks]]
-                      [utils :refer [swap-control-return!]])))
+                                          run-some-pending-tasks
+                                          add-task-with-priority]]
+                      [utils :refer [swap-control-return!
+                                     with-latest-value]])))
 
 ;;; The manager data record contains all the information that the
 ;;; expression calculators and cache calculators need.
@@ -92,6 +95,58 @@
         (assoc :value value
                :dependent-depth dependent-depth)
         (update-new-further-action inform-attendees reporter))))
+
+(defn copy-value
+  "Copy the value in from to be the reporter's value, and update the
+   reporter's dependent depth. Additionally, if anything changed, also
+   run data-finalizer on the reporter's data, also giving it the reporter
+   and calculator data."
+  [reporter from data-finalizer]
+  (with-latest-value [[value value-dependent-depth]
+                      (let [data (data from)]
+                        [(:value data) (or (:dependent-depth data) 0)])]
+    (modify-and-act
+     reporter
+     (fn [data]
+       (let [cd (:calculator-data data)]
+         (if (= (:value-source data) from)
+           (let [our-depth (when (valid? value)
+                             (+ value-dependent-depth
+                                (:value-source-priority-delta data)))]
+             (cond-> (update-value-and-dependent-depth
+                      data reporter value our-depth)
+               data-finalizer
+               (data-finalizer reporter cd)))
+           data))))))
+
+(defn add-propagate-task
+  "Add a task at the propagate priority for the reporter."
+  [reporter & task]
+  (let [data (data reporter)
+        cd (:calculator-data data)]
+      (apply add-task-with-priority
+       ;; Propagating has to be prioritized before computing, as an early
+       ;; priority computation may depend on a lower priority value, and needs
+       ;; to be informed if that value changes.
+             (:queue cd) (- (:priority data) 1e6) task)))
+
+(defn register-for-value-source
+  "Register the callback for the value of the second
+   reporter, when it is the value-source of our reporter."
+  [reporter from callback cd]
+  (with-latest-value
+    [priority 
+     (let [data (data reporter)]
+       (when (= (:value-source data) from)
+         (+ (:priority data) (:value-source-priority-delta data))))]
+    ;; It is possible, with caching, for the same reporter to be used
+    ;; as a dependent in several ways We need to have a different key
+    ;; for each case, or the source reporter will only record one of
+    ;; them.
+    (let [key (list :copy-value reporter)]
+      (set-attendee-and-call!
+       from key priority (when priority callback)))))
+
 
 ;;; The following functions are utilities to ask for computation of
 ;;; of a reporter and get its value.

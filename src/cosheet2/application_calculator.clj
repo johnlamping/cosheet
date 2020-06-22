@@ -3,7 +3,9 @@
                       [calculator :refer [propagate-calculator-data!
                                           update-new-further-action
                                           modify-and-act
-                                          update-value-and-dependent-depth]]
+                                          update-value-and-dependent-depth
+                                          copy-value add-propagate-task
+                                          register-for-value-source]]
                       [task-queue :refer [add-task
                                           add-task-with-priority]]
                       [utils :refer [with-latest-value
@@ -111,59 +113,6 @@
       0
       (+ 1 (apply max depths)))))
 
-(defn copy-value
-  [reporter from data-finalizer]
-  (with-latest-value [[value value-dependent-depth]
-                      (let [data (reporter/data from)]
-                        [(:value data) (or (:dependent-depth data) 0)])]
-    (modify-and-act
-     reporter
-     (fn [data]
-       (let [cd (:calculator-data data)]
-         (if (= (:value-source data) from)
-           (let [our-depth (when (reporter/valid? value)
-                             (+ value-dependent-depth
-                                (:value-source-priority-delta data)))]
-             (cond-> (update-value-and-dependent-depth
-                      data reporter value our-depth)
-               data-finalizer
-               (data-finalizer reporter cd)))
-           data))))))
-
-(defn add-propagate-task
-  "Add a task at the propagate priority for the reporter."
-  [reporter & task]
-  (let [data (reporter/data reporter)
-        cd (:calculator-data data)]
-      (apply add-task-with-priority
-       ;; Propagating has to be prioritized before computing, as an early
-       ;; priority computation may depend on a lower priority value, and needs
-       ;; to be informed if that value changes.
-       (:queue cd) (- (:priority data) 1e6) task)))
-
-(defn copy-value-callback
-  [& {[_ reporter] :key from :reporter}]
-  (add-propagate-task reporter
-                      copy-value reporter from
-                      update-remove-unnecessary-old-value-source))
-
-(defn register-for-value-source
-  "Register the need to copy (or not copy) the value from the second
-   reporter to become the value of our reporter."
-  [reporter from callback cd]
-  (with-latest-value
-    [priority 
-     (let [data (reporter/data reporter)]
-       (when (= (:value-source data) from)
-         (+ (:priority data) (:value-source-priority-delta data))))]
-    ;; It is possible, with caching, for the same reporter to be
-    ;; both our value source and one of our subordinates. We
-    ;; need to have a different key for the two cases, or the
-    ;; reporter will only record one of them.
-    (let [key (list :copy-value reporter)]
-      (reporter/set-attendee-and-call!
-       from key priority (when priority callback)))))
-
 (defn update-remove-unnecessary-old-value-source
   [data reporter cd]
   (cond-> data
@@ -172,9 +121,15 @@
     ;; is not holding onto anything useful.
     (update-old-value-source reporter nil cd)))
 
+(defn copy-value-and-cleanup-callback
+  [& {[_ reporter] :key from :reporter}]
+  (add-propagate-task reporter
+                      copy-value reporter from
+                      update-remove-unnecessary-old-value-source))
+
 (defn register-copy-value
   [reporter from cd]
-  (register-for-value-source reporter from copy-value-callback cd))
+  (register-for-value-source reporter from copy-value-and-cleanup-callback cd))
 
 (defn null-callback
   "We use this when we want to preserve demand for a reporter,
@@ -266,7 +221,10 @@
            ;; which may not be for a while.
            (let [current-source (:value-source data)
                  newer-data (cond-> (update-value-and-dependent-depth
-                                     data reporter reporter/invalid 0)
+                                     data reporter reporter/invalid
+                                     (if current-source
+                                       (:value-source-priority-delta data)
+                                       0))
                               current-source
                               ;; We must do the copy from source to
                               ;; old-source before clearing source,

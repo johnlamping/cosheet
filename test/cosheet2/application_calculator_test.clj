@@ -7,7 +7,8 @@
                                           new-priority-task-queue]]
                       [reporter :as reporter]
                       [calculator :refer [new-calculator-data current-value
-                                          compute request]]
+                                          compute request
+                                          modify-and-act]]
                       [expression :refer [expr expr-seq expr-let invalid]]
                       [utils :refer :all]
                       [application-calculator :refer :all]

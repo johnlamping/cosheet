@@ -1,14 +1,13 @@
 (ns cosheet2.application-calculator
   (:require (cosheet2 [reporter :as reporter]
-                      [calculator :refer [propagate-calculator-data!]]
+                      [calculator :refer [propagate-calculator-data!
+                                          update-new-further-action
+                                          modify-and-act
+                                          update-value-and-dependent-depth]]
                       [task-queue :refer [add-task
                                           add-task-with-priority]]
-                      [utils :refer [swap-control-return!
-                                     with-latest-value
+                      [utils :refer [with-latest-value
                                      assoc-if-non-empty]])))
-
-;;; Split out update-value-source and update-old-value-source.
-;;; Similarly for register-copy-value.
 
 ;;; Manage the (re)computation of application reporters using a priority queue.
 
@@ -28,8 +27,6 @@
 ;;;                      to run its application and that it doesn't have a
 ;;;                      valid value for. Not present if nothing is
 ;;;                      attending to the reporter.
-;;;        :value-source A reporter whose value should be the value of this
-;;;                      reporter if we have no needed-values.
 ;;;    :old-value-source The previous :value-source, if we know it and
 ;;;                      we haven't yet gotten a value from the
 ;;;                      current value source. This serves two
@@ -45,10 +42,6 @@
 ;;;                      so that if they were cached, they will be available
 ;;;                      for reuse by the subcomputations of the current
 ;;;                      value source, even ones it hasn't generated yet.
-;;; :value-source-priority-delta The amount that we add to our priority
-;;;                              to get the priority we give to our value
-;;;                              source. Only needs to valid when there is
-;;;                              a value source
 ;;; :arguments-unchanged Present, and equal to true, if we have an
 ;;;                      old-value-source and we have not
 ;;;                      seen a valid value different from the ones
@@ -56,29 +49,18 @@
 ;;;  :requested-priority The priority that we have used to determine
 ;;;                      our requests' priorities. If our :priority changes
 ;;;                      from that, we have to redo our requests.
-;;;     :dependent-depth The difference between the worst priority we bestow
-;;;                      on any computation we depend on and our priority.
-;;;                      This is only valid when our value is valid.
-;;;                      The purpose of this is to have the computation
-;;;                      of our subordinates have an earlier (lower) priority
-;;;                      that the computation of our value source. That way,
-;;;                      if a change makes both a subordinate and our value
-;;;                      source invalid, the subordinate will be recomputed
-;;;                      first. We want that, because the recomputation of
-;;;                      the subordinate may change what value source we
-;;;                      need, removing the need to recompute our current
-;;;                      value source.
-;;;                      To do this, the priority of our demand for our
-;;;                      value source is our priority plus one more than
+
+;;; Notes on fields from calculator.clj:
+;;;        :value-source If our application returns a reporter, it is stored
+;;;                      here so that its value becomes our value.
+;;; :value-source-priority-delta We want our subordinates run to completion
+;;;                      before our value source runs, because the
+;;;                      recomputation of a subordinate may change what
+;;;                      value source we need, removing the need to
+;;;                      recompute our current value source. To ensure that,
+;;;                      we set :value-source-priority-delta to one more than
 ;;;                      the max of the dependent depth of all our
 ;;;                      subordinates.
-;;;                      That makes our dependent depth be one more than
-;;;                      the dependent depth of our value source plus the
-;;;                      largest dependent depth of our subordinates.
-;;;     :further-actions A list of [function arg arg ...] calls that
-;;;                      need to be performed. (These will never actually
-;;;                      be stored in a reporter, but are added to the
-;;;                      map before it is stored.)
 
 ;;; The computation is multi-threaded, but can avoid using locks and
 ;;; TSM because it only provides eventual consistency; it is just copying
@@ -118,28 +100,6 @@
 ;;;     because that invalidates all iterations that went through
 ;;;     this reporter.
 
-(defn update-new-further-action
-  "Given a map, add an action to the further actions.
-   This is used to request actions that affect state elsewhere than
-   in the map. They will be done immediately after the map is stored back,
-   in the order in which they were requested."
-  [data & action]
-  (update-in data [:further-actions] (fnil conj []) (vec action)))
-
-(defn modify-and-act
-  "Atomically call the function on the reporter's data.
-   The function should return the new data for the reporter,
-   which may also contain a temporary field, :further-actions with
-   a list of actions that should be performed."
-  [reporter f]
-  (let [actions (swap-control-return!
-                 (reporter/data-atom reporter)
-                 (fn [data] (let [new-data (f data)]
-                              [(dissoc new-data :further-actions)
-                               (:further-actions new-data)])))]
-    (doseq [action actions]
-      (apply (first action) (rest action)))))
-
 (def run-application-if-ready)
 (def update-old-value-source)
 
@@ -150,18 +110,6 @@
     (if (empty? depths)
       0
       (+ 1 (apply max depths)))))
-
-(defn update-value-and-dependent-depth
-  "Given the data from a reporter, and the reporter, set the value
-   and dependent-depth in the data,
-   and request the appropriate propagation."
-  [data reporter value dependent-depth]
-  (if (and (= value (:value data)) (= dependent-depth (:dependent-depth data)))
-    data
-    (-> data
-        (assoc :value value
-               :dependent-depth dependent-depth)
-        (update-new-further-action reporter/inform-attendees reporter))))
 
 (defn copy-value
   [reporter from cd]

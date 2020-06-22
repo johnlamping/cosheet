@@ -288,7 +288,7 @@
    a priority, a function, and added arguments to the function, and the
    callback is called immediately.
    If no callback is provided, or the callback is nil, remove any callback
-   with the given key"
+   with the given key."
   ([r key]
    (remove-attendee! r key))
   ([r key priority callback]

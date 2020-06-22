@@ -213,13 +213,13 @@
     (reporter/set-value! r1 :x)
     (compute cd)
     (is (= (reporter/value r2) :w))
-    (register-copy-value r3 r1 cd)
+    (register-demand-old-value r3 r1 cd)
     (compute cd)
     ;; r3 had r1 as its old source, so the copy value should throw away
     ;; the result.
     (is (= (reporter/value r3) invalid))
     (is (check
-         ((:attendees (reporter/data r1)) [:copy-value r3])
+         ((:attendees (reporter/data r1)) [:demand-old-value r3])
          [Double/MAX_VALUE [reporter/universal-category] null-callback]))))
 
 (deftest copy-subordinate-test

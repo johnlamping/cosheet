@@ -4,7 +4,8 @@
                       [task-queue :refer [add-task
                                           add-task-with-priority]]
                       [utils :refer [swap-control-return!
-                                     with-latest-value]])))
+                                     with-latest-value
+                                     assoc-if-non-empty]])))
 
 ;;; Split out update-value-source and update-old-value-source.
 ;;; Similarly for register-copy-value.
@@ -203,24 +204,34 @@
    reporter to become the value of our reporter."
   [reporter from cd]
   (with-latest-value
-    [[priority callback]
+    [priority 
      (let [data (reporter/data reporter)]
-       (cond (= (:value-source data) from)
-             [(+ (:priority data) (:value-source-priority-delta data))
-              copy-value-callback]
-             (= (:old-value-source data) from)
-             [Double/MAX_VALUE
-              ;; We don't care about the value, but we want to keep up
-              ;; demand.
-              null-callback]))]
+       (when (= (:value-source data) from)
+         (+ (:priority data) (:value-source-priority-delta data))))]
     ;; It is possible, with caching, for the same reporter to be
     ;; both our value source and one of our subordinates. We
     ;; need to have a different key for the two cases, or the
     ;; reporter will only record one of them.
     (let [key (list :copy-value reporter)]
-      (if (nil? callback)
-        (reporter/remove-attendee! from key)
-        (reporter/set-attendee-and-call! from key priority callback)))))
+      (reporter/set-attendee-and-call!
+       from key priority (when priority copy-value-callback)))))
+
+(defn register-demand-old-value
+  "Register the need to demand (or not demand) the value from the second
+   reporter."
+  [reporter from cd]
+  (with-latest-value
+    [has-source
+     (= (:old-value-source (reporter/data reporter)) from)]
+    ;; It is possible, with caching, for the same reporter to be
+    ;; both our value source and one of our subordinates. We
+    ;; need to have a different key for the two cases, or the
+    ;; reporter will only record one of them.
+    (let [key (list :demand-old-value reporter)]
+      (if has-source
+        (reporter/set-attendee! from key Double/MAX_VALUE null-callback)
+        (reporter/remove-attendee! from key)))
+   ))
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
@@ -246,10 +257,26 @@
        (filter identity [source original-source])))))
 
 (defn update-old-value-source
-  [data reporter source cd]
-  (cond-> (update-value-source data reporter source cd :old true)
-    (nil? source)
-    (dissoc :arguments-unchanged)))
+  "Given the data from a reporter, and the reporter, set the old-value-source
+   to the given source, and request the appropriate registrations."
+  [data reporter source cd & {:keys [old]}]
+  ;; We must only set to non-nil if there are attendees for our value,
+  ;; otherwise, we will create demand when we have none ourselves.
+  (assert (or (nil? source) (reporter/data-attended? data)))
+  (let [original-source (:old-value-source data)]
+    (if (= source original-source)
+      data
+      (let [data (-> data
+                     (assoc-if-non-empty :old-value-source source)
+                     (dissoc :arguments-unchanged))]
+        (reduce
+         (fn [data src]
+           (update-new-further-action data register-demand-old-value
+                                      reporter src cd))
+         data
+         ;; Add the new source before removing any old one, so that any
+         ;; subsidiary reporters common to both will always have demand.
+         (filter identity [source original-source]))))))
 
 (defn copy-subordinate
   [reporter from cd]

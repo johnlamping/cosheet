@@ -80,7 +80,7 @@
                              [:attendees `(:copy-value ~reporter)])
                      [(any #(> % (:priority data)))
                       [reporter/universal-category]
-                      (any)]))
+                      copy-value-callback]))
           (conj need-checking source))
       need-checking)))
 

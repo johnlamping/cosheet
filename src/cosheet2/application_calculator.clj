@@ -130,17 +130,22 @@
                (data-finalizer reporter cd)))
            data))))))
 
-(defn copy-value-callback-generator
-  [data-finalizer]
-  (fn [& {[_ reporter] :key from :reporter}]
-    (let [data (reporter/data reporter)
+(defn add-propagate-task
+  "Add a task at the propagate priority for the reporter."
+  [reporter & task]
+  (let [data (reporter/data reporter)
         cd (:calculator-data data)]
-      (add-task-with-priority
+      (apply add-task-with-priority
        ;; Propagating has to be prioritized before computing, as an early
        ;; priority computation may depend on a lower priority value, and needs
        ;; to be informed if that value changes.
-       (:queue cd) (- (:priority data) 1e6) 
-       copy-value reporter from data-finalizer))))
+       (:queue cd) (- (:priority data) 1e6) task)))
+
+(defn copy-value-callback
+  [& {[_ reporter] :key from :reporter}]
+  (add-propagate-task reporter
+                      copy-value reporter from
+                      update-remove-unnecessary-old-value-source))
 
 (defn register-for-value-source
   "Register the need to copy (or not copy) the value from the second
@@ -167,12 +172,9 @@
     ;; is not holding onto anything useful.
     (update-old-value-source reporter nil cd)))
 
-(def copy-value-and-finalize-callback
-  (copy-value-callback-generator update-remove-unnecessary-old-value-source))
-
 (defn register-copy-value
   [reporter from cd]
-  (register-for-value-source reporter from copy-value-and-finalize-callback cd))
+  (register-for-value-source reporter from copy-value-callback cd))
 
 (defn null-callback
   "We use this when we want to preserve demand for a reporter,

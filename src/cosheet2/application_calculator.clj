@@ -112,45 +112,40 @@
       (+ 1 (apply max depths)))))
 
 (defn copy-value
-  [reporter from cd]
+  [reporter from data-finalizer]
   (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter/data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
      reporter
      (fn [data]
-       (if (= (:value-source data) from)
-         (let [our-depth (when (reporter/valid? value)
-                           (+ value-dependent-depth
-                              (:value-source-priority-delta data)))]
-           (cond-> (update-value-and-dependent-depth
-                    data reporter value our-depth)
-             (reporter/valid? value)
-             ;; We have finished computing a value, so the old source
-             ;; is not holding onto anything useful.
-             (update-old-value-source reporter nil cd)))
-         data)))))
+       (let [cd (:calculator-data data)]
+         (if (= (:value-source data) from)
+           (let [our-depth (when (reporter/valid? value)
+                             (+ value-dependent-depth
+                                (:value-source-priority-delta data)))]
+             (cond-> (update-value-and-dependent-depth
+                      data reporter value our-depth)
+               data-finalizer
+               (data-finalizer reporter cd)))
+           data))))))
 
-(defn copy-value-callback
-  [& {[_ reporter] :key from :reporter}]
-  (let [cd (:calculator-data (reporter/data reporter))]
-    (add-task-with-priority
-     ;; Propagating has to be prioritized before computing, as an early
-     ;; priority computation may depend on a lower priority value, and needs
-     ;; to be informed if that value changes.
-     (:queue cd) (- (:priority (reporter/data reporter)) 1e6)
-     copy-value reporter from cd)))
+(defn copy-value-callback-generator
+  [data-finalizer]
+  (fn [& {[_ reporter] :key from :reporter}]
+    (let [data (reporter/data reporter)
+        cd (:calculator-data data)]
+      (add-task-with-priority
+       ;; Propagating has to be prioritized before computing, as an early
+       ;; priority computation may depend on a lower priority value, and needs
+       ;; to be informed if that value changes.
+       (:queue cd) (- (:priority data) 1e6) 
+       copy-value reporter from data-finalizer))))
 
-(defn null-callback
-  "We use this when we want to preserve demand for a reporter,
-   but don't currently care about it's value."
-  [& _]
-  nil)
-
-(defn register-copy-value
+(defn register-for-value-source
   "Register the need to copy (or not copy) the value from the second
    reporter to become the value of our reporter."
-  [reporter from cd]
+  [reporter from callback cd]
   (with-latest-value
     [priority 
      (let [data (reporter/data reporter)]
@@ -162,7 +157,28 @@
     ;; reporter will only record one of them.
     (let [key (list :copy-value reporter)]
       (reporter/set-attendee-and-call!
-       from key priority (when priority copy-value-callback)))))
+       from key priority (when priority callback)))))
+
+(defn update-remove-unnecessary-old-value-source
+  [data reporter cd]
+  (cond-> data
+    (reporter/valid? (:value data))
+    ;; We have finished computing a value, so the old source
+    ;; is not holding onto anything useful.
+    (update-old-value-source reporter nil cd)))
+
+(def copy-value-and-finalize-callback
+  (copy-value-callback-generator update-remove-unnecessary-old-value-source))
+
+(defn register-copy-value
+  [reporter from cd]
+  (register-for-value-source reporter from copy-value-and-finalize-callback cd))
+
+(defn null-callback
+  "We use this when we want to preserve demand for a reporter,
+   but don't currently care about it's value."
+  [& _]
+  nil)
 
 (defn register-demand-old-value
   "Register the need to demand (or not demand) the value from the second
@@ -196,7 +212,8 @@
       data
       (reduce
        (fn [data src]
-         (update-new-further-action data register-copy-value reporter src cd))
+         (update-new-further-action
+          data register-copy-value reporter src cd))
        (if source
          (assoc data source-key source)
          (dissoc data source-key))

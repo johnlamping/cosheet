@@ -2,6 +2,9 @@
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [reporter :refer [new-reporter set-value! data data-value
                                         valid? reporter?]]
+                      [task-queue :refer [new-priority-task-queue]]
+                      [reporter :refer [new-reporter data-atom
+                                        value set-value!]]
                       [calculator :refer :all])
             ; :reload
             ))
@@ -31,6 +34,29 @@
     (is (not (activated? f6)))
     (propagate-calculator-data! f6 :cd)
     (is (activated? f6))))
+
+(defn copy-value-callback
+  [& {[_ reporter] :key from :reporter}]
+  (add-propagate-task reporter copy-value reporter from nil))
+
+(deftest copy-value-test
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        r1 (new-reporter :value :v)
+        r2 (new-reporter :value-source r1
+                                  :value-source-priority-delta 1
+                                  :calculator-data cd)]
+    (register-for-value-source r2 r1 copy-value-callback cd)
+    (compute cd)
+    (is (= (value r2) :v))
+    (set-value! r1 :w)
+    (compute cd)
+    (is (= (value r2) :w))
+    (swap! (data-atom r2) dissoc :value-source)
+    (register-for-value-source r2 r1 copy-value-callback cd)
+    (compute cd)
+    (set-value! r1 :x)
+    (compute cd)
+    (is (= (value r2) :w))))
 
 (deftest current-value-test
   (let [state (new-reporter :value 0)

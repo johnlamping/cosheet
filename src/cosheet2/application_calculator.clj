@@ -156,14 +156,12 @@
 
 (defn update-value-source
   "Given the data from a reporter, and the reporter, set the value-source
-   to the given source, and request the appropriate registrations.
-   If the optional keyword :old true is passed,
-   update the old-value-source, rather than value-source."
-  [data reporter source cd & {:keys [old]}]
+   to the given source, and request the appropriate registrations."
+  [data reporter source cd]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
   (assert (or (nil? source) (reporter/data-attended? data)))
-  (let [source-key (if old :old-value-source :value-source)
+  (let [source-key :value-source
         original-source (source-key data)]
     (if (= source original-source)
       data
@@ -171,9 +169,7 @@
        (fn [data src]
          (update-new-further-action
           data register-copy-value reporter src cd))
-       (if source
-         (assoc data source-key source)
-         (dissoc data source-key))
+       (assoc-if-non-empty data source-key source)
        ;; Add the new source before removing any old one, so that any
        ;; subsidiary reporters common to both will always have demand.
        (filter identity [source original-source])))))

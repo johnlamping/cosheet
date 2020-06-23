@@ -130,6 +130,10 @@
        ;; to be informed if that value changes.
              (:queue cd) (- (:priority data) 1e6) task)))
 
+(defn copy-value-callback
+  [& {[_ reporter] :key from :reporter}]
+  (add-propagate-task reporter  copy-value reporter from nil))
+
 (defn register-for-value-source
   "Register the callback for the value of the second
    reporter, when it is the value-source of our reporter."

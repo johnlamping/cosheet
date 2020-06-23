@@ -35,10 +35,6 @@
     (propagate-calculator-data! f6 :cd)
     (is (activated? f6))))
 
-(defn copy-value-callback
-  [& {[_ reporter] :key from :reporter}]
-  (add-propagate-task reporter copy-value reporter from nil))
-
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r1 (new-reporter :value :v)

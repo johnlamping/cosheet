@@ -30,7 +30,7 @@
                                    #(apply fun % keys args))]
     (get-in info keys)))
 
-;;; The following functions do the names thing to the map.
+;;; The following functions do the named thing to the map.
 (def update! (partial mm-swap! update))
 (def update-in! (partial mm-swap-in! update-in))
 (def update-in-returning-both!

@@ -1,5 +1,5 @@
 (ns cosheet2.category-change-calculator
-  (:require (cosheet2 [reporter :refer [data data-attended?
+  (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call!
                                         reporter?]]
                       [calculator :refer [modify-and-act
@@ -16,7 +16,7 @@
   "Calculator that looks up the value of a reporter's application in a
    cache of reporters."
   [reporter cd]
-  (let [data (data reporter)]
+  (let [data (reporter-data reporter)]
     (modify-and-act
      reporter
      (fn [data]

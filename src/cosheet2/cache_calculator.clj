@@ -1,5 +1,6 @@
 (ns cosheet2.cache-calculator
-  (:require (cosheet2 [reporter :as reporter]
+  (:require (cosheet2 [reporter :refer [reporter? attended? new-reporter
+                                        reporter-data data-attended?]]
                       [mutable-map :as mm]
                       [calculator :refer [propagate-calculator-data!
                                           update-new-further-action
@@ -21,8 +22,8 @@
   [application cd]
   (let [cache (:cache cd)]
     (letfn [(canonicalize-term [term]
-              (or (when (reporter/reporter? term)
-                    (when-let [application (:application (reporter/data term))]
+              (or (when (reporter? term)
+                    (when-let [application (:application (reporter-data term))]
                       (mm/mm-get cache
                                  (canonicalize-application application))))
                   term))
@@ -36,7 +37,7 @@
   [application original-name cd]
   (when (= (second application) 41))
   (or (mm/mm-get (:cache cd) (canonicalize-application application cd))
-      (let [reporter (apply reporter/new-reporter
+      (let [reporter (apply new-reporter
                               :application application
                               :calculator application-calculator
                               (when original-name
@@ -51,8 +52,8 @@
    with the same key.)"
   [reporter cd]
   (let [application (canonicalize-application
-                     (:application (reporter/data reporter)) cd)]
-    (with-latest-value [attended (reporter/attended? reporter)]
+                     (:application (reporter-data reporter)) cd)]
+    (with-latest-value [attended (attended? reporter)]
       (mm/update-in-clean-up!
        (:cache cd) [application]
        (fn [current]
@@ -67,7 +68,7 @@
   [data reporter source cd]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
-  (assert (or (nil? source) (reporter/data-attended? data)))
+  (assert (or (nil? source) (data-attended? data)))
   (let [original-source (:value-source data)]
     (if (= source original-source)
       data
@@ -86,13 +87,13 @@
   "Calculator that looks up the value of a reporter's application in a
    cache of reporters."
   [reporter cd]
-  (let [data (reporter/data reporter)
+  (let [data (reporter-data reporter)
         application (:application data)
         cache (:cache cd)]
     (modify-and-act
      reporter
      (fn [data]
-       (let [source (when (reporter/data-attended? data)
+       (let [source (when (data-attended? data)
                       (or (:value-source data)
                           (get-or-make-reporter application (:name data) cd)))]
          (-> data

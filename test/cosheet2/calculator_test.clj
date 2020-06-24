@@ -1,10 +1,10 @@
 (ns cosheet2.expression-manager-test
   (:require [clojure.test :refer [deftest is]]
-            (cosheet2 [reporter :refer [new-reporter set-value! data data-value
+            (cosheet2 [reporter :refer [new-reporter reporter-atom reporter-data
+                                        reporter-value set-value!
+                                        data-value 
                                         valid? reporter?]]
                       [task-queue :refer [new-priority-task-queue]]
-                      [reporter :refer [new-reporter data-atom
-                                        value set-value!]]
                       [calculator :refer :all])
             ; :reload
             ))
@@ -22,7 +22,7 @@
 
 (defn activated? [r]
   (if (reporter? r)
-    (let [data (data r)]
+    (let [data (reporter-data r)]
       (and (or (= (:calculator-data data) :cd)
                (valid? (data-value data)))
            (every? activated? (:application data))))
@@ -43,16 +43,16 @@
                                   :calculator-data cd)]
     (register-for-value-source r2 r1 copy-value-callback cd)
     (compute cd)
-    (is (= (value r2) :v))
+    (is (= (reporter-value r2) :v))
     (set-value! r1 :w)
     (compute cd)
-    (is (= (value r2) :w))
-    (swap! (data-atom r2) dissoc :value-source)
+    (is (= (reporter-value r2) :w))
+    (swap! (reporter-atom r2) dissoc :value-source)
     (register-for-value-source r2 r1 copy-value-callback cd)
     (compute cd)
     (set-value! r1 :x)
     (compute cd)
-    (is (= (value r2) :w))))
+    (is (= (reporter-value r2) :w))))
 
 (deftest current-value-test
   (let [state (new-reporter :value 0)

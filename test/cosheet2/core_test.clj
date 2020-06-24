@@ -7,6 +7,7 @@
              calculator-test
              expression-test
              application-calculator-test
-             cache-calculator-test)
+             cache-calculator-test
+             category-change-calculator-test)
    :reload
             ))

@@ -97,13 +97,13 @@
 (defn reporter? [r]
   (instance? ReporterImpl r))
 
-(defn data-atom
+(defn reporter-atom
   "Return the atom holding the reporter's data. If any of the standard fields
    in this atom are changed, the appropriate notifications must be done."
   [r]
   (:data r))
 
-(defn data
+(defn reporter-data
   "Return all the current data for the reporter."
   [r]
   @(:data r))
@@ -111,7 +111,7 @@
 (defn data-value [data]
   (:value data))
 
-(defn value
+(defn reporter-value
   "Return the current value of the reporter. If it is not a reporter, treat
    it as a constant reporter, and return the object."
   [r]
@@ -124,7 +124,7 @@
   ::invalid)
 
 (defn valid? [r]
-  (not= (value r) invalid))
+  (not= (reporter-value r) invalid))
 
 (defn data-attended? [data]
   (not (empty? (:attendees data))))
@@ -146,7 +146,7 @@
   ;; the attendees will also request callbacks if appropriate.
   ;; This does mean that an attendee may be called after it has cancelled
   ;; its request.
-   (let [data (data r) 
+   (let [data (reporter-data r) 
          ;; Avoid calling the same reporter twice if several of its
          ;; categories match
          reporter-keys (if (nil? categories)
@@ -202,7 +202,7 @@
             true]
            [data
             false])))
-    (let [data (data reporter)]
+    (let [data (reporter-data reporter)]
       (when (data-attended? data)
         ((:calculator data) reporter (:calculator-data data))))))
 
@@ -212,7 +212,7 @@
    This is also called activating the reporter.
    Once set, the calculator data can never be changed."
   [reporter calculator-data]
-  (let [data (data reporter)]
+  (let [data (reporter-data reporter)]
     (assert (nil? (:calculator-data data)))
     (assert (not (nil? (:calculator data)))))
   (set-calculator-data-if-needed! reporter calculator-data))
@@ -263,7 +263,8 @@
     (when (and calculator
                calculator-data
                (or
-                (not= (data-attended? old) (data-attended? current))
+                (not= (data-attended? old)
+                      (data-attended? current))
                 (not= (set (keys (:selections old)))
                       (set (keys (:selections current))))
                 (not= (:priority old) (:priority current))))

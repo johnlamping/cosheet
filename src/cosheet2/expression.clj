@@ -1,6 +1,6 @@
 (ns cosheet2.expression
   (:require (cosheet2
-             [reporter :as reporter]
+             [reporter :refer [new-reporter reporter?]]
              [application-calculator :refer [application-calculator]]
              [cache-calculator :refer [cache-calculator]]
              [category-change-calculator :refer [category-change-calculator]])))
@@ -8,7 +8,7 @@
 ;;; Code for creating expression containing reporters.
 
 ;;; Let invalid be imported from here, as well.
-(def invalid reporter/invalid)
+(def invalid cosheet2.reporter/invalid)
 
 (defn new-application
   "Takes an application, and optionally a trace thunk, and a calculator,
@@ -19,10 +19,10 @@
                  :as args
                   :or {calculator application-calculator value invalid}}]
   ;; Catch some errors that leave no stack trace.
-  (assert ((some-fn ifn? reporter/reporter?) (first application)))
+  (assert ((some-fn ifn? reporter?) (first application)))
   (if (or (not= calculator application-calculator)
-          (some reporter/reporter? application))
-    (apply reporter/new-reporter
+          (some reporter? application))
+    (apply new-reporter
            :application application
            :trace trace
            :calculator calculator
@@ -52,7 +52,7 @@
   "Takes a function and a series of arguments, and produces a category change
    reporter."
   [categories reporter]
-  (reporter/new-reporter
+  (new-reporter
    :value-source reporter
    :categories categories
    :calculator category-change-calculator))

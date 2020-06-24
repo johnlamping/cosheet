@@ -1,6 +1,7 @@
 (ns cosheet2.calculator
-  (:require (cosheet2 [reporter :refer [reporter? data data-atom data-value
-                                        value valid? attended?
+  (:require (cosheet2 [reporter :refer [reporter? reporter-data reporter-value
+                                        reporter-atom data-value
+                                        valid? attended?
                                         set-calculator-data-if-needed!
                                         set-attendee! set-attendee-and-call!
                                         remove-attendee!
@@ -37,7 +38,7 @@
   [reporter cd]
   (when (reporter? reporter)
     (set-calculator-data-if-needed! reporter cd)
-    (doseq [term (:application (data reporter))]
+    (doseq [term (:application (reporter-data reporter))]
       (propagate-calculator-data! term cd))))
 
 ;;; Many kinds of calculators can get their value from another reporter.
@@ -78,7 +79,7 @@
    a list of actions that should be performed."
   [reporter f]
   (let [actions (swap-control-return!
-                 (data-atom reporter)
+                 (reporter-atom reporter)
                  (fn [data] (let [new-data (f data)]
                               [(dissoc new-data :further-actions)
                                (:further-actions new-data)])))]
@@ -103,7 +104,7 @@
    and calculator data."
   [reporter from data-finalizer]
   (with-latest-value [[value value-dependent-depth]
-                      (let [data (data from)]
+                      (let [data (reporter-data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
      reporter
@@ -122,7 +123,7 @@
 (defn add-propagate-task
   "Add a task at the propagate priority for the reporter."
   [reporter & task]
-  (let [data (data reporter)
+  (let [data (reporter-data reporter)
         cd (:calculator-data data)]
       (apply add-task-with-priority
        ;; Propagating has to be prioritized before computing, as an early
@@ -140,7 +141,7 @@
   [reporter from callback cd]
   (with-latest-value
     [priority 
-     (let [data (data reporter)]
+     (let [data (reporter-data reporter)]
        (when (= (:value-source data) from)
          (+ (:priority data) (:value-source-priority-delta data))))]
     ;; It is possible, with caching, for the same reporter to be used
@@ -181,7 +182,7 @@
   (if (reporter? r)
     (do (request r cd)
         (compute cd)
-        (value r))
+        (reporter-value r))
     r))
 
 (defn current-value
@@ -189,7 +190,7 @@
    rather than tracking dependencies."
   [reporter]
   (if (reporter? reporter)
-    (let [data (data reporter)
+    (let [data (reporter-data reporter)
           value (data-value data)
           application (:application data)]
       (cond
@@ -203,7 +204,7 @@
         ;; Add an attendee, get the value, then take the attendee away.
         (do
           (set-attendee! reporter :request 0 (fn [& _] nil))
-          (let [result (value reporter)]
+          (let [result (reporter-value reporter)]
             (set-attendee! reporter :request)
             result))
         true

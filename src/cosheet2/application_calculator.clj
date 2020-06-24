@@ -1,5 +1,9 @@
 (ns cosheet2.application-calculator
-  (:require (cosheet2 [reporter :as reporter]
+  (:require (cosheet2 [reporter :refer [reporter? valid? invalid
+                                        reporter-data
+                                        set-attendee! set-attendee-and-call!
+                                        remove-attendee!
+                                        data-attended?]]
                       [calculator :refer [propagate-calculator-data!
                                           update-new-further-action
                                           modify-and-act
@@ -116,7 +120,7 @@
 (defn update-remove-unnecessary-old-value-source
   [data reporter cd]
   (cond-> data
-    (reporter/valid? (:value data))
+    (valid? (:value data))
     ;; We have finished computing a value, so the old source
     ;; is not holding onto anything useful.
     (update-old-value-source reporter nil cd)))
@@ -143,15 +147,15 @@
   [reporter from cd]
   (with-latest-value
     [has-source
-     (= (:old-value-source (reporter/data reporter)) from)]
+     (= (:old-value-source (reporter-data reporter)) from)]
     ;; It is possible, with caching, for the same reporter to be
     ;; both our value source and one of our subordinates. We
     ;; need to have a different key for the two cases, or the
     ;; reporter will only record one of them.
     (let [key (list :demand-old-value reporter)]
       (if has-source
-        (reporter/set-attendee! from key Double/MAX_VALUE null-callback)
-        (reporter/remove-attendee! from key)))
+        (set-attendee! from key Double/MAX_VALUE null-callback)
+        (remove-attendee! from key)))
    ))
 
 (defn update-value-source
@@ -160,7 +164,7 @@
   [data reporter source cd]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
-  (assert (or (nil? source) (reporter/data-attended? data)))
+  (assert (or (nil? source) (data-attended? data)))
   (let [source-key :value-source
         original-source (source-key data)]
     (if (= source original-source)
@@ -180,7 +184,7 @@
   [data reporter source cd & {:keys [old]}]
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
-  (assert (or (nil? source) (reporter/data-attended? data)))
+  (assert (or (nil? source) (data-attended? data)))
   (let [original-source (:old-value-source data)]
     (if (= source original-source)
       data
@@ -199,17 +203,17 @@
 (defn copy-subordinate
   [reporter from cd]
   (with-latest-value [[value dependent-depth]
-                      (let [data (reporter/data from)]
+                      (let [data (reporter-data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
     (modify-and-act
      reporter
      (fn [data]
        (let [same-value
              (= value (get-in data [:subordinate-values from 0] ::not-found))]
-         (if (or (not (reporter/data-attended? data))
+         (if (or (not (data-attended? data))
                  (not (contains? data :needed-values))
                  (if (contains? (:needed-values data) from)
-                   (= value reporter/invalid)
+                   (= value invalid)
                    same-value))
            data
            ;; A value that we care about changed.
@@ -217,7 +221,7 @@
            ;; which may not be for a while.
            (let [current-source (:value-source data)
                  newer-data (cond-> (update-value-and-dependent-depth
-                                     data reporter reporter/invalid
+                                     data reporter invalid
                                      (if current-source
                                        (:value-source-priority-delta data)
                                        0))
@@ -230,7 +234,7 @@
                                      reporter current-source cd)
                                     (assoc :arguments-unchanged true)
                                     (update-value-source reporter nil cd))))]
-             (if (reporter/valid? value)
+             (if (valid? value)
                (let [new-data
                      (cond-> (update-in newer-data [:needed-values] disj from)
                        (not same-value)
@@ -256,7 +260,7 @@
 
 (defn copy-subordinate-callback
   [& {reporter :key from :reporter :as keys}]
-  (let [data  (reporter/data reporter)
+  (let [data  (reporter-data reporter)
         cd (:calculator-data data)]
     (add-task-with-priority
      ;; Propagating has to be prioritized before computing, as an early
@@ -271,7 +275,7 @@
   [reporter from cd]
   (with-latest-value
     [[priority callback]
-     (let [data (reporter/data reporter)]
+     (let [data (reporter-data reporter)]
        (when (or (contains? (get data :needed-values #{}) from)
                  (contains? (:subordinate-values data) from))
          ;; We make the priority of calculating our subordinate
@@ -279,8 +283,8 @@
          ;; deep ones, as their subordinates will have better priorities.
          [(+ (:priority data) 1) copy-subordinate-callback]))]
     (if (nil? callback)
-      (reporter/remove-attendee! from reporter)
-      (reporter/set-attendee-and-call! from reporter priority callback))))
+      (remove-attendee! from reporter)
+      (set-attendee-and-call! from reporter priority callback))))
 
 (defn request-each-register-copy-subordinate
   "Register all the subordinateds this reporter needs."
@@ -303,13 +307,13 @@
           ;; since the request to run it was queued, but we
           ;; haven't been informed yet, so this fact is not
           ;; reflected in :needed-values.
-          (not (reporter/data-attended? data))
+          (not (data-attended? data))
           ;; It is possible to get several run-application-if-ready
           ;; queued up for the same reporter. In that case, the first
           ;; one to run will run the application, and the later ones
           ;; will notice that the value is valid, and not bother to
           ;; re-evaluate.
-          (reporter/valid? (:value data))
+          (valid? (:value data))
           ;; We don't run if we still need values, or if
           ;; :needed-values is nil, which means that
           ;; nobody is attending to the reporter.
@@ -320,7 +324,7 @@
                               (:application data))
              value (apply (first application) (rest application))
              subordinate-depth (subordinate-depth data)]
-         (if (reporter/reporter? value)
+         (if (reporter? value)
            (-> data
                ;; We have to set our value source first, so we
                ;; generate demand for the new value, before we
@@ -340,13 +344,13 @@
   (modify-and-act
    reporter
    (fn [data]
-     (let [same-attended (= (reporter/data-attended? data)
+     (let [same-attended (= (data-attended? data)
                             (contains? data :needed-values))
            same-priority (or (= (:priority data) (:requested-priority data))
-                             (not (reporter/data-attended? data)))]
+                             (not (data-attended? data)))]
        (if (and same-attended same-priority)
          data
-         (let [subordinates (set (filter reporter/reporter?
+         (let [subordinates (set (filter reporter?
                                          (:application data)))
                new-data (-> data
                             (request-each-register-copy-subordinate
@@ -360,8 +364,8 @@
                (update-new-further-action
                 register-copy-value reporter (:value-source new-data) cd))
              (let [new-data (update-value-and-dependent-depth
-                             new-data reporter reporter/invalid 0)]
-               (if (reporter/data-attended? new-data)
+                             new-data reporter invalid 0)]
+               (if (data-attended? new-data)
                  (-> new-data
                      (assoc :needed-values subordinates)
                      (assoc :subordinate-values {})
@@ -377,6 +381,6 @@
 (defn application-calculator
   [reporter cd]
   (add-task-with-priority
-   (:queue cd) (:priority (reporter/data reporter))
+   (:queue cd) (:priority (reporter-data reporter))
    do-application-calculate reporter cd))
 

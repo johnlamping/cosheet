@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [reporter :as reporter]
+            (cosheet2 [reporter :refer [new-reporter reporter-data]]
                       [expression :refer :all]
                       [application-calculator :refer [application-calculator]]
                       [cache-calculator :refer [cache-calculator]]
@@ -13,18 +13,18 @@
             ))
 
 (deftest expression-test
-  (let [r (reporter/new-reporter)]
-    (is (= (dissoc (reporter/data (expr r 2 3)) :trace)
+  (let [r (new-reporter)]
+    (is (= (dissoc (reporter-data (expr r 2 3)) :trace)
            {:application [r 2 3]
             :calculator application-calculator
             :value invalid
             :priority Double/MAX_VALUE}))
-    (is (= (dissoc (reporter/data (cache r 2 3)) :trace)
+    (is (= (dissoc (reporter-data (cache r 2 3)) :trace)
            {:application [r 2 3]
             :calculator cache-calculator
             :value invalid
             :priority Double/MAX_VALUE}))
-    (is (= (reporter/data (category-change [2 3] r))
+    (is (= (reporter-data (category-change [2 3] r))
            {:categories [2 3]
             :calculator category-change-calculator
             :value-source r
@@ -53,7 +53,7 @@
          [3 6]))
   
   ;; Try cases where the expression references a reporter.
-  (let [r3 (reporter/new-reporter :value 3)]
+  (let [r3 (new-reporter :value 3)]
     (is (= (current-value (expr + (expr inc 1) r3))
            5))
     (is (= (current-value (cache + (cache inc 1) r3))

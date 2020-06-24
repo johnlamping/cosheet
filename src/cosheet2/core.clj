@@ -1,6 +1,7 @@
 (ns cosheet2.core
   (:require (cosheet2
-             utils reporter)
+             utils mutable-map reporter expression calculator
+             application-calculator cache-calculator category-change-calculator)
             ;; Note: the reload below was key to making reporter.clj
             ;; load successfully. Now it's not. It may have been because
             ;; of old versions of the compiled code lying around.

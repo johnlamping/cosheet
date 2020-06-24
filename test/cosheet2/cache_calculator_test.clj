@@ -1,15 +1,14 @@
 (ns cosheet2.cache-calculator-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
-            (cosheet2 [mutable-map :as mm]
-                      [task-queue :refer [current-tasks
-                                          new-priority-task-queue]]
+            (cosheet2 [mutable-map :refer [mm-get current-contents]]
+                      [task-queue :refer [new-priority-task-queue]]
                       [reporter :as reporter]
                       [calculator :refer [new-calculator-data current-value
                                           compute request unrequest
                                           computation-value
                                           modify-and-act]]
-                      [expression :refer [expr cache expr-seq expr-let new-application]]
+                      [expression :refer [expr cache expr-seq expr-let]]
                       [utils :refer :all]
                       [cache-calculator :refer :all]
                       [test-utils :refer [check any]]                      
@@ -43,7 +42,7 @@
      (adjust-cache-membership r0 cd)
      (is (not= (get-or-make-reporter [:a :b] "ab" cd) r0))))
 
-(deftest cache-manager-test
+(deftest cache-calculator-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r0 (reporter/new-reporter :name :r0 :value 1)
         r1 (reporter/new-reporter :name :r1
@@ -65,7 +64,7 @@
     (is (= (:value-source  (reporter/data r1))
            (:value-source  (reporter/data r2))))
     (is (= (:value-source  (reporter/data r1))
-           (mm/mm-get (:cache cd) [inc r0])))
+           (mm-get (:cache cd) [inc r0])))
     (let [orig-source (:value-source  (reporter/data r1))]
       ;; Lose interest in r1 then get it back, and the same value
       ;; source should come back.
@@ -80,7 +79,7 @@
       (unrequest r2 cd)
       (is (not= (:value-source (reporter/data r1))
                 orig-source))
-      (is (nil? (mm/mm-get (:cache cd) [inc r0]))))))
+      (is (nil? (mm-get (:cache cd) [inc r0]))))))
 
 ;;; Test that caching is working by doing a recursive computation that would
 ;;; take a very long time if it weren't cached.
@@ -105,7 +104,7 @@
         (check-propagation f45)
         (unrequest f45 cd)
         (compute cd)
-        (is (= (mm/current-contents (:cache cd))) {})))))
+        (is (= (current-contents (:cache cd))) {})))))
 
 ;; Test that caching works with recomputations of subsidiary
 ;; computations. This tests that :old-value-source of

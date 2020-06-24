@@ -68,15 +68,14 @@
   ;; We must only set to non-nil if there are attendees for our value,
   ;; otherwise, we will create demand when we have none ourselves.
   (assert (or (nil? source) (reporter/data-attended? data)))
-  (let [source-key :value-source
-        original-source (source-key data)]
+  (let [original-source (:value-source data)]
     (if (= source original-source)
       data
       (let [s (or source original-source)]
         ;; We must be either going from no source to source, or vice versa.
         (assert (not (and source original-source)))
         (-> data
-            (assoc-if-non-empty source-key source)
+            (assoc-if-non-empty :value-source source)
             ;; We have to adjust the registration before we determine whether
             ;; it belongs in the cache.
             (update-new-further-action

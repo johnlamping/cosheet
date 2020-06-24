@@ -2,7 +2,8 @@
   (:require (cosheet2
              [reporter :as reporter]
              [application-calculator :refer [application-calculator]]
-             [cache-calculator :refer [cache-calculator]])))
+             [cache-calculator :refer [cache-calculator]]
+             [category-change-calculator :refer [category-change-calculator]])))
 
 ;;; Code for creating expression containing reporters.
 
@@ -46,6 +47,15 @@
                     :trace (fn [thunk#] (thunk#))
                     :calculator cache-calculator
                     ~@(apply concat (seq (meta (first args))))))
+
+(defn category-change
+  "Takes a function and a series of arguments, and produces a category change
+   reporter."
+  [categories reporter]
+  (reporter/new-reporter
+   :value-source reporter
+   :categories categories
+   :calculator category-change-calculator))
 
 (defn- symbols
   "Return all the variables in a form."

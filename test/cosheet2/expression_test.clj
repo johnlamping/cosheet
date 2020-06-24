@@ -5,6 +5,9 @@
             (cosheet2 [reporter :as reporter]
                       [expression :refer :all]
                       [application-calculator :refer [application-calculator]]
+                      [cache-calculator :refer [cache-calculator]]
+                      [category-change-calculator
+                       :refer [category-change-calculator]]
                       [calculator :refer [current-value]])
             ; :reload
             ))
@@ -14,6 +17,17 @@
     (is (= (dissoc (reporter/data (expr r 2 3)) :trace)
            {:application [r 2 3]
             :calculator application-calculator
+            :value invalid
+            :priority Double/MAX_VALUE}))
+    (is (= (dissoc (reporter/data (cache r 2 3)) :trace)
+           {:application [r 2 3]
+            :calculator cache-calculator
+            :value invalid
+            :priority Double/MAX_VALUE}))
+    (is (= (reporter/data (category-change [2 3] r))
+           {:categories [2 3]
+            :calculator category-change-calculator
+            :value-source r
             :value invalid
             :priority Double/MAX_VALUE})))
   
@@ -42,9 +56,8 @@
   (let [r3 (reporter/new-reporter :value 3)]
     (is (= (current-value (expr + (expr inc 1) r3))
            5))
-    ;; TODO: Put this back when cache is implemented.
-    ;;  (is (= (current-value (cache + (cache inc 1) r3))
-    ;;      5))
+    (is (= (current-value (cache + (cache inc 1) r3))
+           5))
     (is (= (current-value (expr-let [x 1 y 2]
                             (expr + (expr * r3 x) y)))
            5))

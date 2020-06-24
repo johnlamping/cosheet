@@ -174,7 +174,7 @@
   "Call the function with the current value of the reporter.  It must
    return a new value, a description of the change, and the categories
    of the change. Set the value of the reporter to the new value, and
-   informing any attendees that care about any of the categories of the
+   inform any attendees that care about any of the categories of the
    change."
   [r f]
   (let [[changed description categories]
@@ -313,14 +313,14 @@
    (when callback
      (call-callback-for-undescribed-change callback :key key :reporter r))))
 
-;;; TODO: Add methods to add/remove categories from an attendee?
+;;; TODO: Maybe add methods to add/remove categories from an attendee?
 
 (defn new-reporter
   [& {calculator :calculator :as args}]
   (when calculator (check-callback calculator))
   (->ReporterImpl
-   (atom (-> (merge {:value invalid} args)
-             (assoc :priority Double/MAX_VALUE)))))
+   (atom (merge {:value invalid :priority Double/MAX_VALUE}
+                args))))
 
 (defmethod print-method ReporterImpl [s ^java.io.Writer w]
   (let [data @(:data s)]

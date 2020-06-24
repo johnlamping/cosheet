@@ -1,7 +1,8 @@
 (ns cosheet2.expression
   (:require (cosheet2
              [reporter :as reporter]
-             [application-calculator :refer [application-calculator]])))
+             [application-calculator :refer [application-calculator]]
+             [cache-calculator :refer [cache-calculator]])))
 
 ;;; Code for creating expression containing reporters.
 
@@ -15,8 +16,8 @@
    are reporters, then it just evaluates the expression."
   [application & {:keys [trace calculator]
                  :as args
-                 :or {calculator application-calculator value invalid}}]
-  ;; Avoid some errors that leave no stack trace.
+                  :or {calculator application-calculator value invalid}}]
+  ;; Catch some errors that leave no stack trace.
   (assert ((some-fn ifn? reporter/reporter?) (first application)))
   (if (or (not= calculator application-calculator)
           (some reporter/reporter? application))
@@ -24,7 +25,7 @@
            :application application
            :trace trace
            :calculator calculator
-           (apply concat (dissoc args :trace :manager-type)))
+           (apply concat (dissoc args :trace :calculator)))
     (apply (first application) (rest application))))
 
 (defmacro expr
@@ -36,7 +37,6 @@
                     :trace (fn [thunk#] (thunk#))
                     ~@(apply concat (seq (meta (first args))))))
 
-;;; TODO: Need to put in the right calculator here.
 (defmacro cache
   "Takes a function and a series of arguments, and produces a cache
    reporter with a tracing thunk. Extra information can be added as meta
@@ -44,7 +44,7 @@
   [& args]
   `(new-application ~(vec args)
                     :trace (fn [thunk#] (thunk#))
-                    :calculator :ERROR
+                    :calculator cache-calculator
                     ~@(apply concat (seq (meta (first args))))))
 
 (defn- symbols
@@ -95,7 +95,7 @@
    a reporter whose value is the sequence of corresponding values."
   [& args]
   `(expr-let
-       [sequence# ~(list* 'cosheet.expression/expr args)]
+       [sequence# ~(list* 'cosheet2.expression/expr args)]
      (when (not (empty? sequence#))
        (new-application (cons vector sequence#)
                        :trace (fn [thunk#] (thunk#))))))

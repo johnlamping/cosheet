@@ -144,7 +144,7 @@
        (when (= (:value-source data) from)
          (+ (:priority data) (:value-source-priority-delta data))))]
     ;; It is possible, with caching, for the same reporter to be used
-    ;; as a dependent in several ways We need to have a different key
+    ;; as a dependent in several ways. We need to have a different key
     ;; for each case, or the source reporter will only record one of
     ;; them.
     (let [key (list :copy-value reporter)]

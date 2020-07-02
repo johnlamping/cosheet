@@ -4,6 +4,33 @@
             ; :reload
             ))
 
+(deftest pseudo-set-test
+  (let [ps (loop [ps nil in [] out [1 2 3 4 5]]
+             (is (= (set (pseudo-set-seq ps)) (set in)))
+             (doseq [x in] (is (pseudo-set-contains? ps x)))
+             (doseq [x out] (is (not (pseudo-set-contains? ps x))))
+             (cond (empty? in)
+                   (is (nil? ps))
+                   (= (count in) 1)
+                   (is (= ps (first in))))
+             (if (not (empty? out))
+               (recur (pseudo-set-conj ps (first out))
+                      (conj in (first out))
+                      (rest out))
+               ps))]
+    (loop [ps ps in [1 2 3 4 5] out []]
+      (is (= (set (pseudo-set-seq ps)) (set in)))
+      (doseq [x in] (is (pseudo-set-contains? ps x)))
+      (doseq [x out] (is (not (pseudo-set-contains? ps x))))
+      (cond (empty? in)
+            (is (nil? ps))
+            (= (count in) 1)
+            (is (= ps (first in))))
+      (when (not (empty? in))
+        (recur (pseudo-set-disj ps (first in))
+               (rest in)
+               (conj out (first in)))))))
+
 (deftest multiset-test
   (is (= (multiset [:a :b :c :b])
          {:a 1 :b 2 :c 1})))

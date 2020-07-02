@@ -1,6 +1,51 @@
 (ns cosheet2.utils
   (:require clojure.set))
 
+;;; A pseudo-set is an implementation of a set that is much more
+;;; efficient when the set has no items or just one item. It is either
+;;; nil, a non-nil atom, or a set, representing either the empty set,
+;;; a singleton item, or a set with multiple items.
+
+(defn pseudo-set-seq [pseudo-set]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (seq pseudo-set)
+        true
+        (seq [pseudo-set])))
+
+(defn pseudo-set-contains? [pseudo-set item]
+  (cond (nil? pseudo-set)
+        false
+        (set? pseudo-set)
+        (contains? pseudo-set item)
+        true
+        (= pseudo-set item)))
+
+(defn pseudo-set-conj [pseudo-set item]
+  (cond (nil? pseudo-set)
+        item
+        (set? pseudo-set)
+        (conj pseudo-set item)
+        true
+        #{pseudo-set item}))
+
+(defn pseudo-set-disj [pseudo-set item]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (let [result (disj pseudo-set item)]
+          (cond (empty? result)
+                nil
+                (= (count result) 1)
+                (first result)
+                true
+                result))
+        (= item pseudo-set)
+        nil
+        true
+        pseudo-set))
+
 ;;; Simple multiset operations.
 
 (defn multiset-conj

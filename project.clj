@@ -23,6 +23,8 @@
                  ;; dB
                  [org.clojure/java.jdbc "0.6.0"]
                  [com.h2database/h2 "1.4.193"]
+                 ;; memory profiling
+                 [com.clojure-goes-fast/clj-memory-meter "0.1.0"] 
                  ]
   :jvm-opts ["-XX:+UnlockCommercialFeatures"
              "-XX:+FlightRecorder"

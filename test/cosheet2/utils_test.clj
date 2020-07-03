@@ -14,7 +14,9 @@
                    (= (count in) 1)
                    (is (= ps (first in))))
              (if (not (empty? out))
-               (recur (pseudo-set-conj ps (first out))
+               (recur (if (= 0 (mod (count in) 2))
+                        (pseudo-set-conj ps (first out))
+                        (pseudo-set-set-membership ps (first out) true))
                       (conj in (first out))
                       (rest out))
                ps))]
@@ -27,7 +29,9 @@
             (= (count in) 1)
             (is (= ps (first in))))
       (when (not (empty? in))
-        (recur (pseudo-set-disj ps (first in))
+        (recur (if (= 1 (mod (count in) 2))
+                 (pseudo-set-disj ps (first in))
+                 (pseudo-set-set-membership ps (first in) false))
                (rest in)
                (conj out (first in)))))))
 

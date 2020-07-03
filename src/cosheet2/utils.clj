@@ -46,6 +46,14 @@
         true
         pseudo-set))
 
+(defn pseudo-set-set-membership
+  "Ensure the item is in or out of the pseudo-set, based on the value
+  of member?"
+  [pseudo-set item member?]
+  (if member?
+    (pseudo-set-conj pseudo-set item)
+    (pseudo-set-disj pseudo-set item)))
+
 ;;; Simple multiset operations.
 
 (defn multiset-conj

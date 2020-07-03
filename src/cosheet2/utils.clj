@@ -23,7 +23,7 @@
         (= pseudo-set item)))
 
 (defn pseudo-set-conj [pseudo-set item]
-  (cond (nil? pseudo-set)
+  (cond (or (nil? pseudo-set) (= pseudo-set item))
         item
         (set? pseudo-set)
         (conj pseudo-set item)
@@ -304,7 +304,7 @@
     value))
 
 (defn equivalent-atoms?
-  "Return true if the atoms are equal, ignoring case for strings."
+  "Return true if the canonical forms of the atoms are equal."
   [a1 a2]
   (or (= a1 a2)
       (and (string? a1) (string? a2)

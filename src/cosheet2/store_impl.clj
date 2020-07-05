@@ -11,6 +11,11 @@
                                      update-in-clean-up]]
                       [orderable :refer [->Orderable]])
             clojure.edn))
+;;; TODO: add test for failing on trying to add a content loop
+;;;       Have candidate-matching-ids return whether its result
+;;;       is exact.
+;;;       Replace (get-in store [:id->subject x]) with id->subject
+;;;       Same for id->content
 
 ;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
@@ -55,13 +60,31 @@
     (atomic-value store (get-in store [:id->content-data description]))
     description))
 
-(defn all-ids-eventually-holding
+(defn all-ids-eventually-holding-content
+  "Return all items that contain the content, possibly through
+   a chain of containment."
+  [store content]
+  (let [items (pseudo-set-seq
+               (get-in store [:content->ids (canonical-atom-form content)]))]
+    (concat items (mapcat #(eventually-containing-items store %) items))))
+
+(defn all-ids-eventually-holding-id
   "Return a seq of the ids of all items whose atomic value chain goes
   through this item. That includes the item, all items whose content
   is this item, and all items eventually holding them."
   [store id]
-  (conj [id] (mapcat #(all-ids-eventually-holding store %)
-                     (get-in store [:content->ids id]))))
+  (conj (all-ids-eventually-holding-content store id) id))
+
+(defn all-forward-reachable-ids
+  "Return a seq of all the ids that can be reached from this id
+   via subject or content links. It includes the id, itself."
+  [store id]
+  (when id
+    (concat [id]
+            (mapcat #(when (instance? ItemId %)
+                       (all-forward-reachable-ids store %))
+                    [(get-in store [:id->subject id])
+                     (get-in store [:id->content-data id])]))))
 
 (defn index-id->elements
   "Put this item in the id->elements index."
@@ -86,10 +109,11 @@
   [store id element-id keyword]
   (some #(and (not= % element-id)
               (= (get-in store [:id->content-data %]) keyword))
-        (get-in store [:id->elements id])))
+        (pseudo-set-seq (get-in store [:id->elements id]))))
 
 (defn index-id->keywords
-  "Reflect this item's content in the id->keywords index."
+  "Reflect this item's content in the id->keywords index.
+   The id->elements index must be valid when this is called."
   [store id add?]
   (let [content (get-in store [:id->content-data id])]
     (if (keyword? content)
@@ -102,28 +126,28 @@
         store)
       store)))
 
-(defn one-item-indexer-id->label->id
+(defn one-item-indexer-id->label->ids
   "Return an indexer that reflects the given item, which must have
-  a :label element, to id->label->id for its grand-subject."
+  a :label element, to id->label->ids for its grand-subject."
   [add?]
   (fn [store id]
     (let [canonical (canonical-atom-form (atomic-value store id))
           subject (get-in store [:id->subject id])]
       (if-let [grand-subject (get-in store [:id->subject subject])]
-        (update-in-clean-up store [:id->label->id grand-subject canonical]
+        (update-in-clean-up store [:id->label->ids grand-subject canonical]
                             #(pseudo-set-set-membership % id add?))
         store))))
 
-(defn index-id->label->id
-  "Reflect the effects of this item in the id->label->id index.
-  id->keywords must be valid when this is called."
+(defn index-id->label->ids
+  "Reflect the effects of this item in the id->label->ids index.
+  The id->keywords index must be valid when this is called."
   [store id add?]
-  (let [indexer (one-item-indexer-id->label->id add?) 
+  (let [indexer (one-item-indexer-id->label->ids add?) 
         labeled (concat
                  ;; Labels with our content as their atomic-value
                  (filter #(pseudo-set-contains?
                            (get-in store [:id->keywords %]) :label)
-                         (all-ids-eventually-holding store id))
+                         (all-ids-eventually-holding-id store id))
                  ;; The item that we make a label
                  (when (= (atomic-value store id) :label)
                    (when-let [subject (get-in store [:id->subject id])]
@@ -132,80 +156,23 @@
                        [subject]))))]
     (reduce indexer store labeled)))
 
-;;; TODO: code after here
-
-(defn index-subject
-  "Do indexing to reflect the effect of the item on its subject.
-   The subject must not be implicit."
-  [store id]
-  (let [subject (get-in store [:id->subject id])
-        subject-of-subject (get-in store [:id->subject subject])
-        atomic-value (atomic-value store id)]
-    (if (or (nil? subject)
-            (nil? subject-of-subject)
-            (nil? atomic-value))
-      store
-      (-> store
-          (update-in-clean-up
-           [:subject->label->ids subject-of-subject nil]
-           #(pseudo-set-disj % subject))
-          (update-in
-           [:subject->label->ids
-            subject-of-subject (canonical-atom-form atomic-value)]
-           #(pseudo-set-conj % subject))))))
-
-(defn index-in-subject
-  "Record this item as an element of its subject."
-    [store id]
-    (let [subject (get-in store [:id->subject id])]
-      (if (nil? subject)
-        store
-        (update-in store [:subject->label->ids subject nil]
-                   #(pseudo-set-conj % id)))))
-
-(defn deindex-subject
-  "Undo indexing to reflect the effect of the item on its subject.
-   The subject must not be implicit and the item must have no elements."    
-  [store id]
-  (let [subject (get-in store [:id->subject id])
-        subject-of-subject (get-in store [:id->subject subject])
-        label (atomic-value store id)]
-    (if (or (nil? subject)
-            (nil? subject-of-subject) ; We didn't add a label.
-            (nil? atomic-value) ; We didn't add a label.
-            (some #(= (atomic-value store %) label) ; Redundant label.
-                  (remove #{id} (id->element-ids store subject))))
-      store ; We have no effect on the index
-      (-> (if (some #(not (nil? (atomic-value store %)))
-                    (remove #{id} (id->element-ids store subject)))
-            store
-            ;; There are no other labels for our subject, so put
-            ;; it under nil.
-            (update-in store
-                       [:subject->label->ids subject-of-subject nil]
-                       #(pseudo-set-conj % subject)))
-          (update-in-clean-up
-           [:subject->label->ids subject-of-subject (canonical-atom-form label)]
-           #(pseudo-set-disj % subject))))))
-
-(defn deindex-in-subject
-  "Remove the item, which must have no elements, as an element of its subject."
-  [store id]
-  (let [subject (get-in store [:id->subject id])]
-    (if (nil? subject)
-      store ; We have no effect on the index
-       ;; Since we have no elements, we should have been indexed
-       ;; under nil.      
-      (update-in-clean-up store [:subject->label->ids subject nil]
-                          #(pseudo-set-disj % id)))))
-
-(defn deindex-content
-  "Undo indexing to reflect the item having the content.
-  The content must not be implicit."
-  [store id]
-  (let [content (get-in store [:id->content-data id])]
-    (update-in-clean-up store [:content->ids (canonical-atom-form content)]
-                        #(pseudo-set-disj % id))))
+(defn index-all
+  "Do all indexing for adding or removing the id from the store."
+  [store id add?]
+  ;; We have to do the indexing in the opposite order for adding vs
+  ;; removing, to satisfy the constraints of what indexes must be
+  ;; valid.
+  (if add?
+    (-> store 
+        (index-id->elements id true)
+        (index-content->ids id true)
+        (index-id->keywords id true)
+        (index-id->label->ids id true))
+    (-> store 
+        (index-id->label->ids id false)
+        (index-id->keywords id false)
+        (index-content->ids id false)
+        (index-id->elements id false))))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -220,25 +187,41 @@
    and add any id that recursively contains it."
   [store id]
   (if (:modified-ids store)
-    (reduce (fn [store, subject] (add-modified-id store subject))
-            store (pseudo-set-seq (:containing-ids store id)))
+    (update-in store [:modified-ids]
+               #(into % (all-ids-eventually-holding-id store id)))
     store))
+
+(defn check-content
+  "Make sure that the content is non-nil, and doesn't introduce
+  cycles in the subject and content links"
+  [store id content]
+  (assert (not (nil? content)))
+  (when (instance? ItemId content)
+    (assert (not-any? #{id} (all-forward-reachable-ids store content)))))
 
 (defn add-triple
   "Add a triple to the store, and do all necessary indexing."
   [store item-id subject content]
-  (assert (not (nil? content)))
-  (let [data (if (nil? subject)
-               {:content content}
-               {:subject subject :content content})]
-    (-> (if (nil? subject)
-          store
-          (assoc-in store [:id->subject item-id] subject))
-        (assoc-in [:id->content-data item-id] content)
-        (index-subject item-id)
-        (index-in-subject item-id)
-        ; (index-content item-id)
-        (add-modified-id item-id))))
+  (check-content store item-id content)
+  (-> (if (nil? subject)
+        store
+        (assoc-in store [:id->subject item-id] subject))
+      (assoc-in [:id->content-data item-id] content)
+      (index-all item-id true)
+      (add-modified-id item-id)))
+
+(defn remove-triple [this id]
+    (assert (not (nil? (get-in this [:id->content-data id])))
+            "Removed id not present.")
+    (assert (nil? (get-in this [:id->elements id]))
+            "Removed id has elements.")
+    (assert (nil? (get-in this [:content->ids id]))
+            "Removed id is the content of another.")
+    (-> this
+        (index-all id false)
+        (dissoc-in [:id->content-data id])
+        (dissoc-in [:id->subject id])
+        (add-modified-id id)))
 
 (defn descendant-ids [store id]
   "Return a seq of the id and ids of all its descendant elements."
@@ -254,7 +237,7 @@
   ;; add a triple until its subject has been added (and after its
   ;; content has been added, if the content is an id). When we encounter
   ;; a triple that can't yet added, we save it in deferred,
-  ;; indexed under what it is waiting for, then add it when we see what
+  ;; indexed under what it is waiting for, then add it when we get what
   ;; it needs.
   ;; Return the new store and new deferred.
   [store deferred id subject content]
@@ -269,14 +252,6 @@
               [(add-triple store id subject content)
                (dissoc deferred id)]
               (deferred id)))))
-
-(defn eventually-containing-items
-  "Return all items that contain the content, possibly through
-   a chain of containment."
-  [store content]
-  (let [items (pseudo-set-seq
-               (get-in store [:content->ids (canonical-atom-form content)]))]
-    (concat items (mapcat #(eventually-containing-items store %) items))))
 
 (def candidate-matching-ids-and-estimate)
 
@@ -296,7 +271,7 @@
 (defn subsuming-ids-and-estimates
    "Return a seq of pairs of an estimate of number of candidates and
     a lazy seq of the candidate matching ids. Each list will
-    subsume all possible matches."
+    include all possible matches."
   [store template]
   ;; We can't use the entity code to extract the content and elements,
   ;; because that code depends on this file.
@@ -306,12 +281,11 @@
         element-matches (subsuming-elements-ids-and-estimates store elements)]
     (if (nil? content)
       element-matches
-      (let [content-ids (eventually-containing-items store content)]
+      (let [content-ids (all-ids-eventually-holding-content store content)]
         (concat [[(count content-ids) content-ids]]
                 element-matches)))))
 
-;;; TODO: If the estimate for an element is too large, but the element
-;;;       has a label, filter with subject->label->ids
+;;; TODO: If a template element has a label, filter with id->label->ids
 (defn candidate-matching-ids-and-estimate
   "Return a pair of an estimate of number of candidates and a lazy seq of
    the candidate matching ids. But if the template
@@ -322,6 +296,8 @@
       (let [lowest (apply min (map first possibilities))
             threshold (* 10 lowest)]
         [lowest
+         ;; Intersect all the candidate lists that aren't more than
+         ;; 10 times the size of the smallest.
          (lazy-seq (->> possibilities
                         (filter #(<= (first %) threshold))
                         (map second)
@@ -331,47 +307,50 @@
 (defrecord ElementStoreImpl
     ^{:doc
       "An immutable store with some indexing."}
-   [
-   ;;; These two maps give the primitive facts about the store's triples.
-   ;;; Map from ItemId to its subject
-   id->subject
-   ;;; Map from ItemId to its content
-   ;;; We have to call it id->content-data, to avoid conflicting with
-   ;;; the method id->content
-   id->content-data
+   [;;; These first two maps give the primitive facts about the store's
+    ;;; triples.
+    
+    ;;; Map from ItemId to its subject
+    id->subject
+    
+    ;;; Map from ItemId to its content
+    ;;; We have to call it id->content-data, to avoid conflicting with
+    ;;; the method id->content
+    id->content-data
 
-   ;;; A set of ids that have been declared temporary.
+    ;;; A set of ids that have been declared temporary.
     temporary-ids
 
-   ;;; A derived map from item id to a pseudo-set of the ids of its
-   ;;; elements.
-   id->elements
+    ;;; A derived map from item id to a pseudo-set of the ids of its
+    ;;; elements.
+    id->elements
 
-   ;;; A derived index from the canonical-atom-form of content to a
-   ;;; pseudo-set of ids with that content. Nil content is not
-   ;;; indexed.
-   content->ids
+    ;;; A derived index from the canonical-atom-form of content to a
+    ;;; pseudo-set of ids with that content. Nil content is not
+    ;;; indexed.
+    content->ids
 
-   ;;; A derived map from item id to a pseudo-set of the keywords that
-   ;;; are the content of at least one of its elements.
-   id->keywords
+    ;;; A derived map from item id to a pseudo-set of the keywords that
+    ;;; are the content of at least one of its elements.
+    id->keywords
 
-   ;;; A derived map from item id, then label to a pseudo-set of the
-   ;;; elements of elements of the id that have label as atomic-value and
-   ;;; that have :label as the content of one of their elements. That
-   ;;; is, all elements of elements of the form (<label> :label)
-   id->label->ids
+    ;;; A derived map from item id, then label to a pseudo-set of the
+    ;;; elements of elements of the id that have label as atomic-value and
+    ;;; that have :label as the content of one of their elements. That
+    ;;; is, all elements of elements of the form (<label> :label)
+    id->label->ids
 
-   ;;; The next id to assign to an item to be stored here.
-   next-id
+    ;;; The next id to assign to an item to be stored here.
+    next-id
 
-   ;;; A set of ids that have been updated since the last call to
-   ;;; clear-modified-ids. This is only present if track-modified-ids
-   ;;; has been called.
-   modified-ids
+    ;;; A set of ids that have been updated since the last call to
+    ;;; clear-modified-ids. This is only present if track-modified-ids
+    ;;; has been called.
+    modified-ids
 
-   ;;; Whether this store state is an equivalent do point. (Starts out false.)
-   equivalent-undo-point
+    ;;; Whether this store state is an equivalent undo point.
+    ;;; (Starts out false.)
+    equivalent-undo-point
    ]
 
   Store
@@ -380,11 +359,13 @@
     (contains? (:id->content-data this) id))
 
   (id-label->element-ids [this id label]
-    (get-in this [:subject->label->ids id (canonical-atom-form label)]))
+    (seq
+     (map #(get-in this [:id->subject %])
+          (pseudo-set-seq
+           (get-in this [:id->label->ids id (canonical-atom-form label)])))))
 
   (id->element-ids [this id]
-    (seq (distinct (apply concat
-                          (vals (get-in this [:subject->label->ids id]))))))
+    (pseudo-set-seq (get-in this [:id->elements id])))
 
   (id->content [this id]
     (if (instance? ItemId id)
@@ -397,9 +378,9 @@
         ;; The template is so generic that none of our indices can narrow
         ;; it down based on any of its contents. Return basically everything.
         (if (and (sequential? template) (seq (rest template)))
-          ;; The item has an element.
-          ;; Return all items that have elaborations.
-          (keys id->label->ids)
+          ;; The template has an element.
+          ;; Return all items that have elements.
+          (keys id->elements)
           (keys id->content-data))
         (second pair))))
 
@@ -422,24 +403,16 @@
   (remove-simple-item [this id]
     (assert (not (nil? (get-in this [:id->content-data id])))
             "Removed id not present.")
-    (assert (nil? (get-in this [:subject->label->ids id]))
+    (assert (nil? (get-in this [:id->elements id]))
             "Removed id has elements.")
-    (-> this
-        (deindex-subject id)
-        (deindex-in-subject id)
-        (deindex-content id)
-        (dissoc-in [:id->content-data id])
-        (dissoc-in [:id->subject id])
-        (add-modified-id id)))
+    (remove-triple this id))
 
   (update-content [this id content]
-    (assert (not (nil? content)))
+    (check-content this id content)
     (-> this
-        (deindex-subject id)
-        (deindex-content id)
+        (index-all id false)
         (assoc-in [:id->content-data id] content)
-        (index-subject id)
-        ;(index-content id)
+        (index-all id true)
         (add-modified-ids-for-id-and-containers id)))
 
   (get-unique-number [this]
@@ -476,7 +449,7 @@
           (:id (get-in this [:id->subject id]))
           (cond (instance? ItemId content)
                 [:id (:id content)]
-                (instance? cosheet.orderable.Orderable content)
+                (instance? cosheet2.orderable.Orderable content)
                 [:ord (:left content) (:right content)]
                 (vector? content)
                 (into [:vec] content)
@@ -521,14 +494,16 @@
 (defmethod new-element-store true []
   (map->ElementStoreImpl {:id->subject {}
                           :id->content-data {}
+                          :id->elements {}
                           :content->ids {}
+                          :id->keywords {}
+                          :id->label->ids {}
                           :temporary-ids #{}
-                          :subject->label->ids {}
                           :next-id 0
                           :modified-ids nil
                           :equivalent-undo-point false}))
 
 (defmethod make-id true [id]
-  ;;Integers are reserved for the store
+  ;; Integers are reserved for creation by the store
   (assert (not (integer? id)))
   (->ItemId id))

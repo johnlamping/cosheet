@@ -191,18 +191,10 @@
                #(into % (all-ids-eventually-holding-id store id)))
     store))
 
-(defn check-content
-  "Make sure that the content is non-nil, and doesn't introduce
-  cycles in the subject and content links"
-  [store id content]
-  (assert (not (nil? content)))
-  (when (instance? ItemId content)
-    (assert (not-any? #{id} (all-forward-reachable-ids store content)))))
-
 (defn add-triple
   "Add a triple to the store, and do all necessary indexing."
   [store item-id subject content]
-  (check-content store item-id content)
+  (assert (not (nil? content)))
   (-> (if (nil? subject)
         store
         (assoc-in store [:id->subject item-id] subject))
@@ -408,7 +400,10 @@
     (remove-triple this id))
 
   (update-content [this id content]
-    (check-content this id content)
+    (assert (not (nil? content)))
+    ;; Check that we are not creating a forward cycle.
+    (when (instance? ItemId content)
+      (assert (not-any? #{id} (all-forward-reachable-ids this content))))
     (-> this
         (index-all id false)
         (assoc-in [:id->content-data id] content)

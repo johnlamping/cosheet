@@ -173,6 +173,9 @@
     (is (= (:id id) (:next-id test-store)))
     (is (= (id->content added-store id) "test"))
     (is (= (id->subject added-store id) (make-id "1"))))
+  ;; Test that adding nil content fails.
+  (is (thrown? java.lang.AssertionError
+               (add-simple-item test-store (make-id "1") nil)))
   (let [[added-store id]
         (add-simple-item
          (track-modified-ids test-store) (make-id "1") "test")]
@@ -200,7 +203,18 @@
         changed-store
         (update-content (track-modified-ids different-store)
                         id (make-id "2"))]
-    (is (= changed-store (assoc added-store :modified-ids #{id})))))
+    (is (= changed-store (assoc added-store :modified-ids #{id})))
+    ;; Test that adding nil content fails.
+    (is (thrown? java.lang.AssertionError
+                 (update-content test-store (make-id "1") nil)))
+    ;; Test that content that would create forward cycles fails.
+    (is (thrown? java.lang.AssertionError
+                 (update-content test-store (make-id "4") (make-id "9"))))
+    (is (thrown? java.lang.AssertionError
+                 (update-content test-store (make-id "0") (make-id "8"))))
+    ;; Test that the non-cycle content doesn't fail.
+    (update-content test-store (make-id "9") (make-id "4"))
+    (update-content test-store (make-id "8") (make-id "0"))))
 
 (deftest candidate-matching-ids-test
   (is (check (candidate-matching-ids-and-estimate test-store 5)

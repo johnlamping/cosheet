@@ -11,11 +11,8 @@
                                      update-in-clean-up]]
                       [orderable :refer [->Orderable]])
             clojure.edn))
-;;; TODO: add test for failing on trying to add a content loop
-;;;       Have candidate-matching-ids return whether its result
+;;; TODO: Have candidate-matching-ids return whether its result
 ;;;       is exact.
-;;;       Replace (get-in store [:id->subject x]) with id->subject
-;;;       Same for id->content
 
 ;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
@@ -57,7 +54,7 @@
 ;;; Chase contents until an atomic value is found.
 (defn atomic-value [store description]
   (if (satisfies? StoredItemDescription description)
-    (atomic-value store (get-in store [:id->content-data description]))
+    (atomic-value store (id->content store description))
     description))
 
 (defn all-ids-eventually-holding-content
@@ -83,13 +80,13 @@
     (concat [id]
             (mapcat #(when (instance? ItemId %)
                        (all-forward-reachable-ids store %))
-                    [(get-in store [:id->subject id])
-                     (get-in store [:id->content-data id])]))))
+                    [(id->subject store id)
+                     (id->content store id)]))))
 
 (defn index-id->elements
   "Put this item in the id->elements index."
   [store id add?]
-  (if-let [subject (get-in store [:id->subject id])]
+  (if-let [subject (id->subject store id)]
     (update-in-clean-up store [:id->elements subject]
                         #(pseudo-set-set-membership % id add?))
     store))
@@ -97,7 +94,7 @@
 (defn index-content->ids
   "Put this item in the content->ids index."
   [store id add?]
-  (let [content (get-in store [:id->content-data id])]
+  (let [content (id->content store id)]
     (if (nil? content)
       store
       (update-in-clean-up store [:content->ids (canonical-atom-form content)]
@@ -108,16 +105,16 @@
    label as the specified element."
   [store id element-id keyword]
   (some #(and (not= % element-id)
-              (= (get-in store [:id->content-data %]) keyword))
-        (pseudo-set-seq (get-in store [:id->elements id]))))
+              (= (id->content store %) keyword))
+        (id->element-ids store id)))
 
 (defn index-id->keywords
   "Reflect this item's content in the id->keywords index.
    The id->elements index must be valid when this is called."
   [store id add?]
-  (let [content (get-in store [:id->content-data id])]
+  (let [content (id->content store id)]
     (if (keyword? content)
-      (if-let [subject (get-in store [:id->subject id])]
+      (if-let [subject (id->subject store id)]
         (if (and (not add?)
                  (independently-keyworded? store subject id content))
           store ;; Another element has the same keyword as content.
@@ -131,9 +128,8 @@
   a :label element, to id->label->ids for its grand-subject."
   [add?]
   (fn [store id]
-    (let [canonical (canonical-atom-form (atomic-value store id))
-          subject (get-in store [:id->subject id])]
-      (if-let [grand-subject (get-in store [:id->subject subject])]
+    (let [canonical (canonical-atom-form (atomic-value store id)) ]
+      (if-let [grand-subject (id->subject store (id->subject store id))]
         (update-in-clean-up store [:id->label->ids grand-subject canonical]
                             #(pseudo-set-set-membership % id add?))
         store))))
@@ -150,7 +146,7 @@
                          (all-ids-eventually-holding-id store id))
                  ;; The item that we make a label
                  (when (= (atomic-value store id) :label)
-                   (when-let [subject (get-in store [:id->subject id])]
+                   (when-let [subject (id->subject store id)]
                      (when (not (independently-keyworded?
                                  store subject id :label))
                        [subject]))))]
@@ -203,9 +199,9 @@
       (add-modified-id item-id)))
 
 (defn remove-triple [this id]
-    (assert (not (nil? (get-in this [:id->content-data id])))
+    (assert (not (nil? (id->content this id)))
             "Removed id not present.")
-    (assert (nil? (get-in this [:id->elements id]))
+    (assert (nil? (id->element-ids this id))
             "Removed id has elements.")
     (assert (nil? (get-in this [:content->ids id]))
             "Removed id is the content of another.")
@@ -257,7 +253,7 @@
                                 store element)]
             (when estimate
               [estimate
-               (keep #(get-in store [:id->subject %]) ids)])))
+               (keep #(id->subject store %) ids)])))
         elements))
 
 (defn subsuming-ids-and-estimates
@@ -393,10 +389,6 @@
        item-id]))
 
   (remove-simple-item [this id]
-    (assert (not (nil? (get-in this [:id->content-data id])))
-            "Removed id not present.")
-    (assert (nil? (get-in this [:id->elements id]))
-            "Removed id has elements.")
     (remove-triple this id))
 
   (update-content [this id content]

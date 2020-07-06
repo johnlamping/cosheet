@@ -70,9 +70,12 @@
     )
 
   (candidate-matching-ids [this template]
-    "Return the ids of all items that could potentially be extensions
-     of the given template, which must be the list form of an entity,
-     and may not have non-atomic contents.")
+    "Takes a template, which must be the list form of an entity,
+     and may not have non-atomic contents. Return a seq ids that
+     includes the ids all items that could potentially be extensions
+     of the given template. Also return boolean that is true if the
+     list of ids is precise; if all of them represent items that are
+     extensions of the template.")
 
   (mutable-store? [this]
     "Return whether this store is mutable"))

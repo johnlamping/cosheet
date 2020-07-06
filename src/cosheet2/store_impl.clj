@@ -239,54 +239,81 @@
 
 (def candidate-matching-ids-and-estimate)
 
+(defn- coerce-template-to-list
+  "Turn an atomic template into a list of one item. That form supports
+  deconstruction."
+  [template]
+  (if (seq? template) template [template]))
+
 (defn subsuming-elements-ids-and-estimates
-   "Return a seq of pairs of an estimate of number of candidates and
-    a lazy seq of the candidate matching ids, one pair for each informative
-    element. Each list will subsume all possible matches."
+  "Return a seq of pairs, <estimate of number of candidates, a lazy
+  seq of the candidate matching ids>, one pair for each informative
+  element. Each list will subsume all possible matches. Also return a
+  boolean that is true if an id in the intersection of the candidate
+  lists is always a match."
   [store elements]
-  (keep (fn [element]
-          (let [[estimate ids] (candidate-matching-ids-and-estimate
-                                store element)]
-            (when estimate
-              [estimate
-               (keep #(id->subject store %) ids)])))
-        elements))
+  (if (empty? elements)
+    [nil true]
+    (let [candidates (map #(candidate-matching-ids-and-estimate store %)
+                          elements)]
+      [(keep (fn [[estimate ids precise]]
+               (when estimate [estimate (keep #(id->subject store %) ids)]))
+             candidates)
+       ;; We are precise if we have precise id lists for each element,
+       ;; and a match for one element is never a match for
+       ;; another. (Otherwise, we might, for example, return a one
+       ;; element item for a template that requires two elements.)
+       (and (every? (fn [[estimate ids precise]] precise) candidates)
+            ;; We can't use the entity code to extract the content and
+            ;; elements, because that code depends on this file.
+            (let [contents (map #(first (coerce-template-to-list %)) elements)]
+              (and (not-any? nil? contents)
+                   (apply distinct? contents))))])))
 
 (defn subsuming-ids-and-estimates
-   "Return a seq of pairs of an estimate of number of candidates and
-    a lazy seq of the candidate matching ids. Each list will
-    include all possible matches."
+  "Return a seq of pairs <estimate of number of candidates,
+  a lazy seq of the candidate matching ids. Each list will include all
+  possible matches. Also return a boolean that is true if an id in the
+  intersection of the candidate lists is always a match."
   [store template]
   ;; We can't use the entity code to extract the content and elements,
   ;; because that code depends on this file.
-  (let [[content elements] (if (seq? template)
-                             [(first template) (rest template)]
-                             [template nil])
-        element-matches (subsuming-elements-ids-and-estimates store elements)]
+  (let [[content & elements]
+        (coerce-template-to-list template)
+        [element-matches element-matches-precise]
+        (subsuming-elements-ids-and-estimates store elements)]
     (if (nil? content)
-      element-matches
+      [element-matches element-matches-precise]
       (let [content-ids (all-ids-eventually-holding-content store content)]
-        (concat [[(count content-ids) content-ids]]
-                element-matches)))))
+        [(concat [[(count content-ids) content-ids]]
+                 element-matches)
+         element-matches-precise]))))
 
 ;;; TODO: If a template element has a label, filter with id->label->ids
+;;; if the label intersection list would be too large. Likewise, if the
+;;; template is tagged :label, filter with id->keywords.
 (defn candidate-matching-ids-and-estimate
-  "Return a pair of an estimate of number of candidates and a lazy seq of
-   the candidate matching ids. But if the template
-   provides no information, return nil."
+  "Return a triple
+     <an estimate of number of candidates,
+      a lazy seq of the candidate matching ids,
+      a boolean that is true if an id in the candidates is always a match.
+  But if the template provides no information, return nil."
   [store template]
-  (let [possibilities (subsuming-ids-and-estimates store template)]
+  (let [[possibilities precise] (subsuming-ids-and-estimates store template)]
     (when (not (empty? possibilities))
       (let [lowest (apply min (map first possibilities))
-            threshold (* 10 lowest)]
+            threshold (* 10 lowest)
+            good? #(<= (first %) threshold)]
         [lowest
          ;; Intersect all the candidate lists that aren't more than
          ;; 10 times the size of the smallest.
          (lazy-seq (->> possibilities
-                        (filter #(<= (first %) threshold))
+                        (filter good?)
                         (map second)
                         (map set)
-                        (apply clojure.set/intersection)))]))))
+                        (apply clojure.set/intersection)))
+         (and precise
+              (every? good? possibilities))]))))
 
 (defrecord ElementStoreImpl
     ^{:doc
@@ -357,16 +384,18 @@
       id))
 
   (candidate-matching-ids [this template]
-    (let [pair (candidate-matching-ids-and-estimate this template)]
-      (if (nil? pair)
+    (let [[estimate ids precise]
+          (candidate-matching-ids-and-estimate this template)]
+      (if (nil? estimate)
         ;; The template is so generic that none of our indices can narrow
         ;; it down based on any of its contents. Return basically everything.
-        (if (and (sequential? template) (seq (rest template)))
-          ;; The template has an element.
-          ;; Return all items that have elements.
-          (keys id->elements)
-          (keys id->content-data))
-        (second pair))))
+        [(if (and (sequential? template) (seq (rest template)))
+            ;; The template has an element.
+            ;; Return all items that have elements.
+            (keys id->elements)
+            (keys id->content-data))
+         false]
+        [ids precise])))
 
   (mutable-store? [this] false)
 

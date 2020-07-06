@@ -13,9 +13,7 @@
             clojure.edn))
 ;;; TODO: Have candidate-matching-ids return whether its result
 ;;;       is exact.
-;;;       Get rid of chasing through content
 ;;;       Add method to check for keyword.
-;;;       Write unit test that makes lots of changes and checks all indices.
 
 ;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what
@@ -53,12 +51,6 @@
   "Given the string representation of an id, return the id."
   [rep]
   (->ItemId (if (= (first rep) \I) (subs rep 1) (parse-string-as-number rep))))
-
-;;; Chase contents until an atomic value is found.
-(defn atomic-value [store description]
-  (if (satisfies? StoredItemDescription description)
-    (atomic-value store (id->content store description))
-    description))
 
 (defn all-ids-eventually-holding-content
   "Return all items that contain the content, possibly through
@@ -132,7 +124,7 @@
   a :label element, to id->label->ids for its grand-subject."
   [add?]
   (fn [store id]
-    (let [canonical (canonical-atom-form (atomic-value store id)) ]
+    (let [canonical (canonical-atom-form (id->content store id)) ]
       (if-let [grand-subject (id->subject store (id->subject store id))]
         (update-in-clean-up store [:id->label->ids grand-subject canonical]
                             #(pseudo-set-set-membership % id add?))
@@ -144,12 +136,12 @@
   [store id add?]
   (let [indexer (one-item-indexer-id->label->ids add?) 
         labeled (concat
-                 ;; Labels with our content as their atomic-value
-                 (filter #(pseudo-set-contains?
-                           (get-in store [:id->keywords %]) :label)
-                         (all-ids-eventually-holding-id store id))
+                 ;; Our item, if it is a label.
+                 (when (pseudo-set-contains?
+                        (get-in store [:id->keywords id]) :label)
+                   [id])
                  ;; The item that we make a label
-                 (when (= (atomic-value store id) :label)
+                 (when (= (id->content store id) :label)
                    (when-let [subject (id->subject store id)]
                      (when (not (independently-keyworded?
                                  store subject id :label))
@@ -327,7 +319,7 @@
     id->keywords
 
     ;;; A derived map from item id, then label to a pseudo-set of the
-    ;;; elements of elements of the id that have label as atomic-value and
+    ;;; elements of elements of the id that have label as content and
     ;;; that have :label as the content of one of their elements. That
     ;;; is, all elements of elements of the form (<label> :label)
     id->label->ids

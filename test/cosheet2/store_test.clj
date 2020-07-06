@@ -44,62 +44,6 @@
     :equivalent-undo-point
     false}))
 
-(defn check-derived-indices
-  "Check that each of the derived indices of the store matches the data."
-  [store]
-  ;; Everything in :id->elements is true.
-  (doseq [[id elements] (:id->elements store)]
-    (doseq [element (pseudo-set-seq elements)]
-      (is (= (id->subject store element) id))))
-  ;; Everything that should be in :id->element is.
-  (doseq [[id subject] (:id->subject store)]
-    (is (some #{id} (id->element-ids store subject))))
-  
-  ;; Everything in :content->ids is true.
-  (doseq [[content ids] (:content->ids store)]
-    (doseq [id (pseudo-set-seq ids)]
-      (is (= (canonical-atom-form (id->content store id)) content))))
-  ;; Everything that should be in :content->ids is.
-  (doseq [[id content] (:id->content-data store)]
-    (is (some #{id}
-              (pseudo-set-seq
-               (get-in store [:content->ids (canonical-atom-form content)])))))
-
-  ;; Everything in :id->keywords is true.
-  (doseq [[id keywords] (:id->keywords store)]
-    (doseq [keyword (pseudo-set-seq keywords)]
-      (is (keyword? keyword))
-      (is (some #(= (id->content store %) keyword)
-                (id->element-ids store id)))))
-  ;; Everything that should be in :id->keywords is.
-  (doseq [[id content] (:id->content-data store)]
-    (when-let [subject (id->subject store id)]
-      (when (keyword? content)
-            (is (some #{content}
-                      (pseudo-set-seq
-                       (get-in store [:id->keywords subject])))))))
-
-  ;; Everything in :id->label->ids is true
-  (doseq [[id map] (:id->label->ids store)]
-    (doseq [[label ids] map]
-      (doseq [label-id (pseudo-set-seq ids)]
-        (and
-         (is (some (fn [element]
-                     (some #{label-id} (id->element-ids store element))) 
-                   (id->element-ids store id)))
-         (= (canonical-atom-form (id->content store label-id)) label)
-         (is (some #(= (id->content store %) :label)
-                   (id->element-ids store label-id)))))))
-  ;; Everything that should be :id->label->ids is.
-  (doseq [[id content] (:id->content-data store)]
-    (when (= content :label)
-      (when-let [subject (id->subject store id)]
-        (let [label (canonical-atom-form (id->content store subject))]
-          (when-let [two-up (id->subject store (id->subject store subject))]
-            (is (some #{subject}
-                      (pseudo-set-seq
-                       (get-in store [:id->label->ids two-up label]))))))))))
-
 (deftest id<->string-test
   (let [id (make-id "a")]
     (is (= (-> id id->string string->id) id)))
@@ -168,9 +112,6 @@
          (reduce #(index-id->keywords %1 %2 true) store ids)
          (reduce #(index-id->label->ids %1 %2 true) store ids))))
 
-(deftest all-indices-check
-  (check-derived-indices test-store))
-
 (deftest all-X-test
    (is (= (set (all-ids-eventually-holding-content test-store 5))
           #{(make-id "1") (make-id "4")}))
@@ -206,11 +147,6 @@
 (deftest id->subject-test
    (is (= (id->subject test-store (make-id "2")) (make-id "1")))
    (is (= (id->subject test-store 2) nil)))
-
-(deftest atomic-value-test
-  (is (= (atomic-value test-store (make-id "???")) nil))
-  (is (= (atomic-value test-store (make-id "6")) :baz))
-  (is (= (atomic-value test-store (make-id "1")) 5)))
 
 (deftest add-simple-item-test
   (let [[added-store id]
@@ -260,6 +196,101 @@
     ;; Test that the non-cycle content doesn't fail.
     (update-content test-store (make-id "9") (make-id "4"))
     (update-content test-store (make-id "8") (make-id "0"))))
+
+(defn check-derived-indices
+  "Check that each of the derived indices of the store matches the data."
+  [store]
+  ;; Everything in :id->elements is true.
+  (doseq [[id elements] (:id->elements store)]
+    (doseq [element (pseudo-set-seq elements)]
+      (is (= (id->subject store element) id))))
+  ;; Everything that should be in :id->element is.
+  (doseq [[id subject] (:id->subject store)]
+    (is (some #{id} (id->element-ids store subject))))
+  
+  ;; Everything in :content->ids is true.
+  (doseq [[content ids] (:content->ids store)]
+    (doseq [id (pseudo-set-seq ids)]
+      (is (= (canonical-atom-form (id->content store id)) content))))
+  ;; Everything that should be in :content->ids is.
+  (doseq [[id content] (:id->content-data store)]
+    (is (some #{id}
+              (pseudo-set-seq
+               (get-in store [:content->ids (canonical-atom-form content)])))))
+
+  ;; Everything in :id->keywords is true.
+  (doseq [[id keywords] (:id->keywords store)]
+    (doseq [keyword (pseudo-set-seq keywords)]
+      (is (keyword? keyword))
+      (is (some #(= (id->content store %) keyword)
+                (id->element-ids store id)))))
+  ;; Everything that should be in :id->keywords is.
+  (doseq [[id content] (:id->content-data store)]
+    (when-let [subject (id->subject store id)]
+      (when (keyword? content)
+            (is (some #{content}
+                      (pseudo-set-seq
+                       (get-in store [:id->keywords subject])))))))
+
+  ;; Everything in :id->label->ids is true
+  (doseq [[id map] (:id->label->ids store)]
+    (doseq [[label ids] map]
+      (doseq [label-id (pseudo-set-seq ids)]
+        (and
+         (is (some (fn [element]
+                     (some #{label-id} (id->element-ids store element))) 
+                   (id->element-ids store id)))
+         (= (canonical-atom-form (id->content store label-id)) label)
+         (is (some #(= (id->content store %) :label)
+                   (id->element-ids store label-id)))))))
+  ;; Everything that should be :id->label->ids is.
+  (doseq [[id content] (:id->content-data store)]
+    (when (= content :label)
+      (when-let [subject (id->subject store id)]
+        (let [label (canonical-atom-form (id->content store subject))]
+          (when-let [two-up (id->subject store (id->subject store subject))]
+            (is (some #{subject}
+                      (pseudo-set-seq
+                       (get-in store [:id->label->ids two-up label]))))))))))
+
+(deftest all-indices-check
+  (check-derived-indices test-store))
+
+(require '[clojure.data.generators :as gen])
+
+(deftest lots-of-changes-indices-check
+  ;; We repeatedly add a bunch of elements and remove a bunch of
+  ;; elements and check that the derived indices are correct. To make
+  ;; sure that the removals are legal, an element only references
+  ;; elements with at most 1/2 its id number, and we only remove at
+  ;; most the last 1/2 of the elements while removing. (We remove them
+  ;; in a random order.
+  (binding [gen/*rnd* (java.util.Random. 437)]
+    (let [earlier-num (fn [n] (gen/uniform 0 (+ 1 (int (/ n 2)))))]
+      (loop [iteration 0 store (new-element-store) items 0]
+        (let [n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
+              m (min (gen/uniform (int (/ n 2)) n) (- n 1))]
+          (let [added-store
+                (reduce (fn [store i]
+                          (first (add-simple-item
+                                        store
+                                        (->ItemId (earlier-num i))
+                                        (case (gen/uniform 0 3)
+                                          0 (->ItemId (earlier-num i))
+                                          1 (int (/ 100 (gen/uniform 1 100)))
+                                          2 :label))))
+                        store (range items n))
+                removed-store
+                (reduce (fn [store i]
+                          (remove-simple-item store (->ItemId i)))
+                        added-store (gen/shuffle (range m n)))]
+            (check-derived-indices added-store)
+            (check-derived-indices removed-store)
+            (if (< iteration 10)
+              (recur (+ iteration 1)
+                     (assoc removed-store :next-id m)
+                     m))
+            ))))))
 
 (deftest candidate-matching-ids-test
   (is (check (candidate-matching-ids-and-estimate test-store 5)

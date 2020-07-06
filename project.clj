@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.priority-map "0.0.5"]
+                 [org.clojure/data.generators "1.0.0"]
                  ;; Server side
                  [ring/ring-core "1.4.0"]
                  [ring/ring-jetty-adapter "1.5.1"]

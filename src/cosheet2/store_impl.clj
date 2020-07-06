@@ -13,6 +13,8 @@
             clojure.edn))
 ;;; TODO: Have candidate-matching-ids return whether its result
 ;;;       is exact.
+;;;       Get rid of chasing through content
+;;;       Add method to check for keyword.
 ;;;       Write unit test that makes lots of changes and checks all indices.
 
 ;;; Data in a store consists of ItemId objects. All that the system
@@ -64,7 +66,8 @@
   [store content]
   (let [items (pseudo-set-seq
                (get-in store [:content->ids (canonical-atom-form content)]))]
-    (concat items (mapcat #(eventually-containing-items store %) items))))
+    (concat items
+            (mapcat #(all-ids-eventually-holding-content store %) items))))
 
 (defn all-ids-eventually-holding-id
   "Return a seq of the ids of all items whose atomic value chain goes

@@ -44,19 +44,61 @@
     :equivalent-undo-point
     false}))
 
-(def indexed-test-store
-  (assoc unindexed-test-store
-         :content->ids
-         {0 (make-id "0")
-          (make-id "4") (make-id "1")
-          ["Foo"] (make-id "2")
-          :label (make-id "3")
-          (make-id "6") (make-id "4")
-          "bar" #{(make-id "5") (make-id "8")}
-          5 (make-id "6")
-          "second" (make-id "7")}
-         ;; TODO: more here!
-         ))
+(defn check-derived-indices
+  "Check that each of the derived indices of the store matches the data."
+  [store]
+  ;; Everything in :id->elements is true.
+  (doseq [[id elements] (:id->elements store)]
+    (doseq [element (pseudo-set-seq elements)]
+      (is (= (id->subject store element) id))))
+  ;; Everything that should be in :id->element is.
+  (doseq [[id subject] (:id->subject store)]
+    (is (some #{id} (id->element-ids store subject))))
+  
+  ;; Everything in :content->ids is true.
+  (doseq [[content ids] (:content->ids store)]
+    (doseq [id (pseudo-set-seq ids)]
+      (is (= (canonical-atom-form (id->content store id)) content))))
+  ;; Everything that should be in :content->ids is.
+  (doseq [[id content] (:id->content-data store)]
+    (is (some #{id}
+              (pseudo-set-seq
+               (get-in store [:content->ids (canonical-atom-form content)])))))
+
+  ;; Everything in :id->keywords is true.
+  (doseq [[id keywords] (:id->keywords store)]
+    (doseq [keyword (pseudo-set-seq keywords)]
+      (is (keyword? keyword))
+      (is (some #(= (id->content store %) keyword)
+                (id->element-ids store id)))))
+  ;; Everything that should be in :id->keywords is.
+  (doseq [[id content] (:id->content-data store)]
+    (when-let [subject (id->subject store id)]
+      (when (keyword? content)
+            (is (some #{content}
+                      (pseudo-set-seq
+                       (get-in store [:id->keywords subject])))))))
+
+  ;; Everything in :id->label->ids is true
+  (doseq [[id map] (:id->label->ids store)]
+    (doseq [[label ids] map]
+      (doseq [label-id (pseudo-set-seq ids)]
+        (and
+         (is (some (fn [element]
+                     (some #{label-id} (id->element-ids store element))) 
+                   (id->element-ids store id)))
+         (= (canonical-atom-form (id->content store label-id)) label)
+         (is (some #(= (id->content store %) :label)
+                   (id->element-ids store label-id)))))))
+  ;; Everything that should be :id->label->ids is.
+  (doseq [[id content] (:id->content-data store)]
+    (when (= content :label)
+      (when-let [subject (id->subject store id)]
+        (let [label (canonical-atom-form (id->content store subject))]
+          (when-let [two-up (id->subject store (id->subject store subject))]
+            (is (some #{subject}
+                      (pseudo-set-seq
+                       (get-in store [:id->label->ids two-up label]))))))))))
 
 (deftest id<->string-test
   (let [id (make-id "a")]
@@ -125,6 +167,9 @@
          (reduce #(index-content->ids %1 %2 true) store ids)
          (reduce #(index-id->keywords %1 %2 true) store ids)
          (reduce #(index-id->label->ids %1 %2 true) store ids))))
+
+(deftest all-indices-check
+  (check-derived-indices test-store))
 
 (deftest all-X-test
    (is (= (set (all-ids-eventually-holding-content test-store 5))

@@ -13,6 +13,7 @@
             clojure.edn))
 ;;; TODO: Have candidate-matching-ids return whether its result
 ;;;       is exact.
+;;;       Write unit test that makes lots of changes and checks all indices.
 
 ;;; Data in a store consists of ItemId objects. All that the system
 ;;; needs to know about an ItemId is what its content is, and what

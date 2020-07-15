@@ -163,7 +163,13 @@
                  [:a :key :all :reporter r :description nil :categories nil]
                  [:a :key :all :reporter r
                   :description :increment :categories [:c]]])))
-    (change-value! r (fn [v] [(* v 2) :double [:c :a]]))
+    (let [rv (change-data-control-return!
+              r (fn [d] [(assoc d
+                                :value (* (:value d) 2)
+                                :extra "extra")
+                         :double [:c :a] :rv]))]
+      (is (= rv :rv)))
+    (is (= (:extra (reporter-data r)) "extra"))
     (is (= (reporter-value r) 8))
     (is (check (multiset @history)
                (multiset

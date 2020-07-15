@@ -13,8 +13,7 @@
 ;;; fixed when the reporter is created.
 
 (defn category-change-calculator
-  "Calculator that looks up the value of a reporter's application in a
-   cache of reporters."
+  "Calculator that changes the categories of requests."
   [reporter cd]
   (let [data (reporter-data reporter)]
     (modify-and-act

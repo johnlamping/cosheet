@@ -57,9 +57,11 @@
 
        It will be called, with the calculator data and the reporter,
        the first time there are any attendees to the reporter. It will
-       be called again whenever there is a change in: whether or not
-       there is demand, the priority of the demand, and the categories
-       requested. These callbacks let it do things like registering
+       be called again whenever there is a change in:
+          Whether or not there is demand
+          The priority of the demand
+          The categories requested.
+       These callbacks let it do things like registering
        for callbacks to update its state, or cancelling those
        callbacks when there is no more interest. The calculator can
        put additional information on the reporter to support its
@@ -169,6 +171,25 @@
       (inform-attendees r))))
 
 ;; TODO: Add change-control-return
+
+(defn change-data-control-return!
+  "This is the most general function for updating a reporter.
+   Call the function with the current data map the reporter.  It must
+   return a new data map, a description of its change to the value,
+   the categories of the change, and the return value it wants.
+   Set the data of the reporter to the new map, and inform any attendees
+   that care about any of the categories of the change."
+    [r f]
+  (let [[changed description categories return-value]
+        (swap-control-return!
+         (:data r)
+         #(let [[data description categories return-value] (f %)]
+            [data
+             [(not= (:value %) (:value data))
+              description categories return-value]]))]
+    (if changed
+      (inform-attendees r description categories))
+    return-value))
 
 (defn change-value!
   "Call the function with the current value of the reporter.  It must

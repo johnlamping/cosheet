@@ -178,7 +178,8 @@
    return a new data map, a description of its change to the value,
    the categories of the change, and the return value it wants.
    Set the data of the reporter to the new map, and inform any attendees
-   that care about any of the categories of the change."
+   that care about any of the categories of the change.
+   Return the specified value."
     [r f]
   (let [[changed description categories return-value]
         (swap-control-return!
@@ -190,6 +191,24 @@
     (if changed
       (inform-attendees r description categories))
     return-value))
+
+(defn change-data!
+  "This is the most general function for updating a reporter.
+   Call the function with the current data map the reporter.  It must
+   return a new data map, a description of its change to the value,
+   and the categories of the change.
+   Set the data of the reporter to the new map, and inform any attendees
+   that care about any of the categories of the change."
+    [r f]
+  (let [[changed description categories]
+        (swap-control-return!
+         (:data r)
+         #(let [[data description categories] (f %)]
+            [data
+             [(not= (:value %) (:value data))
+              description categories]]))]
+    (if changed
+      (inform-attendees r description categories))))
 
 (defn change-value!
   "Call the function with the current value of the reporter.  It must

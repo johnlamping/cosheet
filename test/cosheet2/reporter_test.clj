@@ -144,7 +144,8 @@
                [[:c r :cd]
                 [:s :key :sel :reporter r :description nil :categories nil]
                 [:c r :cd]]))
-    (set-value! r 3)
+    (change-data! r (fn [d] [(assoc d :value 3) nil nil]))
+    (is (= (reporter-value r) 3))
     (is (check (multiset @history)
                (multiset
                 [[:c r :cd]

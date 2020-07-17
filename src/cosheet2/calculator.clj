@@ -47,6 +47,10 @@
 ;;;
 ;;;         :value-source A reporter whose value should be the
 ;;;                       value of this reporter.
+;;; :value-source-is-canonical True if our value source is as good a
+;;;                            representation of our computation as we are.
+;;;                            This is used to find the canonical reporter when
+;;;                            the cache calculator determines the cache key.
 ;;; :value-source-priority-delta The amount that we add to our priority
 ;;;                              to get the priority we give to our value
 ;;;                              source. Only needs to valid when there is

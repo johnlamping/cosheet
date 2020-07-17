@@ -9,7 +9,8 @@
                                           compute request unrequest
                                           computation-value
                                           modify-and-act]]
-                      [expression :refer [expr cache expr-seq expr-let]]
+                      [expression :refer [expr cache category-change
+                                          expr-seq expr-let]]
                       [utils :refer :all]
                       [cache-calculator :refer :all]
                       [test-utils :refer [check any]]                      
@@ -19,8 +20,9 @@
 
 (deftest canonicalize-application-test
   (let [r0 (new-reporter :name :r0 :application [:a :b])
+        r0c (category-change [:c] r0)
         r1 (new-reporter :name :r1 :application [:a :b]
-                         :value-source r0 :value-source-is-canonical true)
+                         :value-source r0c :value-source-is-canonical true)
         r2 (new-reporter :name :r1 :application [:a :b]
                          :value-source r0)
         r00 (new-reporter :name :r0 :application [r0 r0])

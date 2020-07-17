@@ -22,7 +22,8 @@
        (let [source (:value-source data)]
          (assert (reporter? source))
          (-> data
-             (assoc :value-source-priority-delta 1)
+             (assoc :value-source-priority-delta 1
+                    :value-source-is-canonical true)
              (update-new-further-action
               set-attendee-and-call!
               source

@@ -17,26 +17,27 @@
 ;;; needed.  This avoids redoing shared, possibly expensive,
 ;;; computations.
 
+(defn canonicalize-reporter
+  "If the argument is a reporter, chase :value-source if that is canonical"
+  [reporter]
+  (if (reporter? reporter)
+    (let [data (reporter-data reporter)]
+      (if (:value-source-is-canonical data)
+        (canonicalize-reporter (:value-source data))
+        reporter))
+    reporter))
+
 (defn canonicalize-application
   "canonicalize any reporters in the application."
-  [application cd]
-  (let [cache (:cache cd)]
-    (letfn [(canonicalize-term [term]
-              (or (when (reporter? term)
-                    (when-let [application (:application (reporter-data term))]
-                      (mm/mm-get cache
-                                 (canonicalize-application application))))
-                  term))
-            (canonicalize-application [application]
-              (map canonicalize-term application))]
-      (canonicalize-application application))))
+  [application]
+  (map canonicalize-reporter application))
 
 (defn get-or-make-reporter
   "Try to find an application reporter for the given application in the cache.
    If there isn't one, make one and propagate the calculator data to it."
   [application original-name cd]
   (when (= (second application) 41))
-  (or (mm/mm-get (:cache cd) (canonicalize-application application cd))
+  (or (mm/mm-get (:cache cd) (canonicalize-application application))
       (let [reporter (apply new-reporter
                               :application application
                               :calculator application-calculator
@@ -52,7 +53,7 @@
    with the same key.)"
   [reporter cd]
   (let [application (canonicalize-application
-                     (:application (reporter-data reporter)) cd)]
+                     (:application (reporter-data reporter)))]
     (with-latest-value [attended (attended? reporter)]
       (mm/update-in-clean-up!
        (:cache cd) [application]
@@ -97,5 +98,6 @@
                       (or (:value-source data)
                           (get-or-make-reporter application (:name data) cd)))]
          (-> data
-             (assoc :value-source-priority-delta 1)
+             (assoc :value-source-priority-delta 1
+                    :value-source-is-canonical (not (nil? source)))
              (update-value-source reporter source cd)))))))

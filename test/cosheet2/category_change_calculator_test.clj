@@ -11,6 +11,7 @@
                       [expression :refer [category-change]]
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
+                      [cache-calculator :refer [canonicalize-reporter]]
                       [test-utils :refer [check any]]                      
                       [propagation-test-utils :refer [check-propagation]])
             ; :reload
@@ -22,6 +23,7 @@
         r1 (category-change [1 2] r)]
     (request r1 cd)
     (compute cd)
+    (is (= (canonicalize-reporter r1) r))
     (is (= (reporter-value r1) 1))
     ;; Check that we see an unmarked change
     (set-value! r 2)

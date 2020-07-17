@@ -6,7 +6,7 @@
                                           update-new-further-action
                                           register-for-value-source
                                           copy-value-callback
-                                          modify-and-act]]
+                                          modify-and-act!]]
                       [utils :refer [with-latest-value
                                      assoc-if-non-empty]]
                       [application-calculator
@@ -91,7 +91,7 @@
   (let [data (reporter-data reporter)
         application (:application data)
         cache (:cache cd)]
-    (modify-and-act
+    (modify-and-act!
      reporter
      (fn [data]
        (let [source (when (data-attended? data)

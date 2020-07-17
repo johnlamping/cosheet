@@ -6,7 +6,7 @@
                                         data-attended?]]
                       [calculator :refer [propagate-calculator-data!
                                           update-new-further-action
-                                          modify-and-act
+                                          modify-and-act!
                                           update-value-and-dependent-depth
                                           copy-value add-propagate-task
                                           register-for-value-source]]
@@ -341,7 +341,7 @@
 (defn do-application-calculate
   "The calculation work for an application reporter."
   [reporter cd]
-  (modify-and-act
+  (modify-and-act!
    reporter
    (fn [data]
      (let [same-attended (= (data-attended? data)

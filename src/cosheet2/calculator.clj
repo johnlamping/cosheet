@@ -81,7 +81,7 @@
   [data & action]
   (update-in data [:further-actions] (fnil conj []) (vec action)))
 
-(defn modify-and-act
+(defn modify-and-act!
   "Atomically call the function on the reporter's data.
    The function should return the new data for the reporter,
    which may also contain a temporary field, :further-actions with
@@ -115,7 +115,7 @@
   (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter-data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
-    (modify-and-act
+    (modify-and-act!
      reporter
      (fn [data]
        (let [cd (:calculator-data data)]

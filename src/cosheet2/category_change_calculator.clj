@@ -2,7 +2,7 @@
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call!
                                         reporter?]]
-                      [calculator :refer [modify-and-act
+                      [calculator :refer [modify-and-act!
                                           update-new-further-action
                                           copy-value-callback]])))
 
@@ -16,7 +16,7 @@
   "Calculator that changes the categories of requests."
   [reporter cd]
   (let [data (reporter-data reporter)]
-    (modify-and-act
+    (modify-and-act!
      reporter
      (fn [data]
        (let [source (:value-source data)]

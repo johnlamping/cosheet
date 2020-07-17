@@ -34,12 +34,17 @@
     :queue queue}))
 
 (defn propagate-calculator-data!
-  "Activate this reporter and the terms of its application, if any."
+  "If this reporter hadn't already been activated, activate it
+   and all reporters it depends on."
   [reporter cd]
   (when (reporter? reporter)
-    (set-calculator-data-if-needed! reporter cd)
-    (doseq [term (:application (reporter-data reporter))]
-      (propagate-calculator-data! term cd))))
+    (let [data (reporter-data reporter)]
+      (when (not (:calculator-data data))
+        (set-calculator-data-if-needed! reporter cd)
+        (when-let [source (:value-source data)]
+          (propagate-calculator-data! source cd))
+        (doseq [term (:application data)]
+          (propagate-calculator-data! term cd))))))
 
 ;;; Many kinds of calculators can get their value from another reporter.
 ;;; The copy value code provides support for that.

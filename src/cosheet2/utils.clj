@@ -14,6 +14,14 @@
         true
         (seq [pseudo-set])))
 
+(defn pseudo-set-set [pseudo-set]
+  (cond (nil? pseudo-set)
+        #{}
+        (set? pseudo-set)
+        pseudo-set
+        true
+        #{pseudo-set}))
+
 (defn pseudo-set-contains? [pseudo-set item]
   (cond (nil? pseudo-set)
         false

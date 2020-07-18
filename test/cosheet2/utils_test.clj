@@ -6,6 +6,7 @@
 
 (deftest pseudo-set-test
   (let [ps (loop [ps nil in [] out [1 2 3 4 5]]
+             (is (= (pseudo-set-set ps) (set in)))
              (is (= (set (pseudo-set-seq ps)) (set in)))
              (doseq [x in] (is (pseudo-set-contains? ps x)))
              (doseq [x out] (is (not (pseudo-set-contains? ps x))))
@@ -21,6 +22,7 @@
                       (rest out))
                ps))]
     (loop [ps ps in [1 2 3 4 5] out []]
+      (is (= (pseudo-set-set ps) (set in)))
       (is (= (set (pseudo-set-seq ps)) (set in)))
       (doseq [x in] (is (pseudo-set-contains? ps x)))
       (doseq [x out] (is (not (pseudo-set-contains? ps x))))

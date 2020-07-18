@@ -66,6 +66,9 @@
         (? (<label> (:label)))."
     )
 
+  (id->containing-ids [this id]
+    "Returns the set of all ids that have the given id as their content.")
+
   (candidate-matching-ids [this template]
     "Takes a template, which must be the list form of an entity,
      and may not have non-atomic contents. Return a seq ids that

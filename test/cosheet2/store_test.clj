@@ -144,6 +144,12 @@
   (is (= (id->content test-store (make-id "2")) "Foo"))
   (is (= (id->content test-store (make-id "6")) :baz)))
 
+(deftest id->containing-ids-test
+  (is (= (id->containing-ids test-store (make-id "4")) #{(make-id "1")}))
+  (is (= (id->containing-ids test-store (make-id "1")) #{}))
+  (is (thrown? java.lang.AssertionError
+               (id->containing-ids test-store "Foo"))))
+
 (deftest id->subject-test
    (is (= (id->subject test-store (make-id "2")) (make-id "1")))
    (is (= (id->subject test-store 2) nil)))

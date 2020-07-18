@@ -1,9 +1,8 @@
 (ns cosheet2.store-impl
   (:require (cosheet2 [store :refer :all]
                       [utils :refer [canonical-atom-form
+                                     pseudo-set-set
                                      pseudo-set-seq
-                                     pseudo-set-conj
-                                     pseudo-set-disj
                                      pseudo-set-set-membership
                                      pseudo-set-contains?
                                      parse-string-as-number
@@ -388,6 +387,10 @@
     (if (instance? ItemId id)
       (get-in this [:id->content-data id])
       id))
+
+  (id->containing-ids [this id]
+    (assert (satisfies? StoredItemDescription id))
+    (pseudo-set-set (get-in this [:content->ids id])))
 
   (candidate-matching-ids [this template]
     (let [[estimate ids precise]

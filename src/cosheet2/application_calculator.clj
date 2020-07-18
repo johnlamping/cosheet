@@ -205,7 +205,7 @@
   (with-latest-value [[value dependent-depth]
                       (let [data (reporter-data from)]
                         [(:value data) (or (:dependent-depth data) 0)])]
-    (modify-and-act
+    (modify-and-act!
      reporter
      (fn [data]
        (let [same-value
@@ -299,7 +299,7 @@
   "If all the arguments for the reporter are ready, and we don't have
   a value, run the application."
   [reporter cd]
-  (modify-and-act
+  (modify-and-act!
    reporter
    (fn [data]
      (if (or

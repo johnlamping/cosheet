@@ -362,6 +362,12 @@
     ;;; Whether this store state is an equivalent undo point.
     ;;; (Starts out false.)
     equivalent-undo-point
+
+    ;;; A list of [function arg arg ...] calls that need to be
+    ;;; performed. (These have no effect on the store, but can be added
+    ;;; as a store is modified inside an atomic action, then done after
+    ;;; the action finishes.)
+    further-actions
    ]
 
   Store
@@ -433,15 +439,21 @@
   (track-modified-ids [this]
     (assoc this :modified-ids #{}))
 
-  (equivalent-undo-point? [this]
-    (:equivalent-undo-point this))
+  (fetch-and-clear-modified-ids [this]
+    [(assoc this :modified-ids #{})
+     (:modified-ids this)])
 
   (update-equivalent-undo-point [this equivalent]
     (assoc this :equivalent-undo-point equivalent))
 
-  (fetch-and-clear-modified-ids [this]
-    [(assoc this :modified-ids #{})
-     (:modified-ids this)])
+  (equivalent-undo-point? [this]
+    (:equivalent-undo-point this))
+
+  (store-update-new-further-action [this action]
+    (update this :further-actions (fnil conj []) (vec action)))
+
+  (store-fetch-and-clear-further-actions [this]
+    [(assoc this :further-actions nil) (:further-actions this)])
 
   (declare-temporary-id [this id]
     (assert (:id->content-data this))

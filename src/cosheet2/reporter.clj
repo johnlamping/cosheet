@@ -150,7 +150,7 @@
   ;; its request.
    (let [data (reporter-data r) 
          ;; Avoid calling the same reporter twice if several of its
-         ;; categories match
+         ;; categories match.
          reporter-keys (if (nil? categories)
                          (keys (:attendees data))
                          (set (mapcat (partial get (:selections data))
@@ -169,8 +169,6 @@
         (swap-returning-both! (:data r) #(assoc % :value value))]
     (if (not= (:value old) (:value current))
       (inform-attendees r))))
-
-;; TODO: Add change-control-return
 
 (defn change-data-control-return!
   "This is the most general function for updating a reporter.

@@ -60,9 +60,6 @@
     "Given an item, return its subject. Assumes that the subject of an entity
     never changes, so doesn't return a reporter even for a mutable store.")
 
-  (id->containing-ids [this id]
-    "Return the set of ids that have this one as their content.")
-
   (id-label->element-ids [this id label]
     "Returns the ids of all elements of the item with given id that
      have the structure
@@ -125,6 +122,13 @@
     "Declare the id to be temporary. It and all its descendant elements
      will not be written. Returns the new store.")
 
+  (store-update-new-further-action [this action]
+    "Add an action to the further actions of the store.")
+
+  (store-fetch-and-clear-further-actions [this]
+    "Return the store with further actions eliminated, plus the list of
+     further actions that were there.")
+
   (store-to-data [this]
     "Convert the store to a clojure structure that can be serialized.")
 
@@ -151,6 +155,12 @@
      Update the store with the result, and notify all reporters of
      changes noted by the update. This is a way to package a number
      of updates to the current store into a single transaction.")
+
+  (store-update-and-act! [this update-fn]
+    "Run the update function on the current state of the store.
+     Update the store with the result, and notify all reporters of
+     changes noted by the update. If the updated store has any further
+     actions, perform them, and remove them from the store.")
 
   (store-update-control-return! [this update-fn]
     "Run the update function on the current state of the store.

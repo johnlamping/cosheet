@@ -2,13 +2,14 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [mutable-map :refer [mm-get current-contents]]
-                      [task-queue :refer [new-priority-task-queue]]
+                      [task-queue :refer [new-priority-task-queue
+                                          run-all-pending-tasks]]
                       [reporter :refer [new-reporter reporter-data
+                                        reporter-value
                                         set-value! valid? invalid]]
                       [calculator :refer [new-calculator-data current-value
                                           compute request unrequest
-                                          computation-value
-                                          modify-and-act]]
+                                          computation-value]]
                       [expression :refer [expr cache expr-seq expr-let]]
                       [utils :refer :all]
                       [cache-calculator :refer :all]
@@ -44,7 +45,8 @@
      (is (not= (get-or-make-reporter [:a :b] "ab" cd) r0))))
 
 (deftest cache-calculator-test
-  (let [cd (new-calculator-data (new-priority-task-queue 0))
+  (let [queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)
         r0 (new-reporter :name :r0 :value 1)
         r1 (new-reporter :name :r1
                          :application [inc r0]
@@ -68,20 +70,28 @@
            (mm-get (:cache cd) [inc r0])))
     (is (= (canonicalize-application [r1])
            (canonicalize-application [r2])))
+    (run-all-pending-tasks queue)
+    (is (= (reporter-value r1) 2))
     (let [orig-source (:value-source  (reporter-data r1))]
       ;; Lose interest in r1 then get it back, and the same value
       ;; source should come back.
       (unrequest r1 cd)
       (is (not (contains? (reporter-data r1) :value-source)))
+      (is (not (valid? r1)))
+      (is (valid? r2))
       (is (not= (canonicalize-application [r1])
                 (canonicalize-application [r2])))
       (request r1 cd)
+      (run-all-pending-tasks queue)
+      (is (valid? r1))
       (is (= (:value-source (reporter-data r1))
              orig-source))
-      ;; Now, lose interest in both reporters with that application,
-      ;; and the cache should drop it.
+      ;; Now, lose interest in both reporters with that application.
+      ;; The cache should drop it.
       (unrequest r1 cd)
       (unrequest r2 cd)
+      (is (not (valid? r1)))
+      (is (not (valid? r2)))
       (is (not= (:value-source (reporter-data r1))
                 orig-source))
       (is (nil? (mm-get (:cache cd) [inc r0]))))))

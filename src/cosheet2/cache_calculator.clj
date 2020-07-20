@@ -1,6 +1,7 @@
 (ns cosheet2.cache-calculator
   (:require (cosheet2 [reporter :refer [reporter? attended? new-reporter
-                                        reporter-data data-attended?]]
+                                        reporter-data data-attended?
+                                        invalid]]
                       [mutable-map :as mm]
                       [calculator :refer [propagate-calculator-data!
                                           update-new-further-action
@@ -97,7 +98,9 @@
        (let [source (when (data-attended? data)
                       (or (:value-source data)
                           (get-or-make-reporter application (:name data) cd)))]
-         (-> data
-             (assoc :value-source-priority-delta 1
-                    :value-source-is-canonical (not (nil? source)))
-             (update-value-source reporter source cd)))))))
+         (cond-> (-> data
+                     (assoc :value-source-priority-delta 1
+                            :value-source-is-canonical (not (nil? source)))
+                     (update-value-source reporter source cd))
+           (nil? source)
+           (assoc :value invalid)))))))

@@ -1,7 +1,7 @@
 (ns cosheet2.category-change-calculator
   (:require (cosheet2 [reporter :refer [reporter-data data-attended?
                                         set-attendee-and-call!
-                                        reporter?]]
+                                        reporter? invalid]]
                       [calculator :refer [modify-and-act!
                                           update-new-further-action
                                           copy-value-callback]])))
@@ -19,16 +19,18 @@
     (modify-and-act!
      reporter
      (fn [data]
-       (let [source (:value-source data)]
+       (let [source (:value-source data)
+             attended (data-attended? data)]
          (assert (reporter? source))
-         (-> data
-             (assoc :value-source-priority-delta 1
-                    :value-source-is-canonical true)
-             (update-new-further-action
-              set-attendee-and-call!
-              source
-              (list :copy-value reporter)
-              (+ 1 (:priority data))
-              (:categories data)
-              (when (data-attended? data)
-                copy-value-callback))))))))
+         (cond-> (-> data
+                     (assoc :value-source-priority-delta 1
+                            :value-source-is-canonical true)
+                     (update-new-further-action
+                      set-attendee-and-call!
+                      source
+                      (list :copy-value reporter)
+                      (+ 1 (:priority data))
+                      (:categories data)
+                      (when attended copy-value-callback)))
+           (not attended)
+           (assoc :value invalid)))))))

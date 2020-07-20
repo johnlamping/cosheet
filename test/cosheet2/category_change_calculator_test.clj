@@ -3,11 +3,9 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2 [task-queue :refer [new-priority-task-queue]]
                       [reporter  :refer [new-reporter reporter-value
-                                         set-value! change-value!]]
+                                         set-value! change-value! valid?]]
                       [calculator :refer [new-calculator-data
-                                          compute request unrequest
-                                          computation-value
-                                          modify-and-act]]
+                                          compute request unrequest]]
                       [expression :refer [category-change]]
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
@@ -36,4 +34,6 @@
     ;; Check that we do see a change whose categories we do care about.
     (change-value! r (fn [v] [1 :change [3 1]]))
     (compute cd)
-    (is (= (reporter-value r1) 1))))
+    (is (= (reporter-value r1) 1))
+    (unrequest r1 cd)
+    (is (not (valid? r1)))))

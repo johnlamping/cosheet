@@ -10,8 +10,7 @@
                                         remove-attendee! inform-attendees
                                         universal-category]]
                       [calculator :refer [new-calculator-data current-value
-                                          compute request
-                                          modify-and-act]]
+                                          compute request]]
                       [expression :refer [expr]]
                       [utils :refer :all]
                       [application-calculator :refer :all]
@@ -19,16 +18,6 @@
                       [propagation-test-utils :refer [check-propagation]])
             ; :reload
             ))
-
-(deftest modify-and-act-test
-  (let [r (new-reporter :test 10)
-        a (atom 1)]
-    (modify-and-act r (fn [data]
-                        (-> data
-                            (update-in [:test] inc)
-                            (assoc :further-actions [[swap! a inc]]))))
-    (is (= (:test (reporter-data r)) 11))
-    (is (= @a 2))))
 
 (deftest copy-value-test
   (let [cd (new-calculator-data (new-priority-task-queue 0))

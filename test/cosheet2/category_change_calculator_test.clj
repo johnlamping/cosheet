@@ -10,8 +10,7 @@
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
                       [cache-calculator :refer [canonicalize-reporter]]
-                      [test-utils :refer [check any]]                      
-                      [propagation-test-utils :refer [check-propagation]])
+                      [test-utils :refer [check any]])
             ; :reload
             ))
 

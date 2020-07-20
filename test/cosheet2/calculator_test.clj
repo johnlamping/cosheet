@@ -20,6 +20,16 @@
     (is (= @(:queue cd) :q))
     (is (not (nil? (:cache cd))))))
 
+(deftest modify-and-act!-test
+  (let [r (new-reporter :test 10)
+        a (atom 1)]
+    (modify-and-act! r (fn [data]
+                        (-> data
+                            (update-in [:test] inc)
+                            (assoc :further-actions [[swap! a inc]]))))
+    (is (= (:test (reporter-data r)) 11))
+    (is (= @a 2))))
+
 (defn activated? [r]
   (if (reporter? r)
     (let [data (reporter-data r)]
@@ -39,8 +49,8 @@
   (let [cd (new-calculator-data (new-priority-task-queue 0))
         r1 (new-reporter :value :v)
         r2 (new-reporter :value-source r1
-                                  :value-source-priority-delta 1
-                                  :calculator-data cd)]
+                         :value-source-priority-delta 1
+                         :calculator-data cd)]
     (register-for-value-source r2 r1 copy-value-callback cd)
     (compute cd)
     (is (= (reporter-value r2) :v))

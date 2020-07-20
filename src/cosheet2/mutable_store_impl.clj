@@ -2,7 +2,7 @@
   (:require (cosheet2 [store :refer :all]
                       [store-impl :refer [all-ids-eventually-holding-content]]
                       [reporter :refer [set-value! change-data!
-                                        data-value
+                                        data-value reporter-data
                                         change-data-control-return!
                                         reporter-value
                                         universal-category new-reporter]]
@@ -57,12 +57,13 @@
          affected affected]
     (if (empty? pending-ids)
       affected
-      (let [[id remaining-ids] pending-ids]
+      (let [[id & remaining-ids] pending-ids]
         (if (contains? affected id)
           (recur remaining-ids affected)
           (recur (concat pending-ids
                          (all-ids-eventually-holding-content store id)
-                         [(id->subject store id)])
+                         (when-let [subject (id->subject store id)]
+                           [subject]))
                  (conj affected id)))))))
 
 (defn categories-affected-by-ids
@@ -183,7 +184,7 @@
   "Given a state, return the new state after a redo (ignoring
   futures-state), and also return the modified ids."
   [state]
-  (loop [store (:store state)
+  (loop [store (:value state)
          history (:history state)
          future (:future state)
          cum-modified-ids nil]
@@ -269,8 +270,8 @@
                result)))))
 
   (can-undo? [this]
-    (let [{:keys [store history]} (:value @(:reporter this))]
-      (can-undo-impl store history)))
+    (let [{:keys [value history]} (reporter-data (:reporter this))]
+      (can-undo-impl value history)))
 
   (undo! [this]
     (change-data!
@@ -288,7 +289,7 @@
            [state [] []])))))
 
   (can-redo? [this]
-    (let [future (:future (:reporter this))]
+    (let [future (:future (reporter-data (:reporter this)))]
       (some (fn [[modified-ids store]]
               (not (equivalent-undo-point? store)))
             future)))

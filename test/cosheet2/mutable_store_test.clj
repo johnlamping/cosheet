@@ -163,5 +163,6 @@
         ;; Subscribing should return the current value, and update the
         ;; reporter.
         (set-attendee! label-ids :a 0 callback)
+        (run-all-pending-tasks queue)
         (is (= (set (reporter-value label-ids))
                (set (id-label->element-ids store element :label))))))))

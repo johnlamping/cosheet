@@ -322,12 +322,11 @@
   (change-and-inform-calculator! r #(update-remove-attendee % key)))
 
 (defn set-attendee!
-  "Add an attending callback to a reporter, under a key that must be unique
-   to each callback. If a callback is provided, the remaining arguments are
-   a priority, a function, and added arguments to the function, and the
-   callback is called immediately.
-   If no callback is provided, or the callback is nil, remove any callback
-   with the given key."
+  "Add an attending callback to a reporter, under a key that must be
+  unique to each callback. If a callback is provided, it is the last
+  argument. It is preceeded by a priority, and optionally the
+  categories of interest.  If no callback is provided, or the callback
+  is nil, remove any callback with the given key."
   ([r key]
    (remove-attendee! r key))
   ([r key priority callback]
@@ -354,9 +353,10 @@
 
 ;;; TODO: Maybe add methods to add/remove categories from an attendee?
 
+
 (defn new-reporter
-  [& {calculator :calculator :as args}]
-  (when calculator (check-callback calculator))
+  [& {:as args}]
+  (when-let [calculator (:calculator args)] (check-callback calculator))
   (->ReporterImpl
    (atom (merge {:value invalid :priority Double/MAX_VALUE}
                 args))))

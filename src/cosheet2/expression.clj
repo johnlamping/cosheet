@@ -49,8 +49,8 @@
                     ~@(apply concat (seq (meta (first args))))))
 
 (defn category-change
-  "Takes a function and a series of arguments, and produces a category change
-   reporter."
+  "Takes a set of categories and a reporter and returns a reporter with
+   the same value, but that only reports changes of the given categories."
   [categories reporter]
   (new-reporter
    :value-source reporter

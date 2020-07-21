@@ -313,8 +313,7 @@
                (change-description state new-state modified-ids)))))))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
-  (.write w "Mutable:")
-  (print-method (dissoc (:value @(:reporter s)) :history) w))
+  (.write w "MutableStore"))
 
 (defmethod new-mutable-store true [immutable-store]
   (map->MutableStoreImpl

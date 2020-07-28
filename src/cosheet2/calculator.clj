@@ -195,14 +195,19 @@
     r))
 
 (defn current-value
-  "Run computation on the reporter, returning the current value,
-   rather than tracking dependencies."
+  "Return the current value of the reporter, if it is valid. Otherwise,
+   try to chase the value-source or run its application."
   [reporter]
   (if (reporter? reporter)
     (let [data (reporter-data reporter)
           value (data-value data)
-          application (:application data)]
+          application (:application data)
+          value-source (:value-source data)]
       (cond
+        (valid? value)
+        value
+        (not (nil? value-source))
+        (current-value value-source)
         application
         ;; There is an application for the reporter, apply it directly.
         ((or (:trace data) (fn [thunk] (thunk)))

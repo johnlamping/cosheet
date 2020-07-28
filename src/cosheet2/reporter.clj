@@ -2,102 +2,105 @@
   (:require (cosheet2 [utils :refer [dissoc-in 
                                     update-in-clean-up
                                     swap-returning-both!
-                                    swap-control-return!]])))
+                                     swap-control-return!]])))
+
+(defprotocol Reporter
+  "A protocol that indicates an object has an atom with fields expected
+  for a reporter
+ 
+  A reporter is essentially an atom that provides monitoring of its
+  value, what parts of its value have changed, and of demand for its
+  value. The special value, ::invalid, indicates that the value is not
+  currently known.
+
+  One or more callbacks can attend to the reporter. And each can
+  optionally specify which categories of change it wants to be
+  informed of.  When the reporter's value changes, the change can
+  optionally be associated with a description of what parts changed,
+  and a set of categories of those parts. Whenever the value changes,
+  all attendees are notified, except that if the change got a
+  description, and an attendee specified categories it was interested
+  in that don't match any of the change's categories, it won't be
+  notified.
+       
+  Each callback has a key, a priority, a function. The priority
+  indicates how important it is for the callback to have the latest
+  value for this reporter. If multiple reporters' values are out of
+  date, recomputation of the lower priority numbers will come first.
+  The priority of a reporter is the minimum of the priorities of its
+  attendees.
+
+  Once an attendee added, it is guaranteed to eventually be called. It
+  will be similarly called after any change in the value, (unless it
+  has registered for categories, and none of the changes match). When
+  called, it gets keyword arguments for the key, the reporter, the
+  categories of the changed parts of the value and a description of
+  the change. The latter two will be nil if they were not specified.
+
+  The callback will not necessarily be called once per change, and it
+  may not find a valid value when it is called.  But it is guaranteed
+  to be called after the final valid value has been set. And all the
+  change descriptions, and their categories, will eventually be
+  provided, possibly in a series of callbacks.
+
+  The callback's key identifies it so it can be unregistered
+  (We use a key, rather than just passing in a closure, because an
+  identical key can be generated later, to refer to the callback when
+  we want to remove it, while an identical closure can't.)
+
+  Typically, a reporter is created with a calculator. The calculator
+  is in charge of keeping the reporter's value up to date, as long as
+  there is demand for it. First, the calculator must be activated by
+  setting the calculator-data. Then, the calculator is informed
+  whenever there is a change in the nature of the demand for the
+  reporter's value.
+
+  It will be called, with the calculator data and the reporter, the
+  first time there are any attendees to the reporter. It will be
+  called again whenever there is a change in:
+      Whether or not there is demand
+      The priority of the demand
+      The categories requested.
+  These callbacks let it do things like registering for callbacks to
+  update its state, or cancelling those callbacks when there is no
+  more interest. The calculator can put additional information on the
+  reporter to support its functionality.
+
+  A reporter is implemented as a record holding an atom with a map of
+  relevant information. By wrapping the atom in a record, we can
+  define a special print method that can avoid printing circular
+  references.
+
+  The atom must be in the field, data, and hold a map consisting of
+     :value            The value of the reporter.
+     :priority         The priority for recomputing this reporter
+                       (lower first)
+                       This will be the minimum of the priorities of all
+                       attendees. If there are no attendees, it will be
+                       Double/MAX_VALUE.
+     :attendees        If present, a map from key to
+                       [priority categories callback] 
+                       for each attendee to the reporter.
+     :selections       A map from category to the set of keys of attendees
+                       that have requested that category.
+                       (::universal-category matches everything, and is
+                       used for attendees that haven't narrowed down
+                       their interest.
+     :calculator       The calculator for this reporter. It is set
+                       when the reporter is created, and can not change.
+     :calculator-data  If present, the auxilliary data for the
+                       reporter's calculator. This is typically global
+                       information shared across many reporters. Once
+                       set, it can not be changed."
+  )
 
 (defrecord ReporterImpl
-    ^{:doc
-      "A reporter is essentially an atom that provides monitoring of
-       its value, what parts of its value have changed, and of demand
-       for its value. The special value, ::invalid, indicates that the
-       value is not currently known.
-
-       One or more callbacks can attend to the reporter. And each can
-       optionally specify which categories of change it wants to be
-       informed of.  When the reporter's value changes, the change can
-       optionally be associated with a description of what parts
-       changed, and a set of categories of those parts. Whenever the
-       value changes, all attendees are notified, except that if the
-       change got a description, and an attendee specified categories
-       it was interested in that don't match any of the change's
-       categories, it won't be notified.
-       
-       Each callback has a key, a priority, a function. The
-       priority indicates how important it is for the callback to have
-       the latest value for this reporter. If multiple reporters'
-       values are out of date, recomputation of the lower priority
-       numbers will come first.  The priority of a reporter is the
-       minimum of the priorities of its attendees.
-
-       Once an attendee added, it is guaranteed to eventually be
-       called. It will be similarly called after any change in the
-       value, (unless it has registered for categories, and none of
-       the changes match). When called, it gets keyword arguments for
-       the key, the reporter, the categories of the changed parts of
-       the value and a description of the change. The latter two will
-       be nil if they were not specified.
-
-       The callback will not necessarily be called once per change,
-       and it may not find a valid value when it is called.  But it is
-       guaranteed to be called after the final valid value has been
-       set. And all the change descriptions, and their categories,
-       will eventually be provided, possibly in a series of callbacks.
-
-       The callback's key identifies it so it can be unregistered
-       (We use a key, rather than just passing in a closure, because
-       an identical key can be generated later, to refer to the
-       callback when we want to remove it, while an identical closure
-       can't.)
-
-       Typically, a reporter is created with a calculator. The
-       calculator is in charge of keeping the reporter's value up to
-       date, as long as there is demand for it. First, the calculator
-       must be activated by setting the calculator-data. Then, the
-       calculator is informed whenever there is a change in the nature
-       of the demand for the reporter's value.
-
-       It will be called, with the calculator data and the reporter,
-       the first time there are any attendees to the reporter. It will
-       be called again whenever there is a change in:
-          Whether or not there is demand
-          The priority of the demand
-          The categories requested.
-       These callbacks let it do things like registering
-       for callbacks to update its state, or cancelling those
-       callbacks when there is no more interest. The calculator can
-       put additional information on the reporter to support its
-       functionality.
-
-       A reporter is implemented as a record holding an atom with
-       a map of relevant information. By wrapping the atom in a record,
-       we can define a special print method that can avoid printing
-       circular references.
-      "}
-    [;;; An atom holding a map consisting of
-     ;;;   :value            The value of the reporter.
-     ;;;   :priority         The priority for recomputing this reporter
-     ;;;                     (lower first)
-     ;;;                     This will be the minimum of the priorities of all
-     ;;;                     attendees. If there are no attendees, it will be
-     ;;;                     Double/MAX_VALUE.
-     ;;;   :attendees        If present, a map from key to
-     ;;;                     [priority categories callback] 
-     ;;;                     for each attendee to the reporter.
-     ;;;   :selections       A map from category to the set of keys of attendees
-     ;;;                     that have requested that category.
-     ;;;                     (::universal-category matches everything, and is
-     ;;;                     used for attendees that haven't narrowed down
-     ;;;                     their interest.
-     ;;;   :calculator       The calculator for this reporter. It is set
-     ;;;                     when the reporter is created, and can not change.
-     ;;;   :calculator-data  If present, the auxilliary data for the
-     ;;;                     reporter's calculator. This is typically global
-     ;;;                     information shared across many reporters. Once
-     ;;;                     set, it can not be changed.
-   data]
+    [data]
+  Reporter
   )
 
 (defn reporter? [r]
-  (instance? ReporterImpl r))
+  (satisfies? Reporter r))
 
 (defn reporter-atom
   "Return the atom holding the reporter's data. If any of the standard fields

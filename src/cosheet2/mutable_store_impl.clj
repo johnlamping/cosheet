@@ -13,8 +13,8 @@
                                      swap-control-return!]])))
 
 (defn store-to-reporter
-  "Given an immutable store, create the reporter where we store the current
-   store and our history information."
+  "Given an immutable store, create the reporter whose value is the current
+   store and that also holds our history information."
   [immutable-store]
   (new-reporter
    :value (track-modified-ids immutable-store)

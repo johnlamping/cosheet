@@ -227,4 +227,4 @@
 
 (defmethod print-method CalculatorData [s ^java.io.Writer w]
   ;; Avoid huge print-outs.
-  (.write w "<ExpressionManagerData>"))
+  (.write w "<CalculatorData>"))

@@ -5,6 +5,7 @@
              task-queue-test
              mutable-map-test
              reporter-test
+             canonical-test
              calculator-test
              expression-test
              application-calculator-test
@@ -13,6 +14,8 @@
              canonical-test
              orderable-test
              store_test
-             mutable_store_test)
+             mutable_store_test
+             store-utils-test
+             entity-test)
    :reload
             ))

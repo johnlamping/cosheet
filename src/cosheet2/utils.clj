@@ -6,14 +6,6 @@
 ;;; nil, a non-nil atom, or a set, representing either the empty set,
 ;;; a singleton item, or a set with multiple items.
 
-(defn pseudo-set-seq [pseudo-set]
-  (cond (nil? pseudo-set)
-        nil
-        (set? pseudo-set)
-        (seq pseudo-set)
-        true
-        (seq [pseudo-set])))
-
 (defn pseudo-set-set [pseudo-set]
   (cond (nil? pseudo-set)
         #{}
@@ -21,6 +13,14 @@
         pseudo-set
         true
         #{pseudo-set}))
+
+(defn pseudo-set-seq [pseudo-set]
+  (cond (nil? pseudo-set)
+        nil
+        (set? pseudo-set)
+        (seq pseudo-set)
+        true
+        (seq [pseudo-set])))
 
 (defn pseudo-set-contains? [pseudo-set item]
   (cond (nil? pseudo-set)

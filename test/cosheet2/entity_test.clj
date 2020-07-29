@@ -3,6 +3,7 @@
             (cosheet2 [orderable :as orderable]
                       [reporter :refer [valid? set-attendee!
                                         reporter-value]]
+                      [expression :refer [expr-let]]
                       [store :refer [add-simple-item make-id
                                      new-element-store new-mutable-store
                                      track-modified-ids
@@ -111,27 +112,26 @@
     (let [as-list (current-value (to-list item99))]
       (is (check (canonicalize-list as-list)
                  (canonicalize-list list-99))))
-    ;; Now make sure updating-with-immutable tracks right.
+    ;; Now make sure updating-immutable tracks right.
     (let [record (atom [])
-          updating-with-immutable-result
-          (updating-with-immutable
-           [current-item item99]
+          updating-immutable-result
+          (expr-let [current-item (updating-immutable item99)] 
            (is (not (mutable-entity? current-item)))
            (let [value (to-list current-item)]
              (swap! record #(conj % value))
              value))]
       (is (= @record []))
       ;; See if it gets computed when demand is added.
-      (propagate-calculator-data! updating-with-immutable-result cd)
+      (propagate-calculator-data! updating-immutable-result cd)
       (run-all-pending-tasks queue)
-      (is (not (valid? updating-with-immutable-result)))
-      (set-attendee! updating-with-immutable-result :a 0
+      (is (not (valid? updating-immutable-result)))
+      (set-attendee! updating-immutable-result :a 0
                      (fn [& _] nil))
-      (is (not (valid? updating-with-immutable-result)))
+      (is (not (valid? updating-immutable-result)))
       (run-all-pending-tasks queue)
       (let [orig-99 (to-list (in-different-store item99 (current-store ms)))]
         (is (check (canonicalize-list
-                    (reporter-value updating-with-immutable-result))
+                    (reporter-value updating-immutable-result))
                    (canonicalize-list orig-99)))
         (is (check (map canonicalize-list @record)
                    [(canonicalize-list orig-99)]))
@@ -143,7 +143,7 @@
         (store-update! ms (fn [s] (update-content s idd "bletch")))
         (run-all-pending-tasks queue)
         (is (check (canonicalize-list
-                    (reporter-value updating-with-immutable-result))
+                    (reporter-value updating-immutable-result))
                    (canonicalize-list
                     (to-list (in-different-store item99 (current-store ms))))))
         (is (check (map canonicalize-list @record)

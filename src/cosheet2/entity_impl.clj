@@ -48,7 +48,7 @@
   (content [this]
     (description->entity (id->content store item-id) store))
 
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
 
   (current-version [this] this))
 
@@ -91,12 +91,9 @@
     (expr-let [content (id->content store item-id)]
       (description->entity content store)))
 
-  (updating-call-with-immutable [this fun]
-    (let [call-with-immutable
-          (fn [immutable-store]
-            (fun (in-different-store this immutable-store)))]
-      (expr-let [immutable-store (category-change [item-id] store)]
-        (expr call-with-immutable immutable-store))))
+  (updating-immutable [this]
+    (expr-let [immutable-store (category-change [item-id] store)]
+        (in-different-store this immutable-store)))
 
   (current-version [this]
     (description->entity item-id (current-store store))))
@@ -121,7 +118,7 @@
 
   (content [this] (first this))
 
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
 
   (current-version [this] this))
 
@@ -132,7 +129,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
   clojure.lang.Symbol
   (mutable-entity? [this] false)
@@ -140,7 +137,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.String
   (mutable-entity? [this] false)
@@ -148,7 +145,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.Number
   (mutable-entity? [this] false)
@@ -156,7 +153,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.Boolean
   (mutable-entity? [this] false)
@@ -164,7 +161,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
   cosheet2.orderable.Orderable
   (mutable-entity? [this] false)
@@ -172,7 +169,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
 
   nil ;; For convenience in null punning
   (mutable-entity? [this] false)
@@ -180,7 +177,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
-  (updating-call-with-immutable [this fun] (fun this))
+  (updating-immutable [this] this)
   (current-version [this] this)
 )
 
@@ -269,14 +266,15 @@
 
 (defmethod to-list true [entity]
   (if (mutable-entity? entity)
-    ;; We want to run under updating-call-with-immutable, but if a
-    ;; content is an entity, we want the resulting entity to reference
-    ;; the mutable store.
-    (updating-call-with-immutable
-     entity (content-transformed-immutable-to-list
-             (fn [content] (if (satisfies? StoredEntity content)
-                             (in-different-store content entity)
-                             content))))
+    ;; We want to run with updating-immutable, but if a content is an
+    ;; entity, we want the resulting entity to reference the mutable
+    ;; store.
+    (expr-let [immutable (updating-immutable entity)]
+      ((content-transformed-immutable-to-list
+        (fn [content] (if (satisfies? StoredEntity content)
+                         (in-different-store content entity)
+                         content)))
+       immutable))
     ((content-transformed-immutable-to-list identity) entity)))
 
 (defn immutable-deep-to-list [entity]

@@ -5,47 +5,11 @@
                                         data-value reporter-data
                                         change-data-control-return!
                                         reporter-value
-                                        universal-category new-reporter]]
-                      [cache-calculator :refer [get-or-make-reporter]]
+                                        universal-category Reporter]]
                       [expression :refer [cache category-change]]
                       [utils :refer [call-with-latest-value union-seqs
                                      update-in-clean-up
                                      swap-control-return!]])))
-
-(defn store-to-reporter
-  "Given an immutable store, create the reporter whose value is the current
-   store and that also holds our history information."
-  [immutable-store]
-  (new-reporter
-   :value (track-modified-ids immutable-store)
-   ;; The next two fields each are a list of [modified-ids, store] pairs
-   ;; where store gives one store in a sequence of stores, and
-   ;; modified-ids gives the ids that change between that store and
-   ;; the previous one in the sequence.
-   
-   ;; :history is a list of [modified-ids, store] pairs going backward
-   ;; in time.
-   :history nil
-   ;; :future is a list of [modified-ids, store] pairs going forward
-   ;; in time, starting from the next one after the current store.
-   ;; Usually, when a new action is done, future is cleared out. However,
-   ;; if a new state is undo-equivalent, then the future is not changed.
-   ;; If this is followed by a redo command, then it will be as if the
-   ;; latest change never happened. In particular, the most recent change
-   ;; will not become part of the history. This means that a redo followed
-   ;; by an undo will return to the state just before the redone action
-   ;; was originally taken.
-   :future nil
-   ;; :futures-state will only be present if equivalent-undo-point
-   ;; stores have been created, causing a push onto history, but without
-   ;; changing future. In that case, :futures-state holds the state
-   ;; that was current when :future was created.
-   :futures-state nil
-   ;; :futures-modified-ids is present when :futures-state is
-   ;; present, and holds the modified ids between the current :store
-   ;; and the :store in :futures-modified-ids.
-   :futures-modified-ids nil
-   ))
 
 (defn add-id-to-affected-ids
   "Takes a set of ids that contains all ids that might be affected by
@@ -209,43 +173,44 @@
        supports mutation to that store, handles undo,
        and returns reporter objects for queries."}
 
-    [;; A reporter whose value is an immutable store,
-     ;; reflecting our current state.
-     ;; See store-to-reporter for its details.
-     reporter]
+    [;; We are a reporter whose value is the current store,
+     ;; and that has additional fields to track history.
+     data]
+
+  Reporter
 
   Store
 
   (id-valid? [this id]
     (cache-and-categorize
-     [id] id-valid? (:reporter this) id))
+     [id] id-valid? this id))
 
   (id->content [this id]
     (cache-and-categorize
-     [id] id->content (:reporter this) id))
+     [id] id->content this id))
 
   (id->element-ids [this id]
     (cache-and-categorize
-     [id] id->element-ids (:reporter this) id))
+     [id] id->element-ids this id))
 
   (id->subject [this id]
-    (id->subject (reporter-value(:reporter this)) id))
+    (id->subject (reporter-value this) id))
 
   (id-label->element-ids [this id label]
     (cache-and-categorize
-     [id] id-label->element-ids (:reporter this) id label))
+     [id] id-label->element-ids this id label))
 
   (candidate-matching-ids [this template]
-    (cache candidate-matching-ids (:reporter this) template))
+    (cache candidate-matching-ids this template))
 
   (mutable-store? [this] true)
   
   MutableStore
 
-  (current-store [this] (reporter-value (:reporter this)))
+  (current-store [this] (reporter-value this))
 
   (store-reset! [this new-store]
-    (set-value! (:reporter this) (track-modified-ids new-store)))
+    (set-value! this (track-modified-ids new-store)))
 
   (store-update! [this update-fn]
     (store-update-control-return! this (fn [store] [(update-fn store) nil])))
@@ -259,7 +224,7 @@
 
   (store-update-control-return! [this update-fn]
     (change-data-control-return!
-     (:reporter this)
+     this
      (fn [state]
        (let [store (data-value state)
              [updated-store result] (update-fn store)
@@ -270,12 +235,12 @@
                result)))))
 
   (can-undo? [this]
-    (let [{:keys [value history]} (reporter-data (:reporter this))]
+    (let [{:keys [value history]} (reporter-data this)]
       (can-undo-impl value history)))
 
   (undo! [this]
     (change-data!
-     (:reporter this)
+     this
      (fn [{:keys [value history future futures-state] :as state}]
        (let [store value]
          (if (can-undo-impl store history)
@@ -289,14 +254,14 @@
            [state [] []])))))
 
   (can-redo? [this]
-    (let [future (:future (reporter-data (:reporter this)))]
+    (let [future (:future (reporter-data this))]
       (some (fn [[modified-ids store]]
               (not (equivalent-undo-point? store)))
             future)))
 
   (redo! [this]
     (change-data!
-     (:reporter this)
+     this
      (fn [{:keys [value history future futures-state] :as state}]
        (let [store value]
          (if (or (empty? future)
@@ -316,6 +281,40 @@
   (.write w "MutableStore"))
 
 (defmethod new-mutable-store true [immutable-store]
-  (map->MutableStoreImpl
-   {:reporter (store-to-reporter immutable-store)}))
+  "Given an immutable store, create the reporter whose value is the current
+   store and that also holds our history information."
+  (->MutableStoreImpl
+   (atom
+    {:value (track-modified-ids immutable-store)
+     :priority Double/MAX_VALUE
+     
+     ;; The next two fields each are a list of [modified-ids, store] pairs
+     ;; where store gives one store in a sequence of stores, and
+     ;; modified-ids gives the ids that change between that store and
+     ;; the previous one in the sequence.
+     
+     ;; :history is a list of [modified-ids, store] pairs going backward
+     ;; in time.
+     :history nil
+     ;; :future is a list of [modified-ids, store] pairs going forward
+     ;; in time, starting from the next one after the current store.
+     ;; Usually, when a new action is done, future is cleared out. However,
+     ;; if a new state is undo-equivalent, then the future is not changed.
+     ;; If this is followed by a redo command, then it will be as if the
+     ;; latest change never happened. In particular, the most recent change
+     ;; will not become part of the history. This means that a redo followed
+     ;; by an undo will return to the state just before the redone action
+     ;; was originally taken.
+     :future nil
+     
+     ;; :futures-state will only be present if equivalent-undo-point
+     ;; stores have been created, causing a push onto history, but without
+     ;; changing future. In that case, :futures-state holds the state
+     ;; that was current when :future was created.
+     :futures-state nil
+     ;; :futures-modified-ids is present when :futures-state is
+     ;; present, and holds the modified ids between the current :store
+     ;; and the :store in :futures-modified-ids.
+     :futures-modified-ids nil
+     })))
 

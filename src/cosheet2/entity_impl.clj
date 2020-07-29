@@ -95,7 +95,7 @@
     (let [call-with-immutable
           (fn [immutable-store]
             (fun (in-different-store this immutable-store)))]
-      (expr-let [immutable-store (category-change [item-id] (:reporter store))]
+      (expr-let [immutable-store (category-change [item-id] store)]
         (expr call-with-immutable immutable-store))))
 
   (current-version [this]

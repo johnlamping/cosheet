@@ -9,7 +9,7 @@
                                ;; TODO: Remove this
                                reporter-data]]
              [calculator :refer [new-calculator-data propagate-calculator-data!
-                                 request compute]]
+                                 request compute computation-value]]
              [expression :refer [category-change]]
              store-impl
              [mutable-store-impl :refer :all]
@@ -22,11 +22,6 @@
 
 (def cd (new-calculator-data (new-priority-task-queue 0)))
 
-(defn- get-value [reporter]
-  (request reporter cd)
-  (compute cd)
-  (reporter-value reporter))
-
 (deftest test-store
   (let [[store element]
         (add-entity (new-element-store)
@@ -38,15 +33,18 @@
         mutable-store (new-mutable-store store)
         modified-store (update-content store element 99)]
     ;; Test the accessors
-    (is (get-value (id-valid? mutable-store element)))
-    (is (not (get-value (id-valid? mutable-store (make-id "wrong")))))
-    (is (= (get-value (id-label->element-ids mutable-store element :label))
+    (is (computation-value (id-valid? mutable-store element) cd))
+    (is (not (computation-value (id-valid? mutable-store (make-id "wrong"))
+                                cd)))
+    (is (= (computation-value
+            (id-label->element-ids mutable-store element :label)
+            cd)
            (id-label->element-ids store element :label)))
-    (is (= (get-value (id->element-ids mutable-store element))
+    (is (= (computation-value (id->element-ids mutable-store element) cd)
            (id->element-ids store element)))
-    (is (= (get-value (id->content mutable-store element))
+    (is (= (computation-value (id->content mutable-store element) cd)
            (id->content store element)))
-    (is (= (get-value (candidate-matching-ids mutable-store 77))
+    (is (= (computation-value (candidate-matching-ids mutable-store 77) cd)
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))
     ;; Test that subscriptions track.
@@ -54,7 +52,7 @@
           element-ids (id->element-ids mutable-store element)
           label-ids (id-label->element-ids mutable-store element :label)
           candidate-ids (candidate-matching-ids mutable-store nil)
-          tracking-store (category-change [element] (:reporter mutable-store))
+          tracking-store (category-change [element] mutable-store)
           callback (fn [& {:keys [key reporter description categories]}]
                      nil)]
       (propagate-calculator-data! content calculator-data)

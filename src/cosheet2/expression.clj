@@ -95,7 +95,7 @@
        ~@values)))
 
 ;;; TODO: These are eager. Consider adding support for lazy sequences of
-;;; reporters. That requires adding a new lazy sequence  manager type
+;;; reporters. That requires adding a new lazy sequence calculator type
 ;;; that returns a valid value of a lazy-seq, which when requested
 ;;; sets the value to invalid, and sets up the computation of the
 ;;; pieces.

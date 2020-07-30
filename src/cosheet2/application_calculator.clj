@@ -10,8 +10,7 @@
                                           update-value-and-dependent-depth
                                           copy-value add-propagate-task
                                           register-for-value-source]]
-                      [task-queue :refer [add-task
-                                          add-task-with-priority]]
+                      [task-queue :refer [add-task-with-priority]]
                       [utils :refer [with-latest-value
                                      assoc-if-non-empty]])))
 
@@ -251,9 +250,9 @@
                           reporter (:old-value-source new-data) cd)
                          (update-old-value-source reporter nil cd))
                      ;; Some value changed. Schedule recomputation.
-                     ;; TODO: Add priority here.
                      (apply update-new-further-action new-data 
-                            add-task (:queue cd)
+                            add-task-with-priority (:queue cd)
+                            (:priority data)
                             [run-application-if-ready reporter cd]))
                    new-data))
                (update-in newer-data [:needed-values] conj from)))))))))
@@ -370,7 +369,8 @@
                      (assoc :needed-values subordinates)
                      (assoc :subordinate-values {})
                      (update-new-further-action
-                      add-task (:queue cd)
+                      add-task-with-priority (:queue cd)
+                      (:priority data)
                       run-application-if-ready reporter cd))
                  (-> new-data
                      (dissoc :needed-values)

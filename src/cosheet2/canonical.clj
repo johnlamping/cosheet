@@ -62,8 +62,8 @@
 
 (defn common-canonical-multisets-for-same-content
   "Given two non-empty multisets of canonical representations,
-  all with the same content, return the multiset of representations
-  with the most in common."
+  all representing items with the same content, return a maximal multiset
+  that is extended by both arguments."
   ;;; TODO: We don't handle all cases of partial matching. The challenge is
   ;;; that there isn't always a unique most in common, and this function
   ;;; must be commutative. So we currently only handle identity, and when the
@@ -97,8 +97,8 @@
    {} (seq m)))
 
 (defn common-canonical-multisets
-  "Given two multisets of canonical representations, return the multiset
-  of representations with the most in common."
+  "Given two multisets of canonical representations, return a maximal multiset
+  of representations that can be extended by both."
   [s1 s2]
   (let [m1 (map-by-content s1)
         m2 (map-by-content s2)

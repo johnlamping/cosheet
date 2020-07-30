@@ -44,8 +44,6 @@
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
 
-  ;; TODO: Rather than taking an atomic label, allow this to take an
-  ;;       arbitrary description of the elements in question.
   (label->elements [this label]
     "Return a seq of items for all our elements with an elaboration with
      the given atomic label.")

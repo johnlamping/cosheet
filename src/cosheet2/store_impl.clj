@@ -79,91 +79,97 @@
                      (id->content store id)]))))
 
 (defn index-id->elements
-  "Put this item in the id->elements index."
-  [store id add?]
-  (if-let [subject (id->subject store id)]
-    (update-in-clean-up store [:id->elements subject]
-                        #(pseudo-set-set-membership % id add?))
-    store))
+  "Reflect this item in the id->elements index."
+  [store old-store id]
+  (let [subject (id->subject store id)
+        old-subject (id->subject old-store id)]
+    (if (= subject old-subject)
+      store
+      (let [adding (not old-subject)]
+        (update-in-clean-up store [:id->elements (or subject old-subject)]
+                            #(pseudo-set-set-membership % id adding))))))
 
 (defn index-content->ids
   "Put this item in the content->ids index."
-  [store id add?]
-  (let [content (id->content store id)]
-    (if (nil? content)
+  [store old-store id]
+  (let [content (id->content store id)
+        old-content (id->content old-store id)]
+    (if (= content old-content)
       store
-      (update-in-clean-up store [:content->ids (canonical-atom-form content)]
-                          #(pseudo-set-set-membership % id add?)))))
-
-(defn independently-keyworded?
-  "Return true if the item has another element that gives it the same
-   label as the specified element."
-  [store id element-id keyword]
-  (some #(and (not= % element-id)
-              (= (id->content store %) keyword))
-        (id->element-ids store id)))
+      (cond-> store
+        old-content
+        (update-in-clean-up [:content->ids (canonical-atom-form old-content)]
+                            #(pseudo-set-set-membership % id false))
+        content
+        (update-in-clean-up [:content->ids (canonical-atom-form content)]
+                            #(pseudo-set-set-membership % id true))))))
 
 (defn index-id->keywords
   "Reflect this item's content in the id->keywords index.
    The id->elements index must be valid when this is called."
-  [store id add?]
-  (let [content (id->content store id)]
-    (if (keyword? content)
-      (if-let [subject (id->subject store id)]
-        (if (and (not add?)
-                 (independently-keyworded? store subject id content))
-          store ;; Another element has the same keyword as content.
-          (update-in-clean-up store [:id->keywords subject]
-                              #(pseudo-set-set-membership % content add?)))
-        store)
-      store)))
+  [store old-store id]
+  (let [content (id->content store id)
+        old-content (id->content old-store id)
+        subject (or (id->subject store id) (id->subject old-store id))]
+    (if (or (= content old-content) (not subject))
+      store
+      (cond-> store
+        (and (keyword? old-content)
+             (not-any? #(= (id->content store %) old-content)
+                       (id->element-ids store subject)))
+        (update-in-clean-up [:id->keywords subject]
+                            #(pseudo-set-set-membership % old-content false))
+        (keyword? content)
+        (update-in-clean-up [:id->keywords subject]
+                            #(pseudo-set-set-membership % content true))))))
 
-(defn one-item-indexer-id->label->ids
-  "Return an indexer that reflects the given item, which must have
-  a :label element, to id->label->ids for its grand-subject."
-  [add?]
-  (fn [store id]
-    (let [canonical (canonical-atom-form (id->content store id)) ]
-      (if-let [grand-subject (id->subject store (id->subject store id))]
-        (update-in-clean-up store [:id->label->ids grand-subject canonical]
-                            #(pseudo-set-set-membership % id add?))
-        store))))
+(defn is-label?
+  "Return whether the given item counts as a label."
+  [store id]
+  (or (= (id->content store id) :order)
+      (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
+
+(defn index-one-item-id->label->ids
+  "Return an indexer that adds or removes the given item, which must
+   be a label, to id->label->ids for its grand-subject."
+  [store old-store id]
+  (let [is-label (is-label? store id)
+        old-is-label (is-label? old-store id)
+        canonical (canonical-atom-form (id->content store id))
+        old-canonical (canonical-atom-form (id->content old-store id))
+        grand-subject (or (id->subject store (id->subject store id))
+                          (id->subject old-store (id->subject old-store id)))]
+    (if (or (and (= is-label old-is-label)
+                 (= canonical old-canonical))
+            (not grand-subject))
+      store
+      (cond-> store
+        old-is-label
+        (update-in-clean-up [:id->label->ids grand-subject old-canonical]
+                            #(pseudo-set-set-membership % id false))
+        is-label
+        (update-in-clean-up [:id->label->ids grand-subject canonical]
+                            #(pseudo-set-set-membership % id true))))))
 
 (defn index-id->label->ids
   "Reflect the effects of this item in the id->label->ids index.
   The id->keywords index must be valid when this is called."
-  [store id add?]
-  (let [indexer (one-item-indexer-id->label->ids add?) 
-        labeled (concat
-                 ;; Our item, if it is a label.
-                 (when (pseudo-set-contains?
-                        (get-in store [:id->keywords id]) :label)
-                   [id])
-                 ;; The item that we make a label
-                 (when (= (id->content store id) :label)
-                   (when-let [subject (id->subject store id)]
-                     (when (not (independently-keyworded?
-                                 store subject id :label))
-                       [subject]))))]
-    (reduce indexer store labeled)))
+  [store old-store id]
+  (-> store
+      ;; Our item
+      (index-one-item-id->label->ids old-store id)
+      ;; Our subject, which we may affect being a label
+      (index-one-item-id->label->ids
+       old-store (or (id->subject store id) (id->subject old-store id)))))
 
 (defn index-all
-  "Do all indexing for adding or removing the id from the store."
-  [store id add?]
-  ;; We have to do the indexing in the opposite order for adding vs
-  ;; removing, to satisfy the constraints of what indexes must be
-  ;; valid.
-  (if add?
-    (-> store 
-        (index-id->elements id true)
-        (index-content->ids id true)
-        (index-id->keywords id true)
-        (index-id->label->ids id true))
-    (-> store 
-        (index-id->label->ids id false)
-        (index-id->keywords id false)
-        (index-content->ids id false)
-        (index-id->elements id false))))
+  "Do all indexing for adding, removing or changing the id in the store."
+  [store old-store id]
+  (-> store 
+      (index-id->elements old-store id)
+      (index-content->ids old-store id)
+      (index-id->keywords old-store id)
+      (index-id->label->ids old-store id)))
 
 (defn add-modified-id
   "Add the id to the modified id set of the store,
@@ -190,20 +196,20 @@
         store
         (assoc-in store [:id->subject item-id] subject))
       (assoc-in [:id->content-data item-id] content)
-      (index-all item-id true)
+      (index-all store item-id)
       (add-modified-id item-id)))
 
-(defn remove-triple [this id]
-    (assert (not (nil? (id->content this id)))
+(defn remove-triple [store id]
+    (assert (not (nil? (id->content store id)))
             "Removed id not present.")
-    (assert (nil? (id->element-ids this id))
+    (assert (nil? (id->element-ids store id))
             "Removed id has elements.")
-    (assert (nil? (get-in this [:content->ids id]))
+    (assert (nil? (get-in store [:content->ids id]))
             "Removed id is the content of another.")
-    (-> this
-        (index-all id false)
+    (-> store
         (dissoc-in [:id->content-data id])
         (dissoc-in [:id->subject id])
+        (index-all store id)
         (add-modified-id id)))
 
 (defn descendant-ids [store id]
@@ -346,8 +352,8 @@
 
     ;;; A derived map from item id, then label to a pseudo-set of the
     ;;; elements of elements of the id that have label as content and
-    ;;; that have :label as the content of one of their elements. That
-    ;;; is, all elements of elements of the form (<label> :label)
+    ;;; are considered to be labels. A label is either an element of
+    ;;; the form (? :label) or with content :order
     id->label->ids
 
     ;;; The next id to assign to an item to be stored here.
@@ -431,9 +437,8 @@
     (when (instance? ItemId content)
       (assert (not-any? #{id} (all-forward-reachable-ids this content))))
     (-> this
-        (index-all id false)
         (assoc-in [:id->content-data id] content)
-        (index-all id true)
+        (index-all this id)
         (add-modified-ids-for-id-and-containers id)))
 
   (get-unique-number [this]

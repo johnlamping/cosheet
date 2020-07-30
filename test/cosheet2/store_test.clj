@@ -23,7 +23,8 @@
      (make-id "6") (make-id "3")
      (make-id "7") (make-id "3")
      (make-id "8") (make-id "5")
-     (make-id "9") (make-id "1")}
+     (make-id "9") (make-id "1")
+     (make-id "10") (make-id "9")}
     :id->content-data
     {(make-id "0") 0
      (make-id "1") (make-id "4")
@@ -34,7 +35,8 @@
      (make-id "6") :baz
      (make-id "7") :label
      (make-id "8") :label
-     (make-id "9") "Bar"}
+     (make-id "9") "Bar"
+     (make-id "10") :order}
     :temporary-ids
     #{}
     :next-id
@@ -43,6 +45,14 @@
     nil
     :equivalent-undo-point
     false}))
+
+(def empty-store (new-element-store))
+
+(defn clear-store-leaving-indices
+  [store]
+  (assoc store
+         :id->subject {}
+         :id->content-data {}))
 
 (deftest id<->string-test
   (let [id (make-id "a")]
@@ -54,24 +64,28 @@
   (is (= (stored-item-description-name (make-id "a")) "Id-Ia"))
   (is (= (stored-item-description-name (->ItemId 1)) "Id-1")))
 
-(deftest id->elements-test
-  (let [ids (keys (:id->subject unindexed-test-store))
-        store (reduce #(index-id->elements %1 %2 true) unindexed-test-store ids)
-        unindexed (reduce #(index-id->elements %1 %2 false) store ids)]
+(deftest index-id->elements-test
+  (let [ids (keys (:id->content-data unindexed-test-store))
+        store (reduce #(index-id->elements %1 empty-store %2)
+                      unindexed-test-store ids)
+        empty-indexed (clear-store-leaving-indices store)
+        unindexed (reduce #(index-id->elements %1 store %2) empty-indexed ids)]
     (is (= (reduce (fn [accum elements]
                      (+ accum (count (pseudo-set-seq elements))))
                    0 (vals (:id->elements store)))
-           (count ids)))
-    (doseq [id ids]
+           (count (:id->subject unindexed-test-store))))
+    (doseq [id (keys (:id->subject unindexed-test-store))]
       (let [subject (get-in store [:id->subject id])]
         (is (pseudo-set-contains? (get-in store [:id->elements subject])
                                   id))))
     (is (empty? (:id->elements unindexed)))))
 
-(deftest content->ids-test
+(deftest index-content->ids-test
   (let [ids (keys (:id->content-data unindexed-test-store))
-        store (reduce #(index-content->ids %1 %2 true) unindexed-test-store ids)
-        unindexed (reduce #(index-content->ids %1 %2 false) store ids)]
+        store (reduce #(index-content->ids %1 empty-store %2)
+                      unindexed-test-store ids)
+        empty-indexed (clear-store-leaving-indices store)
+        unindexed (reduce #(index-content->ids %1 store %2) empty-indexed ids)]
     (is (= (reduce (fn [accum elements]
                      (+ accum (count (pseudo-set-seq elements))))
                    0 (vals (:content->ids store)))
@@ -86,31 +100,42 @@
 
 (deftest index-id->keywords-test
   (let [ids (keys (:id->content-data unindexed-test-store))
-        store (reduce #(index-id->keywords %1 %2 true) unindexed-test-store ids)
-        unindexed (reduce #(index-id->keywords %1 %2 false) store ids)]
+        elements-indexed (reduce #(index-id->elements %1 empty-store %2)
+                                 unindexed-test-store ids)
+        store (reduce #(index-id->keywords %1 empty-store %2)
+                      elements-indexed ids)
+        empty-indexed (clear-store-leaving-indices store)
+        unindexed (reduce #(index-id->keywords %1 store %2) empty-indexed ids)]
     (is (check (:id->keywords store)
                {(make-id "3") #{:label :baz}
-                (make-id "5") :label}))
-    (is (empty? (:content->ids unindexed)))))
+                (make-id "5") :label
+                (make-id "9") :order}))
+    (is (empty? (:id->keywords unindexed)))))
 
 (deftest index-id->label->ids-test
   (let [ids (keys (:id->content-data unindexed-test-store))
-        keywords-indexed (reduce #(index-id->keywords %1 %2 true)
+        elements-indexed (reduce #(index-id->elements %1 empty-store %2)
                                  unindexed-test-store ids)
-        store (reduce #(index-id->label->ids %1 %2 true) keywords-indexed ids)
-        unindexed (reduce #(index-id->label->ids %1 %2 false) store ids)]
+        keywords-indexed (reduce #(index-id->keywords %1 empty-store %2)
+                      elements-indexed ids)
+        store (reduce #(index-id->label->ids %1 empty-store %2)
+                      keywords-indexed ids)
+        empty-indexed (clear-store-leaving-indices store)
+        unindexed (reduce #(index-id->label->ids %1 store %2)
+                          empty-indexed ids)]
     (is (check (:id->label->ids store)
                {(make-id "1") {"baz" (make-id "3")
-                               "bar" (make-id "5")}}))
+                               "bar" (make-id "5")
+                               :order (make-id "10")}}))
     (is (empty? (:content->ids unindexed)))))
 
 (def test-store
   (let [ids (keys (:id->content-data unindexed-test-store))]
     (as-> unindexed-test-store store
-         (reduce #(index-id->elements %1 %2 true) store ids)
-         (reduce #(index-content->ids %1 %2 true) store ids)
-         (reduce #(index-id->keywords %1 %2 true) store ids)
-         (reduce #(index-id->label->ids %1 %2 true) store ids))))
+      (reduce #(index-id->elements %1 empty-store %2) store ids)
+      (reduce #(index-content->ids %1 empty-store %2) store ids)
+      (reduce #(index-id->keywords %1 empty-store %2) store ids)
+      (reduce #(index-id->label->ids %1 empty-store %2) store ids))))
 
 (deftest all-X-test
    (is (= (set (all-ids-eventually-holding-content test-store 5))
@@ -124,13 +149,11 @@
    (is (id-valid? test-store (make-id "1")))
   (is (not (id-valid? test-store (make-id "wrong")))))
 
-(deftest id-label->element-ids-test
-  (is (= (id-label->element-ids test-store (make-id "1") "Bar")
-         [(make-id "2")]))
-  (is (= (id-label->element-ids test-store (make-id "1") "Baz")
-         [(make-id "2")]))
-  (is (= (id-label->element-ids test-store (make-id "0") "bar") nil))
-  (is (= (id-label->element-ids test-store (make-id "wrong") "bar") nil)))
+(deftest id->content-test
+  (is (= (id->content test-store (make-id "???")) nil))
+  (is (= (id->content test-store (make-id "1")) (make-id "4")))
+  (is (= (id->content test-store (make-id "2")) "Foo"))
+  (is (= (id->content test-store (make-id "6")) :baz)))
 
 (deftest id->element-ids-test
   (is (= (id->element-ids test-store (make-id "0")) [(make-id "1")]))
@@ -138,11 +161,17 @@
          (set [(make-id "2") (make-id "9")])))
   (is (= (id->element-ids test-store (make-id "wrong")) nil)))
 
-(deftest id->content-test
-  (is (= (id->content test-store (make-id "???")) nil))
-  (is (= (id->content test-store (make-id "1")) (make-id "4")))
-  (is (= (id->content test-store (make-id "2")) "Foo"))
-  (is (= (id->content test-store (make-id "6")) :baz)))
+(deftest id-label->element-ids-test
+  (is (= (id-label->element-ids test-store (make-id "1") "Bar")
+         [(make-id "2")]))
+  (is (= (id-label->element-ids test-store (make-id "1") "Baz")
+         [(make-id "2")]))
+  (is (= (id-label->element-ids test-store (make-id "0") "bar") nil))
+  (is (= (id-label->element-ids test-store (make-id "wrong") "bar") nil))
+  (is (= (id-label->element-ids test-store (make-id "1") :order)
+         [(make-id "9")]))
+  (is (= (id-label->element-ids test-store (make-id "0") :order)
+         nil)))
 
 (deftest id->containing-ids-test
   (is (= (id->containing-ids test-store (make-id "4")) #{(make-id "1")}))
@@ -247,24 +276,25 @@
                      (some #{label-id} (id->element-ids store element))) 
                    (id->element-ids store id)))
          (= (canonical-atom-form (id->content store label-id)) label)
-         (is (some #(= (id->content store %) :label)
-                   (id->element-ids store label-id)))))))
+         (is (or (some #(= (id->content store %) :label)
+                       (id->element-ids store label-id))
+                 (= (id->content store label-id) :order)))))))
   ;; Everything that should be :id->label->ids is.
   (doseq [[id content] (:id->content-data store)]
-    (when (= content :label)
-      (when-let [subject (id->subject store id)]
-        (let [label (canonical-atom-form (id->content store subject))]
-          (when-let [two-up (id->subject store (id->subject store subject))]
-            (is (some #{subject}
-                      (pseudo-set-seq
-                       (get-in store [:id->label->ids two-up label]))))))))))
+    (when-let [label-id (cond (= content :label) (id->subject store id)
+                              (= content :order) id)]
+      (let [label (canonical-atom-form (id->content store label-id))]
+        (when-let [two-up (id->subject store (id->subject store label-id))]
+          (is (some #{label-id}
+                    (pseudo-set-seq
+                     (get-in store [:id->label->ids two-up label])))))))))
 
-(deftest all-indices-check
+(deftest all-indices-test
   (check-derived-indices test-store))
 
 (require '[clojure.data.generators :as gen])
 
-(deftest lots-of-changes-indices-check
+(deftest lots-of-changes-indices-test
   ;; We repeatedly add a bunch of elements and remove a bunch of
   ;; elements and check that the derived indices are correct. To make
   ;; sure that the removals are legal, an element only references
@@ -281,10 +311,11 @@
                           (first (add-simple-item
                                         store
                                         (->ItemId (earlier-num i))
-                                        (case (gen/uniform 0 3)
+                                        (case (gen/uniform 0 4)
                                           0 (->ItemId (earlier-num i))
                                           1 (int (/ 100 (gen/uniform 1 100)))
-                                          2 :label))))
+                                          2 :label
+                                          3 :order))))
                         store (range items n))
                 removed-store
                 (reduce (fn [store i]
@@ -292,7 +323,7 @@
                         added-store (gen/shuffle (range m n)))]
             (check-derived-indices added-store)
             (check-derived-indices removed-store)
-            (if (< iteration 10)
+            (if (< iteration 20)
               (recur (+ iteration 1)
                      (assoc removed-store :next-id m)
                      m))
@@ -317,11 +348,11 @@
   (is (check (candidate-matching-ids test-store nil)
              [(as-set [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
                         (make-id "4") (make-id "5") (make-id "6") (make-id "7")
-                       (make-id "8") (make-id "9")])
+                       (make-id "8") (make-id "9") (make-id "10")])
               false]))
   (is (check (candidate-matching-ids test-store '(nil nil))
              [(as-set  [(make-id "0") (make-id "1") (make-id "2") (make-id "3")
-                        (make-id "5")])
+                        (make-id "5") (make-id "9")])
               false]))
   (is (check (candidate-matching-ids test-store '(0))
              [[(make-id "0")] true]))

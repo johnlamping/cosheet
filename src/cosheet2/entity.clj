@@ -115,9 +115,9 @@
           content-as-list
           (cons content-as-list (map to-deep-list elements)))))))
 
-(defn label->content
-  "Return the content of the element with the given label.
-   There must be at most one such element."
+(defn label->element
+  "Return the element with the given label.
+  There must be at most one such element."
   [entity label]
   (expr-let [elements (label->elements entity label)]
     (when elements
@@ -128,7 +128,14 @@
                      " element contents: "
                      (interleave (repeat " ")
                                  (map #(current-value (content %)) elements))))
-      (content (first elements)))))
+      (first elements))))
+
+(defn label->content
+  "Return the content of the element with the given label.
+   There must be at most one such element."
+  [entity label]
+  (expr-let [element (label->element entity label)]
+    (content element)))
 
 (defn ultimate-content
   "Chase content until an atomic content is reached."

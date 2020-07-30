@@ -56,8 +56,17 @@
     (is (content (content (description->entity idf s))) "baz")
     (is (= (elements (content (description->entity idf s)))
            [(description->entity idg s)]))
+    (is (= (label->element item99 "foo") (description->entity ida s)))
+    (is (= (label->element item99 "bletch") nil))
     (is (= (label->content item99 "foo") 3))
     (is (= (label->content item99 "bletch") nil))
+    (let [[sx idx] (add-simple-item s id99 7)
+          [sy idy] (add-simple-item sx idx "foo")
+          [sz idz] (add-simple-item sy idy :label)]
+      (is (thrown? java.lang.AssertionError
+                   (label->element (description->entity id99 sz) "foo")))
+      (is (thrown? java.lang.AssertionError
+                   (label->content (description->entity id99 sz) "foo"))))
     (is (= (ultimate-content (description->entity idc s)) 4))
     (is (= (to-list item0) nil))
     (is (= (current-version item0) item0))))

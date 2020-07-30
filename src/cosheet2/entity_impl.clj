@@ -12,6 +12,11 @@
                       [expression :refer [expr-seq expr-let expr
                                           category-change]])))
 
+(defn label? [entity]
+  (or (= (content entity) :order)
+      (some #(= (content %) :label)
+            (elements entity))))
+
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
     StoredItem
@@ -111,10 +116,10 @@
 
   
   (label->elements [this label]
-    ;; TODO: Check that the element is a label.
     (seq (filter (fn [element]
-                   (some #(equivalent-atoms? label %)
-                         (map ultimate-content (elements element))))
+                   (some #(and (equivalent-atoms? label (ultimate-content %))
+                               (label? %))
+                         (elements element)))
                  (elements this))))
 
   (elements [this] (seq (rest this)))

@@ -123,7 +123,7 @@
         (update-in-clean-up [:id->keywords subject]
                             #(pseudo-set-set-membership % content true))))))
 
-(defn is-label?
+(defn id-is-label?
   "Return whether the given item counts as a label."
   [store id]
   (or (= (id->content store id) :order)
@@ -133,8 +133,8 @@
   "Return an indexer that adds or removes the given item, which must
    be a label, to id->label->ids for its grand-subject."
   [store old-store id]
-  (let [is-label (is-label? store id)
-        old-is-label (is-label? old-store id)
+  (let [is-label (id-is-label? store id)
+        old-is-label (id-is-label? old-store id)
         canonical (canonical-atom-form (id->content store id))
         old-canonical (canonical-atom-form (id->content old-store id))
         grand-subject (or (id->subject store (id->subject store id))

@@ -123,10 +123,12 @@
         (update-in-clean-up [:id->keywords subject]
                             #(pseudo-set-set-membership % content true))))))
 
+;; NOTE: This definition must be kept in synch with entity-impl/label?
 (defn id-is-label?
   "Return whether the given item counts as a label."
   [store id]
-  (or (= (id->content store id) :order)
+  (or (let [content (id->content store id)]
+        (and (keyword? content) (not= content :label)))
       (pseudo-set-contains? (get-in store [:id->keywords id]) :label)))
 
 (defn index-one-item-id->label->ids

@@ -126,7 +126,8 @@
     (is (check (:id->label->ids store)
                {(make-id "1") {"baz" (make-id "3")
                                "bar" (make-id "5")
-                               :order (make-id "10")}}))
+                               :order (make-id "10")}
+                (make-id "2") {:baz (make-id "6")}}))
     (is (empty? (:content->ids unindexed)))))
 
 (def test-store
@@ -278,7 +279,8 @@
          (= (canonical-atom-form (id->content store label-id)) label)
          (is (or (some #(= (id->content store %) :label)
                        (id->element-ids store label-id))
-                 (= (id->content store label-id) :order)))))))
+                 (let [content (id->content store label-id)]
+                   (and (keyword? content) (not= content :label)))))))))
   ;; Everything that should be :id->label->ids is.
   (doseq [[id content] (:id->content-data store)]
     (when-let [label-id (cond (= content :label) (id->subject store id)

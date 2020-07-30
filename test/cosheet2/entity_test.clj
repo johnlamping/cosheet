@@ -58,7 +58,7 @@
            [(description->entity idg s)]))
     (is (= (label->content item99 "foo") 3))
     (is (= (label->content item99 "bletch") nil))
-    (is (= (atomic-value (description->entity idc s)) 4))
+    (is (= (ultimate-content (description->entity idc s)) 4))
     (is (= (to-list item0) nil))
     (is (= (current-version item0) item0))))
 
@@ -108,7 +108,7 @@
            [(description->entity idg ms)]))
     (is (= (current-value (label->content item99 "foo")) 3))
     (is (= (current-value (label->content item99 "bletch")) nil))
-    (is (= (current-value (atomic-value (description->entity idc ms))) 4))
+    (is (= (current-value (ultimate-content (description->entity idc ms))) 4))
     (let [as-list (current-value (to-list item99))]
       (is (check (canonicalize-list as-list)
                  (canonicalize-list list-99))))
@@ -163,7 +163,9 @@
   (is (= (content '(1 (2 3) (4 5))) 1))
   (is (= (content '((1 7) (2 3) (4 5))) '(1 7)))
   (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '(((1) 1 2) (2 (3 4)))))
-  (is (= (to-list '(nil (1 nil))) '(nil (1 nil)))))
+  (is (= (to-list '(nil (1 nil))) '(nil (1 nil))))
+  (is (= (to-deep-list '(((1) 1 2) (2 (3 (4))))) '((1 1 2) (2 (3 4)))))
+  (is (= (to-deep-list '(nil (1 nil))) '(nil (1 nil)))))
 
 (deftest constant-test
   (is (atom? 1))
@@ -195,11 +197,11 @@
   (is (= (content nil) nil))
   (is (= (content orderable/initial) orderable/initial)))
 
-(deftest atomic-value-test
-  (is (= (atomic-value 2) 2))
-  (is (= (atomic-value '(((1 2) 3) 4)) 1))
-  (is (= (atomic-value '(((nil 2) 3) 4)) nil))
-  (is (= (atomic-value nil) nil)))
+(deftest ultimate-content-test
+  (is (= (ultimate-content 2) 2))
+  (is (= (ultimate-content '(((1 2) 3) 4)) 1))
+  (is (= (ultimate-content '(((nil 2) 3) 4)) nil))
+  (is (= (ultimate-content nil) nil)))
 
 (deftest entity<->description-test
   (let [s (new-element-store)

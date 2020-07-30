@@ -109,9 +109,12 @@
 
   (atom? [this] false)
 
+  
   (label->elements [this label]
-    (seq (filter #(some (partial equivalent-atoms? label)
-                        (map atomic-value (elements %)))
+    ;; TODO: Check that the element is a label.
+    (seq (filter (fn [element]
+                   (some #(equivalent-atoms? label %)
+                         (map ultimate-content (elements element))))
                  (elements this))))
 
   (elements [this] (seq (rest this)))
@@ -207,83 +210,6 @@
   (description->entity [this store] nil) ;; For convenience in null punning
 )
 
-;;; TODO: We don't need two versions of each of these any more,
-;;; because expr is smart about returning a reporter or not.
-(defmethod label->content false [entity label]
-  (let [elements (label->elements entity label)]
-    (when elements
-      (assert (= (count elements) 1)
-              (apply str "entity "  (:id (:item-id entity))
-                     " has " (count elements) " elements for label " label
-                     " entity " (to-list entity)
-                     " element contents: "
-                     (interleave (repeat ", ") (map content elements))))
-      (content (first elements)))))
 
-(defmethod label->content true [entity label]
-  (expr-let [elements (expr label->elements entity label)]
-    (when elements
-      (assert (= (count elements) 1)
-              (apply str "entity "  (:id (:item-id entity))
-                     " has " (count elements) " elements for label " label
-                     " entity contents: " (current-value (to-list entity))
-                     " element contents: "
-                     (interleave (repeat " ")
-                                 (map #(current-value (content %)) elements))))
-      (content (first elements)))))
-
-(defmethod atomic-value false [entity]
-  (cond (nil? entity) nil
-        (atom? entity) (content entity) ; Could be implicit content reference.
-        :else (atomic-value (content entity))))
-
-(defmethod atomic-value true [entity]
-  (if (nil? entity)
-    nil
-    (expr-let [content (expr content entity)]
-      (if (atom? content)
-        content
-        (atomic-value content)))))
-
-(defn content-transformed-immutable-to-list [content-transformer]
-  "Internal function that takes a transformer on contents
-  and returns a function that converts an immutable entity to a list,
-  running the content transformer on contents."
-  ;; Note: We tried using a letfn here, so we didn't have to recursively
-  ;; call content-transformed-immutable-to-list. But that resulted in
-  ;; a compile error, where the letfn definition was not available deep
-  ;; inside.
-  (fn [entity]
-    (if (atom? entity)
-      (atomic-value entity)
-      (let [content (content-transformer (content entity))
-            elements (elements entity)]
-        (if (empty? elements)
-          content
-          (cons content
-                (map (content-transformed-immutable-to-list content-transformer)
-                     elements)))))))
-
-(defmethod to-list true [entity]
-  (if (mutable-entity? entity)
-    ;; We want to run with updating-immutable, but if a content is an
-    ;; entity, we want the resulting entity to reference the mutable
-    ;; store.
-    (expr-let [immutable (updating-immutable entity)]
-      ((content-transformed-immutable-to-list
-        (fn [content] (if (satisfies? StoredEntity content)
-                         (in-different-store content entity)
-                         content)))
-       immutable))
-    ((content-transformed-immutable-to-list identity) entity)))
-
-(defn immutable-deep-to-list [entity]
-  (if (atom? entity)
-    (atomic-value entity)
-    (let [content-as-list (immutable-deep-to-list (content entity))
-          elements (elements entity)]
-      (if (empty? elements)
-        content-as-list
-        (cons content-as-list (map immutable-deep-to-list elements))))))
 
 

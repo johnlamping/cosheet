@@ -354,9 +354,6 @@
    (when callback
      (call-callback-for-undescribed-change callback :key key :reporter r))))
 
-;;; TODO: Maybe add methods to add/remove categories from an attendee?
-
-
 (defn new-reporter
   [& {:as args}]
   (when-let [calculator (:calculator args)] (check-callback calculator))

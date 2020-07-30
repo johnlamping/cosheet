@@ -1,4 +1,6 @@
-(ns cosheet2.entity)
+(ns cosheet2.entity
+  (:require (cosheet2 [calculator :refer [current-value]]
+                      [expression :refer [expr-let]])))
 
 ;;; An entity is either a constant or an item. An item may have a
 ;;; content, which is another entity, and may have elements, which are
@@ -32,14 +34,7 @@
      reporters.")
 
   (atom? [this]
-    "True if this entity is atomic: either a primitive or a reference to
-     a primitive.
-     Note: A reference to the content of a mutable store can start
-     out atomic, and then become non-atomic if the content gets
-     promoted to a full item. It will still be reported as an atom,
-     though, because references are only valid in the context of a
-     query. If the store changes, the query will be re-run, and the
-     non-atomicness noticed at that point.")
+    "True if this entity is atomic: a primitive.")
 
   ;; The results of the following methods can change if the entity is
   ;; mutable. In that case, they return reporters.
@@ -75,23 +70,73 @@
 
 ;;; Utility functions that work on entities
 
-(defn- mutable?-dispatch [entity & rest]
-  (mutable-entity? entity))
+(defn content-transformed-immutable-to-list [content-transformer]
+  "Internal function that takes a transformer on contents
+  and returns a function that converts an immutable entity to a list,
+  running the content transformer on contents."
+  ;; Note: We tried using a letfn here, so we didn't have to recursively
+  ;; call content-transformed-immutable-to-list. But that resulted in
+  ;; a compile error, where the letfn definition was not available deep
+  ;; inside.
+  (fn [entity]
+    (let [content (content-transformer (content entity))
+          elements (elements entity)]
+      (if (empty? elements)
+        content
+        (cons content
+              (map (content-transformed-immutable-to-list content-transformer)
+                   elements))))))
 
-(defmulti label->content
-  "Return the content of the element with the given label.
-   There must be at most one such element." 
-  mutable?-dispatch)
-
-(defmulti atomic-value
-  "Return the atomic value reached by chasing contents"
-  mutable?-dispatch)
-
-(defmulti to-list
+(defn to-list [entity]
   "Return a list form of the entity. If a content is itself an entity,
   include the entity in the list, rather than its content.
   That way, the value of to-list will only change if the entity or something
   that pertains to it changes."
-  (constantly true))
+  (if (mutable-entity? entity)
+    ;; We want to run with updating-immutable, but if a content is an
+    ;; entity, we want the resulting entity to reference the mutable
+    ;; store.
+    (expr-let [immutable (updating-immutable entity)]
+      ((content-transformed-immutable-to-list
+        (fn [content] (if (satisfies? StoredEntity content)
+                         (in-different-store content entity)
+                         content)))
+       immutable))
+    ((content-transformed-immutable-to-list identity) entity)))
 
+(defn to-deep-list [entity]
+  "Like to-list, but expand out content that is entities."
+  (if (atom? entity)
+    entity
+    (expr-let [immutable (updating-immutable entity)]
+      (let [content-as-list (to-deep-list (content entity))
+            elements (elements entity)]
+        (if (empty? elements)
+          content-as-list
+          (cons content-as-list (map to-deep-list elements)))))))
+
+(defn label->content
+  "Return the content of the element with the given label.
+   There must be at most one such element."
+  [entity label]
+  (expr-let [elements (label->elements entity label)]
+    (when elements
+      (assert (= (count elements) 1)
+              (apply str "entity "  (:id (:item-id entity))
+                     " has " (count elements) " elements for label " label
+                     " entity contents: " (current-value (to-list entity))
+                     " element contents: "
+                     (interleave (repeat " ")
+                                 (map #(current-value (content %)) elements))))
+      (content (first elements)))))
+
+(defn ultimate-content
+  "Chase content until an atomic content is reached."
+  [entity]
+  (if (nil? entity)
+    nil
+    (expr-let [content (content entity)]
+      (if (atom? content)
+        content
+        (ultimate-content content)))))
 

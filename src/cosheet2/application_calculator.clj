@@ -18,10 +18,8 @@
 
 ;;; The following fields are used in reporters, in addition to the
 ;;; standard reporter fields.
-;;; Provided by the original creator of the reporter:
 ;;;         :application The application describing the computation that
-;;;                     gives the value of this reporter 
-;;; Added by this manager:
+;;;                      gives the value of this reporter 
 ;;;  :subordinate-values A map from reporters this reporter needs
 ;;;                      for run its application to a pair of the last
 ;;;                      valid value it saw for them and their dependent-depth.

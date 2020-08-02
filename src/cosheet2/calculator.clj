@@ -64,9 +64,9 @@
 ;;;                      on any computation we depend on, and our priority.
 ;;;                      This is only valid when our value is valid.
 ;;;                      The purpose of this is to allow reporters that depend
-;;;                      on several reporters be able what priorities they
+;;;                      on several reporters know what priorities they
 ;;;                      should bestow on their dependents to fully prioritize
-;;;                      one, and all its dependents over another and all
+;;;                      one, and all its dependents, over another and all
 ;;;                      its dependents.
 ;;;     :further-actions A list of [function arg arg ...] calls that
 ;;;                      need to be performed. (These will never actually

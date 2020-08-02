@@ -12,13 +12,6 @@
                       [expression :refer [expr-seq expr-let expr
                                           category-change]])))
 
-;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
-(defn label? [entity]
-  (or (let [content (content entity)]
-        (and (keyword? content) (not= content :label)))
-      (some #(= (content %) :label)
-            (elements entity))))
-
 (defrecord
     ^{:doc "An item whose elements are described by a store."}
     StoredItem

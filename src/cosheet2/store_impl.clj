@@ -123,7 +123,7 @@
         (update-in-clean-up [:id->keywords subject]
                             #(pseudo-set-set-membership % content true))))))
 
-;; NOTE: This definition must be kept in synch with entity-impl/label?
+;; NOTE: This definition must be kept in synch with entity/label?
 (defn id-is-label?
   "Return whether the given item counts as a label."
   [store id]

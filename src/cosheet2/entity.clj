@@ -70,6 +70,21 @@
 
 ;;; Utility functions that work on entities
 
+;; NOTE: This definition must be kept in synch with store-impl/id-is-label?
+(defn label? [entity]
+  (or (let [content (content entity)]
+        (and (keyword? content) (not= content :label)))
+      (some #(= (content %) :label)
+            (elements entity))))
+
+(defn minimal-label?
+  "Given a label, Return true if it is as small as it can be
+   while still being a label."
+  [entity]
+  (if (keyword? (content entity))
+    (empty? (elements entity))
+    (empty? (rest (elements entity)))))
+
 (defn content-transformed-immutable-to-list [content-transformer]
   "Internal function that takes a transformer on contents
   and returns a function that converts an immutable entity to a list,

@@ -224,3 +224,15 @@
     (is (= (description->entity "1" s) "1"))
     (is (= (description->entity id s) item))))
 
+(deftest label?-test
+  (is (label? :foo))
+  (is (label? '(:foo "foo")))
+  (is (label? '("foo" :label)))
+  (is (label? '("foo" :label "bar")))
+  (is (not (label? :label)))
+  (is (not (label? "foo")))
+  (is (minimal-label? :foo))
+  (is (not (minimal-label? '(:foo "foo"))))
+  (is (minimal-label? '("foo" :label)))
+  (is (not (minimal-label? '("foo" :label "bar")))))
+

@@ -7,7 +7,7 @@
                                       label->content ultimate-content
                                       to-list current-version
                                       in-different-store]]
-                      [entity-impl :refer [label?]]
+                      [entity :refer [label? minimal-label?]]
                       [query :as query
                        :refer [extended-by-m?
                                matching-extensions-m
@@ -96,21 +96,22 @@
   (let [contextualized (contextualize-variable element env)
         elems (map #(contextualize-variable % env)
                    (elements contextualized))
-        [positive negative] (separate-negations elems)]
+        [positive negative] (separate-negations elems)
+        candidates (filter label? positive)]
     ;; Test for the special case of looking for any element with a given atomic
     ;; tag. That is the case where we can return a single label which is a
     ;; perfect fit.
     (if (and (nil? (content contextualized))
              (empty? negative)
-             (not (empty? positive))
+             (not (empty? candidates))
              (empty? (rest positive))
-             (empty? (elements (first positive))))
-      (content (first positive))
+             (minimal-label? (first candidates)))
+      (content (first candidates))
       (mapcat #(let [label (ultimate-content %)]
                  (when (and (not (nil? label))
                             (not= label ::query/special-form))
                    [label]))
-              positive))))
+              candidates))))
 
 (defn candidate-elements
   "Given a target, and labels that all the elements we are looking for
@@ -137,6 +138,7 @@
   "Return a list of the target elements satisfying the given fixed-term."
   (when (not (atom? target))
     (let [labels (labels-for-element fixed-term {})]
+      (println "labels" labels)
       (if (seq? labels)
         (expr-let
             [candidates (candidate-elements labels target)]
@@ -164,12 +166,14 @@
             (or (empty? (elements fixed-term))
                 (let [[positive negative] (separate-negations
                                            (elements fixed-term))]
-                  (expr-let [positive-satisfying
-                             (expr-seq map #(elements-satisfying % target)
-                                       positive)
+                  (println "pos" positive "neg" negative)
+                  (let [positive-satisfying
+                             (map #(elements-satisfying % target)
+                                  positive)
                              negative-satisfying
-                             (expr-seq map #(elements-satisfying % target)
-                                       negative)]
+                             (map #(elements-satisfying % target)
+                                  negative)]
+                    (println "pos sat" positive-satisfying)
                     (and (or (empty? positive)
                              (not (empty? (disjoint-combinations
                                            positive-satisfying))))

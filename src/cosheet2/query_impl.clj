@@ -17,7 +17,6 @@
                                query-matches-m
                                variable-query?
                                variable-qualifier]]
-                      [expression :refer [expr expr-let expr-seq expr-filter]]
                       [utils :refer [equivalent-atoms? prewalk-seqs]])))
 
 ;;; TODO:
@@ -383,15 +382,13 @@
                     positive (zipmap content-match-envs (repeat [[]])) target))]
               (if (empty? negative)
                 envs
-                (expr-filter #(no-element-matches negative % target)
-                             envs)))))))))
+                (filter #(no-element-matches negative % target) envs)))))))))
 
 (defn matching-extensions [query env target]
   (assert (not (mutable-entity? query)))
   (let [answer
         (if (atom? query)
-          (expr-let [extended (extended-by? query target)]
-            (when extended [env]))
+          (when (extended-by? query target) [env])
           (if (variable-query? query)
             (variable-matches query env target)
             (item-matches query env target)))]
@@ -401,7 +398,7 @@
   (matching-extensions query env target))
 
 (defmethod best-matching-term-m true [terms env target]
-  (expr-let [matches (expr-seq map #(matching-extensions % env target) terms)]
+  (let [matches (map #(matching-extensions % env target) terms)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))
                                    matches terms)
@@ -441,29 +438,25 @@
         reference (label->content var ::query/reference)
         value (env name)]
     (if (nil? value)
-      (expr-let [[template precise] (closest-template var env)
-                 ;; TODO: Make this use precise information.
-                 candidate-ids (first (candidate-matching-ids store template))
-                 matches (expr-seq
-                          map #(variable-matches
-                                var env (description->entity % store))
-                          candidate-ids)]
+      (let [[template precise] (closest-template var env)
+            ;; TODO: Make this use precise information.
+            candidate-ids (first (candidate-matching-ids store template))
+            matches (map #(variable-matches
+                           var env (description->entity % store))
+                     candidate-ids)]
         (distinct-concat matches))
       (if reference
         [env]
-        (expr-let [value-as-immutable (current-version value)
-                   matches (query-matches value-as-immutable env store)]
-          (when matches [env]))))))
+        (when (query-matches value env store) [env])))))
 
 (defn exists-matches-in-store [exists env store]
   (let [var (first (label->elements exists ::query/variable))
         name (label->content var ::query/name)
         qualifier (first (label->elements var ::query/sub-query))
         body (first (label->elements exists ::query/sub-query))]
-    (expr-let [matches (if qualifier
-                         (expr apply concat
-                               (expr-seq map #(query-matches body % store)
-                                         (query-matches qualifier env store)))
+    (let [matches (if qualifier
+                         (mapcat #(query-matches body % store)
+                                 (query-matches qualifier env store))
                          (query-matches body env store))]
       (seq (distinct (map #(dissoc % name) matches))))))
 
@@ -472,25 +465,23 @@
         name (label->content var ::query/name)
         qualifier (first (label->elements var ::query/sub-query))
         body (first (label->elements forall ::query/sub-query))]
-    (expr-let [matches (query-matches qualifier env store)]
-      (let [groups (group-by #(dissoc % name) matches)]
-        ;; Get [for each group of bindings matching the qualifier
-        ;;       [for each binding in the group (which will bind the vars)
-        ;;         [each extension of the binding satisfying the body]]]
-        (expr-let [binding-groups
-                   (expr-seq map (fn [group]
-                                   (expr-seq
-                                    map (fn [binding]
-                                          (query-matches body binding store))
-                                    (groups group)))
-                             (keys groups))]
-          (seq (mapcat
-                (fn [binding-group]
-                  (apply clojure.set/intersection
-                         (map (fn [extensions]
-                                (set (map #(dissoc % name) extensions)))
-                              binding-group)))
-                binding-groups)))))))
+    (let [matches (query-matches qualifier env store)
+          groups (group-by #(dissoc % name) matches)]
+      ;; Get [for each group of bindings matching the qualifier
+      ;;       [for each binding in the group (which will bind the vars)
+      ;;         [each extension of the binding satisfying the body]]]
+      (let [binding-groups (map (fn [group]
+                                  (map (fn [binding]
+                                         (query-matches body binding store))
+                                       (groups group)))
+                                (keys groups))]
+        (seq (mapcat
+              (fn [binding-group]
+                (apply clojure.set/intersection
+                       (map (fn [extensions]
+                              (set (map #(dissoc % name) extensions)))
+                            binding-group)))
+              binding-groups))))))
 
 (defn and-matches-in-store [and env store]
   (let [queries (label->elements and ::query/sub-query)

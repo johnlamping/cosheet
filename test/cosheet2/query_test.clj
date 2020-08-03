@@ -80,14 +80,9 @@
 (defn variable
   ([name] (variable-query name))
   ([name qualifier] (variable-query name :qualifier qualifier))
-  ([name qualifier value-may-extend]
+  ([name qualifier reference]
    (variable-query name
                    :qualifier qualifier
-                   :value-may-extend value-may-extend))
-  ([name qualifier value-may-extend reference]
-   (variable-query name
-                   :qualifier qualifier
-                   :value-may-extend value-may-extend
                    :reference reference)))
 
 (deftest closest-template-test
@@ -267,10 +262,6 @@
   (is (= (matching-extensions `(~(variable "foo" 1) ~(variable "foo")) {:a :b}
                               '(1 (1 :foo)))
          nil))
-  (is (= (matching-extensions `(~(variable "foo" 1)
-                                ~(variable "foo" nil true)) {:a :b}
-                              '(1 (1 :foo)))
-         [{:a :b, "foo" 1}]))
   (is (check (matching-extensions
               `(1 ~(variable "foo") ~(variable "bar")) {:a :b}
               '(1 2 3 4))
@@ -390,16 +381,16 @@
                            s2))
            [{"v" 3}]))
     (let [matches (query-matches
-                   `(1 (~(variable "v" nil nil true) 3))
+                   `(1 (~(variable "v" nil true) 3))
                    s2)]
       (is (= (count matches) 0)))
     (let [matches (query-matches
-                   `(1 ~(variable "v" '(2 3) nil true))
+                   `(1 ~(variable "v" '(2 3) true))
                    s2)]
       (is (= (count matches) 1)))
     (is (= (envs-to-list
             (query-matches (and-query `(nil (~(variable "v") 4))
-                                      `(1 (~(variable "v" nil nil true) 3)))
+                                      `(1 (~(variable "v" nil true) 3)))
                            s2))
            nil))
     ;; and
@@ -408,8 +399,8 @@
                                       `(nil (~(variable "v") 4)))
                            s2))
            [{"v" 2}]))
-    (is (= (query-matches (and-query `(1 (~(variable "v" nil nil true) 3))
-                                     `(nil (~(variable "v" nil nil true) 4)))
+    (is (= (query-matches (and-query `(1 (~(variable "v" nil true) 3))
+                                     `(nil (~(variable "v" nil true) 4)))
                           s2)
            nil))
     (is (= (query-matches (and-query `(1 (~(variable "v") 3))
@@ -435,12 +426,6 @@
                                            `(nil (nil ~(variable "v"))))
                                 s2)))
            #{{"v" 3} {"v" 4} {"v" 5}}))
-    (is (= (set (envs-to-list
-                 (query-matches
-                  (and-query `(nil (~(variable "v" nil true)))
-                             `(nil (nil ~(variable "v" nil true))))
-                  s2)))
-           #{{"v" 2} {"v" 3} {"v" 4} {"v" 5}}))
     ;; exists
     (is (= (query-matches (exists-query "v" nil
                                         `(nil (1 ~(variable "v"))

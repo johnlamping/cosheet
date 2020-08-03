@@ -259,7 +259,6 @@
 (defn variable-matches [var env target]
   (let [name (label->content var ::query/name)
         qualifier (variable-qualifier var)
-        value-may-extend (label->content var ::query/value-may-extend)
         reference (label->content var ::query/reference)]
     (let [value (env name)]
       (if (nil? value)
@@ -275,11 +274,9 @@
         (if reference
           (when (and (= value target) (satisfies? StoredEntity target))
                 [env])
-          (when (extended-by? value target)
-            (if value-may-extend
-              [env]
-              (when (extended-by? target value)
-                [env]))))))))
+          (when (and (extended-by? value target)
+                     (extended-by? target value))
+            [env]))))))
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the target that match

@@ -51,7 +51,6 @@
 ;;;   (::special-form (:variable ::type)
 ;;;                   (<name> ::name)
 ;;;                   <qualifier ::sub-query>
-;;;                   (true ::value-may-extend)
 ;;;                   (true ::reference))
 ;;;   Each of the elements except for the type is optional.
 
@@ -80,26 +79,22 @@
 ;;; other variable.
 ;;; A variable with a qualifier can only match entities satisfying
 ;;; the qualifier, which may not contain variables.
-;;; A bound variable with value-may-extend will match any extension of
-;;; its value.
 ;;; A variable with :reference binds to a reference to an item
 ;;; in the store, rather than to the value of the item. Only
 ;;; one instance of a reference variable with a given name should occur
 ;;; in a query,
 ;;; since it can never match two different structures.
 (defn variable-query
-  [name & {:keys [qualifier reference value-may-extend]
+  [name & {:keys [qualifier reference]
            :as keywords}]
-  (assert (every? #{:qualifier :reference :value-may-extend} (keys keywords)))
+  (assert (every? #{:qualifier :reference} (keys keywords)))
   (when reference (assert (= reference true)))
-  (when value-may-extend (assert (= value-may-extend true)))
   (apply list
          (cond-> [::special-form '(:variable ::type)]
            name (conj `(~name ::name))
            qualifier (conj (add-elements-to-entity-list
                             qualifier [::sub-query]))
-           reference (conj '(true ::reference))
-           value-may-extend (conj '(true ::value-may-extend)))))
+           reference (conj '(true ::reference)))))
 
 (defn not-query
   [query]

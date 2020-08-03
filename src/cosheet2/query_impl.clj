@@ -296,7 +296,7 @@
                           result matching-envs))
                 {} (map vector candidates match-envs)))
       ;; The special case of looking for any element with a specific label.
-      (expr-let [matching-elements (label->elements target labels)]
+      (let [matching-elements (label->elements target labels)]
         (cond (empty? matching-elements)
               {}
               (variable-query? term)
@@ -309,8 +309,7 @@
               {env matching-elements})))))
 
 (defn element-matches [term env target]
-  (expr-let [match-map (element-match-map term env target)]
-    (keys match-map)))
+  (keys (element-match-map term env target)))
 
 (defn concat-maps
   "Given a sequence of maps from key to sequence of values, return a single
@@ -342,9 +341,9 @@
   [terms env-map target]
   (if (empty? terms)
     (keys env-map)
-    (expr-let [matching-maps
-               (expr-seq map #(element-match-map (first terms) % target)
-                         (keys env-map))]
+    (let [matching-maps
+               (map #(element-match-map (first terms) % target)
+                    (keys env-map))]
       (let [disjoint-map (concat-maps
                           (map conj-disjoint-maps
                                (vals env-map) matching-maps))]
@@ -357,32 +356,28 @@
   [queries env target]
   (if (empty? queries)
     true
-    (expr-let [matches (element-matches (first queries) env target)]
-      (when (empty? matches)
-        (no-element-matches (rest queries) env target)))))
+    (when (empty? (element-matches (first queries) env target))
+      (no-element-matches (rest queries) env target))))
 
 (defn item-matches [item env target]
-  (expr-let [content-match-envs
+  (let [content-match-envs
              (if-let [item-content (content item)]
-               (expr matching-extensions
-                 item-content env (content target))
+               (matching-extensions item-content env (content target))
                [env])]
     (when (seq content-match-envs)
       (let [item-elements (elements item)]
         (if (empty? item-elements)
           content-match-envs
           (let [[positive negative] (separate-negations item-elements)]
-            (expr-let
+            (let
                 [envs
                  (cond
                    (empty? positive)
                    content-match-envs
                    (empty? (rest positive))
-                   (expr-let [env-matches
-                              (expr-seq map #(element-matches
-                                              (first positive) % target)
-                                        content-match-envs)]
-                     (distinct-concat env-matches))
+                   (-> (map #(element-matches (first positive) % target)
+                            content-match-envs)
+                       distinct-concat)
                    true
                    (multiple-element-matches
                     positive (zipmap content-match-envs (repeat [[]])) target))]

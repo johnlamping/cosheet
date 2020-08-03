@@ -75,7 +75,10 @@
     
     (is (= (current-value (expr-filter #(expr = (expr mod % r3) 0)
                                        [1 2 r3 4 5 6]))
-           [3 6]))))
+           [3 6]))
+    (is (= (current-value (expr-filter #(expr not= % 1)
+                                       [1 2 r3 nil false]))
+           [2 3 nil false]))))
 
 
 

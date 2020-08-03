@@ -116,8 +116,8 @@
   is truthy."
   [condition items]
   (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
-                                     (when passes %))
+                                     (if passes % ::fail))
                               items)]
-    (filter identity passed)))
+    (filter #(not= % ::fail) passed)))
 
 

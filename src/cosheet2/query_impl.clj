@@ -1,5 +1,5 @@
 (ns cosheet2.query-impl
-  (:require (cosheet2 [store :as store]
+  (:require (cosheet2 [store :as store :refer [candidate-matching-ids]]
                       [entity :refer [Entity StoredEntity
                                       mutable-entity? atom?
                                       description->entity
@@ -120,8 +120,7 @@
   [labels target]
   (if (empty? labels)
     (elements target)
-    (expr-let [candidateses (expr-seq
-                             map #(label->elements target %) labels)]
+    (let [candidateses (map #(label->elements target %) labels)]
       (loop [best nil
              candidateses candidateses]
         (if (empty? candidateses)
@@ -138,11 +137,9 @@
   "Return a list of the target elements satisfying the given fixed-term."
   (when (not (atom? target))
     (let [labels (labels-for-element fixed-term {})]
-      (println "labels" labels)
       (if (seq? labels)
-        (expr-let
-            [candidates (candidate-elements labels target)]
-          (expr-filter #(extended-by? fixed-term %) candidates))
+        (filter #(extended-by? fixed-term %)
+                (candidate-elements labels target))
         ;; The special case where being in the label index guarantees
         ;; satisfing the fixed-term.
         (label->elements target labels)))))
@@ -150,30 +147,23 @@
 (defn has-element-satisfying? [fixed-term target]
   "Return true if the target item has an element satisfying
   the given fixed-term)."
-  (expr-let [satisfying (elements-satisfying fixed-term target)]
-    (not (empty? satisfying))))
+  (not (empty? (elements-satisfying fixed-term target))))
 
 (defn extended-by? [fixed-term target]
   (or (nil? fixed-term)
       (if (atom? fixed-term)
-        (expr-let [target-value (ultimate-content target)]
-          (equivalent-atoms? (ultimate-content fixed-term) target-value))
-        (expr-let
-            [content-extended (expr extended-by?
-                                (content fixed-term)
-                                (content target))]
+        (equivalent-atoms? (ultimate-content fixed-term)
+                           (ultimate-content target))
+        (let [content-extended (extended-by? (content fixed-term)
+                                             (content target))]
           (when content-extended
             (or (empty? (elements fixed-term))
                 (let [[positive negative] (separate-negations
                                            (elements fixed-term))]
-                  (println "pos" positive "neg" negative)
                   (let [positive-satisfying
-                             (map #(elements-satisfying % target)
-                                  positive)
-                             negative-satisfying
-                             (map #(elements-satisfying % target)
-                                  negative)]
-                    (println "pos sat" positive-satisfying)
+                        (seq (map #(elements-satisfying % target) positive))
+                        negative-satisfying
+                        (map #(elements-satisfying % target) negative)]
                     (and (or (empty? positive)
                              (not (empty? (disjoint-combinations
                                            positive-satisfying))))
@@ -183,14 +173,16 @@
 (defmethod extended-by-m? true [fixed-term target]
   (extended-by? fixed-term target))
 
-(defn closest-template-R
+;;; TODO: If a variable is replaced by a value, the result can still be exact.
+(defn closest-template
   "Given a term, return a template that the store can use to find candidate
    ids, and that is as close to the term as possible:
       Remove variables, replacing them with their value in the environment,
       or their qualifier.
       Replace bound variables with their current values.
       Remove any ::query/sub-query annotations.
-      Remove any other special forms (to eliminate any not-query terms)."
+      Remove any other special forms (to eliminate any not-query terms).
+  Also return whether matching the template is exactly equal to the term"
   [term env]
   (let [current (if (satisfies? StoredEntity term)
                   (current-version term)
@@ -198,20 +190,22 @@
         contextualized (contextualize-variable current env)]
     ;; While the term is guaranteed to be immutable, its contextualized
     ;; value might be an item in a mutable store.
-    (expr-let [as-list (to-list contextualized)]
+    (let [as-list (to-list contextualized)]
       (if (#{::query/sub-query ::query/special-form} (content as-list))
         (do (assert (not (and (= ::query/special-form (content as-list))
                               (not= :not
                                     (label->content as-list ::query/type)))))
-            nil)
+            [nil false])
         (if (seq? as-list)
-          (expr-let [converted (expr-seq map #(closest-template-R % env)
-                                         as-list) 
-                     kept-elements (remove nil? (rest converted))]
-            (if (empty? kept-elements)
-              (first converted)
-              (cons (first converted) kept-elements)))
-          as-list)))))
+          (let [converted (map #(closest-template % env) as-list)
+                     unchanged (every? second converted)
+                     parts (map first converted)
+                     kept-elements (remove nil? (rest parts))]
+            [(if (empty? kept-elements)
+                (first parts)
+                (cons (first parts) kept-elements))
+             unchanged])
+          [as-list (not (variable-query? term))])))))
 
 ;;; Code to bind an immutable entity in an environment
 
@@ -269,29 +263,24 @@
         value-may-extend (label->content var ::query/value-may-extend)
         reference (label->content var ::query/reference)]
     (let [value (env name)]
-      (if (not (nil? value))
+      (if (nil? value)
+        (when (and (not (nil? target))
+                   (or (not reference) (satisfies? StoredEntity target)))
+          (let [envs (if (nil? qualifier)
+                       [env]
+                       (matching-extensions qualifier env target))]
+            (if (nil? name)
+              envs
+              (let [value (if reference target (to-list target))]
+                (seq (map #(assoc % name value) envs))))))
         (if reference
-          (when (= value target)
+          (when (and (= value target) (satisfies? StoredEntity target))
                 [env])
-          (expr-let
-              [value-as-immutable (current-version value)
-               target-extends (extended-by? value-as-immutable target)]
-            (when target-extends
-              (if value-may-extend
-                [env]
-                (expr-let [target-as-immutable (current-version target)]
-                  (when (extended-by? target-as-immutable value-as-immutable)
-                    [env]))))))
-        (expr-let [target-as-immutable (current-version target)]
-          (when (not (nil? target-as-immutable))
-            (expr-let
-                [envs (if (nil? qualifier)
-                        [env]
-                        (matching-extensions qualifier env target))]
-              (if (not (nil? name))
-                (expr-let [value (if reference target target-as-immutable)]
-                  (seq (map #(assoc % name value) envs)))
-                envs))))))))
+          (when (extended-by? value target)
+            (if value-may-extend
+              [env]
+              (when (extended-by? target value)
+                [env]))))))))
 
 (defn element-match-map
   "Return a map from environment to seq of elements of the target that match
@@ -299,9 +288,8 @@
   [term env target]
   (let [labels (labels-for-element term env)]
     (if (or (nil? labels) (seq? labels))
-      (expr-let [candidates (candidate-elements labels target)
-                 match-envs (expr-seq map #(matching-extensions term env %)
-                                      candidates)]
+      (let [candidates (candidate-elements labels target)
+            match-envs (map #(matching-extensions term env %) candidates)]
         (reduce (fn [result [candidate matching-envs]]
                   (reduce (fn [result env]
                             (update result env #(conj (or % []) candidate)))
@@ -442,10 +430,11 @@
 
 (defn matching-items [term store]
   (filter
-   #(not (empty? (matching-extensions term {} %)))     
-   (map #(description->entity % store)
-        (store/candidate-matching-ids
-         store (closest-template-R term {})))))
+   #(not (empty? (matching-extensions term {} %)))
+   ;; TODO: Make this use precise information.
+   (let [[template precise] (closest-template term {})]
+     (map #(description->entity % store)
+          (first (candidate-matching-ids store template))))))
 
 (defmethod matching-items-m true [term store]
   (matching-items term store))
@@ -457,8 +446,9 @@
         reference (label->content var ::query/reference)
         value (env name)]
     (if (nil? value)
-      (expr-let [template (closest-template-R var env)
-                 candidate-ids (store/candidate-matching-ids store template)
+      (expr-let [[template precise] (closest-template var env)
+                 ;; TODO: Make this use precise information.
+                 candidate-ids (first (candidate-matching-ids store template))
                  matches (expr-seq
                           map #(variable-matches
                                 var env (description->entity % store))
@@ -512,19 +502,21 @@
         [first-q second-q] (if (label->content (second queries) :first)
                              (reverse queries)
                              queries)]
-    (expr-let [first-matches (query-matches first-q env store)
-               both-matches (expr-seq map #(query-matches second-q % store)
-                                      first-matches)]
+    (let [first-matches (query-matches first-q env store)
+          both-matches (map #(query-matches second-q % store)
+                            first-matches)]
       (distinct-concat both-matches))))
 
 (defn item-matches-in-store [item env store]
-  (expr-let [template (closest-template-R item env)
-             candidates (expr map
-                          #(description->entity % store)
-                          (store/candidate-matching-ids store template))
-             matches (expr-seq map (partial matching-extensions item env)
-                               candidates)]
-    (distinct-concat matches)))
+  (let [[template template-exact] (closest-template item env)
+        [candidate-ids precise] (candidate-matching-ids store template)
+        candidates (map #(description->entity % store) candidate-ids) ]
+    (if (and template-exact precise)
+      (when (seq candidates)
+        [env])
+      (let [matches (seq (map (partial matching-extensions item env)
+                              candidates))]
+        (distinct-concat matches)))))
 
 (defn query-matches
   ([query store] (query-matches query {} store))

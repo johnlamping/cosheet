@@ -16,6 +16,7 @@
              store_test
              mutable_store_test
              store-utils-test
-             entity-test)
+             entity-test
+             hiccup-utils-test)
    :reload
             ))

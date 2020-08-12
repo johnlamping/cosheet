@@ -248,10 +248,10 @@
                           reporter (:old-value-source new-data) cd)
                          (update-old-value-source reporter nil cd))
                      ;; Some value changed. Schedule recomputation.
-                     (apply update-new-further-action new-data 
-                            add-task-with-priority (:queue cd)
-                            (:priority data)
-                            [run-application-if-ready reporter cd]))
+                     (update-new-further-action
+                      new-data 
+                      add-task-with-priority (:queue cd) (:priority data)
+                      run-application-if-ready reporter cd))
                    new-data))
                (update-in newer-data [:needed-values] conj from)))))))))
 

@@ -1,7 +1,7 @@
 (ns cosheet2.reporter
   (:require (cosheet2 [utils :refer [dissoc-in 
-                                    update-in-clean-up
-                                    swap-returning-both!
+                                     update-in-clean-up
+                                     swap-returning-both!
                                      swap-control-return!]])))
 
 (defprotocol Reporter
@@ -16,12 +16,13 @@
   One or more callbacks can attend to the reporter. And each can
   optionally specify which categories of change it wants to be
   informed of.  When the reporter's value changes, the change can
-  optionally be associated with a description of what parts changed,
-  and a set of categories of those parts. Whenever the value changes,
-  all attendees are notified, except that if the change got a
-  description, and an attendee specified categories it was interested
-  in that don't match any of the change's categories, it won't be
-  notified.
+  optionally be associated with a description of what parts changed
+  since its last valid value, and a set of categories of those
+  parts. Whenever the value changes, all attendees are notified,
+  except that if the change got a description, was a change between
+  two valid values, and an attendee specified categories it was
+  interested in that don't match any of the change's categories, it
+  won't be notified.
        
   Each callback has a key, a priority, a function. The priority
   indicates how important it is for the callback to have the latest
@@ -30,12 +31,13 @@
   The priority of a reporter is the minimum of the priorities of its
   attendees.
 
-  Once an attendee added, it is guaranteed to eventually be called. It
-  will be similarly called after any change in the value, (unless it
-  has registered for categories, and none of the changes match). When
-  called, it gets keyword arguments for the key, the reporter, the
-  categories of the changed parts of the value and a description of
-  the change. The latter two will be nil if they were not specified.
+  Once an attendee is added, it is guaranteed to eventually be
+  called. It will be similarly called after any change in the
+  value, (unless it has registered for categories, and none of the
+  changes match). When called, it gets keyword arguments for the key,
+  the reporter, the categories of the changed parts of the value since
+  the last valid value and a description of the change. The latter two
+  will be nil if they were not specified.
 
   The callback will not necessarily be called once per change, and it
   may not find a valid value when it is called.  But it is guaranteed
@@ -154,7 +156,8 @@
    (let [data (reporter-data r) 
          ;; Avoid calling the same reporter twice if several of its
          ;; categories match.
-         reporter-keys (if (nil? categories)
+         reporter-keys (if (or (nil? categories)
+                               (not (valid? (data-value data))))
                          (keys (:attendees data))
                          (set (mapcat (partial get (:selections data))
                                       (conj categories universal-category))))]
@@ -166,7 +169,7 @@
                    :categories categories))))))
 
 (defn set-value!
-  "Set the value of the reporter, informing any attendees."
+  "Set the value of the reporter, informing all attendees."
   [r value]
   (let [[old current]
         (swap-returning-both! (:data r) #(assoc % :value value))]
@@ -176,11 +179,11 @@
 (defn change-data-control-return!
   "This is the most general function for updating a reporter.
    Call the function with the current data map the reporter.  It must
-   return a new data map, a description of its change to the value,
-   the categories of the change, and the return value it wants.
-   Set the data of the reporter to the new map, and inform any attendees
-   that care about any of the categories of the change.
-   Return the specified value."
+  return a new data map, a description of its change since the last
+  valid value, the categories of the change, and the return value it
+  wants.  Set the data of the reporter to the new map, and inform any
+  attendees that care about any of the categories of the change.
+  Return the specified value."
     [r f]
   (let [[changed description categories return-value]
         (swap-control-return!
@@ -196,10 +199,10 @@
 (defn change-data!
   "This is the most general function for updating a reporter.
    Call the function with the current data map the reporter.  It must
-   return a new data map, a description of its change to the value,
-   and the categories of the change.
-   Set the data of the reporter to the new map, and inform any attendees
-   that care about any of the categories of the change."
+  return a new data map, a description of its change since the last
+  valid value, and the categories of the change.  Set the data of the
+  reporter to the new map, and inform any attendees that care about
+  any of the categories of the change."
     [r f]
   (let [[changed description categories]
         (swap-control-return!
@@ -213,10 +216,10 @@
 
 (defn change-value!
   "Call the function with the current value of the reporter.  It must
-   return a new value, a description of the change, and the categories
-   of the change. Set the value of the reporter to the new value, and
-   inform any attendees that care about any of the categories of the
-   change."
+  return a new value, a description of the change since the last valid
+  valud, and the categories of the change. Set the value of the
+  reporter to the new value, and inform any attendees that care about
+  any of the categories of the change."
   [r f]
   (let [[changed description categories]
         (swap-control-return!

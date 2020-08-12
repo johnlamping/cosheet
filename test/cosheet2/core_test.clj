@@ -17,6 +17,7 @@
              mutable_store_test
              store-utils-test
              entity-test
+             query-calculator-test
              hiccup-utils-test)
    :reload
             ))

@@ -31,11 +31,11 @@
                  (conj affected id)))))))
 
 (defn categories-affected-by-ids
-  "Return a collection of categories that might be affected by a
-  change to a set of modified ids.  A category is any id whose
-  elements or content could be affected by one of the changed ids. We
-  are given both the old store and the new one, as some modified ids
-  might be in only one of the two stores."
+  "Return a set of categories that might be affected by a change to a
+  set of modified ids.  A category is any id whose elements or content
+  could be affected by one of the changed ids. We are given both the
+  old store and the new one, as some modified ids might be in only one
+  of the two stores."
   [modified-ids old-store new-store]
   (when (seq modified-ids)
     (reduce (fn [accum id] (-> accum

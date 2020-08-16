@@ -101,6 +101,11 @@
   (is (assoc-if-non-empty {:a 1 :b 2} :a {}) {:b 2})
   (is (assoc-if-non-empty {:a 1 :b 2} :a #{nil}) {:a #{nil} :b 2}))
 
+(deftest assoc-in-if-non-empty-test
+  (is (assoc-if-non-empty {:a 1 :b 2} [:a] nil) {:b 2})
+  (is (assoc-if-non-empty {:a 1 :b 2} [:a] {}) {:b 2})
+  (is (assoc-if-non-empty {:a 1 :b 2} [:a] #{nil}) {:a #{nil} :b 2}))
+
 (deftest swap-returning-both!-test
   (let [a (atom 1)]
     (is (= (swap-returning-both! a (fn [old] (is (= old 1)) 2))) [1 2])

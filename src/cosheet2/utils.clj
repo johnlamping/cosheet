@@ -134,20 +134,27 @@
         (dissoc map key)
         (assoc map key lower)))))
 
+(defn assoc-if-non-empty
+  "Like assoc, but does a dissoc if the value is empty."
+  [m k value]
+  (if (or (nil? value)
+          (and (coll? value) (empty? value)))
+    (dissoc m k)
+    (assoc m k value)))
+
+(defn assoc-in-if-non-empty
+  "Like assoc-in, but does a dissoc-in if the value is empty."
+  [m keys value]
+  (if (or (nil? value)
+          (and (coll? value) (empty? value)))
+    (dissoc-in m keys)
+    (assoc-in m keys value)))
+
 (defn update-in-clean-up
   "Like update-in, but removes empty collections."
   [map keys fn]
   (let [result (fn (get-in map keys))]
-      (if (or (nil? result) (and (coll? result) (empty? result)))
-        (dissoc-in map keys)
-        (assoc-in map keys result))))
-
-(defn assoc-if-non-empty
-  "Like assoc, but does a dissoc if the value is empty."
-  [m k value]
-  (if (empty? value)
-    (dissoc m k)
-    (assoc m k value)))
+    (assoc-in-if-non-empty map keys result)))
 
 ;; Utils for working with atoms in a lock free way.
 

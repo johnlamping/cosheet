@@ -1,6 +1,7 @@
 (ns cosheet2.reporter
   (:require (cosheet2 [utils :refer [dissoc-in 
                                      update-in-clean-up
+                                     assoc-in-if-non-empty
                                      swap-returning-both!
                                      swap-control-return!]])))
 
@@ -261,59 +262,43 @@
     (assert (not (nil? (:calculator data)))))
   (set-calculator-data-if-needed! reporter calculator-data))
 
-(defn update-add-attendee
-  "Add the described attendee to the data. If there already is one, adjust
-   the categories appropriately."
+(defn update-attendee
+  "Make the attendee under the given key be as described. This
+  encompases adding a new attendee, removing one, or changing the
+  priority or categories of an existing one."
   [data key priority categories callback]
   (let [[old-priority old-categories _ ] (get-in data [:attendees key])
+        priority (if callback priority Double/MAX_VALUE)
+        old-priority (or old-priority Double/MAX_VALUE)
         dropped-categories (clojure.set/difference (set old-categories)
                                                    (set categories))
         added-categories (clojure.set/difference (set categories)
                                                  (set old-categories))]
     (let [data
           (-> data
-              (update-in [:selections]
-                         (fn [selections]
-                           (as-> selections selections
-                             (reduce (fn [selections category]
-                                       (update-in-clean-up selections [category]
-                                                           #(disj % key)))
-                                     selections dropped-categories)
-                             (reduce (fn [selections category]
-                                       (update-in selections [category]
-                                                  #((fnil conj #{}) % key)))
-                                     selections added-categories))))
-              (assoc-in [:attendees key] [priority categories callback]))]
-      (if (or (nil? old-priority)
-              (<= priority old-priority)
+              (update-in-clean-up
+               [:selections]
+               (fn [selections]
+                 (as-> selections selections
+                   (reduce (fn [selections category]
+                             (update-in-clean-up selections [category]
+                                                 #(disj % key)))
+                           selections dropped-categories)
+                   (reduce (fn [selections category]
+                             (update-in selections [category]
+                                        #((fnil conj #{}) % key)))
+                           selections added-categories))))
+              (assoc-in-if-non-empty [:attendees key]
+                                     (when callback
+                                       [priority categories callback])))]
+      (if (or (<= priority old-priority)
               (< (:priority data) old-priority))
         (update data :priority #(min % priority))
         ;; We took out a best priority attendee. Recompute the priority.
         (assoc data :priority
-               (let [attendees (vals (:attendees data))]
-                 (apply min (map first attendees))))))))
-
-(defn update-remove-attendee
-  "Remove any attendee with the given key from the data."
-  [data key]
-  (if-let [[priority categories _] (get-in data [:attendees key])]
-    (let [data (-> data
-                   (update-in-clean-up
-                    [:selections]
-                    (fn [selections]
-                      (reduce (fn [selections category]
-                                (update-in-clean-up selections [category]
-                                                    #(disj % key)))
-                              selections categories)))
-                   (dissoc-in [:attendees key]))]
-      (if (= priority (:priority data))
-        ;; We took out a best priority attendee. Recompute the priority.
-        (assoc data :priority
                (if-let [attendees (vals (:attendees data))]
                  (apply min (map first attendees))
-                 Double/MAX_VALUE))
-        data))
-    data))
+                 Double/MAX_VALUE))))))
 
 (defn change-and-inform-calculator!
   "Run the change on the reporter, and inform the calculator if there
@@ -343,7 +328,8 @@
 (defn remove-attendee!
   "Remove the attendee with the given key."
   [r key]
-  (change-and-inform-calculator! r #(update-remove-attendee % key)))
+  (change-and-inform-calculator! r #(update-attendee
+                                     % key Double/MAX_VALUE [] nil)))
 
 (defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be
@@ -356,13 +342,10 @@
   ([r key priority callback]
    (set-attendee! r key priority [universal-category] callback))
   ([r key priority categories callback]
-   (if (nil? callback)
-     (remove-attendee! r key)
-     (do
-       (check-callback callback)
-       (when (reporter? r)
-         (change-and-inform-calculator!
-          r #(update-add-attendee % key priority categories callback)))))))
+   (when callback (check-callback callback))
+   (when (reporter? r)
+     (change-and-inform-calculator! r #(update-attendee
+                                        % key priority categories callback)))))
 
 (defn set-attendee-and-call!
   "Add an attending callback, and call it immediately"

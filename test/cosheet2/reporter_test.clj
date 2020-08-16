@@ -20,15 +20,15 @@
     (is (= @history
            [[:key :key :reporter 2 :description nil :categories nil]]))))
 
-(deftest update-add-remove-attendee-test
+(deftest update-attendee-test
   (let [data {:value invalid :priority Double/MAX_VALUE}
-        added1 (update-add-attendee
+        added1 (update-attendee
                 data :key1 2 [::universal-category] inc)
-        added2 (update-add-attendee
+        added2 (update-attendee
                 added1 :key2 3 [:a :b] dec)
-        removed0 (update-remove-attendee added2 :key3)
-        removed1 (update-remove-attendee removed0 :key1)
-        removed2 (update-remove-attendee removed1 :key2)]
+        removed0 (update-attendee added2 :key3 Double/MAX_VALUE [] nil)
+        removed1 (update-attendee removed0 :key1 Double/MAX_VALUE [] nil)
+        removed2 (update-attendee removed1 :key2 Double/MAX_VALUE [] nil)]
     (is (check added1
            {:value invalid
             :priority 2

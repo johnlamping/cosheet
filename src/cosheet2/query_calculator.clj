@@ -8,6 +8,7 @@
                                         new-reporter]]
                       [entity :refer [description->entity in-different-store
                                       to-list]]
+                      entity-impl
                       [query :refer [matching-items matching-extensions]]
                       query-impl
                       [calculator :refer [modify-and-act!

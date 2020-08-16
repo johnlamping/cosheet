@@ -262,18 +262,36 @@
   (set-calculator-data-if-needed! reporter calculator-data))
 
 (defn update-add-attendee
-  "Add the described attendee to the data, which must not already have
-   one with that key."
+  "Add the described attendee to the data. If there already is one, adjust
+   the categories appropriately."
   [data key priority categories callback]
-  (-> data
-      (update-in [:selections]
-                 (fn [selections]
-                   (reduce (fn [selections category]
-                             (update-in selections [category]
-                                        #((fnil conj #{}) % key)))
-                           selections categories)))
-      (assoc-in [:attendees key] [priority categories callback])
-      (update :priority #(min % priority))))
+  (let [[old-priority old-categories _ ] (get-in data [:attendees key])
+        dropped-categories (clojure.set/difference (set old-categories)
+                                                   (set categories))
+        added-categories (clojure.set/difference (set categories)
+                                                 (set old-categories))]
+    (let [data
+          (-> data
+              (update-in [:selections]
+                         (fn [selections]
+                           (as-> selections selections
+                             (reduce (fn [selections category]
+                                       (update-in-clean-up selections [category]
+                                                           #(disj % key)))
+                                     selections dropped-categories)
+                             (reduce (fn [selections category]
+                                       (update-in selections [category]
+                                                  #((fnil conj #{}) % key)))
+                                     selections added-categories))))
+              (assoc-in [:attendees key] [priority categories callback]))]
+      (if (or (nil? old-priority)
+              (<= priority old-priority)
+              (< (:priority data) old-priority))
+        (update data :priority #(min % priority))
+        ;; We took out a best priority attendee. Recompute the priority.
+        (assoc data :priority
+               (let [attendees (vals (:attendees data))]
+                 (apply min (map first attendees))))))))
 
 (defn update-remove-attendee
   "Remove any attendee with the given key from the data."
@@ -344,9 +362,7 @@
        (check-callback callback)
        (when (reporter? r)
          (change-and-inform-calculator!
-          r #(-> %
-                 (update-remove-attendee key)
-                 (update-add-attendee key priority categories callback))))))))
+          r #(update-add-attendee % key priority categories callback)))))))
 
 (defn set-attendee-and-call!
   "Add an attending callback, and call it immediately"

@@ -95,7 +95,7 @@
             (:queue cd) (:priority data)
             store-change reporter store))))))
 
-(defn do-query-calculate
+(defn query-calculator
   [reporter cd]
   (modify-and-act!
    reporter
@@ -110,12 +110,6 @@
          (-> data
              (assoc :value :invalid)
              (update-new-further-action remove-attendee! store reporter)))))))
-
-(defn query-calculator
-  [reporter cd]
-  (add-task-with-priority
-   (:queue cd) (:priority (reporter-data reporter))
-   do-query-calculate reporter cd))
 
 (defn query-matches-mutable
   [query mutable-store]

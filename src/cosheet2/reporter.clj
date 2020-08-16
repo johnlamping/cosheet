@@ -32,13 +32,13 @@
   The priority of a reporter is the minimum of the priorities of its
   attendees.
 
-  Once an attendee is added, it is guaranteed to eventually be
-  called. It will be similarly called after any change in the
-  value, (unless it has registered for categories, and none of the
-  changes match). When called, it gets keyword arguments for the key,
-  the reporter, the categories of the changed parts of the value since
-  the last valid value and a description of the change. The latter two
-  will be nil if they were not specified.
+  Once an attendee is added, it is guaranteed to eventually be called
+  after any change in the value, (unless it has registered for
+  categories, and none of the changes match). When called, it gets
+  keyword arguments for the key, the reporter, the categories of the
+  changed parts of the value since the last valid value and a
+  description of the change. The latter two will be nil if they were
+  not specified.
 
   The callback will not necessarily be called once per change, and it
   may not find a valid value when it is called.  But it is guaranteed

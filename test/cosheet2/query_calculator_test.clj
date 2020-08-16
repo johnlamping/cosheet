@@ -1,9 +1,11 @@
-(ns cosheet2.query-calculator_test
+(ns cosheet2.query-calculator-test
   (:require [clojure.test :refer [deftest is]]
             clojure.pprint
             (cosheet2 [store :refer [new-element-store new-mutable-store
                                      store-reset! store-update!
                                      store-update-control-return!]]
+                      store-impl
+                      mutable-store-impl
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [task-queue :refer [new-priority-task-queue]]
                       [reporter :refer [set-calculator-data!
@@ -42,12 +44,13 @@
     (set-calculator-data! answer cd)
     (set-attendee-and-call! answer :foo 1 callback)
     (is (check @history
-               [{:key :foo :description nil :categories nil}]))
+               [{:key :foo :description #{} :categories #{}}
+                {:key :foo :description nil :categories nil}]))
     (is (not (valid? answer)))
     (compute cd)
     (is (check @history
-               [{:key :foo :description nil :categories nil}
-                {:key :foo :description #{} :categories #{}}
+               [{:key :foo :description #{} :categories #{}}
+                {:key :foo :description nil :categories nil}
                 {:key :foo :description nil :categories nil}]))
     (is (check (reporter-value answer)
                #{id2 id4}))
@@ -58,8 +61,8 @@
       (is (check (reporter-value answer)
                  #{id2 id4 id6}))
       (is (check @history
-               [{:key :foo :description nil :categories nil}
-                {:key :foo :description #{} :categories #{}}
+               [{:key :foo :description #{} :categories #{}}
+                {:key :foo :description nil :categories nil}
                 {:key :foo :description nil :categories nil}
                 {:key :foo :description #{} :categories #{}}
                 {:key :foo :description #{id6}, :categories #{id6}}]))
@@ -70,8 +73,8 @@
       (is (check (reporter-value answer)
                  #{id2}))
       (is (check @history
-               [{:key :foo :description nil :categories nil}
-                {:key :foo :description #{} :categories #{}}
+               [{:key :foo :description #{} :categories #{}}
+                {:key :foo :description nil :categories nil}
                 {:key :foo :description nil :categories nil}
                 {:key :foo :description #{} :categories #{}}
                 {:key :foo :description #{id6}, :categories #{id6}}
@@ -82,8 +85,8 @@
       (is (check (reporter-value answer)
                  #{id2 id4}))
       (is (check @history
-               [{:key :foo :description nil :categories nil}
-                {:key :foo :description #{} :categories #{}}
+               [{:key :foo :description #{} :categories #{}}
+                {:key :foo :description nil :categories nil}
                 {:key :foo :description nil :categories nil}
                 {:key :foo :description #{} :categories #{}}
                 {:key :foo :description #{id6}, :categories #{id6}}

@@ -6,13 +6,20 @@
              [entity :as entity :refer [description->entity to-list
                                         label->elements elements]]
              [orderable :as orderable]
+             [reporter :refer [reporter-value new-reporter invalid
+                               set-value!]]
+             [expression :refer [expr]]
+             [task-queue :refer [new-priority-task-queue]]
+             [calculator :refer [new-calculator-data request compute]]
              [debug :refer [profile-and-print-reporters
                             simplify-for-print]]
              entity-impl
              [query :refer [matching-elements]]
-             [store :refer [new-element-store]]
+             query-impl
+             [store :refer [new-element-store new-mutable-store store-update!]]
              store-impl
-             [store-utils :refer [add-entity]]
+             mutable-store-impl
+             [store-utils :refer [add-entity remove-entity-by-id]]
              [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
             (cosheet2.server
@@ -24,20 +31,21 @@
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
                         [orderable/initial]
-                        (range 4)))
+                        (range 5)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
 (def o3 (nth orderables 2))
 (def o4 (nth orderables 3))
+(def o5 (nth orderables 4))
 (def unused-orderable (nth orderables 4))
 (def joe-list `("Joe"
-                (~o2 :order)
-                ("male" (~o1 :order))
-                (39 (~o3 :order)
+                (~o1 :order)
+                ("male" (~o2 :order))
+                (39 (~o4 :order)
                     ("age" :label)
                     ("doubtful" "confidence"))
-                ("married" (~o2 :order))
-                (45 (~o4 :order)
+                ("married" (~o3 :order))
+                (45 (~o5 :order)
                     ("age" :label))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
@@ -45,7 +53,50 @@
 (def joe (description->entity joe-id store))
 (def joe-male (first (matching-elements "male" joe)))
 (def joe-married (first (matching-elements "married" joe)))
+(def joe-39 (first (matching-elements 39 joe)))
 (def joe-45 (first (matching-elements 45 joe)))
+
+(deftest order-items-test
+  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+        joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
+    (is (= (order-items joe-semantic-elements)
+           joe-ordered-semantic-elements))
+    (is (= (order-items (reverse joe-semantic-elements))
+           joe-ordered-semantic-elements))))
+
+(deftest ordered-ids-R-test
+  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+        joe-semantic-element-ids (map :item-id joe-semantic-elements)
+        joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]
+        joe-ordered-semantic-element-ids (map :item-id
+                                              joe-ordered-semantic-elements)
+        mutable-store (new-mutable-store store)
+        elements-R (new-reporter :value joe-semantic-element-ids)
+        ordered-R (ordered-ids-R elements-R mutable-store)
+        copy-of-ordered-R (expr identity ordered-R)
+        cd (new-calculator-data (new-priority-task-queue 0))]
+    (request copy-of-ordered-R cd)
+    (is (= (reporter-value ordered-R) invalid))
+    (is (= (reporter-value copy-of-ordered-R) invalid))
+    (compute cd)
+    (is (check (reporter-value ordered-R)
+               joe-ordered-semantic-element-ids))
+    (is (check (reporter-value copy-of-ordered-R)
+               joe-ordered-semantic-element-ids))
+    (set-value! elements-R (conj joe-semantic-element-ids joe-id))
+    (compute cd)
+    (is (check (reporter-value copy-of-ordered-R)
+               (concat [joe-id] joe-ordered-semantic-element-ids)))
+    (set-value! elements-R joe-semantic-element-ids)
+    (compute cd)
+    (is (check (reporter-value copy-of-ordered-R)
+               joe-ordered-semantic-element-ids))
+    (let [joe-39-order (first (matching-elements '(nil :order) joe-39))
+          joe-39-order-id (:item-id joe-39-order)]
+      (store-update! mutable-store #(remove-entity-by-id % joe-39-order-id)))
+    (compute cd)
+    (is (check (reporter-value copy-of-ordered-R)
+               (map :item-id [joe-39 joe-male joe-married joe-45])))))
 
 (deftest update-add-entity-with-order-test
   (let [[s id order] (update-add-entity-with-order-and-temporary

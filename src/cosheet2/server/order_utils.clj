@@ -2,12 +2,18 @@
   (:require
    (cosheet2
     [orderable :refer [split earlier? initial]]
-    [store :refer [update-content add-simple-item declare-temporary-id]]
+    [reporter :refer [reporter-data set-value! set-attendee! invalid
+                      inform-attendees data-attended? remove-attendee!
+                      new-reporter reporter-value]]
+    [calculator :refer [modify-and-act! update-new-further-action]]
+    [store :refer [update-content add-simple-item declare-temporary-id
+                   id-label->element-ids id->content]]
     [entity :refer [content elements label->elements label->content]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
     [expression :refer [expr-let expr-seq]]
-    [utils :refer [thread-map]])))
+    [utils :refer [thread-map with-latest-value]]
+    [task-queue :refer [add-task-with-priority]])))
 
 ;;; This is copied from model_utils to avoid a circular dependency
 (defn semantic-element?
@@ -38,6 +44,102 @@
                         ;; propagated. Tolerate that.
                         (vector (or order initial) item))
                       order-info items))))))
+
+;;; The next few functions implement a reporter that orders a set of
+;;; ids, bupdating as either the set membership or their order
+;;; information changes.
+
+(def ordered-ids-callback)
+
+(defn ordered-ids-register-and-calculate
+  "Register for the store changes that we care about, and compute our value."
+  ;; We do all this in the same function because both rely on some of
+  ;; the same information: what the order elements are for each id.
+  [reporter]
+  (let [data (reporter-data reporter)]
+    (when (data-attended? data)
+      (with-latest-value [immutable-ids (reporter-value (:ids data))]
+        (with-latest-value [immutable-store (reporter-value (:store data))]
+          (let [immutable-ids (seq immutable-ids)
+                order-ids (map #(first (id-label->element-ids
+                                        immutable-store % :order))
+                               immutable-ids)
+                ;; If an item has an order element, we can watch
+                ;; that. Otherwise, we have to watch the entire item,
+                ;; to see if an order element appears.
+                ids-to-watch (map #(or %1 %2) order-ids immutable-ids)]
+            ;; By doing the set-attendee! inside with-latest-value we
+            ;; make sure that we won't miss a change between our
+            ;; computation and the registration kicking in.
+            (set-attendee!
+             (:store data) reporter (+ (:priority data) 1) ids-to-watch
+             ordered-ids-callback)
+            (let [order-info (map
+                              ;; It is possible for an item not to
+                              ;; have order information, especially
+                              ;; temporarily while an entity is being
+                              ;; added. Tolerate that.
+                              #(if % (id->content immutable-store %) initial)
+                              order-ids)
+                  ordered (map
+                           second
+                           (sort
+                            orderable-comparator
+                            (map vector order-info immutable-ids
+                                 immutable-ids order-ids)))]
+              (set-value! reporter ordered))))))))
+
+(defn ordered-ids-callback
+  [& {reporter :key}]
+  (let [data (reporter-data reporter)
+        cd (:calculator-data data)]
+    (modify-and-act!
+     reporter
+     (fn [data]
+       (-> data
+           (assoc :value invalid)
+           (update-new-further-action inform-attendees reporter #{} #{})
+           (update-new-further-action
+            add-task-with-priority (:queue cd) (:priority data)
+            ordered-ids-register-and-calculate reporter))))))
+
+(defn do-ordered-ids-calculate
+  [reporter cd]
+  (modify-and-act!
+   reporter
+   (fn [data]
+     (let [{:keys [store ids id->order id->order-element]} data]
+       (if (data-attended? data)
+         (-> data
+             (assoc :dependent-depth 1) 
+             (update-new-further-action
+              set-attendee!
+              ids reporter (+ (:priority data) 1) ordered-ids-callback)
+             (update-new-further-action
+            add-task-with-priority (:queue cd) (:priority data)
+            ordered-ids-register-and-calculate reporter))
+         (-> data
+             (assoc :value :invalid)
+             (update-new-further-action remove-attendee! store reporter)
+             (update-new-further-action remove-attendee! ids reporter)))))))
+
+(defn ordered-ids-calculator
+  [reporter cd]
+  (add-task-with-priority
+   (:queue cd) (:priority (reporter-data reporter))
+   do-ordered-ids-calculate reporter cd))
+
+(defn ordered-ids-R
+  "Make a reporter that takes a mutable list of ids, and a mutable
+  store, and returns the ids in correct order."
+  [ids store]
+  ;; We don't cache any information from the store, since it is pretty
+  ;; efficient to get what we need whenever we need to recompute. The
+  ;; main point of this reporter is to avoid recomputing when it isn't
+  ;; necessary.
+  (new-reporter :calculator ordered-ids-calculator
+                :ids ids
+                :store store))
 
 ;;; TODO: Make a reporter version of order-items that takes a mutable
 ;;; set of ids and a mutable store. It keeps a cache of the current

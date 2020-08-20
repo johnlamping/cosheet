@@ -9,7 +9,7 @@
 ;;; involved queries.
 ;;;   fixed-term  May have nil as a content, indicating anything.
 ;;;               And may have negated elements, which match if the target
-;;;               does not have a matching element.
+;;;               does not have an element that matches them.
 ;;;         term  May also have variables. All occurrences of a variable
 ;;;               with the same name have to match the same value.
 ;;;        query  May also have quantifiers and conjunctions.

@@ -13,7 +13,7 @@
                                         reporter-value valid?]]
                       [calculator :refer [new-calculator-data compute]]
                       [query :refer [variable-query]]
-                      [query-calculator :refer [query-matches-mutable]]
+                      [query-calculator :refer [matching-items-R]]
                       [test-utils :refer [check]]
                      )
             ; :reload
@@ -36,8 +36,8 @@
         [s4 id4] (add-entity s3 id3 1)
         [s5 id5] (add-entity s4 id4 2)
         ms (new-mutable-store s5)
-        query '(1 2)
-        answer (query-matches-mutable query ms)
+        term '(1 2)
+        answer (matching-items-R term ms)
         history (atom [])
         callback (fn [& {:as args}]
                    (swap! history #(conj % (dissoc args :reporter))))]

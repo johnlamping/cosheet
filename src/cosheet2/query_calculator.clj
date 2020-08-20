@@ -16,14 +16,14 @@
                       [task-queue :refer [add-task-with-priority]]
                       [utils :refer [with-latest-value]])))
 
-;;; Manage the (re)computation of a query against a store.  The value
-;;; of its reporter is a set of ids whose items satisfy the query.
-;;; The query must be a term. Both change description and changed
+;;; Manage the (re)computation of a term against a store.  The value
+;;; of its reporter is a set of ids whose items satisfy the term.
+;;; Both change description and changed
 ;;; categories are the set ids that got added or removed.
 
 ;;; This manager adds following fields to the reporter:
-;;;               :query The query whose results we report.
-;;;               :store The mutable store to run the query against.
+;;;                :term The term whose results we report.
+;;;               :store The mutable store to run the term against.
 ;;;    :last-valid-value The last valid value we had.
 ;;;   :ids-to-reevaluate The store ids whose items may have changed since
 ;;;                      last-valid-value. If this is nil, we don't know
@@ -36,7 +36,7 @@
     (modify-and-act!
      reporter
      (fn [data]
-       (let [{:keys [value query last-valid-value ids-to-reevaluate]}
+       (let [{:keys [value term last-valid-value ids-to-reevaluate]}
              data
              [new-value changed-ids]
              (cond
@@ -52,7 +52,7 @@
                                (description->entity id immutable)
                                matches
                                (not-empty (matching-extensions
-                                           query immutable-entity))
+                                           term immutable-entity))
                                currently-in (contains? value id)]
                            (cond (and matches (not currently-in))
                                  [(conj value id) (conj changed-ids id)]
@@ -62,7 +62,7 @@
                                  [value changed-ids])))
                        [last-valid-value #{}] (seq ids-to-reevaluate))
                true
-               (let [items (matching-items query immutable)]
+               (let [items (matching-items term immutable)]
                  [(set (map :item-id items))
                   nil]))]
          (if
@@ -111,8 +111,8 @@
              (assoc :value :invalid)
              (update-new-further-action remove-attendee! store reporter)))))))
 
-(defn query-matches-mutable
-  [query mutable-store]
+(defn matching-items-R
+  [term mutable-store]
   (new-reporter :calculator query-calculator
-                :query query
+                :term term
                 :store mutable-store))

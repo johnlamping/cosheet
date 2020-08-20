@@ -146,13 +146,6 @@
                 :ids ids
                 :store store))
 
-;;; TODO: Make a reporter version of order-items that takes a mutable
-;;; set of ids and a mutable store. It keeps a cache of the current
-;;; order value for each item, and registers for the elements that
-;;; hold those orders in the store. When the set of items changes, it
-;;; adds the order info for any new items to its cache, and when any
-;;; order info changes, it also updates the cache.
-
 (defn orderable-entity?
   "Return whether this entity should get an order position."
   [entity]

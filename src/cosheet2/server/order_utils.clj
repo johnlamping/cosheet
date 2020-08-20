@@ -16,13 +16,13 @@
     [task-queue :refer [add-task-with-priority]])))
 
 ;;; This is copied from model_utils to avoid a circular dependency
-(defn semantic-element?
-  "Return true if an element counts as semantic information."
+(defn semantic-entity?
+  "Return true if an item counts as semantic information."
   [immutable-entity]
    (let [cont (content immutable-entity)]
      (or (string? cont)
          (number? cont)
-         (#{:label :category 'anything 'anything-immutable} cont))))
+         (#{:label :category 'anything} cont))))
 
 (defn orderable-comparator
   "Compare two sequences each of whose first element is an orderable."
@@ -151,7 +151,7 @@
 (defn orderable-entity?
   "Return whether this entity should get an order position."
   [entity]
-  (and (semantic-element? entity) (not (keyword? entity))))
+  (and (semantic-entity? entity) (not (keyword? (content entity)))))
 
 (defn update-add-entity-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given

@@ -56,16 +56,16 @@
 (def joe-39 (first (matching-elements 39 joe)))
 (def joe-45 (first (matching-elements 45 joe)))
 
-(deftest order-items-test
-  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+(deftest order-entities-test
+  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
-    (is (= (order-items joe-semantic-elements)
+    (is (= (order-entities joe-semantic-elements)
            joe-ordered-semantic-elements))
-    (is (= (order-items (reverse joe-semantic-elements))
+    (is (= (order-entities (reverse joe-semantic-elements))
            joe-ordered-semantic-elements))))
 
 (deftest ordered-ids-R-test
-  (let [joe-semantic-elements (filter semantic-element? (elements joe))
+  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
         joe-semantic-element-ids (map :item-id joe-semantic-elements)
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]
         joe-ordered-semantic-element-ids (map :item-id
@@ -191,7 +191,7 @@
                             (-> ordered (nth 2) second first)))
     ;; The last element is not semantic, as it is order information.
     (let [semantic-elements (butlast (elements ordered))]
-      (is (check (order-items semantic-elements)
+      (is (check (order-entities semantic-elements)
                  semantic-elements))
-      (is (check (order-items (reverse semantic-elements))
+      (is (check (order-entities (reverse semantic-elements))
                  semantic-elements)))))

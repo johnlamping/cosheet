@@ -15,7 +15,12 @@
     [utils :refer [thread-map with-latest-value]]
     [task-queue :refer [add-task-with-priority]])))
 
-;;; This is copied from model_utils to avoid a circular dependency
+;;; For purposes of comparing two entities, not all of their elements
+;;; matter. In particular, order information, or other information
+;;; about how to display the elements is considered irrelevant for
+;;; matching a condition. We call the elements that matter the semantic
+;;; elements.
+
 (defn semantic-entity?
   "Return true if an item counts as semantic information."
   [immutable-entity]
@@ -29,21 +34,21 @@
   [a b]
   (earlier? (first a) (first b)))
 
-(defn order-items
-  "Return the immutable items in the proper sort order."
-  [items]
-  (if (empty? (rest items))
-    items
-    (let [order-info (map #(label->content % :order) items)]
+(defn order-entities
+  "Return the immutable entities in the proper sort order."
+  [entities]
+  (if (empty? (rest entities))
+    entities
+    (let [order-info (map #(label->content % :order) entities)]
       (map second
            (sort orderable-comparator
-                 (map (fn [order item]
-                        ;; It is possible for an item not to have
+                 (map (fn [order entity]
+                        ;; It is possible for an entity not to have
                         ;; order information, especially temporarily
                         ;; while information is being
                         ;; propagated. Tolerate that.
-                        (vector (or order initial) item))
-                      order-info items))))))
+                        (vector (or order initial) entity))
+                      order-info entities))))))
 
 ;;; The next few functions implement a reporter that orders a set of
 ;;; ids, bupdating as either the set membership or their order

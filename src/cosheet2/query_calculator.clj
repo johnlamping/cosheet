@@ -6,6 +6,7 @@
                                         inform-attendees
                                         data-attended?
                                         new-reporter]]
+                      [store :refer (mutable-store?)]
                       [entity :refer [description->entity in-different-store
                                       to-list]]
                       entity-impl
@@ -112,7 +113,9 @@
              (update-new-further-action remove-attendee! store reporter)))))))
 
 (defn matching-items-R
-  [term mutable-store]
-  (new-reporter :calculator query-calculator
-                :term term
-                :store mutable-store))
+  [term store]
+  (if (mutable-store? store)
+    (new-reporter :calculator query-calculator
+                  :term term
+                  :store store)
+    (matching-items term store)))

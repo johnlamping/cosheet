@@ -172,7 +172,16 @@
 ;;; store if it needs, for example, to create some items for the
 ;;; action to act on.
 
-;;; 
+;;; There is a default for each of the functions that a dom
+;;; specification can have. For :rendering-data, the default returns
+;;; the store and a dependency on the :relative-id, checking that it
+;;; is an item id. For :render-dom, the default renders the item
+;;; corresponding to the :relative-id, minus any elements in
+;;; :excluded-elements. For :sub-action-info, the default returns the
+;;; set of items that are represented, in parallel, by the displayed
+;;; item. For :sub-specification, the default copies some fields from
+;;; the containing specification, and adds any additional fields from
+;;; the component.
 
 ;;; As a rule, there should be a separate component for every thing
 ;;; that the user can interact with. But if the code would prefer to

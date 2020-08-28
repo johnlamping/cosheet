@@ -68,12 +68,14 @@
 ;;; adds a new child, we don't need to re-compute or re-transmit its
 ;;; other children.
 
-;;; We use attributes, as supported by hiccup, to store html
-;;; attributes. A sub-component looks like hiccup, except that it has
+;;; We use attributes, as supported by hiccup, to store information about
+;;; components. So a sub-component looks like hiccup, except that it has
 ;;; this format, which is recognized and processed by the tracker:
 ;;;   [:component {
 ;;;            :relative-id <id relative to containing component>
 ;;;      :relative-identity <optional unique determiner of the data>
+;;;                :item-id <id of the item the dom is about, if :relative-id
+;;;                          is not an id>
 ;;;                  :class <optional subset of classes the DOM will have>
 ;;;                     ... <other attributes that help define the component>
 ;;;    }]
@@ -177,8 +179,8 @@
 ;;; the store and a dependency on the :relative-id, checking that it
 ;;; is an item id. For :render-dom, the default renders the item
 ;;; corresponding to the :relative-id, minus any elements in
-;;; :excluded-elements. For :sub-action-info, the default returns the
-;;; set of items that are represented, in parallel, by the displayed
+;;; :excluded-element-ids. For :sub-action-info, the default returns
+;;; the set of items that are each represented by the displayed
 ;;; item. For :sub-specification, the default copies some fields from
 ;;; the containing specification, and adds any additional fields from
 ;;; the component.

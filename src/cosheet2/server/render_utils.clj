@@ -193,6 +193,12 @@
         (transform-inherited-attributes :label)
         (assoc :template (list (:elements-template inherited) :tag)))))
 
+(defn transform-specification-for-elements
+  [specification]
+  (-> specification
+      (assoc-if-non-empty :template (:elements-template specification))
+      (dissoc :elements-template)))
+
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
   with 'anything changed to nil."
@@ -289,31 +295,31 @@
 ;;; DOM creators that are used by several files.
 
 (defn make-component
-  "Make a component dom with the given attributes"
-  [& {:as attributes}]
-  (assert (:relative-id attributes))
-  [:component attributes])
+  "Make a component dom with the given specification"
+  [{:as specification}]
+  (assert (:relative-id specification))
+  [:component specification])
 
 (defn item-component
   "Make a component dom to display the given item. The item's id becomes
    the relative-id."
-  [dom-fn item & additional-properties]
-  (apply make-component
-         :relative-id (:item-id item)
-         additional-properties))
+  [dom-fn item specification]
+  (make-component (assoc specification
+                         :relative-id (:item-id item))))
 
 (defn item-minus-excluded-component
   "Make a component dom to display the given item, minus the excluded
   elements.  The item's id becomes the relative-id, and the combination of
   that and the excluded elements' ids becomes the relative-identity."
-  [dom-fn item excluded-elements & additional-properties]
+  [dom-fn item excluded-elements specification]
   (if (empty? excluded-elements)
-    (apply item-component item additional-properties)
-    (apply item-component item
-           :excluded-elements (vec excluded-elements)
-           :relative-identity (concat [(:item-id item)]
-                                      (map :item-id excluded-elements))
-           additional-properties)))
+    (item-component item specification)
+    (item-component
+     item
+     (assoc specification
+            :excluded-elements (vec excluded-elements)
+            :relative-identity (concat [(:item-id item)]
+                                       (map :item-id excluded-elements))))))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
@@ -339,7 +345,7 @@
                         items excludeds)]
     (nest-if-multiple-DOM components direction)))
 
-(defn hierarchy-node-DOM-R
+(defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls
      (node-f node child-doms function-info inherited)
@@ -352,7 +358,7 @@
   node-f is called without function-info, and always with the same value
   of inherited."
   ([node node-f inherited]
-   (hierarchy-node-DOM-R node
+   (hierarchy-node-DOM node
                          (fn [node child-doms function-info inherited]
                            (node-f node child-doms inherited)) 
                          (fn [node function-info inherited]
@@ -367,7 +373,7 @@
                      (expr-let [child-info (child-info-f
                                             node function-info inherited)]
                        (let [[child-function-info child-inherited] child-info]
-                         (expr-seq map #(hierarchy-node-DOM-R
+                         (expr-seq map #(hierarchy-node-DOM
                                          % node-f child-info-f
                                          child-function-info child-inherited)
                                    children))))]

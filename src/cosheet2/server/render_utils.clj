@@ -195,9 +195,7 @@
 
 (defn transform-specification-for-elements
   [specification]
-  (-> specification
-      (assoc-if-non-empty :template (:elements-template specification))
-      (dissoc :elements-template)))
+  (assoc-if-non-empty {}  :template (:elements-template specification)))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -311,7 +309,7 @@
   "Make a component dom to display the given item, minus the excluded
   elements.  The item's id becomes the relative-id, and the combination of
   that and the excluded elements' ids becomes the relative-identity."
-  [dom-fn item excluded-elements specification]
+  [item excluded-elements specification]
   (if (empty? excluded-elements)
     (item-component item specification)
     (item-component
@@ -339,9 +337,8 @@
   and additional properties that the doms for each of the items should have,
   generate components for each item, and put them in a DOM.
   If there is more than one item, make the stack in the given direction."
-  [dom-fn items excludeds direction & additional-properties]
-  (let [components (map #(apply item-minus-excluded-component
-                                %1 %2 additional-properties)
+  [items excludeds direction specification]
+  (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
     (nest-if-multiple-DOM components direction)))
 

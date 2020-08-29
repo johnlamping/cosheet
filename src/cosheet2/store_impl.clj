@@ -382,19 +382,26 @@
   (id-valid? [this id]
     (contains? (:id->content-data this) id))
 
+  (id->subject [this id]
+    (when (instance? ItemId id)
+      (get-in this [:id->subject id])))
+
+  (id->content [this id]
+    (if (instance? ItemId id)
+      (get-in this [:id->content-data id])
+      id))
+
+  (id->element-ids [this id]
+    (pseudo-set-seq (get-in this [:id->elements id])))
+
   (id-label->element-ids [this id label]
     (seq
      (map #(get-in this [:id->subject %])
           (pseudo-set-seq
            (get-in this [:id->label->ids id (canonical-atom-form label)])))))
 
-  (id->element-ids [this id]
-    (pseudo-set-seq (get-in this [:id->elements id])))
-
-  (id->content [this id]
-    (if (instance? ItemId id)
-      (get-in this [:id->content-data id])
-      id))
+  (id->has-keyword? [this id keyword]
+    (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
 
   (id->containing-ids [this id]
     (assert (satisfies? StoredItemDescription id))
@@ -415,10 +422,6 @@
         [ids precise])))
 
   (mutable-store? [this] false)
-
-  (id->subject [this id]
-    (when (instance? ItemId id)
-      (get-in this [:id->subject id])))
   
   ImmutableStore
 

@@ -50,21 +50,24 @@
   (id-valid? [this id]
     "Returns true if the id is a valid id for the store.")
   
+  (id->subject [this id]
+    "Given an item, return its subject. Assumes that the subject of an entity
+    never changes, so doesn't return a reporter even for a mutable store.")
+
   (id->content [this id]
     "Given the id of an element, return a description of its content.")
 
   (id->element-ids [this id]
     "Returns a seq of all ids that have the id as their subject.")
 
-  (id->subject [this id]
-    "Given an item, return its subject. Assumes that the subject of an entity
-    never changes, so doesn't return a reporter even for a mutable store.")
-
   (id-label->element-ids [this id label]
     "Returns the ids of all elements of the item with given id that
      have the structure
-        (? (<label> (:label)))."
-    )
+        (? <label>),
+    where <label> is either a keyword or (<label> (:label))).")
+
+  (id->has-keyword? [this id keyword]
+    "Returns true if the item with the given is has the given keyword.")
 
   (id->containing-ids [this id]
     "Returns the set of all ids that have the given id as their content.")

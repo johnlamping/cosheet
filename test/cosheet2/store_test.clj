@@ -147,7 +147,7 @@
           #{(make-id "0") (make-id "1") (make-id "4")})))
 
 (deftest id-valid?-test
-   (is (id-valid? test-store (make-id "1")))
+  (is (id-valid? test-store (make-id "1")))
   (is (not (id-valid? test-store (make-id "wrong")))))
 
 (deftest id->content-test
@@ -173,6 +173,12 @@
          [(make-id "9")]))
   (is (= (id-label->element-ids test-store (make-id "0") :order)
          nil)))
+
+(deftest id->has-keyword?-test
+  (is (id->has-keyword? test-store (make-id "3") :baz))
+  (is (id->has-keyword? test-store (make-id "3") :label))
+  (is (not (id->has-keyword? test-store (make-id "3") :bar)))
+  (is (not (id->has-keyword? test-store (make-id "2") :baz))))
 
 (deftest id->containing-ids-test
   (is (= (id->containing-ids test-store (make-id "4")) #{(make-id "1")}))

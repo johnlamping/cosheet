@@ -515,7 +515,9 @@
 (def tagged-items-for-one-column-DOMs)
 (def tagged-items-for-two-column-DOMs)
 (def tagged-items-for-horizontal-DOMs)
-(def labels-wrapper-DOM)
+(defn labels-wrapper-DOM
+  [inner-dom labels must-show-label]
+  inner-dom)
 
 (defn items-with-labels-DOM
   "Make a dom for a sequence of items.
@@ -563,7 +565,7 @@
   (let [content (entity/content item)]
     (assert (entity/atom? content))
     (let [anything (#{'anything 'anything-immutable} content)]
-      [:div (into-attributes attributes
+      [:div (into-attributes (select-keys attributes [:class])
                              {:class (cond-> "content-text editable"
                                        (= content 'anything-immutable)
                                        (str " immutable"))})
@@ -579,11 +581,11 @@
     "Make a dom for a content and a group of non-label elements."
     [item elements specification]
   (let [content-dom (make-component
-                     (assoc (select-keys specification [:template])
+                     (assoc (select-keys specification [:template :class])
                             :relative-id :content
                             :item-id (:item-id item)))]
       (if (empty? elements)
-        (add-attributes content-dom {:class "item"})
+        content-dom
         (let [elements-spec (transform-specification-for-elements specification)
               elements-dom (items-with-labels-DOM
                             elements true nil :vertical elements-spec)]
@@ -598,18 +600,21 @@
   [{:keys [relative-id must-show-label excluded-element-ids]
     :as specification}
    store]
-  (if (= relative-id :content)
-    (render-content-only-DOM specification store)
-    (do (println "Generating DOM for" (simplify-for-print relative-id))
-        (let [entity (description->entity relative-id store)]
-          (let [elements (remove (set (map #(description->entity % store)
-                                           excluded-element-ids))
-                                 (semantic-elements entity))
-                [labels non-labels] (separate-by label? elements)]
-            (labels-wrapper-DOM
-             (item-content-and-non-label-elements-DOM
-              entity non-labels (update specification
-                                        :template
-                                        (add-elements-to-entity-list
-                                         (map semantic-to-list labels))))
-             labels must-show-label))))))
+  (let [item-specification (into-attributes specification {:class "item"})]
+    (if (= relative-id :content)
+      (render-content-only-DOM item-specification store)
+      (do (println "Generating DOM for" (simplify-for-print relative-id))
+          (let [entity (description->entity relative-id store)]
+            (let [elements (remove (set (map #(description->entity % store)
+                                             excluded-element-ids))
+                                   (semantic-elements entity))
+                  [labels non-labels] (separate-by label? elements)]
+              (if (empty? elements)
+                (item-content-DOM entity item-specification)
+                (labels-wrapper-DOM
+                 (item-content-and-non-label-elements-DOM
+                  entity non-labels (update item-specification
+                                            :template
+                                            #(add-elements-to-entity-list
+                                              % (map semantic-to-list labels))))
+                 labels must-show-label))))))))

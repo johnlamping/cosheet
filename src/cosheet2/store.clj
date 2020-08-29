@@ -67,7 +67,8 @@
     where <label> is either a keyword or (<label> (:label))).")
 
   (id->has-keyword? [this id keyword]
-    "Returns true if the item with the given is has the given keyword.")
+    "Returns true if the item with the given is has an element whose
+    content is the given keyword.")
 
   (id->containing-ids [this id]
     "Returns the set of all ids that have the given id as their content.")

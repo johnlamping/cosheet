@@ -200,6 +200,10 @@
     (cache-and-categorize
      [id] id-label->element-ids this id label))
 
+  (id->has-keyword? [this id keyword]
+    (cache-and-categorize
+     [id] id->has-keyword? this id keyword))
+
   (candidate-matching-ids [this template]
     (cache candidate-matching-ids this template))
 

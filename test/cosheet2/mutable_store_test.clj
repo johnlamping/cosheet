@@ -32,18 +32,24 @@
         calculator-data (new-calculator-data queue) 
         mutable-store (new-mutable-store store)
         modified-store (update-content store element 99)]
-    ;; Test the accessors
+    ;; Test the accessors.
     (is (computation-value (id-valid? mutable-store element) cd))
     (is (not (computation-value (id-valid? mutable-store (make-id "wrong"))
                                 cd)))
     (is (= (computation-value
-            (id-label->element-ids mutable-store element :label)
+            (id-label->element-ids mutable-store element "by")
             cd)
-           (id-label->element-ids store element :label)))
+           (id-label->element-ids store element "by")))
     (is (= (computation-value (id->element-ids mutable-store element) cd)
            (id->element-ids store element)))
     (is (= (computation-value (id->content mutable-store element) cd)
            (id->content store element)))
+    (let [fred (first (id-label->element-ids store element "by"))
+          label (first (id->element-ids store fred))]
+      (is (computation-value
+           (id->has-keyword? mutable-store label :label) cd))
+      (is (not (computation-value
+                (id->has-keyword? mutable-store label :foo) cd))))
     (is (= (computation-value (candidate-matching-ids mutable-store 77) cd)
            (candidate-matching-ids store 77)))
     (is (mutable-store? mutable-store))

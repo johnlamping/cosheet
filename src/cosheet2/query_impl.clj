@@ -241,6 +241,9 @@
   (content [this]
     (bind-entity (content wrapped) env))
 
+  (has-keyword? [this keyword]
+    (some #(= (content %) keyword) (elements this)))
+
   (updating-immutable [this] this)
 
   (current-version [this]

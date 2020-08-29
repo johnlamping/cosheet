@@ -6,7 +6,7 @@
                       [store-utils :refer [add-entity]]
                       [entity :refer [to-list description->entity content
                                       elements label->elements mutable-entity?
-                                      atom?]]
+                                      has-keyword? atom?]]
                       entity-impl
                       [query :refer :all]
                       [query-impl :refer [bind-entity closest-template]]
@@ -122,6 +122,8 @@
            ()))
     (is (= (map to-list (label->elements bound :c))
            '((4 :c))))
+    (is (has-keyword? (first (label->elements bound :c)) :c))
+    (is (not (has-keyword? (first (label->elements bound :c)) :b)))
     (is (= (map to-list (label->elements alternate-bound 9))
            ()))
     (is (= (map to-list (label->elements partially-bound 9))

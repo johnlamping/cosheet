@@ -49,6 +49,10 @@
   (content [this]
     "Return the content of the entity.")
 
+  (has-keyword? [this keyword]
+    "Returns true if the entity has an element whose content is the
+    given keyword.")
+
   (updating-immutable [this]
     "If the entity is immutable, return it. Otherwise, return a
      reporter whose value is an immutable entity matching the current

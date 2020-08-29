@@ -2,6 +2,7 @@
   (:require (cosheet2 [store :refer [id-label->element-ids
                                      id->element-ids
                                      id->content id->subject
+                                     id->has-keyword?
                                      mutable-store?
                                      current-store
                                      Store]]
@@ -48,6 +49,9 @@
   (content [this]
     (description->entity (id->content store item-id) store))
 
+  (has-keyword? [this keyword]
+    (id->has-keyword? store item-id keyword))
+
   (updating-immutable [this] this)
 
   (current-version [this] this))
@@ -91,6 +95,9 @@
     (expr-let [content (id->content store item-id)]
       (description->entity content store)))
 
+  (has-keyword? [this keyword]
+    (id->has-keyword? store item-id keyword))
+
   (updating-immutable [this]
     (expr-let [immutable-store (category-change [item-id] store)]
         (in-different-store this immutable-store)))
@@ -121,6 +128,9 @@
 
   (content [this] (first this))
 
+  (has-keyword? [this keyword]
+    (some #(= (content %) keyword) (elements this)))
+
   (updating-immutable [this] this)
 
   (current-version [this] this))
@@ -132,6 +142,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
   clojure.lang.Symbol
@@ -140,6 +151,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.String
@@ -148,6 +160,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.Number
@@ -156,6 +169,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
   java.lang.Boolean
@@ -164,6 +178,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
   cosheet2.orderable.Orderable
@@ -172,6 +187,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
 
   nil ;; For convenience in null punning
@@ -180,6 +196,7 @@
   (label->elements [this label] nil)
   (elements [this] nil)
   (content [this] this)
+  (has-keyword? [this keyword] false)
   (updating-immutable [this] this)
   (current-version [this] this)
 )

@@ -36,7 +36,8 @@
         [s _] (add-simple-item s7 idb :label)
         item0 (description->entity id0 s)
         item1 (description->entity id1 s)
-        item99 (description->entity id99 s)]
+        item99 (description->entity id99 s)
+        item_b (description->entity idb s)]
     (is (= (:item-id  item0) id0))
     (is (= (:item-id  item1) id1))
     (is (not (atom? item0)))
@@ -51,6 +52,8 @@
     (is (= (elements (description->entity idd s))
            nil))
     (is (= (content item99) nil))
+    (is (has-keyword? item_b :label))
+    (is (not (has-keyword? item_b :foo)))
     (is (= (content (description->entity ida s)) 3))
     (is (not (atom? (content (description->entity idf s)))))
     (is (content (content (description->entity idf s))) "baz")
@@ -89,6 +92,7 @@
         item0 (description->entity id0 ms)
         item1 (description->entity id1 ms)
         item99 (description->entity id99 ms)
+        item_b (description->entity idb ms)
         list-99 `(nil ("baz" "bletch")
                       (4 "bar" ~(description->entity ide ms))
                       (3 ("foo" :label)))]
@@ -106,6 +110,8 @@
     (is (= (current-value (elements (description->entity idd ms)))
            nil))
     (is (= (current-value (content item99)) nil))
+    (is (current-value (has-keyword? item_b :label)))
+    (is (not (current-value (has-keyword? item_b :foo))))
     (is (= (current-value (content (description->entity ida ms))) 3))
     (is (not (current-value
               (atom? (current-value (content (description->entity idf ms)))))))
@@ -172,6 +178,9 @@
          '[(2 (3 :label))]))
   (is (= (content '(1 (2 3) (4 5))) 1))
   (is (= (content '((1 7) (2 3) (4 5))) '(1 7)))
+  (is (current-value (has-keyword? '(:bar (:foo :baz)) :foo)))
+  (is (not (current-value (has-keyword? '(:bar (:foo :baz)) :bar))))
+  (is (not (current-value (has-keyword? '(:bar (:foo :baz)) :baz))))
   (is (= (to-list '(((1) 1 2) (2 (3 (4))))) '(((1) 1 2) (2 (3 4)))))
   (is (= (to-list '(nil (1 nil))) '(nil (1 nil))))
   (is (= (to-deep-list '(((1) 1 2) (2 (3 (4))))) '((1 1 2) (2 (3 4)))))
@@ -205,7 +214,13 @@
   (is (= (content :foo) :foo))
   (is (= (content 'foo) 'foo))
   (is (= (content nil) nil))
-  (is (= (content orderable/initial) orderable/initial)))
+  (is (= (content orderable/initial) orderable/initial))
+  (is (not (has-keyword? 1 :foo)))
+  (is (not (has-keyword? true :foo)))
+  (is (not (has-keyword? "foo" :foo)))
+  (is (not (has-keyword? :foo :foo)))
+  (is (not (has-keyword? 'foo :foo)))
+  (is (not (has-keyword? nil :foo))))
 
 (deftest ultimate-content-test
   (is (= (ultimate-content 2) 2))

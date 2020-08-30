@@ -62,9 +62,28 @@
                  [:component {:template '("" (2 :label))
                               :relative-id :content
                               :item-id fred-id
-                              :render-dom render-content-only-DOM}]]]))
-    ;; TODO: check virtual label.
-    ))
+                              :render-dom render-content-only-DOM}]]])))
+  ;; Test must-show-label.
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    "Fred")
+        dom (render-item-DOM (assoc base-specification
+                                    :relative-id fred-id
+                                    :must-show-label true)
+                             store)]
+    (is (check
+         dom
+         [:div
+          {:class "horizontal-tags-element tag virtual-wrapper narrow item"}
+          [:component {:template '(anything :label)
+                       :relative-id :virtual-label
+                       :position :after
+                       :class "label"
+                       :render-dom render-virtual-DOM
+                       :sub-action-info action-info-virtual }]
+          [:component {:template ""
+                       :relative-id :content
+                       :item-id fred-id
+                       :render-dom render-content-only-DOM}]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

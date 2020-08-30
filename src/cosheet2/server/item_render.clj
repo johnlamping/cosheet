@@ -338,10 +338,6 @@
         (add-attributes (virtual-label-DOM inherited)
                         {:class "elements-wrapper"}))))
 
-  
-
-  
-
   (defn item-without-labels-DOM-R
     "Make a dom for an item or exemplar for a group of items,
    given that any of its labels are in excluded-elements.
@@ -446,8 +442,8 @@
                    #(add-elements-to-entity-list
                      % (canonical-set-to-list (:properties node)))))]))
   )
-(def render-virtual-DOM)
-(def action-info-virtual)
+(defn render-virtual-DOM [] (assert false))
+(defn action-info-virtual [] (assert false))
 
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
@@ -499,7 +495,7 @@
        (update :template
                #(if (has-keyword? % :label)
                   %
-                  (add-elements-to-entity-list % :label)))
+                  (add-elements-to-entity-list % [:label])))
        (into-attributes {:class "label"}))))
 
 (defn non-empty-labels-wrapper-DOM
@@ -514,15 +510,15 @@
   make a dom that includes any necessary labels wrapping the item.
   specification should be the one for the item." 
   [dom label-elements must-show-label specification]
-  (if (not (empty? label-elements))
-    (non-empty-labels-wrapper-DOM
-     dom label-elements :vertical
-     (transform-specification-for-elements specification))
-    (if (not must-show-label)
-      dom
-      [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
-       (virtual-label-DOM specification)
-       dom])))
+  (if (and (empty? label-elements) (not must-show-label))
+    dom
+    (let [elements-spec (transform-specification-for-elements specification)]
+      (if (not (empty? label-elements))
+        (non-empty-labels-wrapper-DOM
+         dom label-elements :vertical elements-spec)
+        [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
+         (virtual-label-DOM elements-spec)
+         dom]))))
 
 (def tagged-items-for-one-column-DOMs)
 (def tagged-items-for-two-column-DOMs)
@@ -621,7 +617,7 @@
                                    excluded-element-ids))
                          (semantic-elements entity))
         [labels non-labels] (separate-by label? elements)]
-    (-> (if (empty? elements)
+    (-> (if (and (empty? elements) (not must-show-label))
           (item-content-DOM entity specification)
           (let [inner-spec (update specification :template
                                    #(add-elements-to-entity-list

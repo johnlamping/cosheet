@@ -5,6 +5,7 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
+             [entity :refer [description->entity]]
              entity-impl
              [store :refer [make-id new-element-store]]
              store-impl
@@ -36,9 +37,34 @@
   (let [[store fred-id] (add-entity (new-element-store) nil "Fred")
         dom (render-item-DOM (assoc base-specification :relative-id fred-id)
                              store)]
-    (println "!!! DOM" dom)
     (is (check dom
-               [:div {:class "item content-text editable"} "Fred"]))))
+               [:div {:class "content-text editable item"} "Fred"])))
+  ;; Test a cell with a couple of labels, one excluded.
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    '("Fred" (1 :label) (2 :label)))
+        fred (description->entity fred-id store)
+        id1 (:item-id (first (matching-elements 1 fred)))
+        id2 (:item-id (first (matching-elements 2 fred)))
+        id-tag2 (:item-id (first (matching-elements
+                                  :label (description->entity id2 store))))
+        dom (render-item-DOM (assoc base-specification
+                                    :relative-id fred-id
+                                    :excluded-element-ids [id1])
+                             store)]
+    (is (check dom
+               [:div {:class "wrapped-element label item"}
+                [:component {:template 'anything
+                             :relative-id id2
+                             :excluded-element-ids [id-tag2]
+                             :relative-identity [id2 id-tag2]
+                             :class "label"}]
+                [:div {:class "indent-wrapper"}
+                 [:component {:template '("" (2 :label))
+                              :relative-id :content
+                              :item-id fred-id
+                              :render-dom render-content-only-DOM}]]]))
+    ;; TODO: check virtual label.
+    ))
 
 (comment
   (deftest item-DOM-R-test-one-column

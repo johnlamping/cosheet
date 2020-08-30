@@ -1,6 +1,7 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
-                      [entity :as entity :refer [label? description->entity]]
+                      [entity :as entity :refer [label? description->entity
+                                                 has-keyword?]]
                       [query :refer [matching-elements]]
                       [utils :refer [multiset-diff assoc-if-non-empty
                                      map-with-first-last
@@ -101,72 +102,6 @@
     (case direction
       :horizontal :vertical
       :vertical :horizontal))
-
-  (defn add-labels-DOM
-    "Add label dom to an inner dom. Direction gives the direction of the label
-  with respect to the inner dom. It can also be :vertical-wrapped, which puts
-  it above the inner dom, but with an indentation on the left too."
-    [labels-dom inner-dom direction]
-    (if (= direction :vertical-wrapped)
-      [:div {:class "wrapped-element tag"}
-       labels-dom
-       [:div {:class "indent-wrapper"} inner-dom]]
-      [:div {:class (case direction
-                      :vertical "vertical-tags-element"
-                      :horizontal "horizontal-tags-element tag")}
-       labels-dom inner-dom]))
-
-  (defn wrap-with-labels-DOM
-    "Direction gives the direction of the label with respect to the inner dom.
-  :vertical is interpreted as :vertical-wrapped."
-    [labels-dom inner-dom direction]
-    (add-labels-DOM labels-dom inner-dom (if (= direction :vertical)
-                                           :vertical-wrapped direction)))
-
-  (defn virtual-label-DOM
-    "Return a dom for a virtual label"
-    [inherited]
-    (add-attributes
-     (virtual-element-DOM nil :after
-                          (-> inherited
-                              transform-inherited-for-labels
-                              (update :key-prefix #(conj % :tags))))
-     {:class "tag"}))
-
-  (defn label-stack-DOM-R
-    "Given a non-empty list of label elements, return a stack of their doms.
-   Inherited should be halfway transformed to children."
-    [label-elements inherited]
-    (expr-let [ordered-labels (order-entities label-elements)
-               tags (expr-seq map #(condition-satisfiers-R % '(nil :tag))
-                              ordered-labels)]
-      (item-stack-DOM-R item-without-labels-DOM-R
-                        ordered-labels tags :vertical
-                        (-> inherited
-                            transform-inherited-for-labels
-                            (add-inherited-attribute {:class "tag"})))))
-
-  (defn non-empty-labels-wrapper-DOM-R
-    "Given a dom for an item, not including its labels, and a non-empty 
-  list of labels, make a dom that includes the labels wrapping the item.
-  Inherited should be half way to the children."
-    [inner-dom label-elements direction inherited]
-    (expr-let [stack (label-stack-DOM-R label-elements inherited)]
-      (wrap-with-labels-DOM stack inner-dom direction)))
-
-  (defn labels-wrapper-DOM-R
-    "Given a dom for an item, not including its labels, and a list of labels,
-  make a dom that includes any necessary labels wrapping the item.
-  inherited should be half way to the children." 
-    [item dom label-elements must-show-label inherited]
-    (if (not (empty? label-elements))
-      (non-empty-labels-wrapper-DOM-R dom label-elements :vertical inherited)
-      (if (not must-show-label)
-        dom
-        [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
-         (virtual-label-DOM
-          (update inherited :key-prefix #(conj % (:item-id item))))
-         dom])))
 
   (defn virtual-element-with-label-DOM
     "Return the dom for a virtual element of an item."
@@ -511,13 +446,87 @@
                    #(add-elements-to-entity-list
                      % (canonical-set-to-list (:properties node)))))]))
   )
+(def render-virtual-DOM)
+(def action-info-virtual)
+
+(defn virtual-element-DOM
+  "Make a dom for a place where there could be an element, but isn't"
+  [specification]
+  (assert (:template specification))
+  (make-component (assoc specification
+                         :render-dom render-virtual-DOM
+                         :sub-action-info action-info-virtual)))
+
+(defn add-labels-DOM
+  "Add label dom to an inner dom. Direction gives the direction of the label
+  with respect to the inner dom. It can also be :vertical-wrapped, which puts
+  it above the inner dom, but with an indentation on the left too."
+    [labels-dom inner-dom direction]
+    (if (= direction :vertical-wrapped)
+      [:div {:class "wrapped-element label"}
+       labels-dom
+       [:div {:class "indent-wrapper"} inner-dom]]
+      [:div {:class (case direction
+                      :vertical "vertical-labels-element label"
+                      :horizontal "horizontal-labels-element label")}
+       labels-dom inner-dom]))
+
+(defn wrap-with-labels-DOM
+  "Direction gives the direction of the label with respect to the inner dom.
+  :vertical is interpreted as :vertical-wrapped."
+    [labels-dom inner-dom direction]
+  (add-labels-DOM labels-dom inner-dom
+                  (if (= direction :vertical) :vertical-wrapped direction)))
+
+(defn label-stack-DOM
+  "Given a non-empty list of label elements, return a stack of their doms.
+   Inherited should be halfway transformed to children."
+  [label-elements specification]
+  (let [ordered-labels (order-entities label-elements)
+        label-tags (map #(condition-satisfiers % '(nil :label))
+                       ordered-labels)]
+    (item-stack-DOM ordered-labels label-tags :vertical
+                    (into-attributes specification {:class "label"}))))
+
+(defn virtual-label-DOM
+    "Return a dom for a virtual label"
+  [specification]
+  (assert (:template specification))
+  (virtual-element-DOM
+   (-> specification
+       (assoc :position :after
+              :relative-id :virtual-label)
+       (update :template
+               #(if (has-keyword? % :label)
+                  %
+                  (add-elements-to-entity-list % :label)))
+       (into-attributes {:class "label"}))))
+
+(defn non-empty-labels-wrapper-DOM
+  "Given a dom for an item, not including its labels, and a non-empty 
+  list of labels, make a dom that includes the labels wrapping the item."
+  [inner-dom label-elements direction specification]
+  (let [stack (label-stack-DOM label-elements specification)]
+    (wrap-with-labels-DOM stack inner-dom direction)))
+
+(defn labels-wrapper-DOM
+  "Given a dom for an item, not including its labels, and a list of labels,
+  make a dom that includes any necessary labels wrapping the item.
+  specification should be the one for the item." 
+  [dom label-elements must-show-label specification]
+  (if (not (empty? label-elements))
+    (non-empty-labels-wrapper-DOM
+     dom label-elements :vertical
+     (transform-specification-for-elements specification))
+    (if (not must-show-label)
+      dom
+      [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
+       (virtual-label-DOM specification)
+       dom])))
 
 (def tagged-items-for-one-column-DOMs)
 (def tagged-items-for-two-column-DOMs)
 (def tagged-items-for-horizontal-DOMs)
-(defn labels-wrapper-DOM
-  [inner-dom labels must-show-label]
-  inner-dom)
 
 (defn items-with-labels-DOM
   "Make a dom for a sequence of items.
@@ -542,6 +551,7 @@
           [stack])
         (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
                    augmented (map (fn [item-map excluded]
+                                    ;; TODO: Make this :excluded-elements-ids
                                     (assoc item-map :exclude-elements excluded))
                                   item-maps excludeds)
                    hierarchy (hierarchy-by-canonical-info augmented)]
@@ -565,15 +575,16 @@
   (let [content (entity/content item)]
     (assert (entity/atom? content))
     (let [anything (#{'anything 'anything-immutable} content)]
-      [:div (into-attributes (select-keys attributes [:class])
-                             {:class (cond-> "content-text editable"
-                                       (= content 'anything-immutable)
-                                       (str " immutable"))})
+      [:div (cond-> (-> (select-keys attributes [:class])
+                        (into-attributes {:class "content-text editable"} ))
+              (has-keyword? item :label)
+              (into-attributes (:class "label")))
        (if anything "\u00A0..." (str content))])))
 
 (defn render-content-only-DOM
   "Render a dom spec for only the content of an item."
-  [{:keys [item-id class]} store]
+  [{:keys [relative-id item-id class]} store]
+  (assert (= relative-id :content))
   (item-content-DOM (description->entity item-id store)
                     (if class {:class class} {})))
 
@@ -581,40 +592,42 @@
     "Make a dom for a content and a group of non-label elements."
     [item elements specification]
   (let [content-dom (make-component
-                     (assoc (select-keys specification [:template :class])
-                            :relative-id :content
-                            :item-id (:item-id item)))]
+                     (cond-> (-> (select-keys specification [:template :class])
+                                 (assoc :relative-id :content
+                                        :item-id (:item-id item)
+                                        :render-dom render-content-only-DOM))
+                       (has-keyword? item :label)
+                       (into-attributes {:class "label"})))]
       (if (empty? elements)
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
               elements-dom (items-with-labels-DOM
                             elements true nil :vertical elements-spec)]
-          [:div {:class "item with-elements"}
+          [:div (cond-> {:class "item with-elements"}
+                  (has-keyword? item :label)
+                  (str " label"))
            content-dom elements-dom]))))
 
 ;;; TODO: Need to track :width
-;;; TODO: Need to check for being a label.
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items)."
   [{:keys [relative-id must-show-label excluded-element-ids]
     :as specification}
    store]
-  (let [item-specification (into-attributes specification {:class "item"})]
-    (if (= relative-id :content)
-      (render-content-only-DOM item-specification store)
-      (do (println "Generating DOM for" (simplify-for-print relative-id))
-          (let [entity (description->entity relative-id store)]
-            (let [elements (remove (set (map #(description->entity % store)
-                                             excluded-element-ids))
-                                   (semantic-elements entity))
-                  [labels non-labels] (separate-by label? elements)]
-              (if (empty? elements)
-                (item-content-DOM entity item-specification)
-                (labels-wrapper-DOM
-                 (item-content-and-non-label-elements-DOM
-                  entity non-labels (update item-specification
-                                            :template
-                                            #(add-elements-to-entity-list
-                                              % (map semantic-to-list labels))))
-                 labels must-show-label))))))))
+  (println "Generating DOM for" (simplify-for-print relative-id))
+  (let [entity (description->entity relative-id store)
+        elements (remove (set (map #(description->entity % store)
+                                   excluded-element-ids))
+                         (semantic-elements entity))
+        [labels non-labels] (separate-by label? elements)]
+    (-> (if (empty? elements)
+          (item-content-DOM entity specification)
+          (let [inner-spec (update specification :template
+                                   #(add-elements-to-entity-list
+                                     % (map semantic-to-list labels)))
+                inner-dom (item-content-and-non-label-elements-DOM
+                           entity non-labels inner-spec)]
+            (labels-wrapper-DOM
+             inner-dom labels must-show-label specification)))
+        (add-attributes {:class "item"}))))

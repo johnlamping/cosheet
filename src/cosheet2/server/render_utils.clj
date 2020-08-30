@@ -195,7 +195,8 @@
 
 (defn transform-specification-for-elements
   [specification]
-  (assoc-if-non-empty {}  :template (:elements-template specification)))
+  (assoc-if-non-empty (select-keys specification [:column :row :width])
+                      :template (:elements-template specification)))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -264,8 +265,7 @@
 
 (comment
   (defn virtual-referent-DOM
-    "Make a dom for a place that could hold an item, but doesn't, given
-  the virtual referent for the new item."
+    "Make a dom for a place that could hold an element, but doesn't."
     [referent inherited]
     [:div (-> (:selectable-attributes inherited)
               (into-attributes (item-or-content-attributes inherited))
@@ -276,19 +276,6 @@
                          :select-pattern (or (:select-pattern inherited)
                                              (conj (:key-prefix inherited)
                                                    [:pattern]))}}))]))
-
-(comment
-  (defn virtual-element-DOM
-    "Make a dom for a place that could hold an item, but doesn't.
-  inherited must include a :template and a :subject-referent."
-    [adjacent-referent position inherited]
-    (assert (not (nil? (:subject-referent inherited))))
-    (let [referent (virtual-referent
-                    (:template inherited)
-                    (subject-referent-given-inherited inherited)
-                    adjacent-referent
-                    :position position)]
-      (virtual-referent-DOM referent inherited))))
 
 ;;; DOM creators that are used by several files.
 
@@ -301,7 +288,7 @@
 (defn item-component
   "Make a component dom to display the given item. The item's id becomes
    the relative-id."
-  [dom-fn item specification]
+  [item specification]
   (make-component (assoc specification
                          :relative-id (:item-id item))))
 
@@ -310,27 +297,30 @@
   elements.  The item's id becomes the relative-id, and the combination of
   that and the excluded elements' ids becomes the relative-identity."
   [item excluded-elements specification]
+  (assert (empty? (:excluded-element-ids specification)))
   (if (empty? excluded-elements)
     (item-component item specification)
-    (item-component
-     item
-     (assoc specification
-            :excluded-elements (vec excluded-elements)
-            :relative-identity (concat [(:item-id item)]
-                                       (map :item-id excluded-elements))))))
+    (let [excluded-ids (map :item-id excluded-elements)]
+      (item-component
+       item
+       (assoc specification
+              :excluded-element-ids (vec excluded-ids)
+              :relative-identity (concat [(:item-id item)] excluded-ids))))))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
   a dom with all of the doms as children and with class for
   the stack direction."
-  [doms direction]
+  [doms direction specification]
   (cond
     (empty? doms) [:div {}]
     (= (count doms) 1)  (first doms)
-    true (let [class (case direction
+    true (let [direction-class (case direction
                        :vertical "vertical-stack"
                        :horizontal "horizontal-stack")]
-           (into [:div {:class class}] doms))))
+           (into [:div (into-attributes (select-keys specification [:class])
+                                        {:class direction-class})]
+                 doms))))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
@@ -340,7 +330,7 @@
   [items excludeds direction specification]
   (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
-    (nest-if-multiple-DOM components direction)))
+    (nest-if-multiple-DOM components direction specification)))
 
 (defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

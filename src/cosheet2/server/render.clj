@@ -68,22 +68,26 @@
 ;;; adds a new child, we don't need to re-compute or re-transmit its
 ;;; other children.
 
-;;; We use attributes, as supported by hiccup, to store information about
-;;; components. So a sub-component looks like hiccup, except that it has
-;;; this format, which is recognized and processed by the tracker:
+;;; We use attributes, as supported by hiccup, to store information
+;;; about components. So a sub-component looks like hiccup, with this
+;;; format which is recognized and processed by the tracker:
 ;;;   [:component {
-;;;            :relative-id <id relative to containing component>
-;;;      :relative-identity <optional unique determiner of the data>
-;;;                :item-id <id of the item the dom is about, if :relative-id
-;;;                          is not an id>
-;;;                  :class <optional subset of classes the DOM will have>
-;;;                     ... <other attributes that help define the component>
+;;;                 :class  Optional subset of classes the DOM will have
+;;;           :relative-id  The id relative to containing component
+;;;                         This is also the id the dom is about, unless
+;;;                         overridden by :item-id
+;;;     :relative-identity  Optional unique determiner of this map given
+;;;                         the containing component if :relative-id does
+;;;                         not uniquely determine it
+;;;                    ...  Any attribute that a dom specification (see
+;;;                         below) can have.
+;;;                         
 ;;;    }]
 ;;; While a dom can change, the information for a sub-component with a
 ;;; given :relative-identity must always be the same, given the
 ;;; component. This allows the tracker to only notices changes to
 ;;; relative-identity. If :relative-identity isn't present, then
-;;; :relative-id functions as :relative-identity.
+;;; :relative-id also acts as :relative-identity.
 
 ;;; The dom_tracker will give the client a dom with these subsidiary
 ;;; components, with the initially specified class, and it will create
@@ -163,12 +167,12 @@
 
 ;;; Rather than compute this information during rendering, it is
 ;;; computed as actions are done, using with two more functions in the
-;;; spec. :sub-action-info holds a function that takes a subsidiary
-;;; id, the current store, the current action, and the action
-;;; information for the current dom, and returns the action info for
-;;; the subsidary dom. Then the function in :handle-action takes the
-;;; action information for the dom, a user action, and the current
-;;; store and returns a store with the appropriate changes.
+;;; spec. :action-data holds a function that takes a dom
+;;; specification, the action data for the containing dom, a user
+;;; action, and the current store, and returns the action data for the
+;;; given dom. Then the function in :handle-action takes the action
+;;; information for the dom, a user action, and the current store and
+;;; returns a store with the appropriate changes.
 
 ;;; This protocol allows :sub-action-info to pass down a modified
 ;;; store if it needs, for example, to create some items for the
@@ -206,17 +210,57 @@
 ;;; than that. We thus use a sequence of the relative ids on the path
 ;;; of containment in the dom.
 
-;;; Here is some of the information in a dom specification:
+;;; A dom specification can contain any of these fields.
+;;;            :render-dom  Optional function that takes this specification
+;;;                         and additional reporter values, then produces
+;;;                         the dom.
+;;;        :rendering-data  Optional function that takes this map and the
+;;;                         mutable store and returns the reporters whose
+;;;                         values are needed by :render-dom
+;;;         :handle-action  Optional function that takes data about how to
+;;;                         interpret actions, a user action, and the current
+;;;                         store, and returns a store with the appropriate
+;;;                         changes.
+;;;           :action-data  Optional function that takes a dom specification,
+;;;                         the action data for the containing dom, a user
+;;;                         action, and the current store, and returns the
+;;;                         action data for the given dom.
+;;;           :relative-id  The id relative to containing component
+;;;                         This is also the id the dom is about, unless
+;;;                         overridden by :item-id
+;;;     :relative-identity  Optional unique determiner of this map given
+;;;                         the containing component if :relative-id does
+;;;                         not uniquely determine it
+;;;               :item-id  The id of the item the dom is about, if
+;;;                         :relative-id is not an id or needs to be
+;;;                         overridden.
+;;;                 :class  Optional subset of classes the DOM will have.
+;;;       :must-show-label  If true, a virtual label should be shown
+;;;                         if there are no labels.
+;;;                 :width  A float, giving the width of this dom element
+;;;                         compared to the minimum width for two column
+;;;                         format.
+;;;         :twin-template  The template that the twins of this dom
+;;;                         must start out satisfying. For a virtual
+;;;                         dom, this is what it should start out as.
+;;;     :elements-template  Optional. Elements should use this as their
+;;;                         twin-template.
+;;;           :adjacent-id  For a virtual item, the id of the item to be
+;;;                         adjacent to.
+;;;        :adjacent-order  Whether a new virtual item should come :before
+;;;                         or :after the adjacent item.
+;;;                     ...  <other attributes that help define the component>
+;;;    }]
+
+;;; Here is a minimal dom specification, lacking its :relative-id:
 (def basic-dom-spec
-  {            :width 1.5  ; A float, giving the width of this dom element
-                           ; compared to the minimum width for two column
-                           ; format.
-              :priority 0  ; How important it is to render this item earlier.
-                           ; (Lower is more important.)
-         :twin-template "" ; The template that the twins of this dom
-                           ; must satisfy.
-  :elements-template 'anything ; elements should use this
-;                               as the template for their content.
+  {            :width 1.5 ; A float, giving the width of this dom element
+                          ; compared to the minimum width for two column
+                          ; format.
+       :twin-template ""  ; The template that the twins of this dom
+                          ; must start out satisfying.
+   :elements-template ""  ; elements should use this
+                          ; as the template for their content.
    })
 ;;; In some cases, the inherited information is halfway between being about
 ;;; an item and its children. In this case, :template and :attributes are

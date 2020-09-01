@@ -196,7 +196,8 @@
 (defn transform-specification-for-elements
   [specification]
   (assoc-if-non-empty (select-keys specification [:width])
-                      :twin-template (:elements-template specification)))
+                      :twin-template (or (:elements-template specification)
+                                         "")))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -279,6 +280,20 @@
 
 ;;; DOM creators that are used by several files.
 
+(defn composed-action-data-transform [] (assert false))
+
+(defn add-action-data-transformation
+  "Add an action data transformation to any current one."
+  [current to-add]
+  (cond
+    (nil? current)
+    to-add
+    (and (sequential? current)
+         (= (first current) composed-action-data-transform))
+    (conj current to-add)
+    true
+    [composed-action-data-transform current to-add]))
+
 (defn make-component
   "Make a component dom with the given specification"
   [{:as specification}]
@@ -311,26 +326,24 @@
   "If there is only one dom in the doms, return it. Otherwise, return
   a dom with all of the doms as children and with class for
   the stack direction."
-  [doms direction specification]
+  [doms direction]
   (cond
     (empty? doms) [:div {}]
-    (= (count doms) 1)  (first doms)
+    (= (count doms) 1) (first doms)
     true (let [direction-class (case direction
                        :vertical "vertical-stack"
                        :horizontal "horizontal-stack")]
-           (into [:div (into-attributes (select-keys specification [:class])
-                                        {:class direction-class})]
+           (into [:div {:class direction-class}]
                  doms))))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
-  and additional properties that the doms for each of the items should have,
   generate components for each item, and put them in a DOM.
   If there is more than one item, make the stack in the given direction."
   [items excludeds direction specification]
   (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
-    (nest-if-multiple-DOM components direction specification)))
+    (nest-if-multiple-DOM components direction)))
 
 (defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

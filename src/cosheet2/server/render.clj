@@ -133,28 +133,16 @@
 ;;; a query on the store, so the query doesn't have to be re-run for
 ;;; every change to the store.
 
-;;; If the resulting dom contains components, the dom spec will have a
-;;; function under :sub-specification that takes the parent dom spec
-;;; and the component description from the hiccup and returns the spec
-;;; for that component. It may only depend on the component
-;;; description (which will only depend on its id). The general
-;;; principle is that what sub-specifications there are can depend on
-;;; the store, but given that a sub-specifications with a given id
-;;; appears, its dom spec should be fixed, given the id. Typically,
-;;; the id is the item id of what the component is supposed to show.
-
-;;; When a spec changes, any of its sub-component specs may have
-;;; changed, so all have to be regenerated. But when component's dom
-;;; changes, the tracker only needs to compute specs of sub-components
-;;; with new ids and render them. It can assume that any pre-existing
-;;; components and their renderings haven't changed. (This means that
-;;; a component that is one of several siblings has to be rendered
-;;; identically to one that is by itself, or needs a different id for
-;;; the two cases. For items in table cells, which need different
-;;; formatting if they are an entire cell vs part of an item stack,
-;;; inherited CSS can handle the formatting. In other cases, the
-;;; sub-component's id may need to change between the two different
-;;; rendering situations.)
+;;; When a component's dom changes, the tracker only needs to
+;;; re-render sub-components with new ids. It can assume that any
+;;; pre-existing components and their renderings haven't
+;;; changed. (This means that a component that is one of several
+;;; siblings has to be rendered identically to one that is by itself,
+;;; or needs a different id for the two cases. For items in table
+;;; cells, which need different formatting if they are an entire cell
+;;; vs part of an item stack, inherited CSS can handle the
+;;; formatting. In other cases, the sub-component's id may need to
+;;; change between the two different rendering situations.)
 
 ;;; In addition to rendering dom, a dom specification knows how to
 ;;; interpret actions on its dom. That interpretation typically
@@ -174,41 +162,36 @@
 ;;; information for the dom, a user action, and the current store and
 ;;; returns a store with the appropriate changes.
 
-;;; This protocol allows :sub-action-info to pass down a modified
-;;; store if it needs, for example, to create some items for the
-;;; action to act on.
+;;; This protocol allows :action-data to pass down a modified store as
+;;; part of its output. For example, it might want to create some
+;;; items for the action to act on.
 
 ;;; There is a default for each of the functions that a dom
 ;;; specification can have. For :rendering-data, the default returns
 ;;; the store and a dependency on the :relative-id, checking that it
 ;;; is an item id. For :render-dom, the default renders the item
 ;;; corresponding to the :relative-id, minus any elements in
-;;; :excluded-element-ids. For :sub-action-info, the default returns
+;;; :excluded-element-ids. For :action-data, the default returns
 ;;; the set of items that are each represented by the displayed
-;;; item. For :sub-specification, the default copies some fields from
-;;; the containing specification, and adds any additional fields from
-;;; the component.
+;;; item.
 
-;;; As a rule, there should be a separate component for every thing
-;;; that the user can interact with. But if the code would prefer to
-;;; add something that can be interacted with and that is not a
-;;; component, this protocol supports that, as long as
-;;; :sub-action-info can handle its id, as well as the ids of actual
-;;; components.
-
-;;; Each component is uniquely identified with a id, as is any other
-;;; dom node that the user might interact with. (The dom for a
-;;; component need not have a key; the component can add it when
-;;; necessary.) There must never be two components or doms with the
-;;; same id, even during updates, or all sorts of confusion can
+;;; Each component is uniquely identified with a id, which is added by
+;;; the dom tracker. There must never be two components or doms with
+;;; the same id, even during updates, or all sorts of confusion can
 ;;; result. The id of a component must also not change throughout the
 ;;; life of its parent dom, because conserving it is how we reuse
 ;;; subsidiary doms.
 
-;;; The heart of a key is the id of the item the dom is about. But
-;;; since there can be several dom nodes about same item, we need more
-;;; than that. We thus use a sequence of the relative ids on the path
-;;; of containment in the dom.
+;;; The heart of the id is typically the :relative-id, which is the id
+;;; of the item the dom is about. But since there can be several dom
+;;; nodes about same item, we need more than that. We thus use the
+;;; sequence of the relative ids on the path of containment in the
+;;; dom.
+
+;;; As a rule, there should be a separate component for every thing
+;;; that the user can interact with. But the dom tracker is free to
+;;; elide out components when it sends them to the client, as long as
+;;; it includes their ids.
 
 ;;; A dom specification can contain any of these fields.
 ;;; Any of the fields that expect functions will also accept a list,
@@ -257,14 +240,12 @@
 ;;;    }]
 
 ;;; Here is a minimal dom specification, lacking its :relative-id:
-(def basic-dom-spec
+(def basic-dom-specification
   {            :width 1.5 ; A float, giving the width of this dom element
                           ; compared to the minimum width for two column
                           ; format.
        :twin-template ""  ; The template that the twins of this dom
                           ; must start out satisfying.
-   :elements-template ""  ; elements should use this
-                          ; as the template for their content.
    })
 ;;; In some cases, the inherited information is halfway between being about
 ;;; an item and its children. In this case, :template and :attributes are

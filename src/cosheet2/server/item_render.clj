@@ -24,8 +24,9 @@
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-entities semantic-entity?]]
-             [render-utils :refer [make-component item-stack-DOM
-                                   nest-if-multiple-DOM condition-satisfiers
+             [render-utils :refer [make-component add-action-data-transformation
+                                   item-stack-DOM nest-if-multiple-DOM
+                                   condition-satisfiers
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]])))
 (comment
@@ -317,8 +318,6 @@
                    #(add-elements-to-entity-list
                      % (canonical-set-to-list (:properties node)))))]))
   )
-(defn render-virtual-DOM [] (assert false))
-(defn action-info-virtual [] (assert false))
 
 (defn opposite-direction
     [direction]
@@ -326,13 +325,20 @@
       :horizontal :vertical
       :vertical :horizontal))
 
+;;; TODO: Make sure to add "editable" to a virtual dom's class.
+
+(defn render-virtual-DOM [] (assert false))
+(defn virtual-action-data [] (assert false))
+
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
   [specification]
   (assert (:twin-template specification))
-  (make-component (assoc specification
-                         :render-dom render-virtual-DOM
-                         :sub-action-info action-info-virtual)))
+  (make-component
+   (-> specification
+       (assoc :render-dom render-virtual-DOM)
+       (update :action-data
+               #(add-action-data-transformation % virtual-action-data)))))
 
 (defn add-labels-DOM
   "Add label dom to an inner dom. Direction gives the direction of the label
@@ -356,8 +362,7 @@
                   (if (= direction :vertical) :vertical-wrapped direction)))
 
 (defn label-stack-DOM
-  "Given a non-empty list of label elements, return a stack of their doms.
-   Inherited should be halfway transformed to children."
+  "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
   (let [ordered-labels (order-entities label-elements)
         label-tags (map #(condition-satisfiers % '(nil :label))
@@ -366,7 +371,8 @@
                     (into-attributes specification {:class "label"}))))
 
 (defn virtual-label-DOM
-    "Return a dom for a virtual label"
+  "Return a dom for a virtual label. The label must be inside the component
+  for the item."
   [specification]
   (assert (:twin-template specification))
   (virtual-element-DOM
@@ -401,33 +407,32 @@
          (virtual-label-DOM elements-spec)
          dom]))))
 
-(def labeled-items-for-two-column-DOMs)
-(def labeled-items-for-horizontal-DOMs)
-(def exemplar-action-data)
+(defn labeled-items-for-two-column-DOMs [] (assert false))
+(defn labeled-items-for-horizontal-DOMs [] (assert false))
+(defn exemplar-action-data [] (assert false))
 
 (defn labeled-items-properties-DOM
   "Given a hierarchy node for labels, Return DOM for example elements
-  that give rise to the properties of the node. The specification applies
-  to the overall node."
+  that give rise to the properties of the node, given a specification
+  that applies to the overall node."
     [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
-        descendant-ids (map :item-id descendants)
+        descendant-ids (map :item-id descendant-items)
         example-descendant-id (first descendant-ids)
-        child-spec (assoc specification
-                          :action_data [exemplar-action-data descendant-ids])]
-      (let [dom (if (empty? (:properties hierarchy-node))
-                  (virtual-element-DOM
-                   (assoc specification
-                          ;; TODO: Track hierarchy depth in the spec, and use
-                          ;; it to uniquify virtual labels.
-                          :relative-id :virtual-label
-                          :relative-identity [:virtual-label
-                                              example-descendant-id]))
-                 (label-stack-DOM
-                  (hierarchy-node-example-elements hierarchy-node)
-                  child-spec))]
-        ;; Even if stacked, we need to mark the stack as "label" too.
-        (add-attributes dom {:class "label"}))))
+        child-spec (assoc (transform-specification-for-elements specification)
+                          :action-data [exemplar-action-data descendant-ids])]
+    (let [dom (if (empty? (:properties hierarchy-node))
+                (virtual-element-DOM
+                 (assoc child-spec
+                        ;; TODO: Track hierarchy depth in the spec, and use
+                        ;; it to uniquify virtual labels.
+                        :relative-id [example-descendant-id
+                                      :virtual-label]))
+                (label-stack-DOM
+                 (hierarchy-node-example-elements hierarchy-node)
+                 child-spec))]
+      ;; Even if stacked, we need to mark the stack as "label" too.
+      (add-attributes dom {:class "label"}))))
 
 (defn hierarchy-leaf-items-DOM
   "Given a hierarchy node with labels as the properties, generate DOM
@@ -440,11 +445,10 @@
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
-        leaf-spec (if (empty? property-list)
-                    specification
-                    (update specification :twin-template
-                            #(add-elements-to-entity-list
-                              % property-list)))]
+        leaf-spec (cond-> (dissoc specification :direction)
+                    (not (empty? property-list))
+                    (update :twin-template
+                            #(add-elements-to-entity-list % property-list)))]
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
@@ -463,7 +467,7 @@
         (item-stack-DOM
          items excludeds :vertical leaf-spec)))))
 
-(defn labeled-items-whole-hierarchy-node-DOM-R
+(defn labeled-items-whole-hierarchy-node-DOM
   "Return the dom for everything at and under a labeled items hierarchy node.
   direction gives which way to lay out the contained items.
   The specification must give :direction."
@@ -473,7 +477,8 @@
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
     (let [leaf-dom (when (seq leaves)
-                     (hierarchy-leaf-items-DOM node specification))
+                     (hierarchy-leaf-items-DOM
+                      node (dissoc specification :must-show-labels)))
           properties-dom (when (or (seq (:properties node))
                                    must-show-labels)
                            (labeled-items-properties-DOM
@@ -573,8 +578,8 @@
                     (if class {:class class} {})))
 
 (defn item-content-and-non-label-elements-DOM
-    "Make a dom for a content and a group of non-label elements."
-    [item elements specification]
+  "Make a dom for a content and a group of non-label elements."
+  [item elements specification]
   (let [content-dom (make-component
                      (cond-> (-> (select-keys specification
                                               [:twin-template :class :width])

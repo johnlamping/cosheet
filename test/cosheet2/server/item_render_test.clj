@@ -13,6 +13,8 @@
              [store-utils :refer [add-entity]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
+             [render :refer [basic-dom-specification]]
+             [render-utils :refer [composed-action-data-transform]]
              [item-render :refer :all])
             ; :reload
             ))
@@ -30,43 +32,46 @@
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
 
-(def base-specification {:twin-template ""
-                         :elements-template 'anything})
 (deftest render-item-DOM-test-simple
   ;; Test a simple cell
   (let [[store fred-id] (add-entity (new-element-store) nil "Fred")
-        dom (render-item-DOM (assoc base-specification :relative-id fred-id)
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id)
                              store)]
     (is (check dom
                [:div {:class "content-text editable item"} "Fred"])))
   ;; Test a cell with a couple of labels, one excluded.
   (let [[store fred-id] (add-entity (new-element-store) nil
-                                    '("Fred" (1 :label) (2 :label)))
+                                    `("Fred"
+                                      (1 :label (~o1 :order))
+                                      (2 :label (~o2 :order))))
         fred (description->entity fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         id-tag2 (:item-id (first (matching-elements
                                   :label (description->entity id2 store))))
-        dom (render-item-DOM (assoc base-specification
+        dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id fred-id
                                     :excluded-element-ids [id1])
                              store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                [:component {:twin-template 'anything
+                [:component {:twin-template ""
                              :relative-id id2
                              :excluded-element-ids [id-tag2]
                              :relative-identity [id2 id-tag2]
-                             :class "label"}]
+                             :class "label"
+                             :width 1.5}]
                 [:div {:class "indent-wrapper"}
                  [:component {:twin-template '("" (2 :label))
                               :relative-id :content
                               :item-id fred-id
-                              :render-dom render-content-only-DOM}]]])))
+                              :render-dom render-content-only-DOM
+                              :width 1.5}]]])))
   ;; Test must-show-label.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     "Fred")
-        dom (render-item-DOM (assoc base-specification
+        dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id fred-id
                                     :must-show-label true)
                              store)]
@@ -74,16 +79,62 @@
          dom
          [:div
           {:class "horizontal-tags-element tag virtual-wrapper narrow item"}
-          [:component {:twin-template '(anything :label)
+          [:component {:twin-template '("" :label)
                        :relative-id :virtual-label
                        :position :after
                        :class "label"
                        :render-dom render-virtual-DOM
-                       :sub-action-info action-info-virtual }]
+                       :action-data virtual-action-data
+                       :width 1.5}]
           [:component {:twin-template ""
                        :relative-id :content
                        :item-id fred-id
-                       :render-dom render-content-only-DOM}]]))))
+                       :render-dom render-content-only-DOM
+                       :width 1.5}]]))))
+
+(deftest item-DOM-R-test-one-column
+  ;; Try a couple of elements with no labels
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    `("Fred"
+                                      (2 (~o2 :order))
+                                      (1 (~o1 :order))))
+        fred (description->entity fred-id store)
+        id1 (:item-id (first (matching-elements 1 fred)))
+        id2 (:item-id (first (matching-elements 2 fred)))
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id)
+                             store)]
+    (is (check dom
+               [:div {:class "with-elements item"}
+                [:component {:twin-template ""
+                             :width 1.5
+                             :relative-id :content
+                             :item-id fred-id
+                             :render-dom render-content-only-DOM}]
+                [[:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
+                  [:component {:width 1.5
+                               :twin-template ""
+                               :relative-id [id1 :virtual-label]
+                               :render-dom render-virtual-DOM
+                               :action-data [composed-action-data-transform
+                                             [exemplar-action-data [id1]]
+                                             virtual-action-data]
+                               :class "label"}]
+                  [:component {:width 1.5
+                               :twin-template ""
+                               :relative-id id1}]]
+                 [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
+                  [:component {:width 1.5
+                               :twin-template ""
+                               :relative-id [id2 :virtual-label]
+                               :render-dom render-virtual-DOM
+                               :action-data [composed-action-data-transform
+                                             [exemplar-action-data [id2]]
+                                             virtual-action-data]
+                               :class "label"}]
+                  [:component {:width 1.5
+                               :twin-template ""
+                               :relative-id id2}]]]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

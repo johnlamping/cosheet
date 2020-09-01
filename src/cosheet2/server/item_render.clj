@@ -59,50 +59,6 @@
           {:add-sibling (hierarchy-adjacent-virtual-target
                          hierarchy-node inherited)}])))
 
-  (defn hierarchy-leaf-items-DOM-R
-    "Given a hierarchy node with tags as the properties, generate DOM
-  for leaves that are items. The leaves of the node may contain an additional
-  :exclude-elements field that gives more of the item's elements not to
-  show, typically the ones that satisfy the :template of inherited."
-    [hierarchy-node inherited]
-    (let [leaves (hierarchy-node-leaves hierarchy-node)
-          property-list (canonical-set-to-list
-                         (:cumulative-properties hierarchy-node))
-          inherited-down (if (not (empty? property-list))
-                           (assoc inherited :template
-                                  (add-elements-to-entity-list
-                                   (or (:template inherited)
-                                       (:elements-template inherited))
-                                   property-list))
-                           inherited)]
-      (if (empty? leaves)
-        (let [adjacent-item (:item (first (hierarchy-node-descendants
-                                           hierarchy-node)))
-              adjacent-referent (item-referent-given-inherited
-                                 adjacent-item inherited)
-              example-elements (hierarchy-node-example-elements hierarchy-node)]
-          (virtual-element-DOM
-           adjacent-referent :before
-           (-> inherited-down
-               (update :key-prefix
-                       #(conj % :example-element
-                              (:item-id (first example-elements))))
-               (assoc :select-pattern
-                      (conj (:key-prefix inherited) [:pattern])))))
-        (let [items (map :item leaves)
-              excludeds (map #(concat (:property-elements %)
-                                      (:exclude-elements %))
-                             leaves)]
-          (item-stack-DOM-R
-           item-without-labels-DOM-R items excludeds :vertical
-           inherited-down)))))
-
-  (defn opposite-direction
-    [direction]
-    (case direction
-      :horizontal :vertical
-      :vertical :horizontal))
-
   (defn virtual-element-with-label-DOM
     "Return the dom for a virtual element of an item."
     [virtual-content direction inherited]
@@ -124,93 +80,12 @@
                       {:class "tag"})]
       (add-labels-DOM labels-dom dom direction)))
 
-  (defn tagged-items-properties-DOM-R
-    "Given a hierarchy node for tags, Return DOM for example elements
-  that give rise to the properties of the node.
-  Inherited describes the overall context of the node."
-    [hierarchy-node inherited]
-    (let [items-referent (hierarchy-node-items-referent
-                          hierarchy-node inherited)
-          example-descendant (first (hierarchy-node-descendants
-                                     hierarchy-node))
-          inherited-for-children (-> inherited
-                                     (add-adjacent-sibling-command hierarchy-node)
-                                     (transform-inherited-for-children
-                                      (:key-prefix inherited) items-referent))]
-      (expr-let
-          [dom (if (empty? (:properties hierarchy-node))
-                 (virtual-element-DOM
-                  nil :after
-                  (-> inherited-for-children
-                      transform-inherited-for-labels 
-                      (update :key-prefix
-                              ;; Need to make it different from sibling virtuals.
-                              #(conj % (:item-id (:item example-descendant))))
-                      (assoc :select-pattern
-                             (conj (:key-prefix inherited) [:pattern]))))
-                 (label-stack-DOM-R
-                  (hierarchy-node-example-elements hierarchy-node)
-                  inherited-for-children))]
-        ;; Even if stacked, we need to mark the stack as "tag" too.
-        (add-attributes dom {:class "tag"}))))
-
-  (defn tagged-items-whole-hierarchy-node-DOM-R
-    "Return the dom for all of a tagged items hierarchy node.
-  direction gives which way to lay out the contained items."
-    [node child-doms [must-show-labels direction] inherited]
-    (assert (#{:horizontal :vertical} direction))
-    (let [leaves (hierarchy-node-leaves node)
-          only-item (when (and (empty? child-doms) (= (count leaves) 1))
-                      (:item (first leaves)))
-          ;; If there is only one item, we put any item specific attributes
-          ;; on the overall item including labels, while if there are several
-          ;; items, we can only put item specific attributes on each item.
-          inherited-for-leaves (cond-> (add-adjacent-sibling-command
-                                        inherited node)
-                                 only-item
-                                 (remove-inherited-for-item only-item))]
-      (expr-let [leaf-dom (when (seq leaves)
-                            (hierarchy-leaf-items-DOM-R
-                             node inherited-for-leaves))
-                 properties-dom (when (or (seq (:properties node))
-                                          must-show-labels)
-                                  (tagged-items-properties-DOM-R
-                                   node inherited))]
-        (let [descendants-dom (nest-if-multiple-DOM
-                               (if leaf-dom
-                                 (cons leaf-dom child-doms)
-                                 child-doms)
-                               direction)]
-          (cond-> (if (empty? (:properties node))
-                    (if must-show-labels
-                      (cond-> (add-labels-DOM properties-dom descendants-dom
-                                              (opposite-direction direction))
-                        true
-                        (add-attributes {:class "virtual-wrapper"})
-                        (= direction :vertical)
-                        (add-attributes {:class "narrow"}))
-                      descendants-dom)
-                    (add-labels-DOM properties-dom descendants-dom
-                                    (case direction
-                                      :vertical :vertical-wrapped
-                                      :horizontal :vertical)))
-            only-item
-            (add-attributes (inherited-attributes inherited only-item)))))))
-
-  (defn tagged-items-for-horizontal-DOMs-R
+  (defn labeled-items-for-horizontal-DOMs-R
     [hierarchy inherited]
     (expr-seq map #(hierarchy-node-DOM-R
-                    % tagged-items-whole-hierarchy-node-DOM-R
+                    % labeled-items-whole-hierarchy-node-DOM-R
                     (fn [node _ inherited] [[false :horizontal] inherited])
                     [true :horizontal] inherited)
-              hierarchy))
-
-  (defn tagged-items-for-one-column-DOMs-R
-    [hierarchy inherited]
-    (expr-seq map #(hierarchy-node-DOM-R
-                    % tagged-items-whole-hierarchy-node-DOM-R
-                    (fn [node _ inherited] [[false :vertical] inherited])
-                    [true :vertical] inherited)
               hierarchy))
 
   (defn horizontal-tag-wrapper
@@ -231,7 +106,7 @@
       [:div {:class "horizontal-value-last"} body]
       body))
 
-  (defn tagged-items-two-column-items-DOMs-R
+  (defn labeled-items-two-column-items-DOMs-R
     "Return the item doms for the node and all its children."
     [node child-doms inherited]
     (let [inherited-for-items (update
@@ -242,16 +117,16 @@
          horizontal-value-wrapper
          (cons leaves-dom (apply concat child-doms))))))
 
-  (defn tagged-items-two-column-label-DOMs-R
+  (defn labeled-items-two-column-label-DOMs-R
     "Return the label doms for the node and all its children."
     [node child-doms inherited]
-    (expr-let [properties-dom (tagged-items-properties-DOM-R
+    (expr-let [properties-dom (labeled-items-properties-DOM-R
                                node inherited)]
       (map-with-first-last
        horizontal-tag-wrapper
        (cons properties-dom (apply concat child-doms)))))
 
-  (defn tagged-items-for-two-column-DOMs-R
+  (defn labeled-items-for-two-column-DOMs-R
     [hierarchy inherited]
     (let [inherited-for-tags (-> inherited
                                  (transform-inherited-attributes :label)
@@ -267,13 +142,13 @@
                           hierarchy)]
       (expr-let [label-doms (expr-seq
                              map #(hierarchy-node-DOM-R
-                                   % tagged-items-two-column-label-DOMs-R
+                                   % labeled-items-two-column-label-DOMs-R
                                    inherited-for-tags)
                              hierarchy)
                  items-doms (expr-seq
                              map (fn [node only-item]
                                    (hierarchy-node-DOM-R
-                                    node tagged-items-two-column-items-DOMs-R
+                                    node labeled-items-two-column-items-DOMs-R
                                     (cond-> inherited
                                       only-item
                                       (remove-inherited-for-item only-item))))
@@ -445,10 +320,16 @@
 (defn render-virtual-DOM [] (assert false))
 (defn action-info-virtual [] (assert false))
 
+(defn opposite-direction
+    [direction]
+    (case direction
+      :horizontal :vertical
+      :vertical :horizontal))
+
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
   [specification]
-  (assert (:template specification))
+  (assert (:twin-template specification))
   (make-component (assoc specification
                          :render-dom render-virtual-DOM
                          :sub-action-info action-info-virtual)))
@@ -487,12 +368,12 @@
 (defn virtual-label-DOM
     "Return a dom for a virtual label"
   [specification]
-  (assert (:template specification))
+  (assert (:twin-template specification))
   (virtual-element-DOM
    (-> specification
        (assoc :position :after
               :relative-id :virtual-label)
-       (update :template
+       (update :twin-template
                #(if (has-keyword? % :label)
                   %
                   (add-elements-to-entity-list % [:label])))
@@ -509,8 +390,8 @@
   "Given a dom for an item, not including its labels, and a list of labels,
   make a dom that includes any necessary labels wrapping the item.
   specification should be the one for the item." 
-  [dom label-elements must-show-label specification]
-  (if (and (empty? label-elements) (not must-show-label))
+  [dom label-elements specification]
+  (if (and (empty? label-elements) (not (:must-show-label specification)))
     dom
     (let [elements-spec (transform-specification-for-elements specification)]
       (if (not (empty? label-elements))
@@ -520,45 +401,152 @@
          (virtual-label-DOM elements-spec)
          dom]))))
 
-(def tagged-items-for-one-column-DOMs)
-(def tagged-items-for-two-column-DOMs)
-(def tagged-items-for-horizontal-DOMs)
+(def labeled-items-for-two-column-DOMs)
+(def labeled-items-for-horizontal-DOMs)
+(def exemplar-action-data)
+
+(defn labeled-items-properties-DOM
+  "Given a hierarchy node for labels, Return DOM for example elements
+  that give rise to the properties of the node. The specification applies
+  to the overall node."
+    [hierarchy-node specification]
+  (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
+        descendant-ids (map :item-id descendants)
+        example-descendant-id (first descendant-ids)
+        child-spec (assoc specification
+                          :action_data [exemplar-action-data descendant-ids])]
+      (let [dom (if (empty? (:properties hierarchy-node))
+                  (virtual-element-DOM
+                   (assoc specification
+                          ;; TODO: Track hierarchy depth in the spec, and use
+                          ;; it to uniquify virtual labels.
+                          :relative-id :virtual-label
+                          :relative-identity [:virtual-label
+                                              example-descendant-id]))
+                 (label-stack-DOM
+                  (hierarchy-node-example-elements hierarchy-node)
+                  child-spec))]
+        ;; Even if stacked, we need to mark the stack as "label" too.
+        (add-attributes dom {:class "label"}))))
+
+(defn hierarchy-leaf-items-DOM
+  "Given a hierarchy node with labels as the properties, generate DOM
+  for leaves that are items. The leaves of the node may contain an additional
+  :exclude-elements field that gives more of the item's elements not
+  to show, typically the ones that satisfy the :twin-template of the
+  specification. The specification should be the one for the overall
+  node."
+  [hierarchy-node specification]
+  (let [leaves (hierarchy-node-leaves hierarchy-node)
+        property-list (canonical-set-to-list
+                       (:cumulative-properties hierarchy-node))
+        leaf-spec (if (empty? property-list)
+                    specification
+                    (update specification :twin-template
+                            #(add-elements-to-entity-list
+                              % property-list)))]
+    (if (empty? leaves)
+      (let [adjacent-item (:item (first (hierarchy-node-descendants
+                                         hierarchy-node)))
+            example-elements (hierarchy-node-example-elements hierarchy-node)]
+        (virtual-element-DOM
+         (assoc leaf-spec
+                :relative-id :virtual
+                :relative-identity [:virtual
+                                    (:item-id (first example-elements))]
+                :adjacent-id (:item-id adjacent-item)
+                :direction :after)))
+      (let [items (map :item leaves)
+            excludeds (map #(concat (:property-elements %)
+                                    (:exclude-elements %))
+                           leaves)]
+        (item-stack-DOM
+         items excludeds :vertical leaf-spec)))))
+
+(defn labeled-items-whole-hierarchy-node-DOM-R
+  "Return the dom for everything at and under a labeled items hierarchy node.
+  direction gives which way to lay out the contained items.
+  The specification must give :direction."
+  [node child-doms {:keys [must-show-labels direction] :as specification}]
+  (assert (#{:horizontal :vertical} direction))
+  (let [leaves (hierarchy-node-leaves node)
+        only-item (when (and (empty? child-doms) (= (count leaves) 1))
+                    (:item (first leaves)))]
+    (let [leaf-dom (when (seq leaves)
+                     (hierarchy-leaf-items-DOM node specification))
+          properties-dom (when (or (seq (:properties node))
+                                   must-show-labels)
+                           (labeled-items-properties-DOM
+                            node specification))]
+      (let [descendants-dom (nest-if-multiple-DOM
+                             (if leaf-dom
+                               (cons leaf-dom child-doms)
+                               child-doms)
+                             direction)]
+        (cond-> (if (empty? (:properties node))
+                  (if must-show-labels
+                    (cond-> (add-labels-DOM properties-dom descendants-dom
+                                            (opposite-direction direction))
+                      true
+                      (add-attributes {:class "virtual-wrapper"})
+                      (= direction :vertical)
+                      (add-attributes {:class "narrow"}))
+                    descendants-dom)
+                  (add-labels-DOM properties-dom descendants-dom
+                                  (case direction
+                                    :vertical :vertical-wrapped
+                                    :horizontal :vertical)))
+          only-item
+          (add-attributes (select-keys specification [:class])))))))
+
+(defn labeled-items-for-one-column-DOMs
+  [hierarchy specification]
+  (let [top-level-spec (assoc specification
+                              :must-show-labels true
+                              :direction :vertical)
+        child-specification-f (fn [_ specification]
+                                (dissoc specification :must-show-labels))]
+    (map #(hierarchy-node-DOM %
+                              labeled-items-whole-hierarchy-node-DOM
+                              child-specification-f
+                              top-level-spec)
+         hierarchy)))
 
 (defn items-with-labels-DOM
   "Make a dom for a sequence of items.
    If implied-template is non-nil, don't show elements implied by it.
    If must-show-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
-   space, if there is any space available."
-  [elements must-show-labels implied-template direction specification]
+   space, if there is significant space available."
+  [elements implied-template must-show-labels direction specification]
   (let
       [ordered-elements (order-entities elements)
        all-labels (map semantic-label-elements ordered-elements)
-       excludeds (map #(when implied-template
-                         (condition-satisfiers % implied-template))
+       excludeds (map (if implied-template
+                        #(condition-satisfiers % implied-template)
+                        (constantly nil))
                       ordered-elements)]
-    (let [labels (map (fn [all minus]
-                        (seq (clojure.set/difference (set all) (set minus))))
+    (let [labels (map (fn [all exclusions]
+                        (clojure.set/difference (set all) (set exclusions)))
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-labels))
-        (let [stack (item-stack-DOM ordered-elements excludeds
-                                    direction specification)]
-          [stack])
-        (expr-let [item-maps (item-maps-by-elements ordered-elements labels)
-                   augmented (map (fn [item-map excluded]
-                                    ;; TODO: Make this :excluded-elements-ids
-                                    (assoc item-map :exclude-elements excluded))
-                                  item-maps excludeds)
-                   hierarchy (hierarchy-by-canonical-info augmented)]
+        (item-stack-DOM ordered-elements excludeds
+                        direction specification)
+        (let [item-maps (item-maps-by-elements ordered-elements labels)
+              augmented (map (fn [item-map excluded]
+                               (assoc item-map :exclude-element-ids
+                                      (map :item-id excluded)))
+                             item-maps excludeds)
+              hierarchy (hierarchy-by-canonical-info augmented)]
           (case direction
             :vertical
             (if (or (< (:width specification) 1.0)
                     (and no-labels (not (= must-show-labels :wide))))
-              (tagged-items-for-one-column-DOMs hierarchy specification)
-              (tagged-items-for-two-column-DOMs hierarchy specification))
+              (labeled-items-for-one-column-DOMs hierarchy specification)
+              (labeled-items-for-two-column-DOMs hierarchy specification))
             :horizontal
-            (tagged-items-for-horizontal-DOMs
+            (labeled-items-for-horizontal-DOMs
              (replace-hierarchy-leaves-by-nodes hierarchy) specification)))))))
 
 (defn item-content-DOM
@@ -588,7 +576,8 @@
     "Make a dom for a content and a group of non-label elements."
     [item elements specification]
   (let [content-dom (make-component
-                     (cond-> (-> (select-keys specification [:template :class])
+                     (cond-> (-> (select-keys specification
+                                              [:twin-template :class :width])
                                  (assoc :relative-id :content
                                         :item-id (:item-id item)
                                         :render-dom render-content-only-DOM))
@@ -598,32 +587,31 @@
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
               elements-dom (items-with-labels-DOM
-                            elements true nil :vertical elements-spec)]
-          [:div (cond-> {:class "item with-elements"}
+                            elements nil true :vertical elements-spec)]
+          [:div (cond-> {:class "with-elements"}
                   (has-keyword? item :label)
                   (str " label"))
            content-dom elements-dom]))))
 
-;;; TODO: Need to track :width
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items)."
-  [{:keys [relative-id must-show-label excluded-element-ids]
+  [{:keys [relative-id item-id must-show-label excluded-element-ids]
     :as specification}
    store]
   (println "Generating DOM for" (simplify-for-print relative-id))
-  (let [entity (description->entity relative-id store)
+  (let [entity (description->entity (or item-id relative-id) store)
         elements (remove (set (map #(description->entity % store)
                                    excluded-element-ids))
                          (semantic-elements entity))
         [labels non-labels] (separate-by label? elements)]
     (-> (if (and (empty? elements) (not must-show-label))
           (item-content-DOM entity specification)
-          (let [inner-spec (update specification :template
+          (let [inner-spec (update specification :twin-template
                                    #(add-elements-to-entity-list
                                      % (map semantic-to-list labels)))
                 inner-dom (item-content-and-non-label-elements-DOM
                            entity non-labels inner-spec)]
             (labels-wrapper-DOM
-             inner-dom labels must-show-label specification)))
+             inner-dom labels specification)))
         (add-attributes {:class "item"}))))

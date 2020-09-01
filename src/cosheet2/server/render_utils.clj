@@ -195,8 +195,8 @@
 
 (defn transform-specification-for-elements
   [specification]
-  (assoc-if-non-empty (select-keys specification [:column :row :width])
-                      :template (:elements-template specification)))
+  (assoc-if-non-empty (select-keys specification [:width])
+                      :twin-template (:elements-template specification)))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -335,36 +335,25 @@
 (defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.
   For each node, calls
-     (node-f node child-doms function-info inherited)
+     (node-f node child-doms specification)
   where child-doms are the results of calling node-f for all the child
-  nodes.  Before doing calls for a child, calls
-     (child-info-f node function-info inherited)
-  This must return the function-info and inherited to be used for the children.
-  Either of the functions may return reporters.
-  child-information-f and function-info may be left out, in which case
-  node-f is called without function-info, and always with the same value
-  of inherited."
-  ([node node-f inherited]
-   (hierarchy-node-DOM node
-                         (fn [node child-doms function-info inherited]
-                           (node-f node child-doms inherited)) 
-                         (fn [node function-info inherited]
-                           [function-info inherited])
-                         nil inherited))
-  ([node node-f child-info-f function-info inherited]
-   (assert (every? #(not (nil? %)) (add-elements-to-entity-list
-                                    (:template inherited) nil))
-           (add-elements-to-entity-list (:template inherited) nil))
-   (expr-let
-       [child-doms (when-let [children (:child-nodes node)]
-                     (expr-let [child-info (child-info-f
-                                            node function-info inherited)]
-                       (let [[child-function-info child-inherited] child-info]
-                         (expr-seq map #(hierarchy-node-DOM
-                                         % node-f child-info-f
-                                         child-function-info child-inherited)
-                                   children))))]
-     (node-f node child-doms function-info inherited))))
+  nodes.  Before doing calls for a child, it calls
+     (child-specification-f node specification)
+  This must return the specification to be used for the children.
+  child-specification-f may be left out, in which case the original
+  specification is used for all children."
+  ([node node-f specification]
+   (hierarchy-node-DOM node node-f
+                       (fn [node specification] specification)
+                       specification))
+  ([node node-f child-specification-f specification]
+   (let [child-doms (when-let [children (:child-nodes node)]
+                     (let [child-spec (child-specification-f
+                                       node specification)]
+                       (map #(hierarchy-node-DOM
+                              % node-f child-specification-f child-spec)
+                        children)))]
+     (node-f node child-doms specification))))
 
 (comment
   (defn hierarchy-node-items-referents

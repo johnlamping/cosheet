@@ -30,7 +30,7 @@
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
 
-(def base-specification {:template ""
+(def base-specification {:twin-template ""
                          :elements-template 'anything})
 (deftest render-item-DOM-test-simple
   ;; Test a simple cell
@@ -53,13 +53,13 @@
                              store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                [:component {:template 'anything
+                [:component {:twin-template 'anything
                              :relative-id id2
                              :excluded-element-ids [id-tag2]
                              :relative-identity [id2 id-tag2]
                              :class "label"}]
                 [:div {:class "indent-wrapper"}
-                 [:component {:template '("" (2 :label))
+                 [:component {:twin-template '("" (2 :label))
                               :relative-id :content
                               :item-id fred-id
                               :render-dom render-content-only-DOM}]]])))
@@ -74,13 +74,13 @@
          dom
          [:div
           {:class "horizontal-tags-element tag virtual-wrapper narrow item"}
-          [:component {:template '(anything :label)
+          [:component {:twin-template '(anything :label)
                        :relative-id :virtual-label
                        :position :after
                        :class "label"
                        :render-dom render-virtual-DOM
                        :sub-action-info action-info-virtual }]
-          [:component {:template ""
+          [:component {:twin-template ""
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM}]]))))

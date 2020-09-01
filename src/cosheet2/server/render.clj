@@ -211,6 +211,17 @@
 ;;; of containment in the dom.
 
 ;;; A dom specification can contain any of these fields.
+;;; Any of the fields that expect functions will also accept a list,
+;;; where the first element is the function, and the rest of the list
+;;; is additional arguments. (This approach is better than closures, which
+;;; are hard to display and to test.)
+;;;     :relative-identity  Optional unique determiner of this map given
+;;;                         the containing component if :relative-id does
+;;;                         not uniquely determine it
+;;;               :item-id  The id of the item the dom is about, if
+;;;                         :relative-id is not an id or needs to be
+;;;                         overridden.
+;;;                 :class  Optional subset of classes the DOM will have.
 ;;;            :render-dom  Optional function that takes this specification
 ;;;                         and additional reporter values, then produces
 ;;;                         the dom.
@@ -228,13 +239,6 @@
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is also the id the dom is about, unless
 ;;;                         overridden by :item-id
-;;;     :relative-identity  Optional unique determiner of this map given
-;;;                         the containing component if :relative-id does
-;;;                         not uniquely determine it
-;;;               :item-id  The id of the item the dom is about, if
-;;;                         :relative-id is not an id or needs to be
-;;;                         overridden.
-;;;                 :class  Optional subset of classes the DOM will have.
 ;;;       :must-show-label  If true, a virtual label should be shown
 ;;;                         if there are no labels.
 ;;;                 :width  A float, giving the width of this dom element

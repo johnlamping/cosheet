@@ -25,6 +25,7 @@
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-entities semantic-entity?]]
              [render-utils :refer [make-component add-action-data-transformation
+                                   default-action-data-transformation
                                    item-stack-DOM nest-if-multiple-DOM
                                    condition-satisfiers
                                    hierarchy-node-DOM
@@ -420,19 +421,21 @@
     [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
-        example-descendant-id (first descendant-ids)
-        child-spec (assoc (transform-specification-for-elements specification)
-                          :action-data [exemplar-action-data descendant-ids])]
+        example-descendant-id (first descendant-ids) ]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-element-DOM
-                 (assoc child-spec
-                        ;; TODO: Track hierarchy depth in the spec, and use
-                        ;; it to uniquify virtual labels.
+                 ;; TODO: Track hierarchy depth in the spec, and use
+                 ;; it to uniquify virtual labels.
+                 (assoc (transform-specification-for-elements specification)
                         :relative-id [example-descendant-id
-                                      :virtual-label]))
+                                      :virtual-label]
+                        :action-data [exemplar-action-data descendant-ids]))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 child-spec))]
+                 (assoc (transform-specification-for-elements specification)
+                        :action-data (add-action-data-transformation
+                                      [exemplar-action-data descendant-ids]
+                                      default-action-data-transformation))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 

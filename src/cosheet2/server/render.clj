@@ -204,6 +204,9 @@
 ;;; where the first element is the function, and the rest of the list
 ;;; is additional arguments. (This approach is better than closures, which
 ;;; are hard to display and to test.)
+;;;           :relative-id  The id relative to containing component
+;;;                         This is also the id the dom is about, unless
+;;;                         overridden by :item-id
 ;;;     :relative-identity  Optional unique determiner of this map given
 ;;;                         the containing component if :relative-id does
 ;;;                         not uniquely determine it
@@ -225,9 +228,6 @@
 ;;;                         the action data for the containing dom, a user
 ;;;                         action, and the current store, and returns the
 ;;;                         action data for the given dom.
-;;;           :relative-id  The id relative to containing component
-;;;                         This is also the id the dom is about, unless
-;;;                         overridden by :item-id
 ;;;       :must-show-label  If true, a virtual label should be shown
 ;;;                         if there are no labels.
 ;;;                 :width  A float, giving the width of this dom element

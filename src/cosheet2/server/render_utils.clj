@@ -280,6 +280,10 @@
 
 ;;; DOM creators that are used by several files.
 
+;;; This action transformation makes the item refer to its :item-id or
+;;; :relative-id.
+(defn default-action-data-transformation [] (assert false))
+
 (defn composed-action-data-transform [] (assert false))
 
 (defn add-action-data-transformation

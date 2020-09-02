@@ -144,6 +144,12 @@
 ;;; formatting. In other cases, the sub-component's id may need to
 ;;; change between the two different rendering situations.)
 
+;;; TODO: Optionally, a dom specifation can have a
+;;; :sub-dom-specification method, which gives the specification of a
+;;; subsidiary component, given its relative id. This way, if the
+;;; tracker needs a subsidiary component of a very large dom, it
+;;; doesn't have to render the entire dom.
+
 ;;; In addition to rendering dom, a dom specification knows how to
 ;;; interpret actions on its dom. That interpretation typically
 ;;; requires additional information that is not necessary for

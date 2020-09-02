@@ -3,6 +3,7 @@
             (cosheet2.server
              order-utils-test
              model-utils-test
-             hierarchy-test)
+             hierarchy-test
+             item-render-test)
    :reload
             ))

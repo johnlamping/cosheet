@@ -327,8 +327,10 @@
 
 ;;; TODO: Make sure to add "editable" to a virtual dom's class.
 
-(defn render-virtual-DOM [] (assert false))
 (defn virtual-action-data [] (assert false))
+
+;;; TODO: Add and test this.
+(defn render-virtual-DOM [] (assert false))
 
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"

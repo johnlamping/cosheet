@@ -5,7 +5,7 @@
              [orderable :as orderable]
              [query :refer [matching-elements]]
              [debug :refer [envs-to-list simplify-for-print]]
-             [entity :refer [description->entity]]
+             [entity :refer [description->entity to-list]]
              entity-impl
              [store :refer [make-id new-element-store]]
              store-impl
@@ -102,17 +102,18 @@
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
         dom (render-item-DOM (assoc basic-dom-specification
-                                    :relative-id fred-id)
+                                    :relative-id fred-id
+                                    :width 0.9)
                              store)]
     (is (check dom
                [:div {:class "with-elements item"}
                 [:component {:twin-template ""
-                             :width 1.5
+                             :width 0.9
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM}]
                 [[:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
-                  [:component {:width 1.5
+                  [:component {:width 0.9
                                :twin-template ""
                                :relative-id [id1 :virtual-label]
                                :render-dom render-virtual-DOM
@@ -120,11 +121,11 @@
                                              [exemplar-action-data [id1]]
                                              virtual-action-data]
                                :class "label"}]
-                  [:component {:width 1.5
+                  [:component {:width 0.9
                                :twin-template ""
                                :relative-id id1}]]
                  [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
-                  [:component {:width 1.5
+                  [:component {:width 0.9
                                :twin-template ""
                                :relative-id [id2 :virtual-label]
                                :render-dom render-virtual-DOM
@@ -132,9 +133,53 @@
                                              [exemplar-action-data [id2]]
                                              virtual-action-data]
                                :class "label"}]
-                  [:component {:width 1.5
+                  [:component {:width 0.9
                                :twin-template ""
-                               :relative-id id2}]]]]))))
+                               :relative-id id2}]]]])))
+  ;; Test an item with to differently labeled elements
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    `("Fred"
+                                      (2 ("two" :label) (~o2 :order))
+                                      (1 ("one" :label) (~o1 :order))))
+        fred (description->entity fred-id store)
+        item1 (first (matching-elements 1 fred))
+        label1 (first (matching-elements "one" item1))
+        tag1 (first (matching-elements :label label1))
+        id1 (:item-id item1)
+        id-label1 (:item-id label1)
+        id-tag1 (:item-id tag1)
+        item2 (first (matching-elements 2 fred))
+        label2 (first (matching-elements "two" item2))
+        tag2 (first (matching-elements :label label2))
+        id2 (:item-id item2)
+        id-label2 (:item-id label2)
+        id-tag2 (:item-id tag2)
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :width 0.9)
+                             store)]
+    (is (check dom
+               [:div {:class "with-elements item"}
+                [:component {:twin-template ""
+                             :width 0.9
+                             :relative-id :content
+                             :item-id fred-id
+                             :render-dom render-content-only-DOM}]
+                [[:div {:class "wrapped-element label"}
+                  [:component {:width 0.9
+                               :twin-template ""
+                               :action-data [exemplar-action-data [id1]]
+                               :class "label"
+                               :excluded-element-ids [id-tag1]
+                               :relative-identity [id-label1 id-tag1]
+                               :relative-id id-label1}]
+                  [:div {:class "indent-wrapper"}
+                   [:component {:width 0.9
+                                :twin-template '("" ("one" :label))
+                                :excluded-element-ids [id-label1]
+                                :relative-identity [id1 id-label1]
+                                :relative-id id1}]]]
+                (any)]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

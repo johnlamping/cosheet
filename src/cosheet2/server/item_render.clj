@@ -545,16 +545,19 @@
                                (assoc item-map :exclude-element-ids
                                       (map :item-id excluded)))
                              item-maps excludeds)
-              hierarchy (hierarchy-by-canonical-info augmented)]
-          (case direction
-            :vertical
-            (if (or (< (:width specification) 1.0)
-                    (and no-labels (not (= must-show-labels :wide))))
-              (labeled-items-for-one-column-DOMs hierarchy specification)
-              (labeled-items-for-two-column-DOMs hierarchy specification))
-            :horizontal
-            (labeled-items-for-horizontal-DOMs
-             (replace-hierarchy-leaves-by-nodes hierarchy) specification)))))))
+              hierarchy (hierarchy-by-canonical-info augmented)
+              doms (case direction
+                     :vertical
+                     ((if (or (< (:width specification) 1.0)
+                              (and no-labels (not (= must-show-labels :wide))))
+                        labeled-items-for-one-column-DOMs
+                        labeled-items-for-two-column-DOMs)
+                      hierarchy specification)
+                     :horizontal
+                     (labeled-items-for-horizontal-DOMs
+                      (replace-hierarchy-leaves-by-nodes hierarchy)
+                      specification))]
+          (nest-if-multiple-DOM doms direction))))))
 
 (defn item-content-DOM
   "Make dom for the content part of an item."

@@ -112,7 +112,8 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM}]
-                [[:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
+                [:div {:class "vertical-stack"}
+[:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
                   [:component {:width 0.9
                                :twin-template ""
                                :relative-id [id1 :virtual-label]
@@ -136,7 +137,7 @@
                   [:component {:width 0.9
                                :twin-template ""
                                :relative-id id2}]]]])))
-  ;; Test an item with to differently labeled elements
+  ;; Test an item with two differently labeled elements
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
                                       (2 ("two" :label) (~o2 :order))
@@ -165,7 +166,8 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM}]
-                [[:div {:class "wrapped-element label"}
+                [:div {:class "vertical-stack"}
+                 [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :twin-template ""
                                :action-data [exemplar-action-data [id1]]
@@ -179,7 +181,20 @@
                                 :excluded-element-ids [id-label1]
                                 :relative-identity [id1 id-label1]
                                 :relative-id id1}]]]
-                (any)]]))))
+                 [:div {:class "wrapped-element label"}
+                  [:component {:width 0.9
+                               :twin-template ""
+                               :action-data [exemplar-action-data [id2]]
+                               :class "label"
+                               :excluded-element-ids [id-tag2]
+                               :relative-identity [id-label2 id-tag2]
+                               :relative-id id-label2}]
+                  [:div {:class "indent-wrapper"}
+                   [:component {:width 0.9
+                                :twin-template '("" ("two" :label))
+                                :excluded-element-ids [id-label2]
+                                :relative-identity [id2 id-label2]
+                                :relative-id id2}]]]]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

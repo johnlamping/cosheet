@@ -57,8 +57,7 @@
                              store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                ;; TODO: This is the wrong twin templage for a label.
-                [:component {:twin-template ""
+                [:component {:twin-template '("" :label)
                              :relative-id id2
                              :excluded-element-ids [id-tag2]
                              :relative-identity [id2 id-tag2]
@@ -118,7 +117,7 @@
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :relative-id [id1 :virtual-label]
                                :render-dom render-virtual-DOM
                                :action-data [composed-action-data-transform
@@ -131,7 +130,7 @@
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :relative-id [id2 :virtual-label]
                                :render-dom render-virtual-DOM
                                :action-data [composed-action-data-transform
@@ -173,7 +172,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :action-data [composed-action-data-transform
                                              [exemplar-action-data [id1]]
                                              default-action-data-transformation]
@@ -189,7 +188,7 @@
                                 :relative-id id1}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :action-data [composed-action-data-transform
                                              [exemplar-action-data [id2]]
                                              default-action-data-transformation]
@@ -246,7 +245,6 @@
                                     :relative-id fred-id
                                     :width 0.9)
                              store)]
-    (println "!!!" dom)
     (is (check dom
                [:div {:class "with-elements item"}
                 [:component {:twin-template ""
@@ -257,7 +255,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :action-data [composed-action-data-transform
                                              [exemplar-action-data [id0]]
                                              default-action-data-transformation]
@@ -273,7 +271,7 @@
                                 :relative-id id0}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template ""
+                               :twin-template '("" :label)
                                :action-data [composed-action-data-transform
                                              [exemplar-action-data
                                               [id1 id2]]
@@ -286,7 +284,7 @@
                    [:div {:class "vertical-stack"}
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :twin-template ""
+                                  :twin-template '("" :label)
                                   :action-data [composed-action-data-transform
                                                 [exemplar-action-data
                                                  [id1]]
@@ -307,7 +305,7 @@
                                    :relative-id id1}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :twin-template ""
+                                  :twin-template '("" :label)
                                   :action-data [composed-action-data-transform
                                                 [exemplar-action-data
                                                  [id2]]
@@ -329,7 +327,7 @@
                 [:div {:class (str "horizontal-labels-element label"
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
-                              :twin-template ""
+                              :twin-template '("" :label)
                               :action-data [composed-action-data-transform
                                             [exemplar-action-data [id3]]
                                             virtual-action-data]

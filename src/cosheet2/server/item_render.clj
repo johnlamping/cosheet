@@ -373,26 +373,32 @@
     (item-stack-DOM ordered-labels label-tags :vertical
                     (into-attributes specification {:class "label"}))))
 
+(defn require-label-in-template
+  "Give the :twin-template a :label keyword if it doesn't already have one."
+  [specification]
+  (update specification :twin-template
+          #(if (has-keyword? % :label)
+             %
+             (add-elements-to-entity-list % [:label]))))
+
 (defn virtual-label-DOM
   "Return a dom for a virtual label. The label must be inside the component
-  for the item."
+  for the item. The specification should be for elements of the item."
   [specification]
   (assert (:twin-template specification))
   (virtual-element-DOM
    (-> specification
        (assoc :position :after
               :relative-id :virtual-label)
-       (update :twin-template
-               #(if (has-keyword? % :label)
-                  %
-                  (add-elements-to-entity-list % [:label])))
+       require-label-in-template
        (into-attributes {:class "label"}))))
 
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item."
   [inner-dom label-elements direction specification]
-  (let [stack (label-stack-DOM label-elements specification)]
+  (let [stack (label-stack-DOM
+               label-elements (require-label-in-template specification))]
     (wrap-with-labels-DOM stack inner-dom direction)))
 
 (defn labels-wrapper-DOM
@@ -421,18 +427,21 @@
     [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
-        example-descendant-id (first descendant-ids) ]
+        example-descendant-id (first descendant-ids)
+        label-spec (-> specification
+                       transform-specification-for-elements
+                       require-label-in-template)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-element-DOM
                  ;; TODO: Track hierarchy depth in the spec, and use
                  ;; it to uniquify virtual labels.
-                 (assoc (transform-specification-for-elements specification)
+                 (assoc label-spec
                         :relative-id [example-descendant-id
                                       :virtual-label]
                         :action-data [exemplar-action-data descendant-ids]))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 (assoc (transform-specification-for-elements specification)
+                 (assoc label-spec
                         :action-data (add-action-data-transformation
                                       [exemplar-action-data descendant-ids]
                                       default-action-data-transformation))))]

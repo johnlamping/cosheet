@@ -90,83 +90,6 @@
                     [true :horizontal] inherited)
               hierarchy))
 
-  (defn horizontal-tag-wrapper
-    "Return a modifier for a horizontal tag dom that is logically part of
-  a possibly larger entity."
-    [body is-first is-last]
-    [:div {:class (cond-> "tag horizontal-header"
-                    is-first (str " top-border")
-                    (not is-first) (str " indent")
-                    is-last (str " bottom-border"))}
-     body])
-
-  (defn horizontal-value-wrapper
-    "Return a modifier for a value in a horizontal tag layout that is 
-  logically part of a larger entity."
-    [body is-first is-last]
-    (if (and is-last (not is-first))
-      [:div {:class "horizontal-value-last"} body]
-      body))
-
-  (defn labeled-items-two-column-items-DOMs-R
-    "Return the item doms for the node and all its children."
-    [node child-doms inherited]
-    (let [inherited-for-items (update
-                               (add-adjacent-sibling-command inherited node)
-                               :width #(* % 0.6875))]
-      (expr-let [leaves-dom (hierarchy-leaf-items-DOM-R node inherited-for-items)]
-        (map-with-first-last
-         horizontal-value-wrapper
-         (cons leaves-dom (apply concat child-doms))))))
-
-  (defn labeled-items-two-column-label-DOMs-R
-    "Return the label doms for the node and all its children."
-    [node child-doms inherited]
-    (expr-let [properties-dom (labeled-items-properties-DOM-R
-                               node inherited)]
-      (map-with-first-last
-       horizontal-tag-wrapper
-       (cons properties-dom (apply concat child-doms)))))
-
-  (defn labeled-items-for-two-column-DOMs-R
-    [hierarchy inherited]
-    (let [inherited-for-tags (-> inherited
-                                 (transform-inherited-attributes :label)
-                                 (update :width #(* % 0.25)))
-          ;; If there is only one item below a top level node,
-          ;; we put any item specific attributes on the overall node,
-          ;; including labels, while if there are several
-          ;; items, we can only put item specific attributes on each item.
-          only-items (map #(let [leaves (hierarchy-node-leaves %)]
-                             (when (and (empty? (:child-nodes %))
-                                        (= (count leaves) 1))
-                               (:item (first leaves))))
-                          hierarchy)]
-      (expr-let [label-doms (expr-seq
-                             map #(hierarchy-node-DOM-R
-                                   % labeled-items-two-column-label-DOMs-R
-                                   inherited-for-tags)
-                             hierarchy)
-                 items-doms (expr-seq
-                             map (fn [node only-item]
-                                   (hierarchy-node-DOM-R
-                                    node labeled-items-two-column-items-DOMs-R
-                                    (cond-> inherited
-                                      only-item
-                                      (remove-inherited-for-item only-item))))
-                             hierarchy only-items)]
-        (map
-         (fn [label-dom items-dom only-item]
-           (cond-> [:div {:class "horizontal-tags-element tag wide"}
-                    label-dom items-dom]
-             only-item
-             (add-attributes (inherited-attributes inherited only-item))))
-         (apply concat label-doms)
-         (apply concat items-doms)
-         (apply concat (map (fn [doms only-item]
-                              (map (constantly only-item) doms))
-                            items-doms only-items))))))
-
   (defn elements-DOM-R
     "Make doms for elements.
    If implied-template is non-nil, don't show sub-elements implied by it.
@@ -214,32 +137,6 @@
         true
         (add-attributes (virtual-label-DOM inherited)
                         {:class "elements-wrapper"}))))
-
-  (defn item-without-labels-DOM-R
-    "Make a dom for an item or exemplar for a group of items,
-   given that any of its labels are in excluded-elements.
-   Inherited must contain :subject-referent.
-   We only record the key on the content, not the whole item
-   (unless it is just the content)."
-    ([item excluded-elements inherited]
-     (let [referent (item-referent-given-inherited item inherited)]
-       (item-without-labels-DOM-R item referent excluded-elements inherited)))
-    ([item referent excluded-elements inherited]
-     (println
-      "Generating DOM for"
-      (simplify-for-print (conj (:key-prefix inherited) (:item-id item))))
-     (let [inherited-down
-           (transform-inherited-for-children
-            inherited
-            (conj (:key-prefix inherited) (:item-id item)) referent)]
-       (expr-let [content (entity/content item)
-                  elements (semantic-elements-R item)
-                  dom (item-content-and-non-label-elements-DOM-R
-                       content (remove (set excluded-elements) elements)
-                       inherited-down)]
-         (add-attributes
-          dom
-          (inherited-attributes inherited item))))))
 
   (defn horizontal-label-hierarchy-node-DOM
     "Generate the DOM for a node in a hierarchy that groups items by their
@@ -518,7 +415,81 @@
           only-item
           (add-attributes (select-keys specification [:class])))))))
 
+(defn horizontal-tag-wrapper
+  "Return a modifier for a horizontal tag dom that is logically part of
+  a possibly larger entity."
+  [body is-first is-last]
+  [:div {:class (cond-> "tag horizontal-header"
+                  is-first (str " top-border")
+                  (not is-first) (str " indent")
+                  is-last (str " bottom-border"))}
+   body])
+
+(defn horizontal-value-wrapper
+  "Return a modifier for a value in a horizontal tag layout that is 
+  logically part of a larger entity."
+  [body is-first is-last]
+  (if (and is-last (not is-first))
+    [:div {:class "horizontal-value-last"} body]
+    body))
+
+(defn labeled-items-two-column-items-DOMs
+  "Return the item doms for the node and all its children."
+  [node child-doms specification]
+  (let [narrowed-spec (update specification :width #(* % 0.6875))]
+    (let [leaves-dom (hierarchy-leaf-items-DOM node narrowed-spec)]
+      (map-with-first-last
+       horizontal-value-wrapper
+       (cons leaves-dom (apply concat child-doms))))))
+
+(defn labeled-items-two-column-label-DOMs
+  "Return the label doms for the node and all its children."
+  [node child-doms specification]
+  (expr-let [properties-dom (labeled-items-properties-DOM
+                             node specification)]
+    (map-with-first-last
+     horizontal-tag-wrapper
+     (cons properties-dom (apply concat child-doms)))))
+
+(defn labeled-items-for-two-column-DOMs
+  "The specification should apply to each item the hierarchy is over."
+  [hierarchy specification]
+  (let [labels-spec (-> specification
+                        transform-specification-for-elements
+                        require-label-in-template
+                        (update :width #(* % 0.25)))
+        ;; If there is only one item below a top level node, we put
+        ;; any item specific attributes, including labels, on the
+        ;; overall node as well, while if there are several items,
+        ;; we can only put them on each item.
+        only-items (map #(let [leaves (hierarchy-node-leaves %)]
+                           (when (and (empty? (:child-nodes %))
+                                      (= (count leaves) 1))
+                             (:item (first leaves))))
+                        hierarchy)]
+    (let [label-doms (map #(hierarchy-node-DOM
+                            % labeled-items-two-column-label-DOMs
+                            labels-spec)
+                          hierarchy)
+          items-doms (map (fn [node only-item]
+                            (hierarchy-node-DOM
+                             node labeled-items-two-column-items-DOMs
+                             specification))
+                          hierarchy only-items)]
+      (map
+       (fn [label-dom items-dom only-item]
+         (cond-> [:div {:class "horizontal-tags-element tag wide"}
+                  label-dom items-dom]
+           only-item
+           (add-attributes (select-keys specification [:class]))))
+       (apply concat label-doms)
+       (apply concat items-doms)
+       (apply concat (map (fn [doms only-item]
+                            (map (constantly only-item) doms))
+                          items-doms only-items))))))
+
 (defn labeled-items-for-one-column-DOMs
+  "The specification should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [top-level-spec (assoc specification
                               :must-show-labels true

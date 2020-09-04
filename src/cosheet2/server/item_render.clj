@@ -309,11 +309,10 @@
       (if (not (empty? label-elements))
         (non-empty-labels-wrapper-DOM
          dom label-elements :vertical elements-spec)
-        [:div {:class "horizontal-tags-element tag virtual-wrapper narrow"}
+        [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
          (virtual-label-DOM elements-spec)
          dom]))))
 
-(defn labeled-items-for-two-column-DOMs [] (assert false))
 (defn labeled-items-for-horizontal-DOMs [] (assert false))
 (defn exemplar-action-data [] (assert false))
 
@@ -351,7 +350,7 @@
   :exclude-elements field that gives more of the item's elements not
   to show, typically the ones that satisfy the :twin-template of the
   specification. The specification should be the one for the overall
-  node."
+  hierarchy."
   [hierarchy-node specification]
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
@@ -415,50 +414,58 @@
           only-item
           (add-attributes (select-keys specification [:class])))))))
 
-(defn horizontal-tag-wrapper
-  "Return a modifier for a horizontal tag dom that is logically part of
+(defn horizontal-label-wrapper
+  "Return a modifier for a horizontal label dom that is logically part of
   a possibly larger entity."
   [body is-first is-last]
-  [:div {:class (cond-> "tag horizontal-header"
+  [:div {:class (cond-> "label horizontal-header"
                   is-first (str " top-border")
                   (not is-first) (str " indent")
                   is-last (str " bottom-border"))}
    body])
 
 (defn horizontal-value-wrapper
-  "Return a modifier for a value in a horizontal tag layout that is 
+  "Return a modifier for a value in a horizontal label layout that is 
   logically part of a larger entity."
   [body is-first is-last]
   (if (and is-last (not is-first))
     [:div {:class "horizontal-value-last"} body]
     body))
 
+(defn one-column-of-two-column-DOMs
+  [hierarchy node-fn wrapper-fn specification]
+  (map (fn [node]
+           (hierarchy-node-DOM
+            node
+            (fn [node child-doms specification]
+              (let [dom (node-fn node specification)]
+                (map-with-first-last
+                 wrapper-fn
+                 (cons dom (apply concat child-doms)))))
+            specification))
+         hierarchy))
+
 (defn labeled-items-two-column-items-DOMs
   "Return the item doms for the node and all its children."
-  [node child-doms specification]
-  (let [narrowed-spec (update specification :width #(* % 0.6875))]
-    (let [leaves-dom (hierarchy-leaf-items-DOM node narrowed-spec)]
-      (map-with-first-last
-       horizontal-value-wrapper
-       (cons leaves-dom (apply concat child-doms))))))
+  [hierarchy specification]
+  (one-column-of-two-column-DOMs
+   hierarchy hierarchy-leaf-items-DOM horizontal-value-wrapper
+   (update specification :width #(* % 0.6875))))
 
 (defn labeled-items-two-column-label-DOMs
-  "Return the label doms for the node and all its children."
-  [node child-doms specification]
-  (expr-let [properties-dom (labeled-items-properties-DOM
-                             node specification)]
-    (map-with-first-last
-     horizontal-tag-wrapper
-     (cons properties-dom (apply concat child-doms)))))
+  "The specification should be the one for the items."
+  [hierarchy specification]
+  (one-column-of-two-column-DOMs
+   hierarchy labeled-items-properties-DOM horizontal-label-wrapper
+   (-> specification
+       transform-specification-for-elements
+       require-label-in-template
+       (update :width #(* % 0.25)))))
 
 (defn labeled-items-for-two-column-DOMs
   "The specification should apply to each item the hierarchy is over."
   [hierarchy specification]
-  (let [labels-spec (-> specification
-                        transform-specification-for-elements
-                        require-label-in-template
-                        (update :width #(* % 0.25)))
-        ;; If there is only one item below a top level node, we put
+  (let [;; If there is only one item below a top level node, we put
         ;; any item specific attributes, including labels, on the
         ;; overall node as well, while if there are several items,
         ;; we can only put them on each item.
@@ -467,18 +474,13 @@
                                       (= (count leaves) 1))
                              (:item (first leaves))))
                         hierarchy)]
-    (let [label-doms (map #(hierarchy-node-DOM
-                            % labeled-items-two-column-label-DOMs
-                            labels-spec)
-                          hierarchy)
-          items-doms (map (fn [node only-item]
-                            (hierarchy-node-DOM
-                             node labeled-items-two-column-items-DOMs
-                             specification))
-                          hierarchy only-items)]
+    (let [label-doms (labeled-items-two-column-label-DOMs
+                      hierarchy specification)
+          items-doms (labeled-items-two-column-items-DOMs
+                       hierarchy specification)]
       (map
        (fn [label-dom items-dom only-item]
-         (cond-> [:div {:class "horizontal-tags-element tag wide"}
+         (cond-> [:div {:class "horizontal-labels-element label wide"}
                   label-dom items-dom]
            only-item
            (add-attributes (select-keys specification [:class]))))
@@ -580,7 +582,9 @@
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
               elements-dom (items-with-labels-DOM
-                            elements nil true :vertical elements-spec)]
+                            elements nil
+                            (or (:must-show-labels specification) true)
+                            :vertical elements-spec)]
           [:div (cond-> {:class "with-elements"}
                   (has-keyword? item :label)
                   (str " label"))

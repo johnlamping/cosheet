@@ -79,7 +79,7 @@
     (is (check
          dom
          [:div
-          {:class "horizontal-tags-element tag virtual-wrapper narrow item"}
+          {:class "horizontal-labels-element label virtual-wrapper narrow item"}
           [:component {:twin-template '("" :label)
                        :relative-id :virtual-label
                        :position :after
@@ -338,6 +338,56 @@
                               :twin-template ""
                               :relative-id id3}]]]])))
   )
+
+(deftest item-DOM-R-test-two-column
+  ;; Try a couple of elements with no labels
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    `("Fred"
+                                      (2 (~o2 :order))
+                                      (1 (~o1 :order))))
+        fred (description->entity fred-id store)
+        id1 (:item-id (first (matching-elements 1 fred)))
+        id2 (:item-id (first (matching-elements 2 fred)))
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :width 1.5
+                                    :must-show-labels :wide)
+                             store)]
+    (is (check
+         dom
+         [:div {:class "with-elements item"}
+          [:component {:twin-template ""
+                       :width 1.5
+                       :relative-id :content
+                       :item-id fred-id
+                       :render-dom render-content-only-DOM}]
+          [:div {:class "vertical-stack"}
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header top-border bottom-border"}
+             [:component {:width 0.375
+                          :twin-template '("" :label)
+                          :relative-id [id1 :virtual-label]
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id1]]
+                                        virtual-action-data]
+                          :render-dom render-virtual-DOM
+                          :class "label"}]]
+            [:component {:width 1.03125
+                         :twin-template ""
+                         :relative-id id1}]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header top-border bottom-border"}
+             [:component {:width 0.375
+                          :twin-template '("" :label)
+                          :relative-id [id2 :virtual-label]
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id2]]
+                                        virtual-action-data]
+                          :render-dom render-virtual-DOM
+                          :class "label"}]]
+            [:component {:width 1.03125
+                         :twin-template ""
+                         :relative-id id2}]]]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

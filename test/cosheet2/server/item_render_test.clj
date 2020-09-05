@@ -202,7 +202,7 @@
                                 :excluded-element-ids [id-label2]
                                 :relative-identity [id2 id-label2]
                                 :relative-id id2}]]]]])))
-  ;; Test an item with three elements, with label sharing among them.
+  ;; Test an item with four elements, with label sharing among them.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
                                       (0 ("zero" :label) (~o1 :order))
@@ -387,7 +387,207 @@
                           :class "label"}]]
             [:component {:width 1.03125
                          :twin-template ""
-                         :relative-id id2}]]]]))))
+                         :relative-id id2}]]]])))
+  ;; Test an item with two elements, each with one distinct label.
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    `("Fred"
+                                      (2 ("two" :label) (~o2 :order))
+                                      (1 ("one" :label) (~o1 :order))))
+        fred (description->entity fred-id store)
+        item1 (first (matching-elements 1 fred))
+        label1 (first (matching-elements "one" item1))
+        tag1 (first (matching-elements :label label1))
+        id1 (:item-id item1)
+        id-label1 (:item-id label1)
+        id-tag1 (:item-id tag1)
+        item2 (first (matching-elements 2 fred))
+        label2 (first (matching-elements "two" item2))
+        tag2 (first (matching-elements :label label2))
+        id2 (:item-id item2)
+        id-label2 (:item-id label2)
+        id-tag2 (:item-id tag2)
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :width 1.5)
+                             store)]
+    (is (check
+         dom
+         [:div {:class "with-elements item"}
+          [:component {:twin-template ""
+                       :width 1.5
+                       :relative-id :content
+                       :item-id fred-id
+                       :render-dom render-content-only-DOM}]
+          [:div {:class "vertical-stack"}
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class (str "label horizontal-header"
+                               " top-border bottom-border")}
+             [:component {:width 0.375, :twin-template '("" :label)
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id1]]
+                                         default-action-data-transformation]
+                          :class "label"
+                          :excluded-element-ids [id-tag1]
+                          :relative-identity [id-label1 id-tag1]
+                          :relative-id id-label1}]]
+            [:component {:width 1.03125
+                         :twin-template '("" ("one" :label))
+                         :excluded-element-ids [id-label1]
+                         :relative-identity [id1 id-label1]
+                         :relative-id id1}]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class (str "label horizontal-header"
+                               " top-border bottom-border")}
+             [:component {:width 0.375, :twin-template '("" :label)
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id2]]
+                                         default-action-data-transformation]
+                          :class "label"
+                          :excluded-element-ids [id-tag2]
+                          :relative-identity [id-label2 id-tag2]
+                          :relative-id id-label2}]]
+            [:component {:width 1.03125
+                         :twin-template '("" ("two" :label))
+                         :excluded-element-ids [id-label2]
+                         :relative-identity [id2 id-label2]
+                         :relative-id id2}]]]])))
+  ;; Test an item with four elements, with label sharing among them.
+  (let [[store fred-id] (add-entity (new-element-store) nil
+                                    `("Fred"
+                                      (0 ("zero" :label) (~o1 :order))
+                                      (2 ("two" :label (~o1 :order))
+                                         ("both" :label (~o2 :order))
+                                         (~o3 :order))
+                                      (1 ("one" :label (~o1 :order))
+                                         ("both" :label (~o2 :order)))
+                                      (3 (~o4 :order))))
+        fred (description->entity fred-id store)
+        item0 (first (matching-elements 0 fred))
+        label0 (first (matching-elements "zero" item0))
+        tag0 (first (matching-elements :label label0))
+        id0 (:item-id item0)
+        id-label0 (:item-id label0)
+        id-tag0 (:item-id tag0)
+        item1 (first (matching-elements 1 fred))
+        label1one (first (matching-elements "one" item1))
+        tag1one (first (matching-elements :label label1one))
+        label1both (first (matching-elements "both" item1))
+        tag1both (first (matching-elements :label label1both))
+        id1 (:item-id item1)
+        id-label1one (:item-id label1one)
+        id-tag1one (:item-id tag1one)
+        id-label1both (:item-id label1both)
+        id-tag1both (:item-id tag1both)
+        item2 (first (matching-elements 2 fred))
+        label2two (first (matching-elements "two" item2))
+        tag2two (first (matching-elements :label label2two))
+        label2both (first (matching-elements "both" item2))
+        tag2both (first (matching-elements :label label2both))
+        id2 (:item-id item2)
+        id-label2two (:item-id label2two)
+        id-tag2two (:item-id tag2two)
+        id-label2both (:item-id label2both)
+        id-tag2both (:item-id tag2both)
+        item3 (first (matching-elements 3 fred))
+        id3 (:item-id item3)
+        dom (render-item-DOM (assoc basic-dom-specification
+                                    :relative-id fred-id
+                                    :width 1.5)
+                             store)]
+    (is (check
+         dom
+         [:div {:class "with-elements item"}
+          [:component {:twin-template ""
+                       :width 1.5
+                       :relative-id :content
+                       :item-id fred-id
+                       :render-dom render-content-only-DOM}]
+          [:div {:class "vertical-stack"}
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header top-border bottom-border"}
+             [:component {:width 0.375
+                          :twin-template '("" :label)
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id0]]
+                                        default-action-data-transformation]
+                          :class "label"
+                          :excluded-element-ids [id-tag0]
+                          :relative-identity [id-label0 id-tag0]
+                          :relative-id id-label0}]]
+            [:component {:width 1.03125
+                         :twin-template '("" ("zero" :label))
+                         :excluded-element-ids [id-label0]
+                         :relative-identity [id0 id-label0]
+                         :relative-id id0}]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header top-border"}
+             [:component {:width 0.375
+                          :twin-template '("" :label)
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id1 id2]]
+                                        default-action-data-transformation]
+                          :class "label"
+                          :excluded-element-ids [id-tag1both]
+                          :relative-identity [id-label1both id-tag1both]
+                          :relative-id id-label1both}]]
+            [:component {:width 1.03125
+                         :twin-template '("" ("both" :label))
+                         :relative-id :virtual
+                         :relative-identity [:virtual id-label1both]
+                         :adjacent-id id1
+                         :direction :after
+                         :render-dom render-virtual-DOM
+                         :action-data virtual-action-data}]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header indent"}
+             [:div {:class "label horizontal-header top-border bottom-border"}
+              [:component {:width 0.375
+                           :twin-template '("" :label)
+                           :action-data [composed-action-data-transform
+                                         [exemplar-action-data [id1]]
+                                         default-action-data-transformation]
+                           :class "label"
+                           :excluded-element-ids [id-tag1one]
+                           :relative-identity [id-label1one id-tag1one]
+                           :relative-id id-label1one}]]]
+            [:component {:width 1.03125
+                         :twin-template '("" ("both" :label) ("one" :label))
+                         :excluded-element-ids [id-label1both id-label1one]
+                         :relative-identity [id1 id-label1both id-label1one]
+                         :relative-id id1}]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header indent bottom-border"}
+             [:div {:class "label horizontal-header top-border bottom-border"}
+              [:component {:width 0.375
+                           :twin-template '("" :label)
+                           :action-data [composed-action-data-transform
+                                         [exemplar-action-data [id2]]
+                                         default-action-data-transformation]
+                           :class "label"
+                           :excluded-element-ids [id-tag2two]
+                           :relative-identity [id-label2two id-tag2two]
+                           :relative-id id-label2two}]]]
+            [:div {:class "horizontal-value-last"}
+             [:component {:width 1.03125
+                          :twin-template '("" ("both" :label) ("two" :label))
+                          :excluded-element-ids [id-label2both id-label2two]
+                          :relative-identity [id2 id-label2both id-label2two]
+                          :relative-id id2}]]]
+           [:div {:class "horizontal-labels-element label wide"}
+            [:div {:class "label horizontal-header top-border bottom-border"}
+             [:component {:width 0.375
+                          :twin-template '("" :label)
+                          ;; TODO: This breaks the relative id convention.
+                          :relative-id [id3 :virtual-label]
+                          :action-data [composed-action-data-transform
+                                        [exemplar-action-data [id3]]
+                                        virtual-action-data]
+                          :render-dom render-virtual-DOM
+                          :class "label"}]]
+            [:component {:width 1.03125
+                         :twin-template ""
+                         :relative-id id3}]]]])))
+  )
 
 (comment
   (deftest item-DOM-R-test-one-column

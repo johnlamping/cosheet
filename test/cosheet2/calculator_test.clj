@@ -26,9 +26,10 @@
     (modify-and-act! r (fn [data]
                         (-> data
                             (update-in [:test] inc)
-                            (assoc :further-actions [[swap! a inc]]))))
+                            (update-new-further-action swap! a inc)
+                            (update-new-further-actions [[swap! a #(* % 3)]]))))
     (is (= (:test (reporter-data r)) 11))
-    (is (= @a 2))))
+    (is (= @a 6))))
 
 (defn activated? [r]
   (if (reporter? r)

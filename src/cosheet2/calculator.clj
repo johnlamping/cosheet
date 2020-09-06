@@ -81,6 +81,14 @@
   [data & action]
   (update-in data [:further-actions] (fnil conj []) (vec action)))
 
+(defn update-new-further-actions
+  "Given a map, add each argument as a further action.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
+  [data actions]
+  (update-in data [:further-actions] #(concat % (map vec actions)) ))
+
 (defn modify-and-act!
   "Atomically call the function on the reporter's data.
    The function should return the new data for the reporter,

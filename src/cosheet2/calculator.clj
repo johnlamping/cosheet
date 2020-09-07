@@ -87,7 +87,9 @@
    in the map. They will be done immediately after the map is stored back,
    in the order in which they were requested."
   [data actions]
-  (update-in data [:further-actions] #(concat % (map vec actions)) ))
+  (if (empty? actions)
+    data
+    (update-in data [:further-actions] #(concat % (map vec actions)) )))
 
 (defn modify-and-act!
   "Atomically call the function on the reporter's data.

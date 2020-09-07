@@ -366,8 +366,6 @@
         (virtual-element-DOM
          (assoc leaf-spec
                 :relative-id :virtual
-                :relative-identity [:virtual
-                                    (:item-id (first example-elements))]
                 :adjacent-id (:item-id adjacent-item)
                 :direction :after)))
       (let [items (map :item leaves)

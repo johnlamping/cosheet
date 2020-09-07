@@ -76,18 +76,10 @@
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is also the id the dom is about, unless
 ;;;                         overridden by :item-id
-;;;     :relative-identity  Optional unique determiner of this map given
-;;;                         the containing component if :relative-id does
-;;;                         not uniquely determine it
 ;;;                    ...  Any attribute that a dom specification (see
 ;;;                         below) can have.
 ;;;                         
 ;;;    }]
-;;; While a dom can change, the information for a sub-component with a
-;;; given :relative-identity must always be the same, given the
-;;; component. This allows the tracker to only notices changes to
-;;; relative-identity. If :relative-identity isn't present, then
-;;; :relative-id also acts as :relative-identity.
 
 ;;; The dom_tracker will give the client a dom with these subsidiary
 ;;; components, with the initially specified class, and it will create
@@ -114,24 +106,24 @@
 ;;; come from the store.
 
 ;;; To ask to render a dom, the dom tracker uses two functions, stored
-;;; in the spec map under :rendering-data and :render-dom. The
-;;; :rendering-data function takes the mutable store and returns a seq
-;;; of <reporter, categories> pairs, which give the information that
-;;; the rendering requires and gives what categories of changes it is
-;;; sensitive to. The tracker then registers for updates to those
-;;; categories for those reporters, gets the current values of the
-;;; reporters, and calls the :render-dom function with the spec map
-;;; and those values.
+;;; in the spec map under :get-rendering-data and :render-dom. The
+;;; :get-rendering-data function takes specification and the mutable
+;;; store and returns a seq of <reporter, categories> pairs, which
+;;; give the information that the rendering requires and gives what
+;;; categories of changes it is sensitive to. The tracker then
+;;; registers for updates to those categories for those reporters,
+;;; gets the current values of the reporters, and calls the
+;;; :render-dom function with the spec map and those values.
 
 ;;; By doing it this way, the dom tracker will learn of any changes
 ;;; that require recomputing the dom, and will have registered for
 ;;; those changes before getting the data the renderer will
-;;; use. Usually, :rendering-data will usually just return the mutable
-;;; store and the ids there that it depends on, but the protocol gives
-;;; it the option to create additional reporters that are smart about
-;;; tracking the store. For example, reporters can track the result of
-;;; a query on the store, so the query doesn't have to be re-run for
-;;; every change to the store.
+;;; use. Usually, :get-rendering-data will usually just return the
+;;; mutable store and the ids there that it depends on, but the
+;;; protocol gives it the option to create additional reporters that
+;;; are smart about tracking the store. For example, reporters can
+;;; track the result of a query on the store, so the query doesn't
+;;; have to be re-run for every change to the store.
 
 ;;; When a component's dom changes, the tracker only needs to
 ;;; re-render sub-components with new ids. It can assume that any
@@ -161,25 +153,25 @@
 
 ;;; Rather than compute this information during rendering, it is
 ;;; computed as actions are done, using with two more functions in the
-;;; spec. :action-data holds a function that takes a dom
+;;; spec. :get-action-data holds a function that takes a dom
 ;;; specification, the action data for the containing dom, a user
 ;;; action, and the current store, and returns the action data for the
 ;;; given dom. Then the function in :handle-action takes the action
 ;;; information for the dom, a user action, and the current store and
 ;;; returns a store with the appropriate changes.
 
-;;; This protocol allows :action-data to pass down a modified store as
-;;; part of its output. For example, it might want to create some
-;;; items for the action to act on.
+;;; This protocol allows :get-action-data to pass down a modified
+;;; store as part of its output. For example, it might want to create
+;;; some items for the action to act on.
 
 ;;; There is a default for each of the functions that a dom
-;;; specification can have. For :rendering-data, the default returns
-;;; the store and a dependency on the :relative-id, checking that it
-;;; is an item id. For :render-dom, the default renders the item
-;;; corresponding to the :relative-id, minus any elements in
-;;; :excluded-element-ids. For :action-data, the default returns
-;;; the set of items that are each represented by the displayed
-;;; item.
+;;; specification can have. For :get-rendering-data, the default
+;;; returns the store and a dependency on the :item-id or
+;;; :relative-id, checking that it is an item id. For :render-dom, the
+;;; default renders the item corresponding to the :relative-id, minus
+;;; any elements in :excluded-element-ids. For :get-action-data, the
+;;; default returns the set of items that are each represented by the
+;;; displayed item.
 
 ;;; Each component is uniquely identified with a id, which is added by
 ;;; the dom tracker. There must never be two components or doms with
@@ -207,9 +199,6 @@
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is also the id the dom is about, unless
 ;;;                         overridden by :item-id
-;;;     :relative-identity  Optional unique determiner of this map given
-;;;                         the containing component if :relative-id does
-;;;                         not uniquely determine it
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
@@ -217,14 +206,15 @@
 ;;;            :render-dom  Optional function that takes this specification
 ;;;                         and additional reporter values, then produces
 ;;;                         the dom.
-;;;        :rendering-data  Optional function that takes this map and the
-;;;                         mutable store and returns the reporters whose
-;;;                         values are needed by :render-dom
+;;;    :get-rendering-data  Optional function that takes this map and the
+;;;                         mutable store and returns a seq of pairs of the
+;;;                         a reporter whose values is needed by :render-dom
+;;;                         and the categories of that reporter it depends on.
 ;;;         :handle-action  Optional function that takes data about how to
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
 ;;;                         changes.
-;;;           :action-data  Optional function that takes a dom specification,
+;;;       :get-action-data  Optional function that takes a dom specification,
 ;;;                         the action data for the containing dom, a user
 ;;;                         action, and the current store, and returns the
 ;;;                         action data for the given dom.
@@ -277,6 +267,12 @@
            (keyword (subs % 1))
            (string->id %))
         (clojure.string/split rep #"_"))))
+
+(defn default-get-rendering-data
+  [specification mutable-store]
+  (let [id (or (:item-id specification) (:relative-id specification))]
+    (assert (satisfies? StoredItemDescription id))
+    [[mutable-store id]])) 
 
 ;;; --- Top level item ---
 

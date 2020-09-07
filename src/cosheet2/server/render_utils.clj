@@ -323,8 +323,7 @@
       (item-component
        item
        (assoc specification
-              :excluded-element-ids (vec excluded-ids)
-              :relative-identity (concat [(:item-id item)] excluded-ids))))))
+              :excluded-element-ids (vec excluded-ids))))))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return

@@ -60,7 +60,6 @@
                 [:component {:twin-template '("" :label)
                              :relative-id id2
                              :excluded-element-ids [id-tag2]
-                             :relative-identity [id2 id-tag2]
                              :class "label"
                              :width 1.5}]
                 [:div {:class "indent-wrapper"}
@@ -178,13 +177,11 @@
                                              default-action-data-transformation]
                                :class "label"
                                :excluded-element-ids [id-tag1]
-                               :relative-identity [id-label1 id-tag1]
                                :relative-id id-label1}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
                                 :twin-template '("" ("one" :label))
                                 :excluded-element-ids [id-label1]
-                                :relative-identity [id1 id-label1]
                                 :relative-id id1}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
@@ -194,13 +191,11 @@
                                              default-action-data-transformation]
                                :class "label"
                                :excluded-element-ids [id-tag2]
-                               :relative-identity [id-label2 id-tag2]
                                :relative-id id-label2}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
                                 :twin-template '("" ("two" :label))
                                 :excluded-element-ids [id-label2]
-                                :relative-identity [id2 id-label2]
                                 :relative-id id2}]]]]])))
   ;; Test an item with four elements, with label sharing among them.
   (let [[store fred-id] (add-entity (new-element-store) nil
@@ -261,13 +256,11 @@
                                              default-action-data-transformation]
                                :class "label"
                                :excluded-element-ids [id-tag0]
-                               :relative-identity [id-label0 id-tag0]
                                :relative-id id-label0}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
                                 :twin-template '("" ("zero" :label))
                                 :excluded-element-ids [id-label0]
-                                :relative-identity [id0 id-label0]
                                 :relative-id id0}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
@@ -278,7 +271,6 @@
                                              default-action-data-transformation]
                                :class "label"
                                :excluded-element-ids [id-tag1both]
-                               :relative-identity [id-label1both id-tag1both]
                                :relative-id id-label1both}]
                   [:div {:class "indent-wrapper"}
                    [:div {:class "vertical-stack"}
@@ -291,7 +283,6 @@
                                                 default-action-data-transformation]
                                   :class "label"
                                   :excluded-element-ids [id-tag1one]
-                                  :relative-identity [id-label1one id-tag1one]
                                   :relative-id id-label1one}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
@@ -299,9 +290,6 @@
                                                     ("one" :label))
                                    :excluded-element-ids [id-label1both
                                                           id-label1one]
-                                   :relative-identity [id1
-                                                       id-label1both
-                                                       id-label1one]
                                    :relative-id id1}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
@@ -312,7 +300,6 @@
                                                 default-action-data-transformation]
                                   :class "label"
                                   :excluded-element-ids [id-tag2two]
-                                  :relative-identity [id-label2two id-tag2two]
                                   :relative-id id-label2two}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
@@ -320,9 +307,6 @@
                                                     ("two" :label))
                                    :excluded-element-ids [id-label2both
                                                           id-label2two]
-                                   :relative-identity [id2
-                                                       id-label2both
-                                                       id-label2two]
                                    :relative-id id2}]]]]]]
                 [:div {:class (str "horizontal-labels-element label"
                                    " virtual-wrapper narrow")}
@@ -428,12 +412,10 @@
                                          default-action-data-transformation]
                           :class "label"
                           :excluded-element-ids [id-tag1]
-                          :relative-identity [id-label1 id-tag1]
                           :relative-id id-label1}]]
             [:component {:width 1.03125
                          :twin-template '("" ("one" :label))
                          :excluded-element-ids [id-label1]
-                         :relative-identity [id1 id-label1]
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
@@ -444,12 +426,10 @@
                                          default-action-data-transformation]
                           :class "label"
                           :excluded-element-ids [id-tag2]
-                          :relative-identity [id-label2 id-tag2]
                           :relative-id id-label2}]]
             [:component {:width 1.03125
                          :twin-template '("" ("two" :label))
                          :excluded-element-ids [id-label2]
-                         :relative-identity [id2 id-label2]
                          :relative-id id2}]]]])))
   ;; Test an item with four elements, with label sharing among them.
   (let [[store fred-id] (add-entity (new-element-store) nil
@@ -512,12 +492,10 @@
                                         default-action-data-transformation]
                           :class "label"
                           :excluded-element-ids [id-tag0]
-                          :relative-identity [id-label0 id-tag0]
                           :relative-id id-label0}]]
             [:component {:width 1.03125
                          :twin-template '("" ("zero" :label))
                          :excluded-element-ids [id-label0]
-                         :relative-identity [id0 id-label0]
                          :relative-id id0}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border"}
@@ -528,12 +506,10 @@
                                         default-action-data-transformation]
                           :class "label"
                           :excluded-element-ids [id-tag1both]
-                          :relative-identity [id-label1both id-tag1both]
                           :relative-id id-label1both}]]
             [:component {:width 1.03125
                          :twin-template '("" ("both" :label))
                          :relative-id :virtual
-                         :relative-identity [:virtual id-label1both]
                          :adjacent-id id1
                          :direction :after
                          :render-dom render-virtual-DOM
@@ -548,12 +524,10 @@
                                          default-action-data-transformation]
                            :class "label"
                            :excluded-element-ids [id-tag1one]
-                           :relative-identity [id-label1one id-tag1one]
                            :relative-id id-label1one}]]]
             [:component {:width 1.03125
                          :twin-template '("" ("both" :label) ("one" :label))
                          :excluded-element-ids [id-label1both id-label1one]
-                         :relative-identity [id1 id-label1both id-label1one]
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent bottom-border"}
@@ -565,13 +539,11 @@
                                          default-action-data-transformation]
                            :class "label"
                            :excluded-element-ids [id-tag2two]
-                           :relative-identity [id-label2two id-tag2two]
                            :relative-id id-label2two}]]]
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
                           :twin-template '("" ("both" :label) ("two" :label))
                           :excluded-element-ids [id-label2both id-label2two]
-                          :relative-identity [id2 id-label2both id-label2two]
                           :relative-id id2}]]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}

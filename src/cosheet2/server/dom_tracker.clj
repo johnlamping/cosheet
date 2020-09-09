@@ -1,5 +1,5 @@
 (ns cosheet2.server.dom-tracker
-  (:require [clojure.data.priority-map :as priority-map]
+  (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
                                         reporter-value]]
@@ -8,12 +8,17 @@
                                           modify-and-act!]]
                       [utils :refer [swap-control-return!
                                      with-latest-value
-                                     update-in-clean-up]]
+                                     update-in-clean-up
+                                     dissoc-in]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
-            (cosheet2.server [render :refer [default-get-rendering-data]]
-                             [item-render :refer [render-item-DOM]])))
+            (cosheet2.server
+             [render :refer [default-get-rendering-data
+                             concatenate-client-id-parts
+                             id->client-id-part ids->client-id
+                             client-id->ids]]
+             [item-render :refer [render-item-DOM]])))
 
 (def verbose false)
 
@@ -34,8 +39,11 @@
 ;;;          :dom-tracker  Our dom tracker.
 ;;;            :client-id  Optional field that is in present in components
 ;;;                        that are not contained in other components that
-;;;                        the tracker manages. It gives the id to use for
-;;;                        communicating with the client about this component.
+;;;                        the tracker manages. It gives a keyword id to use
+;;;                        for communicating with the client about this
+;;;                        component.
+;;; :containing-component  The component that contains this one. Not present
+;;;                        if this component is a root.
 ;;;    :dom-specification  The dom spec for this component. If the component
 ;;;                        has been permanently disabled, this is missing.
 ;;;                :depth  The depth of this component in the component
@@ -47,9 +55,7 @@
 ;;;        :subcomponents  A map from :relative-id to the component data
 ;;;                        of each sub-component. This is filled in once
 ;;;                        the dom is computed.
-;;;                  :dom  The rendered dom for this client. This
-;;;                        is only present if we need to send this component
-;;;                        to the client.
+;;;                  :dom  The rendered dom for this client.
 ;;;          :dom-version  The version number of the current dom.
 ;;;     :client-needs-dom  True if the client has not been sent the dom
 ;;;                        that would currently be computed, or
@@ -79,20 +85,22 @@
 
 (def new-dom-for-client)
 
-
 (defn make-component-data
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
   container."
-  [specification parent-depth tracker]
+  [specification containing-component-atom dom-tracker]
   (assert (map? specification))
-  (assert (:relative-id specification))
+  (assert (or :client-id specification) (:relative-id specification))
   (atom
-   {:dom-tracker tracker
+   {:dom-tracker dom-tracker
     :dom-specification specification
-    :depth (+ 1 parent-depth)
+    :containing-component containing-component-atom
+    :depth (if containing-component-atom
+             (+ 1 (:depth @containing-component-atom))
+             1)
     :client-needs-dom true
-    :dom-version (+ 1 (:highest-version @tracker))}))
+    :dom-version (+ 1 (:highest-version @dom-tracker))}))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their
@@ -107,9 +115,11 @@
   "Given a dom that may contain subcomponents, return a map
   from :relative-id to their specifications."
   [dom]
-  (let [specs (subcomponent-specifications dom)]
-    (zipmap (map :relative-id specs) specs)))
-
+  (let [specs (subcomponent-specifications dom)
+        answer (zipmap (map :relative-id specs) specs)]
+    (assert (= (count answer) (count specs))
+            "Error: duplicate subcomponent ids")
+    answer))
 
 (defn specification-for-subcomponent
   [{:keys [dom]} subcomponent-id]
@@ -117,11 +127,11 @@
     ((get-id->subcomponent-specifications dom) subcomponent-id)))
 
 (defn reuse-or-make-component-atom
-  [spec tracker old-component-atom]
+  [specification dom-tracker containing-component-atom old-component-atom]
   (if (and old-component-atom
-           ((:dom-specification @old-component-atom) spec))
+           ((:dom-specificationification @old-component-atom) specification))
     old-component-atom
-    (make-component-data spec tracker)))
+    (make-component-data specification containing-component-atom dom-tracker)))
 
 (def compute-dom)
 
@@ -197,6 +207,7 @@
         subcomponents (zipmap ids
                               (map (fn [id] (reuse-or-make-component-atom
                                              (subcomponent-specs id)
+                                             (:dom-tracker component-data)
                                              component-atom
                                              (old-subcomponents id)))))
         dropped-subcomponent-ids (filter #(not= (subcomponents %)
@@ -214,9 +225,11 @@
          new-dom-for-client
          (:dom-tracker component-data) component-atom)
         (update-new-further-actions
-         (map (fn [id] [activate-component (subcomponents id)])))
+         (map (fn [id] [activate-component (subcomponents id)])
+              new-subcomponent-ids))
         (update-new-further-actions
-         (map (fn [id] [disable-component (old-subcomponents id)]))))))
+         (map (fn [id] [disable-component (old-subcomponents id)])
+              dropped-subcomponent-ids)))))
 
 (defn compute-dom
   [component-atom]
@@ -229,20 +242,21 @@
            component-atom
            #(update-dom % component-atom dom)))))))
 
-;;; The information for all components is stored in an atom,
-;;; containing a map with these elements:
-;;;    :root-components  A map client id of root components to their
-;;;                      component data.
+;;; The information for interfacing between the client and the
+;;; components is stored in an atom, containing a map with these
+;;; elements:
+;;;    :root-components  A map from client id of root components to their
+;;;                      component atoms.
 ;;;    :highest-version  The highest version number of any dom we have sent
 ;;;                      to the client. Any new component starts out with a
 ;;;                      version number one higher, because we might have
 ;;;                      forgetten about it and then reconstructed it, all
-;;;                      while the client keept ahold of it. This way, our
+;;;                      while the client kept ahold of it. This way, our
 ;;;                      next version will be larger that whatever the client
 ;;;                      has.
-;;;   :client-ready-dom  A priority queue of keys for which we have dom that
-;;;                      the client needs to know about, prioritized by their
-;;;                      depth.
+;;;   :client-ready-dom  A priority map of client-id for which we have
+;;;                      dom that the client needs to know about,
+;;;                      prioritized by their depth.
 ;;;    :calculator-data  The calculator data whose queue we use.
 ;;;      :mutable-store  The mutable store that holds the data the doms
 ;;;                      rely on.
@@ -252,6 +266,89 @@
 ;;;                      arguments. (These actions are not actually
 ;;;                      stored in the atom, but are added to the
 ;;;                      data before it is stored, to request actions.)
+
+(defn component->id-sequence
+  [component-atom]
+  (let [data @component-atom]
+    (if-let [client-id (:client-id data)]
+      [client-id]
+      (conj (component->id-sequence (:containing-component))
+            (:relative-id (:dom-specification data))))))
+
+(defn component->client-id
+  [component-atom]
+  (ids->client-id (component->id-sequence component-atom)))
+
+(defn client-id->component
+  [tracker-data client-id]
+  (let [id-sequence (client-id->ids client-id)
+        root ((:root-components tracker-data) (first id-sequence))]
+    (reduce (fn [component id]
+              (when component ((:subcomponents @component) id)))
+            root (rest id-sequence))))
+
+ (defn adjust-subdom-for-client
+   "Given a piece of dom and the client id for its container,
+    adjust the dom to the form the client needs, turning subcomponents
+    into [:component {:key ... :class ...}]."
+   [container-client-id dom]
+   (if (vector? dom)
+     (if (= (first dom) :component)
+       (let [{:keys [relative-id client-id class]} (second dom)]
+         [:component (cond-> {:id (or client-id
+                                      (concatenate-client-id-parts
+                                       [container-client-id
+                                        (id->client-id-part relative-id)]))}
+                       class (assoc :class class))]
+         (vec (map (partial adjust-subdom-for-client container-client-id)
+                   dom)))
+       dom)))
+
+(defn dom-for-client
+  "Given a component-atom prepare the dom for that atom to send to the
+   client."
+  [component-atom]
+  (let [{:keys [dom dom-version]} @component-atom ]
+    (when dom
+      (let [client-id (component->client-id component-atom)
+            added (add-attributes dom {:id client-id
+                                       :version dom-version})]
+        (into [(first added) (second added)]
+              (map (partial adjust-subdom-for-client client-id)
+                   (rest (rest dom))))))))
+
+(defn response-doms
+   "Return a seq of doms for the client for up to num components."
+  [data num]
+  (loop [response []
+         components (map first (:client-ready-dom data))]
+    (if (or (>= (count response)) num) (empty? components))
+      response
+      (let [[component & remaining-components] components
+            dom (dom-for-client component)]
+        (recur (if dom (conj response dom) response)
+               remaining-components))))
+
+;;; TODO: Does this work right if it gets re-run multiple times?
+(defn update-acknowledgements
+  "Given a map of acknowledgements from client id to version,
+   Remove the acknowledged components from the ones that need
+   updating in the client, provided the acknowledged version is up to date."
+  [data acknowledgements]
+   (reduce
+    (fn [data [client-id version]]
+      (if-let [component-atom (client-id->component data)]
+        (let [version-matched
+              (swap-control-return!
+               component-atom
+               (fn [component-data]
+                 (if (= version (:dom-version component-data))
+                   [(dissoc component-data :client-needs-dom) true]
+                   [component-data false])))]
+          (cond-> data
+            version-matched (dissoc-in [:client-ready-dom component-atom])))
+        data))
+    data acknowledgements))
 
 (comment
  (defn dom->keys-and-dom
@@ -264,57 +361,6 @@
        (reduce (fn [keys dom] (into keys (dom->keys-and-dom dom)))
                (if (nil? key) {} {key dom}) (rest dom)))
      {}))
-
- (defn adjust-attributes-for-client
-   "Given the data and a dom, which must be a vector, remove dom attributes
-   not intended for the client, and if it has a :key in its attributes,
-   replace it with the corresponding id."
-   [data dom]
-   (let [attributes (second dom)]
-     (if (not (map? attributes))
-       dom
-       (let [key (:key attributes)
-             pruned-attributes (apply dissoc attributes
-                                      server-specific-attributes)
-             client-attributes (if (nil? key)
-                                 pruned-attributes
-                                 (let [id (or (get-in data [:key->id key])
-                                              (key->string key))]
-                                   (assert (not (nil? id)))
-                                   (assoc pruned-attributes :id id)))]
-         (assoc dom 1 client-attributes)))))
-
- (defn adjust-dom-for-client
-   "Given the data, and a piece of dom,
-   adjust the dom to the form the client needs, replacing keys by ids,
-   and putting subcomponents into the form [:component <attributes>]."
-   [data dom]
-   (if (vector? dom)
-     (if (= (first dom) :component)
-       (let [attributes (second dom) 
-             id (or (get-in data [:key->id (:key attributes)])
-                    (key->string (:key attributes)))]
-         (assert (not (nil? id)) ["No id found for key" (:key attributes)])
-         (adjust-attributes-for-client data [:component attributes]))
-       (vec (map (partial adjust-dom-for-client data)
-                 (adjust-attributes-for-client data dom))))
-     dom))
-
- (defn dom-for-client
-   "Given the data and a key,
-   prepare the dom for that key to send to the client."
-   [data key]
-   (let [component-data (get-in data [:components key])]
-     (assert (not (nil? component-data)))
-     (add-attributes
-      (adjust-dom-for-client data (get-in data [:key->dom key]))
-      {:version (:version component-data)})))
-
- (defn response-doms
-   "Return a seq of doms for the client for up to num components."
-   [data num]
-   (for [[key priority] (take num (:out-of-date-keys data))]
-     (dom-for-client data key)))
 
  (defn update-acknowledgements
    "Given a map of acknowledgements from id to version,
@@ -336,8 +382,8 @@
 
  (defn process-acknowledgements
    "Update the atom to reflect the acknowledgements."
-   [tracker acknowledgements]
-   (modify-and-act! tracker #(update-acknowledgements % acknowledgements)))
+   [dom-tracker acknowledgements]
+   (modify-and-act! dom-tracker #(update-acknowledgements % acknowledgements)))
 
  (defn update-unneeded-subcomponents
    "Remove all subcomponents that were in the old version of the component map
@@ -500,14 +546,14 @@
               (fn [atom] (manage reporter (:manager-data data)))))))))
 
  (defn add-dom
-   "Add dom with the given client id, key, and definition to the tracker."
-   [tracker client-id key definition]
+   "Add dom with the given client id, key, and definition to the dom-tracker."
+   [dom-tracker client-id key definition]
    ;; The id must not be one that we could generate.
    (assert (string? client-id))
    (assert (vector? key))
    (assert (not (#{\: \1 \2 \3 \4 \5 \6 \7 \8 \9 \0} (first client-id))))
    (modify-and-act!
-    tracker
+    dom-tracker
     #(-> %
          ;; It is possible that the id was paired with
          ;; something different. Get rid of that pairing too.
@@ -518,18 +564,18 @@
          (update-set-component {:definition definition :key key}))))
 
  (defn remove-all-doms
-   "Remove all the doms from the tracker. This will cause it to release
+   "Remove all the doms from the dom-tracker. This will cause it to release
   all its reporters."
-   [tracker]
+   [dom-tracker]
    (modify-and-act!
-    tracker
+    dom-tracker
     (fn [data] (reduce (fn [data key] (update-clear-component data key))
                        data (vals (:id->key data))))))
 
  (defn id->key
    "Return the hiccup key for the client id."
-   [tracker id]
-   (let [data @tracker]
+   [dom-tracker id]
+   (let [data @dom-tracker]
      (or (get-in data [:id->key id])
          (let [key (when (string? id) (string->key id))]
            ;; Make sure the key the client sent us is for a dom we know about.
@@ -539,24 +585,24 @@
 
  (defn key->id
    "Return the client id for the hiccup key."
-   [tracker key]
-   (or (get-in @tracker [:key->id key])
+   [dom-tracker key]
+   (or (get-in @dom-tracker [:key->id key])
        (key->string key)))
 
  (defn key->attributes
    "Return the attributes for the dom with the given key,
    include both attributes specified by the dom definition and by
    any component that gave rise to it."
-   [tracker key]
-   (let [data @tracker
+   [dom-tracker key]
+   (let [data @dom-tracker
          dom (get-in data [:key->dom key])]
      (into-attributes (or (and dom (dom-attributes dom)) {})
                       (get-in data [:components key :attributes]))))
 
  (defn request-client-refresh
    "Mark all components as needing to be sent to the client."
-   [tracker]
-   (swap! tracker
+   [dom-tracker]
+   (swap! dom-tracker
           (fn [data] (assoc data :out-of-date-keys
                             (reduce (fn [map [key component]]
                                       (if (get-in data [:key->dom key])
@@ -566,7 +612,7 @@
                                     (:components data))))))
 
  (defn new-dom-tracker
-   "Return a new dom tracker object"
+   "Return a new dom-tracker object"
    [md]
    (atom
     {:components {}

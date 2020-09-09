@@ -248,25 +248,35 @@
 ;;; about the item, while :key-prefix and :subject-referent are about
 ;;; the children.
 
-(defn ids->string
+(defn concatenate-client-id-parts
+  [client-id-parts]
+  (clojure.string/join "_" client-id-parts))
+
+(defn id->client-id-part
+  "Turn a :relative-id to its client form."
+  [id]
+  (cond (keyword? id) (str ":" (name id))
+        (satisfies? StoredItemDescription id) (id->string id)
+        true (assert false (str "unknown key component " id))))
+
+(defn ids->client-id
   "Given a sequence of relative ids, return a string representation
   that can be passed to the client."
   [ids]
-  (clojure.string/join
-   "_"
-   (map #(cond (keyword? %) (str ":" (name %))
-               (satisfies? StoredItemDescription %) (id->string %)
-               true (assert false (str "unknown key component " %)))
-        ids)))
+  (concatenate-client-id-parts (map id->client-id-part ids)))
 
-(defn string->ids
+(defn client-id-part->id
+  "Turn a part of a client id into a :relative-id"
+  [client-id-part]
+  (if (= (first client-id-part) \:)
+    (keyword (subs client-id-part 1))
+    (string->id client-id-part)))
+
+(defn client-id->ids
   "Given a string representation of a client id, return the relative ids."
   [rep]
-  (vec (map
-        #(if (= (first %) \:)
-           (keyword (subs % 1))
-           (string->id %))
-        (clojure.string/split rep #"_"))))
+  (vec (map client-id-part->id
+            (clojure.string/split rep #"_"))))
 
 (defn default-get-rendering-data
   [specification mutable-store]

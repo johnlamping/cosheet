@@ -49,7 +49,7 @@
 
 ;;; The overall architecture of the system is a dom renderer that
 ;;; knows how to generate various kinds of dom to display parts of the
-;;; store, and a dom-tracker that keeps track of what dom might need
+;;; store, and a dom-manager that keeps track of what dom might need
 ;;; to be recomputed and what dom has changed and needs to be sent to
 ;;; the client.
 
@@ -70,7 +70,7 @@
 
 ;;; We use attributes, as supported by hiccup, to store information
 ;;; about components. So a sub-component looks like hiccup, with this
-;;; format which is recognized and processed by the tracker:
+;;; format which is recognized and processed by the dom manager:
 ;;;   [:component {
 ;;;                 :class  Optional subset of classes the DOM will have
 ;;;           :relative-id  The id relative to containing component
@@ -81,7 +81,7 @@
 ;;;                         
 ;;;    }]
 
-;;; The dom_tracker will give the client a dom with these subsidiary
+;;; The dom manager will give the client a dom with these subsidiary
 ;;; components, with the initially specified class, and it will create
 ;;; additional computations to compute the dom for the components,
 ;;; passing them as updates to the client once they are computed.
@@ -105,17 +105,17 @@
 ;;; formatted. The actual user information conveyed by the dom should
 ;;; come from the store.
 
-;;; To ask to render a dom, the dom tracker uses two functions, stored
+;;; To ask to render a dom, the dom manager uses two functions, stored
 ;;; in the spec map under :get-rendering-data and :render-dom. The
 ;;; :get-rendering-data function takes specification and the mutable
 ;;; store and returns a seq of <reporter, categories> pairs, which
 ;;; give the information that the rendering requires and gives what
-;;; categories of changes it is sensitive to. The tracker then
+;;; categories of changes it is sensitive to. The manager then
 ;;; registers for updates to those categories for those reporters,
 ;;; gets the current values of the reporters, and calls the
 ;;; :render-dom function with the spec map and those values.
 
-;;; By doing it this way, the dom tracker will learn of any changes
+;;; By doing it this way, the dom manager will learn of any changes
 ;;; that require recomputing the dom, and will have registered for
 ;;; those changes before getting the data the renderer will
 ;;; use. Usually, :get-rendering-data will usually just return the
@@ -125,7 +125,7 @@
 ;;; track the result of a query on the store, so the query doesn't
 ;;; have to be re-run for every change to the store.
 
-;;; When a component's dom changes, the tracker only needs to
+;;; When a component's dom changes, the manager only needs to
 ;;; re-render sub-components with new ids. It can assume that any
 ;;; pre-existing components and their renderings haven't
 ;;; changed. (This means that a component that is one of several
@@ -139,7 +139,7 @@
 ;;; TODO: Optionally, a dom specifation can have a
 ;;; :sub-dom-specification method, which gives the specification of a
 ;;; subsidiary component, given its relative id. This way, if the
-;;; tracker needs a subsidiary component of a very large dom, it
+;;; manager needs a subsidiary component of a very large dom, it
 ;;; doesn't have to render the entire dom.
 
 ;;; In addition to rendering dom, a dom specification knows how to
@@ -173,12 +173,12 @@
 ;;; default returns the set of items that are each represented by the
 ;;; displayed item.
 
-;;; Each component is uniquely identified with a id, which is added by
-;;; the dom tracker. There must never be two components or doms with
-;;; the same id, even during updates, or all sorts of confusion can
-;;; result. The id of a component must also not change throughout the
-;;; life of its parent dom, because conserving it is how we reuse
-;;; subsidiary doms.
+;;; Each component is uniquely identified with a client id, which is
+;;; added by the dom manager. There must never be two components or
+;;; doms with the same id, even during updates, or all sorts of
+;;; confusion can result. The id of a component must also not change
+;;; throughout the life of its parent dom, because conserving it is
+;;; how we reuse subsidiary doms.
 
 ;;; The heart of the id is typically the :relative-id, which is the id
 ;;; of the item the dom is about. But since there can be several dom
@@ -187,7 +187,7 @@
 ;;; dom.
 
 ;;; As a rule, there should be a separate component for every thing
-;;; that the user can interact with. But the dom tracker is free to
+;;; that the user can interact with. But the dom manager is free to
 ;;; elide out components when it sends them to the client, as long as
 ;;; it includes their ids.
 

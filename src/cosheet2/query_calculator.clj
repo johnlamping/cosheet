@@ -12,10 +12,10 @@
                       entity-impl
                       [query :refer [matching-items matching-extensions]]
                       query-impl
-                      [calculator :refer [modify-and-act!
-                                          update-new-further-action]]
+                      [calculator :refer [modify-and-act!]]
                       [task-queue :refer [add-task-with-priority]]
-                      [utils :refer [with-latest-value]])))
+                      [utils :refer [with-latest-value
+                                     update-new-further-action]])))
 
 ;;; Manage the (re)computation of a term against a store.  The value
 ;;; of its reporter is a set of ids whose items satisfy the term.

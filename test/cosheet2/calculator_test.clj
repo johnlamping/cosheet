@@ -5,7 +5,9 @@
                                         data-value 
                                         valid? reporter?]]
                       [task-queue :refer [new-priority-task-queue]]
-                      [calculator :refer :all])
+                      [calculator :refer :all]
+                      [utils :refer [update-new-further-action
+                                     update-new-further-actions]])
             ; :reload
             ))
 

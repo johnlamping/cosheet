@@ -5,13 +5,13 @@
                                         remove-attendee!
                                         data-attended?]]
                       [calculator :refer [propagate-calculator-data!
-                                          update-new-further-action
                                           modify-and-act!
                                           update-value-and-dependent-depth
                                           copy-value add-propagate-task
                                           register-for-value-source]]
                       [task-queue :refer [add-task-with-priority]]
                       [utils :refer [with-latest-value
+                                     update-new-further-action
                                      assoc-if-non-empty]])))
 
 ;;; Manage the (re)computation of application reporters using a priority queue.

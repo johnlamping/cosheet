@@ -4,11 +4,11 @@
                                         invalid]]
                       [mutable-map :as mm]
                       [calculator :refer [propagate-calculator-data!
-                                          update-new-further-action
                                           register-for-value-source
                                           copy-value-callback
                                           modify-and-act!]]
                       [utils :refer [with-latest-value
+                                     update-new-further-action
                                      assoc-if-non-empty]]
                       [application-calculator
                        :refer [application-calculator]])))

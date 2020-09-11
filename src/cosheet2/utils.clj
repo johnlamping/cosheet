@@ -177,6 +177,39 @@
                           (let [new (apply f old args)]
                             [new [old new]]))))
 
+(defn update-new-further-action
+  "Given a map, add an action to the further actions.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
+  [data & action]
+  (update-in data [:further-actions] (fnil conj []) (vec action)))
+
+(defn update-new-further-actions
+  "Given a map, add each argument as a further action.
+   This is used to request actions that affect state elsewhere than
+   in the map. They will be done immediately after the map is stored back,
+   in the order in which they were requested."
+  [data actions]
+  (if (empty? actions)
+    data
+    (update-in data [:further-actions] #(concat % (map vec actions)))))
+
+(defn swap-and-act!
+  "Atomically call the function on the atom's content.
+   The function should return the new contet for the atom,
+   which may also contain a temporary field, :further-actions with
+   a list of actions that should be performed."
+  [atom f]
+  (let [actions (swap-control-return!
+                 atom
+                 (fn [data] (let [new-data (f data)]
+                              [(dissoc new-data :further-actions)
+                               (:further-actions new-data)])))]
+    (doseq [action actions]
+      (apply (first action) (rest action)))))
+
+
 (defn call-with-latest-value
   "Call the function with the current value of the thunk,
    and the other arguments, repeating until the value of the thunk after the

@@ -462,9 +462,6 @@
   (equivalent-undo-point? [this]
     (:equivalent-undo-point this))
 
-  (store-update-new-further-action [this action]
-    (update this :further-actions (fnil conj []) (vec action)))
-
   (store-fetch-and-clear-further-actions [this]
     [(assoc this :further-actions nil) (:further-actions this)])
 

@@ -11,6 +11,8 @@
                                           run-some-pending-tasks
                                           add-task-with-priority]]
                       [utils :refer [swap-control-return!
+                                     swap-and-act!
+                                     update-new-further-action
                                      with-latest-value]])))
 
 ;;; The manager data record contains all the information that the
@@ -24,6 +26,10 @@
      cache      ; A mutable map from expression to reporter,
                 ; used by cache calculators.
      ])
+
+(defmethod print-method CalculatorData [s ^java.io.Writer w]
+  ;; Avoid huge print-outs.
+  (.write w "<CalculatorData>"))
 
 (defn new-calculator-data
   "Create a calculator data to support both application and cache calculators."
@@ -73,37 +79,13 @@
 ;;;                      be stored in a reporter, but are added to the
 ;;;                      map before it is stored.)
 
-(defn update-new-further-action
-  "Given a map, add an action to the further actions.
-   This is used to request actions that affect state elsewhere than
-   in the map. They will be done immediately after the map is stored back,
-   in the order in which they were requested."
-  [data & action]
-  (update-in data [:further-actions] (fnil conj []) (vec action)))
-
-(defn update-new-further-actions
-  "Given a map, add each argument as a further action.
-   This is used to request actions that affect state elsewhere than
-   in the map. They will be done immediately after the map is stored back,
-   in the order in which they were requested."
-  [data actions]
-  (if (empty? actions)
-    data
-    (update-in data [:further-actions] #(concat % (map vec actions)) )))
-
 (defn modify-and-act!
   "Atomically call the function on the reporter's data.
    The function should return the new data for the reporter,
    which may also contain a temporary field, :further-actions with
    a list of actions that should be performed."
   [reporter f]
-  (let [actions (swap-control-return!
-                 (reporter-atom reporter)
-                 (fn [data] (let [new-data (f data)]
-                              [(dissoc new-data :further-actions)
-                               (:further-actions new-data)])))]
-    (doseq [action actions]
-      (apply (first action) (rest action)))))
+  (swap-and-act! (reporter-atom reporter) f))
 
 (defn update-value-and-dependent-depth
   "Given the data from a reporter, and the reporter, set the value
@@ -234,7 +216,3 @@
         true
         value))
     reporter))
-
-(defmethod print-method CalculatorData [s ^java.io.Writer w]
-  ;; Avoid huge print-outs.
-  (.write w "<CalculatorData>"))

@@ -3,12 +3,12 @@
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
                                         reporter-value]]
-                      [calculator :refer [update-new-further-action
-                                          update-new-further-actions
-                                          modify-and-act!]]
                       [utils :refer [swap-control-return!
+                                     swap-and-act!
                                      with-latest-value
                                      update-in-clean-up
+                                     update-new-further-action
+                                     update-new-further-actions
                                      dissoc-in]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes add-attributes
@@ -129,15 +129,10 @@
             "Error: duplicate subcomponent ids")
     answer))
 
-(defn specification-for-subcomponent
-  [{:keys [dom]} subcomponent-id]
-  (when dom
-    ((get-id->subcomponent-specifications dom) subcomponent-id)))
-
 (defn reuse-or-make-component-atom
   [specification dom-manager containing-component-atom old-component-atom]
   (if (and old-component-atom
-           ((:dom-specificationification @old-component-atom) specification))
+           (= (:dom-specification @old-component-atom) specification))
     old-component-atom
     (make-component-data specification containing-component-atom dom-manager)))
 
@@ -189,7 +184,7 @@
   "Register for component for change notifications,
   and set an action to get its dom."
   [component-atom]
-  (modify-and-act!
+  (swap-and-act!
    component-atom
    #(-> %
         (update-register-for-reporters component-atom)
@@ -198,7 +193,7 @@
 (defn disable-component
   "Deactivate the component and all its descendant components."
   [component-atom]
-  (modify-and-act!
+  (swap-and-act!
    component-atom
    #(-> %
         (dissoc :dom-specification :dom :dom-version :client-needs-dom)
@@ -265,35 +260,54 @@
     (when dom-specification
       (with-latest-value [reporter-values (map reporter-value reporters)]
         (let [dom (apply renderer dom-specification reporter-values)]
-          (modify-and-act!
+          (swap-and-act!
            component-atom
            #(update-dom % component-atom dom)))))))
 
 ;;; The information for interfacing between the client and the
-;;; components is stored in an atom, containing a map with these
-;;; elements:
-;;;    :root-components  A map from client id of root components to their
-;;;                      component atoms. Not all components with
-;;;                      client ids need to be here, just the roots.
-;;;    :highest-version  The highest version number of any dom we have sent
-;;;                      to the client. Any new component starts out with a
-;;;                      version number one higher, because we might have
-;;;                      forgetten about it and then reconstructed it, all
-;;;                      while the client kept ahold of it. This way, our
-;;;                      next version will be larger that whatever the client
-;;;                      has.
-;;;   :client-ready-dom  A priority map of client-id for which we have
-;;;                      dom that the client needs to know about,
-;;;                      prioritized by their depth.
-;;;    :calculator-data  The calculator data whose queue we use.
-;;;      :mutable-store  The mutable store that holds the data the doms
-;;;                      rely on.
-;;;    :further-actions  A list of [function arg arg ...] calls that
-;;;                      need to be performed. The function will be
-;;;                      called with the atom, and the additional
-;;;                      arguments. (These actions are not actually
-;;;                      stored in the atom, but are added to the
-;;;                      data before it is stored, to request actions.)
+;;; components is stored in an atom, containing a record with these
+;;; fields. By using a record, we can define our own print method to
+;;; avoid dumping this out when printing every component.
+(defrecord DOMManagerData
+    [root-components    ; A map from client id of root components to their
+                        ; component atoms. Not all components with
+                        ; client ids need to be here, just the roots.
+     highest-version    ; The highest version number of any dom we have sent
+                        ; to the client. Any new component starts out with a
+                        ; version number one higher, because we might have
+                        ; forgetten about it and then reconstructed it, all
+                        ; while the client kept ahold of it. This way, our
+                        ; next version will be larger that whatever the
+                        ; client has.
+     client-ready-dom   ; A priority map of client-id for which we have
+                        ; dom that the client needs to know about,
+                        ; prioritized by their depth.
+     calculator-data    ; The calculator data whose queue we use.
+     mutable-store      ; The mutable store that holds the data the doms
+                        ; rely on.
+     further-actions    ; A list of [function arg arg ...] calls that
+                        ; need to be performed. The function will be
+                        ; called with the atom, and the additional
+                        ; arguments. (These actions are not actually
+                        ; stored in the atom, but are added to the
+                        ; data before it is stored, to request actions.)
+     ])
+
+(defmethod print-method DOMManagerData [s ^java.io.Writer w]
+  ;; Avoid huge print-outs.
+  (.write w "<DOMManagerData>"))
+
+(defn new-dom-manager
+   "Return a new dom-manager object"
+   [cd mutable-store]
+   (atom
+    (map->DOMManagerData
+     {:root-components {}
+      :highest-version 0
+      :client-ready-dom (priority-map)
+      :calculator-data cd
+      :mutable-store mutable-store
+      :further-actions nil})))
 
 (defn component->id-sequence
   [component-atom]
@@ -391,7 +405,7 @@
 (defn process-acknowledgements
   "Update the atom to reflect the acknowledgements."
   [dom-manager acknowledgements]
-  (modify-and-act! dom-manager #(update-acknowledgements % acknowledgements)))
+  (swap-and-act! dom-manager #(update-acknowledgements % acknowledgements)))
 
 (defn add-root-dom
   "Add dom with the given client id and specification to the dom-manager.
@@ -400,7 +414,7 @@
   (assert (keyword? client-id))
   (let [spec (assoc specification :client-id client-id)
         component (make-component-data spec nil dom-manager)]
-    (modify-and-act!
+    (swap-and-act!
      dom-manager
      #(let [old-component (get-in % [:root-components client-id]) ]
         (cond-> (-> %
@@ -414,7 +428,7 @@
    "Remove all the doms from the dom-manager. This will cause it to release
     all its reporters."
    [dom-manager]
-   (modify-and-act!
+   (swap-and-act!
     dom-manager
     (fn [manager-data]
       (reduce (fn [manager-data component]
@@ -440,15 +454,3 @@
                                          (assoc priority-map component depth))
                                        %
                                        component-and-depths))))))
-
-    ;;; TODO: code here
- (defn new-dom-manager
-   "Return a new dom-manager object"
-   [cd mutable-store]
-   (atom
-    {:root-components {}
-     :highest-version 0
-     :client-ready-dom (priority-map)
-     :calculator-data cd
-     :mutable-store mutable-store}))
-

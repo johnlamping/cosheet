@@ -5,14 +5,14 @@
     [reporter :refer [reporter-data set-value! set-attendee! invalid
                       inform-attendees data-attended? remove-attendee!
                       new-reporter reporter-value]]
-    [calculator :refer [modify-and-act! update-new-further-action]]
+    [calculator :refer [modify-and-act!]]
     [store :refer [update-content add-simple-item declare-temporary-id
                    id-label->element-ids id->content]]
     [entity :refer [content elements label->elements label->content]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
     [expression :refer [expr-let expr-seq]]
-    [utils :refer [thread-map with-latest-value]]
+    [utils :refer [thread-map with-latest-value update-new-further-action]]
     [task-queue :refer [add-task-with-priority]])))
 
 ;;; For purposes of comparing two entities, not all of their elements

@@ -384,13 +384,6 @@
            #{(make-id "3") (make-id "6") (make-id "7")
              (make-id "8")}))))
 
-(deftest store-update-new-further-action-test
-  (let [u1 (store-update-new-further-action test-store [println 1 2])
-        u2 (store-update-new-further-action u1 [println 2 3])
-        [orig actions] (store-fetch-and-clear-further-actions u2)]
-    (is (= orig test-store))
-    (is (= actions [[println 1 2] [println 2 3]]))))
-
 (deftest new-element-store-test
   (let [store (new-element-store)]
     (is (= (candidate-matching-ids store nil) [nil false]))))

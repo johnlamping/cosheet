@@ -131,9 +131,6 @@
     "Declare the id to be temporary. It and all its descendant elements
      will not be written. Returns the new store.")
 
-  (store-update-new-further-action [this action]
-    "Add an action to the further actions of the store.")
-
   (store-fetch-and-clear-further-actions [this]
     "Return the store with further actions eliminated, plus the list of
      further actions that were there.")

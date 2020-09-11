@@ -3,8 +3,8 @@
                                         set-attendee-and-call!
                                         reporter? invalid]]
                       [calculator :refer [modify-and-act!
-                                          update-new-further-action
-                                          copy-value-callback]])))
+                                          copy-value-callback]]
+                      [utils :refer [update-new-further-action]])))
 
 ;;; Manage a reporter that forwards requests to another reporter, while
 ;;; changing the categories of interest.

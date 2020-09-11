@@ -276,13 +276,7 @@
   "Given a string representation of a client id, return the relative ids."
   [rep]
   (vec (map client-id-part->id
-            (clojure.string/split rep #"_"))))
-
-(defn default-get-rendering-data
-  [specification mutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id))
-    [[mutable-store id]])) 
+            (clojure.string/split rep #"_")))) 
 
 ;;; --- Top level item ---
 

@@ -3,6 +3,7 @@
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
                                         reporter-value]]
+                      [store :refer [StoredItemDescription]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
                                      with-latest-value
@@ -14,8 +15,7 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [render :refer [default-get-rendering-data
-                             concatenate-client-id-parts
+             [render :refer [concatenate-client-id-parts
                              id->client-id-part ids->client-id
                              client-id->ids]]
              [item-render :refer [render-item-DOM]])))
@@ -91,7 +91,7 @@
 ;;;                ready for garbage collection.
 ;;;                Indicated by :dom-specification being missing
 
-(def new-dom-for-client)
+(def dom-ready-for-client)
 
 (defn make-component-data
   "Given a component specification, create a component data atom. The
@@ -141,19 +141,25 @@
 (defn schedule-compute-dom
   [component-atom]
   (let [{:keys [dom-manager depth]} @component-atom
-        queue (:queue (:calculator-data dom-manager))]
+        queue (:queue (:calculator-data @dom-manager))]
     (add-task-with-priority queue depth compute-dom component-atom)))
 
 (defn reporter-changed-callback
   [& {:keys [key]}]
   (schedule-compute-dom key))
 
+(defn default-get-rendering-data
+  [specification mutable-store]
+  (let [id (or (:item-id specification) (:relative-id specification))]
+    (assert (satisfies? StoredItemDescription id))
+    [[mutable-store id]]))
+
 (defn update-register-for-reporters
   "Find out what the reporters the component's renderer needs,
   and register for them."
   [component-data component-atom]
   (let [{:keys [reporters dom-specification dom-manager]} component-data
-        mutable-store (:mutable-store dom-manager)]
+        mutable-store (:mutable-store @dom-manager)]
     (if (or reporters (not dom-specification))
       component-data
       (let [getter (or (:get-rendering-data dom-specification)
@@ -231,7 +237,8 @@
                                              (subcomponent-specs id)
                                              (:dom-manager component-data)
                                              component-atom
-                                             (old-subcomponents id)))))
+                                             (old-subcomponents id)))
+                                   ids))
         dropped-subcomponent-ids (filter #(not= (subcomponents %)
                                                 (old-subcomponents %))
                                          (keys old-subcomponents))
@@ -244,7 +251,7 @@
                :client-needs-dom true)
         (update :dom-version inc)
         (update-new-further-action
-         new-dom-for-client
+         dom-ready-for-client
          (:dom-manager component-data) component-atom)
         (update-new-further-actions
          (map (fn [id] [activate-component (subcomponents id)])
@@ -329,6 +336,13 @@
               (when component ((:subcomponents @component) id)))
             root (rest id-sequence))))
 
+(defn dom-ready-for-client
+  [dom-manager component-atom]
+  (swap! dom-manager
+         (fn [manager-data]
+           (update manager-data :client-ready-dom
+                   #(assoc % component-atom (:depth @component-atom))))))
+
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,
    adjust the dom to the form the client needs, turning subcomponents
@@ -347,7 +361,7 @@
                 dom)))
     dom))
 
-(defn dom-for-client
+(defn prepare-dom-for-client
   "Given a component-atom, prepare its dom to send to the client."
   [component-atom]
   (let [{:keys [dom dom-version]} @component-atom]
@@ -372,7 +386,7 @@
          [(assoc manager-data :highest-version highest-version)
           response]
          (let [[component & remaining-components] components
-               dom (dom-for-client component)]
+               dom (prepare-dom-for-client component)]
            (recur (if dom (conj response dom) response)
                   (max highest-version
                        (if dom (:version (dom-attributes dom)) 0))

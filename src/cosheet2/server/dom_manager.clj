@@ -33,47 +33,51 @@
 
 ;;; As renderings are done, we update the client.
 
-;;; The basic data structure is a component data atom. It holds a map,
-;;; which contains information about one component we are tracking.
+;;; The basic data structure is a component data atom. It holds a map
+;;; of ComponentData, which contains information about one component
+;;; we are tracking. We use ComponentData, rather than a map, so we can
+;;; simplify print-out.
+(defrecord ComponentData
+    [;; These fields will never change once the component data is created
+     dom-manager           ; Our dom manager.
+     client-id             ; If non-nil, gives a keyword id to use for
+                           ; communicating with the client about this
+                           ; component.
+     containing-component  ; The component that contains this one. Nil
+                           ; if this component is a root.
+     depth                 ; The depth of this component in the component
+                           ; hierarchy, used to make sure that parents are
+                           ; sent to the client before their children.
 
-;;; Some of its fields never change, while others do. The ones that are fixed
-;;; when a component data arom is created are:
-;;;          :dom-manager  Our dom manager.
-;;;            :client-id  Optional field that is in present in components
-;;;                        that are not contained in other components that
-;;;                        the manager manages. It gives a keyword id to use
-;;;                        for communicating with the client about this
-;;;                        component.
-;;; :containing-component  The component that contains this one. Not present
-;;;                        if this component is a root.
-;;;                :depth  The depth of this component in the component
-;;;                        hierarchy, used to make sure that parents are
-;;;                        sent to the client before their children.
+     ;; This field normally doesn't change, but if the component has
+     ;; been permanently disabled, this field is cleared
+     dom-specification     ; The dom spec for this component.
 
-;;; The fields that can change are:
-;;;    :dom-specification  The dom spec for this component. This field
-;;;                        doesn't normally change, but if the component
-;;;                        has been permanently disabled, this field is
-;;;                        cleared.
-;;;            :reporters  The reporters that we are attending to for
-;;;                        this component. They are the ones returned by
-;;;                        :rendering-data
-;;;        :subcomponents  A map from :relative-id to the component data
-;;;                        of each sub-component. This is filled in once
-;;;                        the dom is computed, and can change if the dom
-;;;                        changes.
-;;;                  :dom  The rendered dom for this client.
-;;;          :dom-version  A monotonically increasing version number
-;;;                        for the current dom.
-;;;     :client-needs-dom  True if the client has not been sent the dom
-;;;                        that would currently be computed, or
-;;;                        has not acknowledged receiving it.
-;;;      :further-actions  A list of [function arg arg ...] calls that
-;;;                        need to be performed. The function will be
-;;;                        called with the atom, and the additional
-;;;                        arguments. (These actions are not actually
-;;;                        stored in the atom, but are added to the
-;;;                        data before it is stored, to request actions.)
+     ;; These fields can change
+     reporters             ; The reporters that we are attending to for
+                           ; this component. They are the ones returned by
+                           ; :rendering-data   
+     subcomponents         ; A map from :relative-id to the component data
+                           ; of each sub-component. This is filled in once
+                           ; the dom is computed, and can change if the dom
+                           ; changes.
+     dom                   ; The rendered dom for this client.
+     dom-version           ; A monotonically increasing version number
+                           ; for the current dom.
+     client-needs-dom      ; True if the client has not been sent the dom
+                           ; that would currently be computed, or
+                           ; has not acknowledged receiving it.
+     further-actions       ; A list of [function arg arg ...] calls that
+                           ; need to be performed. The function will be
+                           ; called with the atom, and the additional
+                           ; arguments. (These actions are not actually
+                           ; stored in the atom, but are added to the
+                           ; data before it is stored, to request actions.)
+     ])
+
+(defmethod print-method ComponentData [s ^java.io.Writer w]
+  ;; Avoid huge print-outs.
+  (.write w (str "<ComponentData>" (:dom-specification s))))
 
 ;;; The component can be in several states:
 ;;;      prepared  The component's data has been filled in, but
@@ -101,14 +105,15 @@
   (assert (map? specification))
   (assert (or :client-id specification) (:relative-id specification))
   (atom
-   {:dom-manager dom-manager
-    :dom-specification specification
-    :containing-component containing-component-atom
-    :depth (if containing-component-atom
-             (+ 1 (:depth @containing-component-atom))
-             1)
-    :client-needs-dom true
-    :dom-version (+ 1 (:highest-version @dom-manager))}))
+   (map->ComponentData
+    {:dom-manager dom-manager
+     :dom-specification specification
+     :containing-component containing-component-atom
+     :depth (if containing-component-atom
+              (+ 1 (:depth @containing-component-atom))
+              1)
+     :client-needs-dom true
+     :dom-version (+ 1 (:highest-version @dom-manager))})))
 
 (defn subcomponent-specifications
   "Given a dom that may contain subcomponents, return a vector of their
@@ -152,7 +157,7 @@
   [specification mutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
     (assert (satisfies? StoredItemDescription id))
-    [[mutable-store id]]))
+    [[mutable-store [id]]]))
 
 (defn update-register-for-reporters
   "Find out what the reporters the component's renderer needs,
@@ -192,9 +197,12 @@
   [component-atom]
   (swap-and-act!
    component-atom
-   #(-> %
-        (update-register-for-reporters component-atom)
-        (update-new-further-action schedule-compute-dom component-atom))))
+   (fn [component-data]
+     (let [result
+           (-> component-data
+               (update-register-for-reporters component-atom)
+               (update-new-further-action schedule-compute-dom component-atom))]
+       result))))
 
 (defn disable-component
   "Deactivate the component and all its descendant components."
@@ -202,8 +210,13 @@
   (swap-and-act!
    component-atom
    #(-> %
-        (dissoc :dom-specification :dom :dom-version :client-needs-dom)
-        (update-unregister-for-reporters % component-atom)
+        ;; We assoc with nil, rather than dissoc, so we don't turn
+        ;; the record into a map.
+        (assoc :dom-specification nil
+               :dom nil
+               :dom-version nil
+               :client-needs-dom nil)
+        (update-unregister-for-reporters component-atom)
         (update-new-further-actions
          (map (fn [comp] [disable-component comp])
               (vals (:subcomponents %)))))))

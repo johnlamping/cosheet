@@ -203,9 +203,16 @@
   [atom f]
   (let [actions (swap-control-return!
                  atom
-                 (fn [data] (let [new-data (f data)]
-                              [(dissoc new-data :further-actions)
-                               (:further-actions new-data)])))]
+                 (fn [data] (let [new-data (f data)
+                                  actions (:further-actions new-data)]
+                              (if actions
+                                ;; We assoc with nil, rather than
+                                ;; dissoc, so we won't turn a record
+                                ;; into a map.
+                                [(assoc new-data :further-actions nil)
+                                 (:further-actions new-data)]
+                                [new-data
+                                 nil]))))]
     (doseq [action actions]
       (apply (first action) (rest action)))))
 

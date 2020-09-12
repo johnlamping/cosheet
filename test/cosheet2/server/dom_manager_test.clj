@@ -9,7 +9,7 @@
              [utils :refer [dissoc-in]]
              [test-utils :refer [check any as-set]]
              [entity :as entity :refer [to-list description->entity]]
-             [reporter :as reporter :refer [new-reporter]]
+             [reporter :as reporter :refer [new-reporter reporter-data]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [envs-to-list]]
              entity-impl
@@ -50,9 +50,10 @@
     (is (= (:containing-component @c2) c1))
     (is (= (:depth @c2) 2))))
 
-(deftest activate-component-test
+(deftest activate-disable-component-test
   (let [manager (new-dom-manager cd ms)
-        s1 {:relative-id (make-id "foo")
+        i1 (make-id "foo")
+        s1 {:relative-id i1
             :render-dom (fn [spec store] [:div 3])}
         c1 (reuse-or-make-component-atom s1 manager nil nil)]
     (activate-component c1)
@@ -63,6 +64,8 @@
                 :calculator-data cd
                 :mutable-store ms
                 :further-actions nil}))
+    (is (check (:attendees (reporter-data ms))
+               {c1 [1 [i1] reporter-changed-callback]}))
     (compute cd)
     (is (check @manager
                {:root-components {}
@@ -77,10 +80,18 @@
                 :dom-manager manager
                 :client-needs-dom true
                 :dom-specification s1
+                :client-id nil
                 :dom-version 2
                 :containing-component nil
                 :depth 1
-                :dom [:div 3]}))))
+                :dom [:div 3]
+                :further-actions nil}))
+    (disable-component c1)
+    (is (= @c1
+           (map->ComponentData
+            {:subcomponents {}
+             :dom-manager manager
+             :depth 1})))))
 
 (comment
 

@@ -185,7 +185,9 @@
   (let [reporters (:reporters component-data)]
     (if reporters
       (-> component-data
-          (dissoc :reporters)
+          ;; We assoc with nil, rather than dissoc, so we don't turn
+          ;; the record into a map.
+          (assoc :reporters nil)
           (update-new-further-actions
            (map (fn [r] [remove-attendee! r component-atom])
                 reporters)))

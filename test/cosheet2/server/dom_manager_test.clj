@@ -25,8 +25,12 @@
             ; :reload
             ))
 
-(def ms (new-mutable-store (new-element-store)))
-(def cd (new-calculator-data (new-priority-task-queue 0)))
+(def id1 (make-id "foo"))
+(def id2 (make-id "bar"))
+(def s2 {:relative-id id2
+         :render-dom (fn [spec store] [:div 3])})
+(def s1 {:relative-id id1
+         :render-dom (fn [spec store] [:div 2 [:component s2]])})
 
 (deftest get-id->subcomponent-specifications-test
     (is (= (get-id->subcomponent-specifications
@@ -36,9 +40,9 @@
             :bar {:relative-id :bar :misc 1}})))
 
 (deftest reuse-or-make-component-atom-test
-  (let [manager (new-dom-manager cd ms)
-        s1 {:relative-id :foo}
-        s2 {:relative-id :bar}
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
         c1 (reuse-or-make-component-atom s1 manager nil nil)
         c1-reused (reuse-or-make-component-atom s1 manager nil c1)
         c2 (reuse-or-make-component-atom s2 manager c1 c1)]
@@ -51,12 +55,11 @@
     (is (= (:depth @c2) 2))))
 
 (deftest activate-disable-component-test
-  (let [manager (new-dom-manager cd ms)
-        i1 (make-id "foo")
-        s1 {:relative-id i1
-            :render-dom (fn [spec store] [:div 3])}
-        c1 (reuse-or-make-component-atom s1 manager nil nil)]
-    (activate-component c1)
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
+        c2 (reuse-or-make-component-atom s2 manager nil nil)]
+    (activate-component c2)
     (is (check @manager
                {:root-components {}
                 :highest-version 0
@@ -65,33 +68,118 @@
                 :mutable-store ms
                 :further-actions nil}))
     (is (check (:attendees (reporter-data ms))
-               {c1 [1 [i1] reporter-changed-callback]}))
+               {c2 [1 [id2] reporter-changed-callback]}))
     (compute cd)
     (is (check @manager
                {:root-components {}
                 :highest-version 0
-                :client-ready-dom {c1 1}
+                :client-ready-dom {c2 1}
                 :calculator-data cd
                 :mutable-store ms
                 :further-actions nil}))
-    (is (check @c1
+    (is (check @c2
                {:reporters [ms]
-                :subcomponents {}
+                :id->subcomponent {}
                 :dom-manager manager
                 :client-needs-dom true
-                :dom-specification s1
+                :dom-specification s2
                 :client-id nil
                 :dom-version 2
                 :containing-component nil
                 :depth 1
                 :dom [:div 3]
                 :further-actions nil}))
-    (disable-component c1)
-    (is (= @c1
+    (disable-component c2)
+    (is (= @c2
            (map->ComponentData
-            {:subcomponents {}
+            {:id->subcomponent {}
              :dom-manager manager
              :depth 1})))))
+
+(deftest update-dom-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
+        c1 (reuse-or-make-component-atom s1 manager nil nil)
+        updated (update-dom @c1 c1 [:div 2 [:component s2]])]
+    (is (check updated
+               {:reporters nil
+                :further-actions [[dom-ready-for-client manager c1]
+                                  [activate-component (any)]]
+                :id->subcomponent {id2 (any)}
+                :client-id nil
+                :dom-manager manager
+                :client-needs-dom true
+                :dom-specification s1
+                :dom-version 2
+                :containing-component nil
+                :depth 1
+                :dom [:div 2 [:component s2]]}))))
+
+(deftest compute-dom-if-old-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
+        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+    (activate-component c1)
+    (is (check (:tasks @(:queue cd))
+               {[compute-dom-unless-newer c1 1] 1}))
+    (compute cd)
+    ;; This should run compute-data, which should put compute-data of
+    ;; the subcomponent on the task queue, which should then get run.
+    (let [c2 ((:id->subcomponent @c1) id2)]
+      (is (check @c1
+                 {:reporters [ms]
+                  :further-actions nil
+                  :id->subcomponent {id2 (any)}
+                  :client-id nil
+                  :dom-manager manager
+                  :client-needs-dom true
+                  :dom-specification s1
+                  :dom-version 2
+                  :containing-component nil
+                  :depth 1
+                  :dom [:div 2 [:component s2]]}))
+      (is (check @c2
+                 {:reporters [ms]
+                  :further-actions nil
+                  :id->subcomponent {}
+                  :client-id nil
+                  :dom-manager manager
+                  :client-needs-dom true
+                  :dom-specification s2
+                  :dom-version 2
+                  :containing-component c1
+                  :depth 2
+                  :dom [:div 3]}))
+      (is (check @manager
+                 {:root-components {}
+                  :highest-version 0
+                  :client-ready-dom {c1 1
+                                     c2 2}
+                  :calculator-data cd
+                  :mutable-store ms
+                  :further-actions nil}))
+      ;; Check that nothing happens if we have a newer dom than asked for.
+      (compute-dom-unless-newer c1 1)
+      (is (= (:dom-version @c1) 2)))))
+
+(deftest mark-component-tree-as-needed-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
+        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+    (let [ready (mark-component-tree-as-needed c1 (:queue cd))]
+      (is (= ready [])))
+    (is (check (:tasks @(:queue cd))
+               {[compute-dom-unless-newer c1 1] 1}))
+    (activate-component c1)
+    (compute cd)
+    (let [c2 ((:id->subcomponent @c1) id2)
+          ready (mark-component-tree-as-needed c1 (:queue cd))]
+      (is (= ready [[c1 1] [c2 2]]))
+      (is (check (:tasks @(:queue cd))
+                 {})))))
 
 (comment
 

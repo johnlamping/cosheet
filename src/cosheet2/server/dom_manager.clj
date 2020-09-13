@@ -57,13 +57,14 @@
      reporters             ; The reporters that we are attending to for
                            ; this component. They are the ones returned by
                            ; :rendering-data   
-     subcomponents         ; A map from :relative-id to the component data
+     id->subcomponent         ; A map from :relative-id to the component data
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
                            ; changes.
      dom                   ; The rendered dom for this client.
      dom-version           ; A monotonically increasing version number
-                           ; for the current dom.
+                           ; for the current dom. It goes up every time
+                           ; compute the dom, even if the dom doesn't change.
      client-needs-dom      ; True if the client has not been sent the dom
                            ; that would currently be computed, or
                            ; has not acknowledged receiving it.
@@ -141,17 +142,19 @@
     old-component-atom
     (make-component-data specification containing-component-atom dom-manager)))
 
-(def compute-dom)
+(def compute-dom-unless-newer)
 
-(defn schedule-compute-dom
+(defn schedule-compute-dom-unless-newer
   [component-atom]
-  (let [{:keys [dom-manager depth]} @component-atom
+  (let [{:keys [dom-manager dom-version depth]} @component-atom
         queue (:queue (:calculator-data @dom-manager))]
-    (add-task-with-priority queue depth compute-dom component-atom)))
+    (add-task-with-priority
+     queue depth
+     compute-dom-unless-newer component-atom dom-version)))
 
 (defn reporter-changed-callback
   [& {:keys [key]}]
-  (schedule-compute-dom key))
+  (schedule-compute-dom-unless-newer key))
 
 (defn default-get-rendering-data
   [specification mutable-store]
@@ -203,7 +206,8 @@
      (let [result
            (-> component-data
                (update-register-for-reporters component-atom)
-               (update-new-further-action schedule-compute-dom component-atom))]
+               (update-new-further-action
+                schedule-compute-dom-unless-newer component-atom))]
        result))))
 
 (defn disable-component
@@ -221,70 +225,75 @@
         (update-unregister-for-reporters component-atom)
         (update-new-further-actions
          (map (fn [comp] [disable-component comp])
-              (vals (:subcomponents %)))))))
-
-(defn mark-component-tree-as-needed
-  "Mark the component and all its descendants as needing to be sent to
-  the client. Return a list of pairs all those components with ready
-  dom and their depth."
-  [component-atom task-queue]
-  (let [[depth dom subcomponents]
-        (swap-control-return!
-         component-atom
-         (fn [component-data] [(-> component-data (assoc :client-needs-dom))
-                               [(:depth component-data)
-                                (:dom component-data)
-                                (:subcomponents component-data)]]))]
-    (when (not dom)
-      (add-task-with-priority
-       task-queue depth schedule-compute-dom component-atom))
-    (concat (when dom [[dom depth]])
-            (map #(mark-component-tree-as-needed % task-queue)
-                 subcomponents))))
+              (vals (:id->subcomponent %)))))))
 
 (defn update-dom
   [component-data component-atom dom]
-  (let [subcomponent-specs (get-id->subcomponent-specifications dom)
-        ids (keys subcomponent-specs)
-        old-subcomponents (:subcomponents component-data)
-        subcomponents (zipmap ids
-                              (map (fn [id] (reuse-or-make-component-atom
-                                             (subcomponent-specs id)
-                                             (:dom-manager component-data)
-                                             component-atom
-                                             (old-subcomponents id)))
-                                   ids))
-        dropped-subcomponent-ids (filter #(not= (subcomponents %)
-                                                (old-subcomponents %))
-                                         (keys old-subcomponents))
-        new-subcomponent-ids (filter #(not= (subcomponents %)
-                                            (old-subcomponents %))
-                                     (keys subcomponents))]
-    (-> component-data
-        (assoc :dom dom
-               :subcomponents subcomponents
-               :client-needs-dom true)
-        (update :dom-version inc)
-        (update-new-further-action
-         dom-ready-for-client
-         (:dom-manager component-data) component-atom)
-        (update-new-further-actions
-         (map (fn [id] [activate-component (subcomponents id)])
-              new-subcomponent-ids))
-        (update-new-further-actions
-         (map (fn [id] [disable-component (old-subcomponents id)])
-              dropped-subcomponent-ids)))))
+  (if (= dom (:dom component-data))
+    ;; The dom hasn't changed. Bump the version to note that we have done
+    ;; a recomputation.
+    (update component-data :dom-version inc)
+    (let [subcomponent-specs (get-id->subcomponent-specifications dom)
+          ids (keys subcomponent-specs)
+          old-id->subcomponent (or (:id->subcomponent component-data) {})
+          id->subcomponent (zipmap
+                            ids
+                            (map (fn [id] (reuse-or-make-component-atom
+                                           (subcomponent-specs id)
+                                           (:dom-manager component-data)
+                                           component-atom
+                                           (old-id->subcomponent id)))
+                                 ids))
+          dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                                  (old-id->subcomponent %))
+                                           (keys old-id->subcomponent))
+          new-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                              (old-id->subcomponent %))
+                                       (keys id->subcomponent))]
+      (-> component-data
+          (assoc :dom dom
+                 :id->subcomponent id->subcomponent
+                 :client-needs-dom true)
+          (update :dom-version inc)
+          (update-new-further-action
+           dom-ready-for-client
+           (:dom-manager component-data) component-atom)
+          (update-new-further-actions
+           (map (fn [id] [activate-component (id->subcomponent id)])
+                new-subcomponent-ids))
+          (update-new-further-actions
+           (map (fn [id] [disable-component (old-id->subcomponent id)])
+                dropped-subcomponent-ids))))))
 
-(defn compute-dom
-  [component-atom]
-  (let [{:keys [reporters dom-specification]} @component-atom
+(defn compute-dom-unless-newer
+  "Compute the dom, unless if its current version is greater than old-version."
+  [component-atom old-dom-version]
+  (let [{:keys [reporters dom-specification dom-version]} @component-atom
         renderer (or (:render-dom dom-specification) render-item-DOM)]
-    (when dom-specification
+    (when (and dom-specification (<= dom-version old-dom-version))
       (with-latest-value [reporter-values (map reporter-value reporters)]
         (let [dom (apply renderer dom-specification reporter-values)]
           (swap-and-act!
            component-atom
            #(update-dom % component-atom dom)))))))
+
+(defn mark-component-tree-as-needed
+  "Mark the component and all its descendants as needing to be sent to
+  the client. Return a list of pairs of all those components with ready
+  dom and their depth."
+  [component-atom task-queue]
+  (let [[depth dom id->subcomponent]
+        (swap-control-return!
+         component-atom
+         (fn [component-data] [(assoc component-data :client-needs-dom true)
+                               [(:depth component-data)
+                                (:dom component-data)
+                                (:id->subcomponent component-data)]]))]
+    (when (not dom)
+      (schedule-compute-dom-unless-newer component-atom))
+    (concat (when dom [[component-atom depth]])
+            (mapcat #(mark-component-tree-as-needed % task-queue)
+                    (vals id->subcomponent)))))
 
 ;;; The information for interfacing between the client and the
 ;;; components is stored in an atom, containing a record with these
@@ -348,7 +357,7 @@
   (let [id-sequence (client-id->ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
-              (when component ((:subcomponents @component) id)))
+              (when component ((:id->subcomponent @component) id)))
             root (rest id-sequence))))
 
 (defn dom-ready-for-client

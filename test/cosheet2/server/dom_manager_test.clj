@@ -197,6 +197,7 @@
              ":root-id_Ibar")))))
 
 (deftest client-id->component-test
+  ;; Also tests note-dom-ready-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)]
@@ -206,7 +207,31 @@
       (compute cd)
       (let [c2 ((:id->subcomponent @c1) id2)]
         (is (= (client-id->component @manager ":alt-client-id_Ibar")
-               c2))))))
+               c2))
+        (is (check (:client-ready-dom @manager)
+                   {c1 1
+                    c2 2}))))))
+
+(deftest get-response-doms-test
+  ;; Also tests prepare-dom-for-client and adjust-subdom-for-client
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)]
+    (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
+    (let [c1 (client-id->component @manager ":alt-client-id")]
+      (activate-component c1)
+      (compute cd)
+      [:div {:id ":alt-client-id_Ibar", :version 3}]
+      (is (:highest-version @manager) 1)
+      (is (check (get-response-doms manager 3)
+                 (as-set [[:div {:id ":alt-client-id" :version 2}
+                           [:component {:id ":alt-client-id_Ibar"}]]
+                          [:div {:id ":alt-client-id_Ibar", :version 3}]])))
+      (is (:highest-version @manager) 3)
+      (is (check (get-response-doms manager 1)
+                 [[:div {:id ":alt-client-id" :version 2}
+                   [:component {:id ":alt-client-id_Ibar"}]]]))
+      (is (:highest-version @manager) 3))))
 
 (comment
 

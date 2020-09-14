@@ -402,6 +402,7 @@
   This has the side-effect of updating :highest-version."
   [dom-manager num]
   (swap-control-return!
+   dom-manager
    (fn [manager-data]
      (loop [response []
             highest-version (:highest-version manager-data)

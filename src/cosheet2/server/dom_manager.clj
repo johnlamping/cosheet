@@ -96,7 +96,7 @@
 ;;;                ready for garbage collection.
 ;;;                Indicated by :dom-specification being missing
 
-(def dom-ready-for-client)
+(def note-dom-ready-for-client)
 
 (defn make-component-data
   "Given a component specification, create a component data atom. The
@@ -256,7 +256,7 @@
                  :client-needs-dom true)
           (update :dom-version inc)
           (update-new-further-action
-           dom-ready-for-client
+           note-dom-ready-for-client
            (:dom-manager component-data) component-atom)
           (update-new-further-actions
            (map (fn [id] [activate-component (id->subcomponent id)])
@@ -343,9 +343,9 @@
 (defn component->id-sequence
   [component-atom]
   (let [data @component-atom]
-    (if-let [client-id (:client-id data)]
+    (if-let [client-id (:client-id (:dom-specification data))]
       [client-id]
-      (conj (component->id-sequence (:containing-component))
+      (conj (component->id-sequence (:containing-component data))
             (:relative-id (:dom-specification data))))))
 
 (defn component->client-id
@@ -360,7 +360,7 @@
               (when component ((:id->subcomponent @component) id)))
             root (rest id-sequence))))
 
-(defn dom-ready-for-client
+(defn note-dom-ready-for-client
   [dom-manager component-atom]
   (swap! dom-manager
          (fn [manager-data]
@@ -460,7 +460,7 @@
                     (update :highest-version inc))
           old-component
           (update-new-further-action disable-component old-component))))
-    (activate-component)))
+    (activate-component component)))
 
 (defn remove-all-doms
    "Remove all the doms from the dom-manager. This will cause it to release
@@ -476,8 +476,6 @@
                      :root-components {}
                      :client-ready-dom (priority-map))
               (vals (:root-components manager-data))))))
-
-;;; TODO: Code here
 
 (defn request-client-refresh
   "Mark all components as needing to be sent to the client."

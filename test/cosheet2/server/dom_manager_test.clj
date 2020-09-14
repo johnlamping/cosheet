@@ -30,6 +30,7 @@
 (def s2 {:relative-id id2
          :render-dom (fn [spec store] [:div 3])})
 (def s1 {:relative-id id1
+         :client-id :root-id
          :render-dom (fn [spec store] [:div 2 [:component s2]])})
 
 (deftest get-id->subcomponent-specifications-test
@@ -104,7 +105,7 @@
         updated (update-dom @c1 c1 [:div 2 [:component s2]])]
     (is (check updated
                {:reporters nil
-                :further-actions [[dom-ready-for-client manager c1]
+                :further-actions [[note-dom-ready-for-client manager c1]
                                   [activate-component (any)]]
                 :id->subcomponent {id2 (any)}
                 :client-id nil
@@ -180,6 +181,32 @@
       (is (= ready [[c1 1] [c2 2]]))
       (is (check (:tasks @(:queue cd))
                  {})))))
+
+(deftest component->client-id-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)
+        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+    (activate-component c1)
+    (compute cd)
+    (let [c2 ((:id->subcomponent @c1) id2)
+          ready (mark-component-tree-as-needed c1 (:queue cd))]
+      (is (= (component->client-id c1)
+             ":root-id")
+          (= (component->client-id c2)
+             ":root-id_Ibar")))))
+
+(deftest client-id->component-test
+  (let [ms (new-mutable-store (new-element-store))
+        cd (new-calculator-data (new-priority-task-queue 0))
+        manager (new-dom-manager cd ms)]
+    (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
+    (let [c1 (client-id->component @manager ":alt-client-id")]
+      (activate-component c1)
+      (compute cd)
+      (let [c2 ((:id->subcomponent @c1) id2)]
+        (is (= (client-id->component @manager ":alt-client-id_Ibar")
+               c2))))))
 
 (comment
 

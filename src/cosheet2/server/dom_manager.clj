@@ -425,7 +425,7 @@
   [manager-data acknowledgements]
    (reduce
     (fn [manager-data [client-id version]]
-      (if-let [component-atom (client-id->component manager-data)]
+      (if-let [component-atom (client-id->component manager-data client-id)]
         (let [version-matched
               ;; We may run this multiple times, since we run inside
               ;; another swap!. But that is OK, as the only side effect
@@ -434,7 +434,7 @@
                component-atom
                (fn [component-data]
                  (if (= version (:dom-version component-data))
-                   [(dissoc component-data :client-needs-dom) true]
+                   [(assoc component-data :client-needs-dom nil) true]
                    [component-data false])))]
           (cond-> manager-data
             version-matched (dissoc-in [:client-ready-dom component-atom])))

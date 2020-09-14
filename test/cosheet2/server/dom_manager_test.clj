@@ -53,7 +53,9 @@
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
     (is (= (:containing-component @c2) c1))
-    (is (= (:depth @c2) 2))))
+    (is (= (:depth @c2) 2))
+    (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+    (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
 
 (deftest activate-disable-component-test
   (let [ms (new-mutable-store (new-element-store))
@@ -95,7 +97,8 @@
            (map->ComponentData
             {:id->subcomponent {}
              :dom-manager manager
-             :depth 1})))))
+             :depth 1})))
+    (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
 
 (deftest update-dom-test
   (let [ms (new-mutable-store (new-element-store))
@@ -115,7 +118,8 @@
                 :dom-version 2
                 :containing-component nil
                 :depth 1
-                :dom [:div 2 [:component s2]]}))))
+                :dom [:div 2 [:component s2]]}))
+    (is (= (type updated) cosheet2.server.dom_manager.ComponentData))))
 
 (deftest compute-dom-if-old-test
   (let [ms (new-mutable-store (new-element-store))
@@ -163,7 +167,9 @@
                   :further-actions nil}))
       ;; Check that nothing happens if we have a newer dom than asked for.
       (compute-dom-unless-newer c1 1)
-      (is (= (:dom-version @c1) 2)))))
+      (is (= (:dom-version @c1) 2))
+      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData)))))
 
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
@@ -180,7 +186,9 @@
           ready (mark-component-tree-as-needed c1 (:queue cd))]
       (is (= ready [[c1 1] [c2 2]]))
       (is (check (:tasks @(:queue cd))
-                 {})))))
+                 {}))
+      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData)))))
 
 (deftest component->client-id-test
   (let [ms (new-mutable-store (new-element-store))
@@ -191,6 +199,8 @@
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
           ready (mark-component-tree-as-needed c1 (:queue cd))]
+      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
       (is (= (component->client-id c1)
              ":root-id")
           (= (component->client-id c2)
@@ -209,11 +219,11 @@
         (is (= (client-id->component @manager ":alt-client-id_Ibar")
                c2))
         (is (check (:client-ready-dom @manager)
-                   {c1 1
-                    c2 2}))))))
+                   {c1 1  c2 2}))))))
 
-(deftest get-response-doms-test
-  ;; Also tests prepare-dom-for-client and adjust-subdom-for-client
+(deftest get-response-doms-and-process-acknowledgements-test
+  ;; Also tests add-root-dom, prepare-dom-for-client and
+  ;; adjust-subdom-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)]
@@ -221,17 +231,40 @@
     (let [c1 (client-id->component @manager ":alt-client-id")]
       (activate-component c1)
       (compute cd)
-      [:div {:id ":alt-client-id_Ibar", :version 3}]
-      (is (:highest-version @manager) 1)
-      (is (check (get-response-doms manager 3)
-                 (as-set [[:div {:id ":alt-client-id" :version 2}
-                           [:component {:id ":alt-client-id_Ibar"}]]
-                          [:div {:id ":alt-client-id_Ibar", :version 3}]])))
-      (is (:highest-version @manager) 3)
-      (is (check (get-response-doms manager 1)
-                 [[:div {:id ":alt-client-id" :version 2}
-                   [:component {:id ":alt-client-id_Ibar"}]]]))
-      (is (:highest-version @manager) 3))))
+      (let [c2 ((:id->subcomponent @c1) id2)]
+        [:div {:id ":alt-client-id_Ibar", :version 3}]
+        (is (:highest-version @manager) 1)
+        (is (check (get-response-doms manager 3)
+                   (as-set [[:div {:id ":alt-client-id" :version 2}
+                             [:component {:id ":alt-client-id_Ibar"}]]
+                            [:div {:id ":alt-client-id_Ibar", :version 3}]])))
+        (is (:highest-version @manager) 3)
+        (is (check (get-response-doms manager 1)
+                   [[:div {:id ":alt-client-id" :version 2}
+                     [:component {:id ":alt-client-id_Ibar"}]]]))
+        (is (:highest-version @manager) 3)
+        (is (:client-needs-dom @c1))
+        (is (:client-needs-dom @c2))
+        (is (check (:client-ready-dom @manager)
+                   {c1 1  c2 2}))
+        (process-acknowledgements manager {":alt-client-id" 1})
+        (is (:client-needs-dom @c1))
+        (is (check (:client-ready-dom @manager)
+                   {c1 1  c2 2}))
+        (process-acknowledgements manager {":alt-client-id" 2
+                                           ":alt-client-id_Ibar" 2})
+        (is (not (:client-needs-dom @c1)))
+        (is (:client-needs-dom @c2))
+        (is (check (:client-ready-dom @manager)
+                   {c2 2}))
+        (process-acknowledgements manager {":alt-client-id" 2
+                                           ":alt-client-id_Ibar" 3})
+        (is (not (:client-needs-dom @c1)))
+        (is (not (:client-needs-dom @c2)))
+        (is (check (:client-ready-dom @manager)
+                   {}))
+        (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+        (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))))
 
 (comment
 

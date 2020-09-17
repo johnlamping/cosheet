@@ -156,9 +156,10 @@
 ;;; spec. :get-action-data holds a function that takes a dom
 ;;; specification, the action data for the containing dom, a user
 ;;; action, and the current store, and returns the action data for the
-;;; given dom. Then the function in :handle-action takes the action
-;;; information for the dom, a user action, and the current store and
-;;; returns a store with the appropriate changes.
+;;; given dom, which will be a map. Then the function in
+;;; :handle-action takes the action information for the dom, a user
+;;; action, and the current store and returns a store with the
+;;; appropriate changes.
 
 ;;; This protocol allows :get-action-data to pass down a modified
 ;;; store as part of its output. For example, it might want to create

@@ -352,13 +352,34 @@
   [component-atom]
   (ids->client-id (component->id-sequence component-atom)))
 
-(defn client-id->component
-  [manager-data client-id]
+(defn default-get-action-data
+  [specification containing-action-data action immutable-store]
+  (let [id (or (:item-id specification) (:relative-id specification))]
+    (assert (satisfies? StoredItemDescription id))
+    ;; TODO: Change this to account for multiple logically containing items.
+    {:target [id]}))
+
+(defn action-data-for-component
+  [component containing-action-data action immutable-store]
+  (let [spec (:dom-specification @component)
+        getter (or (:get-action-data spec) default-get-action-data)]
+    (assoc (getter spec containing-action-data action immutable-store)
+           :component component)))
+
+(defn client-id->action-data
+  "Returns the action data map for the component for the given client
+  id. Adds the component to the action data map."
+  [manager-data client-id action immutable-store]
   (let [id-sequence (client-id->ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
-    (reduce (fn [component id]
-              (when component ((:id->subcomponent @component) id)))
-            root (rest id-sequence))))
+    (reduce (fn [data id]
+              (when data
+                (when-let
+                    [component ((:id->subcomponent @(:component data)) id)]
+                  (action-data-for-component
+                   component data action immutable-store))))
+            (action-data-for-component root {} action immutable-store)
+            (rest id-sequence))))
 
 (defn note-dom-ready-for-client
   [dom-manager component-atom]

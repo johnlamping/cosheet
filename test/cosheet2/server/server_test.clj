@@ -4,6 +4,9 @@
              order-utils-test
              model-utils-test
              hierarchy-test
-             item-render-test)
+             render-utils-test
+             item-render-test
+             ; dom-manager-test
+             )
    :reload
             ))

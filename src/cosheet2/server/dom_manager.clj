@@ -57,7 +57,7 @@
      reporters             ; The reporters that we are attending to for
                            ; this component. They are the ones returned by
                            ; :rendering-data   
-     id->subcomponent         ; A map from :relative-id to the component data
+     id->subcomponent      ; A map from :relative-id to the component data
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
                            ; changes.
@@ -366,6 +366,17 @@
     (assoc (getter spec containing-action-data action immutable-store)
            :component component)))
 
+(defn client-id->component
+  "Returns the component for the given client id."
+  [manager-data client-id]
+  (let [id-sequence (client-id->ids client-id)
+        root ((:root-components manager-data) (first id-sequence))]
+    (reduce (fn [component id]
+              (when component
+                ((:id->subcomponent @component) id)))
+            root
+            (rest id-sequence))))
+
 (defn client-id->action-data
   "Returns the action data map for the component for the given client
   id. Adds the component to the action data map."
@@ -446,7 +457,8 @@
   [manager-data acknowledgements]
    (reduce
     (fn [manager-data [client-id version]]
-      (if-let [component-atom (client-id->component manager-data client-id)]
+      (if-let [component-atom
+               (client-id->component manager-data client-id)]
         (let [version-matched
               ;; We may run this multiple times, since we run inside
               ;; another swap!. But that is OK, as the only side effect

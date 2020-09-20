@@ -207,20 +207,21 @@
              ":root-id_Ibar")))))
 
 (deftest client-id->action-data-test
-  ;; Also tests note-dom-ready-for-client
+  ;; Also tests client-id->component and note-dom-ready-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
-    (let [d1 (client-id->action-data @manager ":alt-client-id" nil :store)
-          c1 (:component d1)]
+    (let [c1 (client-id->component @manager ":alt-client-id")
+          d1 (client-id->action-data @manager ":alt-client-id" nil :store)]
       (is (check d1 {:component c1
                      :target [id1]}))
       (activate-component c1)
       (compute cd)
-      (let [c2 ((:id->subcomponent @c1) id2)
+      (let [c2 (client-id->component @manager ":alt-client-id_Ibar")
             d2 (client-id->action-data
                 @manager ":alt-client-id_Ibar" nil :store)]
+        (is (= c2 ((:id->subcomponent @c1) id2)))
         (is (check d2 {:component c2
                        :target [id2]}))
         (is (check (:client-ready-dom @manager)

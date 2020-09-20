@@ -6,7 +6,7 @@
              hierarchy-test
              render-utils-test
              item-render-test
-             ; dom-manager-test
+             dom-manager-test
              )
    :reload
             ))

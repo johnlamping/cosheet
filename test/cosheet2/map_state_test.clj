@@ -51,6 +51,17 @@
                 [:rc nil]
                 [:ra invalid]
                 [:ra 10]]))
+    (map-state-reset! ms :c 5)
+    (compute cd)
+    (is (check @history
+               [[:ra invalid]
+                [:ra 1]
+                [:rc invalid]
+                [:rc nil]
+                [:ra invalid]
+                [:ra 10]
+                [:rc invalid]
+                [:rc 5]]))
     (is (= (map-state-change-value-control-return!
             ms :c (fn [x] [[x "hi"] "there"]))
            "there"))
@@ -63,4 +74,6 @@
                 [:ra invalid]
                 [:ra 10]
                 [:rc invalid]
-                [:rc [nil "hi"]]]))))
+                [:rc 5]
+                [:rc invalid]
+                [:rc [5 "hi"]]]))))

@@ -30,3 +30,6 @@
                  [key]
                  [key] result]))))
 
+(defn map-state-reset! [map-state key value]
+  (map-state-change-value! map-state key (constantly value)))
+

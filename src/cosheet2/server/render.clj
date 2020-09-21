@@ -5,15 +5,17 @@
                       [store-impl :refer [id->string string->id]]
                       [entity :refer [subject content label->elements
                                       description->entity]]
-                      [expression :refer [expr expr-let expr-seq cache]]
+                      [expression :refer [expr expr-let expr-seq cache
+                                          category-change]]
                       [calculator :refer [current-value]]
+                      [map-state :refer [map-state-get]]
                       [hiccup-utils :refer [add-attributes into-attributes]])
             (cosheet2.server
              [order-utils :refer [semantic-entity?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
              ; [render-utils :refer [make-component]]
-             ; [item-render :refer [item-DOM-R]]
+             [item-render :refer [render-item-DOM]]
              ; [table-render :refer [table-DOM-R]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
@@ -348,7 +350,38 @@
               selector-items)))))))
 
 ;;; TODO: Add a unit test for this.
-(comment
+(defn top-level-DOM-R
+  "Return a reporter whose value is DOM for the top level component."
+  [store session-temporary-id client-state]
+  (expr-let [id (expr-let [id (map-state-get client-state :root-id)]
+                  (or id (expr first (ordered-tabs-ids-R store))))]
+    (when id
+      (let [item (description->entity id store)]
+        (expr-let [tab-tags (matching-elements :tab item)
+                   content (content item)]
+          (when (empty? tab-tags)
+            ;; Show just the item.
+            (render-item-DOM {:relative-id id
+                              :must-show-label true})))))))
+
+(defn reporter-specification-get-rendering-data
+  "Return the rendering data for a component whose dom is what a
+  reporter returns"
+  [spec store]
+  [[(:reporter spec) nil]])
+
+(defn reporter-specification-render-dom
+  "Make the component's dom be what a reporter returns."
+  [spec reporter-value]
+  reporter-value)
+
+(defn top-level-DOM-spec
+  [store session-temporary-id client-state calculator-data]
+  {:reporter (top-level-DOM-R store session-temporary-id client-state)
+   :get-rendering-data reporter-specification-get-rendering-data
+   :render-dom reporter-specification-render-dom})
+
+(comment ;; Copy stuff out of here as we support more kinds of top levels.
   (defn top-level-DOM-R
     [store session-temporary-id client-state]
     (expr-let [batch-editing-items (batch-editing-selector-items
@@ -394,10 +427,10 @@
                      (assoc starting-inherited :key-prefix [:tab])])]))))))))
 
 (comment
-  (defn DOM-for-client-R
-    "Return a reporter giving the DOM specified by the client."
+  (defn spec-for-client-R
+    "Return a specification for the DOM indicated by the client."
     [store session-temporary-id client-state]
-    (expr-let [dom (top-level-DOM-R
+    (expr-let [dom (top-level-DOM-spec
                     store session-temporary-id client-state)]
       (into dom [(make-component {:key [:label-values]}
                                  [label-datalist-DOM-R store])]))))

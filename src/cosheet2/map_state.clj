@@ -1,6 +1,6 @@
 (ns cosheet2.map-state
   (:require (cosheet2
-             [reporter :refer [new-reporter
+             [reporter :refer [new-reporter reporter-value
                                change-data! change-data-control-return!]]
              [expression :refer [expr category-change]]
              [category-change-calculator :refer [category-change-calculator]])))
@@ -11,6 +11,9 @@
   [initial]
   (assert (map? initial))
   (new-reporter :value initial))
+
+(defn map-state-get-current [map-state key]
+  (key (reporter-value map-state)))
 
 (defn map-state-get [map-state key]
   (expr key (category-change [key] map-state)))

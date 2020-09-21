@@ -52,6 +52,7 @@
                 [:ra invalid]
                 [:ra 10]]))
     (map-state-reset! ms :c 5)
+    (is (= (map-state-get-current ms :c) 5))
     (compute cd)
     (is (check @history
                [[:ra invalid]

@@ -44,9 +44,9 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c1 (reuse-or-make-component-atom s1 manager nil nil)
-        c1-reused (reuse-or-make-component-atom s1 manager nil c1)
-        c2 (reuse-or-make-component-atom s2 manager c1 c1)]
+        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
+        c1-reused (reuse-or-make-component-atom s1 manager nil :foo c1)
+        c2 (reuse-or-make-component-atom s2 manager c1 nil c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 1))
     (is (= (:dom-version @c1) 1))
@@ -61,7 +61,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c2 (reuse-or-make-component-atom s2 manager nil nil)]
+        c2 (reuse-or-make-component-atom s2 manager nil :foo nil)]
     (activate-component c2)
     (is (check @manager
                {:root-components {}
@@ -86,7 +86,7 @@
                 :dom-manager manager
                 :client-needs-dom true
                 :dom-specification s2
-                :client-id nil
+                :client-id :foo
                 :dom-version 2
                 :containing-component nil
                 :depth 1
@@ -97,6 +97,7 @@
            (map->ComponentData
             {:id->subcomponent {}
              :dom-manager manager
+             :client-id :foo
              :depth 1})))
     (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
 
@@ -104,14 +105,14 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c1 (reuse-or-make-component-atom s1 manager nil nil)
+        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
         updated (update-dom @c1 c1 [:div 2 [:component s2]])]
     (is (check updated
                {:reporters nil
                 :further-actions [[note-dom-ready-for-client manager c1]
                                   [activate-component (any)]]
                 :id->subcomponent {id2 (any)}
-                :client-id nil
+                :client-id :foo
                 :dom-manager manager
                 :client-needs-dom true
                 :dom-specification s1
@@ -125,7 +126,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (activate-component c1)
     (is (check (:tasks @(:queue cd))
                {[compute-dom-unless-newer c1 1] 1}))
@@ -137,7 +138,7 @@
                  {:reporters [ms]
                   :further-actions nil
                   :id->subcomponent {id2 (any)}
-                  :client-id nil
+                  :client-id :foo
                   :dom-manager manager
                   :client-needs-dom true
                   :dom-specification s1
@@ -175,7 +176,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (let [ready (mark-component-tree-as-needed c1 (:queue cd))]
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
@@ -194,7 +195,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
-        c1 (reuse-or-make-component-atom s1 manager nil nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (activate-component c1)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
@@ -202,9 +203,9 @@
       (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
       (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
       (is (= (component->client-id c1)
-             ":root-id")
+             ":foo")
           (= (component->client-id c2)
-             ":root-id_Ibar")))))
+             ":foo_Ibar")))))
 
 (deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client

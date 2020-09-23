@@ -15,8 +15,9 @@
     [store-utils :refer [add-entity remove-entity-by-id]]
     [query :refer [matching-items]]
     [debug :refer [simplify-for-print]]
-    [calculator :refer [compute]]
-    [map-state :refer [new-map-state map-state-get map-state-reset!]])
+    [calculator :refer [compute propagate-calculator-data!]]
+    [map-state :refer [new-map-state map-state-get-current
+                       map-state-reset!]])
    (cosheet2.server
     [order-utils :refer [update-add-entity-adjacent-to order-element-for-item]]
     [model-utils :refer [starting-store add-table ordered-tabs-ids-R]]
@@ -298,7 +299,7 @@
 ;;;                            we are working on them.
 ;;;            :batch-editing  If true, we are batch editing, and showing
 ;;;                            the batch edit window, rather than whatever
-;;;                            :id says we should show.
+;;;                            :root-id says we should show.
 
 ;;; TODO: Support a "id" that is a list of subject ids followed by an
 ;;; exemplar id
@@ -314,17 +315,17 @@
         id (or (when id-string (id-string->id id-string))
                (first (ordered-tabs-ids-R immutable-store)))]
     (new-map-state {:last-time (System/currentTimeMillis)
-                    :id id
+                    :root-id id
                     :last-action nil
                     :batch-editing false
-                    :in-sync false}
-                   queue)))
+                    :in-sync false})))
 
-;;; TODO: Code after here.
 (defn create-manager
   [store temporary-id client-state calculator-data]
-  (let [spec [top-level-DOM-spec store temporary-id client-state]
+  (let [spec (top-level-DOM-spec store temporary-id client-state)
         manager (new-dom-manager calculator-data store)]
+    (assert (:reporter spec))
+    (propagate-calculator-data! (:reporter spec) calculator-data)
     (add-root-dom manager :root spec)
     (println (new java.util.Date) "created manager")
     manager))
@@ -348,7 +349,8 @@
      (let [last-time-to-keep (- (System/currentTimeMillis) delay-millis)]
        (assoc session-info :sessions
               (reduce-kv (fn [accum id state]
-                           (if (< (:last-time @(:client-state state))
+                           (if (< (map-state-get-current
+                                   (:client-state state) :last-time)
                                   last-time-to-keep)
                              accum
                              (assoc accum id state)))

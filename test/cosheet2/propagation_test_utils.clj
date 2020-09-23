@@ -142,16 +142,16 @@
   and return a list of reporters reachable from this one."
   [reporter]
   (let [data (reporter-data reporter)]
-      (is (= (set (filter reporter? (:application data)))
-             (clojure.set/union (set (keys (:subordinate-values data)))
-                                (:needed-values data))))
-      (is (not (empty? (:attendees data))))
-      (-> []
-          (check-source-propagation reporter)
-          (check-old-source-propagation reporter)
-          (check-subordinate-propagation reporter)
-          (check-needed-propagation reporter)
-          (check-attendees reporter))))
+    (is (= (set (filter reporter? (:application data)))
+           (clojure.set/union (set (keys (:subordinate-values data)))
+                              (:needed-values data))))
+    (is (not (empty? (:attendees data))))
+    (-> []
+        (check-source-propagation reporter)
+        (check-old-source-propagation reporter)
+        (check-subordinate-propagation reporter)
+        (check-needed-propagation reporter)
+        (check-attendees reporter))))
 
 (defn check-propagation
   "Check that all the right information has been propagated to any reporter

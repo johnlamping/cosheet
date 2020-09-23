@@ -44,7 +44,8 @@
                            ; communicating with the client about this
                            ; component.
      containing-component  ; The component that contains this one. Nil
-                           ; if this component is a root.
+                           ; if this component is a root. If this is nil,
+                           ; then client-id must be present
      depth                 ; The depth of this component in the component
                            ; hierarchy, used to make sure that parents are
                            ; sent to the client before their children.
@@ -98,17 +99,20 @@
 
 (def note-dom-ready-for-client)
 
-(defn make-component-data
+(defn make-component
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
   container."
-  [specification containing-component-atom dom-manager]
+  [specification dom-manager containing-component-atom client-id]
   (assert (map? specification))
-  (assert (or :client-id specification) (:relative-id specification))
+  (when client-id (assert (keyword? client-id)))
+  (assert (or client-id
+              (and (:relative-id specification) containing-component-atom)))
   (atom
    (map->ComponentData
     {:dom-manager dom-manager
      :dom-specification specification
+     :client-id client-id
      :containing-component containing-component-atom
      :depth (if containing-component-atom
               (+ 1 (:depth @containing-component-atom))
@@ -136,11 +140,13 @@
     answer))
 
 (defn reuse-or-make-component-atom
-  [specification dom-manager containing-component-atom old-component-atom]
+  [specification dom-manager containing-component-atom client-id
+   old-component-atom]
   (if (and old-component-atom
            (= (:dom-specification @old-component-atom) specification))
     old-component-atom
-    (make-component-data specification containing-component-atom dom-manager)))
+    (make-component
+     specification dom-manager containing-component-atom client-id)))
 
 (def compute-dom-unless-newer)
 
@@ -197,7 +203,7 @@
       component-data)))
 
 (defn activate-component
-  "Register for component for change notifications,
+  "Register a component for change notifications,
   and set an action to get its dom."
   [component-atom]
   (swap-and-act!
@@ -242,6 +248,7 @@
                                            (subcomponent-specs id)
                                            (:dom-manager component-data)
                                            component-atom
+                                           nil
                                            (old-id->subcomponent id)))
                                  ids))
           dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
@@ -343,7 +350,7 @@
 (defn component->id-sequence
   [component-atom]
   (let [data @component-atom]
-    (if-let [client-id (:client-id (:dom-specification data))]
+    (if-let [client-id (:client-id data)]
       [client-id]
       (conj (component->id-sequence (:containing-component data))
             (:relative-id (:dom-specification data))))))
@@ -484,8 +491,7 @@
   This is how the manager is bootstrapped with top level doms."
   [dom-manager client-id specification]
   (assert (keyword? client-id))
-  (let [spec (assoc specification :client-id client-id)
-        component (make-component-data spec nil dom-manager)]
+  (let [component (make-component specification dom-manager nil client-id)]
     (swap-and-act!
      dom-manager
      #(let [old-component (get-in % [:root-components client-id]) ]

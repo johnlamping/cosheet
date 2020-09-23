@@ -88,7 +88,7 @@
                        that have requested that category.
                        (::universal-category matches everything, and is
                        used for attendees that haven't narrowed down
-                       their interest.
+                       their interest.)
      :calculator       The calculator for this reporter. It is set
                        when the reporter is created, and can not change.
      :calculator-data  If present, the auxilliary data for the
@@ -307,6 +307,10 @@
   (let [[old current] (swap-returning-both! (:data r) f)
         calculator (:calculator current)
         calculator-data (:calculator-data current)]
+    ;; Some calculators, like application-calculator, can generate
+    ;; demand for a reporter they create before they activate it.
+    ;; So we may have to wait on calling the calculator until we
+    ;; are activated.
     (when (and calculator
                calculator-data
                (or

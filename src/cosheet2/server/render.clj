@@ -4,7 +4,7 @@
                       [store :refer [id-valid? StoredItemDescription]]
                       [store-impl :refer [id->string string->id]]
                       [entity :refer [subject content label->elements
-                                      description->entity]]
+                                      description->entity updating-immutable]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
                       [calculator :refer [current-value]]
@@ -357,8 +357,8 @@
                   (or id (expr first (ordered-tabs-ids-R store))))]
     (when id
       (let [item (description->entity id store)]
-        (expr-let [tab-tags (matching-elements :tab item)
-                   content (content item)]
+        (expr-let [immutable-item (updating-immutable item)
+                   tab-tags (matching-elements :tab immutable-item)]
           (when (empty? tab-tags)
             ;; Show just the item.
             (render-item-DOM {:relative-id id
@@ -376,7 +376,7 @@
   reporter-value)
 
 (defn top-level-DOM-spec
-  [store session-temporary-id client-state calculator-data]
+  [store session-temporary-id client-state]
   {:reporter (top-level-DOM-R store session-temporary-id client-state)
    :get-rendering-data reporter-specification-get-rendering-data
    :render-dom reporter-specification-render-dom})

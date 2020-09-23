@@ -56,6 +56,19 @@
 (def joe-39 (first (matching-elements 39 joe)))
 (def joe-45 (first (matching-elements 45 joe)))
 
+(deftest order-ids-test
+  ;; Also tests ordered-ids-R on an immutable store.
+  (let [joe-semantic-elements (filter semantic-entity? (elements joe))
+        joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
+    (is (= (order-ids (map :item-id joe-semantic-elements) store)
+           (map :item-id joe-ordered-semantic-elements)))
+    (is (= (order-ids (reverse (map :item-id joe-semantic-elements)) store)
+           (map :item-id joe-ordered-semantic-elements)))
+    (is (= (ordered-ids-R (map :item-id joe-semantic-elements) store)
+           (map :item-id joe-ordered-semantic-elements)))
+    (is (= (ordered-ids-R (reverse (map :item-id joe-semantic-elements)) store)
+           (map :item-id joe-ordered-semantic-elements)))))
+
 (deftest order-entities-test
   (let [joe-semantic-elements (filter semantic-entity? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]

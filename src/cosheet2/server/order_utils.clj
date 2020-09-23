@@ -4,11 +4,12 @@
     [orderable :refer [split earlier? initial]]
     [reporter :refer [reporter-data set-value! set-attendee! invalid
                       inform-attendees data-attended? remove-attendee!
-                      new-reporter reporter-value]]
+                      new-reporter reporter-value reporter?]]
     [calculator :refer [modify-and-act!]]
     [store :refer [update-content add-simple-item declare-temporary-id
-                   id-label->element-ids id->content]]
-    [entity :refer [content elements label->elements label->content]]
+                   id-label->element-ids id->content ImmutableStore]]
+    [entity :refer [content elements label->elements label->content
+                    description->entity]]
     [query :refer [matching-items]]
     [store-utils :refer [add-entity]]
     [expression :refer [expr-let expr-seq]]
@@ -34,21 +35,34 @@
   [a b]
   (earlier? (first a) (first b)))
 
+(defn sort-by-order
+  "Given a seq of things and a parallel seq of their order information,
+  sort the things by the corresponding order information."
+  [things order-info]
+  (->> (map (fn [order thing]
+              ;; It is possible to not have order information,
+              ;; especially temporarily while information is being
+              ;; propagated. Tolerate that.
+                    (vector (or order initial) thing))
+            order-info things)
+       (sort orderable-comparator)
+       (map second)))
+
+(defn order-ids
+  "Return the ids in the correct order, based on their order data."
+  [ids immutable-store]
+  (let [order-info (map #())])
+  (let [entities (map #(description->entity % immutable-store) ids)
+        order-info (map #(label->content % :order) entities)]
+    (sort-by-order ids order-info)))
+
 (defn order-entities
   "Return the immutable entities in the proper sort order."
   [entities]
   (if (empty? (rest entities))
     entities
     (let [order-info (map #(label->content % :order) entities)]
-      (map second
-           (sort orderable-comparator
-                 (map (fn [order entity]
-                        ;; It is possible for an entity not to have
-                        ;; order information, especially temporarily
-                        ;; while information is being
-                        ;; propagated. Tolerate that.
-                        (vector (or order initial) entity))
-                      order-info entities))))))
+      (sort-by-order entities order-info))))
 
 ;;; The next few functions implement a reporter that orders a set of
 ;;; ids, bupdating as either the set membership or their order
@@ -86,12 +100,7 @@
                               ;; added. Tolerate that.
                               #(if % (id->content immutable-store %) initial)
                               order-ids)
-                  ordered (map
-                           second
-                           (sort
-                            orderable-comparator
-                            (map vector order-info immutable-ids
-                                 immutable-ids order-ids)))]
+                  ordered (sort-by-order immutable-ids order-info)]
               (set-value! reporter ordered))))))))
 
 (defn ordered-ids-callback
@@ -138,13 +147,16 @@
   "Make a reporter that takes a mutable list of ids, and a mutable
   store, and returns the ids in correct order."
   [ids store]
-  ;; We don't cache any information from the store, since it is pretty
-  ;; efficient to get what we need whenever we need to recompute. The
-  ;; main point of this reporter is to avoid recomputing when it isn't
-  ;; necessary.
-  (new-reporter :calculator ordered-ids-calculator
-                :ids ids
-                :store store))
+  (if (and (satisfies? ImmutableStore store)
+           (not (reporter? ids)))
+    (order-ids ids store)
+    ;; We don't cache any information from the store, since it is pretty
+    ;; efficient to get what we need whenever we need to recompute. The
+    ;; main point of this reporter is to avoid recomputing when it isn't
+    ;; necessary.
+    (new-reporter :calculator ordered-ids-calculator
+                  :ids ids
+                  :store store)))
 
 (defn orderable-entity?
   "Return whether this entity should get an order position."

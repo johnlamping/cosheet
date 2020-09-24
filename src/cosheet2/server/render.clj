@@ -25,7 +25,7 @@
 
 ;;; For a basic entity, we show its contents and its semantic
 ;;; elements, but not its non-semantic elements. Semantic elements
-;;; have a content of a number, a string, 'anything, 'anything-immutable,
+;;; have a content of a number, a string, 'anything,
 ;;; :label, or :category,
 
 ;;; An element may be marked as a label or a category by having an

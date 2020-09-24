@@ -551,7 +551,7 @@
   ;; elements on its content.
   (let [content (entity/content item)]
     (assert (entity/atom? content))
-    (let [anything (#{'anything 'anything-immutable} content)]
+    (let [anything (= 'anything content)]
       [:div (cond-> (-> (select-keys attributes [:class])
                         (into-attributes {:class "content-text editable"} ))
               (has-keyword? item :label)

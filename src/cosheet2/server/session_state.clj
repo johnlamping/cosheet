@@ -10,7 +10,7 @@
                    read-store write-store store-to-data data-to-store
                    store-update-control-return! declare-temporary-id
                    store-update! id-valid? update-equivalent-undo-point]]
-    [store-impl :refer [->ItemId]]
+    [store-impl :refer [string->id]]
     mutable-store-impl
     [store-utils :refer [add-entity remove-entity-by-id]]
     [query :refer [matching-items]]
@@ -302,17 +302,15 @@
 ;;;                            :root-id says we should show.
 
 ;;; TODO: Support a "id" that is a list of subject ids followed by an
-;;; exemplar id
+;;; exemplar id.
 (defn id-string->id
   [id-string]
-  (when-let [number (try (Integer/parseInt id-string)
-                    (catch Exception e nil))]
-    (->ItemId number)))
+  (when id-string (string->id id-string)))
 
 (defn create-client-state
-  [store id-string queue]
+  [store root-id queue]
   (let [immutable-store (current-store store)
-        id (or (when id-string (id-string->id id-string))
+        id (or root-id
                (first (ordered-tabs-ids-R immutable-store)))]
     (new-map-state {:last-time (System/currentTimeMillis)
                     :root-id id
@@ -377,7 +375,7 @@
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
-  [session-id file-path referent-string queue manager-data]
+  [session-id file-path root-id-string queue manager-data]
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
@@ -388,7 +386,7 @@
                 (let [session-map (:sessions session-info)
                       id (or session-id (new-id session-map))
                       client-state (create-client-state
-                                    store referent-string queue)]
+                                    store (id-string->id root-id-string) queue)]
                   [(assoc-in session-info [:sessions id]
                              {:file-path (:without-suffix store-info)
                               :id id
@@ -406,9 +404,9 @@
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
-  [session-id file-path referent-string queue manager-data]
+  [session-id file-path root-id-string queue manager-data]
   (or (get-session-state session-id)
-      (let [session-id (create-session session-id file-path referent-string
+      (let [session-id (create-session session-id file-path root-id-string
                                        queue manager-data)]
         (get-session-state session-id))))
 

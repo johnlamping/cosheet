@@ -58,6 +58,7 @@
 ;;; TODO: It is not clear why we have to store the selection as a
 ;;; path, though. It could be stored as a keyword whose text is the
 ;;; client form of the selection.
+;;; TODO: Also, the :select return value should hold client ids.
 
 ;;; Paths are stored as a nested sequence of items of the form
 ;;; (path-item :path-item) with a final item of :end-path.

@@ -290,7 +290,7 @@
 ;;;         :client-state  A map-state holding these keys:
 ;;;                :last-time  The last time we accessed this session.
 ;;;                  :in-sync  True if the client is ready to accept doms.
-;;;                  :root-id  The id for the root of the display or
+;;;                  :root-id  The item id for the root of the display or
 ;;;                            selected tab.
 ;;;              :subject-ids  If the id is an exemplar, its subject ids.
 ;;;              :last-action  The action id of the last action we did.

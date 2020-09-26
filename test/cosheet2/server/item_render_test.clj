@@ -83,6 +83,7 @@
                        :relative-id :virtual-label
                        :position :after
                        :class "label"
+                       :get-rendering-data get-virtual-DOM-rendering-data
                        :render-dom render-virtual-DOM
                        :action-data virtual-action-data
                        :width 1.5}]
@@ -115,27 +116,31 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
-                  [:component {:width 0.9
-                               :twin-template '("" :label)
-                               :relative-id [id1 :virtual-label]
-                               :render-dom render-virtual-DOM
-                               :action-data [composed-action-data-transform
-                                             [exemplar-action-data [id1]]
-                                             virtual-action-data]
-                               :class "label"}]
+                  [:component
+                   {:width 0.9
+                    :twin-template '("" :label)
+                    :relative-id [id1 :virtual-label]
+                    :get-rendering-data get-virtual-DOM-rendering-data
+                    :render-dom render-virtual-DOM
+                    :action-data [composed-action-data-transform
+                                  [exemplar-action-data [id1]]
+                                  virtual-action-data]
+                    :class "label"}]
                   [:component {:width 0.9
                                :twin-template ""
                                :relative-id id1}]]
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
-                  [:component {:width 0.9
-                               :twin-template '("" :label)
-                               :relative-id [id2 :virtual-label]
-                               :render-dom render-virtual-DOM
-                               :action-data [composed-action-data-transform
-                                             [exemplar-action-data [id2]]
-                                             virtual-action-data]
-                               :class "label"}]
+                  [:component
+                   {:width 0.9
+                    :twin-template '("" :label)
+                    :relative-id [id2 :virtual-label]
+                    :get-rendering-data get-virtual-DOM-rendering-data
+                    :render-dom render-virtual-DOM
+                    :action-data [composed-action-data-transform
+                                  [exemplar-action-data [id2]]
+                                  virtual-action-data]
+                    :class "label"}]
                   [:component {:width 0.9
                                :twin-template ""
                                :relative-id id2}]]]])))
@@ -316,6 +321,7 @@
                                             [exemplar-action-data [id3]]
                                             virtual-action-data]
                               :relative-id [id3 :virtual-label]
+                              :get-rendering-data get-virtual-DOM-rendering-data
                               :render-dom render-virtual-DOM
                               :class "label"}]
                  [:component {:width 0.9
@@ -354,6 +360,7 @@
                           :action-data [composed-action-data-transform
                                         [exemplar-action-data [id1]]
                                         virtual-action-data]
+                          :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
@@ -367,6 +374,7 @@
                           :action-data [composed-action-data-transform
                                         [exemplar-action-data [id2]]
                                         virtual-action-data]
+                          :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
@@ -512,6 +520,7 @@
                          :relative-id :virtual
                          :adjacent-id id1
                          :direction :after
+                         :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
                          :action-data virtual-action-data}]]
            [:div {:class "horizontal-labels-element label wide"}
@@ -554,12 +563,16 @@
                           :action-data [composed-action-data-transform
                                         [exemplar-action-data [id3]]
                                         virtual-action-data]
+                          :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
                          :twin-template ""
-                         :relative-id id3}]]]])))
-  )
+                         :relative-id id3}]]]]))))
+
+(deftest render-virtual-DOM-test
+  (is (check (render-virtual-DOM {:class "foo"})
+             [:div {:class "foo editable"}])))
 
 (comment
   (deftest item-DOM-R-test-one-column

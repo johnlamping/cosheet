@@ -2,7 +2,7 @@
   (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
-                                        reporter-value]]
+                                        reporter-value valid?]]
                       [store :refer [StoredItemDescription]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
@@ -165,7 +165,7 @@
 (defn default-get-rendering-data
   [specification mutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id))
+    (assert (satisfies? StoredItemDescription id) id)
     [[mutable-store [id]]]))
 
 (defn update-register-for-reporters
@@ -214,6 +214,7 @@
                (update-register-for-reporters component-atom)
                (update-new-further-action
                 schedule-compute-dom-unless-newer component-atom))]
+       (assert (instance? ComponentData result))
        result))))
 
 (defn disable-component
@@ -221,59 +222,63 @@
   [component-atom]
   (swap-and-act!
    component-atom
-   #(-> %
-        ;; We assoc with nil, rather than dissoc, so we don't turn
-        ;; the record into a map.
-        (assoc :dom-specification nil
-               :dom nil
-               :dom-version nil
-               :client-needs-dom nil)
-        (update-unregister-for-reporters component-atom)
-        (update-new-further-actions
-         (map (fn [comp] [disable-component comp])
-              (vals (:id->subcomponent %)))))))
+   #(let [result (-> %
+                    ;; We assoc with nil, rather than dissoc, so we don't turn
+                    ;; the record into a map.
+                    (assoc :dom-specification nil
+                           :dom nil
+                           :dom-version nil
+                           :client-needs-dom nil)
+                    (update-unregister-for-reporters component-atom)
+                    (update-new-further-actions
+                     (map (fn [comp] [disable-component comp])
+                          (vals (:id->subcomponent %)))))]
+      (assert (instance? ComponentData result))
+      result)))
 
 (defn update-dom
   [component-data component-atom dom]
-  (if (= dom (:dom component-data))
-    ;; The dom hasn't changed. Bump the version to note that we have done
-    ;; a recomputation.
-    (update component-data :dom-version inc)
-    (let [subcomponent-specs (get-id->subcomponent-specifications dom)
-          ids (keys subcomponent-specs)
-          old-id->subcomponent (or (:id->subcomponent component-data) {})
-          id->subcomponent (zipmap
-                            ids
-                            (map (fn [id] (reuse-or-make-component-atom
-                                           (subcomponent-specs id)
-                                           (:dom-manager component-data)
-                                           component-atom
-                                           nil
-                                           (old-id->subcomponent id)))
-                                 ids))
-          dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                                  (old-id->subcomponent %))
-                                           (keys old-id->subcomponent))
-          new-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                              (old-id->subcomponent %))
-                                       (keys id->subcomponent))]
-      (-> component-data
-          (assoc :dom dom
-                 :id->subcomponent id->subcomponent
-                 :client-needs-dom true)
-          (update :dom-version inc)
-          (update-new-further-action
-           note-dom-ready-for-client
-           (:dom-manager component-data) component-atom)
-          (update-new-further-actions
-           (map (fn [id] [activate-component (id->subcomponent id)])
-                new-subcomponent-ids))
-          (update-new-further-actions
-           (map (fn [id] [disable-component (old-id->subcomponent id)])
-                dropped-subcomponent-ids))))))
+  (if (valid? dom)
+    (if (= dom (:dom component-data))
+      ;; The dom hasn't changed. Bump the version to note that we have done
+      ;; a recomputation.
+      (update component-data :dom-version inc)
+      (let [subcomponent-specs (get-id->subcomponent-specifications dom)
+            ids (keys subcomponent-specs)
+            old-id->subcomponent (or (:id->subcomponent component-data) {})
+            id->subcomponent (zipmap
+                              ids
+                              (map (fn [id] (reuse-or-make-component-atom
+                                             (subcomponent-specs id)
+                                             (:dom-manager component-data)
+                                             component-atom
+                                             nil
+                                             (old-id->subcomponent id)))
+                                   ids))
+            dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                                    (old-id->subcomponent %))
+                                             (keys old-id->subcomponent))
+            new-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                                (old-id->subcomponent %))
+                                         (keys id->subcomponent))]
+        (-> component-data
+            (assoc :dom dom
+                   :id->subcomponent id->subcomponent
+                   :client-needs-dom true)
+            (update :dom-version inc)
+            (update-new-further-action
+             note-dom-ready-for-client
+             (:dom-manager component-data) component-atom)
+            (update-new-further-actions
+             (map (fn [id] [activate-component (id->subcomponent id)])
+                  new-subcomponent-ids))
+            (update-new-further-actions
+             (map (fn [id] [disable-component (old-id->subcomponent id)])
+                  dropped-subcomponent-ids)))))
+    component-data))
 
 (defn compute-dom-unless-newer
-  "Compute the dom, unless if its current version is greater than old-version."
+  "Compute the dom, unless its current version is greater than old-version."
   [component-atom old-dom-version]
   (let [{:keys [reporters dom-specification dom-version]} @component-atom
         renderer (or (:render-dom dom-specification) render-item-DOM)]
@@ -282,7 +287,9 @@
         (let [dom (apply renderer dom-specification reporter-values)]
           (swap-and-act!
            component-atom
-           #(update-dom % component-atom dom)))))))
+           #(let [result (update-dom % component-atom dom)]
+              (assert (instance? ComponentData result))
+              result)))))))
 
 (defn mark-component-tree-as-needed
   "Mark the component and all its descendants as needing to be sent to

@@ -195,9 +195,9 @@
 
 (defn transform-specification-for-elements
   [specification]
-  (assoc-if-non-empty (select-keys specification [:width])
-                      :twin-template (or (:elements-template specification)
-                                         "")))
+  (assoc (select-keys specification [:width])
+         :twin-template (or (:elements-template specification)
+                            "")))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,

@@ -354,15 +354,17 @@
   "Return a reporter whose value is DOM for the top level component."
   [store session-temporary-id client-state]
   (expr-let [id (expr-let [id (map-state-get client-state :root-id)]
-                  (or id (expr first (ordered-tabs-ids-R store))))]
+                  (or id (expr first (ordered-tabs-ids-R store)))) ]
     (when id
-      (let [item (description->entity id store)]
-        (expr-let [immutable-item (updating-immutable item)
-                   tab-tags (matching-elements :tab immutable-item)]
-          (when (empty? tab-tags)
-            ;; Show just the item.
-            (render-item-DOM {:relative-id id
-                              :must-show-label true})))))))
+      (expr-let [immutable-store (category-change [id] store)
+                 immutable-item (description->entity id immutable-store)
+                 tab-tags (matching-elements :tab immutable-item)]
+        (when (empty? tab-tags)
+          ;; Show just the item.
+          (render-item-DOM (assoc basic-dom-specification        
+                                  :relative-id id
+                                  :must-show-label true)
+                           immutable-store))))))
 
 (defn reporter-specification-get-rendering-data
   "Return the rendering data for a component whose dom is what a
@@ -377,9 +379,10 @@
 
 (defn top-level-DOM-spec
   [store session-temporary-id client-state]
-  {:reporter (top-level-DOM-R store session-temporary-id client-state)
-   :get-rendering-data reporter-specification-get-rendering-data
-   :render-dom reporter-specification-render-dom})
+  (assoc basic-dom-specification
+         :reporter (top-level-DOM-R store session-temporary-id client-state)
+         :get-rendering-data reporter-specification-get-rendering-data
+         :render-dom reporter-specification-render-dom))
 
 (comment ;; Copy stuff out of here as we support more kinds of top levels.
   (defn top-level-DOM-R
@@ -389,7 +392,8 @@
       (if (seq batch-editing-items)
         (batch-edit-DOM-R batch-editing-items store starting-inherited)
         (expr-let [referent (state-map-get client-state :referent)
-                   subject-referent (state-map-get client-state :subject-referent)
+                   subject-referent (state-map-get client-state
+                                                   :subject-referent)
                    immutable-item (call-dependent-on-id
                                    store nil
                                    (fn [immutable-store]

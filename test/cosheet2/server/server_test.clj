@@ -1,4 +1,4 @@
-(ns cosheet2.core-test
+(ns cosheet2.server-test
   (:require cosheet2.core-test
             (cosheet2.server
              order-utils-test

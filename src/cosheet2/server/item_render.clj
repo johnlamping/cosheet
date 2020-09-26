@@ -223,12 +223,15 @@
       :horizontal :vertical
       :vertical :horizontal))
 
-;;; TODO: Make sure to add "editable" to a virtual dom's class.
+(defn get-virtual-DOM-rendering-data [spec store]
+  [])
 
+(defn render-virtual-DOM [spec]
+  [:div (into-attributes (select-keys spec [:class])
+                         {:class "editable"})])
+
+;;; TODO: Code this.
 (defn virtual-action-data [] (assert false))
-
-;;; TODO: Add and test this.
-(defn render-virtual-DOM [] (assert false))
 
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
@@ -236,7 +239,8 @@
   (assert (:twin-template specification))
   (make-component
    (-> specification
-       (assoc :render-dom render-virtual-DOM)
+       (assoc :render-dom render-virtual-DOM
+              :get-rendering-data get-virtual-DOM-rendering-data)
        (update :action-data
                #(add-action-data-transformation % virtual-action-data)))))
 

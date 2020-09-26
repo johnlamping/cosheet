@@ -8,6 +8,7 @@
              [debug :refer [simplify-for-print]]
              [test-utils :refer [check any as-set]]
              [store :refer [new-element-store new-mutable-store]]
+             [store-impl :refer [->ItemId]]
              [reporter :refer [reporter-data reporter-value]]
              [query :refer [matching-items]]
              [canonical :refer [canonicalize-list]]
@@ -50,10 +51,10 @@
   (let [queue (new-priority-task-queue 0)
         store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state (create-client-state
-               (new-mutable-store store) "5" queue)]
+               (new-mutable-store store) (->ItemId 5) queue)]
     (is (check (reporter-value state)
                {:last-time (any)
-                :root-id (any #(= (:id %) 5))
+                :root-id (->ItemId 5)
                 :last-action nil
                 :batch-editing false
                 :in-sync false}))))
@@ -117,7 +118,7 @@
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                           :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "/foo" nil queue md)]
+    (let [state (ensure-session nil "/foo" "5" queue md)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (not (empty? (:attendees (reporter-data ms)))))
       (forget-session (first (keys (:sessions @session-info))))

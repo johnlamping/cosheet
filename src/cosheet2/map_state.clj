@@ -5,7 +5,8 @@
              [expression :refer [expr category-change]]
              [category-change-calculator :refer [category-change-calculator]])))
 
-;;; Support a reporter that holds a map.
+;;; Support a reporter that holds a map. The entries in the map may
+;;; themselves be reporters.
 
 (defn new-map-state
   [initial]
@@ -13,7 +14,7 @@
   (new-reporter :value initial))
 
 (defn map-state-get-current [map-state key]
-  (key (reporter-value map-state)))
+  (reporter-value (key (reporter-value map-state))))
 
 (defn map-state-get [map-state key]
   (expr key (category-change [key] map-state)))

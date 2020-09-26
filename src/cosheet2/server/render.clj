@@ -246,10 +246,8 @@
        :twin-template ""  ; The template that the twins of this dom
                           ; must start out satisfying.
    })
-;;; In some cases, the inherited information is halfway between being about
-;;; an item and its children. In this case, :template and :attributes are
-;;; about the item, while :key-prefix and :subject-referent are about
-;;; the children.
+
+;;; TODO: Move these to dom-manager.
 
 (defn concatenate-client-id-parts
   [client-id-parts]
@@ -260,7 +258,7 @@
   [id]
   (cond (keyword? id) (str ":" (name id))
         (satisfies? StoredItemDescription id) (id->string id)
-        true (assert false (str "unknown key component " id))))
+        true (assert false (str "unknown component id part:" id))))
 
 (defn ids->client-id
   "Given a sequence of relative ids, return a string representation

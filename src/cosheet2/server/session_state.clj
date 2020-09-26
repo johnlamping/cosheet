@@ -308,7 +308,7 @@
   (when id-string (string->id id-string)))
 
 (defn create-client-state
-  [store root-id queue]
+  [store root-id]
   (let [immutable-store (current-store store)
         id (or root-id
                (first (ordered-tabs-ids-R immutable-store)))]
@@ -375,7 +375,7 @@
 
 (defn create-session
   "Create a session with the given id, or with a new id if none is given."
-  [session-id file-path root-id-string queue manager-data]
+  [session-id file-path root-id-string queue calculator-data]
   (prune-old-sessions (* 60 60 1000))
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
@@ -386,7 +386,7 @@
                 (let [session-map (:sessions session-info)
                       id (or session-id (new-id session-map))
                       client-state (create-client-state
-                                    store (id-string->id root-id-string) queue)]
+                                    store (id-string->id root-id-string))]
                   [(assoc-in session-info [:sessions id]
                              {:file-path (:without-suffix store-info)
                               :id id
@@ -394,20 +394,21 @@
                               :session-temporary-id session-temporary-id
                               :manager (create-manager
                                         store session-temporary-id client-state
-                                        manager-data)
+                                        calculator-data)
                               :client-state client-state})
                    id])))]
       (prune-unused-stores)
-      (compute manager-data 100)
+      (compute calculator-data 100)
       (println (new java.util.Date) "computed some")
       id)))
 
 (defn ensure-session
   "Make sure there is a session with the given id, and return its state."
-  [session-id file-path root-id-string queue manager-data]
+  [session-id file-path root-id-string queue calculator-data]
+  (assert (instance? cosheet2.calculator.CalculatorData calculator-data))
   (or (get-session-state session-id)
       (let [session-id (create-session session-id file-path root-id-string
-                                       queue manager-data)]
+                                       queue calculator-data)]
         (get-session-state session-id))))
 
 (defn forget-session

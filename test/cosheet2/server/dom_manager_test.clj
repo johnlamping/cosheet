@@ -177,14 +177,14 @@
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager cd ms)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
-    (let [ready (mark-component-tree-as-needed c1 (:queue cd))]
+    (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
                {[compute-dom-unless-newer c1 1] 1}))
     (activate-component c1)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
-          ready (mark-component-tree-as-needed c1 (:queue cd))]
+          ready (mark-component-tree-as-needed c1)]
       (is (= ready [[c1 1] [c2 2]]))
       (is (check (:tasks @(:queue cd))
                  {}))
@@ -199,7 +199,7 @@
     (activate-component c1)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
-          ready (mark-component-tree-as-needed c1 (:queue cd))]
+          ready (mark-component-tree-as-needed c1)]
       (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
       (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
       (is (= (component->client-id c1)

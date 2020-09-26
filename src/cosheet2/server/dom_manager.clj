@@ -3,7 +3,9 @@
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
                                         reporter-value valid?]]
-                      [store :refer [StoredItemDescription]]
+                      calculator
+                      [store :refer [StoredItemDescription mutable-store?]]
+                      [store-impl :refer [id->string string->id]]
                       [utils :refer [swap-control-return!
                                      swap-and-act!
                                      with-latest-value
@@ -15,9 +17,6 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [render :refer [concatenate-client-id-parts
-                             id->client-id-part ids->client-id
-                             client-id->ids]]
              [item-render :refer [render-item-DOM]])))
 
 (def verbose false)
@@ -90,14 +89,47 @@
 ;;;                and :dom not being present.
 ;;;      complete  We have all information for the component, including
 ;;;                its DOM.
-;;;                Indicated by :dom being present
+;;;                Indicated by :dom being present.
 ;;;     suspended  We do not currently need the component's dom, but we
-;;;                do need to know about changes to it
+;;;                do need to know about changes to it.
 ;;;      disabled  We will never need this component's dom again. It is
 ;;;                ready for garbage collection.
-;;;                Indicated by :dom-specification being missing
+;;;                Indicated by :dom-specification being missing.
 
-(def note-dom-ready-for-client)
+
+;;; The information for interfacing between the client and the
+;;; components is stored in an atom, containing a record with these
+;;; fields. By using a record, we can define our own print method to
+;;; avoid dumping this out when printing every component.
+(defrecord DOMManagerData
+    [root-components    ; A map from client id of root components to their
+                        ; component atoms. Not all components with
+                        ; client ids need to be here, just the roots.
+     highest-version    ; The highest version number of any dom we have sent
+                        ; to the client. Any new component starts out with a
+                        ; version number one higher, because we might have
+                        ; forgetten about it and then reconstructed it, all
+                        ; while the client kept ahold of it. This way, our
+                        ; next version will be larger that whatever the
+                        ; client has.
+     client-ready-dom   ; A priority map of client-id for which we have
+                        ; dom that the client needs to know about,
+                        ; prioritized by their depth.
+     ;; TODO: Replace this with just the queue.
+     calculator-data    ; The calculator data whose queue we use.
+     mutable-store      ; The mutable store that holds the data the doms
+                        ; rely on.
+     further-actions    ; A list of [function arg arg ...] calls that
+                        ; need to be performed. The function will be
+                        ; called with the atom, and the additional
+                        ; arguments. (These actions are not actually
+                        ; stored in the atom, but are added to the
+                        ; data before it is stored, to request actions.)
+     ])
+
+(defmethod print-method DOMManagerData [s ^java.io.Writer w]
+  ;; Avoid huge print-outs.
+  (.write w "<DOMManagerData>"))
 
 (defn make-component
   "Given a component specification, create a component data atom. The
@@ -105,6 +137,9 @@
   container."
   [specification dom-manager containing-component-atom client-id]
   (assert (map? specification))
+  (assert (instance? DOMManagerData @dom-manager))
+  (when containing-component-atom
+    (assert (instance? ComponentData @containing-component-atom)))
   (when client-id (assert (keyword? client-id)))
   (assert (or client-id
               (and (:relative-id specification) containing-component-atom)))
@@ -236,6 +271,13 @@
       (assert (instance? ComponentData result))
       result)))
 
+(defn note-dom-ready-for-client
+  [dom-manager component-atom]
+  (swap! dom-manager
+         (fn [manager-data]
+           (update manager-data :client-ready-dom
+                   #(assoc % component-atom (:depth @component-atom))))))
+
 (defn update-dom
   [component-data component-atom dom]
   (if (valid? dom)
@@ -295,7 +337,7 @@
   "Mark the component and all its descendants as needing to be sent to
   the client. Return a list of pairs of all those components with ready
   dom and their depth."
-  [component-atom task-queue]
+  [component-atom]
   (let [[depth dom id->subcomponent]
         (swap-control-return!
          component-atom
@@ -306,45 +348,14 @@
     (when (not dom)
       (schedule-compute-dom-unless-newer component-atom))
     (concat (when dom [[component-atom depth]])
-            (mapcat #(mark-component-tree-as-needed % task-queue)
+            (mapcat mark-component-tree-as-needed
                     (vals id->subcomponent)))))
 
-;;; The information for interfacing between the client and the
-;;; components is stored in an atom, containing a record with these
-;;; fields. By using a record, we can define our own print method to
-;;; avoid dumping this out when printing every component.
-(defrecord DOMManagerData
-    [root-components    ; A map from client id of root components to their
-                        ; component atoms. Not all components with
-                        ; client ids need to be here, just the roots.
-     highest-version    ; The highest version number of any dom we have sent
-                        ; to the client. Any new component starts out with a
-                        ; version number one higher, because we might have
-                        ; forgetten about it and then reconstructed it, all
-                        ; while the client kept ahold of it. This way, our
-                        ; next version will be larger that whatever the
-                        ; client has.
-     client-ready-dom   ; A priority map of client-id for which we have
-                        ; dom that the client needs to know about,
-                        ; prioritized by their depth.
-     calculator-data    ; The calculator data whose queue we use.
-     mutable-store      ; The mutable store that holds the data the doms
-                        ; rely on.
-     further-actions    ; A list of [function arg arg ...] calls that
-                        ; need to be performed. The function will be
-                        ; called with the atom, and the additional
-                        ; arguments. (These actions are not actually
-                        ; stored in the atom, but are added to the
-                        ; data before it is stored, to request actions.)
-     ])
-
-(defmethod print-method DOMManagerData [s ^java.io.Writer w]
-  ;; Avoid huge print-outs.
-  (.write w "<DOMManagerData>"))
-
 (defn new-dom-manager
-   "Return a new dom-manager object"
-   [cd mutable-store]
+  "Return a new dom-manager object"
+  [cd mutable-store]
+  (assert (instance? cosheet2.calculator.CalculatorData cd))
+  (assert (mutable-store? mutable-store))
    (atom
     (map->DOMManagerData
      {:root-components {}
@@ -353,6 +364,36 @@
       :calculator-data cd
       :mutable-store mutable-store
       :further-actions nil})))
+
+(defn concatenate-client-id-parts
+  [client-id-parts]
+  (clojure.string/join "_" client-id-parts))
+
+(defn id->client-id-part
+  "Turn a :relative-id to its client form."
+  [id]
+  (cond (keyword? id) (str ":" (name id))
+        (satisfies? StoredItemDescription id) (id->string id)
+        true (assert false (str "unknown component id part:" id))))
+
+(defn ids->client-id
+  "Given a sequence of relative ids, return a string representation
+  that can be passed to the client."
+  [ids]
+  (concatenate-client-id-parts (map id->client-id-part ids)))
+
+(defn client-id-part->id
+  "Turn a part of a client id into a :relative-id"
+  [client-id-part]
+  (if (= (first client-id-part) \:)
+    (keyword (subs client-id-part 1))
+    (string->id client-id-part)))
+
+(defn client-id->ids
+  "Given a string representation of a client id, return the relative ids."
+  [rep]
+  (vec (map client-id-part->id
+            (clojure.string/split rep #"_")))) 
 
 (defn component->id-sequence
   [component-atom]
@@ -405,13 +446,6 @@
                    component data action immutable-store))))
             (action-data-for-component root {} action immutable-store)
             (rest id-sequence))))
-
-(defn note-dom-ready-for-client
-  [dom-manager component-atom]
-  (swap! dom-manager
-         (fn [manager-data]
-           (update manager-data :client-ready-dom
-                   #(assoc % component-atom (:depth @component-atom))))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,
@@ -528,8 +562,7 @@
   "Mark all components as needing to be sent to the client."
   [dom-manager]
   (let [manager-data @dom-manager
-        queue (:queue (:calculator-data manager-data))
-        component-and-depths (mapcat #(mark-component-tree-as-needed % queue)
+        component-and-depths (mapcat mark-component-tree-as-needed
                                      (vals (:root-components manager-data)))]
     (swap! dom-manager
            (fn [data] (update data :client-ready-dom

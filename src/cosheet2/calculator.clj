@@ -34,7 +34,8 @@
 (defn new-calculator-data
   "Create a calculator data to support both application and cache calculators."
   [queue]
-  (assert (instance? clojure.lang.Atom queue))
+  (assert (and (instance? clojure.lang.Atom queue)
+               (:tasks @queue)))
   (map->CalculatorData
    {:cache (mm/new-mutable-map)
     :queue queue}))

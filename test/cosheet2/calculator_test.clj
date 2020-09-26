@@ -18,8 +18,9 @@
                   :calculator (fn [& _] nil))))
 
 (deftest new-calculator-data-test
-  (let [cd (new-calculator-data (atom :q))]
-    (is (= @(:queue cd) :q))
+  (let [queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)]
+    (is (= (:queue cd) queue))
     (is (not (nil? (:cache cd))))))
 
 (deftest modify-and-act!-test

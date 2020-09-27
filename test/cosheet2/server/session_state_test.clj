@@ -120,9 +120,10 @@
                                 queue cd)
           manager (:manager state)]
       (is (= (vals (:sessions @session-info)) [state]))
-      (is (not (empty? (:attendees (reporter-data ms)))))
-      (let [{:keys [client-state manager]} state
-            root-component (client-id->component @manager ":root")]
+      ;; One attendee for the overall DOM, and three for each of the
+      ;; two elements: the element, its content, and its label.
+      (is (= (count (:attendees (reporter-data ms))) 7))
+      (let [root-component (client-id->component @(:manager state) ":root")]
         (is (check (:dom @root-component)
                  [:div {:class "wrapped-element label item"}
                   [:component (any)]

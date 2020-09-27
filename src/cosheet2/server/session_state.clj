@@ -320,6 +320,7 @@
                     :in-sync false})))
 
 (defn create-manager
+  "Create the dom manager, and give it its root dom."
   [store temporary-id client-state calculator-data]
   (let [spec (top-level-DOM-spec store temporary-id client-state)
         manager (new-dom-manager store calculator-data)]

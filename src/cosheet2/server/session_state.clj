@@ -286,6 +286,7 @@
 ;;;                :store  The store that holds the data.
 ;;; :session-temporary-id  The id of the root temporary item in the store used
 ;;;                        for holding information specific to this session.
+             ;;; TODO: rename this :dom-manager
 ;;;              :manager  The dom manager for the session.
 ;;;         :client-state  A map-state holding these keys:
 ;;;                :last-time  The last time we accessed this session.

@@ -18,7 +18,9 @@
             (cosheet2.server
              [session-state :refer :all]
              [model-utils :refer [semantic-to-list
-                                  starting-store add-table]])
+                                  starting-store add-table]]
+             [dom-manager :refer [ new-dom-manager
+                                  ids->client-id client-id->component]])
             ; :reload
             ))
 
@@ -48,10 +50,9 @@
            (canonicalize-list '("" ("Hello" :label) (3 ("a" :label))))))))
 
 (deftest create-client-state-test
-  (let [queue (new-priority-task-queue 0)
-        store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
+  (let [store (add-table (starting-store nil) "Hello" [["a" "b"] [1 2] [3]])
         state (create-client-state
-               (new-mutable-store store) (->ItemId 5) queue)]
+               (new-mutable-store store) (->ItemId 5))]
     (is (check (reporter-value state)
                {:last-time (any)
                 :root-id (->ItemId 5)
@@ -104,24 +105,39 @@
              (catch java.io.IOException e "Exception") )
         "Exception")))
 
-(deftest forget-session-test
-  ;; This also tests create-session
-  ;; TODO: Put more tests on the created session.
+(deftest create-and-forget-session-test
   (let [stream (new java.io.StringReader "a, b")
         store (add-table (starting-store nil)
                          "Hello" [["a" "b"] [1 2] [3]])
         row1 (first (matching-items '(nil (1 ("a" :label))) store))
         queue (new-priority-task-queue 0)
         ms (new-mutable-store store)
-        md (new-calculator-data queue)]
+        cd (new-calculator-data queue)]
     (add-session-temporary-element! ms)
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
-                                          :log-agent (agent stream)}}})
-    (let [state (ensure-session nil "/foo" "5" queue md)]
+                                           :log-agent (agent stream)}}})
+    (let [state (ensure-session 123 "/foo" (ids->client-id [(:item-id row1)])
+                                queue cd)
+          manager (:manager state)]
       (is (= (vals (:sessions @session-info)) [state]))
       (is (not (empty? (:attendees (reporter-data ms)))))
+      (let [{:keys [client-state manager]} state
+            root-component (client-id->component @manager ":root")]
+        (is (check (:dom @root-component)
+                 [:div {:class "wrapped-element label item"}
+                  [:component (any)]
+                  [:div {:class "indent-wrapper"}
+                   [:div {:class "with-elements"}
+                    [:component (any)]
+                    [:div {:class "vertical-stack"}
+                     [:div {:class "horizontal-labels-element label wide"}
+                      [:div (any) [:component (any)]]
+                      [:component (any)]]
+                     [:div {:class "horizontal-labels-element label wide"}
+                      [:div (any) [:component (any)]]
+                      [:component (any)]]]]]])))      
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
-      (compute md)
+      (compute cd)
       (is (empty? (:attendees (reporter-data ms)))))))

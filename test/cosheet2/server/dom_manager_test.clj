@@ -43,7 +43,7 @@
 (deftest reuse-or-make-component-atom-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
         c1-reused (reuse-or-make-component-atom s1 manager nil :foo c1)
         c2 (reuse-or-make-component-atom s2 manager c1 nil c1)]
@@ -60,7 +60,7 @@
 (deftest activate-disable-component-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c2 (reuse-or-make-component-atom s2 manager nil :foo nil)]
     (activate-component c2)
     (is (check @manager
@@ -104,7 +104,7 @@
 (deftest update-dom-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
         updated (update-dom @c1 c1 [:div 2 [:component s2]])]
     (is (check updated
@@ -125,7 +125,7 @@
 (deftest compute-dom-if-old-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (activate-component c1)
     (is (check (:tasks @(:queue cd))
@@ -175,7 +175,7 @@
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
@@ -194,7 +194,7 @@
 (deftest component->client-id-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)
+        manager (new-dom-manager ms cd)
         c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
     (activate-component c1)
     (compute cd)
@@ -211,7 +211,7 @@
   ;; Also tests client-id->component and note-dom-ready-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)]
+        manager (new-dom-manager ms cd)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
     (let [c1 (client-id->component @manager ":alt-client-id")
           d1 (client-id->action-data @manager ":alt-client-id" nil :store)]
@@ -233,7 +233,7 @@
   ;; remove-all-doms, prepare-dom-for-client and adjust-subdom-for-client
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager cd ms)]
+        manager (new-dom-manager ms cd)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
     (let [c1 (:component
               (client-id->action-data @manager ":alt-client-id" nil :store))]

@@ -19,8 +19,7 @@
              [session-state :refer :all]
              [model-utils :refer [semantic-to-list
                                   starting-store add-table]]
-             [dom-manager :refer [ new-dom-manager
-                                  ids->client-id client-id->component]])
+             [dom-manager :refer [ids->client-id client-id->component]])
             ; :reload
             ))
 

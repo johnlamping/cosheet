@@ -322,7 +322,7 @@
 (defn create-manager
   [store temporary-id client-state calculator-data]
   (let [spec (top-level-DOM-spec store temporary-id client-state)
-        manager (new-dom-manager calculator-data store)]
+        manager (new-dom-manager store calculator-data)]
     (assert (:reporter spec))
     (propagate-calculator-data! (:reporter spec) calculator-data)
     (add-root-dom manager :root spec)

@@ -115,8 +115,8 @@
      client-ready-dom   ; A priority map of client-id for which we have
                         ; dom that the client needs to know about,
                         ; prioritized by their depth.
-     ;; TODO: Replace this with just the queue.
-     calculator-data    ; The calculator data whose queue we use.
+     calculator-data    ; The calculator data we use. (Currently, we only use
+                        ; its queue.
      mutable-store      ; The mutable store that holds the data the doms
                         ; rely on.
      further-actions    ; A list of [function arg arg ...] calls that
@@ -352,16 +352,16 @@
                     (vals id->subcomponent)))))
 
 (defn new-dom-manager
-  "Return a new dom-manager object"
-  [cd mutable-store]
-  (assert (instance? cosheet2.calculator.CalculatorData cd))
+  "Return a new dom-manager object for doms over the store."
+  [mutable-store calculator-data]
+  (assert (instance? cosheet2.calculator.CalculatorData calculator-data))
   (assert (mutable-store? mutable-store))
    (atom
     (map->DOMManagerData
      {:root-components {}
       :highest-version 0
       :client-ready-dom (priority-map)
-      :calculator-data cd
+      :calculator-data calculator-data
       :mutable-store mutable-store
       :further-actions nil})))
 

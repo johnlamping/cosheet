@@ -4,6 +4,7 @@
              [utils :refer [multiset multiset-diff multiset-sum
                             multiset-to-generating-values update-last]]
              [query :refer [extended-by?]]
+             query-impl
              [debug :refer [simplify-for-print]]
              [expression :refer [expr-let expr-seq]])
             (cosheet2.server

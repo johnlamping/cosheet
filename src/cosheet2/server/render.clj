@@ -200,7 +200,8 @@
 ;;; are hard to display and to test.)
 ;;;           :relative-id  The id relative to containing component
 ;;;                         This is also the id the dom is about, unless
-;;;                         overridden by :item-id
+;;;                         overridden by :item-id. This may be a keyword,
+;;;                         an ItemId, or a vec of those.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
@@ -319,12 +320,13 @@
   "Return a reporter whose value is DOM for the top level component."
   [store session-temporary-id client-state]
   (expr-let [id (expr-let [id (map-state-get client-state :root-id)]
-                  (or id (expr first (ordered-tabs-ids-R store)))) ]
+                  (or id (expr first (ordered-tabs-ids-R store))))]
+    (println "top level DOM id:" id)
     (when id
       (expr-let [immutable-store (category-change [id] store)
                  immutable-item (description->entity id immutable-store)
                  tab-tags (matching-elements :tab immutable-item)]
-        (when (empty? tab-tags)
+        (when (or (empty? tab-tags) true)
           ;; Show just the item.
           (render-item-DOM (assoc basic-dom-specification        
                                   :relative-id id
@@ -335,11 +337,13 @@
   "Return the rendering data for a component whose dom is what a
   reporter returns"
   [spec store]
+  (println "getting top level DOM rendering data")
   [[(:reporter spec) nil]])
 
 (defn reporter-specification-render-dom
   "Make the component's dom be what a reporter returns."
   [spec reporter-value]
+  (println "value for top level DOM" reporter-value)
   reporter-value)
 
 (defn top-level-DOM-spec

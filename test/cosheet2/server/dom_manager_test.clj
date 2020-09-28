@@ -14,7 +14,7 @@
              [debug :refer [envs-to-list]]
              entity-impl
              [store :refer [new-element-store new-mutable-store make-id]]
-             store-impl
+             [store-impl :refer [string->id]]
              mutable-store-impl
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]])
@@ -32,6 +32,14 @@
 (def s1 {:relative-id id1
          :client-id :root-id
          :render-dom (fn [spec store] [:div 2 [:component s2]])})
+
+(deftest client-id<->relative-ids-test
+  (let [client-id "Kroot_1.Kb"
+        relative-ids (client-id->relative-ids client-id)]
+    (is (check relative-ids
+               [:root [(string->id "1") :b]]))
+    (is (check (relative-ids->client-id relative-ids)
+               client-id))))
 
 (deftest get-id->subcomponent-specifications-test
     (is (= (get-id->subcomponent-specifications
@@ -203,9 +211,9 @@
       (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
       (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
       (is (= (component->client-id c1)
-             ":foo")
+             "Kfoo")
           (= (component->client-id c2)
-             ":foo_Ibar")))))
+             "Kfoo_Ibar")))))
 
 (deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
@@ -213,15 +221,15 @@
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
-    (let [c1 (client-id->component @manager ":alt-client-id")
-          d1 (client-id->action-data @manager ":alt-client-id" nil :store)]
+    (let [c1 (client-id->component @manager "Kalt-client-id")
+          d1 (client-id->action-data @manager "Kalt-client-id" nil :store)]
       (is (check d1 {:component c1
                      :target [id1]}))
       (activate-component c1)
       (compute cd)
-      (let [c2 (client-id->component @manager ":alt-client-id_Ibar")
+      (let [c2 (client-id->component @manager "Kalt-client-id_Ibar")
             d2 (client-id->action-data
-                @manager ":alt-client-id_Ibar" nil :store)]
+                @manager "Kalt-client-id_Ibar" nil :store)]
         (is (= c2 ((:id->subcomponent @c1) id2)))
         (is (check d2 {:component c2
                        :target [id2]}))
@@ -236,37 +244,37 @@
         manager (new-dom-manager ms cd)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
     (let [c1 (:component
-              (client-id->action-data @manager ":alt-client-id" nil :store))]
+              (client-id->action-data @manager "Kalt-client-id" nil :store))]
       (activate-component c1)
       (compute cd)
       (let [c2 ((:id->subcomponent @c1) id2)]
         [:div {:id ":alt-client-id_Ibar", :version 3}]
         (is (:highest-version @manager) 1)
         (is (check (get-response-doms manager 3)
-                   (as-set [[:div {:id ":alt-client-id" :version 2}
-                             [:component {:id ":alt-client-id_Ibar"}]]
-                            [:div {:id ":alt-client-id_Ibar", :version 3}]])))
+                   (as-set [[:div {:id "Kalt-client-id" :version 2}
+                             [:component {:id "Kalt-client-id_Ibar"}]]
+                            [:div {:id "Kalt-client-id_Ibar", :version 3}]])))
         (is (:highest-version @manager) 3)
         (is (check (get-response-doms manager 1)
-                   [[:div {:id ":alt-client-id" :version 2}
-                     [:component {:id ":alt-client-id_Ibar"}]]]))
+                   [[:div {:id "Kalt-client-id" :version 2}
+                     [:component {:id "Kalt-client-id_Ibar"}]]]))
         (is (:highest-version @manager) 3)
         (is (:client-needs-dom @c1))
         (is (:client-needs-dom @c2))
         (is (check (:client-ready-dom @manager)
                    {c1 1  c2 2}))
-        (process-acknowledgements manager {":alt-client-id" 1})
+        (process-acknowledgements manager {"Kalt-client-id" 1})
         (is (:client-needs-dom @c1))
         (is (check (:client-ready-dom @manager)
                    {c1 1  c2 2}))
-        (process-acknowledgements manager {":alt-client-id" 2
-                                           ":alt-client-id_Ibar" 2})
+        (process-acknowledgements manager {"Kalt-client-id" 2
+                                           "Kalt-client-id_Ibar" 2})
         (is (not (:client-needs-dom @c1)))
         (is (:client-needs-dom @c2))
         (is (check (:client-ready-dom @manager)
                    {c2 2}))
-        (process-acknowledgements manager {":alt-client-id" 2
-                                           ":alt-client-id_Ibar" 3})
+        (process-acknowledgements manager {"Kalt-client-id" 2
+                                           "Kalt-client-id_Ibar" 3})
         (is (not (:client-needs-dom @c1)))
         (is (not (:client-needs-dom @c2)))
         (is (check (:client-ready-dom @manager)

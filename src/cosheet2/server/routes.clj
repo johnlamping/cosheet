@@ -7,13 +7,12 @@
                                              wrap-transit-params]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.adapter.jetty :refer [run-jetty]]
-            [cosheet.server.views :refer [initial-page handle-ajax
-                                          list-user-files admin-page
-                                          create-user delete-user-view]]
-            [cosheet.server.session-state :refer [isAdmin
-                                                  url-path-to-file-path]]
-            [cosheet.server.db :refer [get-user-pwdhash get-all-users]]
-
+            (cosheet2.server
+             [views :refer [initial-page handle-ajax
+                            list-user-files admin-page
+                            create-user delete-user-view]]
+             [session-state :refer [isAdmin url-path-to-file-path]]
+             [db :refer [get-user-pwdhash get-all-users]])
             [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.backends.session :refer [session-backend]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
@@ -23,8 +22,7 @@
             [ring.middleware.session :refer [wrap-session]]
 
             [compojure.response :refer [render]]
-            [clojure.java.io :as io]
-            [ring.adapter.jetty :as jetty])
+            [clojure.java.io :as io])
 (:gen-class))
 
 
@@ -246,4 +244,4 @@
 ;; Pass the handler to Jetty on port 3000
 (defn -main
   [& args]
-  (jetty/run-jetty app {:port 3000}))
+  (run-jetty app {:port 3000}))

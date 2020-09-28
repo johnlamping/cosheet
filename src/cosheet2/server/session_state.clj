@@ -262,7 +262,7 @@
                                      nil))
                    log-agent (when log-stream
                                (agent (clojure.java.io/writer log-stream)))
-                   info {:store (new-mutable-store immutable-store queue)
+                   info {:store (new-mutable-store immutable-store)
                          :agent (agent immutable-store)
                          :log-agent log-agent}]
                (when log-agent
@@ -313,6 +313,7 @@
   (let [immutable-store (current-store store)
         id (or root-id
                (first (ordered-tabs-ids-R immutable-store)))]
+    (println "Created client state with root id" id)
     (new-map-state {:last-time (System/currentTimeMillis)
                     :root-id id
                     :last-action nil
@@ -379,6 +380,7 @@
   "Create a session with the given id, or with a new id if none is given."
   [session-id file-path root-id-string queue calculator-data]
   (prune-old-sessions (* 60 60 1000))
+  (println "Creating session with root id string" root-id-string)
   (when-let [store-info (ensure-store file-path queue)]
     (let [store (:store store-info)
           session-temporary-id (add-session-temporary-element! store)

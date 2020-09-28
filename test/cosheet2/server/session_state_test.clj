@@ -19,7 +19,8 @@
              [session-state :refer :all]
              [model-utils :refer [semantic-to-list
                                   starting-store add-table]]
-             [dom-manager :refer [ids->client-id client-id->component]])
+             [dom-manager :refer [relative-ids->client-id
+                                  client-id->component]])
             ; :reload
             ))
 
@@ -116,14 +117,15 @@
     (reset! session-info {:sessions {}
                           :stores {"/foo" {:store ms
                                            :log-agent (agent stream)}}})
-    (let [state (ensure-session 123 "/foo" (ids->client-id [(:item-id row1)])
+    (let [state (ensure-session 123 "/foo" (relative-ids->client-id
+                                            [(:item-id row1)])
                                 queue cd)
           manager (:manager state)]
       (is (= (vals (:sessions @session-info)) [state]))
       ;; One attendee for the overall DOM, and three for each of the
       ;; two elements: the element, its content, and its label.
       (is (= (count (:attendees (reporter-data ms))) 7))
-      (let [root-component (client-id->component @(:manager state) ":root")]
+      (let [root-component (client-id->component @(:manager state) "Kroot")]
         (is (check (:dom @root-component)
                  [:div {:class "wrapped-element label item"}
                   [:component (any)]

@@ -365,35 +365,63 @@
       :mutable-store mutable-store
       :further-actions nil})))
 
-(defn concatenate-client-id-parts
-  [client-id-parts]
+;;; We build up client ids from a sequence of :relative-id values,
+;;; which are either a keyword, an item id, or a sequence of those
+;;; things. Since client ids must be strings, we turn all the pieces
+;;; in the sequence of relative ids into strings (prefixing the names
+;;; of keywords with "K"), concatenate the subparts of any
+;;; sub-sequences with ".", then concatenate the overall sequence with
+;;; "_".  For example, the sequence [:a [<id 2> :b]] becomes "Ka_2.Kb"
+
+(defn concatenate-client-id-parts [client-id-parts]
   (clojure.string/join "_" client-id-parts))
 
-(defn id->client-id-part
+(defn split-client-id-parts [client-id]
+  (clojure.string/split client-id #"_"))
+
+(defn concatenate-client-id-subparts [client-id-subparts]
+  (clojure.string/join "." client-id-subparts))
+
+(defn split-client-id-subparts [client-id-part]
+  (clojure.string/split client-id-part #"\."))
+
+(defn  id-subpart->client-id-subpart
+  "Turn a subpart of a :relative-id to its client form."
+  [id]
+  (cond (keyword? id) (str "K" (name id))  ; ":" was illegal until HTML5.
+        (satisfies? StoredItemDescription id) (id->string id)
+        true (assert false (str "unknown relative id subpart:" id))))
+
+(defn client-id-subpart->id-subpart
+  "Turn a subpart of a client id into a :relative-id"
+  [client-id-subpart]
+  (if (= (first client-id-subpart) \K)
+    (keyword (subs client-id-subpart 1))
+    (string->id client-id-subpart)))
+
+(defn relative-id->client-id-part
   "Turn a :relative-id to its client form."
   [id]
-  (cond (keyword? id) (str ":" (name id))
-        (satisfies? StoredItemDescription id) (id->string id)
-        true (assert false (str "unknown component id part:" id))))
+  (concatenate-client-id-subparts
+   (map id-subpart->client-id-subpart (if (sequential? id) id [id]))))
 
-(defn ids->client-id
+(defn client-id-part->relative-id
+  "Turn a part of a client id into a :relative-id"
+  [client-id-part]
+  (let [subparts (map client-id-subpart->id-subpart
+                      (split-client-id-subparts client-id-part))]
+    (if (= (count subparts) 1) (first subparts) (vec subparts))))
+
+(defn relative-ids->client-id
   "Given a sequence of relative ids, return a string representation
   that can be passed to the client."
   [ids]
-  (concatenate-client-id-parts (map id->client-id-part ids)))
+  (concatenate-client-id-parts (map relative-id->client-id-part ids)))
 
-(defn client-id-part->id
-  "Turn a part of a client id into a :relative-id"
-  [client-id-part]
-  (if (= (first client-id-part) \:)
-    (keyword (subs client-id-part 1))
-    (string->id client-id-part)))
-
-(defn client-id->ids
+(defn client-id->relative-ids
   "Given a string representation of a client id, return the relative ids."
-  [rep]
-  (vec (map client-id-part->id
-            (clojure.string/split rep #"_")))) 
+  [client-id]
+  (vec (map client-id-part->relative-id (split-client-id-parts client-id)))) 
 
 (defn component->id-sequence
   [component-atom]
@@ -405,7 +433,7 @@
 
 (defn component->client-id
   [component-atom]
-  (ids->client-id (component->id-sequence component-atom)))
+  (relative-ids->client-id (component->id-sequence component-atom)))
 
 (defn default-get-action-data
   [specification containing-action-data action immutable-store]
@@ -424,7 +452,7 @@
 (defn client-id->component
   "Returns the component for the given client id."
   [manager-data client-id]
-  (let [id-sequence (client-id->ids client-id)
+  (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
               (when component
@@ -436,7 +464,7 @@
   "Returns the action data map for the component for the given client
   id. Adds the component to the action data map."
   [manager-data client-id action immutable-store]
-  (let [id-sequence (client-id->ids client-id)
+  (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [data id]
               (when data
@@ -450,16 +478,17 @@
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,
    adjust the dom to the form the client needs, turning subcomponents
-   into [:component {:key ... :class ...}]."
+   into [:component {:id ... :class ...}]."
   [container-client-id dom]
   (if (vector? dom)
     (if (= (first dom) :component)
       (let [{:keys [relative-id client-id class]} (second dom)]
         [:component (cond-> {:id (if client-id
-                                   (id->client-id-part client-id)
+                                   (relative-id->client-id-part client-id)
                                    (concatenate-client-id-parts
                                     [container-client-id
-                                     (id->client-id-part relative-id)]))}
+                                     (relative-id->client-id-part
+                                      relative-id)]))}
                       class (assoc :class class))])
       (vec (map (partial adjust-subdom-for-client container-client-id)
                 dom)))

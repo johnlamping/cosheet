@@ -47,8 +47,8 @@
                                    :optimizations :advanced
                                    :pretty-print true
                                    :preamble ["reagent/react.js"]}}]}
-  :main ^:skip-aot cosheet.server.routes ;; So we don't need lein ring.
-  :ring {:handler cosheet.server.routes/app
+  :main ^:skip-aot cosheet2.server.routes ;; So we don't need lein ring.
+  :ring {:handler cosheet2.server.routes/app
          ;; Keep lein ring from reloading tests.
          :reload-paths ["src" "src_cljc"]}
   :bin {:name "cosheet"}
@@ -64,5 +64,5 @@
 ;;; This should work, but doesn't:
 ;;; To make a standalone (no need for java) mac executable
 ;;;    lein uberjar
-;;;    javapackager -deploy -native image -outdir target -outfile cosheet.app -srcfiles target/cosheet-*-standalone.jar -appclass cosheet.server.routes -name "Cosheet" -title "Cosheet"
+;;;    javapackager -deploy -native image -outdir target -outfile cosheet2.app -srcfiles target/cosheet2-*-standalone.jar -appclass cosheet2.server.routes -name "Cosheet" -title "Cosheet"
 

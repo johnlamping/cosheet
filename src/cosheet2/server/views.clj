@@ -220,7 +220,7 @@
            [:div.toolgap]
            [:a.link {:href (str servlet-path "/logout")} "Logout"]
            [:a.link {:href (str servlet-path "/")} "Open"]]
-          [:div#app "Kroot"] ;; Client will create a component with id "root".
+          [:div#app "root"] ;; Client will create a component with id "root".
           [:div#select_holder.select_holder
            [:input#edit_input {"type" "text"}]]
           [:script "cosheet2.client.run();"]]))

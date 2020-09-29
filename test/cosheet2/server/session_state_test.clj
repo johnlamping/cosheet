@@ -125,7 +125,7 @@
       ;; One attendee for the overall DOM, and three for each of the
       ;; two elements: the element, its content, and its label.
       (is (= (count (:attendees (reporter-data ms))) 7))
-      (let [root-component (client-id->component @(:manager state) "Kroot")]
+      (let [root-component (client-id->component @(:manager state) "root")]
         (is (check (:dom @root-component)
                  [:div {:class "wrapped-element label item"}
                   [:component (any)]

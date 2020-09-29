@@ -21,7 +21,7 @@
                                                 select-and-clear-pending]]
             ))
 
-(reset! components {"Kroot" (reagent/atom [:div {:id "Kroot" :version 0}])})
+(reset! components {"root" (reagent/atom [:div {:id "root" :version 0}])})
 
 (defn store-edit-field
   []
@@ -223,7 +223,7 @@
         ;; get a more recent version of goog.events that fixes the problem.
         ;; app-key-handler (gevents/KeyHandler. js/document)
         ]
-    (reagent/render [component {:id "Kroot"}] app)
+    (reagent/render [component {:id "root"}] app)
     (gevents/listen app gevents/EventType.DBLCLICK double-click-handler)
     (gevents/listen app gevents/EventType.CLICK click-handler)    
     (gevents/listen js/document gevents/EventType.KEYDOWN keypress-handler)

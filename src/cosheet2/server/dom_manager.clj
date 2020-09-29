@@ -131,6 +131,8 @@
   ;; Avoid huge print-outs.
   (.write w "<DOMManagerData>"))
 
+(def valid-relative-id?)
+
 (defn make-component
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
@@ -143,6 +145,8 @@
   (when client-id (assert (keyword? client-id)))
   (assert (or client-id
               (and (:relative-id specification) containing-component-atom)))
+  (when-let [relative-id (:relative-id specification)]
+    (assert (valid-relative-id? relative-id)))
   (atom
    (map->ComponentData
     {:dom-manager dom-manager
@@ -385,19 +389,34 @@
 (defn split-client-id-subparts [client-id-part]
   (clojure.string/split client-id-part #"\."))
 
+(defn valid-id-subpart? [id]
+  (when (keyword? id))
+  (or (and (keyword? id)
+           ;; Only characters allowed in all HTML versions, and
+           ;; not one of our separators between parts.
+           (re-matches #"^[a-zA-Z0-9\-]*$" (name id))
+           ;; Not a character that an item id's representation
+           ;; could start with.
+           (not (re-matches #"^[0-9I].*" (name id))))
+      (satisfies? StoredItemDescription id)))
+
 (defn  id-subpart->client-id-subpart
   "Turn a subpart of a :relative-id to its client form."
   [id]
-  (cond (keyword? id) (str "K" (name id))  ; ":" was illegal until HTML5.
+  (cond (keyword? id) (name id)  ; ":" was illegal until HTML5.
         (satisfies? StoredItemDescription id) (id->string id)
         true (assert false (str "unknown relative id subpart:" id))))
 
 (defn client-id-subpart->id-subpart
   "Turn a subpart of a client id into a :relative-id"
   [client-id-subpart]
-  (if (= (first client-id-subpart) \K)
-    (keyword (subs client-id-subpart 1))
-    (string->id client-id-subpart)))
+  (if (and (string? client-id-subpart)
+           (re-matches #"[I0-9]" (subs client-id-subpart 0 1)))
+    (string->id client-id-subpart)
+    (keyword client-id-subpart)))
+
+(defn valid-relative-id? [id]
+  (every? valid-id-subpart? (if (sequential? id) id [id])))
 
 (defn relative-id->client-id-part
   "Turn a :relative-id to its client form."

@@ -155,12 +155,12 @@ body {
     border-width: 0px 0px 0px 1px;
 }
 
-.horizontal-stack > .vertical-labels-element {
+.horizontal-stack > .vertical-tags-element {
     display: flex;
     flex-direction: column;
 }
 
-.horizontal-stack > .vertical-labels-element > :first-child {
+.horizontal-stack > .vertical-tags-element > :first-child {
     flex: 1;
 }
 
@@ -342,11 +342,11 @@ body {
     border-color: hsl(0, 0%, 80%);
 }
 
-.horizontal-labels-element.narrow.narrow.narrow.batch-stack > * {
+.horizontal-tags-element.narrow.narrow.narrow.batch-stack > * {
     margin-bottom: 0px;
 }
 
-.horizontal-labels-element.narrow.narrow.narrow.batch-stack > :last-child {
+.horizontal-tags-element.narrow.narrow.narrow.batch-stack > :last-child {
     margin-right: 0px;
 }
 
@@ -374,49 +374,49 @@ body {
                     hsla(0, 0%, 100%, 0));
 }
 
-/* --- labels --- */
+/* --- tags --- */
 
-.label {
+.tag {
     background-color: hsl(194, 100%, 88%);
 }
 
-.label > .label.label.label {
+.tag > .tag.tag.tag {
     background-color: transparent;
 }
 
-.item:not(.label), .vertical-stack:not(.label) {
+.item:not(.tag), .vertical-stack:not(.tag) {
     background-color: white;
 }
 
-.editable.label.label.label.label:not(.content-text):not(.merge-with-parent),
-.label.label.label.label > .editable:not(.content-text):not(.merge-with-parent),
-.label.label.label.virtual-wrapper:not(.merge-with-parent){
+.editable.tag.tag.tag.tag:not(.content-text):not(.merge-with-parent),
+.tag.tag.tag.tag > .editable:not(.content-text):not(.merge-with-parent),
+.tag.tag.tag.virtual-wrapper:not(.merge-with-parent){
     background-color: hsl(194, 50%, 88%);
 }
 
 /* --- label-element pairs: one column format --- */
 
-.horizontal-labels-element {
+.horizontal-tags-element {
     display: flex;
     flex-direction: row;
 }
 
-.horizontal-labels-element.narrow > * {
+.horizontal-tags-element.narrow > * {
     border-width: 2px;
     margin-right: -2px;
     margin-bottom: -2px;
 }
 
-.horizontal-labels-element.narrow > :first-child {
+.horizontal-tags-element.narrow > :first-child {
     border-bottom-left-radius: 7px;
     border-top-left-radius: 7px;
 }
 
-.horizontal-labels-element.narrow > :first-child {
+.horizontal-tags-element.narrow > :first-child {
     width: 12px;
 }
 
-.horizontal-labels-element.narrow > :last-child {
+.horizontal-tags-element.narrow > :last-child {
     flex: 1;
 }
 
@@ -469,13 +469,13 @@ body {
     flex-direction: column;
 }
 
-.wrapped-element ~ .horizontal-labels-element {
+.wrapped-element ~ .horizontal-tags-element {
     margin-top: 2px;
 }
 
 /* --- label-element pairs: two column format --- */
 
-.horizontal-labels-element.wide > :last-child {
+.horizontal-tags-element.wide > :last-child {
     width: 70%;
     border-width: 2px;
     margin: 0px 0px -2px 0px;
@@ -493,15 +493,15 @@ body {
     width: 100%;
 }
 
-.horizontal-labels-element.wide > :last-child.horizontal-value-last {
+.horizontal-tags-element.wide > :last-child.horizontal-value-last {
     border-bottom-width: 4px;
 }
 
-.vertical-stack.has-border > .horizontal-labels-element {
+.vertical-stack.has-border > .horizontal-tags-element {
     margin-left: -2px;
 }
 
-.vertical-stack.has-border > .horizontal-labels-element:first-child {
+.vertical-stack.has-border > .horizontal-tags-element:first-child {
     margin-top: -2px;
 }
 
@@ -586,23 +586,23 @@ body {
 
 /* Label pairs, horizontal format */
 
-.vertical-labels-element {
+.vertical-tags-element {
     border-width: 2px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
 }
 
-.vertical-labels-element > * {
+.vertical-tags-element > * {
     min-width: 20px;
 }
 
-.vertical-labels-element > :first-child {
+.vertical-tags-element > :first-child {
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
     border-bottom-width: 2px;
 }
 
-.horizontal-labels-element > .elements-wrapper {
+.horizontal-tags-element > .elements-wrapper {
     border-left-width: 2px;
     flex-grow: 1;
     display: flex;
@@ -630,7 +630,7 @@ body {
     flex: 1 0 auto;
 }
 
-.query-condition.horizontal-labels-element > *:first-child {
+.query-condition.horizontal-tags-element > *:first-child {
     min-width: 50px;
 }
 
@@ -726,7 +726,7 @@ body {
     background-color: transparent;
 }
 
-.column-header:not(.label):not(.virtual-column) {
+.column-header:not(.tag):not(.virtual-column) {
     background-color: white;
 }
 
@@ -781,8 +781,8 @@ body {
     margin-top: -2px;
 }
 
-.column-header:not(.merge-with-parent).label, .query-holder.label,
-.vertical-labels-element > :first-child {
+.column-header:not(.merge-with-parent).tag, .query-holder.tag,
+.vertical-tags-element > :first-child {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),
@@ -798,21 +798,21 @@ body {
                     hsla(0, 0%, 100%, 0));
 }
 
-.column-header.merge-with-parent.label {
+.column-header.merge-with-parent.tag {
     background-color: transparent;
 }
 
-.column-header.horizontal-labels-element {
+.column-header.horizontal-tags-element {
     display: flex;
     flex-direction: row;
     background-color: transparent;
 }
 
-.column-header.horizontal-labels-element > * {
+.column-header.horizontal-tags-element > * {
     margin-top: -2px;
 }
 
-.column-header > .horizontal-labels-element {
+.column-header > .horizontal-tags-element {
     margin-top: -2px;
     margin-left: -2px;
 }
@@ -824,28 +824,28 @@ body {
     justify-content: flex-end;
 }
 
-.column-header > .horizontal-labels-element:first-child {
+.column-header > .horizontal-tags-element:first-child {
     flex-grow: 1;
 }
 
-.column-header > .horizontal-labels-element > * {
+.column-header > .horizontal-tags-element > * {
     display: flex;
     align-items: flex-end;
 }
 
-.column-header > .horizontal-labels-element > :last-child {
+.column-header > .horizontal-tags-element > :last-child {
     justify-content: center;
 }
 
-.column-header.horizontal-labels-element > :first-child {
+.column-header.horizontal-tags-element > :first-child {
     margin-left: -2px;
 }
 
-.column-header.horizontal-labels-element > :last-child {
+.column-header.horizontal-tags-element > :last-child {
     border-top-right-radius: 7px;
 }
 
-.query-result-indent.label {
+.query-result-indent.tag {
     background-image:
     linear-gradient(to right,
                     hsla(0, 0%, 100%, .7),

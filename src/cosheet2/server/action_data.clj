@@ -63,8 +63,8 @@
       (first (or (seq perfect-matches) (seq good-matches) matches)))))
 
 (defn best-matching-id
-  "Return the id of the element of the subject whose item best matches the
-  exemplar id's item."
+  "Return the id, if any, of the element of the subject whose item
+  best matches the exemplar id's item."
   [exemplar-id subject-id immutable-store]
   (if (= (id->subject immutable-store exemplar-id) subject-id)
     ;; The exemplar id is an element of the given subject. Return it.
@@ -88,5 +88,7 @@
       (assoc containing-action-data :targets
              (if (<= (count subject-ids) 1)
                [id]
-               (map #(best-matching-id id % immutable-store) subject-ids))))))
+               (->> subject-ids
+                    (map #(best-matching-id id % immutable-store))
+                    (filter identity)))))))
 

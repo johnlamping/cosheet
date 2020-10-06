@@ -3,19 +3,14 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [orderable :as orderable]
-                      [entity :as entity  :refer [description->entity
-                                                  in-different-store]]
+                      [entity :as entity  :refer [description->entity]]
                       [store :refer [new-element-store]]
                       [store-utils :refer [add-entity]]
-                      [query :refer [matching-elements not-query]]
+                      [query :refer [matching-elements]]
                       [expression :refer [expr expr-let expr-seq]]
-                      [canonical :refer [canonicalize-list]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
-            (cosheet2.server [action-data :refer :all]
-                            [model-utils :refer [semantic-elements
-                                                 semantic-to-list]]
-                            [order-utils :refer [order-entities]])
+            (cosheet2.server [action-data :refer :all])
             ; :reload
             ))
 
@@ -87,5 +82,9 @@
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id jane-age)}
           {:targets [joe-id jane-id]} nil store)
-         {:targets [(:item-id joe-age) (:item-id jane-age)]})))
+         {:targets [(:item-id joe-age) (:item-id jane-age)]}))
+  (is (= (get-item-or-exemplar-action-data
+          {:relative-id (:item-id dup-female-2)}
+          {:targets [joe-id jane-id dup-id]} nil store)
+         {:targets [(:item-id jane-female) (:item-id dup-female-2)]})))
 

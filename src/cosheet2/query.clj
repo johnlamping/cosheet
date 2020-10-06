@@ -27,10 +27,10 @@
 ;;;   matching-elements:  Takes a term and a target. Returns a seq of all
 ;;;                       elements of the target that are extensions of
 ;;;                       the term.
-;;;  best-matching-term:  Takes a seq of terms and a target. Returns the most
-;;;                       specific of the terms for which the target is an
-;;;                       extension.
-;;;      matching-items: Takes a term and a store.  Returns
+;;;  most-specific-satisfied-term:  Takes a seq of terms and a target.
+;;;                       Returns the most specific of the terms for which
+;;;                       the target is an extension.
+;;;       matching-items: Takes a term and a store.  Returns
 ;;;                       a seq of all items in the store that are
 ;;;                       extensions of the term.
 ;;;       query-matches:  Takes a query, an environment, and a store.
@@ -154,14 +154,14 @@
   ([term target] (matching-extensions-m term {} target))
   ([term env target] (matching-extensions-m term env target)))
 
-(defmulti best-matching-term-m
+(defmulti most-specific-satisfied-term-m
   (fn [terms env target] true))
 
-(defn best-matching-term
+(defn most-specific-satisfied-term
   "Given a sequence of immutable terms, return the most specific
   of those that matches the target, if any."
-  ([terms target] (best-matching-term-m terms {} target))
-  ([terms env target] (best-matching-term-m terms env target)))
+  ([terms target] (most-specific-satisfied-term-m terms {} target))
+  ([terms env target] (most-specific-satisfied-term-m terms env target)))
 
 (defmulti matching-elements-m
   "Return all elements of the target that match the term."

@@ -302,12 +302,15 @@
                                        ~(not-query `(:c ~(variable "foo" nil))))
                                    '(1 (:a :b) (:c :b))))))
 
-(deftest best-matching-term-test
-  (is (check (best-matching-term ['(1) '(1 2) '(1 2 5)] {:a :b} '(1 2 3 4))
+(deftest most-specific-satisfied-term-test
+  (is (check (most-specific-satisfied-term
+              ['(1) '(1 2) '(1 2 5)] {:a :b} '(1 2 3 4))
              '(1 2)))
-  (is (check (best-matching-term ['(1 2 5) '(1 2) '(1)] {:a :b} '(1 2 3 4))
+  (is (check (most-specific-satisfied-term
+              ['(1 2 5) '(1 2) '(1)] {:a :b} '(1 2 3 4))
              '(1 2)))
-  (is (check (best-matching-term ['(1 2 5)] {:a :b} '(1 2 3 4))
+  (is (check (most-specific-satisfied-term
+              ['(1 2 5)] {:a :b} '(1 2 3 4))
              nil)))
 
 (deftest matching-elements-test

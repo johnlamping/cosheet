@@ -11,7 +11,7 @@
                       [query :as query
                        :refer [extended-by-m?
                                matching-extensions-m
-                               best-matching-term-m
+                               most-specific-satisfied-term-m
                                matching-elements-m
                                matching-items-m
                                query-matches-m
@@ -397,7 +397,7 @@
 (defmethod matching-extensions-m true [query env target]
   (matching-extensions query env target))
 
-(defmethod best-matching-term-m true [terms env target]
+(defmethod most-specific-satisfied-term-m true [terms env target]
   (let [matches (map #(matching-extensions % env target) terms)]
     (when-let [candidates (->> (map (fn [match query]
                                       (when (seq match) query))

@@ -323,9 +323,9 @@
   "Given an old store, a new store, both immutable, and an entity where
    changes were made, return the new store if the changes don't have any
    problems, otherwise the old store."
-  [old-store new-store entity]
-  (if (and entity
-           (let [revised-entity (in-different-store entity new-store)]
+  [old-store new-store id]
+  (if (and id
+           (let [revised-entity (description->entity id new-store)]
              (or (column-header-problem revised-entity)
                  (column-header-problem (subject revised-entity)))))
     old-store

@@ -17,7 +17,8 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [item-render :refer [render-item-DOM]])))
+             [item-render :refer [render-item-DOM]]
+             [action-data :refer [get-item-or-exemplar-action-data]])))
 
 (def verbose false)
 
@@ -454,17 +455,10 @@
   [component-atom]
   (relative-ids->client-id (component->id-sequence component-atom)))
 
-(defn default-get-action-data
-  [specification containing-action-data action immutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id))
-    ;; TODO: Change this to account for multiple logically containing items.
-    {:target [id]}))
-
 (defn action-data-for-component
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        getter (or (:get-action-data spec) default-get-action-data)]
+        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)]
     (assoc (getter spec containing-action-data action immutable-store)
            :component component)))
 

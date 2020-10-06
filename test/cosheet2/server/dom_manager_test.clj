@@ -9,13 +9,16 @@
              [utils :refer [dissoc-in]]
              [test-utils :refer [check any as-set]]
              [entity :as entity :refer [to-list description->entity]]
-             [reporter :as reporter :refer [new-reporter reporter-data]]
+             [reporter :as reporter :refer [new-reporter
+                                            reporter-data reporter-value]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [envs-to-list]]
              entity-impl
-             [store :refer [new-element-store new-mutable-store make-id]]
+             [store :refer [new-element-store new-mutable-store make-id
+                            id->element-ids]]
              [store-impl :refer [string->id]]
              mutable-store-impl
+             [store-utils :refer [add-entity]]
              [task-queue :refer [new-priority-task-queue
                                  run-all-pending-tasks]])
             (cosheet2.server
@@ -226,22 +229,34 @@
 
 (deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
-  (let [ms (new-mutable-store (new-element-store))
+  (let [[s1 id1] (add-entity (new-element-store) nil "foo")
+        [s id2] (add-entity (new-element-store) id1 "bar")
+        client1 "alt-client-id"
+        client2 (str client1 "_" (:id id2))
+        ms (new-mutable-store s)
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]
-    (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
-    (let [c1 (client-id->component @manager "alt-client-id")
-          d1 (client-id->action-data @manager "alt-client-id" nil :store)]
+    (add-root-dom
+     manager
+     :alt-client-id
+     {:relative-id id1
+      :render-dom (fn [spec store]
+                    [:div 1 [:component
+                             {:relative-id id2
+                              :render-dom (fn [spec store] [:div 2])}]])})
+    (let [c1 (client-id->component @manager client1)
+          d1 (client-id->action-data
+              @manager client1 nil (reporter-value ms))]
       (is (check d1 {:component c1
-                     :target [id1]}))
+                     :targets [id1]}))
       (activate-component c1)
       (compute cd)
-      (let [c2 (client-id->component @manager "alt-client-id_Ibar")
+      (let [c2 (client-id->component @manager client2)
             d2 (client-id->action-data
-                @manager "alt-client-id_Ibar" nil :store)]
+                @manager client2 nil (reporter-value ms))]
         (is (= c2 ((:id->subcomponent @c1) id2)))
         (is (check d2 {:component c2
-                       :target [id2]}))
+                       :targets [id2]}))
         (is (check (:client-ready-dom @manager)
                    {c1 1  c2 2}))))))
 

@@ -219,8 +219,8 @@
 ;;;                         changes.
 ;;;       :get-action-data  Optional function that takes a dom specification,
 ;;;                         the action data for the containing dom, a user
-;;;                         action, and the current store, and returns the
-;;;                         action data for the given dom.
+;;;                         action, and the current store, and returns a map
+;;;                         consisting of the action data for the given dom.
 ;;;       :must-show-label  If true, a virtual label should be shown
 ;;;                         if there are no labels.
 ;;;                 :width  A float, giving the width of this dom element

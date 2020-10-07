@@ -248,7 +248,7 @@
           d1 (client-id->action-data
               @manager client1 nil (reporter-value ms))]
       (is (check d1 {:component c1
-                     :targets [id1]}))
+                     :target-ids [id1]}))
       (activate-component c1)
       (compute cd)
       (let [c2 (client-id->component @manager client2)
@@ -256,7 +256,7 @@
                 @manager client2 nil (reporter-value ms))]
         (is (= c2 ((:id->subcomponent @c1) id2)))
         (is (check d2 {:component c2
-                       :targets [id2]}))
+                       :target-ids [id2]}))
         (is (check (:client-ready-dom @manager)
                    {c1 1  c2 2}))))))
 

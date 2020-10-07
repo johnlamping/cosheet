@@ -18,7 +18,7 @@
                                   pattern-to-query]])))
 
 ;;; The action data is a map that may contain any of these fields:
-;;;         :targets  A seq of the ids that should be acted upon
+;;;      :target-ids  A seq of the ids that should be acted upon
 ;;;   :revised-store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they need.
@@ -80,12 +80,12 @@
   (let [id (or (:item-id specification) (:relative-id specification))]
     (println "!!! id" id "containing" containing-action-data immutable-store)
     (assert (satisfies? StoredItemDescription id))
-    (let [subject-ids (:targets containing-action-data)]
+    (let [subject-ids (:target-ids containing-action-data)]
       (assert (or (empty? subject-ids)
                   (let [subject-id (id->subject immutable-store id)]
                     (println subject-id subject-ids)
                     (some #{subject-id} subject-ids))))
-      (assoc containing-action-data :targets
+      (assoc containing-action-data :target-ids
              (if (<= (count subject-ids) 1)
                [id]
                (->> subject-ids

@@ -74,17 +74,17 @@
 (deftest get-item-or-exemplar-action-data-test
   (is (= (get-item-or-exemplar-action-data
           {:relative-id joe-id} {} nil store)
-         {:targets [joe-id]}))
+         {:target-ids [joe-id]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id joe-age)}
-          {:targets [joe-id]} nil store)
-         {:targets [(:item-id joe-age)]}))
+          {:target-ids [joe-id]} nil store)
+         {:target-ids [(:item-id joe-age)]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id jane-age)}
-          {:targets [joe-id jane-id]} nil store)
-         {:targets [(:item-id joe-age) (:item-id jane-age)]}))
+          {:target-ids [joe-id jane-id]} nil store)
+         {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id dup-female-2)}
-          {:targets [joe-id jane-id dup-id]} nil store)
-         {:targets [(:item-id jane-female) (:item-id dup-female-2)]})))
+          {:target-ids [joe-id jane-id dup-id]} nil store)
+         {:target-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
 

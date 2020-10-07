@@ -306,8 +306,6 @@
 ;;;   :acknowledge A map component-id -> version of pairs for which
 ;;;                the dom of that version was received by the client.
 ;;; response:
-;;;         :reload The server has no record of the session. The page
-;;;                 should request a reload.
 ;;; :reset-versions The server has no record of the session. The page
 ;;;                 should reset its version information.
 ;;;           :doms A list of hiccup encoded doms of components. Their
@@ -333,12 +331,12 @@
   ;; a select request, the dom we want to select will be going to
   ;; the client.
   (let [in-sync (map-state-get-current client-state :in-sync)
-        ids-to-select  (:select-store-ids client-info)
+        {:keys [select-store-ids if-selected]} client-info
         [doms select-id] (when in-sync
-                           (get-response-doms dom-manager ids-to-select 100))
+                           (get-response-doms dom-manager select-store-ids 100))
         answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
-                 select-id (assoc :select select-id)
+                 select-id (assoc :select [select-id if-selected])
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
     (when (not= answer {})

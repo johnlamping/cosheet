@@ -50,8 +50,8 @@
   "Return the path stored in the above format in the given item."
   [store temporary-id]
   (when-let [element-id (first (id-label->element-ids
-                                store subject :current-selection))]
-    (id->content store element-id)))
+                                store temporary-id :current-selection))]
+    (name (id->content store element-id))))
 
 (defn update-set-content-if-matching
   "Set the content of the id in the store provided the current content
@@ -62,7 +62,7 @@
   ;; a wild card, and we could have anything.
   (let [from (parse-string-as-number from)
         content (id->content store id)]
-    (println "from" from "content" content)
+    (println "Old content" content)
     (if (and
          (or (equivalent-atoms? from content)
              ;; Wildcard text matches anything,
@@ -84,19 +84,19 @@
 
 (defn update-set-content
   [store id from to]
+  (println "!!!" (selector? (description->entity id store)))
   (let [to (if (and (= to "")
                     (selector? (description->entity id store)))
              'anything
              to)
-        modified (update-set-content-if-matching
-                   store id from to)]
+        modified (update-set-content-if-matching store id from to)]
     (abandon-problem-changes store modified id)))
 
 (defn do-set-content
-  [{:keys [store target-ids]} {:keys [from to]}]
+  [store {:keys [target-ids from to]}]
   (when (and from to)
     (let [to (parse-string-as-number (clojure.string/trim to))]
-      (println "updating " (count target-ids) " items")
+      (println "Setting " (count target-ids) "items from" from "to" to)
       (reduce
        (fn [store id]
          (update-set-content store id from to))
@@ -403,8 +403,21 @@
     [mutable-store session-state]
     (let [client-state (:client-state session-state)]
       (map-state-reset! client-state :batch-editing false)))
-
   )
+
+(defn adjust-handler-response
+  "Adjust the handler's response to be a pair of an updated store and
+  a map of client data."
+  [response store]
+  (if response
+           (if (satisfies? cosheet.store/Store response)
+             [response {}]
+             (do
+               (assert (map? response))
+               (assert (:store response))
+               [(:store response) (dissoc response :store)]))
+           (do (println "handler didn't update store.")
+               [store {}])))
 
 (defn do-storage-update-action
   "Do an action that can update a store and also return any client
@@ -417,19 +430,7 @@
   store, or a map with a :store value and any additional information
   it wants to convey."
   [mutable-store handler args]
-  (store-update-control-return!
-   mutable-store
-     (fn [store]
-       (let [result (handler (update-equivalent-undo-point store false) args)]
-         (if result
-           (if (satisfies? cosheet.store/Store result)
-             [result {}]
-             (do
-               (assert (map? result))
-               (assert (:store result))
-               [(:store result) (dissoc result :store)]))
-           (do (println "handler didn't update store.")
-               [store {}]))))))
+  )
 
 (defn get-contextual-handler
     "Return the handler for the command."
@@ -459,30 +460,37 @@
   also specify a :batch-editing target."
     [mutable-store session-state [action-type client-id & {:as client-args}]]
     (let [handler (get-contextual-handler action-type) 
-          manager (:dom-manager session-state)
-          action-data (when client-id
-                        (client-id->action-data manager client-id))
-          arguments (-> action-data
-                        (into client-args)
-                        (assoc :session-state session-state
-                               :client-id client-id))]
+          manager (:dom-manager session-state)]
       (cond (not handler)
             (println "Unhandled action type:" action-type)
             (not client-id)
             (println "No context specified:" action-type)
             true
-            (do
-            (println "command: " (map simplify-for-print
-                                      (list* action-type client-id
-                                             (map concat (seq client-args)))))
-            (println "handler arguments: "
-                     (simplify-for-print (dissoc arguments :session-state)))
-            (let [result (do-storage-update-action
-                          mutable-store handler arguments)]
+            (let [_ (println "command: "
+                             (map simplify-for-print
+                                  (list* action-type client-id
+                                         (map concat (seq client-args)))))
+                  result
+                  (store-update-control-return!
+                   mutable-store
+                   (fn [store]
+                     (let [action-data (client-id->action-data
+                                        @manager client-id action-type store)
+                           arguments (-> action-data
+                                         (into client-args)
+                                         (assoc :session-state session-state
+                                                :client-id client-id))
+                           store (or (:store action-data) store)
+                           store (update-equivalent-undo-point store false)
+                           response (handler store arguments)]
+                       (println "handler arguments: "
+                                (simplify-for-print
+                                 (dissoc arguments :session-state)))
+                       (adjust-handler-response response store))))]
               (when (contains? result :batch-editing)
                 (map-state-reset! (:client-state session-state) :batch-editing
                                   (:batch-editing result)))
-              (dissoc result :batch-editing))))))
+              (dissoc result :batch-editing)))))
 
 (defn do-action
   "Update the store, in accordance with the action, and return a map
@@ -529,6 +537,7 @@
     (catch Exception e
       (queue-to-log [:error (str e)] (:url-path session-state))
       (println "Error" (str e))
+      (clojure.stacktrace/print-stack-trace e)
       nil)))
 
 (defn confirm-actions

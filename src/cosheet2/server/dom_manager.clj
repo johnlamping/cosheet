@@ -519,22 +519,38 @@
               (map (partial adjust-subdom-for-client client-id)
                    (rest (rest dom))))))))
 
+(defn get-monitored-client-id
+  "If the component's target is one of the monitored ids, return the
+  client id of the component."
+  [component-atom monitored-ids]
+  (when monitored-ids
+    (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
+      (when-let [target (or item-id relative-id)]
+        (when (some #{target} monitored-ids)
+          (component->client-id component-atom))))))
+
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
-  This has the side-effect of updating :highest-version."
-  [dom-manager num]
+  Also, if any of the monitored ids are the :item-id or :relative-id of any
+  of the components, return the client id of that component.
+  Finally, do the side-effect of updating :highest-version."
+  [dom-manager monitored-ids num]
   (swap-control-return!
    dom-manager
    (fn [manager-data]
      (loop [response []
+            monitored-client-id nil
             highest-version (:highest-version manager-data)
             components (map first (:client-ready-dom manager-data))]
        (if (or (>= (count response) num) (empty? components))
          [(assoc manager-data :highest-version highest-version)
-          response]
+          [response
+           monitored-client-id]]
          (let [[component & remaining-components] components
                dom (prepare-dom-for-client component)]
            (recur (if dom (conj response dom) response)
+                  (or monitored-client-id
+                      (get-monitored-client-id component monitored-ids ))
                   (max highest-version
                        (if dom (:version (dom-attributes dom)) 0))
                   remaining-components)))))))

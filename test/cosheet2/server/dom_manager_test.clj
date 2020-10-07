@@ -274,14 +274,16 @@
       (let [c2 ((:id->subcomponent @c1) id2)]
         [:div {:id ":alt-client-id_Ibar", :version 3}]
         (is (:highest-version @manager) 1)
-        (is (check (get-response-doms manager 3)
-                   (as-set [[:div {:id "alt-client-id" :version 2}
-                             [:component {:id "alt-client-id_Ibar"}]]
-                            [:div {:id "alt-client-id_Ibar", :version 3}]])))
+        (is (check (get-response-doms manager [id2] 3)
+                   [(as-set [[:div {:id "alt-client-id" :version 2}
+                               [:component {:id "alt-client-id_Ibar"}]]
+                             [:div {:id "alt-client-id_Ibar", :version 3}]])
+                    "alt-client-id_Ibar"]))
         (is (:highest-version @manager) 3)
-        (is (check (get-response-doms manager 1)
-                   [[:div {:id "alt-client-id" :version 2}
-                     [:component {:id "alt-client-id_Ibar"}]]]))
+        (is (check (get-response-doms manager [id2] 1)
+                   [[[:div {:id "alt-client-id" :version 2}
+                      [:component {:id "alt-client-id_Ibar"}]]]
+                    nil]))
         (is (:highest-version @manager) 3)
         (is (:client-needs-dom @c1))
         (is (:client-needs-dom @c2))

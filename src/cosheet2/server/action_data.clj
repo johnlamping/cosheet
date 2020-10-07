@@ -78,7 +78,6 @@
 (defn get-item-or-exemplar-action-data
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
-    (println "!!! id" id "containing" containing-action-data immutable-store)
     (assert (satisfies? StoredItemDescription id))
     (let [subject-ids (:target-ids containing-action-data)]
       (assert (or (empty? subject-ids)

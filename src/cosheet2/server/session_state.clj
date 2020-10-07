@@ -286,8 +286,7 @@
 ;;;                :store  The store that holds the data.
 ;;; :session-temporary-id  The id of the root temporary item in the store used
 ;;;                        for holding information specific to this session.
-             ;;; TODO: rename this :dom-manager
-;;;              :manager  The dom manager for the session.
+;;;          :dom-manager  The dom manager for the session.
 ;;;         :client-state  A map-state holding these keys:
 ;;;                  :root-id  The item id for the root of the display or
 ;;;                            selected tab.
@@ -396,9 +395,9 @@
                               :id id
                               :store store
                               :session-temporary-id session-temporary-id
-                              :manager (create-manager
-                                        store session-temporary-id client-state
-                                        calculator-data)
+                              :dom-manager (create-manager
+                                            store session-temporary-id
+                                            client-state calculator-data)
                               :client-state client-state})
                    id])))]
       (prune-unused-stores)
@@ -428,7 +427,7 @@
          ;; so nothing will be looking for it. We don't have to worry about
          ;; a new client asking for the session, as new clients can only
          ;; attach to a new session.
-         (do (remove-all-doms (:manager state))
+         (do (remove-all-doms (:dom-manager state))
              (Thread/sleep 100)
              (let [session-temporary-id (:session-temporary-id state)]
                (store-update!

@@ -326,7 +326,7 @@
 ;;;    :acknowledge A vector of action ids of actions that have been
 ;;;                 performed.
 
-(defn ajax-response [manager client-state actions client-info]
+(defn ajax-response [dom-manager client-state actions client-info]
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we
   ;; want to have done some computation, so if we need to send back
@@ -335,7 +335,7 @@
   (let [in-sync (map-state-get-current client-state :in-sync)
         ids-to-select  (:select-store-ids client-info)
         [doms select-id] (when in-sync
-                           (get-response-doms manager ids-to-select 100))
+                           (get-response-doms dom-manager ids-to-select 100))
         answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
                  select-id (assoc :select select-id)
@@ -367,7 +367,7 @@
         user-id (get-in request [:session :identity] "unknown")
         session-state (ensure-session-state user-id params)]
     (if session-state
-      (let [{:keys [manager file-path store client-state]} session-state]
+      (let [{:keys [dom-manager file-path store client-state]} session-state]
         (when (or actions clean)
           (queue-to-log [:request (dissoc params :acknowledge)] file-path))
         (when (not= (dissoc request :id) {})
@@ -377,12 +377,12 @@
           (forget-session (:id params)))
         (when clean
           (println "Client is clean.")
-          (request-client-refresh manager)
+          (request-client-refresh dom-manager)
           (map-state-reset! client-state :in-sync true)
           (map-state-reset! client-state :last-action nil))
         (when replay
           (do-replay session-state replay))
-        (process-acknowledgements manager acknowledge)
+        (process-acknowledgements dom-manager acknowledge)
         (let [action-sequence (confirm-actions actions client-state)]
           (let [client-info (cond-> (do-actions
                                      store session-state action-sequence)
@@ -392,7 +392,7 @@
             (compute calculator-data 1000)
             ;; If we have no doms ready for the client yet, try computing
             ;; some more.
-            (when (empty? (get-response-doms manager nil 1))
+            (when (empty? (get-response-doms dom-manager nil 1))
               (compute calculator-data 10000))
-            (ajax-response manager client-state actions client-info))))
+            (ajax-response dom-manager client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

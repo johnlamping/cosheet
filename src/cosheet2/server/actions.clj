@@ -12,7 +12,8 @@
                    id->subject id-label->element-ids id-valid? undo! redo!
                    current-store
                    id-label->element-ids id->content
-                   StoredItemDescription]]
+                   StoredItemDescription
+                   Store]]
     [store-impl :refer [id->string string->id]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
@@ -84,7 +85,6 @@
 
 (defn update-set-content
   [store id from to]
-  (println "!!!" (selector? (description->entity id store)))
   (let [to (if (and (= to "")
                     (selector? (description->entity id store)))
              'anything
@@ -150,7 +150,7 @@
   to use for substituting in the pattern."
     [response items select-pattern old-key]
     (if select-pattern
-      (let [response (if (satisfies? cosheet.store/Store response)
+      (let [response (if (satisfies? Store response)
                        {:store response}
                        response)
             store (:store response)]
@@ -410,31 +410,22 @@
   a map of client data."
   [response store]
   (if response
-           (if (satisfies? cosheet.store/Store response)
-             [response {}]
-             (do
-               (assert (map? response))
-               (assert (:store response))
-               [(:store response) (dissoc response :store)]))
-           (do (println "handler didn't update store.")
-               [store {}])))
-
-(defn do-storage-update-action
-  "Do an action that can update a store and also return any client
-  information requested by the action.
-  that expects a function from current store to new store and return value.
-  We return a map containing the new store and any additional requested
-  information.
-  The action is given the store and any additional arguments.
-  The action can either return nil, meaning no change, a new
-  store, or a map with a :store value and any additional information
-  it wants to convey."
-  [mutable-store handler args]
-  )
+    (if (satisfies? Store response)
+      [response {}]
+      (do
+        (assert (map? response))
+        (assert (:store response))
+        [(:store response) (dissoc response :store)]))
+    (do (println "handler didn't update store.")
+        [store {}])))
 
 (defn get-contextual-handler
-    "Return the handler for the command."
-    [action]
+  "Return the handler for the command.
+  A handler is a function of the current store and a map of arguments
+  and action data. It can either return nil, meaning no change, a new
+  store, or a map with a :store value and any additional information
+  it wants to convey."
+  [action]
   ({
     ; :add-element do-add-element
     ; :add-label do-add-label

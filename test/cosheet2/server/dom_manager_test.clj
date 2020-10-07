@@ -249,7 +249,6 @@
               @manager client1 nil (reporter-value ms))]
       (is (check d1 {:component c1
                      :target-ids [id1]}))
-      (activate-component c1)
       (compute cd)
       (let [c2 (client-id->component @manager client2)
             d2 (client-id->action-data

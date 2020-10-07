@@ -24,7 +24,7 @@
              [canonical :refer [canonicalize-list]]
              [test-utils :refer [check any]])
             (cosheet2.server
-             [dom-manager :refer [new-dom-manager]]
+             [dom-manager :refer [new-dom-manager add-root-dom]]
              [actions :refer :all]
              [model-utils :refer [entity->canonical-semantic
                                   semantic-to-list selector?]])
@@ -389,3 +389,26 @@
              []))
       (is (= (state-map-get-current-value client-state :last-action) 4))))
   )
+
+(deftest do-actions-test
+  (let [queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)
+        mutable-store (new-mutable-store store)
+        manager (new-dom-manager mutable-store cd)
+        session-state {:dom-manager manager
+                       :store mutable-store
+                       :client-state (new-map-state {:last-action nil})}]
+    (add-root-dom
+     manager
+     :root
+     {:relative-id joe-id
+      :render-dom (fn [spec store]
+                    [:div "joe" [:component
+                                 {:relative-id (:item-id joe-age)
+                                  :render-dom (fn [spec store]
+                                                [:div 45])}]])})
+    (let [result (do-actions
+                  mutable-store session-state
+                  [[:set-content "root" :from "joe" :to "Joseph"]])
+          new-store (current-store mutable-store)]
+      (is (= (id->content new-store joe-id) "Joseph")))))

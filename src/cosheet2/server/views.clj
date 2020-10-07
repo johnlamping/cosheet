@@ -333,10 +333,12 @@
   ;; a select request, the dom we want to select will be going to
   ;; the client.
   (let [in-sync (map-state-get-current client-state :in-sync)
-        doms (when in-sync (get-response-doms manager 100))
-        answer (cond-> (select-keys client-info
-                                    [:open :set-url :select])
+        ids-to-select  (:select-store-ids client-info)
+        [doms select-id] (when in-sync
+                           (get-response-doms manager ids-to-select 100))
+        answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
+                 select-id (assoc :select select-id)
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
     (when (not= answer {})
@@ -390,7 +392,7 @@
             (compute calculator-data 1000)
             ;; If we have no doms ready for the client yet, try computing
             ;; some more.
-            (when (empty? (get-response-doms manager 1))
+            (when (empty? (get-response-doms manager nil 1))
               (compute calculator-data 10000))
             (ajax-response manager client-state actions client-info))))
       (response (if clean {} {:reset-versions true})))))

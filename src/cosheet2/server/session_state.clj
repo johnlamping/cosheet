@@ -289,18 +289,18 @@
              ;;; TODO: rename this :dom-manager
 ;;;              :manager  The dom manager for the session.
 ;;;         :client-state  A map-state holding these keys:
-;;;                :last-time  The last time we accessed this session.
-;;;                  :in-sync  True if the client is ready to accept doms.
 ;;;                  :root-id  The item id for the root of the display or
 ;;;                            selected tab.
-;;;              :subject-ids  If the id is an exemplar, its subject ids.
+;;;              :subject-ids  If the root-id is an exemplar, its subject ids.
+;;;            :batch-editing  If true, we are batch editing, and showing
+;;;                            the batch edit window, rather than whatever
+;;;                            :root-id says we should show.
+;;;                :last-time  The last time we accessed this session.
+;;;                  :in-sync  True if the client is ready to accept doms.
 ;;;              :last-action  The action id of the last action we did.
 ;;;                            This keeps us from repeating an action if the
 ;;;                            client gets impatient and repeats actions while
 ;;;                            we are working on them.
-;;;            :batch-editing  If true, we are batch editing, and showing
-;;;                            the batch edit window, rather than whatever
-;;;                            :root-id says we should show.
 
 ;;; TODO: Support a "id" that is a list of subject ids followed by an
 ;;; exemplar id.

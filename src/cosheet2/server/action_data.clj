@@ -19,9 +19,9 @@
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
-;;;   :revised-store  A store that should replace the current immutable store
+;;;           :store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
-;;;                   adding the elements they need.
+;;;                   adding the elements they imply.
 
 (defn best-match
   "Given an immutable template, and a seq of items
@@ -78,7 +78,7 @@
 (defn get-item-or-exemplar-action-data
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id))
+    (assert (satisfies? StoredItemDescription id) id)
     (let [subject-ids (:target-ids containing-action-data)]
       (assert (or (empty? subject-ids)
                   (let [subject-id (id->subject immutable-store id)]

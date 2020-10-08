@@ -4,6 +4,7 @@
                       [store :refer [id-valid? StoredItemDescription]]
                       [entity :refer [subject content label->elements
                                       description->entity updating-immutable]]
+                      [reporter :refer [reporter-value]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
                       [calculator :refer [current-value]]
@@ -315,12 +316,17 @@
             (when (and query-content (not= query-content 'anything))
               selector-items)))))))
 
+(defn top-level-id-R
+  "Return a reporter whose value is the id to be displayed at the top level."
+  [store client-state]
+  (expr-let [id (map-state-get client-state :root-id)]
+    (or id (expr first (ordered-tabs-ids-R store)))))
+
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   "Return a reporter whose value is DOM for the top level component."
-  [store session-temporary-id client-state]
-  (expr-let [id (expr-let [id (map-state-get client-state :root-id)]
-                  (or id (expr first (ordered-tabs-ids-R store))))]
+  [store id-R]
+  (expr-let [id id-R]
     (println "top level DOM id:" id)
     (when id
       (expr-let [immutable-store (category-change [id] store)
@@ -332,6 +338,11 @@
                                   :relative-id id
                                   :must-show-label true)
                            immutable-store))))))
+
+(defn top-level-get-action-data
+  "Return a function giving the action data for the top level component"
+  [specification containing-action-data action immutable-store]
+  {:target-ids [(reporter-value (:id-R specification))]})
 
 (defn reporter-specification-get-rendering-data
   "Return the rendering data for a component whose dom is what a
@@ -348,10 +359,13 @@
 
 (defn top-level-DOM-spec
   [store session-temporary-id client-state]
-  (assoc basic-dom-specification
-         :reporter (top-level-DOM-R store session-temporary-id client-state)
-         :get-rendering-data reporter-specification-get-rendering-data
-         :render-dom reporter-specification-render-dom))
+  (let [id-R (top-level-id-R store client-state)]
+    (assoc basic-dom-specification
+           :reporter (top-level-DOM-R store id-R)
+           :id-R id-R ; used by top-level-get-action-data
+           :get-action-data top-level-get-action-data
+           :get-rendering-data reporter-specification-get-rendering-data
+           :render-dom reporter-specification-render-dom)))
 
 (comment ;; Copy stuff out of here as we support more kinds of top levels.
   (defn top-level-DOM-R

@@ -163,6 +163,12 @@
 ;;; action, and the current store and returns a store with the
 ;;; appropriate changes.
 
+;;; Rather than a function, :get-action-data may alternatively hold a
+;;; vector, where the first element is the function, and the rest is
+;;; extra arguments beyond the usual for :get-action-data. While
+;;; putting in a closure, rather than a vector could do the same
+;;; thing, the vector is easier to read in debugging output.
+
 ;;; This protocol allows :get-action-data to pass down a modified
 ;;; store as part of its output. For example, it might want to create
 ;;; some items for the action to act on.

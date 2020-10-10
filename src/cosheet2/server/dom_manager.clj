@@ -452,9 +452,13 @@
 (defn action-data-for-component
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)]
-    (assoc (getter spec containing-action-data action immutable-store)
-           :component component)))
+        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)
+        [fun extra-args] (if (vector? getter)
+                           [(first getter) (rest getter)]
+                           [getter nil])
+        data (apply fun spec containing-action-data action immutable-store
+                    extra-args)]
+    (assoc data :component component)))
 
 (defn client-id->component
   "Returns the component for the given client id."

@@ -243,19 +243,23 @@
       :render-dom (fn [spec store]
                     [:div 1 [:component
                              {:relative-id id2
-                              :render-dom (fn [spec store] [:div 2])}]])})
+                              :render-dom (fn [spec store] [:div 2])}]])
+      :get-action-data [(fn [s c a i extra]
+                          (is (= extra "test"))
+                          {:target-ids [id1 id1]})
+                        "test"]})
     (let [c1 (client-id->component @manager client1)
           d1 (client-id->action-data
               @manager client1 nil (reporter-value ms))]
       (is (check d1 {:component c1
-                     :target-ids [id1]}))
+                     :target-ids [id1 id1]}))
       (compute cd)
       (let [c2 (client-id->component @manager client2)
             d2 (client-id->action-data
                 @manager client2 nil (reporter-value ms))]
         (is (= c2 ((:id->subcomponent @c1) id2)))
         (is (check d2 {:component c2
-                       :target-ids [id2]}))
+                       :target-ids [id2 id2]}))
         (is (check (:client-ready-dom @manager)
                    {c1 1  c2 2}))))))
 
@@ -266,8 +270,7 @@
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]
     (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
-    (let [c1 (:component
-              (client-id->action-data @manager "alt-client-id" nil :store))]
+    (let [c1 (client-id->component @manager "alt-client-id")]
       (activate-component c1)
       (compute cd)
       (let [c2 ((:id->subcomponent @c1) id2)]

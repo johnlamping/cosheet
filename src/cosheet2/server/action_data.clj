@@ -83,7 +83,6 @@
     (let [subject-ids (:target-ids containing-action-data)]
       (assert (or (empty? subject-ids)
                   (let [subject-id (id->subject immutable-store id)]
-                    (println subject-id subject-ids)
                     (some #{subject-id} subject-ids))))
       (assoc containing-action-data :target-ids
              (if (<= (count subject-ids) 1)

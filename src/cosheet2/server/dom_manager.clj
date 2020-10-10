@@ -17,7 +17,7 @@
                       [hiccup-utils :refer [dom-attributes add-attributes
                                             into-attributes]])
             (cosheet2.server
-             [item-render :refer [render-item-DOM]]
+             [item-render :refer [render-item-DOM get-item-rendering-data]]
              [action-data :refer [get-item-or-exemplar-action-data]])))
 
 (def verbose false)
@@ -202,12 +202,6 @@
   [& {:keys [key]}]
   (schedule-compute-dom-unless-newer key))
 
-(defn default-get-rendering-data
-  [specification mutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id) id)
-    [[mutable-store [id]]]))
-
 (defn update-register-for-reporters
   "Find out what the reporters the component's renderer needs,
   and register for them."
@@ -217,7 +211,7 @@
     (if (or reporters (not dom-specification))
       component-data
       (let [getter (or (:get-rendering-data dom-specification)
-                       default-get-rendering-data)
+                       get-item-rendering-data)
             pairs (getter dom-specification mutable-store)]
         (-> component-data
             (assoc :reporters (map first pairs))

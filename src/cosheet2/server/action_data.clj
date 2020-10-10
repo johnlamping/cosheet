@@ -76,6 +76,7 @@
       (:item-id (best-match template (matching-elements template subject))))))
 
 (defn get-item-or-exemplar-action-data
+  "This is the default for :get-action-data."
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))]
     (assert (satisfies? StoredItemDescription id) id)

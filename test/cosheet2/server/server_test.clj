@@ -7,6 +7,8 @@
              render-utils-test
              item-render-test
              dom-manager-test
-             session-state-test)
+             session-state-test
+             action-data-test
+             actions-test)
    :reload
             ))

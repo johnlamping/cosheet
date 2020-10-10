@@ -1,5 +1,6 @@
 (ns cosheet2.server.item-render
   (:require (cosheet2 [canonical :refer [canonical-set-to-list]]
+                      [store :refer [StoredItemDescription]]
                       [entity :as entity :refer [label? description->entity
                                                  has-keyword?]]
                       [query :refer [matching-elements]]
@@ -222,6 +223,14 @@
     (case direction
       :horizontal :vertical
       :vertical :horizontal))
+
+(defn get-item-rendering-data
+  "Return the rendering data for a dom that presents an item.
+   This is the default for :get-rendering-data."
+  [specification mutable-store]
+  (let [id (or (:item-id specification) (:relative-id specification))]
+    (assert (satisfies? StoredItemDescription id) id)
+    [[mutable-store [id]]]))
 
 (defn get-virtual-DOM-rendering-data [spec store]
   [])

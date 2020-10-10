@@ -331,12 +331,13 @@
   ;; a select request, the dom we want to select will be going to
   ;; the client.
   (let [in-sync (map-state-get-current client-state :in-sync)
-        {:keys [select-store-ids if-selected]} client-info
+        {:keys [select select-store-ids if-selected]} client-info
         [doms select-id] (when in-sync
                            (get-response-doms dom-manager select-store-ids 100))
         answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
                  select-id (assoc :select [select-id if-selected])
+                 select (assoc :select [select if-selected])
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
     (when (not= answer {})

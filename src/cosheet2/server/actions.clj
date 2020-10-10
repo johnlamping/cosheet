@@ -378,27 +378,6 @@
                :batch-editing true}
               store))))))
 
-  (defn request-selection-from-store
-    "Return a client request asking it to select the target saved in the
-   temporary item of the store."
-    [mutable-store old-store session-state]
-    (let [store (current-store mutable-store)
-          temporary-id (:session-temporary-id session-state)]
-      {:select [(path-in-item (description->entity temporary-id store))
-                [(path-in-item (description->entity temporary-id old-store))]]}))
-
-  (defn do-undo
-    [mutable-store session-state]
-    (let [old-store (current-store mutable-store)]
-      (undo! mutable-store)
-      (request-selection-from-store mutable-store old-store session-state)))
-
-  (defn do-redo
-    [mutable-store session-state]
-    (let [old-store (current-store mutable-store)]
-      (redo! mutable-store)
-      (request-selection-from-store mutable-store old-store session-state)))
-
   (defn do-quit-batch-edit
     [mutable-store session-state]
     (let [client-state (:client-state session-state)]
@@ -483,22 +462,45 @@
                                   (:batch-editing result)))
               (dissoc result :batch-editing)))))
 
+(defn request-selection-from-store
+    "Return a client request asking it to select the target saved in the
+   temporary item of the store."
+    [mutable-store old-store session-state]
+    (let [store (current-store mutable-store)
+          temporary-id (:session-temporary-id session-state)]
+      {:select (get-selected store temporary-id)
+       :if-selected (when-let [former (get-selected old-store temporary-id)]
+                      [former])}))
+
+(defn do-undo
+    [mutable-store session-state]
+    (let [old-store (current-store mutable-store)]
+      (undo! mutable-store)
+      (request-selection-from-store mutable-store old-store session-state)))
+
+  (defn do-redo
+    [mutable-store session-state]
+    (let [old-store (current-store mutable-store)]
+      (redo! mutable-store)
+      (request-selection-from-store mutable-store old-store session-state)))
+
 (defn do-action
   "Update the store, in accordance with the action, and return a map
   of any information to give the client. The map can have any of:
                   :open  A url to open in a new window
                :set-url  A url to set as the current url
+                :select  A client id to select
       :select-store-ids  A seq of store ids such that the client should
                          select a component that represents one of them.
            :if-selected  A seq of client ids, one of which must currently
-                         be selected by the client for select-store-ids
-                         to have an effect."
+                         be selected by the client for select or 
+                         select-store-ids to have an effect."
   [mutable-store session-state action]
   (let [[action-type & additional-args] action]
     (println "doing action " action-type)
     (if-let [handler (case action-type
-                       ; :undo do-undo
-                       ; :redo do-redo
+                       :undo do-undo
+                       :redo do-redo
                        ; :quit-batch-edit do-quit-batch-edit
                        nil)]
       (do (println "command: " (map simplify-for-print action))
@@ -517,12 +519,12 @@
                     (do-action mutable-store session-state action)]
                 (println "for client " (simplify-for-print for-client))
                 (into (cond-> client-info
-                        (:select-store-ids for-client)
-                        ;; Get rid of obsolete if-selected, since a new
-                        ;; :select-store-ids might not come with one.
-                        (dissoc :if-selected))
+                        (or (:select for-client)
+                            (:select-store-ids for-client))
+                        ;; Get rid of obsolete selection information.
+                        (dissoc :select :select-store-ids :if-selected))
                       (select-keys for-client
-                                   [:select-store-ids :if-selected
+                                   [:select :select-store-ids :if-selected
                                     :open :set-url]))))
             {} action-sequence)
     (catch Exception e

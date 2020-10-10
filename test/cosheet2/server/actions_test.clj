@@ -359,22 +359,7 @@
                                         ""))))
         (is (= (immutable-semantic-to-list
                 (description->entity new-id new-store))
-               'anything))
-        ;; Check undo redo.
-        (do-actions mutable-store {:tracker tracker
-                                   :client-state (new-state-map
-                                                  {:last-action nil}
-                                                  queue)}
-                    [[:undo]])
-        (is (check (current-store mutable-store)
-                   (assoc store :modified-ids #{})))
-        ;; Check redo.
-        (do-actions mutable-store {:tracker tracker
-                                   :client-state (new-state-map
-                                                  {:last-action nil}
-                                                  queue)}
-                    [[:redo]])
-        (is (check (current-store mutable-store) new-store)))))
+               'anything)))))
 
   (deftest confirm-actions-test
     (let [queue (new-priority-task-queue 0)
@@ -407,8 +392,19 @@
                                  {:relative-id (:item-id joe-age)
                                   :render-dom (fn [spec store]
                                                 [:div 45])}]])})
-    (let [result (do-actions
-                  mutable-store session-state
-                  [[:set-content "root" :from "joe" :to "Joseph"]])
+    (let [for-client (do-actions
+                      mutable-store session-state
+                      [[:set-content "root" :from "joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
-      (is (= (id->content new-store joe-id) "Joseph")))))
+      (is (= (id->content new-store joe-id) "Joseph"))
+      (is (= for-client {}))
+      ;; TODO: Once we support selected, check that undo and redo ask
+      ;; for the old selection.
+
+      ;; Check undo.
+      (let [for-client (do-actions mutable-store session-state [[:undo]])])
+      (is (check (current-store mutable-store)
+                 (assoc store :modified-ids #{})))
+      ;; Check redo.
+      (do-actions mutable-store session-state [[:redo]])
+      (is (check (current-store mutable-store) new-store)))))

@@ -14,6 +14,28 @@
             ; :reload
             ))
 
+(deftest run-action-data-getter-test
+  (is (= (run-action-data-getter
+          [(fn [spec cad action store extra]
+             (is (= spec {:spec "spec"}))
+             (is (= cad {:value 2}))
+             (is (= action :action))
+             (is (= store :store))
+             (is (= extra 1))
+             {:value 3})
+           1]
+          {:spec "spec"} {:value 2} :action :store)
+         {:value 3}))
+  (is (= (run-action-data-getter
+          [(fn [spec cad action store]
+             (is (= spec {:spec "spec"}))
+             (is (= cad {:value 2  :store "foo"}))
+             (is (= action :action))
+             (is (= store "foo"))
+             {:value 3})]
+          {:spec "spec"} {:value 2 :store "foo"} :action :store)
+         {:value 3})))
+
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
@@ -87,4 +109,21 @@
           {:relative-id (:item-id dup-female-2)}
           {:target-ids [joe-id jane-id dup-id]} nil store)
          {:target-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
+
+(deftest composed-get-action-data-test
+  (is (= (composed-get-action-data
+          {:spec "spec"} {:value 2} :action :store
+          (fn [spec cad action store]
+            (is (= spec {:spec "spec"}))
+            (is (= cad {:value 2}))
+            (is (= action :action))
+            (is (= store :store))
+            {:value 3})
+          (fn [spec cad action store]
+            (is (= spec {:spec "spec"}))
+            (is (= cad {:value 3}))
+            (is (= action :action))
+            (is (= store :store))
+            {:value 4}))
+         {:value 4})))
 

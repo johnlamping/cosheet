@@ -23,6 +23,17 @@
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they imply.
 
+(defn run-action-data-getter
+  "Handle pulling the store out of the inherited action data, and handle
+  a getter that has extra arguments."
+  [getter specification containing-action-data action immutable-store]
+  (println "!!!" (:store containing-action-data) immutable-store)
+  (let [store (or (:store containing-action-data) immutable-store)
+        [fun extra-args] (if (vector? getter)
+                           [(first getter) (rest getter)]
+                           [getter nil])]
+    (apply fun specification containing-action-data action store extra-args)))
+
 (defn best-match
   "Given an immutable template, and a seq of items
    that match it, return the best matching item."
@@ -90,4 +101,23 @@
                (->> subject-ids
                     (map #(best-matching-id id % immutable-store))
                     (filter identity)))))))
+
+(defn composed-get-action-data
+  [specification containing-action-data action immutable-store & getters]
+  (reduce (fn [action-data getter]
+            (run-action-data-getter
+             getter specification action-data action immutable-store))
+          containing-action-data getters))
+
+(defn compose-action-data-getter
+  "Add an action data getter to any current one."
+  [current to-add]
+  (cond
+    (nil? current)
+    to-add
+    (and (sequential? current)
+         (= (first current) composed-get-action-data))
+    (conj current to-add)
+    true
+    [composed-get-action-data current to-add]))
 

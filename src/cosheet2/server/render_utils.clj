@@ -280,24 +280,6 @@
 
 ;;; DOM creators that are used by several files.
 
-;;; This action transformation makes the item refer to its :item-id or
-;;; :relative-id.
-(defn default-action-data-transformation [] (assert false))
-
-(defn composed-action-data-transform [] (assert false))
-
-(defn add-action-data-transformation
-  "Add an action data transformation to any current one."
-  [current to-add]
-  (cond
-    (nil? current)
-    to-add
-    (and (sequential? current)
-         (= (first current) composed-action-data-transform))
-    (conj current to-add)
-    true
-    [composed-action-data-transform current to-add]))
-
 (defn make-component
   "Make a component dom with the given specification"
   [{:as specification}]

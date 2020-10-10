@@ -18,7 +18,8 @@
                                             into-attributes]])
             (cosheet2.server
              [item-render :refer [render-item-DOM get-item-rendering-data]]
-             [action-data :refer [get-item-or-exemplar-action-data]])))
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  run-action-data-getter]])))
 
 (def verbose false)
 
@@ -449,17 +450,6 @@
   [component-atom]
   (relative-ids->client-id (component->id-sequence component-atom)))
 
-(defn action-data-for-component
-  [component containing-action-data action immutable-store]
-  (let [spec (:dom-specification @component)
-        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)
-        [fun extra-args] (if (vector? getter)
-                           [(first getter) (rest getter)]
-                           [getter nil])
-        data (apply fun spec containing-action-data action immutable-store
-                    extra-args)]
-    (assoc data :component component)))
-
 (defn client-id->component
   "Returns the component for the given client id."
   [manager-data client-id]
@@ -470,6 +460,14 @@
                 ((:id->subcomponent @component) id)))
             root
             (rest id-sequence))))
+
+(defn action-data-for-component
+  [component containing-action-data action immutable-store]
+  (let [spec (:dom-specification @component)
+        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)
+        data (run-action-data-getter
+              getter spec containing-action-data action immutable-store)]
+    (assoc data :component component)))
 
 (defn client-id->action-data
   "Returns the action data map for the component for the given client

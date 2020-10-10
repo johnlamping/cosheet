@@ -25,12 +25,13 @@
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
              [order-utils :refer [order-entities semantic-entity?]]
-             [render-utils :refer [make-component add-action-data-transformation
-                                   default-action-data-transformation
+             [render-utils :refer [make-component
                                    item-stack-DOM nest-if-multiple-DOM
                                    condition-satisfiers
                                    hierarchy-node-DOM
-                                   transform-specification-for-elements]])))
+                                   transform-specification-for-elements]]
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  compose-action-data-getter]])))
 (comment
   (declare item-without-labels-DOM-R)
 
@@ -251,7 +252,7 @@
        (assoc :render-dom render-virtual-DOM
               :get-rendering-data get-virtual-DOM-rendering-data)
        (update :action-data
-               #(add-action-data-transformation % virtual-action-data)))))
+               #(compose-action-data-getter % virtual-action-data)))))
 
 (defn add-labels-DOM
   "Add label dom to an inner dom. Direction gives the direction of the label
@@ -351,9 +352,9 @@
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (assoc label-spec
-                        :action-data (add-action-data-transformation
+                        :action-data (compose-action-data-getter
                                       [exemplar-action-data descendant-ids]
-                                      default-action-data-transformation))))]
+                                      get-item-or-exemplar-action-data))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 

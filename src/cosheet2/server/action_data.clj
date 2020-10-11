@@ -27,7 +27,6 @@
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
-  (println "!!!" (:store containing-action-data) immutable-store)
   (let [store (or (:store containing-action-data) immutable-store)
         [fun extra-args] (if (vector? getter)
                            [(first getter) (rest getter)]
@@ -112,10 +111,9 @@
   [specification containing-action-data action immutable-store ids]
   (let [subject-ids (:target-ids containing-action-data)]
     (let [targets (mapcat #(get-item-or-exemplars-for-id
-                            specification containing-action-data
-                            action immutable-store %)
+                            subject-ids immutable-store %)
                          ids)]
-      (assoc containing-action-data :target-ids (seq (set targets))))))
+      (assoc containing-action-data :target-ids targets))))
 
 (defn composed-get-action-data
   [specification containing-action-data action immutable-store & getters]

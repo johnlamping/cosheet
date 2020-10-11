@@ -31,6 +31,7 @@
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
              [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
                                   compose-action-data-getter]])))
 (comment
   (declare item-without-labels-DOM-R)
@@ -328,7 +329,6 @@
          dom]))))
 
 (defn labeled-items-for-horizontal-DOMs [] (assert false))
-(defn exemplar-action-data [] (assert false))
 
 (defn labeled-items-properties-DOM
   "Given a hierarchy node for labels, Return DOM for example elements
@@ -348,12 +348,14 @@
                  (assoc label-spec
                         :relative-id [example-descendant-id
                                       :virtual-label]
-                        :action-data [exemplar-action-data descendant-ids]))
+                        :action-data [get-item-or-exemplar-action-data-for-ids
+                                      descendant-ids]))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (assoc label-spec
                         :action-data (compose-action-data-getter
-                                      [exemplar-action-data descendant-ids]
+                                      [get-item-or-exemplar-action-data-for-ids
+                                       descendant-ids]
                                       get-item-or-exemplar-action-data))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))

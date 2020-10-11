@@ -86,21 +86,36 @@
           subject (description->entity subject-id immutable-store)]
       (:item-id (best-match template (matching-elements template subject))))))
 
+(defn get-item-or-exemplars-for-id
+  "Given the subject(s), find items or exemplars for the id."
+  [subject-ids immutable-store id]
+  (assert (satisfies? StoredItemDescription id) id)
+  (assert (or (empty? subject-ids)
+              (let [subject-id (id->subject immutable-store id)]
+                (some #{subject-id} subject-ids))))
+  (if (<= (count subject-ids) 1)
+    [id]
+    (->> subject-ids
+         (map #(best-matching-id id % immutable-store))
+         (filter identity))))
+
 (defn get-item-or-exemplar-action-data
   "This is the default for :get-action-data."
   [specification containing-action-data action immutable-store]
-  (let [id (or (:item-id specification) (:relative-id specification))]
-    (assert (satisfies? StoredItemDescription id) id)
-    (let [subject-ids (:target-ids containing-action-data)]
-      (assert (or (empty? subject-ids)
-                  (let [subject-id (id->subject immutable-store id)]
-                    (some #{subject-id} subject-ids))))
-      (assoc containing-action-data :target-ids
-             (if (<= (count subject-ids) 1)
-               [id]
-               (->> subject-ids
-                    (map #(best-matching-id id % immutable-store))
-                    (filter identity)))))))
+  (let [id (or (:item-id specification) (:relative-id specification))
+        subject-ids (:target-ids containing-action-data)]
+    (assoc containing-action-data :target-ids
+           (get-item-or-exemplars-for-id subject-ids immutable-store id))))
+
+(defn get-item-or-exemplar-action-data-for-ids
+  "Target all the given ids."
+  [specification containing-action-data action immutable-store ids]
+  (let [subject-ids (:target-ids containing-action-data)]
+    (let [targets (mapcat #(get-item-or-exemplars-for-id
+                            specification containing-action-data
+                            action immutable-store %)
+                         ids)]
+      (assoc containing-action-data :target-ids (seq (set targets))))))
 
 (defn composed-get-action-data
   [specification containing-action-data action immutable-store & getters]

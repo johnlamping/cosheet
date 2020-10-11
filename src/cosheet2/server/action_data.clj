@@ -106,6 +106,11 @@
     (assoc containing-action-data :target-ids
            (get-item-or-exemplars-for-id subject-ids immutable-store id))))
 
+(defmethod print-method
+  cosheet2.server.action_data$get_item_or_exemplar_action_data
+  [v ^java.io.Writer w]
+  (.write w "item-AD"))
+
 (defn get-item-or-exemplar-action-data-for-ids
   "Target all the given ids."
   [specification containing-action-data action immutable-store ids]
@@ -115,12 +120,30 @@
                          ids)]
       (assoc containing-action-data :target-ids targets))))
 
+(defmethod print-method
+  cosheet2.server.action_data$get_item_or_exemplar_action_data_for_ids
+  [v ^java.io.Writer w]
+  (.write w "ids-AD"))
+
+;;; TODO: Code this.
+(defn get-virtual-action-data [] (assert false))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_virtual_action_data
+  [v ^java.io.Writer w]
+  (.write w "virt-AD"))
+
 (defn composed-get-action-data
   [specification containing-action-data action immutable-store & getters]
   (reduce (fn [action-data getter]
             (run-action-data-getter
              getter specification action-data action immutable-store))
           containing-action-data getters))
+
+(defmethod print-method
+  cosheet2.server.action_data$composed_get_action_data
+  [v ^java.io.Writer w]
+  (.write w "comp-AD"))
 
 (defn compose-action-data-getter
   "Add an action data getter to any current one."

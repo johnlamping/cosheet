@@ -16,7 +16,8 @@
              [render :refer [basic-dom-specification]]
              [action-data :refer [composed-get-action-data
                                   get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids]]
+                                  get-item-or-exemplar-action-data-for-ids
+                                  get-virtual-action-data]]
              [item-render :refer :all])
             ; :reload
             ))
@@ -86,7 +87,7 @@
                        :class "label"
                        :get-rendering-data get-virtual-DOM-rendering-data
                        :render-dom render-virtual-DOM
-                       :action-data virtual-action-data
+                       :action-data get-virtual-action-data
                        :width 1.5}]
           [:component {:twin-template ""
                        :relative-id :content
@@ -126,7 +127,7 @@
                     :action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id1]]
-                     virtual-action-data]
+                     get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
                                :twin-template ""
@@ -142,7 +143,7 @@
                     :action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id2]]
-                     virtual-action-data]
+                     get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
                                :twin-template ""
@@ -329,7 +330,7 @@
                               :action-data
                               [composed-get-action-data
                                [get-item-or-exemplar-action-data-for-ids [id3]]
-                               virtual-action-data]
+                               get-virtual-action-data]
                               :relative-id [id3 :virtual-label]
                               :get-rendering-data get-virtual-DOM-rendering-data
                               :render-dom render-virtual-DOM
@@ -370,7 +371,7 @@
                           :action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1]]
-                           virtual-action-data]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -385,7 +386,7 @@
                           :action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id2]]
-                           virtual-action-data]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -538,7 +539,7 @@
                          :direction :after
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
-                         :action-data virtual-action-data}]]
+                         :action-data get-virtual-action-data}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
@@ -581,7 +582,7 @@
                           :action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id3]]
-                           virtual-action-data]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]

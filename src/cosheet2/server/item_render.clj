@@ -32,6 +32,7 @@
                                    transform-specification-for-elements]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
+                                  get-virtual-action-data
                                   compose-action-data-getter]])))
 (comment
   (declare item-without-labels-DOM-R)
@@ -234,15 +235,27 @@
     (assert (satisfies? StoredItemDescription id) id)
     [[mutable-store [id]]]))
 
+(defmethod print-method
+  cosheet2.server.item_render$get_item_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "item-RD"))
+
 (defn get-virtual-DOM-rendering-data [spec store]
   [])
+
+(defmethod print-method
+  cosheet2.server.item_render$get_virtual_DOM_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "virt-RD"))
 
 (defn render-virtual-DOM [spec]
   [:div (into-attributes (select-keys spec [:class])
                          {:class "editable"})])
 
-;;; TODO: Code this.
-(defn virtual-action-data [] (assert false))
+(defmethod print-method
+  cosheet2.server.item_render$render_virtual_DOM
+  [v ^java.io.Writer w]
+  (.write w "virt-DOM"))
 
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
@@ -253,7 +266,7 @@
        (assoc :render-dom render-virtual-DOM
               :get-rendering-data get-virtual-DOM-rendering-data)
        (update :action-data
-               #(compose-action-data-getter % virtual-action-data)))))
+               #(compose-action-data-getter % get-virtual-action-data)))))
 
 (defn add-labels-DOM
   "Add label dom to an inner dom. Direction gives the direction of the label
@@ -626,3 +639,8 @@
             (labels-wrapper-DOM
              inner-dom labels specification)))
         (add-attributes {:class "item"}))))
+
+(defmethod print-method
+  cosheet2.server.item_render$render_item_DOM
+  [v ^java.io.Writer w]
+  (.write w "item-DOM"))

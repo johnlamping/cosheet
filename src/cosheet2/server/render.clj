@@ -350,6 +350,11 @@
   [specification containing-action-data action immutable-store]
   {:target-ids [(reporter-value (:id-R specification))]})
 
+(defmethod print-method
+  cosheet2.server.render$top_level_get_action_data
+  [v ^java.io.Writer w]
+  (.write w "top-level-AD"))
+
 (defn reporter-specification-get-rendering-data
   "Return the rendering data for a component whose dom is what a
   reporter returns"
@@ -357,11 +362,21 @@
   (println "getting top level DOM rendering data")
   [[(:reporter spec) nil]])
 
+(defmethod print-method
+  cosheet2.server.render$reporter_specification_get_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "rep-RD"))
+
 (defn reporter-specification-render-dom
   "Make the component's dom be what a reporter returns."
   [spec reporter-value]
   (println "value for top level DOM" reporter-value)
   reporter-value)
+
+(defmethod print-method
+  cosheet2.server.render$reporter_specification_render_dom
+  [v ^java.io.Writer w]
+  (.write w "rep-DOM"))
 
 (defn top-level-DOM-spec
   [store session-temporary-id client-state]

@@ -15,7 +15,10 @@
             (cosheet2.server
              [model-utils :refer [semantic-elements semantic-to-list
                                   entity->canonical-semantic
-                                  pattern-to-query]])))
+                                  pattern-to-query
+                                  specialize-generic
+                                  flatten-nested-content
+                                  create-selector-or-non-selector-element]])))
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
@@ -125,8 +128,44 @@
   [v ^java.io.Writer w]
   (.write w "ids-AD"))
 
-;;; TODO: Code this.
-(defn get-virtual-action-data [] (assert false))
+(defn create-possible-selector-elements
+  "Create elements, specializing the template as appropriate, depending on
+   whether each subject is a selector. Return the new ids and the updated
+   store."
+  [template subjects adjacents position use-bigger store]
+  (let [[specialized-template store] (specialize-generic template store) 
+        flattened-template (flatten-nested-content specialized-template)]
+    (thread-map
+     (fn [[subject adjacent] store]
+       (let [[store id] (create-selector-or-non-selector-element
+                         flattened-template
+                         subject adjacent position use-bigger store)]
+         [id store]))
+     (map vector subjects adjacents)
+     store)))
+
+(defn get-virtual-action-data
+  "Create the specified virtual items.
+   The containing data's target-ids are the subject of the new items,
+   unless adjacent is true in which case they are the siblings.
+   The new items are ordered after the containing target, unless before
+   is true, in which case they are ordered before.
+   the new items use the smaller part of the order split, unless use-bigger
+   is true, in which case they use the larger."
+  [specification containing-action-data action immutable-store
+   & {:keys [template adjacent before use-bigger]}]
+  (let [incoming-ids (:target-ids containing-action-data)
+        template (or template 'anything)
+        subjects (if adjacent
+                  (map #(id->subject immutable-store %) incoming-ids)
+                  incoming-ids)
+        adjacents (if adjacent incoming-ids subjects)
+        [ids store] (create-possible-selector-elements
+                     template subjects adjacents
+                     (if before :before :after)
+                     use-bigger
+                     immutable-store)]
+    (assoc containing-action-data :target-ids ids :store store)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_action_data

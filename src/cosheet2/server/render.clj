@@ -96,7 +96,7 @@
 ;;; A specification map is used describe how to turn part of the
 ;;; store into a component of dom. The map holds the information for
 ;;; what is to be rendered, such as an item id, and what style of
-;;; rendering to use. Generating the dom will require addition
+;;; rendering to use. Generating the dom will require additional
 ;;; information from the store, such as the content and elements of
 ;;; the item to be rendered.
 
@@ -138,7 +138,7 @@
 ;;; formatting. In other cases, the sub-component's id may need to
 ;;; change between the two different rendering situations.)
 
-;;; TODO: Optionally, a dom specifation can have a
+;;; TODO: Optionally, a dom specification can have a
 ;;; :sub-dom-specification method, which gives the specification of a
 ;;; subsidiary component, given its relative id. This way, if the
 ;;; manager needs a subsidiary component of a very large dom, it

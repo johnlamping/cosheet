@@ -3,14 +3,17 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [orderable :as orderable]
-                      [entity :as entity  :refer [description->entity]]
-                      [store :refer [new-element-store]]
+                      [entity :as entity  :refer [description->entity to-list]]
+                      [store :refer [new-element-store ImmutableStore
+                                     id->subject id->content
+                                     id-label->element-ids]] 
                       [store-utils :refer [add-entity]]
                       [query :refer [matching-elements]]
                       [expression :refer [expr expr-let expr-seq]]
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
-            (cosheet2.server [action-data :refer :all])
+            (cosheet2.server [action-data :refer :all]
+                             [model-utils :refer [semantic-to-list]])
             ; :reload
             ))
 
@@ -56,6 +59,7 @@
                 (45 (~o4 :order :non-semantic)
                     ("age" :tag (~o3 :order :non-semantic)))))
 (def jane-list `("Jane" (~o1 :order :non-semantic)
+                 (:selector :non-semantic)
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
                      ("age" :tag (~o3 :order :non-semantic)))))
@@ -125,6 +129,52 @@
               [(:item-id jane-age) (:item-id joe-male)])
              {:target-ids [(:item-id joe-age) (:item-id jane-age)
                            (:item-id joe-male)]})))
+
+(defn get-order [id store]
+  (let [elements (id-label->element-ids store id :order)]
+    (id->content store (first elements))))
+
+(deftest get-virtual-action-data-test
+  (let [data (get-virtual-action-data
+              {} {:target-ids [joe-id]} nil store)]
+    (is (check data {:target-ids [(any)]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [original-store store
+          {:keys [target-ids store]} data
+          id (first target-ids)]
+      (is (= (id->subject store id) joe-id))
+      (is (= (:right (get-order id store))
+             (:right (get-order joe-id original-store))))
+      (is (= (semantic-to-list (description->entity id store))
+             ""))))
+  (let [data (get-virtual-action-data
+              {} {:target-ids [jane-id joe-id]} nil store)]
+    (is (check data {:target-ids [(any) (any)]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [original-store store
+          {:keys [target-ids store]} data
+          [new-jane-id new-joe-id] target-ids]
+      (is (= (id->subject store new-joe-id) joe-id))
+      (is (check (semantic-to-list (description->entity new-joe-id store))
+                 "" ))
+      (is (= (id->subject store new-jane-id) jane-id))
+      (is (check (semantic-to-list (description->entity new-jane-id store))
+                 'anything ))))
+  (let [data (get-virtual-action-data
+              {} {:target-ids [(:item-id joe-age)]} nil store
+              :adjacent true :before true)]
+    (is (check data {:target-ids [(any)]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [original-store store
+          {:keys [target-ids store]} data
+          id (first target-ids)]
+      (is (= (id->subject store id) joe-id))
+      (is (= (:left (get-order id store))
+             (:left (get-order (:item-id joe-age) original-store))))
+      (is (< (:right (get-order id store))
+             (:right (get-order (:item-id joe-age) original-store))))
+      (is (check (semantic-to-list (description->entity id store))
+                 "")))))
 
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data

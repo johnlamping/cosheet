@@ -231,12 +231,14 @@
 (defn create-selector-or-non-selector-element
   "Create an element, modifying the template if the subject is not a
    a selector. Return the updated store and the id of the new element."
-  [template subject adjacent position use-bigger store]
-  (let [template (if (and subject (selector? subject))
+  [template subject-id adjacent-id position use-bigger store]
+  (let [template (if (and subject-id
+                          (selector? (description->entity subject-id store)))
                    template
                    (template-to-possible-non-selector-template template))]
-    (update-add-entity-adjacent-to store (:item-id subject)
-                                   template adjacent position use-bigger)))
+    (update-add-entity-adjacent-to store subject-id template
+                                   (description->entity adjacent-id store)
+                                   position use-bigger)))
 
 ;;; Creating new tabs and tables.
 ;;; TODO: The heading for a table should be :category, not :label

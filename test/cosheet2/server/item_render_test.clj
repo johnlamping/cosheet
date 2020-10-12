@@ -87,7 +87,7 @@
                        :class "label"
                        :get-rendering-data get-virtual-DOM-rendering-data
                        :render-dom render-virtual-DOM
-                       :action-data get-virtual-action-data
+                       :get-action-data get-virtual-action-data
                        :width 1.5}]
           [:component {:twin-template ""
                        :relative-id :content
@@ -124,7 +124,7 @@
                     :relative-id [id1 :virtual-label]
                     :get-rendering-data get-virtual-DOM-rendering-data
                     :render-dom render-virtual-DOM
-                    :action-data
+                    :get-action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id1]]
                      get-virtual-action-data]
@@ -140,7 +140,7 @@
                     :relative-id [id2 :virtual-label]
                     :get-rendering-data get-virtual-DOM-rendering-data
                     :render-dom render-virtual-DOM
-                    :action-data
+                    :get-action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id2]]
                      get-virtual-action-data]
@@ -181,7 +181,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :twin-template '("" :label)
-                               :action-data
+                               :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id1]]
                                 get-item-or-exemplar-action-data]
@@ -196,7 +196,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :twin-template '("" :label)
-                               :action-data
+                               :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id2]]
                                 get-item-or-exemplar-action-data]
@@ -262,7 +262,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :twin-template '("" :label)
-                               :action-data
+                               :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id0]]
                                 get-item-or-exemplar-action-data]
@@ -277,7 +277,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :twin-template '("" :label)
-                               :action-data
+                               :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids
                                  [id1 id2]]
@@ -290,7 +290,7 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :twin-template '("" :label)
-                                  :action-data
+                                  :get-action-data
                                   [composed-get-action-data
                                    [get-item-or-exemplar-action-data-for-ids
                                     [id1]]
@@ -308,7 +308,7 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :twin-template '("" :label)
-                                  :action-data
+                                  :get-action-data
                                   [composed-get-action-data
                                    [get-item-or-exemplar-action-data-for-ids
                                     [id2]]
@@ -327,7 +327,7 @@
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :twin-template '("" :label)
-                              :action-data
+                              :get-action-data
                               [composed-get-action-data
                                [get-item-or-exemplar-action-data-for-ids [id3]]
                                get-virtual-action-data]
@@ -368,7 +368,7 @@
              [:component {:width 0.375
                           :twin-template '("" :label)
                           :relative-id [id1 :virtual-label]
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1]]
                            get-virtual-action-data]
@@ -383,7 +383,7 @@
              [:component {:width 0.375
                           :twin-template '("" :label)
                           :relative-id [id2 :virtual-label]
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id2]]
                            get-virtual-action-data]
@@ -428,7 +428,7 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :twin-template '("" :label)
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1]]
                            get-item-or-exemplar-action-data]
@@ -443,7 +443,7 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :twin-template '("" :label)
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id2]]
                            get-item-or-exemplar-action-data]
@@ -510,7 +510,7 @@
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :twin-template '("" :label)
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id0]]
                            get-item-or-exemplar-action-data]
@@ -525,7 +525,7 @@
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
                           :twin-template '("" :label)
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1 id2]]
                            get-item-or-exemplar-action-data]
@@ -539,13 +539,13 @@
                          :direction :after
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
-                         :action-data get-virtual-action-data}]]
+                         :get-action-data get-virtual-action-data}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :twin-template '("" :label)
-                           :action-data
+                           :get-action-data
                            [composed-get-action-data
                             [get-item-or-exemplar-action-data-for-ids [id1]]
                             get-item-or-exemplar-action-data]
@@ -561,7 +561,7 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :twin-template '("" :label)
-                           :action-data
+                           :get-action-data
                            [composed-get-action-data
                             [get-item-or-exemplar-action-data-for-ids [id2]]
                             get-item-or-exemplar-action-data]
@@ -579,7 +579,7 @@
                           :twin-template '("" :label)
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
-                          :action-data
+                          :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id3]]
                            get-virtual-action-data]

@@ -265,7 +265,7 @@
    (-> specification
        (assoc :render-dom render-virtual-DOM
               :get-rendering-data get-virtual-DOM-rendering-data)
-       (update :action-data
+       (update :get-action-data
                #(compose-action-data-getter % get-virtual-action-data)))))
 
 (defn add-labels-DOM
@@ -361,15 +361,17 @@
                  (assoc label-spec
                         :relative-id [example-descendant-id
                                       :virtual-label]
-                        :action-data [get-item-or-exemplar-action-data-for-ids
-                                      descendant-ids]))
+                        :get-action-data
+                        [get-item-or-exemplar-action-data-for-ids
+                         descendant-ids]))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (assoc label-spec
-                        :action-data (compose-action-data-getter
-                                      [get-item-or-exemplar-action-data-for-ids
-                                       descendant-ids]
-                                      get-item-or-exemplar-action-data))))]
+                        :get-action-data
+                        (compose-action-data-getter
+                         [get-item-or-exemplar-action-data-for-ids
+                          descendant-ids]
+                         get-item-or-exemplar-action-data))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 

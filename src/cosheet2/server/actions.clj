@@ -450,12 +450,13 @@
                                          (into client-args)
                                          (assoc :session-state session-state
                                                 :client-id client-id))
+                           _ (println "handler arguments: "
+                                      (simplify-for-print
+                                       (dissoc arguments :session-state)))
                            store (or (:store action-data) store)
                            store (update-equivalent-undo-point store false)
                            response (handler store arguments)]
-                       (println "handler arguments: "
-                                (simplify-for-print
-                                 (dissoc arguments :session-state)))
+                       
                        (adjust-handler-response response store))))]
               (when (contains? result :batch-editing)
                 (map-state-reset! (:client-state session-state) :batch-editing

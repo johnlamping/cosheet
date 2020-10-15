@@ -132,6 +132,8 @@
                    ;; into [cosheet.client/component {attributes} id]
                    (replace-in-struct {:component component} (vec doms)))))
 
+;;; TODO: We shouldn't need to check for _content any more; the server
+;;; adds that when appropriate.
 (defn find-target
   "Find the DOM for the target id. If that doesn't exist, try the id
    with _:content appended.
@@ -167,6 +169,7 @@
     (do (let [[request-id if-selected] (:select response)]
           (when (and request-id
                      (or (nil? previously-selected-id)
+                         (nil? if-selected)
                          (some #{previously-selected-id} if-selected)))
             (reset! pending-server-selection-request-id request-id)))
         (let [request-id @pending-server-selection-request-id

@@ -271,6 +271,10 @@
       (assert (instance? ComponentData result))
       result)))
 
+(defn disabled-component-data?
+  [component-data]
+  (nil? (:dom-specification component-data)))
+
 (defn note-dom-ready-for-client
   [dom-manager component-atom]
   (swap! dom-manager
@@ -280,7 +284,8 @@
 
 (defn update-dom
   [component-data component-atom dom]
-  (if (valid? dom)
+  (if (and (valid? dom)
+           (not (disabled-component-data? component-data)))
     (if (= dom (:dom component-data))
       ;; The dom hasn't changed. Bump the version to note that we have done
       ;; a recomputation.

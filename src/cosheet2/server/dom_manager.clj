@@ -303,6 +303,8 @@
             new-subcomponent-ids (filter #(not= (id->subcomponent %)
                                                 (old-id->subcomponent %))
                                          (keys id->subcomponent))]
+        (when (not (:dom-version component-data))
+          (println "!!! Bad component data" component-data))
         (-> component-data
             (assoc :dom dom
                    :id->subcomponent id->subcomponent

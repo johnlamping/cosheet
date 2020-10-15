@@ -260,7 +260,7 @@
 (defn virtual-element-DOM
   "Make a dom for a place where there could be an element, but isn't"
   [specification]
-  (assert (:twin-template specification))
+  (assert (:template specification))
   (make-component
    (-> specification
        (assoc :render-dom render-virtual-DOM
@@ -299,9 +299,9 @@
                     (into-attributes specification {:class "label"}))))
 
 (defn require-label-in-template
-  "Give the :twin-template a :label keyword if it doesn't already have one."
+  "Give the :template a :label keyword if it doesn't already have one."
   [specification]
-  (update specification :twin-template
+  (update specification :template
           #(if (has-keyword? % :label)
              %
              (add-elements-to-entity-list % [:label]))))
@@ -310,7 +310,7 @@
   "Return a dom for a virtual label. The label must be inside the component
   for the item. The specification should be for elements of the item."
   [specification]
-  (assert (:twin-template specification))
+  (assert (:template specification))
   (virtual-element-DOM
    (-> specification
        (assoc :position :after
@@ -379,7 +379,7 @@
   "Given a hierarchy node with labels as the properties, generate DOM
   for leaves that are items. The leaves of the node may contain an additional
   :exclude-elements field that gives more of the item's elements not
-  to show, typically the ones that satisfy the :twin-template of the
+  to show, typically the ones that satisfy the :template of the
   specification. The specification should be the one for the overall
   hierarchy."
   [hierarchy-node specification]
@@ -388,7 +388,7 @@
                        (:cumulative-properties hierarchy-node))
         leaf-spec (cond-> (dissoc specification :direction)
                     (not (empty? property-list))
-                    (update :twin-template
+                    (update :template
                             #(add-elements-to-entity-list % property-list)))]
     (if (empty? leaves)
       (let [adjacent-item (:item (first (hierarchy-node-descendants
@@ -601,7 +601,7 @@
   [item elements specification]
   (let [content-dom (make-component
                      (cond-> (-> (select-keys specification
-                                              [:twin-template :class :width])
+                                              [:template :class :width])
                                  (assoc :relative-id :content
                                         :item-id (:item-id item)
                                         :render-dom render-content-only-DOM))
@@ -633,7 +633,7 @@
         [labels non-labels] (separate-by label? elements)]
     (-> (if (and (empty? elements) (not must-show-label))
           (item-content-DOM entity specification)
-          (let [inner-spec (update specification :twin-template
+          (let [inner-spec (update specification :template
                                    #(add-elements-to-entity-list
                                      % (map semantic-to-list labels)))
                 inner-dom (item-content-and-non-label-elements-DOM

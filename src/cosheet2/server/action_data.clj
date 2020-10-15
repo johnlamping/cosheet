@@ -3,7 +3,8 @@
                                     map-map thread-map thread-recursive-map
                                     add-elements-to-entity-list]]
                       [debug :refer [simplify-for-print]]
-                      [store :refer [StoredItemDescription id->subject]]
+                      [store :refer [StoredItemDescription
+                                     id->subject id->content]]
                       [entity :refer [subject elements content label->elements
                               description->entity in-different-store]]
                       [canonical :refer [canonicalize-list
@@ -30,6 +31,9 @@
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
+  (println "Getting action data" getter)
+  (println "  from spec" specification)
+  (println "  containing AD" (dissoc containing-action-data :component))
   (let [store (or (:store containing-action-data) immutable-store)
         [fun extra-args] (if (vector? getter)
                            [(first getter) (rest getter)]
@@ -94,7 +98,12 @@
   (assert (satisfies? StoredItemDescription id) id)
   (assert (or (empty? subject-ids)
               (let [subject-id (id->subject immutable-store id)]
-                (some #{subject-id} subject-ids))))
+                (some #{subject-id} subject-ids)))
+          [id
+           (id->subject immutable-store id)
+           (id->content immutable-store id)
+           subject-ids
+           (map #(id->content immutable-store %) subject-ids)])
   (if (<= (count subject-ids) 1)
     [id]
     (->> subject-ids
@@ -155,7 +164,7 @@
   [specification containing-action-data action immutable-store
    & {:keys [template adjacent before use-bigger]}]
   (let [incoming-ids (:target-ids containing-action-data)
-        template (or template 'anything)
+        template (or template (:template specification) 'anything)
         subjects (if adjacent
                   (map #(id->subject immutable-store %) incoming-ids)
                   incoming-ids)

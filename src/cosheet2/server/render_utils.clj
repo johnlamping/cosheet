@@ -196,7 +196,7 @@
 (defn transform-specification-for-elements
   [specification]
   (assoc (select-keys specification [:width])
-         :twin-template (or (:elements-template specification)
+         :template (or (:elements-template specification)
                             "")))
 
 (defn entity->canonical-term

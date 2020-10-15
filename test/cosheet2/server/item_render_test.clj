@@ -59,13 +59,13 @@
                              store)]
     (is (check dom
                [:div {:class "wrapped-element label item"}
-                [:component {:twin-template '("" :label)
+                [:component {:template '("" :label)
                              :relative-id id2
                              :excluded-element-ids [id-tag2]
                              :class "label"
                              :width 1.5}]
                 [:div {:class "indent-wrapper"}
-                 [:component {:twin-template '("" (2 :label))
+                 [:component {:template '("" (2 :label))
                               :relative-id :content
                               :item-id fred-id
                               :render-dom render-content-only-DOM
@@ -81,7 +81,7 @@
          dom
          [:div
           {:class "horizontal-labels-element label virtual-wrapper narrow item"}
-          [:component {:twin-template '("" :label)
+          [:component {:template '("" :label)
                        :relative-id :virtual-label
                        :position :after
                        :class "label"
@@ -89,7 +89,7 @@
                        :render-dom render-virtual-DOM
                        :get-action-data get-virtual-action-data
                        :width 1.5}]
-          [:component {:twin-template ""
+          [:component {:template ""
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
@@ -110,7 +110,7 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements item"}
-                [:component {:twin-template ""
+                [:component {:template ""
                              :width 0.9
                              :relative-id :content
                              :item-id fred-id
@@ -120,7 +120,7 @@
                                     " virtual-wrapper narrow")}
                   [:component
                    {:width 0.9
-                    :twin-template '("" :label)
+                    :template '("" :label)
                     :relative-id [id1 :virtual-label]
                     :get-rendering-data get-virtual-DOM-rendering-data
                     :render-dom render-virtual-DOM
@@ -130,13 +130,13 @@
                      get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
-                               :twin-template ""
+                               :template ""
                                :relative-id id1}]]
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
                   [:component
                    {:width 0.9
-                    :twin-template '("" :label)
+                    :template '("" :label)
                     :relative-id [id2 :virtual-label]
                     :get-rendering-data get-virtual-DOM-rendering-data
                     :render-dom render-virtual-DOM
@@ -146,7 +146,7 @@
                      get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
-                               :twin-template ""
+                               :template ""
                                :relative-id id2}]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store fred-id] (add-entity (new-element-store) nil
@@ -172,7 +172,7 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements item"}
-                [:component {:twin-template ""
+                [:component {:template ""
                              :width 0.9
                              :relative-id :content
                              :item-id fred-id
@@ -180,7 +180,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template '("" :label)
+                               :template '("" :label)
                                :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id1]]
@@ -190,12 +190,12 @@
                                :relative-id id-label1}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :twin-template '("" ("one" :label))
+                                :template '("" ("one" :label))
                                 :excluded-element-ids [id-label1]
                                 :relative-id id1}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template '("" :label)
+                               :template '("" :label)
                                :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id2]]
@@ -205,7 +205,7 @@
                                :relative-id id-label2}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :twin-template '("" ("two" :label))
+                                :template '("" ("two" :label))
                                 :excluded-element-ids [id-label2]
                                 :relative-id id2}]]]]])))
   ;; Test an item with four elements, with label sharing among them.
@@ -253,7 +253,7 @@
                              store)]
     (is (check dom
                [:div {:class "with-elements item"}
-                [:component {:twin-template ""
+                [:component {:template ""
                              :width 0.9
                              :relative-id :content
                              :item-id fred-id
@@ -261,7 +261,7 @@
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template '("" :label)
+                               :template '("" :label)
                                :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids [id0]]
@@ -271,12 +271,12 @@
                                :relative-id id-label0}]
                   [:div {:class "indent-wrapper"}
                    [:component {:width 0.9
-                                :twin-template '("" ("zero" :label))
+                                :template '("" ("zero" :label))
                                 :excluded-element-ids [id-label0]
                                 :relative-id id0}]]]
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
-                               :twin-template '("" :label)
+                               :template '("" :label)
                                :get-action-data
                                [composed-get-action-data
                                 [get-item-or-exemplar-action-data-for-ids
@@ -289,7 +289,7 @@
                    [:div {:class "vertical-stack"}
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :twin-template '("" :label)
+                                  :template '("" :label)
                                   :get-action-data
                                   [composed-get-action-data
                                    [get-item-or-exemplar-action-data-for-ids
@@ -300,14 +300,14 @@
                                   :relative-id id-label1one}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :twin-template '("" ("both" :label)
+                                   :template '("" ("both" :label)
                                                     ("one" :label))
                                    :excluded-element-ids [id-label1both
                                                           id-label1one]
                                    :relative-id id1}]]]
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
-                                  :twin-template '("" :label)
+                                  :template '("" :label)
                                   :get-action-data
                                   [composed-get-action-data
                                    [get-item-or-exemplar-action-data-for-ids
@@ -318,7 +318,7 @@
                                   :relative-id id-label2two}]
                      [:div {:class "indent-wrapper"}
                       [:component {:width 0.9
-                                   :twin-template '("" ("both" :label)
+                                   :template '("" ("both" :label)
                                                     ("two" :label))
                                    :excluded-element-ids [id-label2both
                                                           id-label2two]
@@ -326,7 +326,7 @@
                 [:div {:class (str "horizontal-labels-element label"
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
-                              :twin-template '("" :label)
+                              :template '("" :label)
                               :get-action-data
                               [composed-get-action-data
                                [get-item-or-exemplar-action-data-for-ids [id3]]
@@ -336,7 +336,7 @@
                               :render-dom render-virtual-DOM
                               :class "label"}]
                  [:component {:width 0.9
-                              :twin-template ""
+                              :template ""
                               :relative-id id3}]]]])))
   )
 
@@ -357,7 +357,7 @@
     (is (check
          dom
          [:div {:class "with-elements item"}
-          [:component {:twin-template ""
+          [:component {:template ""
                        :width 1.5
                        :relative-id :content
                        :item-id fred-id
@@ -366,7 +366,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :twin-template '("" :label)
+                          :template '("" :label)
                           :relative-id [id1 :virtual-label]
                           :get-action-data
                           [composed-get-action-data
@@ -376,12 +376,12 @@
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
-                         :twin-template ""
+                         :template ""
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :twin-template '("" :label)
+                          :template '("" :label)
                           :relative-id [id2 :virtual-label]
                           :get-action-data
                           [composed-get-action-data
@@ -391,7 +391,7 @@
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
-                         :twin-template ""
+                         :template ""
                          :relative-id id2}]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store fred-id] (add-entity (new-element-store) nil
@@ -418,7 +418,7 @@
     (is (check
          dom
          [:div {:class "with-elements item"}
-          [:component {:twin-template ""
+          [:component {:template ""
                        :width 1.5
                        :relative-id :content
                        :item-id fred-id
@@ -427,7 +427,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :twin-template '("" :label)
+             [:component {:width 0.375, :template '("" :label)
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1]]
@@ -436,13 +436,13 @@
                           :excluded-element-ids [id-tag1]
                           :relative-id id-label1}]]
             [:component {:width 1.03125
-                         :twin-template '("" ("one" :label))
+                         :template '("" ("one" :label))
                          :excluded-element-ids [id-label1]
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
-             [:component {:width 0.375, :twin-template '("" :label)
+             [:component {:width 0.375, :template '("" :label)
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id2]]
@@ -451,7 +451,7 @@
                           :excluded-element-ids [id-tag2]
                           :relative-id id-label2}]]
             [:component {:width 1.03125
-                         :twin-template '("" ("two" :label))
+                         :template '("" ("two" :label))
                          :excluded-element-ids [id-label2]
                          :relative-id id2}]]]])))
   ;; Test an item with four elements, with label sharing among them.
@@ -500,7 +500,7 @@
     (is (check
          dom
          [:div {:class "with-elements item"}
-          [:component {:twin-template ""
+          [:component {:template ""
                        :width 1.5
                        :relative-id :content
                        :item-id fred-id
@@ -509,7 +509,7 @@
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :twin-template '("" :label)
+                          :template '("" :label)
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id0]]
@@ -518,13 +518,13 @@
                           :excluded-element-ids [id-tag0]
                           :relative-id id-label0}]]
             [:component {:width 1.03125
-                         :twin-template '("" ("zero" :label))
+                         :template '("" ("zero" :label))
                          :excluded-element-ids [id-label0]
                          :relative-id id0}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
-                          :twin-template '("" :label)
+                          :template '("" :label)
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1 id2]]
@@ -533,7 +533,7 @@
                           :excluded-element-ids [id-tag1both]
                           :relative-id id-label1both}]]
             [:component {:width 1.03125
-                         :twin-template '("" ("both" :label))
+                         :template '("" ("both" :label))
                          :relative-id :virtual
                          :adjacent-id id1
                          :direction :after
@@ -544,7 +544,7 @@
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :twin-template '("" :label)
+                           :template '("" :label)
                            :get-action-data
                            [composed-get-action-data
                             [get-item-or-exemplar-action-data-for-ids [id1]]
@@ -553,14 +553,14 @@
                            :excluded-element-ids [id-tag1one]
                            :relative-id id-label1one}]]]
             [:component {:width 1.03125
-                         :twin-template '("" ("both" :label) ("one" :label))
+                         :template '("" ("both" :label) ("one" :label))
                          :excluded-element-ids [id-label1both id-label1one]
                          :relative-id id1}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent bottom-border"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
-                           :twin-template '("" :label)
+                           :template '("" :label)
                            :get-action-data
                            [composed-get-action-data
                             [get-item-or-exemplar-action-data-for-ids [id2]]
@@ -570,13 +570,13 @@
                            :relative-id id-label2two}]]]
             [:div {:class "horizontal-value-last"}
              [:component {:width 1.03125
-                          :twin-template '("" ("both" :label) ("two" :label))
+                          :template '("" ("both" :label) ("two" :label))
                           :excluded-element-ids [id-label2both id-label2two]
                           :relative-id id2}]]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
-                          :twin-template '("" :label)
+                          :template '("" :label)
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
                           :get-action-data
@@ -587,7 +587,7 @@
                           :render-dom render-virtual-DOM
                           :class "label"}]]
             [:component {:width 1.03125
-                         :twin-template ""
+                         :template ""
                          :relative-id id3}]]]]))))
 
 (deftest render-virtual-DOM-test

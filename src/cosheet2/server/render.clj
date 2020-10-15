@@ -233,11 +233,12 @@
 ;;;                 :width  A float, giving the width of this dom element
 ;;;                         compared to the minimum width for two column
 ;;;                         format.
-;;;         :twin-template  The template that the twins of this dom
-;;;                         must start out satisfying. For a virtual
-;;;                         dom, this is what it should start out as.
+;;;              :template  The template that elements in this position
+;;;                         must start out satisfying. For a regular DOM,
+;;;                         this means any twins it gets, while for a virtual
+;;;                         DOM, it means its new item.
 ;;;     :elements-template  Optional. Elements should use this as their
-;;;                         twin-template.
+;;;                         template.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before
@@ -250,7 +251,7 @@
   {            :width 1.5 ; A float, giving the width of this dom element
                           ; compared to the minimum width for two column
                           ; format.
-       :twin-template ""  ; The template that the twins of this dom
+            :template ""  ; The template that the twins of this dom
                           ; must start out satisfying.
    })
 

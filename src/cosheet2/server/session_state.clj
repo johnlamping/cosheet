@@ -157,15 +157,19 @@
       (read-csv-reader reader name))
     (catch java.io.FileNotFoundException e nil)))
 
+(defn update-add-session-temporary-element
+  [immutable-store]
+  (add-entity immutable-store nil
+              '(:root-temporary
+                (anything :batch-selector :selector))))
+
 (defn add-session-temporary-element!
   "Add a session temporary element to the store, and return its id."
   [store]
   (store-update-control-return!
    store
    (fn [immutable-store]
-     (let [[store id] (add-entity immutable-store nil
-                                  '(:root-temporary
-                                    (anything :batch-selector :selector)))]
+     (let [[store id] (update-add-session-temporary-element immutable-store)]
        [(-> store
             (declare-temporary-id id)
             (update-equivalent-undo-point true))

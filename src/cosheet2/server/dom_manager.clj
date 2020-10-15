@@ -304,7 +304,7 @@
                                                 (old-id->subcomponent %))
                                          (keys id->subcomponent))]
         (when (not (:dom-version component-data))
-          (println "!!! Bad component data" component-data))
+          (println "!!! Bad component data" (into {} component-data)))
         (-> component-data
             (assoc :dom dom
                    :id->subcomponent id->subcomponent
@@ -517,15 +517,28 @@
               (map (partial adjust-subdom-for-client client-id)
                    (rest (rest dom))))))))
 
+(defn component-is-monitored?
+  "Return true if the component targets one of the monitored ids."
+  [component-atom monitored-ids]
+  (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
+    (when-let [target (or item-id relative-id)]
+      (some #{target} monitored-ids))))
+
 (defn get-monitored-client-id
-  "If the component's target is one of the monitored ids, return the
-  client id of the component."
+  "If the component's target is one of the monitored ids, or the
+  content of one of them, return the client id of the component."
   [component-atom monitored-ids]
   (when monitored-ids
-    (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
-      (when-let [target (or item-id relative-id)]
-        (when (some #{target} monitored-ids)
-          (component->client-id component-atom))))))
+    (let [{:keys [ relative-id]} (:dom-specification @component-atom)]
+      (when (if (= relative-id :content)
+              (component-is-monitored?
+               (:containing-component @component-atom) monitored-ids)
+              (component-is-monitored? component-atom monitored-ids))
+        (component->client-id component-atom)))))
+
+(defn longer-string
+  [s1 s2]
+  (if (>= (count s1) (count s2)) s1 s2))
 
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
@@ -547,8 +560,9 @@
          (let [[component & remaining-components] components
                dom (prepare-dom-for-client component)]
            (recur (if dom (conj response dom) response)
-                  (or monitored-client-id
-                      (get-monitored-client-id component monitored-ids ))
+                  (longer-string
+                   monitored-client-id
+                   (get-monitored-client-id component monitored-ids))
                   (max highest-version
                        (if dom (:version (dom-attributes dom)) 0))
                   remaining-components)))))))

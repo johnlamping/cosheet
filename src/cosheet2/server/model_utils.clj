@@ -240,6 +240,22 @@
                                    (description->entity adjacent-id store)
                                    position use-bigger)))
 
+(defn create-possible-selector-elements
+  "Create elements, specializing the template as appropriate, depending on
+   whether each subject is a selector. Return the new ids and the updated
+   store."
+  [template subjects adjacents position use-bigger store]
+  (let [[specialized-template store] (specialize-generic template store) 
+        flattened-template (flatten-nested-content specialized-template)]
+    (thread-map
+     (fn [[subject adjacent] store]
+       (let [[store id] (create-selector-or-non-selector-element
+                         flattened-template
+                         subject adjacent position use-bigger store)]
+         [id store]))
+     (map vector subjects adjacents)
+     store)))
+
 ;;; Creating new tabs and tables.
 ;;; TODO: The heading for a table should be :category, not :label
 

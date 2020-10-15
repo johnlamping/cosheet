@@ -27,7 +27,8 @@
              [dom-manager :refer [new-dom-manager add-root-dom]]
              [actions :refer :all]
              [model-utils :refer [entity->canonical-semantic
-                                  semantic-to-list selector?]])
+                                  semantic-to-list selector?]]
+             [session-state :refer [update-add-session-temporary-element]])
             ; :reload
             ))
 
@@ -45,21 +46,23 @@
                 (~o2 :order :non-semantic)
                 ("male" (~o1 :order :non-semantic))
                 (39 (~o3 :order :non-semantic)
-                    ("age" :tag)
+                    ("age" :label)
                     ("doubtful" "confidence"))
                 ("married" (~o2 :order :non-semantic))
                 (45 (~o4 :order :non-semantic)
-                    ("age" :tag))))
+                    ("age" :label))))
 (def jane-list `("Jane" (~o1 :order :non-semantic)
                  (:selector :non-semantic)
                  ("female" (~o2 :order :non-semantic))
                  (45 (~o3 :order :non-semantic)
-                     ("age" :tag))))
+                     ("age" :label))))
 (def t1 (add-entity (new-element-store) nil joe-list))
 (def joe-id (second t1))
 (def t2 (add-entity (first t1) nil jane-list))
-(def store (first t2))
 (def jane-id (second t2))
+(def t3 (update-add-session-temporary-element (first t2)))
+(def temporary-id (first t3))
+(def store (first t3))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
@@ -70,6 +73,8 @@
 (def jane-female (first (matching-elements "female" jane)))
 (def jane-age (first (matching-elements 45 jane)))
 (def jane-age-tag (first (matching-elements "age" jane-age)))
+
+(def session-state {:session-temporary-id temporary-id})
 
 (deftest selected-test
   (let [client-id1 "root_1"
@@ -117,17 +122,43 @@
 
 (comment
   (deftest do-add-element-test
-    (let [result (do-add-element
-                  store
-                  {:referent (item-referent jane-age)
-                   :target-key ["jane-age"]})
+    (let [store (update-selected store temporary-id "old selection")
+          result (do-add-element store
+                                 {:target-ids [(:item-id jane-age)]
+                                  :session-state session-state})
           new-store (:store result)]
-      (is (check (item->canonical-semantic
-                  (to-list (description->entity (:item-id jane-age) new-store)))
-                 (canonicalize-list '(45 ("age" :tag) anything))))
-      (is (check (:select result)
-                 [["jane-age" (any)] [["jane-age"]]]))))
+      (println "!!!" result)
+      (let [new-age (description->entity (:item-id jane-age) new-store)]
+        (is (check (entity->canonical-semantic new-age)
+                   (canonicalize-list '(45 ("age" :label) anything))))
+        (let [new-element (first (matching-elements 'anything new-age))]
+          (println "???" new-element)
+          (is (check (dissoc result :store)
+                     {:select-store-ids [(:item-id new-element)]
+                      :if-selected ["old selection"]})))))))
 
+(deftest do-add-element-test
+  (let [store (update-selected store temporary-id "old selection")
+        result (do-add-element store
+                               {:target-ids [(:item-id joe-age)
+                                             (:item-id jane-age)]
+                                :session-state session-state
+                                :elements-template '(anything 5)})
+        new-store (:store result)]
+    (let [new-jane-age (description->entity (:item-id jane-age) new-store)
+          new-joe-age (description->entity (:item-id joe-age) new-store)]
+      (is (check (entity->canonical-semantic new-joe-age)
+                 (canonicalize-list '(45 ("age" :label) ("" 5)))))
+      (is (check (entity->canonical-semantic new-jane-age)
+                 (canonicalize-list '(45 ("age" :label) (anything 5)))))
+      (let [new-joe-element (first (matching-elements "" new-joe-age))
+            new-jane-element (first (matching-elements 'anything new-jane-age))]
+        (is (check (dissoc result :store)
+                   {:select-store-ids [(:item-id new-joe-element)
+                                       (:item-id new-jane-element)]
+                    :if-selected ["old selection"]}))))))
+
+(comment
   (deftest do-add-label-test
     (let [result (do-add-label
                   store
@@ -136,7 +167,7 @@
           new-store (:store result)]
       (is (check (item->canonical-semantic
                   (to-list (description->entity (:item-id jane-age) new-store)))
-                 (canonicalize-list '(45 ("age" :tag) (anything :tag)))))
+                 (canonicalize-list '(45 ("age" :label) (anything :label)))))
       (is (check (:select result)
                  [[(any)] [["jane-age"]]]))))
 
@@ -144,15 +175,15 @@
     (let [result (do-add-twin
                   store
                   {:referent (item-referent jane-age)
-                   :template '(anything ("age" :tag))
+                   :template '(anything ("age" :label))
                    :target-key ["jane" "jane-age"]})
           new-store (:store result)]
       (is (check (item->canonical-semantic
                   (to-list (description->entity (:item-id jane) new-store)))
                  (canonicalize-list '("Jane"
                                       "female"
-                                      (45 ("age" :tag))
-                                      (anything ("age" :tag))))))
+                                      (45 ("age" :label))
+                                      (anything ("age" :label))))))
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -160,7 +191,7 @@
     (let [result (do-add-virtual
                   store
                   {:referent
-                   (virtual-referent '(anything ("age" :tag))
+                   (virtual-referent '(anything ("age" :label))
                                      (union-referent [(item-referent jane)])
                                      (item-referent jane) :position :after)
                    :select-pattern ["jane" [:pattern]]
@@ -169,8 +200,8 @@
                   (to-list (description->entity (:item-id jane) (:store result))))
                  (canonicalize-list '("Jane"
                                       "female"
-                                      (45 ("age" :tag))
-                                      (anything ("age" :tag))))))
+                                      (45 ("age" :label))
+                                      (anything ("age" :label))))))
       (is (check (:select result)
                  [["jane" (any)] [["jane" "jane-age"]]]))))
 
@@ -201,7 +232,7 @@
     ;; Set up a store with some headers to test the special cases.
     (let [[store column1-id] (add-entity store nil
                                          `(~'anything
-                                           ("name" :tag (~o1 :order :non-semantic))
+                                           ("name" :label (~o1 :order :non-semantic))
                                            (~o1 :order :non-semantic)
                                            (:column :non-semantic)))
           column1 (description->entity column1-id store)
@@ -258,21 +289,21 @@
                      :from "age" :to "oldness"})]
       (is (= (item->canonical-semantic
               (description->entity (:item-id joe-age-tag) modified))
-             (canonicalize-list '("oldness" :tag))))
+             (canonicalize-list '("oldness" :label))))
       (is (= (item->canonical-semantic
               (description->entity (:item-id jane-age-tag) modified))
-             (canonicalize-list '("oldness" :tag)))))
+             (canonicalize-list '("oldness" :label)))))
     ;; Try creating new content
     (let [result (do-set-content
                   store
                   {:referent (virtual-referent
-                              '(anything :tag) (item-referent joe-male)
+                              '(anything :label) (item-referent joe-male)
                               (item-referent joe-male) :position :after)
                    :target-key ["joe-male"]
                    :from "" :to "gender"})]
       (is (= (immutable-semantic-to-list
               (description->entity (:item-id joe-male) result))
-             ["male" ["gender" :tag]]))))
+             ["male" ["gender" :label]]))))
 
   (deftest do-expand-test
     (is (check (do-expand store
@@ -346,16 +377,16 @@
         (is (check (item->canonical-semantic
                     (description->entity (:item-id jane) new-store))
                    (canonicalize-list '("Jane" "female"
-                                        (45 ("age" :tag))
+                                        (45 ("age" :label))
                                         anything))))
         (is (check (item->canonical-semantic
                     (description->entity (:item-id joe) new-store))
                    (canonicalize-list '("Joe"
                                         "male" 
-                                        (39 ("age" :tag)
+                                        (39 ("age" :label)
                                             ("doubtful" "confidence"))
                                         "married"
-                                        (45 ("age" :tag))
+                                        (45 ("age" :label))
                                         ""))))
         (is (= (immutable-semantic-to-list
                 (description->entity new-id new-store))

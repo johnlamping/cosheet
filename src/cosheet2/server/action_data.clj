@@ -19,7 +19,7 @@
                                   pattern-to-query
                                   specialize-generic
                                   flatten-nested-content
-                                  create-selector-or-non-selector-element]])))
+                                  create-possible-selector-elements]])))
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
@@ -136,22 +136,6 @@
   cosheet2.server.action_data$get_item_or_exemplar_action_data_for_ids
   [v ^java.io.Writer w]
   (.write w "ids-AD"))
-
-(defn create-possible-selector-elements
-  "Create elements, specializing the template as appropriate, depending on
-   whether each subject is a selector. Return the new ids and the updated
-   store."
-  [template subjects adjacents position use-bigger store]
-  (let [[specialized-template store] (specialize-generic template store) 
-        flattened-template (flatten-nested-content specialized-template)]
-    (thread-map
-     (fn [[subject adjacent] store]
-       (let [[store id] (create-selector-or-non-selector-element
-                         flattened-template
-                         subject adjacent position use-bigger store)]
-         [id store]))
-     (map vector subjects adjacents)
-     store)))
 
 (defn get-virtual-action-data
   "Create the specified virtual items.

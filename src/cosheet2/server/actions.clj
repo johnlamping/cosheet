@@ -26,7 +26,8 @@
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data component->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
-                         semantic-to-list entity->canonical-semantic]]
+                         semantic-to-list entity->canonical-semantic
+                         create-possible-selector-elements]]
     [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -102,6 +103,21 @@
          (update-set-content store id from to))
        store target-ids))))
 
+(defn add-select-store-ids-request
+  [response ids session-state]
+  (let [temporary-id (:session-temporary-id session-state)
+        response (if (satisfies? Store response) {:store response} response)
+        current-selection (get-selected (:store response) temporary-id)]
+    (cond-> (assoc response :select-store-ids ids)
+      current-selection (assoc :if-selected [current-selection]))))
+
+(defn do-add-element
+  [store {:keys [target-ids elements-template session-state]}]
+  (let [[ids store] (create-possible-selector-elements
+                     (or elements-template 'anything) target-ids target-ids
+                     :before false store)]
+    (add-select-store-ids-request store ids session-state)))
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -159,19 +175,6 @@
                  [(substitute-in-key select-pattern items)
                   [old-key]])))
       response))
-
-  (defn do-add-element
-    [store arguments]
-    (let [{:keys [select-pattern target-key]} arguments]
-      (when-let [referent (:referent arguments)]
-        (let [items (instantiate-referent referent store)
-              [added store] (create-possible-selector-elements
-                             'anything nil items items :after true store)]
-          (add-select-request
-           store [(first added)]
-           (or select-pattern
-               (conj (pop-content-from-key target-key) [:pattern]))
-           target-key)))))
 
   (defn do-add-label
     [store arguments]
@@ -406,7 +409,7 @@
   it wants to convey."
   [action]
   ({
-    ; :add-element do-add-element
+    :add-element do-add-element
     ; :add-label do-add-label
     ; :add-sibling do-add-virtual
     ; :add-row do-add-row
@@ -425,6 +428,7 @@
   "Do an action that applies to a DOM component, and whose
   interpretation depends on that component. We will call a contextual
   action handler with a map of the action data for the component,
+  plus :template and :elements-template from the spec,
   plus :client-id, :session-state, and any other arguments the client
   provided. In addition to information for the client, the handler can
   also specify a :batch-editing target."
@@ -446,7 +450,11 @@
                    (fn [store]
                      (let [action-data (client-id->action-data
                                         @manager client-id action-type store)
+                           spec (:dom-specification @(:component action-data))
+                           spec-info (select-keys
+                                      spec [:template :elements-template])
                            arguments (-> action-data
+                                         (into spec-info)
                                          (into client-args)
                                          (assoc :session-state session-state
                                                 :client-id client-id))
@@ -456,7 +464,6 @@
                            store (or (:store action-data) store)
                            store (update-equivalent-undo-point store false)
                            response (handler store arguments)]
-                       
                        (adjust-handler-response response store))))]
               (when (contains? result :batch-editing)
                 (map-state-reset! (:client-state session-state) :batch-editing
@@ -464,7 +471,7 @@
               (dissoc result :batch-editing)))))
 
 (defn request-selection-from-store
-    "Return a client request asking it to select the target saved in the
+   "Return a client request asking it to select the target saved in the
    temporary item of the store."
     [mutable-store old-store session-state]
     (let [store (current-store mutable-store)

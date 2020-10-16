@@ -125,6 +125,15 @@
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
+(defn do-add-twin
+  [store {:keys [target-ids template session-state]}]
+  (let [[ids store] (create-possible-selector-elements
+                     (or template 'anything)
+                     (map #(id->subject store %) target-ids)
+                     target-ids
+                     :after true store)]
+    (add-select-store-ids-request store ids session-state)))
+
 (defn do-delete 
   [store {:keys [target-ids]}]
   (assert (= (count target-ids) (count (distinct target-ids)))
@@ -192,36 +201,6 @@
                  [(substitute-in-key select-pattern items)
                   [old-key]])))
       response))
-
-  
-
-  (defn do-add-twin
-    [store arguments]
-    (let [{:keys [target-key]} arguments]
-      (when-let [referent (:referent arguments)]
-        (when-let [condition (:template arguments)]
-          (let [[items restrictions] (instantiate-referent-inheriting-restrictions
-                                      referent store)
-                subjects (map subject items)
-                [added store] (create-possible-selector-elements
-                               condition restrictions subjects items
-                               :after true store)
-                item-key (pop-content-from-key target-key)]
-            (add-select-request
-             store [(first added)]
-             (conj (pop item-key) [:pattern]) target-key))))))
-
-  (defn add-virtual [store target-key referent select-pattern]
-    (println "adding virtual"
-             (simplify-for-print [target-key referent select-pattern]))
-    (let [[items new-ids store] (instantiate-or-create-referent referent store)]
-      (add-select-request store (map #(description->entity % store) new-ids)
-                          select-pattern target-key)))
-
-  (defn do-add-virtual
-    [store arguments]
-    (let [{:keys [referent select-pattern target-key]} arguments]
-      (add-virtual store target-key referent select-pattern)))
 
   (defn do-add-row
     [store arguments]
@@ -385,7 +364,7 @@
   ({
     :add-element do-add-element
     :add-label do-add-label
-    ; :add-sibling do-add-virtual
+    :add-twin do-add-twin
     ; :add-row do-add-row
     ; :add-column do-add-column
     :delete do-delete

@@ -136,6 +136,33 @@
     (is (= (id->content new-store (:item-id name-header))
            "name"))))
 
+(deftest do-add-twin-test
+  (let [store (update-selected store temporary-id "old selection")
+        result (do-add-twin store
+                            {:target-ids [(:item-id joe-age)
+                                          (:item-id jane-age)]
+                             :session-state session-state
+                             :template '(anything 5)})
+        new-store (:store result)
+        new-jane (description->entity jane-id new-store)
+        new-joe (description->entity joe-id new-store)]
+    (is (check (entity->canonical-semantic new-joe)
+               (canonicalize-list
+                '("Joe" "male" "married"
+                  ("" 5)
+                  (45 ("age" :label))
+                  (39 ("age" :label) ("doubtful" "confidence"))))))
+    (is (check (entity->canonical-semantic new-jane)
+               (canonicalize-list '("Jane" "female"
+                                    (anything 5)
+                                    (45 ("age" :label))))))
+    (let [new-joe-element (first (matching-elements "" new-joe))
+          new-jane-element (first (matching-elements 'anything new-jane))]
+      (is (check (dissoc result :store)
+                 {:select-store-ids [(:item-id new-joe-element)
+                                     (:item-id new-jane-element)]
+                  :if-selected ["old selection"]})))))
+
 (deftest do-add-element-test
   (let [store (update-selected store temporary-id "old selection")
         result (do-add-element store
@@ -185,10 +212,10 @@
         new-joe (description->entity joe-id new-store)]
     (is (check (entity->canonical-semantic new-joe)
                (canonicalize-list
-                `("Joe" "male" "married"
+                '("Joe" "male" "married"
                   (39 ("age" :label) ("doubtful" "confidence"))))))
     (is (check (entity->canonical-semantic new-jane)
-               (canonicalize-list`("Jane" "female")))))
+               (canonicalize-list '("Jane" "female")))))
   ;; Test that deleting the only element of a column does nothing.
   (let [[store column1-id] (add-entity
                             store nil

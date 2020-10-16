@@ -118,24 +118,23 @@
     (is (= (id->content updated (:item-id joe-age))
            ""))
     (is (= (id->content updated (:item-id jane-age))
-           'anything))))
-
-(comment
-  (deftest do-add-element-test
-    (let [store (update-selected store temporary-id "old selection")
-          result (do-add-element store
-                                 {:target-ids [(:item-id jane-age)]
-                                  :session-state session-state})
-          new-store (:store result)]
-      (println "!!!" result)
-      (let [new-age (description->entity (:item-id jane-age) new-store)]
-        (is (check (entity->canonical-semantic new-age)
-                   (canonicalize-list '(45 ("age" :label) anything))))
-        (let [new-element (first (matching-elements 'anything new-age))]
-          (println "???" new-element)
-          (is (check (dissoc result :store)
-                     {:select-store-ids [(:item-id new-element)]
-                      :if-selected ["old selection"]})))))))
+           'anything)))
+  ;; Test that setting a column to 'anything does nothing.
+  (let [[store column1-id] (add-entity
+                            store nil
+                            `(~'anything
+                              ("name" :label (~o1 :order :non-semantic))
+                              (~o1 :order :non-semantic)
+                              (:column :non-semantic)
+                              (:selector :non-semantic)))
+        column1 (description->entity column1-id store)
+        name-header (first (matching-elements "name" column1))
+        new-store (do-set-content store
+                                  {:target-ids [(:item-id name-header)]
+                                   :from "name"
+                                   :to ""})]
+    (is (= (id->content new-store (:item-id name-header))
+           "name"))))
 
 (deftest do-add-element-test
   (let [store (update-selected store temporary-id "old selection")
@@ -144,19 +143,19 @@
                                              (:item-id jane-age)]
                                 :session-state session-state
                                 :elements-template '(anything 5)})
-        new-store (:store result)]
-    (let [new-jane-age (description->entity (:item-id jane-age) new-store)
-          new-joe-age (description->entity (:item-id joe-age) new-store)]
-      (is (check (entity->canonical-semantic new-joe-age)
-                 (canonicalize-list '(45 ("age" :label) ("" 5)))))
-      (is (check (entity->canonical-semantic new-jane-age)
-                 (canonicalize-list '(45 ("age" :label) (anything 5)))))
-      (let [new-joe-element (first (matching-elements "" new-joe-age))
-            new-jane-element (first (matching-elements 'anything new-jane-age))]
-        (is (check (dissoc result :store)
-                   {:select-store-ids [(:item-id new-joe-element)
-                                       (:item-id new-jane-element)]
-                    :if-selected ["old selection"]}))))))
+        new-store (:store result)
+        new-jane-age (description->entity (:item-id jane-age) new-store)
+        new-joe-age (description->entity (:item-id joe-age) new-store)]
+    (is (check (entity->canonical-semantic new-joe-age)
+               (canonicalize-list '(45 ("age" :label) ("" 5)))))
+    (is (check (entity->canonical-semantic new-jane-age)
+               (canonicalize-list '(45 ("age" :label) (anything 5)))))
+    (let [new-joe-element (first (matching-elements "" new-joe-age))
+          new-jane-element (first (matching-elements 'anything new-jane-age))]
+      (is (check (dissoc result :store)
+                 {:select-store-ids [(:item-id new-joe-element)
+                                     (:item-id new-jane-element)]
+                  :if-selected ["old selection"]})))))
 
 (deftest do-add-label-test
   (let [store (update-selected store temporary-id "old selection")
@@ -164,32 +163,48 @@
                                {:target-ids [(:item-id joe-age)
                                              (:item-id jane-age)]
                                 :session-state session-state})
-        new-store (:store result)]
-    (let [new-jane-age (description->entity (:item-id jane-age) new-store)
-          new-joe-age (description->entity (:item-id joe-age) new-store)]
-      (is (check (entity->canonical-semantic new-joe-age)
-                 (canonicalize-list '(45 ("age" :label) ("" :label)))))
-      (is (check (entity->canonical-semantic new-jane-age)
-                 (canonicalize-list '(45 ("age" :label) (anything :label)))))
-      (let [new-joe-element (first (matching-elements "" new-joe-age))
-            new-jane-element (first (matching-elements 'anything new-jane-age))]
-        (is (check (dissoc result :store)
-                   {:select-store-ids [(:item-id new-joe-element)
-                                       (:item-id new-jane-element)]
-                    :if-selected ["old selection"]}))))))
+        new-store (:store result)
+        new-jane-age (description->entity (:item-id jane-age) new-store)
+        new-joe-age (description->entity (:item-id joe-age) new-store)]
+    (is (check (entity->canonical-semantic new-joe-age)
+               (canonicalize-list '(45 ("age" :label) ("" :label)))))
+    (is (check (entity->canonical-semantic new-jane-age)
+               (canonicalize-list '(45 ("age" :label) (anything :label)))))
+    (let [new-joe-element (first (matching-elements "" new-joe-age))
+          new-jane-element (first (matching-elements 'anything new-jane-age))]
+      (is (check (dissoc result :store)
+                 {:select-store-ids [(:item-id new-joe-element)
+                                     (:item-id new-jane-element)]
+                  :if-selected ["old selection"]})))))
+
+(deftest do-delete-test
+  (let [new-store (do-delete store
+                             {:target-ids [(:item-id joe-age)
+                                           (:item-id jane-age)]})
+        new-jane (description->entity jane-id new-store)
+        new-joe (description->entity joe-id new-store)]
+    (is (check (entity->canonical-semantic new-joe)
+               (canonicalize-list
+                `("Joe" "male" "married"
+                  (39 ("age" :label) ("doubtful" "confidence"))))))
+    (is (check (entity->canonical-semantic new-jane)
+               (canonicalize-list`("Jane" "female")))))
+  ;; Test that deleting the only element of a column does nothing.
+  (let [[store column1-id] (add-entity
+                            store nil
+                            `(~'anything
+                              ("name" :label (~o1 :order :non-semantic))
+                              (~o1 :order :non-semantic)
+                              (:column :non-semantic)))
+        column1 (description->entity column1-id store)
+        name-header (first (matching-elements "name" column1))
+        new-store (do-delete store
+                             {:target-ids [joe-id
+                                           (:item-id name-header)]})]
+    (is (not (id-valid? new-store joe-id)))
+    (is (id-valid? new-store (:item-id name-header)))))
 
 (comment
-  (deftest do-add-label-test
-    (let [result (do-add-label
-                  store
-                  {:referent (item-referent jane-age)
-                   :target-key ["jane-age"]})
-          new-store (:store result)]
-      (is (check (item->canonical-semantic
-                  (to-list (description->entity (:item-id jane-age) new-store)))
-                 (canonicalize-list '(45 ("age" :label) (anything :label)))))
-      (is (check (:select result)
-                 [[(any)] [["jane-age"]]]))))
 
   (deftest do-add-twin-test
     (let [result (do-add-twin
@@ -238,92 +253,6 @@
         (is (= (count new-rows) 1)))
       (is (check (:select result)
                  [["x" (any) (item-referent joe)] [["jane" "jane-age"]]])))  )
-
-  (deftest do-delete-test
-    (let [new-store (do-delete
-                     store
-                     {:referent (item-referent jane-age)
-                      :target-key "jane"})]
-      (is (check (canonicalize-list
-                  (to-list (description->entity jane-id new-store)))
-                 (canonicalize-list `("Jane" (~o1 :order :non-semantic)
-                                      (:selector :non-semantic)
-                                      ("female" (~o2 :order :non-semantic)))))))
-    ;; Set up a store with some headers to test the special cases.
-    (let [[store column1-id] (add-entity store nil
-                                         `(~'anything
-                                           ("name" :label (~o1 :order :non-semantic))
-                                           (~o1 :order :non-semantic)
-                                           (:column :non-semantic)))
-          column1 (description->entity column1-id store)
-          name-header (first (matching-elements "name" column1))]
-      ;; Test delete of the only element of a header.
-      (let [new-store (do-delete
-                       store
-                       {:referent (item-referent column1)
-                        :target-key "name"})]
-        (is (not (id-valid? new-store column1-id))))
-      ;; Test when it is not in header position.
-      (let [new-store (do-delete
-                       store
-                       {:referent (union-referent
-                                   [(item-referent joe)
-                                    (item-referent name-header)])
-                        :target-key "name"})]
-        (is (id-valid? new-store column1-id)))))
-
-  (deftest do-set-content-test
-    (is (= (content
-            (description->entity
-             (:item-id joe-age)
-             (do-set-content store
-                             {:referent (item-referent joe-age)
-                              :target-key "joe"
-                              :from "45" :to "46"})))
-           46))
-    ;; Test making the new content be 'anything.
-    (let [[store id] (add-entity store joe-id '(:selector :non-semantic))]
-      (is (= (content
-              (description->entity
-               (:item-id joe-age)
-               (do-set-content store
-                               {:referent (item-referent joe-age)
-                                :target-key "joe"
-                                :from "45" :to ""})))
-             'anything)))
-    ;; Test doing nothing when the old doesn't match.
-    (is (= (content
-            (description->entity
-             joe-id (do-set-content store
-                                    {:referent (item-referent joe)
-                                     :target-key "joe"
-                                     :from "Wrong" :to "Jim"})))
-           "Joe"))
-    ;; Now, try calling it when there is a parallel referent.
-    (let [modified (do-set-content
-                    store
-                    {:referent (union-referent
-                                [(item-referent joe-age-tag)
-                                 (item-referent jane-age-tag)])
-                     :target-key "both"
-                     :from "age" :to "oldness"})]
-      (is (= (item->canonical-semantic
-              (description->entity (:item-id joe-age-tag) modified))
-             (canonicalize-list '("oldness" :label))))
-      (is (= (item->canonical-semantic
-              (description->entity (:item-id jane-age-tag) modified))
-             (canonicalize-list '("oldness" :label)))))
-    ;; Try creating new content
-    (let [result (do-set-content
-                  store
-                  {:referent (virtual-referent
-                              '(anything :label) (item-referent joe-male)
-                              (item-referent joe-male) :position :after)
-                   :target-key ["joe-male"]
-                   :from "" :to "gender"})]
-      (is (= (immutable-semantic-to-list
-              (description->entity (:item-id joe-male) result))
-             ["male" ["gender" :label]]))))
 
   (deftest do-expand-test
     (is (check (do-expand store

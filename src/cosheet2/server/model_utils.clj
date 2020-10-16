@@ -338,7 +338,7 @@
                           (semantic-elements (first semantic))))))))
 
 (defn abandon-problem-changes
-  "Given an old store, a new store, both immutable, and an entity where
+  "Given an old store, a new store, both immutable, and an id where
    changes were made, return the new store if the changes don't have any
    problems, otherwise the old store."
   [old-store new-store id]

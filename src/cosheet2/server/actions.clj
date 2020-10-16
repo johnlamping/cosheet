@@ -125,6 +125,16 @@
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
+(defn do-delete 
+  [store {:keys [target-ids]}]
+  (assert (= (count target-ids) (count (distinct target-ids)))
+          target-ids)
+  (reduce (fn [store id]
+            (let [subject-id (id->subject store id) 
+                  modified (remove-entity-by-id store id)]
+              (abandon-problem-changes store modified subject-id)))
+          store target-ids))
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -221,26 +231,6 @@
        store (:target-key arguments)
        (virtual-referent (:template row) nil (:referent row))
        (conj (vec (butlast (:key row))) [:pattern] (:referent column)))))
-
-  (defn update-delete
-    "Given an item, remove it and all its elements from the store"
-    [store item]
-    (let [modified (remove-entity-by-id store (:item-id item))]
-      (abandon-problem-changes store modified (subject item))))
-
-  (defn do-delete
-    "Remove item(s)." 
-    [store arguments]
-    (when-let [to-delete (:referent arguments)]
-      (let [;; distinct should not be necessary, but is a
-            ;; safety measure to make sure we don't delete twice
-            items (distinct (instantiate-referent to-delete store))]
-        (println "total items:" (count items))
-        (if (:clear-only arguments)
-          (reduce (fn [store item]
-                    (update-set-content store item (content item) ""))
-                  store items)
-          (reduce update-delete store items)))))
 
   (defn do-expand
     [store arguments]
@@ -398,7 +388,7 @@
     ; :add-sibling do-add-virtual
     ; :add-row do-add-row
     ; :add-column do-add-column
-    ; :delete do-delete
+    :delete do-delete
     ; :delete-row do-delete-row
     ; :delete-column do-delete-column
     :set-content do-set-content

@@ -32,6 +32,7 @@
                                    transform-specification-for-elements]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
+                                  get-content-only-action-data
                                   get-virtual-action-data
                                   compose-action-data-getter]])))
 (comment
@@ -596,17 +597,24 @@
   (item-content-DOM (description->entity item-id store)
                     (if class {:class class} {})))
 
+(defmethod print-method
+  cosheet2.server.item_render$render_content_only_DOM
+  [v ^java.io.Writer w]
+  (.write w "content-DOM"))
+
 (defn item-content-and-non-label-elements-DOM
   "Make a dom for a content and a group of non-label elements."
   [item elements specification]
-  (let [content-dom (make-component
-                     (cond-> (-> (select-keys specification
-                                              [:template :class :width])
-                                 (assoc :relative-id :content
-                                        :item-id (:item-id item)
-                                        :render-dom render-content-only-DOM))
-                       (has-keyword? item :label)
-                       (into-attributes {:class "label"})))]
+  (let [content-dom
+        (make-component
+         (cond-> (-> (select-keys specification
+                                  [:template :class :width])
+                     (assoc :relative-id :content
+                            :item-id (:item-id item)
+                            :render-dom render-content-only-DOM
+                            :get-action-data get-content-only-action-data))
+           (has-keyword? item :label)
+           (into-attributes {:class "label"})))]
       (if (empty? elements)
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)

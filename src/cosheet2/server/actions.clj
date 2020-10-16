@@ -111,6 +111,15 @@
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
 
+(defn do-add-twin
+  [store {:keys [target-ids template session-state]}]
+  (let [[ids store] (create-possible-selector-elements
+                     (or template 'anything)
+                     (map #(id->subject store %) target-ids)
+                     target-ids
+                     :after true store)]
+    (add-select-store-ids-request store ids session-state)))
+
 (defn do-add-element
   [store {:keys [target-ids elements-template session-state]}]
   (let [[ids store] (create-possible-selector-elements
@@ -123,15 +132,6 @@
   (let [[ids store] (create-possible-selector-elements
                      '(anything :label) target-ids target-ids
                      :before false store)]
-    (add-select-store-ids-request store ids session-state)))
-
-(defn do-add-twin
-  [store {:keys [target-ids template session-state]}]
-  (let [[ids store] (create-possible-selector-elements
-                     (or template 'anything)
-                     (map #(id->subject store %) target-ids)
-                     target-ids
-                     :after true store)]
     (add-select-store-ids-request store ids session-state)))
 
 (defn do-delete 

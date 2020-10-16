@@ -158,6 +158,26 @@
                                        (:item-id new-jane-element)]
                     :if-selected ["old selection"]}))))))
 
+(deftest do-add-label-test
+  (let [store (update-selected store temporary-id "old selection")
+        result (do-add-label store
+                               {:target-ids [(:item-id joe-age)
+                                             (:item-id jane-age)]
+                                :session-state session-state})
+        new-store (:store result)]
+    (let [new-jane-age (description->entity (:item-id jane-age) new-store)
+          new-joe-age (description->entity (:item-id joe-age) new-store)]
+      (is (check (entity->canonical-semantic new-joe-age)
+                 (canonicalize-list '(45 ("age" :label) ("" :label)))))
+      (is (check (entity->canonical-semantic new-jane-age)
+                 (canonicalize-list '(45 ("age" :label) (anything :label)))))
+      (let [new-joe-element (first (matching-elements "" new-joe-age))
+            new-jane-element (first (matching-elements 'anything new-jane-age))]
+        (is (check (dissoc result :store)
+                   {:select-store-ids [(:item-id new-joe-element)
+                                       (:item-id new-jane-element)]
+                    :if-selected ["old selection"]}))))))
+
 (comment
   (deftest do-add-label-test
     (let [result (do-add-label

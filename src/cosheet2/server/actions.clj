@@ -118,6 +118,13 @@
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
+(defn do-add-label
+  [store {:keys [target-ids session-state]}]
+  (let [[ids store] (create-possible-selector-elements
+                     '(anything :label) target-ids target-ids
+                     :before false store)]
+    (add-select-store-ids-request store ids session-state)))
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -176,30 +183,7 @@
                   [old-key]])))
       response))
 
-  (defn do-add-label
-    [store arguments]
-    (let [{:keys [select-pattern target-key]} arguments]
-      (when-let [referent (:referent arguments)]
-        (let [items (instantiate-referent referent store)
-              sample-item (first items)
-              is-tag (when sample-item
-                       (seq (matching-elements :tag sample-item)))]
-          (when (not is-tag)
-            (let [[added store] (create-possible-selector-elements
-                                 '(anything :tag) nil items items
-                                 :after true store)]
-              (add-select-request
-               store [(first added)]
-               (or select-pattern
-                   ;; Labels don't include their item in their key,
-                   ;; so back up to just before the target to make the
-                   ;; pattern.
-                   (let [item-back-in-key
-                         (if (= (last target-key) :content) 2 1)]
-                     (conj (subvec
-                            target-key 0 (- (count target-key) item-back-in-key))
-                           [:pattern])))
-               target-key)))))))
+  
 
   (defn do-add-twin
     [store arguments]
@@ -410,7 +394,7 @@
   [action]
   ({
     :add-element do-add-element
-    ; :add-label do-add-label
+    :add-label do-add-label
     ; :add-sibling do-add-virtual
     ; :add-row do-add-row
     ; :add-column do-add-column

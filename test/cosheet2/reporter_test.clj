@@ -28,7 +28,7 @@
                 added1 :key2 3 [:a :b] dec)
         removed0 (update-attendee added2 :key3 Double/MAX_VALUE [] nil)
         removed1 (update-attendee removed0 :key1 Double/MAX_VALUE [] nil)
-        removed2 (update-attendee removed1 :key2 Double/MAX_VALUE [] nil)]
+        removed2 (update-attendee removed1 :key2 Double/MAX_VALUE [:foo] nil)]
     (is (check added1
            {:value invalid
             :priority 2

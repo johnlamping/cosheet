@@ -268,6 +268,8 @@
   priority or categories of an existing one."
   [data key priority categories callback]
   (let [[old-priority old-categories _ ] (get-in data [:attendees key])
+        ;; If there is no callback, we are not interested in any categories.
+        categories (when callback categories)
         priority (if callback priority Double/MAX_VALUE)
         old-priority (or old-priority Double/MAX_VALUE)
         dropped-categories (clojure.set/difference (set old-categories)

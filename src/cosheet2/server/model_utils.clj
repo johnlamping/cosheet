@@ -65,6 +65,10 @@
 ;;;  pattern:   a form of a query that can be saved in the store. It uses
 ;;;             'anything for wildcards, where a query would have
 ;;;             nil.
+;;; TODO: use "", rather than 'anything in patterns. That way, there is no
+;;;       need to check for selectors when setting a value. If the user
+;;;       needs to query for the empty string, they can enter "". To search
+;;;       for "", they enter """", etc.
 ;;;  template:  the list form for the semantic content of a new item.
 ;;;             It may have 'anything as they are allowed in items. But
 ;;;             since they are only allowed in selector items, they will

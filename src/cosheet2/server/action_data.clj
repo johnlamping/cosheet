@@ -32,7 +32,7 @@
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
   (println "Getting action data" getter)
-  (println "  from spec" specification)
+  (println "  from spec" (dissoc specification :reporter :id-R))
   (println "  containing AD" (dissoc containing-action-data :component))
   (let [store (or (:store containing-action-data) immutable-store)
         [fun extra-args] (if (vector? getter)

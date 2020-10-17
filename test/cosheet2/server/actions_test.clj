@@ -82,7 +82,7 @@
         store1 (update-selected store joe-id client-id1)
         recovered-id1 (get-selected store1 joe-id)
         ;; Now, try overwriting an existing id.
-        store2 (update-selected store joe-id client-id2)
+        store2 (update-selected store1 joe-id client-id2)
         recovered-id2 (get-selected store2 joe-id)] 
     (is (= client-id1 recovered-id1))
     (is (= client-id2 recovered-id2))))
@@ -231,6 +231,14 @@
     (is (not (id-valid? new-store joe-id)))
     (is (id-valid? new-store (:item-id name-header)))))
 
+(deftest do-selected-test
+  (let [store (update-selected store temporary-id "old selection")
+        new-store (do-selected store
+                               {:client-id "Larry"
+                                :session-state session-state})]
+    (is (= (get-selected new-store temporary-id)
+           "Larry"))))
+
 (comment
 
   (deftest do-add-twin-test
@@ -289,34 +297,6 @@
                {:store store
                 :open (str "foo?referent="
                            (referent->string (item-referent joe)))})))
-
-  (deftest do-selected-test
-    (let [queue (new-priority-task-queue 0)
-          manager-data (new-expression-manager-data queue)
-          mutable-store (new-mutable-store store queue)
-          tracker (new-dom-tracker manager-data)
-          client-state (new-state-map {:last-action nil
-                                       :selected-dom nil
-                                       :referent "Joe"}
-                                      queue)
-          session-state {:tracker tracker
-                         :store mutable-store
-                         :selector-interpretation :broad
-                         :url-path "Path"
-                         :client-state client-state}
-          attributes {:commands {:add-element nil}
-                      :target {:referent
-                               (union-referent [(item-referent jane)
-                                                (item-referent joe)])}}]
-      (let [tab-selected (do-selected store
-                                      {:special :tab
-                                       :referent true
-                                       :session-state session-state})]
-        (is (= tab-selected
-               {:store store
-                :set-url "Path?referent=T"}))
-        (is (= (state-map-get-current-value client-state :referent)
-               true)))))
 
   (deftest batch-edit-select-key-test
     (is (= (batch-edit-select-key

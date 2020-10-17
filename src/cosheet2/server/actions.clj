@@ -42,10 +42,10 @@
   ;; is not semantic.
   (let [client-id-keyword (keyword client-id)
         element-id (first (id-label->element-ids
-                           store subject :current-selection))]
-        (if element-id
-          (update-content store element-id client-id-keyword)
-          (first (add-entity store temporary-id
+                           store temporary-id :current-selection))]
+    (if element-id
+      (update-content store element-id client-id-keyword)
+      (first (add-entity store temporary-id
                              (list client-id-keyword :current-selection))))))
 
 (defn get-selected
@@ -144,6 +144,24 @@
               (abandon-problem-changes store modified subject-id)))
           store target-ids))
 
+;; TODO: This code should move to the special do-selected
+;; handler for tabs.
+(comment
+  (let [root-id (first target-ids)]
+        (do (map-state-reset! client-state :root-id root-id )
+            {:store store
+             :set-url (str (:url-path session-state)
+                           "?root=" (id->string root-id))})))
+
+(defn do-selected
+  [store {:keys [client-id session-state]}]
+  (let [client-state (:client-state session-state)
+        temporary-id (:session-temporary-id session-state)]
+    (when (not= client-id (get-selected store temporary-id))
+      (-> store
+          (update-selected temporary-id client-id)
+          (update-equivalent-undo-point true)))))
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -231,30 +249,6 @@
           {:store store
            :open (cond-> (str (:url-path session-state)
                               "?referent=" (referent->string referent)))}))))
-
-  (defn do-selected
-    [store {:keys [referent session-state target-key special] :as arguments}]
-    (let [client-state (:client-state session-state)
-          temporary-id (:session-temporary-id session-state)
-          temporary-item (description->entity temporary-id store)
-          key-changed (not= target-key (path-in-item temporary-item))
-          store (if key-changed
-                  (-> store
-                      (update-store-with-path temporary-id target-key)
-                      (update-equivalent-undo-point true))
-                  store)]
-      (cond
-        (= special :tab)
-        (do (map-state-reset! client-state :referent referent)
-            {:store store
-             :set-url (str (:url-path session-state)
-                           "?referent=" (referent->string referent))})
-        (= special :new-tab)
-        (do-set-content
-         store (merge-with (partial map-combiner nil)
-                           arguments (:target arguments) {:from "" :to ""}))
-        true
-        (when key-changed store))))
 
   (defn batch-edit-select-key
     "Return the key for the item in the new batch edit that corresponds
@@ -372,7 +366,7 @@
     ; :delete-column do-delete-column
     :set-content do-set-content
     ; :expand do-expand
-    ; :selected do-selected
+    :selected do-selected
     ; :batch-edit do-batch-edit
       }
    action))
@@ -385,43 +379,45 @@
   plus :client-id, :session-state, and any other arguments the client
   provided. In addition to information for the client, the handler can
   also specify a :batch-editing target."
-    [mutable-store session-state [action-type client-id & {:as client-args}]]
-    (let [handler (get-contextual-handler action-type) 
-          manager (:dom-manager session-state)]
-      (cond (not handler)
-            (println "Unhandled action type:" action-type)
-            (not client-id)
-            (println "No context specified:" action-type)
-            true
-            (let [_ (println "command: "
-                             (map simplify-for-print
-                                  (list* action-type client-id
-                                         (map concat (seq client-args)))))
-                  result
-                  (store-update-control-return!
-                   mutable-store
-                   (fn [store]
-                     (let [action-data (client-id->action-data
-                                        @manager client-id action-type store)
-                           spec (:dom-specification @(:component action-data))
-                           spec-info (select-keys
-                                      spec [:template :elements-template])
-                           arguments (-> action-data
-                                         (into spec-info)
-                                         (into client-args)
-                                         (assoc :session-state session-state
-                                                :client-id client-id))
-                           _ (println "handler arguments: "
-                                      (simplify-for-print
-                                       (dissoc arguments :session-state)))
-                           store (or (:store action-data) store)
-                           store (update-equivalent-undo-point store false)
-                           response (handler store arguments)]
-                       (adjust-handler-response response store))))]
-              (when (contains? result :batch-editing)
-                (map-state-reset! (:client-state session-state) :batch-editing
-                                  (:batch-editing result)))
-              (dissoc result :batch-editing)))))
+  [mutable-store session-state [action-type client-id & {:as client-args}]]
+  (let [handler (get-contextual-handler action-type) 
+        manager (:dom-manager session-state)]
+    (cond (not handler)
+          (println "Unhandled action type:" action-type)
+          (not client-id)
+          (println "No context specified:" action-type)
+          true
+          (let [_ (println "command: "
+                           (map simplify-for-print
+                                (list* action-type client-id
+                                       (map concat (seq client-args)))))
+                result
+                (store-update-control-return!
+                 mutable-store
+                 (fn [store]
+                   (let [action-data (client-id->action-data
+                                      @manager client-id action-type store)
+                         spec (:dom-specification @(:component action-data))
+                         spec-info (select-keys
+                                    spec [:template :elements-template])
+                         arguments (-> action-data
+                                       (into spec-info)
+                                       (into client-args)
+                                       (assoc :session-state session-state
+                                              :client-id client-id))
+                         _ (println "handler arguments: "
+                                    (simplify-for-print
+                                     (dissoc arguments :session-state)))
+                         store (or (:store action-data) store) 
+                         response (handler
+                                   (update-equivalent-undo-point store false)
+                                   arguments)]
+                     (adjust-handler-response
+                      response store))))]
+            (when (contains? result :batch-editing)
+              (map-state-reset! (:client-state session-state) :batch-editing
+                                (:batch-editing result)))
+            (dissoc result :batch-editing)))))
 
 (defn request-selection-from-store
    "Return a client request asking it to select the target saved in the
@@ -445,6 +441,9 @@
       (redo! mutable-store)
       (request-selection-from-store mutable-store old-store session-state)))
 
+;;; TODO: Check for :handle-action, and do what it says. In
+;;; particular, there should be a version that takes keyword arguments
+;;; of special handlers for specific actions.
 (defn do-action
   "Update the store, in accordance with the action, and return a map
   of any information to give the client. The map can have any of:

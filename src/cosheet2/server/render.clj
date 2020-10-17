@@ -371,7 +371,7 @@
 (defn reporter-specification-render-dom
   "Make the component's dom be what a reporter returns."
   [spec reporter-value]
-  (println "value for top level DOM" reporter-value)
+  (comment (println "value for top level DOM" reporter-value))
   reporter-value)
 
 (defmethod print-method

@@ -143,66 +143,6 @@
         (add-attributes (virtual-label-DOM inherited)
                         {:class "elements-wrapper"}))))
 
-  (defn horizontal-label-hierarchy-node-DOM
-    "Generate the DOM for a node in a hierarchy that groups items by their
-   labels, has at most one leaf per node and is laid out horizontally.
-   Don't generate the DOM for its children.
-   If referent-f is present, it computes the referent for the leaf, given
-   the node and inherited."
-    [node {:keys [referent-f top-level]} inherited]
-    (let [example-elements (hierarchy-node-example-elements node) 
-          item (:item (first (hierarchy-node-logical-leaves node)))
-          content (when item (entity/content item))
-          non-labels (when item (semantic-non-labels-R item))
-          node-referent (if referent-f
-                          (referent-f node inherited)
-                          (hierarchy-node-items-referent node inherited))
-          ;; Set template to what a new leaf has to have.
-          inherited (assoc inherited
-                           :template (concat '("")
-                                             (canonical-set-to-list
-                                              (:cumulative-properties node)))
-                           :subject-referent node-referent)]
-      (if (empty? (:properties node))
-        ;; We must be a leaf of a node that has children. We put a virtual
-        ;; cell where our labels would go.
-        (let [inherited-down (update inherited :key-prefix
-                                     #(conj % (:item-id item)))
-              label-dom (cond->
-                            (virtual-element-DOM
-                             node-referent :after
-                             (-> inherited-down
-                                 transform-inherited-for-labels
-                                 (assoc :select-pattern
-                                        (conj (:key-prefix inherited)
-                                              [:pattern]))))
-                          true
-                          (add-attributes {:class "tag"})
-                          (not top-level)
-                          (add-attributes {:class "merge-with-parent"}))
-              inner-dom (item-content-and-non-label-elements-DOM-R
-                         content non-labels inherited-down)]
-          [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
-                          (not top-level)
-                          (str " merge-with-parent"))}
-           label-dom
-           [:div {:class "indent-wrapper tag"}
-            (add-attributes
-             inner-dom
-             {:key (:key-prefix inherited-down)
-              :class "item"})]])
-        (if (empty? (:child-nodes node))
-          (let [all-elements (concat example-elements non-labels)]
-            (item-content-and-elements-DOM-R
-             item content all-elements false
-             (update inherited :key-prefix #(conj % (:item-id item)))))
-          (label-stack-DOM-R example-elements
-                             ;; A generic label could match many, which we don't
-                             ;; want. Rather than find all the competing labels
-                             ;; of all our children, don't match multiple at all.
-                             ;; TODO: Actually do go through all the children.
-                             (dissoc inherited :match-multiple))))))
-
   (defn element-hierarchy-child-info
     "Generate the function-info and inherited for children of
    a hierarchy node of an element hierarchy.
@@ -540,22 +480,22 @@
    If must-show-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
-  [elements implied-template must-show-labels direction specification]
+  [entities implied-template must-show-labels direction specification]
   (let
-      [ordered-elements (order-entities elements)
-       all-labels (map semantic-label-elements ordered-elements)
+      [ordered-entities (order-entities entities)
+       all-labels (map semantic-label-elements ordered-entities)
        excludeds (map (if implied-template
                         #(condition-satisfiers % implied-template)
                         (constantly nil))
-                      ordered-elements)]
+                      ordered-entities)]
     (let [labels (map (fn [all exclusions]
                         (clojure.set/difference (set all) (set exclusions)))
                       all-labels excludeds)
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-labels))
-        (item-stack-DOM ordered-elements excludeds
+        (item-stack-DOM ordered-entities excludeds
                         direction specification)
-        (let [item-maps (item-maps-by-elements ordered-elements labels)
+        (let [item-maps (item-maps-by-elements ordered-entities labels)
               augmented (map (fn [item-map excluded]
                                (assoc item-map :exclude-element-ids
                                       (map :item-id excluded)))
@@ -627,6 +567,60 @@
                   (str " label"))
            content-dom elements-dom]))))
 
+(defn item-content-labels-and-non-label-elements-DOM
+  [entity labels non-labels {:keys [must-show-label] :as specification}]
+  (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
+        (item-content-DOM entity specification)
+        (let [inner-spec (update specification :template
+                                 #(add-elements-to-entity-list
+                                   % (map semantic-to-list labels)))
+              inner-dom (item-content-and-non-label-elements-DOM
+                         entity non-labels inner-spec)]
+          (labels-wrapper-DOM
+           inner-dom labels specification)))
+      (add-attributes {:class "item"})))
+
+(defn horizontal-label-hierarchy-node-DOM
+  "Generate the DOM for a node in a hierarchy that groups items by their
+   labels, has at most one leaf per node and is laid out horizontally.
+   Don't generate or include the DOM for its children."
+  [node {:keys [top-level] :as specification}]
+  (let [example-elements (hierarchy-node-example-elements node) 
+        leaf (:item (first (hierarchy-node-logical-leaves node)))
+        content (when leaf (entity/content leaf))
+        non-labels (when leaf (semantic-non-label-elements leaf))
+        labels-spec (assoc specification
+                           :template (concat '("")
+                                             (canonical-set-to-list
+                                              (:cumulative-properties node)))
+                           
+                           :get-action-data
+                           [get-item-or-exemplar-action-data-for-ids
+                            (map :item-id (hierarchy-node-descendants node))]
+                           :relative-id (or
+                                         (:item-id (first example-elements))
+                                         :nested))]
+    (if (empty? (:properties node))
+      ;; We must be a leaf of a node that has children. We put a virtual
+      ;; cell where our labels would go.
+      (let [label-dom (cond->
+                          (virtual-element-DOM
+                           (into-attributes labels-spec {:class "tag"}))
+                        (not top-level)
+                        (add-attributes {:class "merge-with-parent"}))
+            inner-dom (item-content-and-non-label-elements-DOM
+                       content non-labels specification)]
+        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
+                        (not top-level)
+                        (str " merge-with-parent"))}
+         label-dom
+         [:div {:class "indent-wrapper tag"}
+          (add-attributes inner-dom {:class "item"})]])
+      (if (empty? (:child-nodes node))
+        (item-content-labels-and-non-label-elements-DOM
+         leaf example-elements non-labels specification)
+        (label-stack-DOM example-elements labels-spec)))))
+
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
   group of items)."
@@ -639,16 +633,8 @@
                                    excluded-element-ids))
                          (semantic-elements entity))
         [labels non-labels] (separate-by label? elements)]
-    (-> (if (and (empty? elements) (not must-show-label))
-          (item-content-DOM entity specification)
-          (let [inner-spec (update specification :template
-                                   #(add-elements-to-entity-list
-                                     % (map semantic-to-list labels)))
-                inner-dom (item-content-and-non-label-elements-DOM
-                           entity non-labels inner-spec)]
-            (labels-wrapper-DOM
-             inner-dom labels specification)))
-        (add-attributes {:class "item"}))))
+    (item-content-labels-and-non-label-elements-DOM
+     entity labels non-labels specification)))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM

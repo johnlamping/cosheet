@@ -156,9 +156,13 @@
 (defn do-selected
   [store {:keys [client-id session-state]}]
   (let [client-state (:client-state session-state)
+        initial-store (:store session-state)
         temporary-id (:session-temporary-id session-state)]
     (when (not= client-id (get-selected store temporary-id))
-      (-> store
+      ;; We modify the initial store, because if the selection was on
+      ;; a virtual component, the store in our argument will have the
+      ;; virtual entities created, and we don't want that.
+      (-> initial-store
           (update-selected temporary-id client-id)
           (update-equivalent-undo-point true)))))
 

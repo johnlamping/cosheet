@@ -89,36 +89,40 @@
     (is (= client-id2 recovered-id2))))
 
 (deftest do-set-content-test
-  (let [updated (do-set-content store
+  (let [result (do-set-content store
                                 {:target-ids [(:item-id joe-age)]
                                  :from "45"
-                                 :to ""})]
-    (is (= (id->content updated (:item-id joe-age))
+                                 :to ""
+                                 :session-state session-state})]
+    (is (= (id->content (:store result) (:item-id joe-age))
            "")))
   ;; Test making the new content be 'anything.
-  (let [updated (do-set-content store
+  (let [result (do-set-content store
                                 ;; Jane is a selector
                                 {:target-ids [(:item-id jane-age)]
                                  :from "45"
-                                 :to ""})]
-    (is (= (id->content updated (:item-id jane-age))
+                                 :to ""
+                                 :session-state session-state})]
+    (is (= (id->content (:store result) (:item-id jane-age))
            'anything)))
   ;; Test doing nothing when the old doesn't match.
-  (let [updated (do-set-content store
+  (let [result (do-set-content store
                                 {:target-ids [(:item-id joe-age)]
                                  :from "47"
-                                 :to "46"})]
-    (is (= (id->content updated (:item-id joe-age))
+                                 :to "46"
+                                 :session-state session-state})]
+    (is (= (id->content (:store result) (:item-id joe-age))
            45)))
   ;; Test updating multiple ids
-  (let [updated (do-set-content store
+  (let [result (do-set-content store
                                 {:target-ids [(:item-id jane-age)
                                               (:item-id joe-age)]
                                  :from "45"
-                                 :to ""})]
-    (is (= (id->content updated (:item-id joe-age))
+                                 :to ""
+                                 :session-state session-state})]
+    (is (= (id->content (:store result) (:item-id joe-age))
            ""))
-    (is (= (id->content updated (:item-id jane-age))
+    (is (= (id->content (:store result) (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
   (let [[store column1-id] (add-entity
@@ -130,11 +134,12 @@
                               (:selector :non-semantic)))
         column1 (description->entity column1-id store)
         name-header (first (matching-elements "name" column1))
-        new-store (do-set-content store
+        result (do-set-content store
                                   {:target-ids [(:item-id name-header)]
                                    :from "name"
-                                   :to ""})]
-    (is (= (id->content new-store (:item-id name-header))
+                                   :to ""
+                                   :session-state session-state})]
+    (is (= (id->content (:store result) (:item-id name-header))
            "name"))))
 
 (deftest do-add-twin-test
@@ -233,11 +238,11 @@
     (is (id-valid? new-store (:item-id name-header)))))
 
 (deftest do-selected-test
-  (let [new-store (do-selected store
-                               {:client-id "Larry"
-                                :session-state session-state})]
-    (is (= (get-selected new-store temporary-id)
-           "Larry"))))
+  (let [ms (new-mutable-store store)
+        for-client (do-selected ms session-state "Larry")]
+    (is (= (get-selected (current-store ms) temporary-id)
+           "Larry"))
+    (is (nil? for-client))))
 
 (comment
 
@@ -384,7 +389,7 @@
                       [[:set-content "root" :from "joe" :to "Joseph"]])
           new-store (current-store mutable-store)]
       (is (= (id->content new-store joe-id) "Joseph"))
-      (is (= for-client {}))
+      (is (= for-client {:select-store-ids [joe-id]}))
       ;; TODO: Once we support selected, check that undo and redo ask
       ;; for the old selection.
 

@@ -6,9 +6,10 @@
                    swap-control-return! equivalent-atoms?]]
     [map-state :refer [map-state-get-current map-state-reset!
                        map-state-change-value-control-return!]]
-    [store :refer [update-content update-equivalent-undo-point
+    [store :refer [update-content
+                   equivalent-undo-point? update-equivalent-undo-point
                    fetch-and-clear-modified-ids
-                   store-update-control-return!
+                   store-update! store-update-control-return!
                    id->subject id-label->element-ids id-valid? undo! redo!
                    current-store
                    id-label->element-ids id->content
@@ -93,16 +94,6 @@
         modified (update-set-content-if-matching store id from to)]
     (abandon-problem-changes store modified id)))
 
-(defn do-set-content
-  [store {:keys [target-ids from to]}]
-  (when (and from to)
-    (let [to (parse-string-as-number (clojure.string/trim to))]
-      (println "Setting " (count target-ids) "items from" from "to" to)
-      (reduce
-       (fn [store id]
-         (update-set-content store id from to))
-       store target-ids))))
-
 (defn add-select-store-ids-request
   [response ids session-state]
   (let [temporary-id (:session-temporary-id session-state)
@@ -110,6 +101,20 @@
         current-selection (get-selected (:store response) temporary-id)]
     (cond-> (assoc response :select-store-ids ids)
       current-selection (assoc :if-selected [current-selection]))))
+
+(defn do-set-content
+  [store {:keys [target-ids from to session-state]}]
+  (when (and from to (seq target-ids))
+    (let [to (parse-string-as-number (clojure.string/trim to))]
+      (println "Setting " (count target-ids) "items from" from "to" to)
+      (->
+       (reduce
+        (fn [store id]
+          (update-set-content store id from to))
+        store target-ids)
+       ;; We might have set the content on a virtual item.
+       ;; This will make sure any newly created item is selected.
+       (add-select-store-ids-request target-ids session-state)))))
 
 (defn do-add-twin
   [store {:keys [target-ids template session-state]}]
@@ -143,28 +148,6 @@
                   modified (remove-entity-by-id store id)]
               (abandon-problem-changes store modified subject-id)))
           store target-ids))
-
-;; TODO: This code should move to the special do-selected
-;; handler for tabs.
-(comment
-  (let [root-id (first target-ids)]
-        (do (map-state-reset! client-state :root-id root-id )
-            {:store store
-             :set-url (str (:url-path session-state)
-                           "?root=" (id->string root-id))})))
-
-(defn do-selected
-  [store {:keys [client-id session-state]}]
-  (let [client-state (:client-state session-state)
-        initial-store (current-store (:store session-state))
-        temporary-id (:session-temporary-id session-state)]
-    (when (not= client-id (get-selected store temporary-id))
-      ;; We modify the initial store, because if the selection was on
-      ;; a virtual component, the store in our argument will have the
-      ;; virtual entities created, and we don't want that.
-      (-> initial-store
-          (update-selected temporary-id client-id)
-          (update-equivalent-undo-point true)))))
 
 (comment
   (defn pop-content-from-key
@@ -370,7 +353,6 @@
     ; :delete-column do-delete-column
     :set-content do-set-content
     ; :expand do-expand
-    :selected do-selected
     ; :batch-edit do-batch-edit
       }
    action))
@@ -434,16 +416,40 @@
                       [former])}))
 
 (defn do-undo
-    [mutable-store session-state]
-    (let [old-store (current-store mutable-store)]
-      (undo! mutable-store)
-      (request-selection-from-store mutable-store old-store session-state)))
+  [mutable-store session-state & _]
+  (let [old-store (current-store mutable-store)]
+    (undo! mutable-store)
+    (when (not= old-store (current-store mutable-store))
+      (request-selection-from-store mutable-store old-store session-state))))
 
-  (defn do-redo
-    [mutable-store session-state]
-    (let [old-store (current-store mutable-store)]
-      (redo! mutable-store)
-      (request-selection-from-store mutable-store old-store session-state)))
+(defn do-redo
+  [mutable-store session-state & _]
+  (let [old-store (current-store mutable-store)]
+    (redo! mutable-store)
+    (when (not= old-store (current-store mutable-store))
+      (request-selection-from-store mutable-store old-store session-state))))
+
+
+(defn do-selected
+  [mutable-store session-state client-id & _]
+  (let [client-state (:client-state session-state)
+        temporary-id (:session-temporary-id session-state)]
+    (store-update!
+     mutable-store
+     (fn [store]
+       (if (not= client-id (get-selected store temporary-id))
+         (-> store
+             (update-selected temporary-id client-id)
+             (update-equivalent-undo-point true))
+         store))))
+  ;; TODO: This code may be relevant to the special do-selected
+  ;; handler for tabs.
+  (comment
+    (let [root-id (first target-ids)]
+      (do (map-state-reset! client-state :root-id root-id )
+          {:store store
+           :set-url (str (:url-path session-state)
+                         "?root=" (id->string root-id))}))))
 
 ;;; TODO: Check for :handle-action, and do what it says. In
 ;;; particular, there should be a version that takes keyword arguments
@@ -465,6 +471,7 @@
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo
+                       :selected do-selected
                        ; :quit-batch-edit do-quit-batch-edit
                        nil)]
       (do (println "command: " (map simplify-for-print action))
@@ -481,6 +488,8 @@
     (reduce (fn [client-info action]
               (let [for-client
                     (do-action mutable-store session-state action)]
+                (println "Equivalent undo:"
+                         (equivalent-undo-point? (current-store mutable-store)))
                 (println "for client " (simplify-for-print for-client))
                 (into (cond-> client-info
                         (or (:select for-client)

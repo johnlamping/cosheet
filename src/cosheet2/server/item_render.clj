@@ -604,22 +604,30 @@
 
 (defn horizontal-label-hierarchy-node-DOM
   "Generate the DOM for a node in a hierarchy that groups items by their
-   labels, has at most one leaf per node and is laid out horizontally.
+   labels, has at most one leaf per node and doesn't have both leaves and
+   children.
    Don't generate or include the DOM for its children."
   [node {:keys [top-level] :as specification}]
-  (let [example-elements (hierarchy-node-example-elements node) 
-        leaf (:item (first (hierarchy-node-logical-leaves node)))
+  (let [example-elements (hierarchy-node-example-elements node)
+        leaf-info (first (hierarchy-node-leaves node))
+        leaf (:item leaf-info)
         labels (when leaf (semantic-label-elements leaf))
         non-labels (when leaf (semantic-non-label-elements leaf))
         leaf-component (when leaf
-                         (make-component
-                          {:relative-id (:item-id leaf)
-                           :excluded-element-ids (map :item-id labels)}))
+                         (let [ancestor-props
+                               (clojure.set/difference
+                                (set labels)
+                                (hierarchy-node-example-elements node)
+                                (set (hierarchy-node-example-elements node)))]
+                           (make-component
+                            {:relative-id (:item-id leaf)
+                             :excluded-element-ids (map :item-id
+                                                        ancestor-props)})))
         items-spec (assoc specification
-                           :get-action-data
-                           [get-item-or-exemplar-action-data-for-ids
-                            (map #(-> % :item :item-id)
-                                 (hierarchy-node-descendants node))])
+                          :get-action-data
+                          [get-item-or-exemplar-action-data-for-ids
+                           (map #(-> % :item :item-id)
+                                (hierarchy-node-descendants node))])
         labels-spec (assoc items-spec
                            :template '("" :label)                           
                            :relative-id (or
@@ -631,8 +639,8 @@
       (let [label-dom (cond->
                           (virtual-element-DOM
                            (into-attributes labels-spec {:class "tag"}))
-                        (not top-level)
-                        (add-attributes {:class "merge-with-parent"}))]
+                          (not top-level)
+                          (add-attributes {:class "merge-with-parent"}))]
         [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
@@ -640,8 +648,11 @@
          [:div {:class "indent-wrapper tag"} leaf-component]])
       (if (empty? (:child-nodes node))
         leaf-component
-        ;; TODO: What if there are children, properties, and a leaf?
-        (label-stack-DOM example-elements
-                         (update labels-spec :get-action-data
-                                 #(compose-action-data-getter
-                                   % get-item-or-exemplar-action-data)))))))
+        (do
+          ;; Since the node has children, our input condition implies
+          ;; that it must not have a leaf.
+          (assert (not leaf) node)
+          (label-stack-DOM example-elements
+                           (update labels-spec :get-action-data
+                                   #(compose-action-data-getter
+                                     % get-item-or-exemplar-action-data))))))))

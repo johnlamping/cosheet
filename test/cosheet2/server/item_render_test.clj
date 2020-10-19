@@ -607,10 +607,7 @@
              [:div {:class "foo editable"}])))
 
 (deftest horizontal-label-hierarchy-node-DOM-test
-  (let [[s1 fred-id] (add-entity (new-element-store) nil "Fred")
-        [s2 fred-test-id] (add-entity s1 fred-id "test")
-        [s3 fred-test-label-id] (add-entity s2 fred-test-id :label)
-        [s4 joe-id] (add-entity s3 nil "Joe")
+  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
         [s5 joe-test-id] (add-entity s4 joe-id "test")
         [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
         [s7 joe-foo-id] (add-entity s6 joe-id "foo")
@@ -618,7 +615,6 @@
         [s9 jane-id] (add-entity s8 nil "Jane")
         [s10 jane-test-id] (add-entity s9 jane-id "test")
         [store jane-test-label-id] (add-entity s10 jane-test-id :label)
-        fred (description->entity fred-id store)
         joe (description->entity joe-id store)
         jane (description->entity jane-id store)
         ordered-entities [joe jane]
@@ -626,6 +622,7 @@
         item-maps (item-maps-by-elements ordered-entities labelses)
         hierarchy (hierarchy-by-canonical-info item-maps)
         node (first hierarchy)]
+    ;; A node with no leaves.
     (is (check
          (horizontal-label-hierarchy-node-DOM node {})
          [:component
@@ -637,10 +634,12 @@
            :relative-id joe-test-id
            :class "label"
            :excluded-element-ids [joe-test-label-id]}]))
+    ;; A node with a leaf,  properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (first (:child-nodes node)) {})
          [:component {:relative-id joe-id
-                      :excluded-element-ids [joe-test-id joe-foo-id]}]))
+                      :excluded-element-ids [joe-test-id]}]))
+    ;; A node with leaves, no properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
          [:div {:class "tag wrapped-element virtual-wrapper merge-with-parent"}
@@ -655,7 +654,7 @@
                        :get-rendering-data get-virtual-DOM-rendering-data}]
           [:div {:class "indent-wrapper tag"}
            [:component {:relative-id jane-id
-                      :excluded-element-ids [jane-test-id]}]]]))))
+                        :excluded-element-ids [jane-test-id]}]]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

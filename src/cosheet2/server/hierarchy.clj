@@ -115,7 +115,8 @@
     hierarchy)))
 
 (defn hierarchy-node-descendants
-  "Return all leaves at or below the node."
+  "Return all leaves at or below the node,
+  with the node's direct leaves first."
   [node-or-leaf]
   (if (hierarchy-node? node-or-leaf)
     (concat (:leaves node-or-leaf)
@@ -238,7 +239,7 @@
 
 (defn hierarchy-node-example-elements
   "Given a hierarchy node, return a list of example elements
-  for its properties."
+  for its properties, with the elements taken from the shallowest leaf."
   [node-or-leaf]
   (when (hierarchy-node? node-or-leaf)
     (let [example (first (hierarchy-node-descendants node-or-leaf))]

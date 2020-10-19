@@ -156,7 +156,7 @@
 (defn do-selected
   [store {:keys [client-id session-state]}]
   (let [client-state (:client-state session-state)
-        initial-store (:store session-state)
+        initial-store (current-store (:store session-state))
         temporary-id (:session-temporary-id session-state)]
     (when (not= client-id (get-selected store temporary-id))
       ;; We modify the initial store, because if the selection was on

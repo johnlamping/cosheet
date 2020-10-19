@@ -75,7 +75,7 @@
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 
 (def session-state {:session-temporary-id temporary-id
-                    :store store})
+                    :store (new-mutable-store store)})
 
 (deftest selected-test
   (let [client-id1 "root_1"
@@ -233,8 +233,7 @@
     (is (id-valid? new-store (:item-id name-header)))))
 
 (deftest do-selected-test
-  (let [store (update-selected store temporary-id "old selection")
-        new-store (do-selected store
+  (let [new-store (do-selected store
                                {:client-id "Larry"
                                 :session-state session-state})]
     (is (= (get-selected new-store temporary-id)

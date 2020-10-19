@@ -287,7 +287,7 @@
 ;;;                   :id  The session id identifying the client.
 ;;;            :file-path  The file path (with suffix omitted) corresponding
 ;;;                        to the store.
-;;;                :store  The store that holds the data.
+;;;                :store  The mutable store that holds the data.
 ;;; :session-temporary-id  The id of the root temporary item in the store used
 ;;;                        for holding information specific to this session.
 ;;;          :dom-manager  The dom manager for the session.

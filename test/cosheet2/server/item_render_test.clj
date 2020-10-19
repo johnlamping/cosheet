@@ -13,6 +13,9 @@
              [store-utils :refer [add-entity]]
              [test-utils :refer [check any as-set]])
             (cosheet2.server
+             [model-utils :refer [semantic-label-elements]]
+             [hierarchy :refer [item-maps-by-elements
+                                hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
              [action-data :refer [composed-get-action-data
                                   get-item-or-exemplar-action-data
@@ -66,7 +69,7 @@
                              :class "label"
                              :width 1.5}]
                 [:div {:class "indent-wrapper"}
-                 [:component {:template '("" (2 :label))
+                 [:component {:template '("" (1 :label) (2 :label))
                               :relative-id :content
                               :item-id fred-id
                               :render-dom render-content-only-DOM
@@ -602,6 +605,57 @@
 (deftest render-virtual-DOM-test
   (is (check (render-virtual-DOM {:class "foo"})
              [:div {:class "foo editable"}])))
+
+(deftest horizontal-label-hierarchy-node-DOM-test
+  (let [[s1 fred-id] (add-entity (new-element-store) nil "Fred")
+        [s2 fred-test-id] (add-entity s1 fred-id "test")
+        [s3 fred-test-label-id] (add-entity s2 fred-test-id :label)
+        [s4 joe-id] (add-entity s3 nil "Joe")
+        [s5 joe-test-id] (add-entity s4 joe-id "test")
+        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
+        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
+        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
+        [s9 jane-id] (add-entity s8 nil "Jane")
+        [s10 jane-test-id] (add-entity s9 jane-id "test")
+        [store jane-test-label-id] (add-entity s10 jane-test-id :label)
+        fred (description->entity fred-id store)
+        joe (description->entity joe-id store)
+        jane (description->entity jane-id store)
+        ordered-entities [joe jane]
+        labelses (map semantic-label-elements ordered-entities)
+        item-maps (item-maps-by-elements ordered-entities labelses)
+        hierarchy (hierarchy-by-canonical-info item-maps)
+        node (first hierarchy)]
+    (is (check
+         (horizontal-label-hierarchy-node-DOM node {})
+         [:component
+          {:template '("" :label)
+           :get-action-data [composed-get-action-data
+                             [get-item-or-exemplar-action-data-for-ids
+                              [joe-id jane-id]]
+                             get-item-or-exemplar-action-data]
+           :relative-id joe-test-id
+           :class "label"
+           :excluded-element-ids [joe-test-label-id]}]))
+    (is (check
+         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node)) {})
+         [:component {:relative-id joe-id
+                      :excluded-element-ids [joe-test-id joe-foo-id]}]))
+    (is (check
+         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
+         [:div {:class "tag wrapped-element virtual-wrapper merge-with-parent"}
+          [:component {:template '("" :label)
+                       :get-action-data
+                       [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids [jane-id]]
+                        get-virtual-action-data]
+                       :relative-id :nested
+                       :class "tag merge-with-parent"
+                       :render-dom render-virtual-DOM
+                       :get-rendering-data get-virtual-DOM-rendering-data}]
+          [:div {:class "indent-wrapper tag"}
+           [:component {:relative-id jane-id
+                      :excluded-element-ids [jane-test-id]}]]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

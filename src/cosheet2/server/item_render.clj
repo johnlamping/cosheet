@@ -231,7 +231,8 @@
                   (if (= direction :vertical) :vertical-wrapped direction)))
 
 (defn label-stack-DOM
-  "Given a non-empty list of label elements, return a stack of their doms."
+  "Given a non-empty list of label elements, return a stack of their doms.
+  The specification should already have :label in its template."
   [label-elements specification]
   (let [ordered-labels (order-entities label-elements)
         label-tags (map #(condition-satisfiers % '(nil :label))
@@ -573,53 +574,13 @@
         (item-content-DOM entity specification)
         (let [inner-spec (update specification :template
                                  #(add-elements-to-entity-list
-                                   % (map semantic-to-list labels)))
+                                   % (map semantic-to-list
+                                          (semantic-label-elements entity))))
               inner-dom (item-content-and-non-label-elements-DOM
                          entity non-labels inner-spec)]
           (labels-wrapper-DOM
            inner-dom labels specification)))
       (add-attributes {:class "item"})))
-
-(defn horizontal-label-hierarchy-node-DOM
-  "Generate the DOM for a node in a hierarchy that groups items by their
-   labels, has at most one leaf per node and is laid out horizontally.
-   Don't generate or include the DOM for its children."
-  [node {:keys [top-level] :as specification}]
-  (let [example-elements (hierarchy-node-example-elements node) 
-        leaf (:item (first (hierarchy-node-logical-leaves node)))
-        content (when leaf (entity/content leaf))
-        non-labels (when leaf (semantic-non-label-elements leaf))
-        labels-spec (assoc specification
-                           :template (concat '("")
-                                             (canonical-set-to-list
-                                              (:cumulative-properties node)))
-                           
-                           :get-action-data
-                           [get-item-or-exemplar-action-data-for-ids
-                            (map :item-id (hierarchy-node-descendants node))]
-                           :relative-id (or
-                                         (:item-id (first example-elements))
-                                         :nested))]
-    (if (empty? (:properties node))
-      ;; We must be a leaf of a node that has children. We put a virtual
-      ;; cell where our labels would go.
-      (let [label-dom (cond->
-                          (virtual-element-DOM
-                           (into-attributes labels-spec {:class "tag"}))
-                        (not top-level)
-                        (add-attributes {:class "merge-with-parent"}))
-            inner-dom (item-content-and-non-label-elements-DOM
-                       content non-labels specification)]
-        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
-                        (not top-level)
-                        (str " merge-with-parent"))}
-         label-dom
-         [:div {:class "indent-wrapper tag"}
-          (add-attributes inner-dom {:class "item"})]])
-      (if (empty? (:child-nodes node))
-        (item-content-labels-and-non-label-elements-DOM
-         leaf example-elements non-labels specification)
-        (label-stack-DOM example-elements labels-spec)))))
 
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
@@ -640,3 +601,47 @@
   cosheet2.server.item_render$render_item_DOM
   [v ^java.io.Writer w]
   (.write w "item-DOM"))
+
+(defn horizontal-label-hierarchy-node-DOM
+  "Generate the DOM for a node in a hierarchy that groups items by their
+   labels, has at most one leaf per node and is laid out horizontally.
+   Don't generate or include the DOM for its children."
+  [node {:keys [top-level] :as specification}]
+  (let [example-elements (hierarchy-node-example-elements node) 
+        leaf (:item (first (hierarchy-node-logical-leaves node)))
+        labels (when leaf (semantic-label-elements leaf))
+        non-labels (when leaf (semantic-non-label-elements leaf))
+        leaf-component (when leaf
+                         (make-component
+                          {:relative-id (:item-id leaf)
+                           :excluded-element-ids (map :item-id labels)}))
+        items-spec (assoc specification
+                           :get-action-data
+                           [get-item-or-exemplar-action-data-for-ids
+                            (map #(-> % :item :item-id)
+                                 (hierarchy-node-descendants node))])
+        labels-spec (assoc items-spec
+                           :template '("" :label)                           
+                           :relative-id (or
+                                         (:item-id (first example-elements))
+                                         :nested))]
+    (if (empty? (:properties node))
+      ;; We must be a leaf of a node that has children. We put a virtual
+      ;; cell where our labels would go.
+      (let [label-dom (cond->
+                          (virtual-element-DOM
+                           (into-attributes labels-spec {:class "tag"}))
+                        (not top-level)
+                        (add-attributes {:class "merge-with-parent"}))]
+        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
+                        (not top-level)
+                        (str " merge-with-parent"))}
+         label-dom
+         [:div {:class "indent-wrapper tag"} leaf-component]])
+      (if (empty? (:child-nodes node))
+        leaf-component
+        ;; TODO: What if there are children, properties, and a leaf?
+        (label-stack-DOM example-elements
+                         (update labels-spec :get-action-data
+                                 #(compose-action-data-getter
+                                   % get-item-or-exemplar-action-data)))))))

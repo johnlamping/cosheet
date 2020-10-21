@@ -41,30 +41,30 @@
 
 (deftest virtual-DOM-test
   (is (check (virtual-DOM {:template "foo"  :relative-id :bar}
-                          :position :before)
+                          {:position :before})
              [:component {:template "foo"
                           :relative-id :bar
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data
-                          :get-action-data [get-virtual-action-data
-                                            :template "foo"
-                                            :position :before]}])))
+                          :get-action-data (as-set [get-virtual-action-data
+                                                    :template "foo"
+                                                    :position :before])}])))
 
 (deftest virtual-entry-and-label-DOM-test
   (is (check  (virtual-entity-and-label-DOM
                {:template "foo" :relative-id :bar}
                :horizontal
-               :position :before)
+               {:position :before})
               [:div {:class "horizontal-labels-element label"}
                [:component
                 {:relative-id :virtual-label
                  :get-action-data [composed-get-action-data
-                                   [get-virtual-action-data
-                                    :template "foo"
-                                    :position :before]
-                                   [get-virtual-action-data
-                                    :template '(anything :label)
-                                    :position :before]]
+                                   (as-set [get-virtual-action-data
+                                            :template "foo"
+                                            :position :before])
+                                   (as-set [get-virtual-action-data
+                                            :template '(anything :label)
+                                            :position :before])]
                  :class "tag"
                  :render-dom render-virtual-DOM
                  :get-rendering-data get-virtual-DOM-rendering-data}]
@@ -72,10 +72,9 @@
                             :relative-id :bar
                             :render-dom render-virtual-DOM
                             :get-rendering-data get-virtual-DOM-rendering-data
-                            :get-action-data [get-virtual-action-data
-                                              :template "foo"
-                                              :position :before]}]]))
-  (println "!!!" ))
+                            :get-action-data (as-set [get-virtual-action-data
+                                                      :template "foo"
+                                                      :position :before])}]])))
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
@@ -129,9 +128,9 @@
                           :class "label"
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
-                          :get-action-data [get-virtual-action-data
-                                            :template '("" :label)
-                                            :position :after]
+                          :get-action-data (as-set [get-virtual-action-data
+                                                    :template '("" :label)
+                                                    :position :after])
                           :width 1.5}]
              [:component {:template ""
                           :relative-id :content
@@ -588,10 +587,11 @@
                          :relative-id :virtual
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
-                         :get-action-data [get-virtual-action-data
-                                           :template '("" ("both" :label))
-                                           :position :after
-                                           :sibling true]}]]
+                         :get-action-data (as-set
+                                           [get-virtual-action-data
+                                            :template '("" ("both" :label))
+                                            :position :after
+                                            :sibling true])}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}

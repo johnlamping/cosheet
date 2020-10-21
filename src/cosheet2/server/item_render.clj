@@ -210,7 +210,7 @@
   "Make a component for a place where there could be an entity, but
   isn't. Any extra arguments must be keyword arguments, and are passed
   to get-virtual-action-data."
-  [specification & {:as action-data-arguments}]
+  [specification action-data-arguments]
   ;; If the arguments don't specify a template, take it from the spec.
   (let [action-data-arguments (into (select-keys specification [:template])
                                     action-data-arguments)]
@@ -239,21 +239,21 @@
        (assoc :relative-id :virtual-label)       
        (update :template ensure-label)
        (into-attributes {:class "label"}))
-   :position :after))
+   {:position :after}))
 
 (defn virtual-entity-and-label-DOM
   "Return the dom for a virtual entity and a virtual label for it.
    The arguments are the same as for virtual-DOM."
-  [specification orientation & action-data-arguments]
-  (let [dom (apply virtual-DOM specification action-data-arguments)
+  [specification orientation action-data-arguments]
+  (let [dom (virtual-DOM specification action-data-arguments)
         label-template (ensure-label
                         (or (:elements-template specification) 'anything))  
         labels-dom (virtual-DOM {:relative-id :virtual-label
                                  :get-action-data
                                  (:get-action-data (dom-attributes dom))
                                  :class "tag"}
-                                :template label-template
-                                :position :before)]
+                                {:template label-template
+                                 :position :before})]
     (add-labels-DOM labels-dom dom orientation)))
 
 (defn label-stack-DOM
@@ -313,7 +313,8 @@
                                       :virtual-label]
                         :get-action-data
                         [get-item-or-exemplar-action-data-for-ids
-                         descendant-ids]))
+                         descendant-ids])
+                 {})
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (assoc label-spec
@@ -346,8 +347,8 @@
             example-elements (hierarchy-node-example-elements hierarchy-node)]
         (virtual-DOM
          (assoc leaf-spec :relative-id :virtual)
-         :sibling true
-         :position :after))
+         {:sibling true
+          :position :after}))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -645,7 +646,8 @@
       ;; cell where our labels would go.
       (let [label-dom (cond->
                           (virtual-DOM
-                           (into-attributes labels-spec {:class "tag"}))
+                           (into-attributes labels-spec {:class "tag"})
+                           {})
                           (not top-level)
                           (add-attributes {:class "merge-with-parent"}))]
         [:div {:class (cond-> "tag wrapped-element virtual-wrapper"

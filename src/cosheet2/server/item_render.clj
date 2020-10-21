@@ -186,9 +186,9 @@
   (.write w "virt-DOM"))
 
 (defn add-labels-DOM
-  "Add label dom to an inner dom. Orientation gives the orientation of the label
-  with respect to the inner dom. It can also be :vertical-wrapped, which puts
-  it above the inner dom, but with an indentation on the left too."
+  "Add a labels dom to an inner dom. Orientation gives the orientation
+  between the doms. It can also be :vertical-wrapped, which puts the
+  label above the inner dom, but with an indentation on the left too."
     [labels-dom inner-dom orientation]
     (if (= orientation :vertical-wrapped)
       [:div {:class "wrapped-element label"}
@@ -246,10 +246,10 @@
    The arguments are the same as for virtual-DOM."
   [specification orientation & action-data-arguments]
   (let [dom (apply virtual-DOM specification action-data-arguments)
-        label-template (add-elements-to-entity-list
-                        (or (:elements-template specification) 'anything)
-                        :label)  
-        labels-dom (virtual-DOM {:get-action-data
+        label-template (ensure-label
+                        (or (:elements-template specification) 'anything))  
+        labels-dom (virtual-DOM {:relative-id :virtual-label
+                                 :get-action-data
                                  (:get-action-data (dom-attributes dom))
                                  :class "tag"}
                                 :template label-template

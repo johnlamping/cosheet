@@ -157,7 +157,7 @@
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
   [specification containing-action-data action immutable-store
-   & {:keys [template adjacent before use-bigger]}]
+   & {:keys [template adjacent position use-bigger]}]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
         subjects (if adjacent
@@ -166,7 +166,7 @@
         adjacents (if adjacent incoming-ids subjects)
         [ids store] (create-possible-selector-elements
                      template subjects adjacents
-                     (if before :before :after)
+                     (or position :after)
                      use-bigger
                      immutable-store)]
     (assoc containing-action-data :target-ids ids :store store)))

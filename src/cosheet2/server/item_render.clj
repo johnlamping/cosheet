@@ -10,7 +10,7 @@
                                      separate-by]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils
-                       :refer [into-attributes add-attributes]]
+                       :refer [dom-attributes into-attributes add-attributes]]
                       [expression :refer [expr expr-let expr-seq expr-filter]])
             (cosheet2.server
              [model-utils :refer [semantic-elements
@@ -80,10 +80,10 @@
    If must-show-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is any space available."
-    [elements must-show-labels implied-template direction inherited]
+    [elements must-show-labels implied-template orientation inherited]
     (expr-let [doms (element-DOMs-R elements must-show-labels
-                                    implied-template direction inherited)]
-      (nest-if-multiple-DOM doms direction)))
+                                    implied-template orientation inherited)]
+      (nest-if-multiple-DOM doms orientation)))
 
   (defn labels-and-elements-DOM-R
     "Generate the dom for a set of elements, some of which may be labels.
@@ -91,7 +91,7 @@
   elements-must-show-labels determines whether the elements must show labels.
   inherited must be half way to the children."
     [elements virtual-dom must-show-label elements-must-show-labels
-     direction inherited]
+     orientation inherited]
     (expr-let [[labels non-labels] (separate-by label? elements)
                elements-dom
                (when (or non-labels virtual-dom)
@@ -99,23 +99,23 @@
                      [element-doms
                       (when non-labels
                         (element-DOMs-R
-                         non-labels elements-must-show-labels nil direction
+                         non-labels elements-must-show-labels nil orientation
                          (transform-inherited-attributes
                           inherited :element)))]
                    [:div {:class "item elements-wrapper"}
                     (nest-if-multiple-DOM
                      (cond-> element-doms
                        virtual-dom (concat [virtual-dom]))
-                     direction)]))]
+                     orientation)]))]
       (cond
         (and labels elements-dom)
-        (non-empty-labels-wrapper-DOM-R elements-dom labels direction
+        (non-empty-labels-wrapper-DOM-R elements-dom labels orientation
                                         inherited)
         labels
         (label-stack-DOM-R elements inherited)
         (and must-show-label elements-dom)
         (wrap-with-labels-DOM
-         (virtual-label-DOM inherited) elements-dom direction)
+         (virtual-label-DOM inherited) elements-dom orientation)
         elements-dom
         elements-dom
         true
@@ -141,11 +141,19 @@
                      % (canonical-set-to-list (:properties node)))))]))
   )
 
-(defn opposite-direction
-    [direction]
-    (case direction
+(defn opposite-orientation
+    [orientation]
+    (case orientation
       :horizontal :vertical
       :vertical :horizontal))
+
+(defn ensure-label
+  "Give the list form of an entity :label keyword if it doesn't
+   already have one."
+  [entity]
+  (if (has-keyword? entity :label)
+    entity
+    (add-elements-to-entity-list entity [:label])))
 
 (defn get-item-rendering-data
   "Return the rendering data for a dom that presents an item.
@@ -177,8 +185,29 @@
   [v ^java.io.Writer w]
   (.write w "virt-DOM"))
 
+(defn add-labels-DOM
+  "Add label dom to an inner dom. Orientation gives the orientation of the label
+  with respect to the inner dom. It can also be :vertical-wrapped, which puts
+  it above the inner dom, but with an indentation on the left too."
+    [labels-dom inner-dom orientation]
+    (if (= orientation :vertical-wrapped)
+      [:div {:class "wrapped-element label"}
+       labels-dom
+       [:div {:class "indent-wrapper"} inner-dom]]
+      [:div {:class (case orientation
+                      :vertical "vertical-labels-element label"
+                      :horizontal "horizontal-labels-element label")}
+       labels-dom inner-dom]))
+
+(defn wrap-with-labels-DOM
+  "Orientation gives the orientation of the label with respect to the inner dom.
+  :vertical is interpreted as :vertical-wrapped."
+    [labels-dom inner-dom orientation]
+  (add-labels-DOM labels-dom inner-dom
+                  (if (= orientation :vertical) :vertical-wrapped orientation)))
+
 (defn virtual-DOM
-  "Make a dom for a place where there could be an entity, but
+  "Make a component for a place where there could be an entity, but
   isn't. Any extra arguments must be keyword arguments, and are passed
   to get-virtual-action-data."
   [specification & {:as action-data-arguments}]
@@ -196,51 +225,33 @@
                    (into [get-virtual-action-data]
                          (apply concat action-data-arguments))))))))
 
-(comment
-  (defn virtual-entity-and-label-DOM
-    "Return the dom for a virtual entity and a virtual label for it.
-  The specification should be the same as what is required by virtual-DOM"
-    [specification]
-    (let [dom (virtual-DOM specification)
-          label-template (add-elements-to-entity-list
-                          (or (:elements-template specification) 'anything)
-                          :label)
-          spec-for-label {:get-action-data
-                          (compose-action-data-getter
-                           (:get-action-data getter)
-                           compose-action-data-getter
-                           (into [get-virtual-action-data]
-                                 (apply concat (select-keys specification [:template :adjacent :before :use-bigger]) ))
-                           )} (-> inherited
-                                  (assoc :template (list elements-template :tag)
-                                         :subject-referent virtual-ref))
-          labels-dom (add-attributes
-                      (virtual-DOM
-                       nil :after
-                       (update inherited-for-label :key-prefix #(conj % :label)))
-                      {:class "tag"})]
-      (add-labels-DOM labels-dom dom direction))))
+(defn virtual-label-DOM
+  "Return a dom for a virtual label. The label must occur be inside an
+  overall component for its element. The specification should be for
+  elements of the item."
+  [specification]
+  (assert (:template specification))
+  (virtual-DOM
+   (-> specification
+       (assoc :relative-id :virtual-label)       
+       (update :template ensure-label)
+       (into-attributes {:class "label"}))
+   :position :after))
 
-(defn add-labels-DOM
-  "Add label dom to an inner dom. Direction gives the direction of the label
-  with respect to the inner dom. It can also be :vertical-wrapped, which puts
-  it above the inner dom, but with an indentation on the left too."
-    [labels-dom inner-dom direction]
-    (if (= direction :vertical-wrapped)
-      [:div {:class "wrapped-element label"}
-       labels-dom
-       [:div {:class "indent-wrapper"} inner-dom]]
-      [:div {:class (case direction
-                      :vertical "vertical-labels-element label"
-                      :horizontal "horizontal-labels-element label")}
-       labels-dom inner-dom]))
-
-(defn wrap-with-labels-DOM
-  "Direction gives the direction of the label with respect to the inner dom.
-  :vertical is interpreted as :vertical-wrapped."
-    [labels-dom inner-dom direction]
-  (add-labels-DOM labels-dom inner-dom
-                  (if (= direction :vertical) :vertical-wrapped direction)))
+(defn virtual-entity-and-label-DOM
+  "Return the dom for a virtual entity and a virtual label for it.
+   The arguments are the same as for virtual-DOM."
+  [specification orientation & action-data-arguments]
+  (let [dom (apply virtual-DOM specification action-data-arguments)
+        label-template (add-elements-to-entity-list
+                        (or (:elements-template specification) 'anything)
+                        :label)  
+        labels-dom (virtual-DOM {:get-action-data
+                                 (:get-action-data (dom-attributes dom))
+                                 :class "tag"}
+                                :template label-template
+                                :position :before)]
+    (add-labels-DOM labels-dom dom orientation)))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms.
@@ -252,34 +263,14 @@
     (item-stack-DOM ordered-labels label-tags :vertical
                     (into-attributes specification {:class "label"}))))
 
-(defn ensure-label
-  "Give the list form of an entity :label keyword if it doesn't
-   already have one."
-  [entity]
-  (if (has-keyword? entity :label)
-    entity
-    (add-elements-to-entity-list entity [:label])))
-
-(defn virtual-label-DOM
-  "Return a dom for a virtual label. The label must be inside the component
-  for the item. The specification should be for elements of the item."
-  [specification]
-  (assert (:template specification))
-  (virtual-DOM
-   (-> specification
-       (assoc :relative-id :virtual-label)
-       (update :template ensure-label)
-       (into-attributes {:class "label"}))
-   :position :after))
-
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item."
-  [inner-dom label-elements direction specification]
+  [inner-dom label-elements orientation specification]
   (let [stack (label-stack-DOM
                label-elements
                (update specification :template ensure-label))]
-    (wrap-with-labels-DOM stack inner-dom direction)))
+    (wrap-with-labels-DOM stack inner-dom orientation)))
 
 (defn labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a list of labels,
@@ -296,6 +287,7 @@
          (virtual-label-DOM elements-spec)
          dom]))))
 
+;; TODO: Code this
 (defn labeled-items-for-horizontal-DOMs [] (assert false))
 
 (defn labeled-items-properties-DOM
@@ -341,7 +333,7 @@
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
-        leaf-spec (cond-> (dissoc specification :direction)
+        leaf-spec (cond-> (dissoc specification :orientation)
                     (not (empty? property-list))
                     (update :template
                             #(add-elements-to-entity-list % property-list)))]
@@ -352,7 +344,7 @@
         (virtual-DOM
          (assoc leaf-spec :relative-id :virtual)
          :adjacent-id (:item-id adjacent-item)
-         :direction :after))
+         :position :after))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -362,10 +354,10 @@
 
 (defn labeled-items-whole-hierarchy-node-DOM
   "Return the dom for everything at and under a labeled items hierarchy node.
-  direction gives which way to lay out the contained items.
-  The specification must give :direction."
-  [node child-doms {:keys [must-show-labels direction] :as specification}]
-  (assert (#{:horizontal :vertical} direction))
+  orientation gives which way to lay out the contained items.
+  The specification must give :orientation."
+  [node child-doms {:keys [must-show-labels orientation] :as specification}]
+  (assert (#{:horizontal :vertical} orientation))
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
@@ -380,18 +372,18 @@
                              (if leaf-dom
                                (cons leaf-dom child-doms)
                                child-doms)
-                             direction)]
+                             orientation)]
         (cond-> (if (empty? (:properties node))
                   (if must-show-labels
                     (cond-> (add-labels-DOM properties-dom descendants-dom
-                                            (opposite-direction direction))
+                                            (opposite-orientation orientation))
                       true
                       (add-attributes {:class "virtual-wrapper"})
-                      (= direction :vertical)
+                      (= orientation :vertical)
                       (add-attributes {:class "narrow"}))
                     descendants-dom)
                   (add-labels-DOM properties-dom descendants-dom
-                                  (case direction
+                                  (case orientation
                                     :vertical :vertical-wrapped
                                     :horizontal :vertical)))
           only-item
@@ -478,7 +470,7 @@
   [hierarchy specification]
   (let [top-level-spec (assoc specification
                               :must-show-labels true
-                              :direction :vertical)
+                              :orientation :vertical)
         child-specification-f (fn [_ specification]
                                 (dissoc specification :must-show-labels))]
     (map #(hierarchy-node-DOM %
@@ -493,7 +485,7 @@
    If must-show-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
-  [entities implied-template must-show-labels direction specification]
+  [entities implied-template must-show-labels orientation specification]
   (let
       [ordered-entities (order-entities entities)
        all-labels (map semantic-label-elements ordered-entities)
@@ -507,14 +499,14 @@
           no-labels (every? empty? labels)]
       (if (and no-labels (not must-show-labels))
         (item-stack-DOM ordered-entities excludeds
-                        direction specification)
+                        orientation specification)
         (let [item-maps (item-maps-by-elements ordered-entities labels)
               augmented (map (fn [item-map excluded]
                                (assoc item-map :exclude-element-ids
                                       (map :item-id excluded)))
                              item-maps excludeds)
               hierarchy (hierarchy-by-canonical-info augmented)
-              doms (case direction
+              doms (case orientation
                      :vertical
                      ((if (or (< (:width specification) 1.0)
                               (and no-labels (not (= must-show-labels :wide))))
@@ -525,7 +517,7 @@
                      (labeled-items-for-horizontal-DOMs
                       (replace-hierarchy-leaves-by-nodes hierarchy)
                       specification))]
-          (nest-if-multiple-DOM doms direction))))))
+          (nest-if-multiple-DOM doms orientation))))))
 
 (defn item-content-DOM
   "Make dom for the content part of an item."

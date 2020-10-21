@@ -553,7 +553,7 @@
                          :get-action-data [get-virtual-action-data
                                            :template '("" ("both" :label))
                                            :adjacent-id id1
-                                           :direction :after]}]]
+                                           :position :after]}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}

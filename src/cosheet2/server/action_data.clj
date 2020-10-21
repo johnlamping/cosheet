@@ -151,19 +151,19 @@
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,
-   unless adjacent is true in which case they are the siblings.
-   The new items are ordered after the containing target, unless before
-   is true, in which case they are ordered before.
+   unless sibling is true in which case they are the siblings.
+   The new items are ordered after the containing target, unless position
+   is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
   [specification containing-action-data action immutable-store
-   & {:keys [template adjacent position use-bigger]}]
+   & {:keys [template sibling position use-bigger]}]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
-        subjects (if adjacent
+        subjects (if sibling
                   (map #(id->subject immutable-store %) incoming-ids)
                   incoming-ids)
-        adjacents (if adjacent incoming-ids subjects)
+        adjacents (if sibling incoming-ids subjects)
         [ids store] (create-possible-selector-elements
                      template subjects adjacents
                      (or position :after)

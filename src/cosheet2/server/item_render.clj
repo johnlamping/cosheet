@@ -215,6 +215,9 @@
   (let [action-data-arguments (into (select-keys specification [:template])
                                     action-data-arguments)]
     (assert (:template action-data-arguments))
+    (assert (every? #{:template :sibling :position :use-bigger}
+                    (keys action-data-arguments))
+            action-data-arguments)
     (make-component
      (-> specification
          (assoc :render-dom render-virtual-DOM
@@ -343,7 +346,7 @@
             example-elements (hierarchy-node-example-elements hierarchy-node)]
         (virtual-DOM
          (assoc leaf-spec :relative-id :virtual)
-         :adjacent-id (:item-id adjacent-item)
+         :sibling true
          :position :after))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)

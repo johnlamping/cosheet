@@ -39,6 +39,17 @@
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
 
+(deftest virtual-DOM-test
+  (is (check (virtual-DOM {:template "foo"  :relative-id :bar}
+                          :position :before)
+             [:component {:template "foo"
+                          :relative-id :bar
+                          :render-dom render-virtual-DOM
+                          :get-rendering-data get-virtual-DOM-rendering-data
+                          :get-action-data [get-virtual-action-data
+                                            :template "foo"
+                                            :position :before]}])))
+
 (deftest render-item-DOM-test-simple
   ;; Test a simple cell
   (let [[store fred-id] (add-entity (new-element-store) nil "Fred")
@@ -552,8 +563,8 @@
                          :render-dom render-virtual-DOM
                          :get-action-data [get-virtual-action-data
                                            :template '("" ("both" :label))
-                                           :adjacent-id id1
-                                           :position :after]}]]
+                                           :position :after
+                                           :sibling true]}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}

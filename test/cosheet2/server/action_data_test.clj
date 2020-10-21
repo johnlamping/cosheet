@@ -164,7 +164,7 @@
                  'anything ))))
   (let [data (get-virtual-action-data
               {} {:target-ids [(:item-id joe-age)]} nil store
-               :template 'anything :adjacent true :position :before)]
+               :template 'anything :sibling true :position :before)]
     (is (check data {:target-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store

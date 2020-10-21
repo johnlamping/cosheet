@@ -158,8 +158,8 @@
    is true, in which case they use the larger."
   [specification containing-action-data action immutable-store
    & {:keys [template adjacent before use-bigger]}]
+  (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
-        template (or template (:template specification) 'anything)
         subjects (if adjacent
                   (map #(id->subject immutable-store %) incoming-ids)
                   incoming-ids)

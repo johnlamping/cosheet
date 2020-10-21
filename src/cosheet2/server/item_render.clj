@@ -66,27 +66,6 @@
           {:add-sibling (hierarchy-adjacent-virtual-target
                          hierarchy-node inherited)}])))
 
-  (defn virtual-element-with-label-DOM
-    "Return the dom for a virtual element of an item."
-    [virtual-content direction inherited]
-    (let [dom (virtual-element-DOM nil :after inherited)
-          template (if (:template inherited)
-                     (cons virtual-content (rest (:template inherited)))
-                     virtual-content)
-          virtual-ref (virtual-referent
-                       template
-                       (subject-referent-given-inherited inherited))
-          elements-template (:elements-template inherited)
-          inherited-for-label (-> inherited
-                                  (assoc :template (list elements-template :tag)
-                                         :subject-referent virtual-ref))
-          labels-dom (add-attributes
-                      (virtual-element-DOM
-                       nil :after
-                       (update inherited-for-label :key-prefix #(conj % :label)))
-                      {:class "tag"})]
-      (add-labels-DOM labels-dom dom direction)))
-
   (defn labeled-items-for-horizontal-DOMs-R
     [hierarchy inherited]
     (expr-seq map #(hierarchy-node-DOM-R
@@ -198,16 +177,49 @@
   [v ^java.io.Writer w]
   (.write w "virt-DOM"))
 
-(defn virtual-element-DOM
-  "Make a dom for a place where there could be an element, but isn't"
-  [specification]
-  (assert (:template specification))
-  (make-component
-   (-> specification
-       (assoc :render-dom render-virtual-DOM
-              :get-rendering-data get-virtual-DOM-rendering-data)
-       (update :get-action-data
-               #(compose-action-data-getter % get-virtual-action-data)))))
+(defn virtual-DOM
+  "Make a dom for a place where there could be an entity, but
+  isn't. Any extra arguments must be keyword arguments, and are passed
+  to get-virtual-action-data."
+  [specification & {:as action-data-arguments}]
+  ;; If the arguments don't specify a template, take it from the spec.
+  (let [action-data-arguments (into (select-keys specification [:template])
+                                    action-data-arguments)]
+    (assert (:template action-data-arguments))
+    (make-component
+     (-> specification
+         (assoc :render-dom render-virtual-DOM
+                :get-rendering-data get-virtual-DOM-rendering-data)
+         (update :get-action-data
+                 #(compose-action-data-getter
+                   %
+                   (into [get-virtual-action-data]
+                         (apply concat action-data-arguments))))))))
+
+(comment
+  (defn virtual-entity-and-label-DOM
+    "Return the dom for a virtual entity and a virtual label for it.
+  The specification should be the same as what is required by virtual-DOM"
+    [specification]
+    (let [dom (virtual-DOM specification)
+          label-template (add-elements-to-entity-list
+                          (or (:elements-template specification) 'anything)
+                          :label)
+          spec-for-label {:get-action-data
+                          (compose-action-data-getter
+                           (:get-action-data getter)
+                           compose-action-data-getter
+                           (into [get-virtual-action-data]
+                                 (apply concat (select-keys specification [:template :adjacent :before :use-bigger]) ))
+                           )} (-> inherited
+                                  (assoc :template (list elements-template :tag)
+                                         :subject-referent virtual-ref))
+          labels-dom (add-attributes
+                      (virtual-DOM
+                       nil :after
+                       (update inherited-for-label :key-prefix #(conj % :label)))
+                      {:class "tag"})]
+      (add-labels-DOM labels-dom dom direction))))
 
 (defn add-labels-DOM
   "Add label dom to an inner dom. Direction gives the direction of the label
@@ -240,32 +252,33 @@
     (item-stack-DOM ordered-labels label-tags :vertical
                     (into-attributes specification {:class "label"}))))
 
-(defn require-label-in-template
-  "Give the :template a :label keyword if it doesn't already have one."
-  [specification]
-  (update specification :template
-          #(if (has-keyword? % :label)
-             %
-             (add-elements-to-entity-list % [:label]))))
+(defn ensure-label
+  "Give the list form of an entity :label keyword if it doesn't
+   already have one."
+  [entity]
+  (if (has-keyword? entity :label)
+    entity
+    (add-elements-to-entity-list entity [:label])))
 
 (defn virtual-label-DOM
   "Return a dom for a virtual label. The label must be inside the component
   for the item. The specification should be for elements of the item."
   [specification]
   (assert (:template specification))
-  (virtual-element-DOM
+  (virtual-DOM
    (-> specification
-       (assoc :position :after
-              :relative-id :virtual-label)
-       require-label-in-template
-       (into-attributes {:class "label"}))))
+       (assoc :relative-id :virtual-label)
+       (update :template ensure-label)
+       (into-attributes {:class "label"}))
+   :position :after))
 
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item."
   [inner-dom label-elements direction specification]
   (let [stack (label-stack-DOM
-               label-elements (require-label-in-template specification))]
+               label-elements
+               (update specification :template ensure-label))]
     (wrap-with-labels-DOM stack inner-dom direction)))
 
 (defn labels-wrapper-DOM
@@ -295,9 +308,9 @@
         example-descendant-id (first descendant-ids)
         label-spec (-> specification
                        transform-specification-for-elements
-                       require-label-in-template)]
+                       (update :template ensure-label))]
     (let [dom (if (empty? (:properties hierarchy-node))
-                (virtual-element-DOM
+                (virtual-DOM
                  ;; TODO: Track hierarchy depth in the spec, and use
                  ;; it to uniquify virtual labels.
                  (assoc label-spec
@@ -336,11 +349,10 @@
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
             example-elements (hierarchy-node-example-elements hierarchy-node)]
-        (virtual-element-DOM
-         (assoc leaf-spec
-                :relative-id :virtual
-                :adjacent-id (:item-id adjacent-item)
-                :direction :after)))
+        (virtual-DOM
+         (assoc leaf-spec :relative-id :virtual)
+         :adjacent-id (:item-id adjacent-item)
+         :direction :after))
       (let [items (map :item leaves)
             excludeds (map #(concat (:property-elements %)
                                     (:exclude-elements %))
@@ -430,7 +442,7 @@
    hierarchy labeled-items-properties-DOM horizontal-label-wrapper
    (-> specification
        transform-specification-for-elements
-       require-label-in-template
+       (update :template ensure-label)
        (update :width #(* % 0.25)))))
 
 (defn labeled-items-for-two-column-DOMs
@@ -637,7 +649,7 @@
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
       (let [label-dom (cond->
-                          (virtual-element-DOM
+                          (virtual-DOM
                            (into-attributes labels-spec {:class "tag"}))
                           (not top-level)
                           (add-attributes {:class "merge-with-parent"}))]

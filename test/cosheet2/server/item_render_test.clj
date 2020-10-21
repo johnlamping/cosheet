@@ -88,11 +88,12 @@
           {:class "horizontal-labels-element label virtual-wrapper narrow item"}
           [:component {:template '("" :label)
                        :relative-id :virtual-label
-                       :position :after
                        :class "label"
                        :get-rendering-data get-virtual-DOM-rendering-data
                        :render-dom render-virtual-DOM
-                       :get-action-data get-virtual-action-data
+                       :get-action-data [get-virtual-action-data
+                                         :template '("" :label)
+                                         :position :after]
                        :width 1.5}]
           [:component {:template ""
                        :relative-id :content
@@ -134,7 +135,7 @@
                     :get-action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id1]]
-                     get-virtual-action-data]
+                     [get-virtual-action-data :template '("" :label)]]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -150,7 +151,7 @@
                     :get-action-data
                     [composed-get-action-data
                      [get-item-or-exemplar-action-data-for-ids [id2]]
-                     get-virtual-action-data]
+                     [get-virtual-action-data :template '("" :label)]]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -339,7 +340,7 @@
                               :get-action-data
                               [composed-get-action-data
                                [get-item-or-exemplar-action-data-for-ids [id3]]
-                               get-virtual-action-data]
+                               [get-virtual-action-data :template '("" :label)]]
                               :relative-id [id3 :virtual-label]
                               :get-rendering-data get-virtual-DOM-rendering-data
                               :render-dom render-virtual-DOM
@@ -381,7 +382,7 @@
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id1]]
-                           get-virtual-action-data]
+                           [get-virtual-action-data :template '("" :label)]]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -396,7 +397,7 @@
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id2]]
-                           get-virtual-action-data]
+                           [get-virtual-action-data :template '("" :label)]]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -547,11 +548,12 @@
             [:component {:width 1.03125
                          :template '("" ("both" :label))
                          :relative-id :virtual
-                         :adjacent-id id1
-                         :direction :after
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
-                         :get-action-data get-virtual-action-data}]]
+                         :get-action-data [get-virtual-action-data
+                                           :template '("" ("both" :label))
+                                           :adjacent-id id1
+                                           :direction :after]}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
@@ -594,7 +596,7 @@
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [id3]]
-                           get-virtual-action-data]
+                           [get-virtual-action-data :template '("" :label)]]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -647,7 +649,7 @@
                        :get-action-data
                        [composed-get-action-data
                         [get-item-or-exemplar-action-data-for-ids [jane-id]]
-                        get-virtual-action-data]
+                        [get-virtual-action-data :template '("" :label)]]
                        :relative-id :nested
                        :class "tag merge-with-parent"
                        :render-dom render-virtual-DOM

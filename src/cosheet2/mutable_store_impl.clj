@@ -95,22 +95,25 @@
                         ;; followed by redo should land us there.
                         (cons [modified-ids old-store] history))]
                   (let [{:keys [futures-state futures-modified-ids]} state]
-                    (cond-> {:history new-history
-                             :future future}
+                    (cond-> {:history new-history}
                       future
-                      (assoc :futures-state (or futures-state state)
+                      (assoc :futures-state
+                             (or futures-state
+                                 (select-keys state [:value :history :future]))
                              :futures-modified-ids (union-seqs
                                                     futures-modified-ids
                                                     modified-ids)))))
                 {:history (cons [modified-ids old-store] history)
-                 :future nil})))
+                 :future nil
+                 :futures-state nil
+                 :futures-modified-ids nil})))
       state)))
 
 (defn can-undo-impl
   [store history]
   (when (not (empty? history))
     (or (not (equivalent-undo-point? store))
-        (let [[[modified-keys store] & remaining-history] history]
+        (let [[[_ store] & remaining-history] history]
           (can-undo-impl store remaining-history)))))
 
 (defn rearrange-for-undo
@@ -141,7 +144,9 @@
          [(assoc state
                  :value prev-store
                  :history remaining-history
-                 :future (cons [modified-ids store] future))
+                 :future (cons [modified-ids store] future)
+                 :futures-state nil
+                 :futures-modified-ids nil)
           cum-modified-ids]))))
 
 (defn rearrange-for-redo
@@ -164,7 +169,9 @@
         [(assoc state
                 :value next-store
                 :history history
-                :future remaining-future)
+                :future remaining-future
+                :futures-state nil
+                :futures-modified-ids nil)
          cum-modified-ids]))))
 
 (defrecord MutableStoreImpl
@@ -248,12 +255,13 @@
      (fn [{:keys [value history future futures-state] :as state}]
        (let [store value]
          (if (can-undo-impl store history)
-           (if (empty? futures-state)
-             (let [[new-state modified-ids] (rearrange-for-undo state)]
-               (change-description state new-state modified-ids))
-             (let [[new-state modified-ids] (rearrange-for-undo futures-state)
+           (if futures-state
+             (let [[new-state modified-ids] (rearrange-for-undo
+                                             (into state futures-state))
                    modified-ids (union-seqs modified-ids
                                             (:futures-modified-ids state))]
+               (change-description state new-state modified-ids))
+             (let [[new-state modified-ids] (rearrange-for-undo state)]
                (change-description state new-state modified-ids)))
            [state [] []])))))
 
@@ -273,12 +281,13 @@
                    (and (equivalent-undo-point? next-store)
                         (empty? remaining-future))))
            [state [] []]
-           (if (empty? futures-state)
-             (let [[new-state modified-ids] (rearrange-for-redo state)]
-               (change-description state new-state modified-ids))
-             (let [[new-state modified-ids] (rearrange-for-redo futures-state)
+           (if futures-state
+             (let [[new-state modified-ids] (rearrange-for-redo
+                                             (into state futures-state))
                    modified-ids (union-seqs modified-ids
                                             (:futures-modified-ids state))]
+               (change-description state new-state modified-ids))
+             (let [[new-state modified-ids] (rearrange-for-redo state)]
                (change-description state new-state modified-ids)))))))))
 
 (defmethod print-method MutableStoreImpl [s ^java.io.Writer w]
@@ -311,14 +320,15 @@
      ;; was originally taken.
      :future nil
      
-     ;; :futures-state will only be present if equivalent-undo-point
-     ;; stores have been created, causing a push onto history, but without
-     ;; changing future. In that case, :futures-state holds the state
-     ;; that was current when :future was created.
+     ;; :futures-state will only be present if future is present and
+     ;; equivalent-undo-point stores have been created, causing a push
+     ;; onto history, but without changing future. In that case,
+     ;; :futures-state holds the :value, :history, and :future that
+     ;; was current when :future was created.
      :futures-state nil
      ;; :futures-modified-ids is present when :futures-state is
-     ;; present, and holds the modified ids between the current :store
-     ;; and the :store in :futures-modified-ids.
+     ;; present, and holds the modified ids between the current :value
+     ;; and the :value in :futures-modified-ids.
      :futures-modified-ids nil
      })))
 

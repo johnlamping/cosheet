@@ -204,28 +204,27 @@
         labels-dom (virtual-DOM {:relative-id :virtual-label
                                  :get-action-data
                                  (:get-action-data (dom-attributes dom))
-                                 :class "tag"}
+                                 :class "label"}
                                 {:template label-template
                                  :position :before})]
     (add-labels-DOM labels-dom dom orientation)))
 
 (defn label-stack-DOM
-  "Given a non-empty list of label elements, return a stack of their doms.
-  The specification should already have :label in its template."
+  "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
   (let [ordered-labels (order-entities label-elements)
         label-tags (map #(condition-satisfiers % '(nil :label))
                        ordered-labels)]
     (item-stack-DOM ordered-labels label-tags :vertical
-                    (into-attributes specification {:class "label"}))))
+                    (-> specification
+                        (update :template ensure-label)
+                        (into-attributes {:class "label"})))))
 
 (defn non-empty-labels-wrapper-DOM
   "Given a dom for an item, not including its labels, and a non-empty 
   list of labels, make a dom that includes the labels wrapping the item."
   [inner-dom label-elements orientation specification]
-  (let [stack (label-stack-DOM
-               label-elements
-               (update specification :template ensure-label))]
+  (let [stack (label-stack-DOM label-elements specification)]
     (wrap-with-labels-DOM stack inner-dom orientation)))
 
 (defn labels-wrapper-DOM
@@ -254,23 +253,24 @@
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
         example-descendant-id (first descendant-ids)
-        label-spec (-> specification
+        elements-spec (-> specification
                        transform-specification-for-elements
-                       (update :template ensure-label))]
+                       )]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-DOM
                  ;; TODO: Track hierarchy depth in the spec, and use
                  ;; it to uniquify virtual labels.
-                 (assoc label-spec
-                        :relative-id [example-descendant-id
-                                      :virtual-label]
-                        :get-action-data
-                        [get-item-or-exemplar-action-data-for-ids
-                         descendant-ids])
+                 (-> elements-spec
+                     (assoc :relative-id [example-descendant-id
+                                          :virtual-label]
+                            :get-action-data
+                            [get-item-or-exemplar-action-data-for-ids
+                             descendant-ids])
+                     (update :template ensure-label))
                  {})
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 (assoc label-spec
+                 (assoc elements-spec
                         :get-action-data
                         (compose-action-data-getter
                          [get-item-or-exemplar-action-data-for-ids
@@ -635,15 +635,15 @@
       ;; cell where our labels would go.
       (let [label-dom (cond->
                           (virtual-DOM
-                           (into-attributes labels-spec {:class "tag"})
+                           (into-attributes labels-spec {:class "label"})
                            {})
                           (not top-level)
                           (add-attributes {:class "merge-with-parent"}))]
-        [:div {:class (cond-> "tag wrapped-element virtual-wrapper"
+        [:div {:class (cond-> "label wrapped-element virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
          label-dom
-         [:div {:class "indent-wrapper tag"} leaf-component]])
+         [:div {:class "indent-wrapper label"} leaf-component]])
       (if (empty? (:child-nodes node))
         leaf-component
         (do

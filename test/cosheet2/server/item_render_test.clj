@@ -65,7 +65,7 @@
                                    (as-set [get-virtual-action-data
                                             :template '("" :label)
                                             :position :before])]
-                 :class "tag"
+                 :class "label"
                  :render-dom render-virtual-DOM
                  :get-rendering-data get-virtual-DOM-rendering-data}]
                [:component {:template "foo"
@@ -682,17 +682,18 @@
     ;; A node with leaves, no properties, and no children
     (is (check
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
-         [:div {:class "tag wrapped-element virtual-wrapper merge-with-parent"}
+         [:div {:class
+                "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template '("" :label)
                        :get-action-data
                        [composed-get-action-data
                         [get-item-or-exemplar-action-data-for-ids [jane-id]]
                         [get-virtual-action-data :template '("" :label)]]
                        :relative-id :nested
-                       :class "tag merge-with-parent"
+                       :class "label merge-with-parent"
                        :render-dom render-virtual-DOM
                        :get-rendering-data get-virtual-DOM-rendering-data}]
-          [:div {:class "indent-wrapper tag"}
+          [:div {:class "indent-wrapper label"}
            [:component {:relative-id jane-id
                         :excluded-element-ids [jane-test-id]}]]]))))
 
@@ -749,13 +750,12 @@
                     [joe-test joe-foo] nil false false :vertical
           {:template ' anything :width 0.8})
          [:div {:class "vertical-stack"}
-          ;; TODO: The template here should be '(anything :label)
-          [:component {:template 'anything
+          [:component {:template '(anything :label)
                        :width 0.8
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id}]
-          [:component {:template 'anything
+          [:component {:template '(anything :label)
                        :width 0.8
                        :class "label"
                        :excluded-element-ids [joe-foo-label-id]

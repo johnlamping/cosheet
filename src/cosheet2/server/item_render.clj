@@ -74,54 +74,6 @@
                     [true :horizontal] inherited)
               hierarchy))
 
-  (defn elements-DOM-R
-    "Make doms for elements.
-   If implied-template is non-nil, don't show sub-elements implied by it.
-   If must-show-labels is true, show a space for labels, even if
-   there are none. If, additionally, it is :wide, show them with substantial
-   space, if there is any space available."
-    [elements must-show-labels implied-template orientation inherited]
-    (expr-let [doms (element-DOMs-R elements must-show-labels
-                                    implied-template orientation inherited)]
-      (nest-if-multiple-DOM doms orientation)))
-
-  (defn labels-and-elements-DOM-R
-    "Generate the dom for a set of elements, some of which may be labels.
-  virtual-dom, if present, will appear after the elements.
-  elements-must-show-labels determines whether the elements must show labels.
-  inherited must be half way to the children."
-    [elements virtual-dom must-show-label elements-must-show-labels
-     orientation inherited]
-    (expr-let [[labels non-labels] (separate-by label? elements)
-               elements-dom
-               (when (or non-labels virtual-dom)
-                 (expr-let
-                     [element-doms
-                      (when non-labels
-                        (element-DOMs-R
-                         non-labels elements-must-show-labels nil orientation
-                         (transform-inherited-attributes
-                          inherited :element)))]
-                   [:div {:class "item elements-wrapper"}
-                    (nest-if-multiple-DOM
-                     (cond-> element-doms
-                       virtual-dom (concat [virtual-dom]))
-                     orientation)]))]
-      (cond
-        (and labels elements-dom)
-        (non-empty-labels-wrapper-DOM-R elements-dom labels orientation
-                                        inherited)
-        labels
-        (label-stack-DOM-R elements inherited)
-        (and must-show-label elements-dom)
-        (wrap-with-labels-DOM
-         (virtual-label-DOM inherited) elements-dom orientation)
-        elements-dom
-        elements-dom
-        true
-        (add-attributes (virtual-label-DOM inherited)
-                        {:class "elements-wrapper"}))))
-
   (defn element-hierarchy-child-info
     "Generate the function-info and inherited for children of
    a hierarchy node of an element hierarchy.
@@ -247,7 +199,8 @@
   [specification orientation action-data-arguments]
   (let [dom (virtual-DOM specification action-data-arguments)
         label-template (ensure-label
-                        (or (:elements-template specification) 'anything))  
+                        (:template
+                         (transform-specification-for-elements specification))) 
         labels-dom (virtual-DOM {:relative-id :virtual-label
                                  :get-action-data
                                  (:get-action-data (dom-attributes dom))
@@ -483,8 +436,10 @@
                               top-level-spec)
          hierarchy)))
 
-(defn items-with-labels-DOM
-  "Make a dom for a sequence of items.
+;;; The next two functions make stacks of components for entities.
+
+(defn non-label-entities-DOM
+  "Make a dom for a sequence of items, all of which must not be labels.
    If implied-template is non-nil, don't show elements implied by it.
    If must-show-labels is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
@@ -522,6 +477,40 @@
                       (replace-hierarchy-leaves-by-nodes hierarchy)
                       specification))]
           (nest-if-multiple-DOM doms orientation))))))
+
+(defn labels-and-elements-DOM
+  "Generate the dom for a set of elements, some of which may be labels.
+  virtual-dom, if present, will appear after the elements.
+  elements-must-show-labels determines whether the elements must show labels.
+  The specifications should be appropriate for each of the elements."
+  [elements virtual-dom must-show-label elements-must-show-labels
+   orientation specification]
+  (let [[labels non-labels] (separate-by label? elements)
+        elements-dom
+        (when (or non-labels virtual-dom)
+          (let [elements-dom
+                (when non-labels
+                  (non-label-entities-DOM
+                   non-labels nil elements-must-show-labels
+                   orientation  specification))]
+            (nest-if-multiple-DOM
+             (remove nil? [elements-dom virtual-dom]) orientation)))]
+    (cond
+      (and labels elements-dom)
+      (non-empty-labels-wrapper-DOM
+       elements-dom labels orientation specification)
+      labels
+      (label-stack-DOM elements specification)
+      (and must-show-label elements-dom)
+      (wrap-with-labels-DOM
+       (virtual-label-DOM specification) elements-dom orientation)
+      elements-dom
+      elements-dom
+      true
+      (virtual-label-DOM (add-attributes specification
+                                         {:class "elements-wrapper"})))))
+
+;;; The next functions handle the parts of the dom for an entity.
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
@@ -567,7 +556,7 @@
       (if (empty? elements)
         content-dom
         (let [elements-spec (transform-specification-for-elements specification)
-              elements-dom (items-with-labels-DOM
+              elements-dom (non-label-entities-DOM
                             elements nil
                             (or (:must-show-labels specification) true)
                             :vertical elements-spec)]

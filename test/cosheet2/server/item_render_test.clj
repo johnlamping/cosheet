@@ -63,7 +63,7 @@
                                             :template "foo"
                                             :position :before])
                                    (as-set [get-virtual-action-data
-                                            :template '(anything :label)
+                                            :template '("" :label)
                                             :position :before])]
                  :class "tag"
                  :render-dom render-virtual-DOM
@@ -695,6 +695,71 @@
           [:div {:class "indent-wrapper tag"}
            [:component {:relative-id jane-id
                         :excluded-element-ids [jane-test-id]}]]]))))
+
+(deftest labels-and-elements-DOM-test
+  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
+        [s5 joe-test-id] (add-entity s4 joe-id "test")
+        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
+        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
+        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
+        [s9 jane-id] (add-entity s8 nil "Jane")
+        [s10 jane-test-id] (add-entity s9 jane-id "test")
+        [store jane-test-label-id] (add-entity s10 jane-test-id :label)
+        joe (description->entity joe-id store)
+        joe-test (description->entity joe-test-id store)
+        joe-foo (description->entity joe-foo-id store)
+        jane (description->entity jane-id store)]
+    (is (check
+         (labels-and-elements-DOM
+          [joe jane] nil false false :vertical
+          {:template 'anything :width 0.8})
+         [:div {:class "wrapped-element label"}
+          [:component {:width 0.8, :template '("" :label)
+                       :get-action-data
+                       [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids
+                         [joe-id jane-id]]
+                        get-item-or-exemplar-action-data]
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:div {:class "indent-wrapper"}
+           [:div {:class "vertical-stack"}
+            [:div {:class "wrapped-element label"}
+             [:component {:width 0.8, :template '("" :label)
+                          :get-action-data
+                          [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids [joe-id]]
+                           get-item-or-exemplar-action-data]
+                          :class "label"
+                          :excluded-element-ids [joe-foo-label-id]
+                          :relative-id joe-foo-id}]
+             [:div {:class "indent-wrapper"}
+              [:component {:template '(anything ("test" :label) ("foo" :label))
+                           :width 0.8
+                           :excluded-element-ids [joe-test-id
+                                                  joe-foo-id]
+                           :relative-id joe-id}]]]
+            [:component {:template '(anything ("test" :label))
+                         :width 0.8
+                         :excluded-element-ids [jane-test-id]
+                         :relative-id jane-id}]]]]))
+    (is (check
+         (labels-and-elements-DOM
+                    [joe-test joe-foo] nil false false :vertical
+          {:template ' anything :width 0.8})
+         [:div {:class "vertical-stack"}
+          ;; TODO: The template here should be '(anything :label)
+          [:component {:template 'anything
+                       :width 0.8
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:component {:template 'anything
+                       :width 0.8
+                       :class "label"
+                       :excluded-element-ids [joe-foo-label-id]
+                       :relative-id joe-foo-id}]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

@@ -197,7 +197,7 @@
   [specification]
   (assoc (select-keys specification [:width])
          :template (or (:elements-template specification)
-                            "")))
+                       "")))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
@@ -309,26 +309,27 @@
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return
-  a dom with all of the doms as children and with class for
-  the stack direction."
-  [doms direction]
+  a dom with all of the doms as children and with css class for the
+  given orientation."
+  [doms orientation]
   (cond
     (empty? doms) [:div {}]
     (= (count doms) 1) (first doms)
-    true (let [direction-class (case direction
-                       :vertical "vertical-stack"
-                       :horizontal "horizontal-stack")]
-           (into [:div {:class direction-class}]
+    true (let [orientation-class (case orientation
+                                   :vertical "vertical-stack"
+                                   :horizontal "horizontal-stack")]
+           (assert (not= (first doms) :div))
+           (into [:div {:class orientation-class}]
                  doms))))
 
 (defn item-stack-DOM
   "Given a list of items and a matching list of elements to exclude,
   generate components for each item, and put them in a DOM.
-  If there is more than one item, make the stack in the given direction."
-  [items excludeds direction specification]
+  If there is more than one item, make the stack in the given orientation."
+  [items excludeds orientation specification]
   (let [components (map #(item-minus-excluded-component %1 %2 specification)
                         items excludeds)]
-    (nest-if-multiple-DOM components direction)))
+    (nest-if-multiple-DOM components orientation)))
 
 (defn hierarchy-node-DOM
   "Create a DOM for a hierarchy node, calling functions to make the pieces.

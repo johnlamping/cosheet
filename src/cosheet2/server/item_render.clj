@@ -66,14 +66,6 @@
           {:add-sibling (hierarchy-adjacent-virtual-target
                          hierarchy-node inherited)}])))
 
-  (defn labeled-items-for-horizontal-DOMs-R
-    [hierarchy inherited]
-    (expr-seq map #(hierarchy-node-DOM-R
-                    % labeled-items-whole-hierarchy-node-DOM-R
-                    (fn [node _ inherited] [[false :horizontal] inherited])
-                    [true :horizontal] inherited)
-              hierarchy))
-
   (defn element-hierarchy-child-info
     "Generate the function-info and inherited for children of
    a hierarchy node of an element hierarchy.
@@ -242,9 +234,6 @@
          (virtual-label-DOM elements-spec)
          dom]))))
 
-;; TODO: Code this
-(defn labeled-items-for-horizontal-DOMs [] (assert false))
-
 (defn labeled-items-properties-DOM
   "Given a hierarchy node for labels, Return DOM for example elements
   that give rise to the properties of the node, given a specification
@@ -314,7 +303,7 @@
   orientation gives which way to lay out the contained items.
   The specification must give :orientation."
   [node child-doms {:keys [must-show-labels orientation] :as specification}]
-  (assert (#{:horizontal :vertical} orientation))
+  (assert (#{:horizontal :vertical} orientation) orientation)
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
@@ -345,6 +334,16 @@
                                     :horizontal :vertical)))
           only-item
           (add-attributes (select-keys specification [:class])))))))
+
+(defn labeled-items-for-horizontal-DOMs
+  [hierarchy specification]
+  (map #(hierarchy-node-DOM
+         % labeled-items-whole-hierarchy-node-DOM
+         (fn [node specification] (assoc specification :must-show-labels false))
+         (assoc specification
+                :must-show-labels true
+                :orientation :horizontal))
+       hierarchy))
 
 (defn horizontal-label-wrapper
   "Return a modifier for a horizontal label dom that is logically part of

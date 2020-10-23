@@ -50,6 +50,221 @@
                                                     :template "foo"
                                                     :position :before])}])))
 
+
+(deftest horizontal-label-hierarchy-node-DOM-test
+  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
+        [s5 joe-test-id] (add-entity s4 joe-id "test")
+        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
+        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
+        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
+        [s9 jane-id] (add-entity s8 nil "Jane")
+        [s10 jane-test-id] (add-entity s9 jane-id "test")
+        [store jane-test-label-id] (add-entity s10 jane-test-id :label)
+        joe (description->entity joe-id store)
+        jane (description->entity jane-id store)
+        ordered-entities [joe jane]
+        labelses (map semantic-label-elements ordered-entities)
+        item-maps (item-maps-by-elements ordered-entities labelses)
+        hierarchy (hierarchy-by-canonical-info item-maps)
+        node (first hierarchy)]
+    ;; A node with no leaves.
+    (is (check
+         (horizontal-label-hierarchy-node-DOM node {})
+         [:component
+          {:template '("" :label)
+           :get-action-data [composed-get-action-data
+                             [get-item-or-exemplar-action-data-for-ids
+                              [joe-id jane-id]]
+                             get-item-or-exemplar-action-data]
+           :relative-id joe-test-id
+           :class "label"
+           :excluded-element-ids [joe-test-label-id]}]))
+    ;; A node with a leaf,  properties, and no children
+    (is (check
+         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node)) {})
+         [:component {:relative-id joe-id
+                      :excluded-element-ids [joe-test-id]}]))
+    ;; A node with leaves, no properties, and no children
+    (is (check
+         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
+         [:div {:class
+                "label wrapped-element virtual-wrapper merge-with-parent"}
+          [:component {:template '("" :label)
+                       :get-action-data
+                       [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids [jane-id]]
+                        [get-virtual-action-data :template '("" :label)]]
+                       :relative-id :nested
+                       :class "label merge-with-parent"
+                       :render-dom render-virtual-DOM
+                       :get-rendering-data get-virtual-DOM-rendering-data}]
+          [:div {:class "indent-wrapper label"}
+           [:component {:relative-id jane-id
+                        :excluded-element-ids [jane-test-id]}]]]))))
+
+(deftest labels-and-elements-DOM-test
+  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
+        [s5 joe-test-id] (add-entity s4 joe-id "test")
+        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
+        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
+        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
+        [s9 jane-id] (add-entity s8 nil "Jane")
+        [s10 jane-test-id] (add-entity s9 jane-id "test")
+        [s11 jane-test-label-id] (add-entity s10 jane-test-id :label)
+        [store sally-id] (add-entity s11 nil "Sally")
+        joe (description->entity joe-id store)
+        joe-test (description->entity joe-test-id store)
+        joe-foo (description->entity joe-foo-id store)
+        jane (description->entity jane-id store)
+        jane-test (description->entity jane-test-id store)
+        sally (description->entity sally-id store)]
+    ;; Test two non-labels.
+    (is (check
+         (labels-and-elements-DOM
+          [joe jane] nil false false :vertical
+          {:template 'anything :width 0.8})
+         [:div {:class "wrapped-element label"}
+          [:component {:width 0.8, :template '("" :label)
+                       :get-action-data
+                       [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids
+                         [joe-id jane-id]]
+                        get-item-or-exemplar-action-data]
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:div {:class "indent-wrapper"}
+           [:div {:class "vertical-stack"}
+            [:div {:class "wrapped-element label"}
+             [:component {:width 0.8, :template '("" :label)
+                          :get-action-data
+                          [composed-get-action-data
+                           [get-item-or-exemplar-action-data-for-ids [joe-id]]
+                           get-item-or-exemplar-action-data]
+                          :class "label"
+                          :excluded-element-ids [joe-foo-label-id]
+                          :relative-id joe-foo-id}]
+             [:div {:class "indent-wrapper"}
+              [:component {:template (as-set '(anything
+                                               ("test" :label) ("foo" :label)))
+                           :width 0.8
+                           :excluded-element-ids (as-set [joe-test-id
+                                                          joe-foo-id])
+                           :relative-id joe-id}]]]
+            [:component {:template '(anything ("test" :label))
+                         :width 0.8
+                         :excluded-element-ids [jane-test-id]
+                         :relative-id jane-id}]]]]))
+    ;; Test two non-labels, laid out horizontally
+    (is (check
+         (labels-and-elements-DOM
+          [joe jane] nil false false :horizontal
+          {:template 'anything :width 0.8})
+         [:div {:class "vertical-labels-element label"}
+          [:component {:width 0.8
+                       :template '("" :label)
+                       :get-action-data
+                       [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids
+                         [joe-id jane-id]]
+                        get-item-or-exemplar-action-data]
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:div {:class "horizontal-stack"}
+           [:div {:class "vertical-labels-element label"}
+            [:component {:width 0.8
+                         :template '("" :label)
+                         :get-action-data
+                         [composed-get-action-data
+                        [get-item-or-exemplar-action-data-for-ids
+                         [joe-id]]
+                          get-item-or-exemplar-action-data]
+                         :class "label"
+                         :excluded-element-ids [joe-foo-label-id]
+                         :relative-id joe-foo-id}]
+            [:component {:template '(anything ("foo" :label) ("test" :label))
+                         :width 0.8
+                         :excluded-element-ids (as-set [joe-test-id
+                                                        joe-foo-id])
+                         :relative-id joe-id}]]
+           [:component {:template '(anything ("test" :label))
+                        :width 0.8
+                        :excluded-element-ids [jane-test-id]
+                        :relative-id jane-id}]]]))
+    ;; Test two labels.
+    (is (check
+         (labels-and-elements-DOM
+                    [joe-test joe-foo] nil false false :vertical
+          {:template ' anything :width 0.8})
+         [:div {:class "vertical-stack"}
+          [:component {:template '(anything :label)
+                       :width 0.8
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:component {:template '(anything :label)
+                       :width 0.8
+                       :class "label"
+                       :excluded-element-ids [joe-foo-label-id]
+                       :relative-id joe-foo-id}]]))
+    ;; Test a label and a non-label
+    (is (check
+         (labels-and-elements-DOM
+          [sally joe-test] nil false false :vertical
+          {:template ' anything :width 0.8})
+         [:div {:class "wrapped-element label"}
+          [:component {:template '(anything :label)
+                       :width 0.8
+                       :class "label"
+                       :excluded-element-ids [joe-test-label-id]
+                       :relative-id joe-test-id}]
+          [:div {:class "indent-wrapper"}
+           [:component {:template 'anything
+                          :width 0.8
+                          :relative-id sally-id}]]]))
+    ;; Test a non-label with must-show-labels and elements-must-show-labels
+    (is (check
+         (labels-and-elements-DOM
+          [sally] nil true true :vertical
+          {:template 'anything :width 0.8})
+         [:div {:class "wrapped-element label"}
+          [:component {:template '(anything :label)
+                       :width 0.8
+                       :relative-id :virtual-label
+                       :class "label"
+                       :render-dom render-virtual-DOM
+                       :get-rendering-data get-virtual-DOM-rendering-data
+                       :get-action-data [get-virtual-action-data
+                                         :template '(anything :label)
+                                         :position :after]}]
+          [:div {:class "indent-wrapper"}
+           [:div {:class
+                  "horizontal-labels-element label virtual-wrapper narrow"}
+            [:component {:width 0.8
+                         :template '("" :label)
+                         :relative-id [sally-id :virtual-label]
+                         :get-action-data
+                         [composed-get-action-data
+                          [get-item-or-exemplar-action-data-for-ids [sally-id]]
+                          [get-virtual-action-data :template '("" :label)]]
+                         :render-dom render-virtual-DOM
+                         :get-rendering-data get-virtual-DOM-rendering-data
+                         :class "label"}]
+            [:component {:template 'anything
+                         :width 0.8
+                         :relative-id sally-id}]]]]))
+    ;; Test including a virtual-dom
+    (is (check
+         (labels-and-elements-DOM
+          [sally] [:div "virtual"] false false :vertical
+          {:template 'anything :width 0.8})
+         [:div {:class "vertical-stack"}
+          [:component {:template 'anything
+                       :width 0.8
+                       :relative-id sally-id}]
+          [:div "virtual"]]))))
+
 (deftest virtual-entry-and-label-DOM-test
   (is (check  (virtual-entity-and-label-DOM
                {:template "foo" :relative-id :bar}
@@ -401,6 +616,7 @@
                                     :width 1.5
                                     :must-show-labels :wide)
                              store)]
+    ;; Test an item with two elements, neither with a label.
     (is (check
          dom
          [:div {:class "with-elements item"}
@@ -646,182 +862,6 @@
   (is (check (render-virtual-DOM {:class "foo"})
              [:div {:class "foo editable"}])))
 
-(deftest horizontal-label-hierarchy-node-DOM-test
-  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-entity s4 joe-id "test")
-        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
-        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
-        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
-        [s9 jane-id] (add-entity s8 nil "Jane")
-        [s10 jane-test-id] (add-entity s9 jane-id "test")
-        [store jane-test-label-id] (add-entity s10 jane-test-id :label)
-        joe (description->entity joe-id store)
-        jane (description->entity jane-id store)
-        ordered-entities [joe jane]
-        labelses (map semantic-label-elements ordered-entities)
-        item-maps (item-maps-by-elements ordered-entities labelses)
-        hierarchy (hierarchy-by-canonical-info item-maps)
-        node (first hierarchy)]
-    ;; A node with no leaves.
-    (is (check
-         (horizontal-label-hierarchy-node-DOM node {})
-         [:component
-          {:template '("" :label)
-           :get-action-data [composed-get-action-data
-                             [get-item-or-exemplar-action-data-for-ids
-                              [joe-id jane-id]]
-                             get-item-or-exemplar-action-data]
-           :relative-id joe-test-id
-           :class "label"
-           :excluded-element-ids [joe-test-label-id]}]))
-    ;; A node with a leaf,  properties, and no children
-    (is (check
-         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node)) {})
-         [:component {:relative-id joe-id
-                      :excluded-element-ids [joe-test-id]}]))
-    ;; A node with leaves, no properties, and no children
-    (is (check
-         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
-         [:div {:class
-                "label wrapped-element virtual-wrapper merge-with-parent"}
-          [:component {:template '("" :label)
-                       :get-action-data
-                       [composed-get-action-data
-                        [get-item-or-exemplar-action-data-for-ids [jane-id]]
-                        [get-virtual-action-data :template '("" :label)]]
-                       :relative-id :nested
-                       :class "label merge-with-parent"
-                       :render-dom render-virtual-DOM
-                       :get-rendering-data get-virtual-DOM-rendering-data}]
-          [:div {:class "indent-wrapper label"}
-           [:component {:relative-id jane-id
-                        :excluded-element-ids [jane-test-id]}]]]))))
-
-(deftest labels-and-elements-DOM-test
-  (let [[s4 joe-id] (add-entity (new-element-store) nil "Joe")
-        [s5 joe-test-id] (add-entity s4 joe-id "test")
-        [s6 joe-test-label-id] (add-entity s5 joe-test-id :label)
-        [s7 joe-foo-id] (add-entity s6 joe-id "foo")
-        [s8 joe-foo-label-id] (add-entity s7 joe-foo-id :label)
-        [s9 jane-id] (add-entity s8 nil "Jane")
-        [s10 jane-test-id] (add-entity s9 jane-id "test")
-        [s11 jane-test-label-id] (add-entity s10 jane-test-id :label)
-        [store sally-id] (add-entity s11 nil "Sally")
-        joe (description->entity joe-id store)
-        joe-test (description->entity joe-test-id store)
-        joe-foo (description->entity joe-foo-id store)
-        jane (description->entity jane-id store)
-        jane-test (description->entity jane-test-id store)
-        sally (description->entity sally-id store)]
-    ;; Test two non-labels.
-    (is (check
-         (labels-and-elements-DOM
-          [joe jane] nil false false :vertical
-          {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element label"}
-          [:component {:width 0.8, :template '("" :label)
-                       :get-action-data
-                       [composed-get-action-data
-                        [get-item-or-exemplar-action-data-for-ids
-                         [joe-id jane-id]]
-                        get-item-or-exemplar-action-data]
-                       :class "label"
-                       :excluded-element-ids [joe-test-label-id]
-                       :relative-id joe-test-id}]
-          [:div {:class "indent-wrapper"}
-           [:div {:class "vertical-stack"}
-            [:div {:class "wrapped-element label"}
-             [:component {:width 0.8, :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [get-item-or-exemplar-action-data-for-ids [joe-id]]
-                           get-item-or-exemplar-action-data]
-                          :class "label"
-                          :excluded-element-ids [joe-foo-label-id]
-                          :relative-id joe-foo-id}]
-             [:div {:class "indent-wrapper"}
-              [:component {:template (as-set '(anything
-                                               ("test" :label) ("foo" :label)))
-                           :width 0.8
-                           :excluded-element-ids (as-set [joe-test-id
-                                                          joe-foo-id])
-                           :relative-id joe-id}]]]
-            [:component {:template '(anything ("test" :label))
-                         :width 0.8
-                         :excluded-element-ids [jane-test-id]
-                         :relative-id jane-id}]]]]))
-    ;; Test two labels.
-    (is (check
-         (labels-and-elements-DOM
-                    [joe-test joe-foo] nil false false :vertical
-          {:template ' anything :width 0.8})
-         [:div {:class "vertical-stack"}
-          [:component {:template '(anything :label)
-                       :width 0.8
-                       :class "label"
-                       :excluded-element-ids [joe-test-label-id]
-                       :relative-id joe-test-id}]
-          [:component {:template '(anything :label)
-                       :width 0.8
-                       :class "label"
-                       :excluded-element-ids [joe-foo-label-id]
-                       :relative-id joe-foo-id}]]))
-    ;; Test a label and a non-label
-    (is (check
-         (labels-and-elements-DOM
-          [sally joe-test] nil false false :vertical
-          {:template ' anything :width 0.8})
-         [:div {:class "wrapped-element label"}
-          [:component {:template '(anything :label)
-                       :width 0.8
-                       :class "label"
-                       :excluded-element-ids [joe-test-label-id]
-                       :relative-id joe-test-id}]
-          [:div {:class "indent-wrapper"}
-           [:component {:template 'anything
-                          :width 0.8
-                          :relative-id sally-id}]]]))
-    ;; Test a non-label with must-show-labels and elements-must-show-labels
-    (is (check
-         (labels-and-elements-DOM
-          [sally] nil true true :vertical
-          {:template 'anything :width 0.8})
-         [:div {:class "wrapped-element label"}
-          [:component {:template '(anything :label)
-                       :width 0.8
-                       :relative-id :virtual-label
-                       :class "label"
-                       :render-dom render-virtual-DOM
-                       :get-rendering-data get-virtual-DOM-rendering-data
-                       :get-action-data [get-virtual-action-data
-                                         :template '(anything :label)
-                                         :position :after]}]
-          [:div {:class "indent-wrapper"}
-           [:div {:class
-                  "horizontal-labels-element label virtual-wrapper narrow"}
-            [:component {:width 0.8
-                         :template '("" :label)
-                         :relative-id [sally-id :virtual-label]
-                         :get-action-data
-                         [composed-get-action-data
-                          [get-item-or-exemplar-action-data-for-ids [sally-id]]
-                          [get-virtual-action-data :template '("" :label)]]
-                         :render-dom render-virtual-DOM
-                         :get-rendering-data get-virtual-DOM-rendering-data
-                         :class "label"}]
-            [:component {:template 'anything
-                         :width 0.8
-                         :relative-id sally-id}]]]]))
-    ;; Test including a virtual-dom
-    (is (check
-         (labels-and-elements-DOM
-          [sally] [:div "virtual"] false false :vertical
-          {:template 'anything :width 0.8})
-         [:div {:class "vertical-stack"}
-          [:component {:template 'anything
-                       :width 0.8
-                       :relative-id sally-id}]
-          [:div "virtual"]]))))
 
 (comment
   (deftest item-DOM-R-test-one-column

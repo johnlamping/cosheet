@@ -33,7 +33,8 @@
                                   item-content-and-non-label-elements-DOM
                                   item-content-DOM
                                   labels-and-elements-DOM
-                                  horizontal-label-hierarchy-node-DOM]])))
+                                  horizontal-label-hierarchy-node-DOM]]
+             [action-data :refer [get-item-or-exemplar-action-data-for-ids]])))
 
 ;;; The condition elements of a table are its semantic elements
 ;;; that are not column headers.
@@ -559,16 +560,20 @@
 
 (defn render-table-top-DOM
   "Return a hiccup representation for the top of a table, the part that
-  holds its condition."
+  holds its condition. The relative-id should be for the row-condition"
   [{:keys [relative-id]} store]
   (let [row-condition-entity (description->entity relative-id store)
         condition-elements (table-condition-elements row-condition-entity)
         spec-down {:template '(anything)}
-        virtual-dom (virtual-entity-and-label-DOM
-                     {} :vertical {})
+        virtual-dom
+        (virtual-entity-and-label-DOM
+         {:template 'anything
+          :relative-id :virtual}
+         :vertical
+         {})
         dom (labels-and-elements-DOM
              condition-elements virtual-dom
              true true :horizontal spec-down)]
-    [:div {:class "query-holder tag"}
-     [:div {:class "query-indent tag"}]
+    [:div {:class "query-holder label"}
+     [:div {:class "query-indent label"}]
      (add-attributes dom {:class "query-condition"})]))

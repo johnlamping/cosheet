@@ -7,12 +7,20 @@
              store-impl
              [store-utils :refer [add-entity]]
              [query :refer [matching-items matching-elements not-query]]
-             [entity :as entity  :refer [label->elements elements]]
+             [entity :as entity  :refer [description->entity
+                                         label->elements elements to-list]]
              [expression :refer [expr expr-let expr-seq]]
              [debug :refer [simplify-for-print]]
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet2.server
+             [item-render :refer [render-virtual-DOM
+                                  get-virtual-DOM-rendering-data]]
+             [action-data :refer [composed-get-action-data
+                                  get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
+                                  get-content-only-action-data
+                                  get-virtual-action-data]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -99,9 +107,62 @@
         [s1 joe-id] (add-entity (new-element-store) nil joe-list)
         [s2 jane-id] (add-entity s1 nil jane-list)
         [s3 test-id] (add-entity s2 nil test-list)
-        [store table-id] (add-entity s3 nil table-list)]
-    (println "!!!" )
-))
+        [store table-id] (add-entity s3 nil table-list)
+        table (description->entity table-id store)
+        query (first (current-value (entity/label->elements
+                                     table :row-condition)))
+        query-id (:item-id query)
+        rc1 (first (current-value (matching-elements `(nil ~o8) query)))
+        rc1-id (:item-id rc1)]
+    (is (check
+         (render-table-top-DOM {:relative-id query-id} store)
+         [:div {:class "query-holder label"}
+          [:div {:class "query-indent label"}]
+          [:div {:class "horizontal-labels-element label query-condition"}
+           ;; A virtual label for the condition
+           [:component {:template '(anything :label)
+                        :relative-id :virtual-label
+                        :class "label"
+                        :render-dom render-virtual-DOM
+                        :get-rendering-data get-virtual-DOM-rendering-data
+                        :get-action-data [get-virtual-action-data
+                                          :template '(anything :label)
+                                          :position :after]}]
+           ;; TODO: These templates should have 'anything.
+           ;; The condition element.
+           [:div {:class "horizontal-stack"}
+            [:div {:class "vertical-labels-element label"}
+             [:component {:template '("" :label)
+                          :get-action-data
+                          [composed-get-action-data
+                           ;; TODO: This should be rc1-id
+                           [get-item-or-exemplar-action-data-for-ids [rc1-id]]
+                           get-item-or-exemplar-action-data]
+                          :class "label"
+                          :excluded-element-ids [(any)]
+                          :relative-id (any)}]
+             [:component {:template '(anything ("age" :label))
+                          :excluded-element-ids [(any)]
+                          :relative-id rc1-id}]]
+            ;; A virtual element for more condition.
+            [:div {:class "vertical-labels-element label"}
+             [:component {:relative-id :virtual-label
+                          :get-action-data [composed-get-action-data
+                                            [get-virtual-action-data
+                                             :template 'anything]
+                                            [get-virtual-action-data
+                                             :template '("" :label)
+                                             :position :before]]
+                          :class "label"
+                          :render-dom render-virtual-DOM
+                          :get-rendering-data get-virtual-DOM-rendering-data}]
+             [:component {:template 'anything
+                          :relative-id :virtual
+                          :render-dom render-virtual-DOM
+                          :get-rendering-data get-virtual-DOM-rendering-data
+                          :get-action-data [get-virtual-action-data
+                                            :template 'anything]}]]]]]))
+    ))
 
 (comment
   (deftest table-DOM-test

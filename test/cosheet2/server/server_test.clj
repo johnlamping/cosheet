@@ -6,6 +6,7 @@
              hierarchy-test
              render-utils-test
              item-render-test
+             table-render-test
              dom-manager-test
              session-state-test
              action-data-test

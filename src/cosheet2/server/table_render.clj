@@ -2,7 +2,7 @@
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
                       [entity :refer [subject content label->elements
-                                      StoredEntity]]
+                                      description->entity StoredEntity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [debug :refer [simplify-for-print]]
@@ -28,11 +28,11 @@
                                   pattern-to-query query-to-template]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM]]
-             [item-render :refer [items-with-labels-DOM
-                                  virtual-element-DOM
+             [item-render :refer [virtual-DOM virtual-entity-and-label-DOM
                                   label-stack-DOM
                                   item-content-and-non-label-elements-DOM
                                   item-content-DOM
+                                  labels-and-elements-DOM
                                   horizontal-label-hierarchy-node-DOM]])))
 
 ;;; The condition elements of a table are its semantic elements
@@ -464,7 +464,7 @@
     "Given the item giving the row condition, return the template for a row
   and the items for the rows, in order."
     [store row-condition-item]
-    (expr-let [condition-elements (table-condition-elements-R row-condition-item)
+    (expr-let [condition-elements (table-condition-elements row-condition-item)
                elems-list (expr-seq map semantic-to-list-R condition-elements)
                row-template (concat '(anything) elems-list [:top-level])
                row-query (pattern-to-query row-template)
@@ -472,29 +472,7 @@
                            (matching-items row-query store))] 
       [row-template row-items]))
 
-  (defn table-top-DOM-R
-    "Return a hiccup representation for the top of a table, the part that
-  holds its condition."
-    [row-condition-item inherited]
-    (let [subject-referent (union-referent [(item-referent row-condition-item)])]
-      (expr-let [condition-elements (table-condition-elements-R
-                                     row-condition-item)
-                 inherited-down (assoc
-                                 inherited
-                                 :subject-referent subject-referent
-                                 :template '(anything)
-                                 ;; TODO: Do only when all tags?
-                                 :attributes [[#{:label} #{:content}
-                                               {:add-element
-                                                {:referent subject-referent}}]])
-                 virtual-dom (virtual-element-with-label-DOM
-                              'anything :vertical inherited-down)
-                 dom (labels-and-elements-DOM-R
-                      condition-elements virtual-dom
-                      true true :horizontal inherited-down)]
-        [:div {:class "query-holder tag"}
-         [:div {:class "query-indent tag"}]
-         (add-attributes dom {:class "query-condition"})])))
+  
 
   (defn table-DOM-R
     "Return a hiccup representation of DOM, with the given internal key,
@@ -578,3 +556,19 @@
                    (into [:div {:class "table-rows"}]
                          (concat rows [virtual-row]))]]])))))))
   )
+
+(defn render-table-top-DOM
+  "Return a hiccup representation for the top of a table, the part that
+  holds its condition."
+  [{:keys [relative-id]} store]
+  (let [row-condition-entity (description->entity relative-id store)
+        condition-elements (table-condition-elements row-condition-entity)
+        spec-down {:template '(anything)}
+        virtual-dom (virtual-entity-and-label-DOM
+                     {} :vertical {})
+        dom (labels-and-elements-DOM
+             condition-elements virtual-dom
+             true true :horizontal spec-down)]
+    [:div {:class "query-holder tag"}
+     [:div {:class "query-indent tag"}]
+     (add-attributes dom {:class "query-condition"})]))

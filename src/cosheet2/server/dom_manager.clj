@@ -19,7 +19,7 @@
             (cosheet2.server
              [item-render :refer [render-item-DOM get-item-rendering-data]]
              [action-data :refer [get-item-or-exemplar-action-data
-                                  run-action-data-getter]])))
+                                  update-action-data-for-component]])))
 
 (def verbose false)
 
@@ -468,14 +468,6 @@
             root
             (rest id-sequence))))
 
-(defn action-data-for-component
-  [component containing-action-data action immutable-store]
-  (let [spec (:dom-specification @component)
-        getter (or (:get-action-data spec) get-item-or-exemplar-action-data)
-        data (run-action-data-getter
-              getter spec containing-action-data action immutable-store)]
-    (assoc data :component component)))
-
 (defn client-id->action-data
   "Returns the action data map for the component for the given client
   id. Adds the component to the action data map."
@@ -486,9 +478,9 @@
               (when data
                 (when-let
                     [component ((:id->subcomponent @(:component data)) id)]
-                  (action-data-for-component
+                  (update-action-data-for-component
                    component data action immutable-store))))
-            (action-data-for-component root {} action immutable-store)
+            (update-action-data-for-component root {} action immutable-store)
             (rest id-sequence))))
 
 (defn adjust-subdom-for-client

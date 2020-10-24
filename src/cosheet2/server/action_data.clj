@@ -23,6 +23,10 @@
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
+;;;      :column-ids  A seq of the ids that should be acted up for a column
+;;;                   action
+;;;         :row-ids  A seq of the ids that should be acted up for a row
+;;;                   action
 ;;;           :store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they imply.
@@ -39,6 +43,25 @@
                            [(first getter) (rest getter)]
                            [getter nil])]
     (apply fun specification containing-action-data action store extra-args)))
+
+(def get-item-or-exemplar-action-data)
+
+(defn update-action-data-for-component
+  "Update the action data for one component"
+  [component containing-action-data action immutable-store]
+  (let [spec (:dom-specification @component)
+        {:keys [get-action-data
+                get-column-action-data get-row-action-data]} spec 
+        data (reduce (fn [data getter]
+                       (if getter
+                         (run-action-data-getter
+                          getter spec data action immutable-store)
+                         data))
+                     containing-action-data
+                     [(or get-action-data get-item-or-exemplar-action-data)
+                      get-column-action-data
+                      get-row-action-data])]
+    (assoc data :component component)))
 
 (defn best-match
   "Given an immutable template, and a seq of items

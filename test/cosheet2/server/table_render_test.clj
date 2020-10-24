@@ -109,10 +109,9 @@
         [s3 test-id] (add-entity s2 nil test-list)
         [store table-id] (add-entity s3 nil table-list)
         table (description->entity table-id store)
-        query (first (current-value (entity/label->elements
-                                     table :row-condition)))
+        query (first (entity/label->elements table :row-condition))
         query-id (:item-id query)
-        rc1 (first (current-value (matching-elements `(nil ~o8) query)))
+        rc1 (first (matching-elements `(nil ~o8) query))
         rc1-id (:item-id rc1)]
     (is (check
          (render-table-top-DOM {:relative-id query-id} store)

@@ -118,12 +118,13 @@
 
 (defn do-add-twin
   [store {:keys [target-ids template session-state]}]
-  (let [[ids store] (create-possible-selector-elements
-                     (or template 'anything)
-                     (map #(id->subject store %) target-ids)
-                     target-ids
-                     :after true store)]
-    (add-select-store-ids-request store ids session-state)))
+  (when (not= template :singular)
+   (let [[ids store] (create-possible-selector-elements
+                      (or template 'anything)
+                      (map #(id->subject store %) target-ids)
+                      target-ids
+                      :after true store)]
+     (add-select-store-ids-request store ids session-state))))
 
 (defn do-add-element
   [store {:keys [target-ids elements-template session-state]}]
@@ -140,14 +141,15 @@
     (add-select-store-ids-request store ids session-state)))
 
 (defn do-delete 
-  [store {:keys [target-ids]}]
+  [store {:keys [target-ids template]}]
   (assert (= (count target-ids) (count (distinct target-ids)))
           target-ids)
-  (reduce (fn [store id]
-            (let [subject-id (id->subject store id) 
-                  modified (remove-entity-by-id store id)]
-              (abandon-problem-changes store modified subject-id)))
-          store target-ids))
+  (when (not= template :singular)
+    (reduce (fn [store id]
+              (let [subject-id (id->subject store id) 
+                    modified (remove-entity-by-id store id)]
+                (abandon-problem-changes store modified subject-id)))
+            store target-ids)))
 
 (comment
   (defn pop-content-from-key

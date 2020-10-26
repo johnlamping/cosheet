@@ -524,7 +524,9 @@
       [:div (cond-> (-> (select-keys attributes [:class])
                         (into-attributes {:class "content-text editable"} ))
               (has-keyword? item :label)
-              (into-attributes (:class "label")))
+              (into-attributes (:class "label"))
+              anything
+              (into-attributes (:class "placeholder")))
        (if anything "\u00A0..." (str content))])))
 
 (defn render-content-only-DOM
@@ -613,12 +615,12 @@
                          (let [ancestor-props
                                (clojure.set/difference
                                 (set labels)
-                                (hierarchy-node-example-elements node)
-                                (set (hierarchy-node-example-elements node)))]
+                                (set (hierarchy-node-example-elements node)))
+                               ancestor-ids (map :item-id ancestor-props)]
                            (make-component
-                            {:relative-id (:item-id leaf)
-                             :excluded-element-ids (map :item-id
-                                                        ancestor-props)})))
+                            (assoc specification
+                                   :relative-id (:item-id leaf)
+                                   :excluded-element-ids ancestor-ids))))
         items-spec (assoc specification
                           :get-action-data
                           [get-item-or-exemplar-action-data-for-ids

@@ -34,7 +34,8 @@
                                   item-content-DOM
                                   labels-and-elements-DOM
                                   horizontal-label-hierarchy-node-DOM]]
-             [action-data :refer [get-item-or-exemplar-action-data-for-ids]])))
+             [action-data :refer [get-item-or-exemplar-action-data-for-ids
+                                  get-column-action-data]])))
 
 ;;; The condition elements of a table are its semantic elements
 ;;; that are not column headers.
@@ -378,74 +379,12 @@
   (map #(pattern-to-query (semantic-to-list (:item %)))
        (hierarchy-node-non-immediate-descendant-cover node)))
 
-(comment
-
-  (defn target-for-header-add-column-command
-    "Return the target for an add column command. elements-template gives
-  the template for new elements in the header, while inherited gives
-  the environment of the header."
-    [node elements-template inherited]
-    (assert (:template inherited))
-    (let [subject-ref (:subject-referent inherited)
-          ;; There is an item for the new column, which has an element
-          ;; satisfying the element template. We want to select that
-          ;; element.
-          adjacent-referents (hierarchy-node-items-referents
-                              node inherited)
-          new-column-ref (virtual-referent (:template inherited)
-                                           subject-ref adjacent-referents
-                                           :position :after)
-          new-element-ref (virtual-referent (cons '??? (rest elements-template))
-                                            new-column-ref
-                                            nil
-                                            :position :after)
-          select-pattern (conj (:key-prefix inherited)
-                               [:pattern :subject] [:pattern])]
-      {:referent new-element-ref
-       :select-pattern select-pattern}))
-
-  (defn attributes-for-header-add-column-command
-    "Return attributes for an add column command, given the column
-  request items that gave rise to the column. elements-template gives
-  the template for new elements, while inherited gives the environment
-  of the header."
-    [node elements-template inherited]
-    {:add-column (target-for-header-add-column-command
-                  node elements-template inherited)})
-
-  (defn table-header-properties-inherited
-    "Return the inherited to use for the properties of a table header."
-    [node inherited]
-    (let [descendants (hierarchy-node-descendants node)
-          descendants-referent (hierarchy-node-items-referent node inherited)
-          item (:item (first descendants))
-          elements-template ('anything :label)]
-      (cond-> (-> (set-batch-edit-ids node inherited)
-                  (add-inherited-attribute
-                   [#{:label :element :recursive :optional} #{:content}
-                    (cond-> (attributes-for-header-add-column-command
-                             node elements-template inherited)
-                      (= (count descendants) 1)
-                      (assoc :delete-column {:referent descendants-referent}))])
-                  ;; Let item-render figure out whether to use narrow
-                  ;; or wide format.
-                  (assoc :width (* 0.75 (count descendants))))
-        (:leaves node)
-        (add-inherited-attribute [#{:content}
-                                  {:add-twin {:referent nil}
-                                   :delete {:clear-only true}}])
-        (and (:leaves node)
-             (#{'anything 'anything-immutable} (content item)))
-        (add-inherited-attribute [#{:content}
-                                  {:class "placeholder"}]))))
-
-  (defn table-header-subtree-DOM
-    "Generate the dom for a subtree of a table header hierarchy, given
+(defn table-header-subtree-DOM
+  "Generate the dom for a subtree of a table header hierarchy, given
   the doms for all the children."
-    [node child-doms function-info inherited]
+    [node child-doms specification]
     (let [node-dom (horizontal-label-hierarchy-node-DOM
-                    node function-info
-                    (table-header-properties-inherited node inherited))
+                    node specification)
           is-leaf (empty? child-doms)
           elements-template '(anything :label)
           is-label (is-label-template? elements-template)
@@ -459,24 +398,42 @@
          (into [:div {:class "column-header-sequence"}]
                child-doms)])))
 
-  (defn table-header-child-info
-    "In addition to what element-hierarchy-child-info does, set the
-   batch-edit-ids to what our children with no properties of their own need."
-    [node function-info inherited]
-    (let [[function-info inherited] (element-hierarchy-child-info
-                                     node function-info inherited)]
-      [function-info
-       (set-batch-edit-ids node inherited)]))
-
-  (defn table-header-top-level-subtree-DOM
-    "Generate the dom for a top level subtree of a table header hierarchy.
+(defn table-header-top-level-subtree-DOM
+  "Generate the dom for a top level subtree of a table header hierarchy.
   Inherited describes the column requests."
-    [node inherited]
-    (hierarchy-node-DOM-R
-     node table-header-subtree-DOM table-header-child-info
-     {:top-level true}
-     inherited))
+  [node specification]
+  (hierarchy-node-DOM node
+                      table-header-subtree-DOM
+                      (fn [node spec] (assoc spec :top-level false))
+                      specification))
 
+(defn table-header-top-node-specification
+  "Return the specification to use for a DOM that is part of a table header."
+  [header-id node]
+  (let [descendant-ids (map #(:item-id (:item %))
+                            (hierarchy-node-descendants node))]
+    {:get-column-action-data [get-column-action-data header-id descendant-ids]
+     :width (* 0.75 (count descendants))
+     :top-level true
+     ;; Tell add-twin and delete that they must not add or remove a column.
+     :template :singular}))
+
+(def table-virtual-header-node-DOM)
+
+(defn table-header-DOM
+  "Generate DOM for column headers given the hierarchy.
+  The column will contain those elements of the rows that match the templates
+  in the hierarchy."
+    [header-id hierarchy]
+    (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
+          columns (map #(table-header-top-level-subtree-DOM
+                         % (table-header-top-node-specification header-id %))
+                       hierarchy)
+          virtual-header (table-virtual-header-node-DOM hierarchy)]
+      (into [:div {:class "column-header-sequence"}]
+            (concat columns [virtual-header]))))
+
+(comment
   (defn table-virtual-header-node-DOM
     [hierarchy adjacent-referent inherited]
     (let [template '(anything :label)
@@ -495,21 +452,6 @@
        {:class (cond-> "column-header virtual-column"
                  (is-label-template? template)
                  (str " label"))}))))
-(comment
-  (defn table-header-DOM
-    "Generate DOM for column headers given the hierarchy.
-  The column will contain those elements of the rows that match the templates
-  in the hierarchy."
-    [hierarchy inherited]
-    (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-          adjacent-referent (or (hierarchy-last-item-referent hierarchy)
-                                (:subject-referent inherited))
-          virtual-header (table-virtual-header-node-DOM
-                          hierarchy adjacent-referent inherited)
-          columns (map #(table-header-top-level-subtree-DOM % inherited)
-                       hierarchy)]
-      (into [:div {:class "column-header-sequence"}]
-            (concat columns [virtual-header])))))
 
 (defn render-table-top-DOM
   "Return a hiccup representation for the top of a table, the part that

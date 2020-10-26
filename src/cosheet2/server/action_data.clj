@@ -171,6 +171,17 @@
   [v ^java.io.Writer w]
   (.write w "content-AD"))
 
+(defn get-column-action-data
+  "Add the action data for a command that acts on a column.
+  The header-id is the id that holds all the columns. The column-ids
+  are the ids of all columns under this component. (One header can
+  span multiple columns.)"
+  [specification containing-action-data action immutable-store
+   header-id column-ids]
+  (assoc containing-action-data :column
+         {:header-id header-id
+          :column-ids column-ids}))
+
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,

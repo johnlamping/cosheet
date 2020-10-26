@@ -237,6 +237,9 @@
 ;;;                         must start out satisfying. For a regular DOM,
 ;;;                         this means any twins it gets, while for a virtual
 ;;;                         DOM, it means its new item.
+;;;                         If the value of :template is :singular, then
+;;;                         twins may not be created, and the item may
+;;;                         not be deleted.
 ;;;     :elements-template  Optional. Elements should use this as their
 ;;;                         template.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be

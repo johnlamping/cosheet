@@ -42,6 +42,16 @@
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
 
+(def virt-DOM render-virtual-DOM)
+
+(def comp-AD composed-get-action-data)
+(def ids-AD get-item-or-exemplar-action-data-for-ids)
+(def item-AD get-item-or-exemplar-action-data)
+(def virt-AD get-virtual-action-data)
+(def col-AD get-column-action-data)
+
+(def virt-RD get-virtual-DOM-rendering-data)
+
 (deftest table-DOM-test
   (let [specification {:width 3.0
                        :elements-template 'anything}
@@ -89,7 +99,7 @@
                          :column)
                         (~'anything
                          ("name" :label (~o1 :order))
-                         ("id" :label (~o2 :order))
+                         ("other" :label (~o2 :order))
                          (~o3 :order)
                          :column)
                         (~'anything ("name" :label (~o1 :order))
@@ -97,7 +107,7 @@
                          :column)
                         (~'anything
                          ("age" :label (~o1 :order))
-                         ("id" :label (~o2 :order))
+                         ("other" :label (~o2 :order))
                          (~o5 :order)
                          :column)
                         (~'anything ("6-2" (~o1 :order)
@@ -117,7 +127,17 @@
         rc1 (first (matching-elements `(nil ~o8) row-condition))
         rc1-id (:item-id rc1)
         c1 (first (matching-elements `(nil ~o1) row-condition))
-        c1-id (:item-id c1)]
+        c1-id (:item-id c1)
+        c2 (first (matching-elements `(nil ~o2) row-condition))
+        c2-id (:item-id c2)
+        c2-name (first (matching-elements "name" c2))
+        c2-name-id (:item-id c2-name)
+        c3 (first (matching-elements `(nil ~o3) row-condition))
+        c3-id (:item-id c3)
+        c3-name (first (matching-elements "name" c3))
+        c3-name-id (:item-id c3-name)
+        c4 (first (matching-elements `(nil ~o4) row-condition))
+        c4-id (:item-id c4)]
     (is (check
          (render-table-top-DOM {:relative-id row-condition-id} store)
          [:div {:class "query-holder label"}
@@ -169,17 +189,79 @@
     (let [columns (order-entities
                    (label->elements row-condition :column))
           hierarchy (hierarchy-by-labels columns)]
+      ;; (println "!!!" (table-header-DOM row-condition-id hierarchy))
       (is (check
            (table-header-DOM row-condition-id hierarchy)
            [:div {:class "column-header-sequence"}
-            [:component {:get-column-action-data [get-column-action-data
-                                                  row-condition-id [c1-id]]
+            ;; A single column.
+            [:component {:get-column-action-data
+                         [col-AD row-condition-id [c1-id]]
                          :width 0.75
                          :template :singular
                          :relative-id c1-id
                          :excluded-element-ids ()
                          :class "column-header leaf"}]
-            (any)
+            ;; Three columns.
+            [:div {:class "column-header label"}
+             ;; The label for the three columns
+             [:component {:get-column-action-data
+                          [col-AD row-condition-id [c2-id c3-id c4-id]]
+                          :width 2.25
+                          :template '("" :label)
+                          :get-action-data
+                          [comp-AD [ids-AD [c2-id c3-id c4-id]] item-AD]
+                          :relative-id c2-name-id
+                          :class "label with-children"
+                          :excluded-element-ids [(any)]}]
+             [:div {:class "column-header-sequence"}
+              ;; A column with only a virtual label
+              [:div {:class (str "label wrapped-element virtual-wrapper"
+                                 " merge-with-parent column-header leaf")}
+               [:component {:get-column-action-data
+                            [col-AD row-condition-id [c2-id c3-id c4-id]]
+                            :width 2.25 ;; TODO: This looks wrong
+                            :template '("" :label)
+                            :get-action-data [comp-AD [ids-AD [c2-id]]
+                                              [virt-AD :template '("" :label)]]
+                            :relative-id :nested ;; TODO: This should have the column id again, to be unique
+                            :class "label merge-with-parent"
+                            :render-dom virt-DOM
+                            :get-rendering-data virt-RD}]
+               [:div {:class "indent-wrapper label"}
+                [:component {:get-column-action-data
+                             [col-AD row-condition-id [c2-id c3-id c4-id]] ;; TODO: Only one column?
+                             :width 2.25
+                             :template :singular
+                             :relative-id c2-id
+                             :excluded-element-ids [c2-name-id]}]]]
+              ;; A column with an additional label
+              [:component {:get-column-action-data
+                           [col-AD row-condition-id [c2-id c3-id c4-id]]
+                           :width 2.25
+                           :template :singular
+                           :relative-id c3-id
+                           :excluded-element-ids [c3-name-id]
+                           :class "column-header leaf"}]
+              ;; A column with only a virtual label
+              [:div {:class (str "label wrapped-element virtual-wrapper"
+                                 " merge-with-parent column-header leaf")}
+               [:component {:get-column-action-data
+                            [col-AD row-condition-id [c2-id c3-id c4-id]]
+                            :width 2.25
+                            :template '("" :label)
+                            :get-action-data [comp-AD [ids-AD [c4-id]]
+                                              [virt-AD :template '("" :label)]]
+                            :relative-id :nested
+                            :class "label merge-with-parent"
+                            :render-dom virt-DOM
+                            :get-rendering-data virt-RD}]
+               [:div {:class "indent-wrapper label"}
+                [:component {:get-column-action-data
+                             [col-AD row-condition-id [c2-id c3-id c4-id]]
+                             :width 2.25
+                             :template :singular
+                             :relative-id c4-id
+                             :excluded-element-ids [(any)]}]]]]]
             (any)
             (any)
             (any)

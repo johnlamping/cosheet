@@ -5,6 +5,7 @@
                                       description->entity StoredEntity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
+                      [query-calculator :refer [matching-items-R]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
@@ -21,7 +22,7 @@
                                 hierarchy-by-labels
                                 hierarchy-node-example-elements
                                 hierarchy-node-non-immediate-descendant-cover]]
-             [order-utils :refer [order-entities add-order-elements]]
+             [order-utils :refer [ordered-ids-R]]
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   table-header-template
@@ -33,6 +34,7 @@
                                   item-content-and-non-label-elements-DOM
                                   item-content-DOM
                                   labels-and-elements-DOM
+                                  non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
                                   get-column-action-data]])))
@@ -120,55 +122,7 @@
               {:batch-edit-ids (map #(:item-id (:item %))
                                     (hierarchy-node-descendants node))}])))))
 
-  (defn table-cell-items-DOM-R
-    "Return the dom for one cell of a table, given its items.
-  Inherited gives the context of each item in the cell."
-    [items column-id inherited]
-    (let [row-referent (:subject-referent inherited)
-          inherited
-          (-> inherited
-              (assoc :width 0.75)  ;; Tell item-render to use the narrow format.
-              (add-inherited-attribute
-               [#{:label :element :recursive :optional} #{:content}
-                {:column {:referent column-id}}]))]
-      (expr-let
-          [dom (if (empty? items)
-                 ;; TODO: Get our left neighbor as an arg, and pass it
-                 ;; in as adjacent information for new-twin.
-                 (virtual-element-DOM nil :after inherited)
-                 (elements-DOM-R items false (:template inherited) :vertical
-                                 inherited))]
-        (add-attributes dom {:class "table-cell has-border"}))))
-
-  (defn table-virtual-column-cell-DOM
-    [row-item inherited]
-    (add-attributes
-     (virtual-element-DOM nil :after
-                          (assoc inherited :select-pattern
-                                 (conj (vec (butlast (:key-prefix inherited)))
-                                       [:pattern 1] [:pattern])))
-     {:class "table-cell virtual-column has-border"}))
-
-  (defn table-cell-DOM-R
-    "Return the dom for one cell of a table, given its column description."
-    [row-item
-     {:keys [column-id query template exclusions] :as header-description}
-     inherited]
-    (let [inherited-down (assoc inherited
-                                :key-prefix (conj (:key-prefix inherited)
-                                                  column-id)
-                                :template template)]
-      (if (= column-id :virtualColumn)
-        (table-virtual-column-cell-DOM row-item inherited-down)
-        (expr-let [matches (matching-elements query row-item)
-                   do-not-show (when exclusions
-                                 (expr-seq map #(matching-elements % row-item)
-                                           exclusions))]
-          (let [elements (seq (clojure.set/difference
-                               (set matches)
-                               (set (apply concat do-not-show))))]
-            (table-cell-items-DOM-R
-             elements column-id inherited-down))))))
+ 
 
   (defn table-row-DOM-R
     "Generate dom for a table row."
@@ -242,47 +196,6 @@
        [table-virtual-row-DOM
         row-key new-row-template adjacent-referent column-descriptions
         inherited])))
-
-  (defn query-for-hierarchy-leaf
-    "Given a hierarchy leaf, and the node it is from,
-   return the query that items in cells of the column must satisfy.
-   (Not worrying about exclusions.)"
-    [leaf]
-    (pattern-to-query (immutable-semantic-to-list (:item leaf))))
-
-  (defn table-hierarchy-node-column-descriptions
-    "Given a hierarchy node, for each column under the node,
-  return a map:
-       :column-id Id that identifies the column.
-                  Typically the id of the column item.
-           :query Query that each element of the column must satisfy.
-                  For a virtual column, this will not be present.
-        :template Template for new items in the column.
-      :exclusions Seq of conditions that elements must not satisfy."
-    [node]
-    (mapcat (fn [node-or-element]
-              (if (hierarchy-node? node-or-element)
-                (table-hierarchy-node-column-descriptions node-or-element)
-                (let [query (query-for-hierarchy-leaf node-or-element)]
-                  [{:column-id (:item-id (:item node-or-element))
-                    :query query
-                    :template (query-to-template query)
-                    :exclusions (table-hierarchy-node-exclusions node)}])))
-            (hierarchy-node-next-level node)))
-
-  (defn row-template-and-items-R
-    "Given the item giving the row condition, return the template for a row
-  and the items for the rows, in order."
-    [store row-condition-item]
-    (expr-let [condition-elements (table-condition-elements row-condition-item)
-               elems-list (expr-seq map semantic-to-list-R condition-elements)
-               row-template (concat '(anything) elems-list [:top-level])
-               row-query (pattern-to-query row-template)
-               row-items (expr order-items-R
-                           (matching-items row-query store))] 
-      [row-template row-items]))
-
-  
 
   (defn table-DOM-R
     "Return a hiccup representation of DOM, with the given internal key,
@@ -363,6 +276,109 @@
                    (into [:div {:class "table-rows"}]
                          (concat rows [virtual-row]))]]])))))))
   )
+
+(defn table-virtual-column-cell-DOM
+  [specification]
+  (add-attributes
+   (virtual-DOM specification {})
+   {:class "table-cell virtual-column has-border"}))
+
+(defn get-table-cell-DOM-rendering-data
+  [specification mutable-store]
+  [])
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_cell_DOM_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "cell-RD"))
+
+(defn render-table-cell-DOM
+  "We need to put each table cell in a component, so its column-id
+  can be included in its client id. Otherwise, if several columns show the
+  same item, we could have the same client id for both."
+  [{:keys [items] :as specification}]
+  (let [spec (dissoc specification :items :relative-id)
+        dom (if (empty? items)
+              ;; TODO: Get our left neighbor as an arg, and pass it
+              ;; in the sibling for the virtual dom.
+              (virtual-DOM (assoc specification :relative-id
+                                  :virtual)
+                           {})
+              (non-label-entities-DOM
+               items (:template specification) false :vertical specification))]
+    (add-attributes dom {:class "table-cell has-border"})))
+
+(defmethod print-method
+  cosheet2.server.table_render$render_table_cell_DOM
+  [v ^java.io.Writer w]
+  (.write w "cell-DOM"))
+
+(defn table-cell-DOM
+  "Return the dom for one cell of a table, given its column description."
+  [row-item
+   {:keys [column-id query template exclusions] :as column-description}
+   specification]
+    (let [spec (assoc specification :template template)]
+      (if (= column-id :virtualColumn)
+        (table-virtual-column-cell-DOM spec)
+        (let [matches (matching-elements query row-item)
+              items (if exclusions
+                         (let [do-not-show (map #(matching-elements % row-item)
+                                                exclusions)]
+                           (seq (clojure.set/difference
+                               (set matches)
+                               (set (apply concat do-not-show)))))
+                         matches)]
+          (make-component
+           (assoc specification
+                  :render-dom render-table-cell-DOM
+                  :get-rendering-data get-table-cell-DOM-rendering-data
+                  :relative-id column-id
+                  :items items
+                  :template template))))))
+
+(defn query-for-hierarchy-leaf
+  "Given a hierarchy leaf, and the node it is from,
+  return the query that items in cells of the column must satisfy.
+  (Not worrying about exclusions.)"
+  [leaf]
+  (pattern-to-query (semantic-to-list (:item leaf))))
+
+(defn table-hierarchy-node-column-descriptions
+  "Given a hierarchy node, for each column under the node,
+  return a map:
+       :column-id Id that identifies the column.
+                  Typically the id of the column item.
+           :query Query that each element of the column must satisfy.
+                  For a virtual column, this will not be present.
+        :template Template for new items in the column.
+      :exclusions Seq of conditions that elements must not satisfy."
+  [node]
+  (mapcat (fn [node-or-element]
+            (if (hierarchy-node? node-or-element)
+              (table-hierarchy-node-column-descriptions node-or-element)
+              (let [query (query-for-hierarchy-leaf node-or-element)]
+                [{:column-id (:item-id (:item node-or-element))
+                  :query query
+                  :template (query-to-template query)
+                  :exclusions (table-hierarchy-node-exclusions node)}])))
+          (hierarchy-node-next-level node)))
+
+(defn row-template
+  "Given the item giving the row condition, return the template for a row."
+  [row-condition-item]
+  (let [condition-elements (table-condition-elements row-condition-item)
+        elems-list (map semantic-to-list condition-elements) ] 
+    (concat '(anything) elems-list [:top-level])))
+
+(defn row-items-R
+  "Given the item giving the row condition, return the template for a row
+  and the items for the rows, in order."
+  [store template]
+  (let [row-query (pattern-to-query row-template)]
+    (expr-let [items (matching-items-R row-query store)
+               ids (map :item-id items)]
+      (ordered-ids-R (ids store)))))
 
 (defn is-label-template?
   "Return true if the template describes a label."

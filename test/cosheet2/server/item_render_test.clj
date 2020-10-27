@@ -71,7 +71,7 @@
     (is (check
          (horizontal-label-hierarchy-node-DOM node {})
          [:component
-          {:template '("" :label)
+          {:template '(anything :label)
            :get-action-data [composed-get-action-data
                              [get-item-or-exemplar-action-data-for-ids
                               [joe-id jane-id]]
@@ -89,12 +89,12 @@
          (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
          [:div {:class
                 "label wrapped-element virtual-wrapper merge-with-parent"}
-          [:component {:template '("" :label)
+          [:component {:template '(anything :label)
                        :get-action-data
                        [composed-get-action-data
                         [get-item-or-exemplar-action-data-for-ids [jane-id]]
-                        [get-virtual-action-data :template '("" :label)]]
-                       :relative-id :nested
+                        [get-virtual-action-data :template '(anything :label)]]
+                       :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
                        :render-dom render-virtual-DOM
                        :get-rendering-data get-virtual-DOM-rendering-data}]

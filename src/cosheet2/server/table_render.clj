@@ -379,46 +379,48 @@
   (map #(pattern-to-query (semantic-to-list (:item %)))
        (hierarchy-node-non-immediate-descendant-cover node)))
 
-(defn table-header-subtree-DOM
-  "Generate the dom for a subtree of a table header hierarchy, given
-  the doms for all the children."
-    [node child-doms specification]
-    (let [node-dom (horizontal-label-hierarchy-node-DOM
-                    node specification)
-          is-leaf (empty? child-doms)
-          elements-template '(anything :label)
-          is-label (is-label-template? elements-template)
-          class (cond-> "column-header"
-                  is-leaf (str " leaf"))]
-      (if (empty? child-doms)
-        (add-attributes node-dom {:class class})
-        [:div {:class (cond-> class
-                        is-label (str " label"))}
-         (add-attributes node-dom {:class "with-children"})
-         (into [:div {:class "column-header-sequence"}]
-               child-doms)])))
 
-(defn table-header-top-level-subtree-DOM
-  "Generate the dom for a top level subtree of a table header hierarchy.
-  Inherited describes the column requests."
-  [node specification]
-  (hierarchy-node-DOM node
-                      table-header-subtree-DOM
-                      (fn [node spec] (assoc spec :top-level false))
-                      specification))
-
-(defn table-header-top-node-specification
+(defn table-header-node-specification
   "Return the specification to use for a DOM that is part of a table header."
   [header-id node]
   (let [descendant-ids (map #(:item-id (:item %))
                             (hierarchy-node-descendants node))]
     {:get-column-action-data [get-column-action-data header-id descendant-ids]
      :width (* 0.75 (count descendant-ids))
-     :top-level true
      ;; Tell add-twin and delete that they must not add or remove a column.
      :template :singular}))
 
-(defn table-virtual-header-node-DOM
+(defn table-header-subtree-DOM
+  "Generate the dom for a subtree of a table header hierarchy, given
+  the doms for all the children."
+    [header-id node child-doms specification]
+  (let [spec (into specification
+                   (table-header-node-specification header-id node))
+        node-dom (horizontal-label-hierarchy-node-DOM
+                  node spec)
+        is-leaf (empty? child-doms)
+        elements-template '(anything :label)
+        is-label (is-label-template? elements-template)
+        class (cond-> "column-header"
+                is-leaf (str " leaf"))]
+    (if (empty? child-doms)
+      (add-attributes node-dom {:class class})
+      [:div {:class (cond-> class
+                      is-label (str " label"))}
+       (add-attributes node-dom {:class "with-children"})
+       (into [:div {:class "column-header-sequence"}]
+             child-doms)])))
+
+(defn table-header-top-level-subtree-DOM
+  "Generate the dom for a top level subtree of a table header hierarchy.
+  Inherited describes the column requests."
+  [header-id node]
+  (hierarchy-node-DOM node
+                      (partial table-header-subtree-DOM header-id)
+                      (fn [sub-node spec] (dissoc spec :top-level))
+                      {:top-level true}))
+
+(defn table-virtual-column-header-DOM
   [hierarchy]
   (let [spec {:relative-id :virtual-column
               :template table-header-template
@@ -439,13 +441,12 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
     [header-id hierarchy]
-    (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-          columns (map #(table-header-top-level-subtree-DOM
-                         % (table-header-top-node-specification header-id %))
-                       hierarchy)
-          virtual-header (table-virtual-header-node-DOM hierarchy)]
-      (into [:div {:class "column-header-sequence"}]
-            (concat columns [virtual-header]))))
+  (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
+        columns (map #(table-header-top-level-subtree-DOM header-id %)
+                     hierarchy)
+        virtual-header (table-virtual-column-header-DOM hierarchy)]
+    (into [:div {:class "column-header-sequence"}]
+          (concat columns [virtual-header]))))
 
 (defn table-condition-DOM
   "Return a hiccup representation for the top of a table, the part that

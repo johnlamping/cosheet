@@ -152,14 +152,12 @@
                         :get-action-data [get-virtual-action-data
                                           :template '(anything :label)
                                           :position :after]}]
-           ;; TODO: These templates should have 'anything.
            ;; The condition element.
            [:div {:class "horizontal-stack"}
             [:div {:class "vertical-labels-element label"}
              [:component {:template '("" :label)
                           :get-action-data
                           [composed-get-action-data
-                           ;; TODO: This should be rc1-id
                            [get-item-or-exemplar-action-data-for-ids [rc1-id]]
                            get-item-or-exemplar-action-data]
                           :class "label"
@@ -207,7 +205,7 @@
              [:component {:get-column-action-data
                           [col-AD row-condition-id [c2-id c3-id c4-id]]
                           :width 2.25
-                          :template '("" :label)
+                          :template '(anything :label)
                           :get-action-data
                           [comp-AD [ids-AD [c2-id c3-id c4-id]] item-AD]
                           :relative-id c2-name-id
@@ -218,26 +216,27 @@
               [:div {:class (str "label wrapped-element virtual-wrapper"
                                  " merge-with-parent column-header leaf")}
                [:component {:get-column-action-data
-                            [col-AD row-condition-id [c2-id c3-id c4-id]]
-                            :width 2.25 ;; TODO: This looks wrong
-                            :template '("" :label)
-                            :get-action-data [comp-AD [ids-AD [c2-id]]
-                                              [virt-AD :template '("" :label)]]
-                            :relative-id :nested ;; TODO: This should have the column id again, to be unique
+                            [col-AD row-condition-id [c2-id]]
+                            :width 0.75
+                            :template '(anything :label)
+                            :get-action-data
+                            [comp-AD [ids-AD [c2-id]]
+                             [virt-AD :template '(anything :label)]]
+                            :relative-id [c2-id :nested]
                             :class "label merge-with-parent"
                             :render-dom virt-DOM
                             :get-rendering-data virt-RD}]
                [:div {:class "indent-wrapper label"}
                 [:component {:get-column-action-data
-                             [col-AD row-condition-id [c2-id c3-id c4-id]] ;; TODO: Only one column?
-                             :width 2.25
+                             [col-AD row-condition-id [c2-id]]
+                             :width 0.75
                              :template :singular
                              :relative-id c2-id
                              :excluded-element-ids [c2-name-id]}]]]
               ;; A column with an additional label
               [:component {:get-column-action-data
-                           [col-AD row-condition-id [c2-id c3-id c4-id]]
-                           :width 2.25
+                           [col-AD row-condition-id [c3-id]]
+                           :width 0.75
                            :template :singular
                            :relative-id c3-id
                            :excluded-element-ids [c3-name-id]
@@ -246,19 +245,20 @@
               [:div {:class (str "label wrapped-element virtual-wrapper"
                                  " merge-with-parent column-header leaf")}
                [:component {:get-column-action-data
-                            [col-AD row-condition-id [c2-id c3-id c4-id]]
-                            :width 2.25
-                            :template '("" :label)
-                            :get-action-data [comp-AD [ids-AD [c4-id]]
-                                              [virt-AD :template '("" :label)]]
-                            :relative-id :nested
+                            [col-AD row-condition-id [c4-id]]
+                            :width 0.75
+                            :template '(anything :label)
+                            :get-action-data
+                            [comp-AD [ids-AD [c4-id]]
+                             [virt-AD :template '(anything :label)]]
+                            :relative-id [c4-id :nested]
                             :class "label merge-with-parent"
                             :render-dom virt-DOM
                             :get-rendering-data virt-RD}]
                [:div {:class "indent-wrapper label"}
                 [:component {:get-column-action-data
-                             [col-AD row-condition-id [c2-id c3-id c4-id]]
-                             :width 2.25
+                             [col-AD row-condition-id [c4-id]]
+                             :width 0.75
                              :template :singular
                              :relative-id c4-id
                              :excluded-element-ids [(any)]}]]]]]

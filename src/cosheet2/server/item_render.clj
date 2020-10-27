@@ -626,21 +626,19 @@
                           :get-action-data
                           [get-item-or-exemplar-action-data-for-ids
                            (map #(-> % :item :item-id)
-                                (hierarchy-node-descendants node))])
-        labels-spec (assoc items-spec
-                           :template '("" :label)                           
-                           :relative-id (or
-                                         (:item-id (first example-elements))
-                                         :nested))]
+                                (hierarchy-node-descendants node))])]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
-      (let [label-dom (cond->
-                          (virtual-DOM
-                           (into-attributes labels-spec {:class "label"})
-                           {})
-                          (not top-level)
-                          (add-attributes {:class "merge-with-parent"}))]
+      (let [label-dom (cond-> (virtual-DOM
+                               (assoc items-spec
+                                      :class "label"
+                                      :template '(anything :label)
+                                      :relative-id [(:item-id leaf) :nested])
+                               {})
+                        (not top-level)
+                        (add-attributes {:class "merge-with-parent"}))]
+        (assert leaf leaf)
         [:div {:class (cond-> "label wrapped-element virtual-wrapper"
                         (not top-level)
                         (str " merge-with-parent"))}
@@ -652,7 +650,12 @@
           ;; Since the node has children, our input condition implies
           ;; that it must not have a leaf.
           (assert (not leaf) node)
-          (label-stack-DOM example-elements
-                           (update labels-spec :get-action-data
-                                   #(compose-action-data-getter
-                                     % get-item-or-exemplar-action-data))))))))
+          (label-stack-DOM
+           example-elements
+           (-> items-spec
+               (assoc :template '(anything :label))
+               ;; Tell the item to use any getter we were handed, followed by
+               ;; its usual getter. 
+               (update :get-action-data
+                       #(compose-action-data-getter
+                         % get-item-or-exemplar-action-data)))))))))

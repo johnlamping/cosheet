@@ -619,9 +619,10 @@
                                 (set (hierarchy-node-example-elements node)))
                                ancestor-ids (map :item-id ancestor-props)]
                            (make-component
-                            (assoc specification
-                                   :relative-id (:item-id leaf)
-                                   :excluded-element-ids ancestor-ids))))
+                            (cond-> (assoc specification
+                                           :relative-id (:item-id leaf))
+                              (seq ancestor-ids)
+                              (assoc :excluded-element-ids ancestor-ids)))))
         items-spec (assoc specification
                           :get-action-data
                           [get-item-or-exemplar-action-data-for-ids

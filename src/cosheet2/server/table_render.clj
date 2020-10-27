@@ -393,7 +393,7 @@
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
   the doms for all the children."
-    [header-id node child-doms specification]
+  [header-id node child-doms specification]
   (let [spec (into specification
                    (table-header-node-specification header-id node))
         node-dom (horizontal-label-hierarchy-node-DOM

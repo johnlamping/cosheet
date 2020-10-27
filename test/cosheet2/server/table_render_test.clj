@@ -20,7 +20,10 @@
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
                                   get-content-only-action-data
+                                  get-column-action-data
                                   get-virtual-action-data]]
+             [hierarchy :refer [hierarchy-by-labels]]
+             [order-utils :refer [order-entities]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -109,12 +112,14 @@
         [s3 test-id] (add-entity s2 nil test-list)
         [store table-id] (add-entity s3 nil table-list)
         table (description->entity table-id store)
-        query (first (entity/label->elements table :row-condition))
-        query-id (:item-id query)
-        rc1 (first (matching-elements `(nil ~o8) query))
-        rc1-id (:item-id rc1)]
+        row-condition (first (entity/label->elements table :row-condition))
+        row-condition-id (:item-id row-condition)
+        rc1 (first (matching-elements `(nil ~o8) row-condition))
+        rc1-id (:item-id rc1)
+        c1 (first (matching-elements `(nil ~o1) row-condition))
+        c1-id (:item-id c1)]
     (is (check
-         (render-table-top-DOM {:relative-id query-id} store)
+         (render-table-top-DOM {:relative-id row-condition-id} store)
          [:div {:class "query-holder label"}
           [:div {:class "query-indent label"}]
           [:div {:class "horizontal-labels-element label query-condition"}
@@ -161,7 +166,24 @@
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :get-action-data [get-virtual-action-data
                                             :template 'anything]}]]]]]))
-    ))
+    (let [columns (order-entities
+                   (label->elements row-condition :column))
+          hierarchy (hierarchy-by-labels columns)]
+      (is (check
+           (table-header-DOM row-condition-id hierarchy)
+           [:div {:class "column-header-sequence"}
+            [:component {:get-column-action-data [get-column-action-data
+                                                  row-condition-id [c1-id]]
+                         :width 0.75
+                         :template :singular
+                         :relative-id c1-id
+                         :excluded-element-ids ()
+                         :class "column-header leaf"}]
+            (any)
+            (any)
+            (any)
+            (any)
+            (any)])))))
 
 (comment
   (deftest table-DOM-test

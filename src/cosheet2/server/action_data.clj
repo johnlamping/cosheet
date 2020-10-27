@@ -182,6 +182,11 @@
          {:header-id header-id
           :column-ids column-ids}))
 
+(defmethod print-method
+  cosheet2.server.action_data$get_column_action_data
+  [v ^java.io.Writer w]
+  (.write w "col-AD"))
+
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,

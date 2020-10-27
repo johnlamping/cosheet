@@ -606,7 +606,8 @@
    children.
    Don't generate or include the DOM for its children."
   [node {:keys [top-level] :as specification}]
-  (let [example-elements (hierarchy-node-example-elements node)
+  (let [specification (dissoc specification :top-level)
+        example-elements (hierarchy-node-example-elements node)
         leaf-info (first (hierarchy-node-leaves node))
         leaf (:item leaf-info)
         labels (when leaf (semantic-label-elements leaf))

@@ -413,12 +413,26 @@
   (let [descendant-ids (map #(:item-id (:item %))
                             (hierarchy-node-descendants node))]
     {:get-column-action-data [get-column-action-data header-id descendant-ids]
-     :width (* 0.75 (count descendants))
+     :width (* 0.75 (count descendant-ids))
      :top-level true
      ;; Tell add-twin and delete that they must not add or remove a column.
      :template :singular}))
 
-(def table-virtual-header-node-DOM)
+(defn table-virtual-header-node-DOM
+  [hierarchy]
+  (let [spec {:relative-id :virtual-column
+              :template table-header-template
+              :class "column-header virtual-column"}]
+    (if (empty? hierarchy)
+      (virtual-entity-and-label-DOM
+       spec :horizontal {})
+      (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
+            last-column-id (:item-id (:item last-column))]
+        (virtual-entity-and-label-DOM
+         (assoc spec :get-action-data [get-item-or-exemplar-action-data-for-ids
+                                       [last-column-id]])
+         :horizontal
+         {:sibling true})))))
 
 (defn table-header-DOM
   "Generate DOM for column headers given the hierarchy.
@@ -433,27 +447,7 @@
       (into [:div {:class "column-header-sequence"}]
             (concat columns [virtual-header]))))
 
-(comment
-  (defn table-virtual-header-node-DOM
-    [hierarchy adjacent-referent inherited]
-    (let [template '(anything :label)
-          inherited (assoc inherited
-                           :key-prefix (conj (:key-prefix inherited)
-                                             :virtualColumn)
-                           :subject-referent (virtual-referent
-                                              (:template inherited)
-                                              (:subject-referent inherited)
-                                              adjacent-referent)
-                           :select-pattern (conj (:key-prefix inherited)
-                                                 [:pattern :subject] [:pattern])
-                           :template template)]
-      (add-attributes
-       (virtual-element-DOM adjacent-referent :after inherited)
-       {:class (cond-> "column-header virtual-column"
-                 (is-label-template? template)
-                 (str " label"))}))))
-
-(defn render-table-top-DOM
+(defn table-condition-DOM
   "Return a hiccup representation for the top of a table, the part that
   holds its condition. The relative-id should be for the row-condition"
   [{:keys [relative-id]} store]

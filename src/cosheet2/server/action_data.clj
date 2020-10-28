@@ -187,6 +187,22 @@
   [v ^java.io.Writer w]
   (.write w "col-AD"))
 
+(defn get-row-action-data
+  "Add the action data for a command that acts on a row.
+  The header-id is the id that holds all the columns. The column-ids
+  are the ids of all columns under this component. (One header can
+  span multiple columns.)"
+  [specification containing-action-data action immutable-store
+   row-id row-template]
+  (assoc containing-action-data :row
+         {:row-id row-id
+          :row-template row-template}))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_row_action_data
+  [v ^java.io.Writer w]
+  (.write w "row-AD"))
+
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,

@@ -40,8 +40,8 @@
 (def unused-orderable (nth orderables 6))
 
 (deftest virtual-DOM-test
-  (is (check (virtual-DOM {:template "foo"  :relative-id :bar}
-                          {:position :before})
+  (is (check (virtual-DOM-component {:template "foo"  :relative-id :bar}
+                                    {:position :before})
              [:component {:template "foo"
                           :relative-id :bar
                           :render-dom render-virtual-DOM

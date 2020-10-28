@@ -150,7 +150,7 @@
   (add-labels-DOM labels-dom inner-dom
                   (if (= orientation :vertical) :vertical-wrapped orientation)))
 
-(defn virtual-DOM
+(defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
   isn't. Any extra arguments must be keyword arguments, and are passed
   to get-virtual-action-data."
@@ -172,13 +172,13 @@
                    (into [get-virtual-action-data]
                          (apply concat action-data-arguments))))))))
 
-(defn virtual-label-DOM
+(defn virtual-label-DOM-component
   "Return a dom for a virtual label. The label must occur be inside an
   overall component for its element. The specification should be for
   elements of the item."
   [specification]
   (assert (:template specification))
-  (virtual-DOM
+  (virtual-DOM-component
    (-> specification
        (assoc :relative-id :virtual-label)       
        (update :template ensure-label)
@@ -187,18 +187,19 @@
 
 (defn virtual-entity-and-label-DOM
   "Return the dom for a virtual entity and a virtual label for it.
-   The arguments are the same as for virtual-DOM."
+   The arguments are the same as for virtual-DOM-component."
   [specification orientation action-data-arguments]
-  (let [dom (virtual-DOM specification action-data-arguments)
+  (let [dom (virtual-DOM-component specification action-data-arguments)
         label-template (ensure-label
                         (:template
                          (transform-specification-for-elements specification))) 
-        labels-dom (virtual-DOM {:relative-id :virtual-label
-                                 :get-action-data
-                                 (:get-action-data (dom-attributes dom))
-                                 :class "label"}
-                                {:template label-template
-                                 :position :before})]
+        labels-dom (virtual-DOM-component
+                    {:relative-id :virtual-label
+                     :get-action-data
+                     (:get-action-data (dom-attributes dom))
+                     :class "label"}
+                    {:template label-template
+                     :position :before})]
     (add-labels-DOM labels-dom dom orientation)))
 
 (defn label-stack-DOM
@@ -231,7 +232,7 @@
         (non-empty-labels-wrapper-DOM
          dom label-elements :vertical elements-spec)
         [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
-         (virtual-label-DOM elements-spec)
+         (virtual-label-DOM-component elements-spec)
          dom]))))
 
 (defn labeled-items-properties-DOM
@@ -246,7 +247,7 @@
                        transform-specification-for-elements
                        )]
     (let [dom (if (empty? (:properties hierarchy-node))
-                (virtual-DOM
+                (virtual-DOM-component
                  ;; TODO: Track hierarchy depth in the spec, and use
                  ;; it to uniquify virtual labels.
                  (-> elements-spec
@@ -287,7 +288,7 @@
       (let [adjacent-item (:item (first (hierarchy-node-descendants
                                          hierarchy-node)))
             example-elements (hierarchy-node-example-elements hierarchy-node)]
-        (virtual-DOM
+        (virtual-DOM-component
          (assoc leaf-spec :relative-id :virtual)
          {:sibling true
           :position :after}))
@@ -502,11 +503,11 @@
       (label-stack-DOM elements specification)
       (and must-show-label elements-dom)
       (wrap-with-labels-DOM
-       (virtual-label-DOM specification) elements-dom orientation)
+       (virtual-label-DOM-component specification) elements-dom orientation)
       elements-dom
       elements-dom
       true
-      (virtual-label-DOM (add-attributes specification
+      (virtual-label-DOM-component (add-attributes specification
                                          {:class "elements-wrapper"})))))
 
 ;;; The next functions handle the parts of the dom for an entity.
@@ -631,7 +632,7 @@
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
-      (let [label-dom (cond-> (virtual-DOM
+      (let [label-dom (cond-> (virtual-DOM-component
                                (assoc items-spec
                                       :class "label"
                                       :template '(anything :label)

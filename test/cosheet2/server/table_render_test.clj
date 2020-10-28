@@ -145,7 +145,7 @@
         c7 (first (matching-elements `(nil ~o7) row-condition))
         c7-id (:item-id c7)]
     (is (check
-         (render-table-top-DOM {:relative-id row-condition-id} store)
+         (table-condition-DOM {:relative-id row-condition-id} store)
          [:div {:class "query-holder label"}
           [:div {:class "query-indent label"}]
           [:div {:class "horizontal-labels-element label query-condition"}

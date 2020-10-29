@@ -21,6 +21,7 @@
                                   get-item-or-exemplar-action-data-for-ids
                                   get-content-only-action-data
                                   get-column-action-data
+                                  get-row-action-data
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels]]
              [order-utils :refer [order-entities]]
@@ -49,6 +50,7 @@
 (def item-AD get-item-or-exemplar-action-data)
 (def virt-AD get-virtual-action-data)
 (def col-AD get-column-action-data)
+(def row-AD get-row-action-data)
 
 (def virt-RD get-virtual-DOM-rendering-data)
 
@@ -143,7 +145,12 @@
         c6 (first (matching-elements `(nil ~o6) row-condition))
         c6-id (:item-id c6)
         c7 (first (matching-elements `(nil ~o7) row-condition))
-        c7-id (:item-id c7)]
+        c7-id (:item-id c7)
+        columns (order-entities
+                 (label->elements row-condition :column))
+        hierarchy (hierarchy-by-labels columns)
+        column-descriptions (mapcat table-hierarchy-node-column-descriptions
+                                    hierarchy)]
     (is (check
          (table-condition-DOM {:relative-id row-condition-id} store)
          [:div {:class "query-holder label"}
@@ -190,150 +197,187 @@
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :get-action-data [get-virtual-action-data
                                             :template 'anything]}]]]]]))
-    (let [columns (order-entities
-                   (label->elements row-condition :column))
-          hierarchy (hierarchy-by-labels columns)]
-      (is (check
-           (table-header-DOM row-condition-id hierarchy)
+    (is (check
+         (table-header-DOM row-condition-id hierarchy)
+         [:div {:class "column-header-sequence"}
+          ;; A single column.
+          [:component {:get-column-action-data
+                       [col-AD row-condition-id [c1-id]]
+                       :width 0.75
+                       :template :singular
+                       :relative-id c1-id
+                       :class "column-header leaf"}]
+          ;; Three columns.
+          [:div {:class "column-header label"}
+           ;; The label for the three columns
+           [:component {:get-column-action-data
+                        [col-AD row-condition-id [c2-id c3-id c4-id]]
+                        :width 2.25
+                        :template '(anything :label)
+                        :get-action-data
+                        [comp-AD [ids-AD [c2-id c3-id c4-id]] item-AD]
+                        :relative-id c2-name-id
+                        :class "label with-children"
+                        :excluded-element-ids [(any)]}]
            [:div {:class "column-header-sequence"}
-            ;; A single column.
-            [:component {:get-column-action-data
-                         [col-AD row-condition-id [c1-id]]
-                         :width 0.75
-                         :template :singular
-                         :relative-id c1-id
-                         :class "column-header leaf"}]
-            ;; Three columns.
-            [:div {:class "column-header label"}
-             ;; The label for the three columns
-             [:component {:get-column-action-data
-                          [col-AD row-condition-id [c2-id c3-id c4-id]]
-                          :width 2.25
-                          :template '(anything :label)
-                          :get-action-data
-                          [comp-AD [ids-AD [c2-id c3-id c4-id]] item-AD]
-                          :relative-id c2-name-id
-                          :class "label with-children"
-                          :excluded-element-ids [(any)]}]
-             [:div {:class "column-header-sequence"}
-              ;; A column with only a virtual label
-              [:div {:class (str "label wrapped-element virtual-wrapper"
-                                 " merge-with-parent column-header leaf")}
-               [:component {:get-column-action-data
-                            [col-AD row-condition-id [c2-id]]
-                            :width 0.75
-                            :template '(anything :label)
-                            :get-action-data
-                            [comp-AD [ids-AD [c2-id]]
-                             [virt-AD :template '(anything :label)]]
-                            :relative-id [c2-id :nested]
-                            :class "label merge-with-parent"
-                            :render-dom virt-DOM
-                            :get-rendering-data virt-RD}]
-               [:div {:class "indent-wrapper label"}
-                [:component {:get-column-action-data
-                             [col-AD row-condition-id [c2-id]]
-                             :width 0.75
-                             :template :singular
-                             :relative-id c2-id
-                             :excluded-element-ids [c2-name-id]}]]]
-              ;; A column with an additional label
-              [:component {:get-column-action-data
-                           [col-AD row-condition-id [c3-id]]
-                           :width 0.75
-                           :template :singular
-                           :relative-id c3-id
-                           :excluded-element-ids [c3-name-id]
-                           :class "column-header leaf"}]
-              ;; A column with only a virtual label
-              [:div {:class (str "label wrapped-element virtual-wrapper"
-                                 " merge-with-parent column-header leaf")}
-               [:component {:get-column-action-data
-                            [col-AD row-condition-id [c4-id]]
-                            :width 0.75
-                            :template '(anything :label)
-                            :get-action-data
-                            [comp-AD [ids-AD [c4-id]]
-                             [virt-AD :template '(anything :label)]]
-                            :relative-id [c4-id :nested]
-                            :class "label merge-with-parent"
-                            :render-dom virt-DOM
-                            :get-rendering-data virt-RD}]
-               [:div {:class "indent-wrapper label"}
-                [:component {:get-column-action-data
-                             [col-AD row-condition-id [c4-id]]
-                             :width 0.75
-                             :template :singular
-                             :relative-id c4-id
-                             :excluded-element-ids [(any)]}]]]]]
-            ;; One column with two labels
-            [:component {:get-column-action-data
-                         [col-AD row-condition-id [c5-id]]
-                         :width 0.75
-                         :template :singular
-                         :relative-id c5-id
-                         :class "column-header leaf"}]
-            ;; One column with no labels
+            ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
-                               " column-header leaf")}
+                               " merge-with-parent column-header leaf")}
              [:component {:get-column-action-data
-                          [col-AD row-condition-id [c6-id]]
+                          [col-AD row-condition-id [c2-id]]
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [comp-AD [ids-AD [c6-id]]
+                          [comp-AD [ids-AD [c2-id]]
                            [virt-AD :template '(anything :label)]]
-                          :class "label"
-                          :relative-id [c6-id :nested]
+                          :relative-id [c2-id :nested]
+                          :class "label merge-with-parent"
                           :render-dom virt-DOM
                           :get-rendering-data virt-RD}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
-                           [col-AD row-condition-id [c6-id]]
+                           [col-AD row-condition-id [c2-id]]
                            :width 0.75
                            :template :singular
-                           :relative-id c6-id}]]]
-            ;; One column with no labels and non-empty content.
+                           :relative-id c2-id
+                           :excluded-element-ids [c2-name-id]}]]]
+            ;; A column with an additional label
+            [:component {:get-column-action-data
+                         [col-AD row-condition-id [c3-id]]
+                         :width 0.75
+                         :template :singular
+                         :relative-id c3-id
+                         :excluded-element-ids [c3-name-id]
+                         :class "column-header leaf"}]
+            ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
-                               " column-header leaf")}
+                               " merge-with-parent column-header leaf")}
              [:component {:get-column-action-data
-                          [col-AD row-condition-id [c7-id]]
+                          [col-AD row-condition-id [c4-id]]
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [comp-AD [ids-AD [c7-id]]
+                          [comp-AD [ids-AD [c4-id]]
                            [virt-AD :template '(anything :label)]]
-                          :class "label"
-                          :relative-id [c7-id :nested]
+                          :relative-id [c4-id :nested]
+                          :class "label merge-with-parent"
                           :render-dom virt-DOM
                           :get-rendering-data virt-RD}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
-                           [col-AD row-condition-id [c7-id]]
+                           [col-AD row-condition-id [c4-id]]
                            :width 0.75
                            :template :singular
-                           :relative-id c7-id}]]]
-            ;; The virtual column.
-            [:div {:class "horizontal-labels-element label"}
-             [:component {:relative-id :virtual-label
-                          :get-action-data
-                          [comp-AD [ids-AD [c7-id]]
-                           [virt-AD :template '(anything :column)
-                            :sibling true]
-                           [virt-AD :template '("" :label)
-                            :position :before]]
-                          :class "label"
-                          :render-dom virt-DOM
-                          :get-rendering-data virt-RD}]
-             [:component {:relative-id :virtual-column
-                          :template '(anything :column)
-                          :class "column-header virtual-column"
-                          :get-action-data
-                          [comp-AD [ids-AD [c7-id]]
-                           [virt-AD :template '(anything :column)
-                            :sibling true]]
-                          :render-dom virt-DOM
-                          :get-rendering-data virt-RD}]]])))))
+                           :relative-id c4-id
+                           :excluded-element-ids [(any)]}]]]]]
+          ;; One column with two labels
+          [:component {:get-column-action-data
+                       [col-AD row-condition-id [c5-id]]
+                       :width 0.75
+                       :template :singular
+                       :relative-id c5-id
+                       :class "column-header leaf"}]
+          ;; One column with no labels
+          [:div {:class (str "label wrapped-element virtual-wrapper"
+                             " column-header leaf")}
+           [:component {:get-column-action-data
+                        [col-AD row-condition-id [c6-id]]
+                        :width 0.75
+                        :template '(anything :label)
+                        :get-action-data
+                        [comp-AD [ids-AD [c6-id]]
+                         [virt-AD :template '(anything :label)]]
+                        :class "label"
+                        :relative-id [c6-id :nested]
+                        :render-dom virt-DOM
+                        :get-rendering-data virt-RD}]
+           [:div {:class "indent-wrapper label"}
+            [:component {:get-column-action-data
+                         [col-AD row-condition-id [c6-id]]
+                         :width 0.75
+                         :template :singular
+                         :relative-id c6-id}]]]
+          ;; One column with no labels and non-empty content.
+          [:div {:class (str "label wrapped-element virtual-wrapper"
+                             " column-header leaf")}
+           [:component {:get-column-action-data
+                        [col-AD row-condition-id [c7-id]]
+                        :width 0.75
+                        :template '(anything :label)
+                        :get-action-data
+                        [comp-AD [ids-AD [c7-id]]
+                         [virt-AD :template '(anything :label)]]
+                        :class "label"
+                        :relative-id [c7-id :nested]
+                        :render-dom virt-DOM
+                        :get-rendering-data virt-RD}]
+           [:div {:class "indent-wrapper label"}
+            [:component {:get-column-action-data
+                         [col-AD row-condition-id [c7-id]]
+                         :width 0.75
+                         :template :singular
+                         :relative-id c7-id}]]]
+          ;; The virtual column.
+          [:div {:class "horizontal-labels-element label"}
+           [:component {:relative-id :virtual-label
+                        :get-action-data
+                        [comp-AD [ids-AD [c7-id]]
+                         [virt-AD :template '(anything :column)
+                          :sibling true]
+                         [virt-AD :template '("" :label)
+                          :position :before]]
+                        :class "label"
+                        :render-dom virt-DOM
+                        :get-rendering-data virt-RD}]
+           [:component {:relative-id :virtual-column
+                        :template '(anything :column)
+                        :class "column-header virtual-column"
+                        :get-action-data
+                        [comp-AD [ids-AD [c7-id]]
+                         [virt-AD :template '(anything :column)
+                          :sibling true]]
+                        :render-dom virt-DOM
+                        :get-rendering-data virt-RD}]]]))
+    (is (check
+         column-descriptions
+         [{:column-id c1-id
+           :query '(nil ("single" :label)
+                        (:cosheet2.query/special-form
+                         (:not :cosheet2.query/type)
+                         (:label :cosheet2.query/sub-query))
+                        (nil :order))}
+          {:column-id c2-id
+           :query '(nil ("name" :label)
+                        (:cosheet2.query/special-form
+                         (:not :cosheet2.query/type)
+                         (:label :cosheet2.query/sub-query))
+                        (nil :order))
+           :exclusions '((nil ("name" :label)
+                              ("other" :label)
+                              (:cosheet2.query/special-form
+                               (:not :cosheet2.query/type)
+                               (:label :cosheet2.query/sub-query))
+                              (nil :order)))}
+          {:column-id c3-id
+           :query '(nil ("name" :label)
+                        ("other" :label)
+                        (:cosheet2.query/special-form
+                         (:not :cosheet2.query/type)
+                         (:label :cosheet2.query/sub-query))
+                        (nil :order))}
+          (any)
+          (any)
+          (any)
+          (any)]))
+    (is (check
+         (table-row-DOM-component
+          joe-id '("" :top-level) column-descriptions {:priority 1})
+         [:component {:priority 1
+                      :relative-id joe-id
+                      :column-descriptions column-descriptions
+                      :render-dom render-table-row-DOM
+                      :get-row-action-data [get-row-action-data
+                                            nil '("" :top-level)]}]))))
 
 (comment
   (deftest table-DOM-test

@@ -306,9 +306,9 @@
   several columns show the same item, we could have the same client id
   for both. "
   [row-item
-   {:keys [column-id query template exclusions] :as column-description}
+   {:keys [column-id query exclusions] :as column-description}
    specification]
-    (let [spec (assoc specification :template template)]
+    (let [spec (assoc specification :template (query-to-template query))]
       (if (= column-id :virtualColumn)
         (table-virtual-column-cell-DOM-component spec)
         (let [matches (matching-elements query row-item)
@@ -344,12 +344,14 @@
 
 (defn table-row-DOM-component
   "Generate a component for a table row."
-    [row-item new-row-template column-descriptions inherited]
-    (let [row-key (conj (:key-prefix inherited) )]
-      (make-component
-       {:get-row-action-data
-        [get-row-action-data (:item-id row-item) new-row-template]}
-       :render-dom render-table-row-DOM)))
+    [row-item new-row-template column-descriptions specification]
+  (make-component
+   (assoc specification
+          :relative-id row-item
+          :column-descriptions column-descriptions
+          :render-dom render-table-row-DOM
+          :get-row-action-data
+          [get-row-action-data (:item-id row-item) new-row-template])))
 
 (defn query-for-hierarchy-leaf
   "Given a hierarchy leaf, and the node it is from,
@@ -365,17 +367,17 @@
                   Typically the id of the column item.
            :query Query that each element of the column must satisfy.
                   For a virtual column, this will not be present.
-        :template Template for new items in the column.
       :exclusions Seq of conditions that elements must not satisfy."
   [node]
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              (let [query (query-for-hierarchy-leaf node-or-element)]
-                [{:column-id (:item-id (:item node-or-element))
-                  :query query
-                  :template (query-to-template query)
-                  :exclusions (table-hierarchy-node-exclusions node)}])))
+              (let [query (query-for-hierarchy-leaf node-or-element)
+                    exclusions (table-hierarchy-node-exclusions node)]
+                [(cond-> {:column-id (:item-id (:item node-or-element))
+                          :query query}
+                   (seq exclusions)
+                   (assoc :exclusions exclusions))])))
           (hierarchy-node-next-level node)))
 
 (defn row-template
@@ -384,15 +386,6 @@
   (let [condition-elements (table-condition-elements row-condition-item)
         elems-list (map semantic-to-list condition-elements) ] 
     (concat '(anything) elems-list [:top-level])))
-
-(defn row-items-R
-  "Given the item giving the row condition, return the template for a row
-  and the items for the rows, in order."
-  [store template]
-  (let [row-query (pattern-to-query row-template)]
-    (expr-let [items (matching-items-R row-query store)
-               ids (map :item-id items)]
-      (ordered-ids-R (ids store)))))
 
 (comment
   (defn render-table-DOM

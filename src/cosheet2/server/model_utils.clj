@@ -282,6 +282,14 @@
   ;; headers out when we need the pure row condition.
   '(anything :column))
 
+;;; TODO: This is wrong. It should be anything for the content, and
+;;; ??? on a label. After testing that it is, indeed wrong, fix it.
+(def new-table-header-template
+  "Return a template for a new table header. This will have a generic label,
+  which will be filled in with something unique when the actual header
+  is created"
+  (concat ['???] (rest table-header-template)))
+
 (defn table-tab-non-semantic-elements
   "Return the non-semantic elements for a new tab for a table
   with the given row condition and header condition."

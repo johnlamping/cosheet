@@ -44,6 +44,8 @@
 (def o8 (nth orderables 7))
 
 (def virt-DOM render-virtual-DOM)
+(def cell-DOM render-table-cell-DOM)
+(def cell-RD get-table-cell-DOM-rendering-data)
 
 (def comp-AD composed-get-action-data)
 (def ids-AD get-item-or-exemplar-action-data-for-ids)
@@ -123,6 +125,7 @@
         [s2 jane-id] (add-entity s1 nil jane-list)
         [s3 test-id] (add-entity s2 nil test-list)
         [store table-id] (add-entity s3 nil table-list)
+        joe (description->entity joe-id store)
         table (description->entity table-id store)
         row-condition (first (entity/label->elements table :row-condition))
         row-condition-id (:item-id row-condition)
@@ -149,8 +152,14 @@
         columns (order-entities
                  (label->elements row-condition :column))
         hierarchy (hierarchy-by-labels columns)
-        column-descriptions (mapcat table-hierarchy-node-column-descriptions
-                                    hierarchy)]
+        column-descriptions (concat
+                             (mapcat table-hierarchy-node-column-descriptions
+                                     hierarchy)
+                             [{:column-id :virtualColumn
+                                :query '(anything :column)}])
+        joe-row-component (table-row-DOM-component
+                           joe-id '("" :top-level ("age" :label))
+                           column-descriptions {:priority 1})]
     (is (check
          (table-condition-DOM {:relative-id row-condition-id} store)
          [:div {:class "query-holder label"}
@@ -322,7 +331,7 @@
            [:component {:relative-id :virtual-label
                         :get-action-data
                         [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(anything :column)
+                         [virt-AD :template '(??? :column)
                           :sibling true]
                          [virt-AD :template '("" :label)
                           :position :before]]
@@ -330,11 +339,11 @@
                         :render-dom virt-DOM
                         :get-rendering-data virt-RD}]
            [:component {:relative-id :virtual-column
-                        :template '(anything :column)
+                        :template '(??? :column)
                         :class "column-header virtual-column"
                         :get-action-data
                         [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(anything :column)
+                         [virt-AD :template '(??? :column)
                           :sibling true]]
                         :render-dom virt-DOM
                         :get-rendering-data virt-RD}]]]))
@@ -365,19 +374,51 @@
                          (:not :cosheet2.query/type)
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
-          (any)
-          (any)
-          (any)
-          (any)]))
+          (any) (any) (any) (any) (any)]))
     (is (check
-         (table-row-DOM-component
-          joe-id '("" :top-level) column-descriptions {:priority 1})
+         joe-row-component
          [:component {:priority 1
                       :relative-id joe-id
                       :column-descriptions column-descriptions
                       :render-dom render-table-row-DOM
-                      :get-row-action-data [get-row-action-data
-                                            nil '("" :top-level)]}]))))
+                      :get-row-action-data
+                      [get-row-action-data
+                       nil '("" :top-level ("age" :label))]}]))
+    (is (check
+         (render-table-row-DOM (second joe-row-component) store)
+         [:div {}
+          [:component {:priority 2
+                       :relative-id c1-id
+                       :template '("" ("single" :label))
+                       :render-dom cell-DOM
+                       :get-rendering-data cell-RD
+                       :items nil}]
+          [:component {:priority 2,
+                       :relative-id c2-id
+                       :template '("" ("name" :label))
+                       :render-dom cell-DOM
+                       :get-rendering-data cell-RD
+                       :items (as-set
+                               [(first (matching-elements "Joe" joe))
+                                (first (matching-elements "Joseph" joe))])}]
+          [:component {:priority 2
+                       :relative-id c3-id
+                       :template '("" ("name" :label)
+                                      ("other" :label))
+                       :render-dom cell-DOM
+                       :get-rendering-data cell-RD
+                       :items nil}]
+          (any) (any) (any) (any)
+          [:component {:priority 2
+                       :relative-id joe-id
+                       :template '(anything :column)
+                       :render-dom virt-DOM
+                       :get-rendering-data virt-RD
+                       :get-action-data
+                       ;; TODO: The action data needs to start with adding
+                       ;; something to the header, then adding to the row.
+                       [virt-AD :template '(anything :column)]
+                       :class "table-cell virtual-column has-border"}]]))))
 
 (comment
   (deftest table-DOM-test

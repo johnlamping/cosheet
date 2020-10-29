@@ -19,7 +19,9 @@
                                   pattern-to-query
                                   specialize-generic
                                   flatten-nested-content
-                                  create-possible-selector-elements]])))
+                                  create-possible-selector-elements
+                                  new-table-header-template]]
+             [order-utils :refer [order-entities]])))
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
@@ -171,6 +173,34 @@
   [v ^java.io.Writer w]
   (.write w "content-AD"))
 
+(defn get-virtual-action-data
+  "Create the specified virtual items.
+   The containing data's target-ids are the subject of the new items,
+   unless sibling is true in which case they are the siblings.
+   The new items are ordered after the containing target, unless position
+   is :before, in which case they are ordered before.
+   the new items use the smaller part of the order split, unless use-bigger
+   is true, in which case they use the larger."
+  [specification containing-action-data action immutable-store
+   & {:keys [template sibling position use-bigger]}]
+  (assert template template)
+  (let [incoming-ids (:target-ids containing-action-data)
+        subjects (if sibling
+                  (map #(id->subject immutable-store %) incoming-ids)
+                  incoming-ids)
+        adjacents (if sibling incoming-ids subjects)
+        [ids store] (create-possible-selector-elements
+                     template subjects adjacents
+                     (or position :after)
+                     use-bigger
+                     immutable-store)]
+    (assoc containing-action-data :target-ids ids :store store)))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_virtual_action_data
+  [v ^java.io.Writer w]
+  (.write w "virt-AD"))
+
 (defn get-column-action-data
   "Add the action data for a command that acts on a column.
   The header-id is the id that holds all the columns. The column-ids
@@ -203,35 +233,33 @@
   [v ^java.io.Writer w]
   (.write w "row-AD"))
 
-(defn get-virtual-action-data
-  "Create the specified virtual items.
-   The containing data's target-ids are the subject of the new items,
-   unless sibling is true in which case they are the siblings.
-   The new items are ordered after the containing target, unless position
-   is :before, in which case they are ordered before.
-   the new items use the smaller part of the order split, unless use-bigger
-   is true, in which case they use the larger."
+(defn get-virtual-column-cell-action-data
+  "Create a new column header and an element under that column in the row.
+   The containing data's target-ids are the id of the row."
   [specification containing-action-data action immutable-store
-   & {:keys [template sibling position use-bigger]}]
-  (assert template template)
-  (let [incoming-ids (:target-ids containing-action-data)
-        subjects (if sibling
-                  (map #(id->subject immutable-store %) incoming-ids)
-                  incoming-ids)
-        adjacents (if sibling incoming-ids subjects)
-        [ids store] (create-possible-selector-elements
-                     template subjects adjacents
-                     (or position :after)
-                     use-bigger
-                     immutable-store)]
-    (assoc containing-action-data :target-ids ids :store store)))
+   header-id]
+  (let [header (description->entity header-id immutable-store)
+        columns (label->elements header :column)
+        last-column-id (last (order-entities columns))
+        {:keys [store target-ids]}
+        (get-virtual-action-data
+         {:template new-table-header-template}
+         {:target-ids [last-column-id]
+          :sibling true}
+         action immutable-store)
+        new-column-id (first target-ids)
+        template (semantic-to-list (description->entity new-column-id store))]
+    (get-virtual-action-data
+     {:template template} containing-action-data action immutable-store)))
 
 (defmethod print-method
-  cosheet2.server.action_data$get_virtual_action_data
+  cosheet2.server.action_data$get_virtual_column_cell_action_data
   [v ^java.io.Writer w]
-  (.write w "virt-AD"))
+  (.write w "virt-col-cell-AD"))
 
 (defn composed-get-action-data
+  "Run each argument getter in turn, feeding the output of each into
+  the next."
   [specification containing-action-data action immutable-store & getters]
   (reduce (fn [action-data getter]
             (run-action-data-getter

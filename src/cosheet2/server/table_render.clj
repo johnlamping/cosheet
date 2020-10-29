@@ -25,7 +25,7 @@
              [order-utils :refer [ordered-ids-R]]
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
-                                  table-header-template
+                                  new-table-header-template
                                   pattern-to-query query-to-template]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM]]
@@ -40,7 +40,6 @@
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
                                   get-column-action-data
                                   get-row-action-data]])))
-
 
 (comment
 
@@ -241,7 +240,7 @@
 (defn table-virtual-column-header-DOM
   [hierarchy]
   (let [spec {:relative-id :virtual-column
-              :template table-header-template
+              :template new-table-header-template
               :class "column-header virtual-column"}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM

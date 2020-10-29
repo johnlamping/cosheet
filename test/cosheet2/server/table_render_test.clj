@@ -22,7 +22,8 @@
                                   get-content-only-action-data
                                   get-column-action-data
                                   get-row-action-data
-                                  get-virtual-action-data]]
+                                  get-virtual-action-data
+                                  get-virtual-column-cell-action-data]]
              [hierarchy :refer [hierarchy-by-labels]]
              [order-utils :refer [order-entities]]
              [table-render :refer :all])
@@ -156,7 +157,7 @@
                              (mapcat table-hierarchy-node-column-descriptions
                                      hierarchy)
                              [{:column-id :virtualColumn
-                                :query '(anything :column)}])
+                               :header-id row-condition-id}])
         joe-row-component (table-row-DOM-component
                            joe-id '("" :top-level ("age" :label))
                            column-descriptions {:priority 1})]
@@ -410,14 +411,12 @@
                        :items nil}]
           (any) (any) (any) (any)
           [:component {:priority 2
-                       :relative-id joe-id
-                       :template '(anything :column)
+                       :relative-id :virtual
+                       :template ""
                        :render-dom virt-DOM
                        :get-rendering-data virt-RD
                        :get-action-data
-                       ;; TODO: The action data needs to start with adding
-                       ;; something to the header, then adding to the row.
-                       [virt-AD :template '(anything :column)]
+                       [get-virtual-column-cell-action-data row-condition-id]
                        :class "table-cell virtual-column has-border"}]]))))
 
 (comment

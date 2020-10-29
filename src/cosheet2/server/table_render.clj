@@ -30,6 +30,8 @@
              [render-utils :refer [make-component
                                    hierarchy-node-DOM]]
              [item-render :refer [virtual-DOM-component
+                                  render-virtual-DOM
+                                  get-virtual-DOM-rendering-data
                                   virtual-entity-and-label-DOM
                                   label-stack-DOM
                                   item-content-and-non-label-elements-DOM
@@ -39,7 +41,8 @@
                                   horizontal-label-hierarchy-node-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
                                   get-column-action-data
-                                  get-row-action-data]])))
+                                  get-row-action-data
+                                  get-virtual-column-cell-action-data]])))
 
 (comment
 
@@ -266,9 +269,15 @@
           (concat columns [virtual-header]))))
 
 (defn table-virtual-column-cell-DOM-component
-  [specification]
+  [header-id specification]
   (add-attributes
-   (virtual-DOM-component specification {})
+   (make-component
+    (assoc specification
+           :relative-id :virtual
+           :template ""
+           :render-dom render-virtual-DOM
+           :get-rendering-data get-virtual-DOM-rendering-data
+           :get-action-data [get-virtual-column-cell-action-data header-id]))
    {:class "table-cell virtual-column has-border"}))
 
 (defn get-table-cell-DOM-rendering-data
@@ -286,8 +295,8 @@
         dom (if (empty? items)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
-              (virtual-DOM-component (assoc specification :relative-id
-                                            :virtual)
+              (virtual-DOM-component (assoc specification
+                                            :relative-id :virtual)
                                      {})
               (non-label-entities-DOM
                items (:template specification) false :vertical specification))]
@@ -307,23 +316,24 @@
   [row-item
    {:keys [column-id query exclusions] :as column-description}
    specification]
-    (let [spec (assoc specification :template (query-to-template query))]
-      (if (= column-id :virtualColumn)
-        (table-virtual-column-cell-DOM-component spec)
-        (let [matches (matching-elements query row-item)
-              items (if exclusions
-                         (let [do-not-show (map #(matching-elements % row-item)
-                                                exclusions)]
-                           (seq (clojure.set/difference
-                               (set matches)
-                               (set (apply concat do-not-show)))))
-                         matches)]
-          (make-component
-           (assoc spec
-                  :render-dom render-table-cell-DOM
-                  :get-rendering-data get-table-cell-DOM-rendering-data
-                  :relative-id column-id
-                  :items items))))))
+    (if (= column-id :virtualColumn)
+      (table-virtual-column-cell-DOM-component
+       (:header-id column-description) specification)
+      (let [spec (assoc specification :template (query-to-template query))
+            matches (matching-elements query row-item)
+            items (if exclusions
+                    (let [do-not-show (map #(matching-elements % row-item)
+                                           exclusions)]
+                      (seq (clojure.set/difference
+                            (set matches)
+                            (set (apply concat do-not-show)))))
+                    matches)]
+        (make-component
+         (assoc spec
+                :render-dom render-table-cell-DOM
+                :get-rendering-data get-table-cell-DOM-rendering-data
+                :relative-id column-id
+                :items items)))))
 
 (defn render-table-row-DOM
   "Generate dom for a table row."

@@ -20,7 +20,7 @@
                                   specialize-generic
                                   flatten-nested-content
                                   create-possible-selector-elements
-                                  new-table-header-template]]
+                                  table-header-template]]
              [order-utils :refer [order-entities]])))
 
 ;;; The action data is a map that may contain any of these fields:
@@ -243,7 +243,7 @@
         last-column-id (last (order-entities columns))
         {:keys [store target-ids]}
         (get-virtual-action-data
-         {:template new-table-header-template}
+         {:template (concat table-header-template ['??? :label])}
          {:target-ids [last-column-id]
           :sibling true}
          action immutable-store)

@@ -25,7 +25,6 @@
              [order-utils :refer [ordered-ids-R]]
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
-                                  new-table-header-template
                                   pattern-to-query query-to-template]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM]]
@@ -243,7 +242,7 @@
 (defn table-virtual-column-header-DOM
   [hierarchy]
   (let [spec {:relative-id :virtual-column
-              :template new-table-header-template
+              :template table-header-template                            
               :class "column-header virtual-column"}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM

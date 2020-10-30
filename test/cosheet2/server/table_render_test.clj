@@ -332,7 +332,7 @@
            [:component {:relative-id :virtual-label
                         :get-action-data
                         [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(??? :column)
+                         [virt-AD :template '(anything :column)
                           :sibling true]
                          [virt-AD :template '("" :label)
                           :position :before]]
@@ -340,11 +340,11 @@
                         :render-dom virt-DOM
                         :get-rendering-data virt-RD}]
            [:component {:relative-id :virtual-column
-                        :template '(??? :column)
+                        :template '(anything :column)
                         :class "column-header virtual-column"
                         :get-action-data
                         [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(??? :column)
+                         [virt-AD :template '(anything :column)
                           :sibling true]]
                         :render-dom virt-DOM
                         :get-rendering-data virt-RD}]]]))

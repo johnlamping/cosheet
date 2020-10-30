@@ -25,7 +25,8 @@
              [order-utils :refer [ordered-ids-R]]
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
-                                  pattern-to-query query-to-template]]
+                                  pattern-to-query query-to-template
+                                  table-header-template]]
              [render-utils :refer [make-component
                                    hierarchy-node-DOM]]
              [item-render :refer [virtual-DOM-component
@@ -281,7 +282,7 @@
 
 (defn get-table-cell-DOM-rendering-data
   [specification mutable-store]
-  [])
+  [[mutable-store] (:item-ids specification)])
 
 (defmethod print-method
   cosheet2.server.table_render$get_table_cell_DOM_rendering_data
@@ -289,16 +290,17 @@
   (.write w "cell-RD"))
 
 (defn render-table-cell-DOM
-  [{:keys [items] :as specification}]
-  (let [spec (dissoc specification :items :relative-id)
-        dom (if (empty? items)
+  [{:keys [item-ids] :as specification} store]
+  (let [spec (dissoc specification
+                     :item-ids :relative-id :render-dom :get-rendering-data)
+        dom (if (empty? item-ids)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
-              (virtual-DOM-component (assoc specification
-                                            :relative-id :virtual)
+              (virtual-DOM-component (assoc spec :relative-id :virtual)
                                      {})
               (non-label-entities-DOM
-               items (:template specification) false :vertical specification))]
+               (map #(description->entity % store) item-ids)
+               (:template specification) false :vertical spec))]
     (add-attributes dom {:class "table-cell has-border"})))
 
 (defmethod print-method
@@ -313,11 +315,11 @@
   several columns show the same item, we could have the same client id
   for both. "
   [row-item
-   {:keys [column-id query exclusions] :as column-description}
+   {:keys [column-id query exclusions width] :as column-description}
    specification]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM-component
-       (:header-id column-description) specification)
+       (:header-id column-description) (assoc specification :width width))
       (let [spec (assoc specification :template (query-to-template query))
             matches (matching-elements query row-item)
             items (if exclusions
@@ -332,7 +334,8 @@
                 :render-dom render-table-cell-DOM
                 :get-rendering-data get-table-cell-DOM-rendering-data
                 :relative-id column-id
-                :items items)))))
+                :width width
+                :item-ids (map :item-id items))))))
 
 (defn render-table-row-DOM
   "Generate dom for a table row."
@@ -383,7 +386,8 @@
               (let [query (query-for-hierarchy-leaf node-or-element)
                     exclusions (table-hierarchy-node-exclusions node)]
                 [(cond-> {:column-id (:item-id (:item node-or-element))
-                          :query query}
+                          :query query
+                          :width 0.75}
                    (seq exclusions)
                    (assoc :exclusions exclusions))])))
           (hierarchy-node-next-level node)))

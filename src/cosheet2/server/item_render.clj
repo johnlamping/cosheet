@@ -445,13 +445,12 @@
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
   [entities implied-template must-show-labels orientation specification]
-  (let
-      [ordered-entities (order-entities entities)
-       all-labels (map semantic-label-elements ordered-entities)
-       excludeds (map (if implied-template
-                        #(condition-satisfiers % implied-template)
-                        (constantly nil))
-                      ordered-entities)]
+  (let [ordered-entities (order-entities entities)
+        all-labels (map semantic-label-elements ordered-entities)
+        excludeds (map (if implied-template
+                         #(condition-satisfiers % implied-template)
+                         (constantly nil))
+                       ordered-entities)]
     (let [labels (map (fn [all exclusions]
                         (clojure.set/difference (set all) (set exclusions)))
                       all-labels excludeds)
@@ -461,8 +460,7 @@
                         orientation specification)
         (let [item-maps (item-maps-by-elements ordered-entities labels)
               augmented (map (fn [item-map excluded]
-                               (assoc item-map :exclude-element-ids
-                                      (map :item-id excluded)))
+                               (assoc item-map :exclude-elements excluded))
                              item-maps excludeds)
               hierarchy (hierarchy-by-canonical-info augmented)
               doms (case orientation

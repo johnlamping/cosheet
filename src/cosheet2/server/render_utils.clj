@@ -32,12 +32,12 @@
   (when (and (sequential? condition)
              (not (empty? (rest condition))))
     (let [elements (entity/elements entity)
-                canonical-elements (map entity->canonical-semantic elements)]
-            (multiset-to-generating-values
-             (multiset (map #(entity->canonical-semantic
-                              (replace-in-seqs % nil ""))
-                            (rest condition)))
-             canonical-elements elements))))
+          canonical-elements (map entity->canonical-semantic elements)]
+      (multiset-to-generating-values
+       (multiset (map #(entity->canonical-semantic
+                        (replace-in-seqs % nil ""))
+                      (rest condition)))
+       canonical-elements elements))))
 
 (comment
 ;;; These next functions handle inherited attributes.
@@ -301,11 +301,10 @@
   (assert (empty? (:excluded-element-ids specification)))
   (if (empty? excluded-elements)
     (item-component item specification)
-    (let [excluded-ids (map :item-id excluded-elements)]
-      (item-component
-       item
-       (assoc specification
-              :excluded-element-ids (vec excluded-ids))))))
+    (item-component
+     item
+     (assoc specification
+            :excluded-element-ids (vec (map :item-id excluded-elements))))))
 
 (defn nest-if-multiple-DOM
   "If there is only one dom in the doms, return it. Otherwise, return

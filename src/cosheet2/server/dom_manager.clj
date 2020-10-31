@@ -2,7 +2,8 @@
   (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
-                                        reporter-value valid?]]
+                                        reporter-value valid?
+                                        universal-category]]
                       calculator
                       [store :refer [StoredItemDescription mutable-store?]]
                       [store-impl :refer [id->string string->id]]
@@ -219,7 +220,8 @@
             (update-new-further-actions
              (map (fn [[r categories]]
                     [set-attendee!
-                     r component-atom (:depth component-data) categories
+                     r component-atom (:depth component-data)
+                     (or (seq categories) [universal-category])
                      reporter-changed-callback])
                   pairs)))))))
 

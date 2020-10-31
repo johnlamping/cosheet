@@ -155,7 +155,7 @@
        [table-virtual-row-DOM
         row-key new-row-template adjacent-referent column-descriptions
         inherited])))
-  )
+)
 
 ;;; The condition elements of a table are its semantic elements
 ;;; that are not column headers.
@@ -192,7 +192,7 @@
        (some #(= (content %) :label)
              (rest template))))
 
-(defn table-hierarchy-node-exclusions
+(defn table-hierarchy-node-disqualifications
   "Given a hierarchy node, return a seq of conditions that immediate
   elements of the node must not satisfy, because they are covered
   by sub-nodes."
@@ -315,16 +315,16 @@
   several columns show the same item, we could have the same client id
   for both. "
   [row-item
-   {:keys [column-id query exclusions width] :as column-description}
+   {:keys [column-id query disqualifications width] :as column-description}
    specification]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM-component
        (:header-id column-description) (assoc specification :width width))
       (let [spec (assoc specification :template (query-to-template query))
             matches (matching-elements query row-item)
-            items (if exclusions
+            items (if disqualifications
                     (let [do-not-show (map #(matching-elements % row-item)
-                                           exclusions)]
+                                           disqualifications)]
                       (seq (clojure.set/difference
                             (set matches)
                             (set (apply concat do-not-show)))))
@@ -367,29 +367,30 @@
 (defn query-for-hierarchy-leaf
   "Given a hierarchy leaf, and the node it is from,
   return the query that items in cells of the column must satisfy.
-  (Not worrying about exclusions.)"
+  (Not worrying about disqualifications.)"
   [leaf]
   (pattern-to-query (semantic-to-list (:item leaf))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
-       :column-id Id that identifies the column.
-                  Typically the id of the column item.
-           :query Query that each element of the column must satisfy.
-                  For a virtual column, this will not be present.
-      :exclusions Seq of conditions that elements must not satisfy."
+              :column-id Id that identifies the column.
+                         Typically the id of the column item.
+                  :query Query that each element of the column must satisfy.
+                         For a virtual column, this will not be present.
+      :disqualifications Seq of conditions that elements must not satisfy."
   [node]
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
               (let [query (query-for-hierarchy-leaf node-or-element)
-                    exclusions (table-hierarchy-node-exclusions node)]
+                    disqualifications (table-hierarchy-node-disqualifications
+                                       node)]
                 [(cond-> {:column-id (:item-id (:item node-or-element))
                           :query query
                           :width 0.75}
-                   (seq exclusions)
-                   (assoc :exclusions exclusions))])))
+                   (seq disqualifications)
+                   (assoc :disqualifications disqualifications))])))
           (hierarchy-node-next-level node)))
 
 (defn row-template
@@ -417,26 +418,20 @@
     ;;              which means to show everything not shown in any
     ;;              other column. (:other not yet implemented.)
     ;; TODO: Add the "other" column if a table requests it.
-    [{:keys [relative-id]} store]
-    (println "Generating DOM for table" (simplify-for-print table-item))
-    (assert (satisfies? StoredEntity table-item))
-    (let [table-item (desctiption->entity relative-id store)]
+    [{:keys [relative-id] :as specification} store]
+    (let [table-item (description->entity relative-id store)]
+      (println "Generating DOM for table" (simplify-for-print table-item))
+      (assert (satisfies? StoredEntity table-item))
       ;; Don't do anything if we don't yet have the table information filled in.
       (when-let [row-condition-item (first (label->elements
                                             table-item :row-condition))]
-        (let [headers-spec (update
-                            (assoc spec
-                                   :subject-referent (item-referent
-                                                      row-condition-item)
-                                   :template table-header-template)
-                            :priority inc)
-              columns (order-items-R
+        (let [row-condition-id (:item-id row-condition-item)
+              condition-dom (table-condition-DOM {:relative-id row-condition-id}
+                                                 store)
+              columns (order-items
                        (label->elements row-condition-item :column))
               hierarchy (hierarchy-by-labels columns)
-              headers (table-header-DOM
-                       hierarchy headers-inherited)
-              condition-dom (table-top-DOM-R
-                             row-condition-item inherited)
+              headers (table-header-DOM row-condition-id hierarchy)
               column-descriptions (mapcat
                                    table-hierarchy-node-column-descriptions
                                    hierarchy)
@@ -451,7 +446,7 @@
                                                        table-item)))
                   virtual-column-description {:column-id :virtualColumn
                                               :template virtual-template
-                                              :exclusions nil}
+                                              :disqualifications nil}
                   rows (map #(table-row-DOM-component
                               % row-template (concat
                                               column-descriptions

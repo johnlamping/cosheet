@@ -483,5 +483,4 @@
                             (:item-id (first (matching-elements
                                               "id" joe-joseph)))])}]]]]))))
 
-;; TODO: Test generating an item with :excluded-element-ids
 

@@ -603,18 +603,21 @@
   )
 
 (deftest item-DOM-R-test-two-column
-  ;; Try a couple of elements with no labels
+  ;; Try three elements with no labels, but one of them marked as excluded.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
+                                      (3 (~o3 :order))
                                       (2 (~o2 :order))
                                       (1 (~o1 :order))))
         fred (description->entity fred-id store)
         id1 (:item-id (first (matching-elements 1 fred)))
         id2 (:item-id (first (matching-elements 2 fred)))
+        id3 (:item-id (first (matching-elements 3 fred)))
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id fred-id
                                     :width 1.5
-                                    :must-show-labels :wide)
+                                    :must-show-labels :wide
+                                    :excluded-element-ids [id3])
                              store)]
     ;; Test an item with two elements, neither with a label.
     (is (check

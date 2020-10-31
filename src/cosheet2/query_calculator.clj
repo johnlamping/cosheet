@@ -112,10 +112,10 @@
              (assoc :value :invalid)
              (update-new-further-action remove-attendee! store reporter)))))))
 
-(defn matching-items-R
+(defn matching-item-ids-R
   [term store]
   (if (mutable-store? store)
     (new-reporter :calculator query-calculator
                   :term term
                   :store store)
-    (matching-items term store)))
+    (set (map :item-id (matching-items term store)))))

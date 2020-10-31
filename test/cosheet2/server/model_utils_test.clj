@@ -18,7 +18,7 @@
                       [test-utils :refer [check any as-set]])
             (cosheet2.server
              [model-utils :refer :all]
-             [order-utils :refer [order-entities]])
+             [order-utils :refer [ordered-entities]])
             ; :reload
             ))
 
@@ -161,7 +161,7 @@
                   ("there" (~(any) :order))
                   (~(any) :order)))))
     (is (check (map semantic-to-list
-                    (order-entities rows))
+                    (ordered-entities rows))
                [(as-set '(""
                           ("there" :label)
                           (1 ("a" :label))
@@ -172,7 +172,7 @@
                 '(anything ("there" :label)
                            (anything ("a" :label))
                            (anything ("b" :label))))))
-    (is (check (map semantic-to-list (order-entities headers))
+    (is (check (map semantic-to-list (ordered-entities headers))
                (as-set ['(anything ("a" :label))
                         '(anything ("b" :label))])))))
 

@@ -48,7 +48,7 @@
        (sort orderable-comparator)
        (map second)))
 
-(defn order-ids
+(defn ordered-ids
   "Return the ids in the correct order, based on their order data."
   [ids immutable-store]
   (let [order-info (map #())])
@@ -56,7 +56,7 @@
         order-info (map #(label->content % :order) entities)]
     (sort-by-order ids order-info)))
 
-(defn order-entities
+(defn ordered-entities
   "Return the immutable entities in the proper sort order."
   [entities]
   (if (empty? (rest entities))
@@ -149,7 +149,7 @@
   [ids store]
   (if (and (satisfies? ImmutableStore store)
            (not (reporter? ids)))
-    (order-ids ids store)
+    (ordered-ids ids store)
     ;; We don't cache any information from the store, since it is pretty
     ;; efficient to get what we need whenever we need to recompute. The
     ;; main point of this reporter is to avoid recomputing when it isn't

@@ -56,25 +56,25 @@
 (def joe-39 (first (matching-elements 39 joe)))
 (def joe-45 (first (matching-elements 45 joe)))
 
-(deftest order-ids-test
+(deftest ordered-ids-test
   ;; Also tests ordered-ids-R on an immutable store.
   (let [joe-semantic-elements (filter semantic-entity? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
-    (is (= (order-ids (map :item-id joe-semantic-elements) store)
+    (is (= (ordered-ids (map :item-id joe-semantic-elements) store)
            (map :item-id joe-ordered-semantic-elements)))
-    (is (= (order-ids (reverse (map :item-id joe-semantic-elements)) store)
+    (is (= (ordered-ids (reverse (map :item-id joe-semantic-elements)) store)
            (map :item-id joe-ordered-semantic-elements)))
     (is (= (ordered-ids-R (map :item-id joe-semantic-elements) store)
            (map :item-id joe-ordered-semantic-elements)))
     (is (= (ordered-ids-R (reverse (map :item-id joe-semantic-elements)) store)
            (map :item-id joe-ordered-semantic-elements)))))
 
-(deftest order-entities-test
+(deftest ordered-entities-test
   (let [joe-semantic-elements (filter semantic-entity? (elements joe))
         joe-ordered-semantic-elements [joe-male joe-married joe-39 joe-45]]
-    (is (= (order-entities joe-semantic-elements)
+    (is (= (ordered-entities joe-semantic-elements)
            joe-ordered-semantic-elements))
-    (is (= (order-entities (reverse joe-semantic-elements))
+    (is (= (ordered-entities (reverse joe-semantic-elements))
            joe-ordered-semantic-elements))))
 
 (deftest ordered-ids-R-test
@@ -204,7 +204,7 @@
                             (-> ordered (nth 2) second first)))
     ;; The last element is not semantic, as it is order information.
     (let [semantic-elements (butlast (elements ordered))]
-      (is (check (order-entities semantic-elements)
+      (is (check (ordered-entities semantic-elements)
                  semantic-elements))
-      (is (check (order-entities (reverse semantic-elements))
+      (is (check (ordered-entities (reverse semantic-elements))
                  semantic-elements)))))

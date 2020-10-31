@@ -2,10 +2,11 @@
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
                       [entity :refer [subject content label->elements
-                                      description->entity StoredEntity]]
+                                      description->entity StoredEntity
+                                      updating-immutable]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
-                      [query-calculator :refer [matching-items-R]]
+                      [query-calculator :refer [matching-item-ids-R]]
                       [debug :refer [simplify-for-print]]
                       [hiccup-utils :refer [dom-attributes
                                             into-attributes add-attributes]]
@@ -22,7 +23,7 @@
                                 hierarchy-by-labels
                                 hierarchy-node-example-elements
                                 hierarchy-node-non-immediate-descendant-cover]]
-             [order-utils :refer [ordered-ids-R]]
+             [order-utils :refer [ordered-ids-R ordered-entities]]
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
@@ -399,6 +400,44 @@
   (let [condition-elements (table-condition-elements row-condition-item)
         elems-list (map semantic-to-list condition-elements) ] 
     (concat '(anything) elems-list [:top-level])))
+
+(defn get-table-body-DOM-rendering-data
+  [specification mutable-store]
+  [[mutable-store] (:item-ids specification)])
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_body_DOM_rendering_data
+  [v ^java.io.Writer w]
+  (.write w "body-RD"))
+
+(defn table-row-condition-R
+  [row-condition-id mutable-store]
+  (let [row-condition-entity
+        (description->entity row-condition-id mutable-store)]
+    (updating-immutable row-condition-entity)))
+
+(defn table-hierarchy-R
+  "Return a reporter whose value is the hierarchy of the table header."
+  [row-condition-entity-R]
+  (expr-let [current-row-condition row-condition-entity-R]
+    (let [columns (ordered-entities (label->elements current-row-condition :column))]
+      (hierarchy-by-labels columns))))
+
+(defn table-row-template-R
+  "Return a reporter whose value is the row condition"
+  [row-condition-entity-R]
+  (expr-let [condition-elements (table-condition-elements
+                                 row-condition-entity-R)]
+    (let [elements-as-lists (map semantic-to-list condition-elements)]
+      (concat '(anything) elements-as-lists [:top-level]))))
+
+(defn table-row-ids-R
+  "Return a reporter whose value is the row ids for the table, in order."
+  [row-template-R mutable-store]
+  (expr-let [current-template row-template-R]
+    (let [row-query (pattern-to-query current-template)]
+      (expr ordered-ids-R (matching-item-ids-R row-query mutable-store)
+            mutable-store))))
 
 (comment
   (defn render-table-DOM

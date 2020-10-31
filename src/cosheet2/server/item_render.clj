@@ -24,7 +24,7 @@
                                 hierarchy-by-canonical-info
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
-             [order-utils :refer [order-entities semantic-entity?]]
+             [order-utils :refer [ordered-entities semantic-entity?]]
              [render-utils :refer [make-component
                                    item-stack-DOM nest-if-multiple-DOM
                                    condition-satisfiers
@@ -205,7 +205,7 @@
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."
   [label-elements specification]
-  (let [ordered-labels (order-entities label-elements)
+  (let [ordered-labels (ordered-entities label-elements)
         label-tags (map #(condition-satisfiers % '(nil :label))
                        ordered-labels)]
     (item-stack-DOM ordered-labels label-tags :vertical
@@ -445,7 +445,7 @@
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
   [entities implied-template must-show-labels orientation specification]
-  (let [ordered-entities (order-entities entities)
+  (let [ordered-entities (ordered-entities entities)
         all-labels (map semantic-label-elements ordered-entities)
         excludeds (map (if implied-template
                          #(condition-satisfiers % implied-template)

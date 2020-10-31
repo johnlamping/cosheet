@@ -25,7 +25,7 @@
                                   get-virtual-action-data
                                   get-virtual-column-cell-action-data]]
              [hierarchy :refer [hierarchy-by-labels]]
-             [order-utils :refer [order-entities]]
+             [order-utils :refer [ordered-entities]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -155,7 +155,7 @@
         c6-id (:item-id c6)
         c7 (first (matching-elements `(nil ~o7) row-condition))
         c7-id (:item-id c7)
-        columns (order-entities
+        columns (ordered-entities
                  (label->elements row-condition :column))
         hierarchy (hierarchy-by-labels columns)
         column-descriptions (concat

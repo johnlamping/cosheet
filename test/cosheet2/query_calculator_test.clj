@@ -3,7 +3,8 @@
             clojure.pprint
             (cosheet2 [store :refer [new-element-store new-mutable-store
                                      store-reset! store-update!
-                                     store-update-control-return!]]
+                                     store-update-control-return!
+                                     current-store]]
                       store-impl
                       mutable-store-impl
                       [store-utils :refer [add-entity remove-entity-by-id]]
@@ -13,7 +14,7 @@
                                         reporter-value valid?]]
                       [calculator :refer [new-calculator-data compute]]
                       [query :refer [variable-query]]
-                      [query-calculator :refer [matching-items-R]]
+                      [query-calculator :refer [matching-item-ids-R]]
                       [test-utils :refer [check]]
                      )
             ; :reload
@@ -37,7 +38,7 @@
         [s5 id5] (add-entity s4 id4 2)
         ms (new-mutable-store s5)
         term '(1 2)
-        answer (matching-items-R term ms)
+        answer (matching-item-ids-R term ms)
         history (atom [])
         callback (fn [& {:as args}]
                    (swap! history #(conj % (dissoc args :reporter))))]
@@ -54,6 +55,8 @@
                 {:key :foo :description nil :categories nil}]))
     (is (check (reporter-value answer)
                #{id2 id4}))
+    (is (check (matching-item-ids-R term (current-store ms))
+               (reporter-value answer)))
     (let [id6
           (store-update-control-return!
            ms #(add-entity % nil '(1 2 3 4)))]

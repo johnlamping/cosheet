@@ -21,7 +21,7 @@
                                   flatten-nested-content
                                   create-possible-selector-elements
                                   table-header-template]]
-             [order-utils :refer [order-entities]])))
+             [order-utils :refer [ordered-entities]])))
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
@@ -240,7 +240,7 @@
    header-id]
   (let [header (description->entity header-id immutable-store)
         columns (label->elements header :column)
-        last-column-id (last (order-entities columns))
+        last-column-id (last (ordered-entities columns))
         {:keys [store target-ids]}
         (get-virtual-action-data
          {:template (concat table-header-template ['??? :label])}

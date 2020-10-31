@@ -12,7 +12,7 @@
                       [store-utils :refer [add-entity]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
-                      [query-calculator :refer [matching-items-R]])
+                      [query-calculator :refer [matching-item-ids-R]])
             (cosheet2.server
              [order-utils :refer [semantic-entity?
                                   ordered-ids-R order-element-for-item
@@ -266,8 +266,8 @@
 (defn tabs-holder-id-R
   "Return the entity that holds all the tabs."
   [store]
-  (expr-let [holders (matching-items-R '(nil :tabs) store)]
-    (:item-id (first holders))))
+  (expr-let [holders (matching-item-ids-R '(nil :tabs) store)]
+    (first holders)))
 
 (defn ordered-tabs-ids-R
   "Return the ids of the tabs, in order."

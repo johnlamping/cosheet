@@ -4,7 +4,7 @@
                       [store :refer [id-valid? StoredItemDescription]]
                       [entity :refer [subject content label->elements
                                       description->entity updating-immutable]]
-                      [reporter :refer [reporter-value]]
+                      [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
                       [calculator :refer [current-value]]
@@ -294,22 +294,6 @@
                 (add-attributes {:class "tag"}))))
           (table-DOM-R item inherited))))))
 
-(defn label-datalist-DOM-R
-  "Return dom for a datalist of the content of all labels."
-  [store]
-  ;; TODO: This reruns anytime anything changes. Put support for gathering all
-  ;;       values in the store, so it can be more efficient by looking at
-  ;;       the changed items. (The store needs a way to tell a reporter
-  ;;       about which items changed, not just that something it cared about
-  ;;       changed.
-  (expr-let [labels (matching-items '(nil :tag) store)
-             contents (expr-seq map content labels)]
-    (let [content-names (map str contents)
-          sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
-                                                   content-names)
-                                              content-names)))]
-      (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
-
 ;;; If we are batch editing and there is a non-trivial batch edit selector,
 ;;; return the batch edit selector items.
 (comment
@@ -334,7 +318,7 @@
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
-  "Return a reporter whose value is DOM for the top level component."
+  "Return a reporter whose value is the DOM for the top level component."
   [store id-R]
   (expr-let [id id-R]
     (println "top level DOM id:" id)
@@ -364,7 +348,7 @@
   reporter returns"
   [spec store]
   (println "getting top level DOM rendering data")
-  [[(:reporter spec) nil]])
+  [[(:reporter spec) [universal-category]]])
 
 (defmethod print-method
   cosheet2.server.render$reporter_specification_get_rendering_data
@@ -374,7 +358,6 @@
 (defn reporter-specification-render-dom
   "Make the component's dom be what a reporter returns."
   [spec reporter-value]
-  (comment (println "value for top level DOM" reporter-value))
   reporter-value)
 
 (defmethod print-method
@@ -437,6 +420,22 @@
                     {:key [:tabs]}
                     [tabs-DOM-R holder nil
                      (assoc starting-inherited :key-prefix [:tab])])]))))))))
+
+(defn label-datalist-DOM-R
+  "Return dom for a datalist of the content of all labels."
+  [store]
+  ;; TODO: This reruns anytime anything changes. Put support for gathering all
+  ;;       values in the store, so it can be more efficient by looking at
+  ;;       the changed items. (The store needs a way to tell a reporter
+  ;;       about which items changed, not just that something it cared about
+  ;;       changed.
+  (expr-let [labels (matching-items '(nil :tag) store)
+             contents (expr-seq map content labels)]
+    (let [content-names (map str contents)
+          sorted-contents (sort (vals (zipmap (map clojure.string/lower-case
+                                                   content-names)
+                                              content-names)))]
+      (into [:datalist] (map (fn [name] [:option name]) sorted-contents)))))
 
 (comment
   (defn spec-for-client-R

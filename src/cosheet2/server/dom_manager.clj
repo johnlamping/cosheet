@@ -221,7 +221,7 @@
              (map (fn [[r categories]]
                     [set-attendee!
                      r component-atom (:depth component-data)
-                     (or (seq categories) [universal-category])
+                     categories
                      reporter-changed-callback])
                   pairs)))))))
 

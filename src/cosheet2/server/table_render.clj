@@ -1,6 +1,7 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
+                      [reporter :refer [universal-category]]
                       [entity :refer [subject content label->elements
                                       description->entity StoredEntity
                                       updating-immutable]]
@@ -356,14 +357,14 @@
 
 (defn table-row-DOM-component
   "Generate a component for a table row."
-    [row-item new-row-template column-descriptions specification]
+    [row-item-id new-row-template column-descriptions specification]
   (make-component
    (assoc specification
-          :relative-id row-item
+          :relative-id row-item-id
           :column-descriptions column-descriptions
           :render-dom render-table-row-DOM
           :get-row-action-data
-          [get-row-action-data (:item-id row-item) new-row-template])))
+          [get-row-action-data row-item-id new-row-template])))
 
 (defn query-for-hierarchy-leaf
   "Given a hierarchy leaf, and the node it is from,
@@ -410,7 +411,7 @@
   [v ^java.io.Writer w]
   (.write w "body-RD"))
 
-(defn table-row-condition-R
+(defn table-row-condition-entity-R
   [row-condition-id mutable-store]
   (let [row-condition-entity
         (description->entity row-condition-id mutable-store)]
@@ -420,7 +421,8 @@
   "Return a reporter whose value is the hierarchy of the table header."
   [row-condition-entity-R]
   (expr-let [current-row-condition row-condition-entity-R]
-    (let [columns (ordered-entities (label->elements current-row-condition :column))]
+    (let [columns (ordered-entities
+                   (label->elements current-row-condition :column))]
       (hierarchy-by-labels columns))))
 
 (defn table-row-template-R
@@ -435,11 +437,66 @@
   "Return a reporter whose value is the row ids for the table, in order."
   [row-template-R mutable-store]
   (expr-let [current-template row-template-R]
-    (let [row-query (pattern-to-query current-template)]
-      (expr ordered-ids-R (matching-item-ids-R row-query mutable-store)
-            mutable-store))))
+    (let [row-query (pattern-to-query current-template)
+          matching-ids-R (matching-item-ids-R row-query mutable-store)]
+      (ordered-ids-R matching-ids-R mutable-store))))
+
+(defn get-table-rows-rendering-data
+  [{:keys [row-condition-id]} mutable-store]
+  (let [row-condition-entity-R (table-row-condition-entity-R
+                                row-condition-id mutable-store)
+        row-template-R (table-row-template-R row-condition-entity-R)
+        row-ids-R (table-row-ids-R row-template-R mutable-store)]
+    [[row-template-R [universal-category]]
+     [row-ids-R [universal-category]]]))
+
+(defn render-table-rows
+  [{:keys [column-descriptions] :as specification} row-template row-ids]
+  (let [row-spec (-> specification
+                     (dissoc :column-descriptions :row-condition-id)
+                     (update :priority (partial + 2)))]
+    (into [:div {:class "table-rows"}]
+          (map #(table-row-DOM-component
+                 % row-template column-descriptions row-spec)
+               row-ids)
+          ;; TODO: Concat in a virtual row
+          )))
+
+(defn get-ready-table-rendering-data
+  [{:keys [row-condition-id]} mutable-store]
+  (let [row-condition-entity-R (table-row-condition-entity-R
+                                row-condition-id mutable-store)
+        hierarchy-R (table-hierarchy-R row-condition-entity-R)
+        row-template-R (table-row-template-R row-condition-entity-R)
+        row-ids-R (table-row-ids-R row-template-R mutable-store)]
+    [[mutable-store [row-condition-id]]
+     [hierarchy-R [universal-category]]
+     [row-template-R [universal-category]]
+     [row-ids-R [universal-category]]]))
+
+(defn render-ready-table
+  ;; TODO: rename row-condition-id to header-id.
+  [{:keys [row-condition-id] :as specification} store hierarchy row-template]
+  (let [virtual-column-description {:column-id :virtualColumn
+                                    :header-id row-condition-id}
+        column-descriptions (concat (mapcat
+                                     table-hierarchy-node-column-descriptions
+                                     hierarchy)
+                                    [virtual-column-description])
+        body-dom (make-component {:row-condition-id row-condition-id
+                                  :column-descriptions column-descriptions})]
+    [:div {:class "table"}
+     (table-condition-DOM {:relative-id row-condition-id}
+                          store)
+     [:div {:class "query-result-wrapper"}
+      [:div {:class "query-result-indent label"}]
+      [:div {:class "table-main"}
+       (table-header-DOM row-condition-id hierarchy)
+       body-dom]]]))
 
 (comment
+  ;; TODO: This just checks that the table is ready, then returns a
+  ;; component for a ready table.
   (defn render-table-DOM
     "Return a hiccup representation of DOM, with the given internal key,
   describing a table."

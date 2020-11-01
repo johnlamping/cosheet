@@ -394,7 +394,7 @@
                       :priority 1
                       :get-row-action-data
                       [get-row-action-data
-                       nil '("" :top-level ("age" :label))]}]))
+                       joe-id '("" :top-level ("age" :label))]}]))
     (is (check
          joe-row
          [:div {}

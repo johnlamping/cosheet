@@ -161,18 +161,22 @@
 
 ;;; The condition elements of a table are its semantic elements
 ;;; that are not column headers.
-(defn table-condition-elements [row-condition-item]
+(defn table-condition-elements [header-entity]
   (expr-let
-      [semantic-elements (semantic-elements row-condition-item)
-       column-elements (label->elements row-condition-item :column)]
+      [semantic-elements (semantic-elements header-entity)
+       column-elements (label->elements header-entity :column)]
     (remove (set column-elements) semantic-elements)))
 
-(defn table-condition-DOM
+(defn get-table-condition-rendering-data
+  [{:keys [header-id]} mutable-store]
+  [[mutable-store [header-id]]])
+
+(defn render-table-condition-DOM
   "Return a hiccup representation for the top of a table, the part that
-  holds its condition. The relative-id should be for the row-condition"
-  [{:keys [relative-id]} store]
-  (let [row-condition-entity (description->entity relative-id store)
-        condition-elements (table-condition-elements row-condition-entity)
+  holds its condition. The relative-id should be for the header"
+  [{:keys [header-id]} store]
+  (let [header-entity (description->entity header-id store)
+        condition-elements (table-condition-elements header-entity)
         spec-down {:template '(anything)}
         virtual-dom
         (virtual-entity-and-label-DOM
@@ -258,17 +262,21 @@
          :horizontal
          {:sibling true})))))
 
-(defn table-header-DOM
+(defn get-table-header-rendering-data
+  [{:keys [hierarchy-R] :as spec} mutable-store]
+  [[hierarchy-R [universal-category]]])
+
+(defn render-table-header-DOM
   "Generate DOM for column headers given the hierarchy.
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
-    [header-id hierarchy]
+  [{:keys [header-id]} hierarchy]
   (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-        columns (map #(table-header-top-level-subtree-DOM header-id %)
+        doms (map #(table-header-top-level-subtree-DOM header-id %)
                      hierarchy)
         virtual-header (table-virtual-column-header-DOM hierarchy)]
     (into [:div {:class "column-header-sequence"}]
-          (concat columns [virtual-header]))))
+          (concat doms [virtual-header]))))
 
 (defn table-virtual-column-cell-DOM-component
   [header-id specification]
@@ -282,27 +290,40 @@
            :get-action-data [get-virtual-column-cell-action-data header-id]))
    {:class "table-cell virtual-column has-border"}))
 
-(defn get-table-cell-DOM-rendering-data
+;;; TODO: Make all the renderers end in -DOM.
+
+(defn get-table-cell-rendering-data
   [specification mutable-store]
-  [[mutable-store] (:item-ids specification)])
+  [[mutable-store [(:row-id specification)]]])
 
 (defmethod print-method
-  cosheet2.server.table_render$get_table_cell_DOM_rendering_data
+  cosheet2.server.table_render$get_table_cell_rendering_data
   [v ^java.io.Writer w]
   (.write w "cell-RD"))
 
 (defn render-table-cell-DOM
-  [{:keys [item-ids] :as specification} store]
-  (let [spec (dissoc specification
-                     :item-ids :relative-id :render-dom :get-rendering-data)
-        dom (if (empty? item-ids)
+  [{:keys [:row-id :query :disqualifications] :as specification} store]
+  (let [row-entity (description->entity row-id store)
+        matches (matching-elements query row-entity)
+        entities (if disqualifications
+                   (let [do-not-show (map #(matching-elements % row-entity)
+                                          disqualifications)]
+                     (seq (clojure.set/difference
+                           (set matches)
+                           (set (apply concat do-not-show)))))
+                   matches)
+        spec (-> specification
+                 (assoc :template (query-to-template query))
+                 (dissoc :relative-id :render-dom :get-rendering-data
+                         :row-id :query :disqualifications))
+        dom (if (empty? entities)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
               (virtual-DOM-component (assoc spec :relative-id :virtual)
                                      {})
               (non-label-entities-DOM
-               (map #(description->entity % store) item-ids)
-               (:template specification) false :vertical spec))]
+               entities
+               (:template spec) false :vertical spec))]
     (add-attributes dom {:class "table-cell has-border"})))
 
 (defmethod print-method
@@ -316,37 +337,34 @@
   so its column-id can be included in its client id. Otherwise, if
   several columns show the same item, we could have the same client id
   for both. "
-  [row-item
+  [row-id
    {:keys [column-id query disqualifications width] :as column-description}
    specification]
     (if (= column-id :virtualColumn)
       (table-virtual-column-cell-DOM-component
        (:header-id column-description) (assoc specification :width width))
-      (let [spec (assoc specification :template (query-to-template query))
-            matches (matching-elements query row-item)
-            items (if disqualifications
-                    (let [do-not-show (map #(matching-elements % row-item)
-                                           disqualifications)]
-                      (seq (clojure.set/difference
-                            (set matches)
-                            (set (apply concat do-not-show)))))
-                    matches)]
-        (make-component
-         (assoc spec
-                :render-dom render-table-cell-DOM
-                :get-rendering-data get-table-cell-DOM-rendering-data
+      (make-component
+         (assoc specification
                 :relative-id column-id
-                :width width
-                :item-ids (map :item-id items))))))
+                :row-id row-id
+                :query query
+                :render-dom render-table-cell-DOM
+                :get-rendering-data get-table-cell-rendering-data
+                :width width))))
+
+(defn get-table-row-rendering-data
+  [{:keys [relative-id column-descriptions-R]} mutable-store]
+  [[mutable-store [relative-id]]
+   [column-descriptions-R [universal-category]]])
 
 (defn render-table-row-DOM
-  "Generate dom for a table row."
-  [{:keys [column-descriptions relative-id] :as specification} store]
+  "Generate dom for a table row. The specification must already
+  have column-descriptions-R and :get-row-action-data"
+  [{:keys [relative-id] :as specification} store column-descriptions]
   (let [spec (-> specification
-                 (dissoc :get-row-action-data :column-descriptions :render-dom)
-                 (update :priority inc))
-        row-item (description->entity relative-id store)]
-    (let [cells (map #(table-cell-DOM-component row-item % spec)
+                 (dissoc :column-descriptions-R :get-row-action-data)
+                 (update :priority inc))]
+    (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
       (into [:div {}] cells))))
 
@@ -355,23 +373,76 @@
   [v ^java.io.Writer w]
   (.write w "row-DOM"))
 
-(defn table-row-DOM-component
-  "Generate a component for a table row."
-    [row-item-id new-row-template column-descriptions specification]
+(defn table-row-component
+  ;; The specification must include column-descriptions-R
+  [row-id row-template specification]
   (make-component
    (assoc specification
-          :relative-id row-item-id
-          :column-descriptions column-descriptions
+          :relative-id row-id
           :render-dom render-table-row-DOM
-          :get-row-action-data
-          [get-row-action-data row-item-id new-row-template])))
+          :get-rendering-data get-table-row-rendering-data
+          :get-row-action-data [get-row-action-data row-id row-template])))
 
-(defn query-for-hierarchy-leaf
-  "Given a hierarchy leaf, and the node it is from,
-  return the query that items in cells of the column must satisfy.
-  (Not worrying about disqualifications.)"
-  [leaf]
-  (pattern-to-query (semantic-to-list (:item leaf))))
+(defn get-table-rows-rendering-data
+  [{:keys [row-template-R row-ids-R]} mutable-store]
+  [row-template-R [universal-category]
+   [row-ids-R [universal-category]]])
+
+(defn render-table-rows-DOM
+  "The specification must have column-descriptions-R row-template-R
+  and row-ids-R."
+  [specification row-template row-ids]
+  ;; We pass on column-descriptions-R from our spec
+  (let [row-spec (-> specification
+                     (dissoc :row-template-R :row-ids-R)
+                     (update :priority (partial + 2)))]
+    (into [:div {:class "table-rows"}]
+          (map #(table-row-component % row-template row-spec)
+               row-ids)
+          ;; TODO: Concat in a virtual row
+          )))
+
+(defn table-header-entity-R
+  [header-id mutable-store]
+  (let [header-entity
+        (description->entity header-id mutable-store)]
+    (updating-immutable header-entity)))
+
+(defn table-hierarchy-R
+  "Return a reporter whose value is the hierarchy of the table header."
+  [header-entity-R]
+  (expr-let [current-header header-entity-R]
+    (let [columns (ordered-entities
+                   (label->elements current-header :column))]
+      (hierarchy-by-labels columns))))
+
+(defn table-row-template-R
+  "Return a reporter whose value is the row condition"
+  [header-entity-R]
+  (expr-let [condition-elements (table-condition-elements
+                                 header-entity-R)]
+    (let [elements-as-lists (map semantic-to-list condition-elements)]
+      (concat '(anything) elements-as-lists [:top-level]))))
+
+(defn table-row-ids-R
+  "Return a reporter whose value is the row ids for the table, in order."
+  [row-template-R mutable-store]
+  (expr-let [current-template row-template-R]
+    (let [row-query (pattern-to-query current-template)
+          matching-ids-R (matching-item-ids-R row-query mutable-store)]
+      (ordered-ids-R matching-ids-R mutable-store))))
+
+(defn table-hierarchy-leaf-column-description
+  [parent-node leaf]
+  (let [query (-> (:item leaf)
+                  semantic-to-list
+                  pattern-to-query)
+        disqualifications (table-hierarchy-node-disqualifications parent-node)]
+    [(cond-> {:column-id (:item-id (:item leaf))
+              :query query
+              :width 0.75}
+       (seq disqualifications)
+       (assoc :disqualifications disqualifications))]))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
@@ -385,113 +456,58 @@
   (mapcat (fn [node-or-element]
             (if (hierarchy-node? node-or-element)
               (table-hierarchy-node-column-descriptions node-or-element)
-              (let [query (query-for-hierarchy-leaf node-or-element)
-                    disqualifications (table-hierarchy-node-disqualifications
-                                       node)]
-                [(cond-> {:column-id (:item-id (:item node-or-element))
-                          :query query
-                          :width 0.75}
-                   (seq disqualifications)
-                   (assoc :disqualifications disqualifications))])))
+              (table-hierarchy-leaf-column-description node node-or-element)))
           (hierarchy-node-next-level node)))
 
-(defn row-template
-  "Given the item giving the row condition, return the template for a row."
-  [row-condition-item]
-  (let [condition-elements (table-condition-elements row-condition-item)
-        elems-list (map semantic-to-list condition-elements) ] 
-    (concat '(anything) elems-list [:top-level])))
-
-(defn get-table-body-DOM-rendering-data
-  [specification mutable-store]
-  [[mutable-store] (:item-ids specification)])
-
-(defmethod print-method
-  cosheet2.server.table_render$get_table_body_DOM_rendering_data
-  [v ^java.io.Writer w]
-  (.write w "body-RD"))
-
-(defn table-row-condition-entity-R
-  [row-condition-id mutable-store]
-  (let [row-condition-entity
-        (description->entity row-condition-id mutable-store)]
-    (updating-immutable row-condition-entity)))
-
-(defn table-hierarchy-R
-  "Return a reporter whose value is the hierarchy of the table header."
-  [row-condition-entity-R]
-  (expr-let [current-row-condition row-condition-entity-R]
-    (let [columns (ordered-entities
-                   (label->elements current-row-condition :column))]
-      (hierarchy-by-labels columns))))
-
-(defn table-row-template-R
-  "Return a reporter whose value is the row condition"
-  [row-condition-entity-R]
-  (expr-let [condition-elements (table-condition-elements
-                                 row-condition-entity-R)]
-    (let [elements-as-lists (map semantic-to-list condition-elements)]
-      (concat '(anything) elements-as-lists [:top-level]))))
-
-(defn table-row-ids-R
-  "Return a reporter whose value is the row ids for the table, in order."
-  [row-template-R mutable-store]
-  (expr-let [current-template row-template-R]
-    (let [row-query (pattern-to-query current-template)
-          matching-ids-R (matching-item-ids-R row-query mutable-store)]
-      (ordered-ids-R matching-ids-R mutable-store))))
-
-(defn get-table-rows-rendering-data
-  [{:keys [row-condition-id]} mutable-store]
-  (let [row-condition-entity-R (table-row-condition-entity-R
-                                row-condition-id mutable-store)
-        row-template-R (table-row-template-R row-condition-entity-R)
-        row-ids-R (table-row-ids-R row-template-R mutable-store)]
-    [[row-template-R [universal-category]]
-     [row-ids-R [universal-category]]]))
-
-(defn render-table-rows
-  [{:keys [column-descriptions] :as specification} row-template row-ids]
-  (let [row-spec (-> specification
-                     (dissoc :column-descriptions :row-condition-id)
-                     (update :priority (partial + 2)))]
-    (into [:div {:class "table-rows"}]
-          (map #(table-row-DOM-component
-                 % row-template column-descriptions row-spec)
-               row-ids)
-          ;; TODO: Concat in a virtual row
-          )))
-
 (defn get-ready-table-rendering-data
-  [{:keys [row-condition-id]} mutable-store]
-  (let [row-condition-entity-R (table-row-condition-entity-R
-                                row-condition-id mutable-store)
-        hierarchy-R (table-hierarchy-R row-condition-entity-R)
-        row-template-R (table-row-template-R row-condition-entity-R)
-        row-ids-R (table-row-ids-R row-template-R mutable-store)]
-    [[mutable-store [row-condition-id]]
-     [hierarchy-R [universal-category]]
-     [row-template-R [universal-category]]
-     [row-ids-R [universal-category]]]))
+  [{:keys [header-id]} mutable-store]
+  ;; We pass the renderer the mutable store. That way, it can us that
+  ;; to build the reporters that each of its subparts depend on.
+  ;; The way we give it the store is by making a map consisting of
+  ;; the store, so current-value will return the entire map, not the
+  ;; current value of the store.
+  [{:mutable-store mutable-store} nil])
 
 (defn render-ready-table
-  ;; TODO: rename row-condition-id to header-id.
-  [{:keys [row-condition-id] :as specification} store hierarchy row-template]
-  (let [virtual-column-description {:column-id :virtualColumn
-                                    :header-id row-condition-id}
-        column-descriptions (concat (mapcat
-                                     table-hierarchy-node-column-descriptions
-                                     hierarchy)
-                                    [virtual-column-description])
-        body-dom (make-component {:row-condition-id row-condition-id
-                                  :column-descriptions column-descriptions})]
+  [{:keys [header-id] :as specification} {:keys [mutable-store]}]
+  (let [header-entity-R (table-header-entity-R
+                         header-id mutable-store)
+        hierarchy-R (table-hierarchy-R header-entity-R)
+        row-template-R (table-row-template-R header-entity-R)
+        row-ids-R (table-row-ids-R row-template-R mutable-store)
+        virtual-column-description {:column-id :virtualColumn
+                                    :header-id header-id}
+        column-descriptions-R (expr-let [hierarchy hierarchy-R]
+                                (concat
+                                 (mapcat
+                                  table-hierarchy-node-column-descriptions
+                                  hierarchy)
+                                 [virtual-column-description]))
+        condition-dom (make-component
+                       {:relative-id :condition
+                        :header-id header-id
+                        :render-dom render-table-condition-DOM
+                        :get-rendering-data get-table-condition-rendering-data})
+        header-dom (make-component
+                    {:relative-id :header
+                     :header-id header-id
+                     :hierarchy-R hierarchy-R
+                     :render-dom render-table-header-DOM
+                     :get-rendering-data get-table-header-rendering-data})
+        body-dom (make-component
+                  {:relative-id :body
+                   :header-id header-id
+                   :column-descriptions-R column-descriptions-R
+                   :row-template-R row-template-R
+                   :row-ids-R row-ids-R
+                   :render-dom render-table-rows-DOM
+                   :get-rendering-data get-table-rows-rendering-data})]
     [:div {:class "table"}
-     (table-condition-DOM {:relative-id row-condition-id}
-                          store)
+     condition-dom
      [:div {:class "query-result-wrapper"}
       [:div {:class "query-result-indent label"}]
       [:div {:class "table-main"}
-       (table-header-DOM row-condition-id hierarchy)
+       header-dom
        body-dom]]]))
 
 (comment

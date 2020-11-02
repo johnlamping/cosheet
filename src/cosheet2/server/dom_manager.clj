@@ -136,7 +136,7 @@
 
 (def valid-relative-id?)
 
-(defn make-component
+(defn make-component-atom
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
   container."
@@ -187,7 +187,7 @@
   (if (and old-component-atom
            (= (:dom-specification @old-component-atom) specification))
     old-component-atom
-    (make-component
+    (make-component-atom
      specification dom-manager containing-component-atom client-id)))
 
 (def compute-dom-unless-newer)
@@ -601,7 +601,7 @@
   This is how the manager is bootstrapped with top level doms."
   [dom-manager client-id specification]
   (assert (keyword? client-id))
-  (let [component (make-component specification dom-manager nil client-id)]
+  (let [component (make-component-atom specification dom-manager nil client-id)]
     (swap-and-act!
      dom-manager
      #(let [old-component (get-in % [:root-components client-id]) ]

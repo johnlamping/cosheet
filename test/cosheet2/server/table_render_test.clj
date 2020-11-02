@@ -46,7 +46,7 @@
 
 (def virt-DOM render-virtual-DOM)
 (def cell-DOM render-table-cell-DOM)
-(def cell-RD get-table-cell-DOM-rendering-data)
+(def cell-RD get-table-cell-rendering-data)
 
 (def comp-AD composed-get-action-data)
 (def ids-AD get-item-or-exemplar-action-data-for-ids)
@@ -56,6 +56,12 @@
 (def row-AD get-row-action-data)
 
 (def virt-RD get-virtual-DOM-rendering-data)
+
+(defn run-renderer
+  "run the renderer on the output of the data getter, thus testing
+  that they work together correctly."
+  [renderer spec data-getter store]
+  (apply renderer spec (map first (data-getter spec store))))
 
 (deftest table-DOM-test
   (let [specification {:width 3.0
@@ -164,12 +170,17 @@
                              [{:column-id :virtualColumn
                                :width 0.75
                                :header-id row-condition-id}])
-        joe-row-component (table-row-DOM-component
+        joe-row-component (table-row-component
                            joe-id '("" :top-level ("age" :label))
-                           column-descriptions {:priority 1})
-        joe-row (render-table-row-DOM (second joe-row-component) store)]
+                           {:priority 1
+                            :column-descriptions-R column-descriptions})
+        joe-row (run-renderer
+                 render-table-row-DOM (second joe-row-component)
+                 get-table-row-rendering-data store)]
     (is (check
-         (table-condition-DOM {:relative-id row-condition-id} store)
+         (run-renderer
+          render-table-condition-DOM {:header-id row-condition-id}
+          get-table-condition-rendering-data store)
          [:div {:class "query-holder label"}
           [:div {:class "query-indent label"}]
           [:div {:class "horizontal-labels-element label query-condition"}
@@ -215,7 +226,10 @@
                           :get-action-data [get-virtual-action-data
                                             :template 'anything]}]]]]]))
     (is (check
-         (table-header-DOM row-condition-id hierarchy)
+         (run-renderer
+          render-table-header-DOM {:header-id row-condition-id
+                                   :hierarchy-R hierarchy}
+          get-table-header-rendering-data store)
          [:div {:class "column-header-sequence"}
           ;; A single column.
           [:component {:get-column-action-data
@@ -389,9 +403,10 @@
     (is (check
          joe-row-component
          [:component {:relative-id joe-id
-                      :column-descriptions column-descriptions
+                      :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :priority 1
+                      :get-rendering-data get-table-row-rendering-data
                       :get-row-action-data
                       [get-row-action-data
                        joe-id '("" :top-level ("age" :label))]}]))
@@ -401,25 +416,37 @@
           [:component {:priority 2
                        :width 0.75
                        :relative-id c1-id
-                       :template '("" ("single" :label))
+                       :row-id joe-id
+                       :query '(nil ("single" :label)
+                                    (:cosheet2.query/special-form
+                                     (:not :cosheet2.query/type)
+                                     (:label :cosheet2.query/sub-query))
+                                    (nil :order))
                        :render-dom cell-DOM
-                       :get-rendering-data cell-RD
-                       :item-ids '()}]
+                       :get-rendering-data cell-RD}]
           [:component {:priority 2,
                        :width 0.75
                        :relative-id c2-id
-                       :template '("" ("name" :label))
+                                              :row-id joe-id
+                       :query '(nil ("name" :label)
+                                    (:cosheet2.query/special-form
+                                     (:not :cosheet2.query/type)
+                                     (:label :cosheet2.query/sub-query))
+                                    (nil :order))
                        :render-dom cell-DOM
-                       :get-rendering-data cell-RD
-                       :item-ids (as-set [joe-joe-id joe-joseph-id])}]
+                       :get-rendering-data cell-RD}]
           [:component {:priority 2
                        :width 0.75
                        :relative-id c3-id
-                       :template '("" ("name" :label)
-                                      ("other" :label))
+                       :row-id joe-id
+                       :query '(nil ("name" :label)
+                                    ("other" :label)
+                                    (:cosheet2.query/special-form
+                                     (:not :cosheet2.query/type)
+                                     (:label :cosheet2.query/sub-query))
+                                    (nil :order))
                        :render-dom cell-DOM
-                       :get-rendering-data cell-RD
-                       :item-ids '()}]
+                       :get-rendering-data cell-RD}]
           (any) (any) (any) (any)
           [:component {:priority 2
                        :width 0.75
@@ -431,7 +458,9 @@
                        [get-virtual-column-cell-action-data row-condition-id]
                        :class "table-cell virtual-column has-border"}]]))
     (is (check
-         (render-table-cell-DOM (second (nth joe-row 2)) store)
+         (run-renderer
+          render-table-cell-DOM (second (nth joe-row 2))
+          get-table-cell-rendering-data store)
          [:component
           {:priority 2
            :width 0.75
@@ -442,7 +471,8 @@
            :get-action-data [virt-AD :template '("" ("single" :label))]
            :class "table-cell has-border"}]))
     (is (check
-         (render-table-cell-DOM (second (nth joe-row 3)) store)
+         (
+render-table-cell-DOM (second (nth joe-row 3)) store)
          [:div
           {:class "vertical-stack table-cell has-border"}
           [:div {:class (str "horizontal-labels-element label virtual-wrapper"

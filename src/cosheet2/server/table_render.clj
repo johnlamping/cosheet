@@ -466,9 +466,9 @@
   ;; The way we give it the store is by making a map consisting of
   ;; the store, so current-value will return the entire map, not the
   ;; current value of the store.
-  [{:mutable-store mutable-store} nil])
+  [[{:mutable-store mutable-store} nil]])
 
-(defn render-ready-table
+(defn render-ready-table-DOM
   [{:keys [header-id] :as specification} {:keys [mutable-store]}]
   (let [header-entity-R (table-header-entity-R
                          header-id mutable-store)

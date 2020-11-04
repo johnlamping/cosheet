@@ -16,7 +16,8 @@
             (cosheet2.server
              [order-utils :refer [semantic-entity?
                                   ordered-ids-R order-element-for-item
-                                  update-add-entity-adjacent-to]])))
+                                  update-add-entity-adjacent-to]]
+             [format-convert :refer [current-format]])))
 
 ;;; Utilities that know about how information is encoded in terms of the store.
 
@@ -308,9 +309,10 @@
   "Return an initial immutable store. If a tab name is provided, the store
   will have a single tab with that name and a table with that name."
   [tab-name]
-  (let [[store orderable-id] (add-entity
-                              (new-element-store) nil
-                              (list initial :unused-orderable))
+  (let [[store _] (add-entity (new-element-store)
+                                      nil (list current-format :format))
+        [store orderable-id] (add-entity store
+                                         nil (list initial :unused-orderable))
         [store tabs-holder-id] (add-entity store nil
                                            '("tabs" :tabs))]
     (if tab-name

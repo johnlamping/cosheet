@@ -3,7 +3,9 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid? StoredItemDescription]]
                       [entity :refer [subject content label->elements
-                                      description->entity updating-immutable]]
+                                      description->entity updating-immutable
+                                      ;; TODO: remove.
+                                      to-list]]
                       [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
@@ -14,9 +16,9 @@
              [order-utils :refer [semantic-entity?]]
              [model-utils :refer [tabs-holder-id-R ordered-tabs-ids-R
                                   semantic-to-list]]
-             ; [render-utils :refer [make-component]]
+             [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]]
-             ; [table-render :refer [table-DOM-R]]
+             [table-render :refer [render-table-DOM]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
              )))
@@ -323,15 +325,25 @@
   (expr-let [id id-R]
     (println "top level DOM id:" id)
     (when id
-      (expr-let [immutable-store (category-change [id] store)
-                 immutable-item (description->entity id immutable-store)
-                 tab-tags (matching-elements :tab immutable-item)]
-        (when (or (empty? tab-tags) true)
-          ;; Show just the item.
-          (render-item-DOM (assoc basic-dom-specification        
-                                  :relative-id id
-                                  :must-show-label true)
-                           immutable-store))))))
+      (expr-let [immutable-store (category-change [id] store)]
+        (let [immutable-item (description->entity id immutable-store)
+              tab-topic (first (label->elements immutable-item :tab-topic))]
+          (println "!!! item"
+                   (to-list immutable-item))
+          (println "!!! tab topic"
+                   (to-list tab-topic))
+          (let [target-item (or tab-topic immutable-item)
+                target-id (:item-id target-item)]
+            (println "!!! target" (to-list target-item))
+            (if (matching-elements :table target-item)
+              (make-component (assoc basic-dom-specification        
+                                     :relative-id target-id
+                                     :render-dom render-table-DOM))
+              ;; Show just the item.
+              (render-item-DOM (assoc basic-dom-specification        
+                                      :relative-id target-id
+                                      :must-show-label true)
+                               immutable-store))))))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"

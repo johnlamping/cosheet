@@ -188,6 +188,7 @@
            ;; A virtual label for the condition
            [:component {:template '(anything :label)
                         :relative-id :virtual-label
+                        :width 0.75
                         :class "label"
                         :render-dom render-virtual-DOM
                         :get-rendering-data get-virtual-DOM-rendering-data
@@ -198,6 +199,7 @@
            [:div {:class "horizontal-stack"}
             [:div {:class "vertical-labels-element label"}
              [:component {:template '("" :label)
+                          :width 0.75
                           :get-action-data
                           [composed-get-action-data
                            [get-item-or-exemplar-action-data-for-ids [rc1-id]]
@@ -206,6 +208,7 @@
                           :excluded-element-ids [(any)]
                           :relative-id (any)}]
              [:component {:template '(anything ("age" :label))
+                          :width 0.75
                           :excluded-element-ids [(any)]
                           :relative-id rc1-id}]]
             ;; A virtual element for more condition.
@@ -221,6 +224,7 @@
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data}]
              [:component {:template 'anything
+                          :width 0.75
                           :relative-id :virtual
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data
@@ -363,6 +367,7 @@
                         :get-rendering-data virt-RD}]
            [:component {:relative-id :virtual-column
                         :template '(anything :column)
+                        :width 0.75
                         :class "column-header virtual-column"
                         :get-action-data
                         [comp-AD [ids-AD [c7-id]]

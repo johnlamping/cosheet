@@ -5,6 +5,8 @@
                       [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items]])))
 
+(def current-format 6)
+
 (defn convert-from-0-to-1
   "Convert a store from format 0 to format 1.
   The only difference between the two is that in format 1, table columns
@@ -108,7 +110,7 @@
   (let [format (first (matching-items '(nil :format) store))
         format (if format (content format) 0)
         format (if (vector? format) (first format) format)]
-    (assert (and (>= format 0) (<= format 5))
+    (assert (and (>= format 0) (<= format 6))
             (str "Store in unknown format " format))
     (cond-> store
       (<= format 0) convert-from-0-to-1

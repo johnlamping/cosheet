@@ -177,11 +177,11 @@
   [{:keys [header-id]} store]
   (let [header-entity (description->entity header-id store)
         condition-elements (table-condition-elements header-entity)
-        spec-down {:template '(anything)}
+        spec-down {:template 'anything
+                   :width 0.75}
         virtual-dom
         (virtual-entity-and-label-DOM
-         {:template 'anything
-          :relative-id :virtual}
+         (assoc spec-down :relative-id :virtual)
          :vertical
          {})
         dom (labels-and-elements-DOM
@@ -249,7 +249,8 @@
 (defn table-virtual-column-header-DOM
   [hierarchy]
   (let [spec {:relative-id :virtual-column
-              :template table-header-template                            
+              :template table-header-template
+              :width 0.75
               :class "column-header virtual-column"}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM

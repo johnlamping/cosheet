@@ -148,7 +148,11 @@
   [pending response]
   (let [{:keys [acknowledge doms]} response]
     (-> (cond-> pending
-          doms (dissoc :clean))
+          ;; Even if the doms list is empty, stop telling the client
+          ;; we are clean if we got a :set-url, because we will have heard,
+          ;; and continuing to tell it we are clean causes a feedback loop.
+          (or (contains? response :doms) (contains? response :set-url)) 
+          (dissoc :clean))
         (update-add-dom-acknowledgments doms)
         (update-in [:actions] #(remove-keys % acknowledge)))))
 

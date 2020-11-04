@@ -69,9 +69,10 @@
         node (first hierarchy)]
     ;; A node with no leaves.
     (is (check
-         (horizontal-label-hierarchy-node-DOM node {})
+         (horizontal-label-hierarchy-node-DOM node {:width 0.75})
          [:component
           {:template '(anything :label)
+           :width 0.75
            :get-action-data [composed-get-action-data
                              [get-item-or-exemplar-action-data-for-ids
                               [joe-id jane-id]]
@@ -81,15 +82,19 @@
            :excluded-element-ids [joe-test-label-id]}]))
     ;; A node with a leaf,  properties, and no children
     (is (check
-         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node)) {})
+         (horizontal-label-hierarchy-node-DOM (first (:child-nodes node))
+                                              {:width 0.75})
          [:component {:relative-id joe-id
+                      :width 0.75
                       :excluded-element-ids [joe-test-id]}]))
     ;; A node with leaves, no properties, and no children
     (is (check
-         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node)) {})
+         (horizontal-label-hierarchy-node-DOM (second (:child-nodes node))
+                                              {:width 0.75})
          [:div {:class
                 "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template '(anything :label)
+                       :width 0.75
                        :get-action-data
                        [composed-get-action-data
                         [get-item-or-exemplar-action-data-for-ids [jane-id]]
@@ -100,6 +105,7 @@
                        :get-rendering-data get-virtual-DOM-rendering-data}]
           [:div {:class "indent-wrapper label"}
            [:component {:relative-id jane-id
+                        :width 0.75
                         :excluded-element-ids [jane-test-id]}]]]))))
 
 (deftest labels-and-elements-DOM-test

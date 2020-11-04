@@ -460,8 +460,8 @@
           (hierarchy-node-next-level node)))
 
 (defn get-ready-table-rendering-data
-  [{:keys [header-id]} mutable-store]
-  ;; We pass the renderer the mutable store. That way, it can us that
+  [_ mutable-store]
+  ;; We pass the renderer the mutable store. That way, it can use that
   ;; to build the reporters that each of its subparts depend on.
   ;; The way we give it the store is by making a map consisting of
   ;; the store, so current-value will return the entire map, not the
@@ -469,8 +469,10 @@
   [[{:mutable-store mutable-store} nil]])
 
 (defn render-ready-table-DOM
-  [{:keys [header-id] :as specification} {:keys [mutable-store]}]
-  (let [header-entity-R (table-header-entity-R
+  "Render a table dom, give its header."
+  [{:keys [relative-id]} {:keys [mutable-store]}]
+  (let [header-id relative-id
+        header-entity-R (table-header-entity-R
                          header-id mutable-store)
         hierarchy-R (table-hierarchy-R header-entity-R)
         row-template-R (table-row-template-R header-entity-R)
@@ -510,70 +512,30 @@
        header-dom
        body-dom]]]))
 
-(comment
-  ;; TODO: This just checks that the table is ready, then returns a
-  ;; component for a ready table.
-  (defn render-table-DOM
-    "Return a hiccup representation of DOM, with the given internal key,
+(defn render-table-DOM
+  "Return a hiccup representation of DOM, with the given internal key,
   describing a table."
-    ;; The following elements of table-item describe the table:
-    ;;  :row-condition  The content is an item whose list form gives the
-    ;;                  requirements for an item to appear as a row.
-    ;;                  It is marked as :selector.
-    ;;                  It has additional elements tagged with:
-    ;;     :column  The semantics gives the requirements for an element
-    ;;              of a row to appear in this column. Generally, the content
-    ;;              will be the keyword 'anything, to indicate no constraint
-    ;;              on the content of an element in the row, without
-    ;;              breaking the rule that the database doesn't contain
-    ;;              nil. The exception is the special content :other,
-    ;;              which means to show everything not shown in any
-    ;;              other column. (:other not yet implemented.)
-    ;; TODO: Add the "other" column if a table requests it.
-    [{:keys [relative-id] :as specification} store]
-    (let [table-item (description->entity relative-id store)]
-      (println "Generating DOM for table" (simplify-for-print table-item))
-      (assert (satisfies? StoredEntity table-item))
-      ;; Don't do anything if we don't yet have the table information filled in.
-      (when-let [row-condition-item (first (label->elements
-                                            table-item :row-condition))]
-        (let [row-condition-id (:item-id row-condition-item)
-              condition-dom (table-condition-DOM {:relative-id row-condition-id}
-                                                 store)
-              columns (order-items
-                       (label->elements row-condition-item :column))
-              hierarchy (hierarchy-by-labels columns)
-              headers (table-header-DOM row-condition-id hierarchy)
-              column-descriptions (mapcat
-                                   table-hierarchy-node-column-descriptions
-                                   hierarchy)
-              new-column-template '(anything :label)]
-          (expr-let
-              [[row-template row-items] (row-template-and-items-R
-                                         store row-condition-item)]
-            (let [virtual-template (virtual-referent
-                                    new-column-template
-                                    (item-referent row-condition-item)
-                                    (item-referent (or (last columns)
-                                                       table-item)))
-                  virtual-column-description {:column-id :virtualColumn
-                                              :template virtual-template
-                                              :disqualifications nil}
-                  rows (map #(table-row-DOM-component
-                              % row-template (concat
-                                              column-descriptions
-                                              [virtual-column-description])
-                              (update inherited :priority (partial + 2)))
-                            row-items)
-                  virtual-row (table-virtual-row-DOM-component
-                               row-template
-                               (item-referent (or (last row-items) table-item))
-                               column-descriptions inherited)]
-              [:div {:class "table"}
-               condition-dom
-               [:div {:class "query-result-wrapper"}
-                [:div {:class "query-result-indent label"}]
-                [:div {:class "table-main"}
-                 headers
-                 (into [:div {:class "table-rows"}]
-                       (concat rows [virtual-row]))]]])))))))
+  ;; The following elements of table-item describe the table:
+  ;;  :row-condition  The content is an item whose list form gives the
+  ;;                  requirements for an item to appear as a row.
+  ;;                  It is marked as :selector.
+  ;;                  It has additional elements tagged with:
+  ;;     :column  The semantics gives the requirements for an element
+  ;;              of a row to appear in this column. Generally, the content
+  ;;              will be the keyword 'anything, to indicate no constraint
+  ;;              on the content of an element in the row, without
+  ;;              breaking the rule that the database doesn't contain
+  ;;              nil. The exception is the special content :other,
+  ;;              which means to show everything not shown in any
+  ;;              other column. (:other not yet implemented.)
+  ;; TODO: Add the "other" column if a table requests it.
+  [{:keys [relative-id] :as specification} store]
+  (let [table-item (description->entity relative-id store)]
+    (println "Generating DOM for table" (simplify-for-print table-item))
+    (assert (satisfies? StoredEntity table-item))
+    ;; Don't do anything if we don't yet have the table information filled in.
+    (if-let [row-condition-item (first (label->elements
+                                        table-item :row-condition))]
+      (make-component {:relative-id (:item-id row-condition-item)})
+      [:div])))
+

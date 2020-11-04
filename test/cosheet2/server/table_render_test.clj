@@ -15,7 +15,8 @@
              [test-utils :refer [check any as-set]])
             (cosheet2.server
              [item-render :refer [render-virtual-DOM
-                                  get-virtual-DOM-rendering-data]]
+                                  get-virtual-DOM-rendering-data
+                                  get-item-rendering-data]]
              [action-data :refer [composed-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
@@ -515,8 +516,8 @@
                                               "id" joe-joseph)))])}]]]]))
     (is (check
           (run-renderer
-                    render-ready-table-DOM {:header-id header-id}
-                    get-ready-table-rendering-data store)
+           render-ready-table-DOM {:relative-id header-id}
+           get-ready-table-rendering-data store)
           [:div {:class "table"}
            [:component {:relative-id :condition
                         :header-id header-id
@@ -543,7 +544,17 @@
                :row-template-R '(anything (anything ("age" :label)) :top-level)
                :row-ids-R [(any) (any)]
                :render-dom render-table-rows-DOM
-               :get-rendering-data get-table-rows-rendering-data}]]]]))))
+               :get-rendering-data get-table-rows-rendering-data}]]]]))
+    (is (check
+          (run-renderer
+              render-table-DOM {:relative-id joe-id}
+              get-item-rendering-data store)
+          [:div]))
+    (is (check
+          (run-renderer
+              render-table-DOM {:relative-id table-id}
+              get-item-rendering-data store)
+          [:component {:relative-id header-id}]))))
 
 
 

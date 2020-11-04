@@ -63,6 +63,7 @@
      (update-content store (:item-id format) 4)
      tables)))
 
+
 (defn convert-from-4-to-5
   "Convert a store from format 4 to 5.
   The only difference is that where there was any element that had
@@ -88,6 +89,19 @@
                   s))
               store (matching-items :non-semantic store)))))
 
+(defn convert-from-5-to-6
+  "Convert a store from format 5 to 6.
+  The only difference is that all :tag values are replaced with :label."
+  [store]
+  (let [format (first (matching-items '(nil :format) store))
+        tags (matching-items :tag store)]
+    (assert (#{5 [5]} (content format)))
+    (as-> store store
+      (update-content store (:item-id format) 6)
+      (reduce (fn [s tag]
+                (update-content s (:item-id tag) :label))
+              store tags))))
+
 (defn convert-to-current
   "Convert a store to the latest format."
   [store]
@@ -100,4 +114,5 @@
       (<= format 0) convert-from-0-to-1
       (<= format 2) convert-from-1-or-2-to-3
       (<= format 3) convert-from-3-to-4
-      (<= format 4) convert-from-4-to-5)))
+      (<= format 4) convert-from-4-to-5
+      (<= format 5) convert-from-5-to-6)))

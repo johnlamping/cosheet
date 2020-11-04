@@ -120,6 +120,20 @@
                          :column)
                         (42 ("answer" :tag (~o1 :order))
                          (~o1 :order)
+                         :column)))
+        table-list-6 `("table"
+                       :table
+                       (~'anything (~'anything ("age" :label))
+                        :row-condition
+                        :selector
+                        (~'anything ("single" :label (~o1 :order))
+                         (~o1 :order)
+                         :column)
+                        (~'anything ("name" :label (~o1 :order))
+                         (~o2 :order)
+                         :column)
+                        (42 ("answer" :label (~o1 :order))
+                         (~o1 :order)
                          :column)))]
     (let [store-0 (first (add-entity (new-element-store) nil table-list-0))
           store-1 (convert-from-0-to-1 store-0)
@@ -133,30 +147,42 @@
           versions-4 (matching-items '(nil :format) store-4)
           store-5 (convert-from-4-to-5 store-4)
           tables-5 (matching-items '(nil :table) store-5)
-          versions-5 (matching-items '(nil :format) store-5)]
+          versions-5 (matching-items '(nil :format) store-5)
+          store-6 (convert-from-5-to-6 store-5)
+          tables-6 (matching-items '(nil :table) store-6)
+          versions-6 (matching-items '(nil :format) store-6)]
       (is (= (count tables-1) 1))
       (is (check (canonicalize-list (to-list (first tables-1)))
                  (canonicalize-list table-list-1)))
       (is (= (count versions-1) 1))
       (is (= (to-list (first versions-1)) '(1 :format)))
+      
       (is (= (count tables-3) 1))
       (is (check (canonicalize-list (to-list (first tables-3)))
                  (canonicalize-list table-list-3)))
       (is (= (count versions-3) 1))
       (is (= (to-list (first versions-3)) '(3 :format)))
+      
       (is (= (count tables-4) 1))
       (is (check (canonicalize-list (to-list (first tables-4)))
                  (canonicalize-list table-list-4)))
       (is (= (count versions-4) 1))
       (is (= (to-list (first versions-4)) '(4 :format)))
-      
+ 
       (is (= (count tables-5) 1))
       (is (check (canonicalize-list (to-list (first tables-5)))
                  (canonicalize-list table-list-5)))
       (is (= (count versions-5) 1))
       (is (= (to-list (first versions-5)) '([5] :format)))
-      (is (= (convert-to-current store-0) store-5))
-      (is (= (convert-to-current store-1) store-5))
-      (is (= (convert-to-current store-3) store-5))
-      (is (= (convert-to-current store-4) store-5))
-      (is (= (convert-to-current store-5) store-5)))))
+      
+      (is (= (count tables-6) 1))
+      (is (check (canonicalize-list (to-list (first tables-6)))
+                 (canonicalize-list table-list-6)))
+      (is (= (count versions-6) 1))
+      (is (= (to-list (first versions-6)) '(6 :format)))
+      
+      (is (= (convert-to-current store-0) store-6))
+      (is (= (convert-to-current store-1) store-6))
+      (is (= (convert-to-current store-3) store-6))
+      (is (= (convert-to-current store-4) store-6))
+      (is (= (convert-to-current store-5) store-6)))))

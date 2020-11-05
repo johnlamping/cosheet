@@ -489,12 +489,14 @@
         condition-dom (make-component
                        {:relative-id :condition
                         :header-id header-id
+                        :priority 1
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data})
         header-dom (make-component
                     {:relative-id :header
                      :header-id header-id
                      :hierarchy-R hierarchy-R
+                     :priority 1
                      :render-dom render-table-header-DOM
                      :get-rendering-data get-table-header-rendering-data})
         body-dom (make-component
@@ -503,6 +505,7 @@
                    :column-descriptions-R column-descriptions-R
                    :row-template-R row-template-R
                    :row-ids-R row-ids-R
+                   :priority 1
                    :render-dom render-table-rows-DOM
                    :get-rendering-data get-table-rows-rendering-data})]
     [:div {:class "table"}

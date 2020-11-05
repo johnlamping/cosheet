@@ -543,6 +543,7 @@
           [:div {:class "table"}
            [:component {:relative-id :condition
                         :header-id header-id
+                        :priority 1
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data}]
            [:div {:class "query-result-wrapper"}
@@ -557,6 +558,7 @@
                  :properties {["single" {:label 1}] 1}
                  :cumulative-properties {["single" {:label 1}] 1}}
                 (any) (any) (any) (any)]
+               :priority 1
                :render-dom render-table-header-DOM
                :get-rendering-data get-table-header-rendering-data}]
              [:component
@@ -565,6 +567,7 @@
                :column-descriptions-R (any)
                :row-template-R '(anything (anything ("age" :label)) :top-level)
                :row-ids-R [(any) (any)]
+               :priority 1
                :render-dom render-table-rows-DOM
                :get-rendering-data get-table-rows-rendering-data}]]]]))
     (is (check

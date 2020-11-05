@@ -335,12 +335,13 @@
         renderer (or (:render-dom dom-specification) render-item-DOM)]
     (when (and dom-specification (<= dom-version old-dom-version))
       (with-latest-value [reporter-values (map reporter-value reporters)]
-        (let [dom (apply renderer dom-specification reporter-values)]
-          (swap-and-act!
-           component-atom
-           #(let [result (update-dom % component-atom dom)]
-              (assert (instance? ComponentData result))
-              result)))))))
+        (when (every? valid? reporter-values)
+          (let [dom (apply renderer dom-specification reporter-values)]
+            (swap-and-act!
+             component-atom
+             #(let [result (update-dom % component-atom dom)]
+                (assert (instance? ComponentData result))
+                result))))))))
 
 (defn mark-component-tree-as-needed
   "Mark the component and all its descendants as needing to be sent to

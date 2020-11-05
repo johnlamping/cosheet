@@ -464,6 +464,23 @@
                        [get-virtual-column-cell-action-data header-id]
                        :class "table-cell virtual-column has-border"}]]))
     (is (check
+         (run-renderer render-table-rows-DOM
+                       {:relative-id :body
+                        :header-id header-id
+                        :priority 1
+                        :column-descriptions-R column-descriptions
+                        :row-template-R 'foo
+                        :row-ids-R [joe-id]}
+                       get-table-rows-rendering-data store)
+         [:div {:class "table-rows"}
+          [:component {:relative-id joe-id
+                       :header-id header-id
+                       :priority 3
+                       :column-descriptions-R column-descriptions
+                       :render-dom render-table-row-DOM
+                       :get-rendering-data get-table-row-rendering-data
+                       :get-row-action-data [row-AD joe-id 'foo]}]]))
+    (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 2))
           get-table-cell-rendering-data store)

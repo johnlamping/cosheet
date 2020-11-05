@@ -386,7 +386,7 @@
 
 (defn get-table-rows-rendering-data
   [{:keys [row-template-R row-ids-R]} mutable-store]
-  [row-template-R [universal-category]
+  [[row-template-R [universal-category]]
    [row-ids-R [universal-category]]])
 
 (defn render-table-rows-DOM
@@ -420,9 +420,9 @@
 (defn table-row-template-R
   "Return a reporter whose value is the row condition"
   [header-entity-R]
-  (expr-let [condition-elements (table-condition-elements
-                                 header-entity-R)]
-    (let [elements-as-lists (map semantic-to-list condition-elements)]
+  (expr-let [current-header header-entity-R]
+    (let [condition-elements (table-condition-elements current-header)
+          elements-as-lists (map semantic-to-list condition-elements)]
       (concat '(anything) elements-as-lists [:top-level]))))
 
 (defn table-row-ids-R

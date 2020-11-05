@@ -551,15 +551,17 @@
                :render-dom render-table-rows-DOM
                :get-rendering-data get-table-rows-rendering-data}]]]]))
     (is (check
-          (run-renderer
-              render-table-DOM {:relative-id joe-id}
-              get-item-rendering-data store)
-          [:div]))
+         (run-renderer
+          render-table-DOM {:relative-id joe-id}
+          get-item-rendering-data store)
+         [:div]))
     (is (check
-          (run-renderer
-              render-table-DOM {:relative-id table-id}
-              get-item-rendering-data store)
-          [:component {:relative-id header-id}]))))
+         (run-renderer
+          render-table-DOM {:relative-id table-id}
+          get-item-rendering-data store)
+         [:component {:relative-id header-id
+                      :render-dom render-ready-table-DOM
+                      :get-rendering-data get-ready-table-rendering-data}]))))
 
 
 

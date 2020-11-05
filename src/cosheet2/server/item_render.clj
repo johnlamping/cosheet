@@ -586,7 +586,9 @@
     :as specification}
    store]
   (println "Generating DOM for" (simplify-for-print relative-id))
-  (assert (:width specification) specification)
+  (assert (:width specification)
+          [specification
+           (semantic-to-list (description->entity relative-id store))])
   (let [entity (description->entity (or item-id relative-id) store)
         elements (remove (set (map #(description->entity % store)
                                    excluded-element-ids))

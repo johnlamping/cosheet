@@ -122,23 +122,15 @@
                                 queue cd)
           dom-manager (:dom-manager state)]
       (is (= (vals (:sessions @session-info)) [state]))
-      ;; One attendee for the overall DOM, and three for each of the
+      ;; Two attendees for the overall DOM, and three for each of the
       ;; two elements: the element, its content, and its label.
-      (is (= (count (:attendees (reporter-data ms))) 7))
+      (is (= (count (:attendees (reporter-data ms))) 8))
       (let [root-component (client-id->component @dom-manager "root")]
         (is (check (:dom @root-component)
-                 [:div {:class "wrapped-element label item"}
-                  [:component (any)]
-                  [:div {:class "indent-wrapper"}
-                   [:div {:class "with-elements"}
-                    [:component (any)]
-                    [:div {:class "vertical-stack"}
-                     [:div {:class "horizontal-labels-element label wide"}
-                      [:div (any) [:component (any)]]
-                      [:component (any)]]
-                     [:div {:class "horizontal-labels-element label wide"}
-                      [:div (any) [:component (any)]]
-                      [:component (any)]]]]]])))      
+                   [:component {:width 0.75,
+                                :template ""
+                                :relative-id (:item-id row1)
+                                :must-show-label true}])))      
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
       (compute cd)

@@ -537,6 +537,8 @@
     ;; Don't do anything if we don't yet have the table information filled in.
     (if-let [row-condition-item (first (label->elements
                                         table-item :row-condition))]
-      (make-component {:relative-id (:item-id row-condition-item)})
+      (make-component {:relative-id (:item-id row-condition-item)
+                       :render-dom render-ready-table-DOM
+                       :get-rendering-data get-ready-table-rendering-data})
       [:div])))
 

@@ -328,22 +328,17 @@
       (expr-let [immutable-store (category-change [id] store)]
         (let [immutable-item (description->entity id immutable-store)
               tab-topic (first (label->elements immutable-item :tab-topic))]
-          (println "!!! item"
-                   (to-list immutable-item))
-          (println "!!! tab topic"
-                   (to-list tab-topic))
           (let [target-item (or tab-topic immutable-item)
                 target-id (:item-id target-item)]
-            (println "!!! target" (to-list target-item))
             (if (matching-elements :table target-item)
               (make-component (assoc basic-dom-specification        
                                      :relative-id target-id
                                      :render-dom render-table-DOM))
               ;; Show just the item.
-              (render-item-DOM (assoc basic-dom-specification        
+              (make-component (assoc basic-dom-specification        
                                       :relative-id target-id
-                                      :must-show-label true)
-                               immutable-store))))))))
+                                      :must-show-label true
+                                      :width 0.75)))))))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"

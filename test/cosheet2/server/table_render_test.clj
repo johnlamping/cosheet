@@ -18,6 +18,7 @@
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [composed-get-action-data
+                                  get-pass-through-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
                                   get-column-action-data
@@ -44,16 +45,18 @@
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
 
-(def virt-DOM render-virtual-DOM)
-(def cell-DOM render-table-cell-DOM)
-(def cell-RD get-table-cell-rendering-data)
+(defn virt-DOM [] render-virtual-DOM)
+(defn cell-DOM [] render-table-cell-DOM)
 
-(def comp-AD composed-get-action-data)
-(def ids-AD get-item-or-exemplar-action-data-for-ids)
-(def item-AD get-item-or-exemplar-action-data)
-(def virt-AD get-virtual-action-data)
-(def col-AD get-column-action-data)
-(def row-AD get-row-action-data)
+(defn cell-RD [] get-table-cell-rendering-data)
+
+(defn comp-AD [] composed-get-action-data)
+(defn pass-AD [] get-pass-through-action-data)
+(defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
+(defn item-AD [] get-item-or-exemplar-action-data)
+(defn virt-AD [] get-virtual-action-data)
+(defn col-AD [] get-column-action-data)
+(defn row-AD [] get-row-action-data)
 
 (def virt-RD get-virtual-DOM-rendering-data)
 
@@ -237,7 +240,7 @@
          [:div {:class "column-header-sequence"}
           ;; A single column.
           [:component {:get-column-action-data
-                       [col-AD header-id [c1-id]]
+                       [(col-AD) header-id [c1-id]]
                        :width 0.75
                        :template :singular
                        :relative-id c1-id
@@ -246,11 +249,11 @@
           [:div {:class "column-header label"}
            ;; The label for the three columns
            [:component {:get-column-action-data
-                        [col-AD header-id [c2-id c3-id c4-id]]
+                        [(col-AD) header-id [c2-id c3-id c4-id]]
                         :width 2.25
                         :template '(anything :label)
                         :get-action-data
-                        [comp-AD [ids-AD [c2-id c3-id c4-id]] item-AD]
+                        [(comp-AD) [(ids-AD) [c2-id c3-id c4-id]] (item-AD)]
                         :relative-id c2-name-id
                         :class "label with-children"
                         :excluded-element-ids [(any)]}]
@@ -259,26 +262,26 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component {:get-column-action-data
-                          [col-AD header-id [c2-id]]
+                          [(col-AD) header-id [c2-id]]
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [comp-AD [ids-AD [c2-id]]
-                           [virt-AD :template '(anything :label)]]
+                          [(comp-AD) [(ids-AD) [c2-id]]
+                           [(virt-AD) :template '(anything :label)]]
                           :relative-id [c2-id :nested]
                           :class "label merge-with-parent"
-                          :render-dom virt-DOM
+                          :render-dom (virt-DOM)
                           :get-rendering-data virt-RD}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
-                           [col-AD header-id [c2-id]]
+                           [(col-AD) header-id [c2-id]]
                            :width 0.75
                            :template :singular
                            :relative-id c2-id
                            :excluded-element-ids [c2-name-id]}]]]
             ;; A column with an additional label
             [:component {:get-column-action-data
-                         [col-AD header-id [c3-id]]
+                         [(col-AD) header-id [c3-id]]
                          :width 0.75
                          :template :singular
                          :relative-id c3-id
@@ -288,26 +291,26 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component {:get-column-action-data
-                          [col-AD header-id [c4-id]]
+                          [(col-AD) header-id [c4-id]]
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [comp-AD [ids-AD [c4-id]]
-                           [virt-AD :template '(anything :label)]]
+                          [(comp-AD) [(ids-AD) [c4-id]]
+                           [(virt-AD) :template '(anything :label)]]
                           :relative-id [c4-id :nested]
                           :class "label merge-with-parent"
-                          :render-dom virt-DOM
+                          :render-dom (virt-DOM)
                           :get-rendering-data virt-RD}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
-                           [col-AD header-id [c4-id]]
+                           [(col-AD) header-id [c4-id]]
                            :width 0.75
                            :template :singular
                            :relative-id c4-id
                            :excluded-element-ids [(any)]}]]]]]
           ;; One column with two labels
           [:component {:get-column-action-data
-                       [col-AD header-id [c5-id]]
+                       [(col-AD) header-id [c5-id]]
                        :width 0.75
                        :template :singular
                        :relative-id c5-id
@@ -316,19 +319,19 @@
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
            [:component {:get-column-action-data
-                        [col-AD header-id [c6-id]]
+                        [(col-AD) header-id [c6-id]]
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
-                        [comp-AD [ids-AD [c6-id]]
-                         [virt-AD :template '(anything :label)]]
+                        [(comp-AD) [(ids-AD) [c6-id]]
+                         [(virt-AD) :template '(anything :label)]]
                         :class "label"
                         :relative-id [c6-id :nested]
-                        :render-dom virt-DOM
+                        :render-dom (virt-DOM)
                         :get-rendering-data virt-RD}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-column-action-data
-                         [col-AD header-id [c6-id]]
+                         [(col-AD) header-id [c6-id]]
                          :width 0.75
                          :template :singular
                          :relative-id c6-id}]]]
@@ -336,19 +339,19 @@
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
            [:component {:get-column-action-data
-                        [col-AD header-id [c7-id]]
+                        [(col-AD) header-id [c7-id]]
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
-                        [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(anything :label)]]
+                        [(comp-AD) [(ids-AD) [c7-id]]
+                         [(virt-AD) :template '(anything :label)]]
                         :class "label"
                         :relative-id [c7-id :nested]
-                        :render-dom virt-DOM
+                        :render-dom (virt-DOM)
                         :get-rendering-data virt-RD}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-column-action-data
-                         [col-AD header-id [c7-id]]
+                         [(col-AD) header-id [c7-id]]
                          :width 0.75
                          :template :singular
                          :relative-id c7-id}]]]
@@ -356,23 +359,23 @@
           [:div {:class "horizontal-labels-element label"}
            [:component {:relative-id :virtual-label
                         :get-action-data
-                        [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(anything :column)
+                        [(comp-AD) [(ids-AD) [c7-id]]
+                         [(virt-AD) :template '(anything :column)
                           :sibling true]
-                         [virt-AD :template '("" :label)
+                         [(virt-AD) :template '("" :label)
                           :position :before]]
                         :class "label"
-                        :render-dom virt-DOM
+                        :render-dom (virt-DOM)
                         :get-rendering-data virt-RD}]
            [:component {:relative-id :virtual-column
                         :template '(anything :column)
                         :width 0.75
                         :class "column-header virtual-column"
                         :get-action-data
-                        [comp-AD [ids-AD [c7-id]]
-                         [virt-AD :template '(anything :column)
+                        [(comp-AD) [(ids-AD) [c7-id]]
+                         [(virt-AD) :template '(anything :column)
                           :sibling true]]
-                        :render-dom virt-DOM
+                        :render-dom (virt-DOM)
                         :get-rendering-data virt-RD}]]]))
     (is (check
          column-descriptions
@@ -427,8 +430,8 @@
                                      (:not :cosheet2.query/type)
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
-                       :render-dom cell-DOM
-                       :get-rendering-data cell-RD}]
+                       :render-dom (cell-DOM)
+                       :get-rendering-data (cell-RD)}]
           [:component {:priority 2,
                        :width 0.75
                        :relative-id c2-id
@@ -438,8 +441,8 @@
                                      (:not :cosheet2.query/type)
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
-                       :render-dom cell-DOM
-                       :get-rendering-data cell-RD}]
+                       :render-dom (cell-DOM)
+                       :get-rendering-data (cell-RD)}]
           [:component {:priority 2
                        :width 0.75
                        :relative-id c3-id
@@ -450,14 +453,14 @@
                                      (:not :cosheet2.query/type)
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
-                       :render-dom cell-DOM
-                       :get-rendering-data cell-RD}]
+                       :render-dom (cell-DOM)
+                       :get-rendering-data (cell-RD)}]
           (any) (any) (any) (any)
           [:component {:priority 2
                        :width 0.75
                        :relative-id :virtual
                        :template ""
-                       :render-dom virt-DOM
+                       :render-dom (virt-DOM)
                        :get-rendering-data virt-RD
                        :get-action-data
                        [get-virtual-column-cell-action-data header-id]
@@ -478,7 +481,7 @@
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
-                       :get-row-action-data [row-AD joe-id 'foo]}]]))
+                       :get-row-action-data [(row-AD) joe-id 'foo]}]]))
     (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 2))
@@ -488,9 +491,9 @@
            :width 0.75
            :relative-id :virtual
            :template '("" ("single" :label))
-           :render-dom virt-DOM
+           :render-dom (virt-DOM)
            :get-rendering-data virt-RD
-           :get-action-data [virt-AD :template '("" ("single" :label))]
+           :get-action-data [(virt-AD) :template '("" ("single" :label))]
            :class "table-cell has-border"}]))
     (is (check
          (run-renderer
@@ -503,9 +506,9 @@
            [:component {:width 0.75
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]
-                        :get-action-data [comp-AD [ids-AD [joe-joe-id]]
-                                          [virt-AD :template '("" :label)]]
-                        :render-dom virt-DOM
+                        :get-action-data [(comp-AD) [(ids-AD) [joe-joe-id]]
+                                          [(virt-AD) :template '("" :label)]]
+                        :render-dom (virt-DOM)
                         :get-rendering-data virt-RD
                         :class "label"}]
            [:component {:priority 2
@@ -518,9 +521,9 @@
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
                         :template '("" :label)
-                        :get-action-data [comp-AD
-                                          [ids-AD [joe-joseph-id]]
-                                          item-AD]
+                        :get-action-data [(comp-AD)
+                                          [(ids-AD) [joe-joseph-id]]
+                                          (item-AD)]
                         :class "label"
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]
@@ -544,7 +547,8 @@
                         :header-id header-id
                         :priority 1
                         :render-dom render-table-condition-DOM
-                        :get-rendering-data get-table-condition-rendering-data}]
+                        :get-rendering-data get-table-condition-rendering-data
+                        :get-action-data (pass-AD)}]
            [:div {:class "query-result-wrapper"}
             [:div {:class "query-result-indent label"}]
             [:div {:class "table-main"}
@@ -559,7 +563,8 @@
                 (any) (any) (any) (any)]
                :priority 1
                :render-dom render-table-header-DOM
-               :get-rendering-data get-table-header-rendering-data}]
+               :get-rendering-data get-table-header-rendering-data
+               :get-action-data (pass-AD)}]
              [:component
               {:relative-id :body
                :header-id header-id
@@ -568,7 +573,8 @@
                :row-ids-R [(any) (any)]
                :priority 1
                :render-dom render-table-rows-DOM
-               :get-rendering-data get-table-rows-rendering-data}]]]]))
+               :get-rendering-data get-table-rows-rendering-data
+               :get-action-data (pass-AD)}]]]]))
     (is (check
          (run-renderer
           render-table-DOM {:relative-id joe-id}

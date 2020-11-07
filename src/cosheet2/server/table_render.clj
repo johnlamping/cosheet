@@ -42,6 +42,7 @@
                                   non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
+                                  get-pass-through-action-data
                                   get-column-action-data
                                   get-row-action-data
                                   get-virtual-column-cell-action-data]])))
@@ -491,14 +492,16 @@
                         :header-id header-id
                         :priority 1
                         :render-dom render-table-condition-DOM
-                        :get-rendering-data get-table-condition-rendering-data})
+                        :get-rendering-data get-table-condition-rendering-data
+                        :get-action-data get-pass-through-action-data})
         header-dom (make-component
                     {:relative-id :header
                      :header-id header-id
                      :hierarchy-R hierarchy-R
                      :priority 1
                      :render-dom render-table-header-DOM
-                     :get-rendering-data get-table-header-rendering-data})
+                     :get-rendering-data get-table-header-rendering-data
+                     :get-action-data get-pass-through-action-data})
         body-dom (make-component
                   {:relative-id :body
                    :header-id header-id
@@ -507,7 +510,8 @@
                    :row-ids-R row-ids-R
                    :priority 1
                    :render-dom render-table-rows-DOM
-                   :get-rendering-data get-table-rows-rendering-data})]
+                   :get-rendering-data get-table-rows-rendering-data
+                   :get-action-data get-pass-through-action-data})]
     [:div {:class "table"}
      condition-dom
      [:div {:class "query-result-wrapper"}

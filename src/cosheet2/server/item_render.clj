@@ -32,7 +32,7 @@
                                    transform-specification-for-elements]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
-                                  get-content-only-action-data
+                                  get-pass-through-action-data
                                   get-virtual-action-data
                                   compose-action-data-getter]])))
 (comment
@@ -550,7 +550,7 @@
                      (assoc :relative-id :content
                             :item-id (:item-id item)
                             :render-dom render-content-only-DOM
-                            :get-action-data get-content-only-action-data))
+                            :get-action-data get-pass-through-action-data))
            (has-keyword? item :label)
            (into-attributes {:class "label"})))]
       (if (empty? elements)

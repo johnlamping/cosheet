@@ -20,7 +20,6 @@
              [action-data :refer [composed-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
-                                  get-content-only-action-data
                                   get-column-action-data
                                   get-row-action-data
                                   get-virtual-action-data
@@ -574,14 +573,15 @@
          (run-renderer
           render-table-DOM {:relative-id joe-id}
           get-item-rendering-data store)
-         [:div]))
+         [:div {}]))
     (is (check
          (run-renderer
           render-table-DOM {:relative-id table-id}
           get-item-rendering-data store)
-         [:component {:relative-id header-id
-                      :render-dom render-ready-table-DOM
-                      :get-rendering-data get-ready-table-rendering-data}]))))
+         [:div {}
+          [:component {:relative-id header-id
+                       :render-dom render-ready-table-DOM
+                       :get-rendering-data get-ready-table-rendering-data}]]))))
 
 
 

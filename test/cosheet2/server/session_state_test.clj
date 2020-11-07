@@ -127,10 +127,11 @@
       (is (= (count (:attendees (reporter-data ms))) 8))
       (let [root-component (client-id->component @dom-manager "root")]
         (is (check (:dom @root-component)
-                   [:component {:width 0.75,
-                                :template ""
-                                :relative-id (:item-id row1)
-                                :must-show-label true}])))      
+                   [:div {}
+                    [:component {:width 0.75,
+                                      :template ""
+                                      :relative-id (:item-id row1)
+                                      :must-show-label true}]])))      
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
       (compute cd)

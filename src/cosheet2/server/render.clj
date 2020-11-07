@@ -330,15 +330,16 @@
               tab-topic (first (label->elements immutable-item :tab-topic))]
           (let [target-item (or tab-topic immutable-item)
                 target-id (:item-id target-item)]
-            (if (matching-elements :table target-item)
-              (make-component (assoc basic-dom-specification        
-                                     :relative-id target-id
-                                     :render-dom render-table-DOM))
-              ;; Show just the item.
-              (make-component (assoc basic-dom-specification        
+            [:div {}
+             (if (matching-elements :table target-item)
+               (make-component (assoc basic-dom-specification        
+                                      :relative-id target-id
+                                      :render-dom render-table-DOM))
+               ;; Show just the item.
+               (make-component (assoc basic-dom-specification        
                                       :relative-id target-id
                                       :must-show-label true
-                                      :width 0.75)))))))))
+                                      :width 0.75)))]))))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"

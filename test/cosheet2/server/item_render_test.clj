@@ -20,7 +20,7 @@
              [action-data :refer [composed-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
-                                  get-content-only-action-data
+                                  get-pass-through-action-data
                                   get-virtual-action-data]]
              [item-render :refer :all])
             ; :reload
@@ -331,7 +331,7 @@
                                  :relative-id :content
                                  :item-id fred-id
                                  :render-dom render-content-only-DOM
-                                 :get-action-data get-content-only-action-data
+                                 :get-action-data get-pass-through-action-data
                                  :width 1.5}]]])))
      ;; Test must-show-label.
      (let [[store fred-id] (add-entity (new-element-store) nil
@@ -357,7 +357,7 @@
                           :relative-id :content
                           :item-id fred-id
                           :render-dom render-content-only-DOM
-                          :get-action-data get-content-only-action-data
+                          :get-action-data get-pass-through-action-data
                           :width 1.5}]]))))
 
 (deftest item-DOM-R-test-one-column
@@ -380,7 +380,7 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-content-only-action-data}]
+                             :get-action-data get-pass-through-action-data}]
                 [:div {:class "vertical-stack"}
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
@@ -443,7 +443,7 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-content-only-action-data}]
+                             :get-action-data get-pass-through-action-data}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
@@ -525,7 +525,7 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-content-only-action-data}]
+                             :get-action-data get-pass-through-action-data}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
@@ -634,7 +634,7 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-content-only-action-data}]
+                       :get-action-data get-pass-through-action-data}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
@@ -696,7 +696,7 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-content-only-action-data}]
+                       :get-action-data get-pass-through-action-data}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
@@ -779,7 +779,7 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-content-only-action-data}]
+                       :get-action-data get-pass-through-action-data}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}

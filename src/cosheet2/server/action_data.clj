@@ -162,16 +162,16 @@
   [v ^java.io.Writer w]
   (.write w "ids-AD"))
 
-(defn get-content-only-action-data
+(defn get-pass-through-action-data
   "This is a content-only node under a node for the data.
   Our targets are our container's targets."
   [specification containing-action-data action immutable-store]
   containing-action-data)
 
 (defmethod print-method
-  cosheet2.server.action_data$get_content_only_action_data
+  cosheet2.server.action_data$get_pass_through_action_data
   [v ^java.io.Writer w]
-  (.write w "content-AD"))
+  (.write w "pass-AD"))
 
 (defn get-virtual-action-data
   "Create the specified virtual items.

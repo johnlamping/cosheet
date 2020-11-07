@@ -511,9 +511,16 @@
   (let [{:keys [dom dom-version]} @component-atom]
     (when dom
       (let [client-id (component->client-id component-atom)
+            ;; The dom could have been a component, where most of the
+            ;; "attributes" are the specification. We keep only the
+            ;; class.
+            class (:class (second dom))
             added (add-attributes dom {:id client-id
                                        :version dom-version})]
-        (into [(first added) (second added)]
+        (into [(first dom)
+               (cond-> {:id client-id
+                        :version dom-version}
+                 class (assoc :class class))]
               (map (partial adjust-subdom-for-client client-id)
                    (rest (rest dom))))))))
 

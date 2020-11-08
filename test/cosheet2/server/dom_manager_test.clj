@@ -230,7 +230,7 @@
 (deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
   (let [[s1 id1] (add-entity (new-element-store) nil "foo")
-        [s id2] (add-entity (new-element-store) id1 "bar")
+        [s id2] (add-entity s1 id1 "bar")
         client1 "alt-client-id"
         client2 (str client1 "_" (:id id2))
         ms (new-mutable-store s)

@@ -411,6 +411,7 @@
     (is (check
          joe-row-component
          [:component {:relative-id joe-id
+                      :class "table-row"
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :priority 1
@@ -423,6 +424,7 @@
          [:div {}
           [:component {:priority 2
                        :width 0.75
+                       :class "table-cell has-border"
                        :relative-id c1-id
                        :row-id joe-id
                        :query '(nil ("single" :label)
@@ -434,6 +436,7 @@
                        :get-rendering-data (cell-RD)}]
           [:component {:priority 2,
                        :width 0.75
+                       :class "table-cell has-border"
                        :relative-id c2-id
                                               :row-id joe-id
                        :query '(nil ("name" :label)
@@ -445,6 +448,7 @@
                        :get-rendering-data (cell-RD)}]
           [:component {:priority 2
                        :width 0.75
+                       :class "table-cell has-border"
                        :relative-id c3-id
                        :row-id joe-id
                        :query '(nil ("name" :label)
@@ -464,7 +468,7 @@
                        :get-rendering-data virt-RD
                        :get-action-data
                        [get-virtual-column-cell-action-data header-id]
-                       :class "table-cell virtual-column has-border"}]]))
+                       :class "table-cell has-border virtual-column"}]]))
     (is (check
          (run-renderer render-table-rows-DOM
                        {:relative-id :body
@@ -476,6 +480,7 @@
                        get-table-rows-rendering-data store)
          [:div {:class "table-rows"}
           [:component {:relative-id joe-id
+                       :class "table-row"
                        :header-id header-id
                        :priority 3
                        :column-descriptions-R column-descriptions
@@ -500,9 +505,11 @@
           render-table-cell-DOM (second (nth joe-row 3))
           get-table-cell-rendering-data store)
          [:div
-          {:class "vertical-stack table-cell has-border"}
+          ;; TODO: The table cell should go at the top div,
+          ;; not on each subsidiaty.
+          {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element label virtual-wrapper"
-                             " narrow")}
+                             " narrow table-cell has-border")}
            [:component {:width 0.75
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]

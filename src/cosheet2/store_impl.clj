@@ -194,6 +194,9 @@
   "Add a triple to the store, and do all necessary indexing."
   [store item-id subject content]
   (assert (not (nil? content)))
+  (assert (not= item-id subject) [item-id subject])
+  (when (and (number? (:id item-id)) (number? (:id subject)))
+    (assert (< (:id subject) (:id item-id))))
   (-> (if (nil? subject)
         store
         (assoc-in store [:id->subject item-id] subject))
@@ -513,7 +516,7 @@
                          store deferred id subject content)))
                     [(assoc (new-element-store) :next-id next-id) {}]
                     items)]
-        (assert (empty? deferred))
+        (assert (empty? deferred) deferred)
         store)))
 
   (read-store [this stream]

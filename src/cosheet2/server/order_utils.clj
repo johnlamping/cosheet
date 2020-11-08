@@ -4,8 +4,9 @@
     [orderable :refer [split earlier? initial]]
     [reporter :refer [reporter-data set-value! set-attendee! invalid
                       inform-attendees data-attended? remove-attendee!
-                      new-reporter reporter-value reporter?]]
-    [calculator :refer [modify-and-act!]]
+                      new-reporter reporter-value reporter?
+                      valid?]]
+    [calculator :refer [modify-and-act! propagate-calculator-data!]]
     [store :refer [update-content add-simple-item declare-temporary-id
                    id-label->element-ids id->content ImmutableStore]]
     [entity :refer [content elements label->elements label->content
@@ -65,7 +66,7 @@
       (sort-by-order entities order-info))))
 
 ;;; The next few functions implement a reporter that orders a set of
-;;; ids, bupdating as either the set membership or their order
+;;; ids, updating as either the set membership or their order
 ;;; information changes.
 
 (def ordered-ids-callback)
@@ -78,30 +79,34 @@
   (let [data (reporter-data reporter)]
     (when (data-attended? data)
       (with-latest-value [immutable-ids (reporter-value (:ids data))]
-        (with-latest-value [immutable-store (reporter-value (:store data))]
-          (let [immutable-ids (seq immutable-ids)
-                order-ids (map #(first (id-label->element-ids
-                                        immutable-store % :order))
-                               immutable-ids)
-                ;; If an item has an order element, we can watch
-                ;; that. Otherwise, we have to watch the entire item,
-                ;; to see if an order element appears.
-                ids-to-watch (map #(or %1 %2) order-ids immutable-ids)]
-            ;; By doing the set-attendee! inside with-latest-value we
-            ;; make sure that we won't miss a change between our
-            ;; computation and the registration kicking in.
-            (set-attendee!
-             (:store data) reporter (+ (:priority data) 1) ids-to-watch
-             ordered-ids-callback)
-            (let [order-info (map
-                              ;; It is possible for an item not to
-                              ;; have order information, especially
-                              ;; temporarily while an entity is being
-                              ;; added. Tolerate that.
-                              #(if % (id->content immutable-store %) initial)
-                              order-ids)
-                  ordered (sort-by-order immutable-ids order-info)]
-              (set-value! reporter ordered))))))))
+        (when (valid? immutable-ids)
+          (with-latest-value [immutable-store (reporter-value (:store data))]
+            (let [immutable-ids (seq immutable-ids)
+                  order-ids (map #(first (id-label->element-ids
+                                          immutable-store % :order))
+                                 immutable-ids)
+                  ;; If an item has an order element, we can watch
+                  ;; that. Otherwise, we have to watch the entire item,
+                  ;; to see if an order element appears.
+                  ids-to-watch (map #(or %1 %2) order-ids immutable-ids)]
+              ;; By doing the set-attendee! inside with-latest-value
+              ;; we make sure that we won't miss a change between our
+              ;; computation and the registration kicking in.
+              ;; We don't have to unattend to any old ids, as the
+              ;; store only keeps one set of catagories for each id
+              ;; (our reporter).
+              (set-attendee!
+               (:store data) reporter (+ (:priority data) 1) ids-to-watch
+               ordered-ids-callback)
+              (let [order-info (map
+                                ;; It is possible for an item not to
+                                ;; have order information, especially
+                                ;; temporarily while an entity is being
+                                ;; added. Tolerate that.
+                                #(if % (id->content immutable-store %) initial)
+                                order-ids)
+                    ordered (sort-by-order immutable-ids order-info)]
+                (set-value! reporter ordered)))))))))
 
 (defn ordered-ids-callback
   [& {reporter :key}]
@@ -122,10 +127,12 @@
   (modify-and-act!
    reporter
    (fn [data]
-     (let [{:keys [store ids id->order id->order-element]} data]
+     (let [{:keys [store ids id->order id->order-element calculator-data]} data]
        (if (data-attended? data)
          (-> data
-             (assoc :dependent-depth 1) 
+             (assoc :dependent-depth 1)
+             (update-new-further-action
+              propagate-calculator-data! ids calculator-data)
              (update-new-further-action
               set-attendee!
               ids reporter (+ (:priority data) 1) ordered-ids-callback)

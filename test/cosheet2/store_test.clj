@@ -311,19 +311,22 @@
   ;; in a random order.
   (binding [gen/*rnd* (java.util.Random. 437)]
     (let [earlier-num (fn [n] (gen/uniform 0 (+ 1 (int (/ n 2)))))]
-      (loop [iteration 0 store (new-element-store) items 0]
+      (loop [iteration 0
+             store (new-element-store)
+             items 0]
         (let [n (max (+ items 10) (int (/ 1000 (gen/uniform 1 100))))
               m (min (gen/uniform (int (/ n 2)) n) (- n 1))]
           (let [added-store
                 (reduce (fn [store i]
                           (first (add-simple-item
-                                        store
-                                        (->ItemId (earlier-num i))
-                                        (case (gen/uniform 0 4)
-                                          0 (->ItemId (earlier-num i))
-                                          1 (int (/ 100 (gen/uniform 1 100)))
-                                          2 :label
-                                          3 :order))))
+                                  store
+                                  (when (not= 0 (earlier-num i))
+                                    (->ItemId (earlier-num i)))
+                                  (case (gen/uniform 0 4)
+                                    0 (->ItemId (earlier-num i))
+                                    1 (int (/ 100 (gen/uniform 1 100)))
+                                    2 :label
+                                    3 :order))))
                         store (range items n))
                 removed-store
                 (reduce (fn [store i]

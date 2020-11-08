@@ -317,16 +317,15 @@
         spec (-> specification
                  (assoc :template (query-to-template query))
                  (dissoc :relative-id :render-dom :get-rendering-data
-                         :row-id :query :disqualifications))
-        dom (if (empty? entities)
+                         :row-id :query :disqualifications))]
+    (if (empty? entities)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
               (virtual-DOM-component (assoc spec :relative-id :virtual)
                                      {})
               (non-label-entities-DOM
                entities
-               (:template spec) false :vertical spec))]
-    (add-attributes dom {:class "table-cell has-border"})))
+               (:template spec) false :vertical spec))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_cell_DOM
@@ -365,6 +364,7 @@
   [{:keys [relative-id] :as specification} store column-descriptions]
   (let [spec (-> specification
                  (dissoc :column-descriptions-R :get-row-action-data)
+                 (assoc :class "table-cell has-border")
                  (update :priority inc))]
     (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
@@ -381,6 +381,7 @@
   (make-component
    (assoc specification
           :relative-id row-id
+          :class "table-row"
           :render-dom render-table-row-DOM
           :get-rendering-data get-table-row-rendering-data
           :get-row-action-data [get-row-action-data row-id row-template])))

@@ -2,9 +2,10 @@
   (:require [clojure.data.priority-map :refer [priority-map]]
             (cosheet2 [task-queue :refer [add-task-with-priority]]
                       [reporter :refer [remove-attendee! set-attendee!
+                                        reporter?
                                         reporter-value valid?
                                         universal-category]]
-                      calculator
+                      [calculator :refer [propagate-calculator-data!]]
                       [store :refer [StoredItemDescription mutable-store?]]
                       [store-impl :refer [id->string string->id]]
                       [utils :refer [swap-control-return!
@@ -218,11 +219,15 @@
         (-> component-data
             (assoc :reporters (map first pairs))
             (update-new-further-actions
-             (map (fn [[r categories]]
-                    [set-attendee!
-                     r component-atom (:depth component-data)
-                     categories
-                     reporter-changed-callback])
+             (mapcat (fn [[r categories]]
+                       (when (reporter? r)
+                         (cond-> [[set-attendee!
+                                   r component-atom (:depth component-data)
+                                   categories
+                                   reporter-changed-callback]]
+                           (not= r mutable-store)
+                           (conj [propagate-calculator-data!
+                                  r (:calculator-data @dom-manager)]))))
                   pairs)))))))
 
 (defn update-unregister-for-reporters

@@ -64,15 +64,17 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
-        c1-reused (reuse-or-make-component-atom s1 manager nil :foo c1)
-        c2 (reuse-or-make-component-atom s2 manager c1 nil c1)]
+        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
+        c1-reused (reuse-or-make-component-atom s1 manager nil false :foo c1)
+        c2 (reuse-or-make-component-atom s2 manager c1 true nil c1)]
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 1))
     (is (= (:dom-version @c1) 1))
+    (is (not (:pass-through c1)))
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
     (is (= (:containing-component @c2) c1))
+    (is (:pass-through @c2))
     (is (= (:depth @c2) 2))
     (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
     (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
@@ -81,7 +83,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c2 (reuse-or-make-component-atom s2 manager nil :foo nil)]
+        c2 (reuse-or-make-component-atom s2 manager nil false :foo nil)]
     (activate-component c2)
     (is (check @manager
                {:root-components {}
@@ -109,6 +111,7 @@
                 :client-id :foo
                 :dom-version 2
                 :containing-component nil
+                :pass-through false
                 :depth 1
                 :dom [:div 3]
                 :further-actions nil}))
@@ -118,6 +121,7 @@
             {:id->subcomponent {}
              :dom-manager manager
              :client-id :foo
+             :pass-through false
              :depth 1})))
     (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
 
@@ -125,7 +129,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)
+        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
         updated (update-dom @c1 c1 [:div 2 [:component s2]])]
     (is (check updated
                {:reporters nil
@@ -133,6 +137,7 @@
                                   [activate-component (any)]]
                 :id->subcomponent {id2 (any)}
                 :client-id :foo
+                :pass-through false
                 :dom-manager manager
                 :client-needs-dom true
                 :dom-specification s1
@@ -146,7 +151,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)]
     (activate-component c1)
     (is (check (:tasks @(:queue cd))
                {[compute-dom-unless-newer c1 1] 1}))
@@ -164,6 +169,7 @@
                   :dom-specification s1
                   :dom-version 2
                   :containing-component nil
+                  :pass-through false
                   :depth 1
                   :dom [:div 2 [:component s2]]}))
       (is (check @c2
@@ -176,6 +182,7 @@
                   :dom-specification s2
                   :dom-version 2
                   :containing-component c1
+                  :pass-through false
                   :depth 2
                   :dom [:div 3]}))
       (is (check @manager
@@ -196,7 +203,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)]
     (let [ready (mark-component-tree-as-needed c1)]
       (is (= ready [])))
     (is (check (:tasks @(:queue cd))
@@ -215,7 +222,7 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil :foo nil)]
+        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)]
     (activate-component c1)
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
@@ -274,16 +281,17 @@
       (activate-component c1)
       (compute cd)
       (let [c2 ((:id->subcomponent @c1) id2)]
-        [:div {:id ":alt-client-id_Ibar", :version 3}]
         (is (:highest-version @manager) 1)
         (is (check (get-response-doms manager [id2] 3)
                    [(as-set [[:div {:id "alt-client-id" :version 2}
-                               [:component {:id "alt-client-id_Ibar"}]]
-                             [:div {:id "alt-client-id_Ibar", :version 3}]])
+                              2
+                              [:component {:id "alt-client-id_Ibar"}]]
+                             [:div {:id "alt-client-id_Ibar", :version 3} 3]])
                     "alt-client-id_Ibar"]))
         (is (:highest-version @manager) 3)
         (is (check (get-response-doms manager [id2] 1)
                    [[[:div {:id "alt-client-id" :version 2}
+                      2
                       [:component {:id "alt-client-id_Ibar"}]]]
                     nil]))
         (is (:highest-version @manager) 3)

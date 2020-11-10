@@ -48,7 +48,11 @@
                            ; component.
      containing-component  ; The component that contains this one. Nil
                            ; if this component is a root. If this is nil,
-                           ; then client-id must be present
+                           ; then client-id must be present.
+     pass-through          ; If true, our containing component's dom is onlu
+                           ; the component that defines us. In that case,
+                           ; it will report our dom as its dom, so we
+                           ; have to notify it if our dom changes.
      depth                 ; The depth of this component in the component
                            ; hierarchy, used to make sure that parents are
                            ; sent to the client before their children.
@@ -141,7 +145,7 @@
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
   container."
-  [specification dom-manager containing-component-atom client-id]
+  [specification dom-manager containing-component-atom pass-through client-id]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
   (when containing-component-atom
@@ -157,6 +161,7 @@
      :dom-specification specification
      :client-id client-id
      :containing-component containing-component-atom
+     :pass-through pass-through
      :depth (if containing-component-atom
               (+ 1 (:depth @containing-component-atom))
               1)
@@ -183,13 +188,14 @@
     answer))
 
 (defn reuse-or-make-component-atom
-  [specification dom-manager containing-component-atom client-id
+  [specification dom-manager containing-component-atom pass-through client-id
    old-component-atom]
   (if (and old-component-atom
            (= (:dom-specification @old-component-atom) specification))
     old-component-atom
     (make-component-atom
-     specification dom-manager containing-component-atom client-id)))
+     specification dom-manager
+     containing-component-atom pass-through client-id)))
 
 (def compute-dom-unless-newer)
 
@@ -297,7 +303,8 @@
       ;; The dom hasn't changed. Bump the version to note that we have done
       ;; a recomputation.
       (update component-data :dom-version inc)
-      (let [subcomponent-specs (get-id->subcomponent-specifications dom)
+      (let [pass-through (= (first dom) :component)
+            subcomponent-specs (get-id->subcomponent-specifications dom)
             ids (keys subcomponent-specs)
             old-id->subcomponent (or (:id->subcomponent component-data) {})
             id->subcomponent (zipmap
@@ -306,6 +313,7 @@
                                              (subcomponent-specs id)
                                              (:dom-manager component-data)
                                              component-atom
+                                             pass-through
                                              nil
                                              (old-id->subcomponent id)))
                                    ids))
@@ -515,19 +523,18 @@
   [component-atom]
   (let [{:keys [dom dom-version]} @component-atom]
     (when dom
+      ;; Directly nested components break naming, as we use the same
+      ;; client id to refer to both a component and its value.
+      (assert (not= (first dom) :component) dom)
       (let [client-id (component->client-id component-atom)
-            ;; The dom could have been a component, where most of the
-            ;; "attributes" are the specification. We keep only the
-            ;; class.
             class (:class (second dom))
-            added (add-attributes dom {:id client-id
-                                       :version dom-version})]
-        (into [(first dom)
-               (cond-> {:id client-id
-                        :version dom-version}
-                 class (assoc :class class))]
+            added (add-attributes dom (cond-> {:id client-id
+                                               :version dom-version}
+                                        class (assoc :class class)))]
+        (into [(first added)
+               (second added)]
               (map (partial adjust-subdom-for-client client-id)
-                   (rest (rest dom))))))))
+                   (rest (rest added))))))))
 
 (defn component-is-monitored?
   "Return true if the component targets one of the monitored ids."
@@ -614,7 +621,8 @@
   This is how the manager is bootstrapped with top level doms."
   [dom-manager client-id specification]
   (assert (keyword? client-id))
-  (let [component (make-component-atom specification dom-manager nil client-id)]
+  (let [component (make-component-atom
+                   specification dom-manager nil false client-id)]
     (swap-and-act!
      dom-manager
      #(let [old-component (get-in % [:root-components client-id]) ]

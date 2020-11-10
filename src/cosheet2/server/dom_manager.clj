@@ -49,10 +49,11 @@
      containing-component  ; The component that contains this one. Nil
                            ; if this component is a root. If this is nil,
                            ; then client-id must be present.
-     pass-through          ; If true, our containing component's dom is onlu
-                           ; the component that defines us. In that case,
-                           ; it will report our dom as its dom, so we
-                           ; have to notify it if our dom changes.
+     elided                ; If true, our containing component's dom consists
+                           ; of only the component that defines us. In that
+                           ; case, the client will never be told about us.
+                           ; Rather, the containing dom will report our dom
+                           ; as its dom.
      depth                 ; The depth of this component in the component
                            ; hierarchy, used to make sure that parents are
                            ; sent to the client before their children.
@@ -145,7 +146,7 @@
   "Given a component specification, create a component data atom. The
   component must not be activated until it is recorded in its
   container."
-  [specification dom-manager containing-component-atom pass-through client-id]
+  [specification dom-manager containing-component-atom elided client-id]
   (assert (map? specification))
   (assert (instance? DOMManagerData @dom-manager))
   (when containing-component-atom
@@ -161,7 +162,7 @@
      :dom-specification specification
      :client-id client-id
      :containing-component containing-component-atom
-     :pass-through pass-through
+     :elided elided
      :depth (if containing-component-atom
               (+ 1 (:depth @containing-component-atom))
               1)
@@ -188,14 +189,14 @@
     answer))
 
 (defn reuse-or-make-component-atom
-  [specification dom-manager containing-component-atom pass-through client-id
+  [specification dom-manager containing-component-atom elided client-id
    old-component-atom]
   (if (and old-component-atom
            (= (:dom-specification @old-component-atom) specification))
     old-component-atom
     (make-component-atom
      specification dom-manager
-     containing-component-atom pass-through client-id)))
+     containing-component-atom elided client-id)))
 
 (def compute-dom-unless-newer)
 
@@ -288,57 +289,74 @@
   [component-data]
   (nil? (:dom-specification component-data)))
 
+(defn find-non-elided-component
+  "If the component is elided, go up the containment hierarchy to the
+  first non-elided one."
+  [component-atom]
+  (let [component-data @component-atom]
+    (if (:elided component-data)
+      (find-non-elided-component (:containing-component component-data))
+      component-atom)))
+
 (defn note-dom-ready-for-client
+  "Mark that the client needs to hear about our dom. (If we are
+  elided, that means our containing component is the one that client
+  needs to hear about.)"
   [dom-manager component-atom]
-  (swap! dom-manager
-         (fn [manager-data]
-           (update manager-data :client-ready-dom
-                   #(assoc % component-atom (:depth @component-atom))))))
+  (let [non-elided (find-non-elided-component component-atom)]
+    ;; If we are elided, we have to bump the version of our non-elided
+    ;; container, as that is the version sent to the client.
+    (when (not= non-elided component-atom)
+      (swap! non-elided #(update :dom-version inc)))
+    (swap! dom-manager
+           (fn [manager-data]
+             (update manager-data :client-ready-dom
+                     #(assoc % non-elided (:depth @non-elided)))))))
 
 (defn update-dom
   [component-data component-atom dom]
   (if (and (valid? dom)
            (not (disabled-component-data? component-data)))
-    (if (= dom (:dom component-data))
-      ;; The dom hasn't changed. Bump the version to note that we have done
-      ;; a recomputation.
-      (update component-data :dom-version inc)
-      (let [pass-through (= (first dom) :component)
-            subcomponent-specs (get-id->subcomponent-specifications dom)
-            ids (keys subcomponent-specs)
-            old-id->subcomponent (or (:id->subcomponent component-data) {})
-            id->subcomponent (zipmap
-                              ids
-                              (map (fn [id] (reuse-or-make-component-atom
-                                             (subcomponent-specs id)
-                                             (:dom-manager component-data)
-                                             component-atom
-                                             pass-through
-                                             nil
-                                             (old-id->subcomponent id)))
-                                   ids))
-            dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                                    (old-id->subcomponent %))
-                                             (keys old-id->subcomponent))
-            new-subcomponent-ids (filter #(not= (id->subcomponent %)
-                                                (old-id->subcomponent %))
-                                         (keys id->subcomponent))]
-        (when (not (:dom-version component-data))
-          (println "!!! Bad component data" (into {} component-data)))
-        (-> component-data
-            (assoc :dom dom
-                   :id->subcomponent id->subcomponent
-                   :client-needs-dom true)
-            (update :dom-version inc)
-            (update-new-further-action
-             note-dom-ready-for-client
-             (:dom-manager component-data) component-atom)
-            (update-new-further-actions
-             (map (fn [id] [activate-component (id->subcomponent id)])
-                  new-subcomponent-ids))
-            (update-new-further-actions
-             (map (fn [id] [disable-component (old-id->subcomponent id)])
-                  dropped-subcomponent-ids)))))
+    (do
+      (assert (:dom-version component-data) (into {} component-data))
+      (if (= dom (:dom component-data))
+        ;; The dom hasn't changed. Bump the version to note that we have done
+        ;; a recomputation.
+        (update component-data :dom-version inc)
+        (let [elide-subcomponent (= (first dom) :component)
+              subcomponent-specs (get-id->subcomponent-specifications dom)
+              ids (keys subcomponent-specs)
+              old-id->subcomponent (or (:id->subcomponent component-data) {})
+              id->subcomponent (zipmap
+                                ids
+                                (map (fn [id] (reuse-or-make-component-atom
+                                               (subcomponent-specs id)
+                                               (:dom-manager component-data)
+                                               component-atom
+                                               elide-subcomponent
+                                               nil
+                                               (old-id->subcomponent id)))
+                                     ids))
+              dropped-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                                      (old-id->subcomponent %))
+                                               (keys old-id->subcomponent))
+              new-subcomponent-ids (filter #(not= (id->subcomponent %)
+                                                  (old-id->subcomponent %))
+                                           (keys id->subcomponent))]
+          (-> component-data
+              (assoc :dom dom
+                     :id->subcomponent id->subcomponent
+                     :client-needs-dom true)
+              (update :dom-version inc)
+              (update-new-further-action
+               note-dom-ready-for-client
+               (:dom-manager component-data) component-atom)
+              (update-new-further-actions
+               (map (fn [id] [activate-component (id->subcomponent id)])
+                    new-subcomponent-ids))
+              (update-new-further-actions
+               (map (fn [id] [disable-component (old-id->subcomponent id)])
+                    dropped-subcomponent-ids))))))
     component-data))
 
 (defn compute-dom-unless-newer
@@ -484,7 +502,7 @@
             root
             (rest id-sequence))))
 
-(defn client-id->action-data
+(defn client-id->preliminary-action-data
   "Returns the action data map for the component for the given client
   id. Adds the component to the action data map."
   [manager-data client-id action immutable-store]
@@ -498,6 +516,19 @@
                    component data action immutable-store))))
             (update-action-data-for-component root {} action immutable-store)
             (rest id-sequence))))
+
+(defn client-id->action-data
+  "Returns the action data map for the component that generated the
+  final dom forfor the given client id. Adds the component to the
+  action data map."
+  [manager-data client-id action immutable-store]
+  (loop [data (client-id->preliminary-action-data
+               manager-data client-id action immutable-store)]
+    (let [{:keys [dom id->subcomponent]} @(:component data)]
+      (if (= (first dom) :component)
+        (recur (update-action-data-for-component
+                (first (vals id->subcomponent)) data action immutable-store))
+        data))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,
@@ -518,14 +549,23 @@
                 dom)))
     dom))
 
+(defn find-non-elided-dom
+  "Find the non-elided dom corresponding to the given dom. Return the
+  non-elided dom and the version of the containing dom."
+  [component-atom]
+  (let [{:keys [dom dom-version id->subcomponent]} @component-atom]
+    (when dom
+      (if (= (first dom) :component)
+        (let [[dom _] (find-non-elided-dom (first (vals id->subcomponent)))]
+          (assert (= (count id->subcomponent) 1))
+          [dom dom-version])
+        [dom dom-version]))))
+
 (defn prepare-dom-for-client
   "Given a component-atom, prepare its dom to send to the client."
   [component-atom]
-  (let [{:keys [dom dom-version]} @component-atom]
+  (let [[dom dom-version] (find-non-elided-dom component-atom)]
     (when dom
-      ;; Directly nested components break naming, as we use the same
-      ;; client id to refer to both a component and its value.
-      (assert (not= (first dom) :component) dom)
       (let [client-id (component->client-id component-atom)
             class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
@@ -656,7 +696,10 @@
                                      (vals (:root-components manager-data)))]
     (swap! dom-manager
            (fn [data] (update data :client-ready-dom
-                              #(reduce (fn [priority-map [component depth]]
-                                         (assoc priority-map component depth))
-                                       %
-                                       component-and-depths))))))
+                              #(reduce
+                                (fn [priority-map [component depth]]
+                                  (if (:elided @component)
+                                    priority-map
+                                    (assoc priority-map component depth)))
+                                %
+                                component-and-depths))))))

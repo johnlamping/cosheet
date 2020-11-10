@@ -70,11 +70,11 @@
     (is (= (:dom-specification @c1) s1))
     (is (= (:depth @c1) 1))
     (is (= (:dom-version @c1) 1))
-    (is (not (:pass-through c1)))
+    (is (not (:elided c1)))
     (is (= c1 c1-reused))
     (is (= (:dom-specification @c2) s2))
     (is (= (:containing-component @c2) c1))
-    (is (:pass-through @c2))
+    (is (:elided @c2))
     (is (= (:depth @c2) 2))
     (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
     (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
@@ -111,7 +111,7 @@
                 :client-id :foo
                 :dom-version 2
                 :containing-component nil
-                :pass-through false
+                :elided false
                 :depth 1
                 :dom [:div 3]
                 :further-actions nil}))
@@ -121,7 +121,7 @@
             {:id->subcomponent {}
              :dom-manager manager
              :client-id :foo
-             :pass-through false
+             :elided false
              :depth 1})))
     (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
 
@@ -137,7 +137,7 @@
                                   [activate-component (any)]]
                 :id->subcomponent {id2 (any)}
                 :client-id :foo
-                :pass-through false
+                :elided false
                 :dom-manager manager
                 :client-needs-dom true
                 :dom-specification s1
@@ -169,7 +169,7 @@
                   :dom-specification s1
                   :dom-version 2
                   :containing-component nil
-                  :pass-through false
+                  :elided false
                   :depth 1
                   :dom [:div 2 [:component s2]]}))
       (is (check @c2
@@ -182,7 +182,7 @@
                   :dom-specification s2
                   :dom-version 2
                   :containing-component c1
-                  :pass-through false
+                  :elided false
                   :depth 2
                   :dom [:div 3]}))
       (is (check @manager

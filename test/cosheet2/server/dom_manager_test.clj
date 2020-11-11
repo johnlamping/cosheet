@@ -35,6 +35,11 @@
 (def s1 {:relative-id id1
          :client-id :root-id
          :render-dom (fn [spec store] [:div 2 [:component s2]])})
+(def s1- {:relative-id id2
+          :client-id :wrapper
+          :render-dom (fn [spec store] [:component s1])})
+(def s2- {:relative-id id2
+          :render-dom (fn [spec store] [:component s2])})
 
 (deftest valid-relative-id?-test
   (is (valid-relative-id? (string->id "23")))
@@ -128,24 +133,41 @@
 (deftest update-dom-test
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
-        manager (new-dom-manager ms cd)
-        c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
-        updated (update-dom @c1 c1 [:div 2 [:component s2]])]
-    (is (check updated
-               {:reporters nil
-                :further-actions [[note-dom-ready-for-client manager c1]
-                                  [activate-component (any)]]
-                :id->subcomponent {id2 (any)}
-                :client-id :foo
-                :elided false
-                :dom-manager manager
-                :client-needs-dom true
-                :dom-specification s1
-                :dom-version 2
-                :containing-component nil
-                :depth 1
-                :dom [:div 2 [:component s2]]}))
-    (is (= (type updated) cosheet2.server.dom_manager.ComponentData))))
+        manager (new-dom-manager ms cd)]
+    (let [c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
+          updated (update-dom @c1 c1 [:div 2 [:component s2]])]
+      (is (= (type updated) cosheet2.server.dom_manager.ComponentData))
+      (is (check updated
+                 {:reporters nil
+                  :further-actions [[note-dom-ready-for-client manager c1]
+                                    [activate-component (any)]]
+                  :id->subcomponent {id2 (any)}
+                  :client-id :foo
+                  :elided false
+                  :dom-manager manager
+                  :client-needs-dom true
+                  :dom-specification s1
+                  :dom-version 2
+                  :containing-component nil
+                  :depth 1
+                  :dom [:div 2 [:component s2]]})))
+    (let [c2- (reuse-or-make-component-atom s2- manager nil false :foo nil)
+          updated- (update-dom @c2- c2- [:component s2])
+          c2 (first (vals (:id->subcomponent updated-)))]
+      (is (= (type updated-) cosheet2.server.dom_manager.ComponentData))
+      (is (check @c2
+                 {:reporters nil
+                  :further-actions nil
+                  :client-id nil
+                  :elided true
+                  :dom-manager manager
+                  :client-needs-dom false
+                  :dom-specification s2
+                  :dom-version 1
+                  :id->subcomponent nil
+                  :containing-component c2-
+                  :depth 2
+                  :dom nil})))))
 
 (deftest compute-dom-if-old-test
   (let [ms (new-mutable-store (new-element-store))
@@ -234,7 +256,7 @@
           (= (component->client-id c2)
              "foo_Ibar")))))
 
-(deftest client-id->action-data-test
+(deftest client-id->preliminary-action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
   (let [[s1 id1] (add-entity (new-element-store) nil "foo")
         [s id2] (add-entity s1 id1 "bar")
@@ -248,27 +270,36 @@
      :alt-client-id
      {:relative-id id1
       :render-dom (fn [spec store]
-                    [:div 1 [:component
-                             {:relative-id id2
-                              :render-dom (fn [spec store] [:div 2])}]])
+                    ;; This component has an elided sub-component
+                    [:component
+                     {:relative-id id2
+                      :render-dom (fn [spec store] [:div 2])}])
       :get-action-data [(fn [s c a i extra]
                           (is (= extra "test"))
                           {:target-ids [id1 id1]})
                         "test"]})
     (let [c1 (client-id->component @manager client1)
-          d1 (client-id->action-data
-              @manager client1 nil (reporter-value ms))]
-      (is (check d1 {:component c1
+          d1p (client-id->preliminary-action-data
+               @manager client1 nil (reporter-value ms))]
+      (is (check d1p {:component c1
                      :target-ids [id1 id1]}))
       (compute cd)
       (let [c2 (client-id->component @manager client2)
+            d1 (client-id->action-data
+               @manager client1 nil (reporter-value ms))
+            d2p (client-id->preliminary-action-data
+                 @manager client2 nil (reporter-value ms))
             d2 (client-id->action-data
-                @manager client2 nil (reporter-value ms))]
+                 @manager client2 nil (reporter-value ms))]
         (is (= c2 ((:id->subcomponent @c1) id2)))
-        (is (check d2 {:component c2
-                       :target-ids [id2 id2]}))
+        (is (check d2p {:component c2
+                        :target-ids [id2 id2]}))
+        (is (check d2 d2p))
+        ;; The containing component should refer its actions to its container.
+        (is (check d1 d2p))
+        ;; The elided dom should not need to go to the manager.
         (is (check (:client-ready-dom @manager)
-                   {c1 1  c2 2}))))))
+                   {c1 1}))))))
 
 (deftest get-response-doms-and-process-acknowledgements-test
   ;; Also tests add-root-dom, request-client-refresh,
@@ -276,54 +307,58 @@
   (let [ms (new-mutable-store (new-element-store))
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]
-    (add-root-dom manager :alt-client-id (dissoc s1 :client-id))
-    (let [c1 (client-id->component @manager "alt-client-id")]
-      (activate-component c1)
+    (add-root-dom manager :alt-client-id (dissoc s1- :client-id))
+    (let [c1- (client-id->component @manager "alt-client-id")]
+      (activate-component c1-)
       (compute cd)
-      (let [c2 ((:id->subcomponent @c1) id2)]
+      (let [c1 (first (vals (:id->subcomponent @c1-)))
+            c2 (first (vals (:id->subcomponent @c1)))]
         (is (:highest-version @manager) 1)
         (is (check (get-response-doms manager [id2] 3)
-                   [(as-set [[:div {:id "alt-client-id" :version 2}
+                   [(as-set [[:div {:id "alt-client-id" :version 3}
                               2
                               [:component {:id "alt-client-id_Ibar"}]]
-                             [:div {:id "alt-client-id_Ibar", :version 3} 3]])
-                    "alt-client-id_Ibar"]))
+                             [:div {:id "alt-client-id_Ifoo_Ibar" :version 3}
+                              3]])
+                    "alt-client-id_Ifoo_Ibar"]))
         (is (:highest-version @manager) 3)
         (is (check (get-response-doms manager [id2] 1)
-                   [[[:div {:id "alt-client-id" :version 2}
+                   [[[:div {:id "alt-client-id" :version 3}
                       2
                       [:component {:id "alt-client-id_Ibar"}]]]
-                    nil]))
+                    "alt-client-id"]))
         (is (:highest-version @manager) 3)
-        (is (:client-needs-dom @c1))
+        (is (:client-needs-dom @c1-))
         (is (:client-needs-dom @c2))
+        ;; The client doesn't need to know about the elided dom.
+        (is (not (:client-needs-dom @c1)))
         (is (check (:client-ready-dom @manager)
-                   {c1 1  c2 2}))
+                   {c1- 1 c2 3}))
         (process-acknowledgements manager {"alt-client-id" 1})
-        (is (:client-needs-dom @c1))
+        (is (:client-needs-dom @c1-))
         (is (check (:client-ready-dom @manager)
-                   {c1 1  c2 2}))
-        (process-acknowledgements manager {"alt-client-id" 2
-                                           "alt-client-id_Ibar" 2})
-        (is (not (:client-needs-dom @c1)))
+                   {c1- 1  c2 3}))
+        (process-acknowledgements manager {"alt-client-id" 3
+                                           "alt-client-id_Ifoo_Ibar" 2})
+        (is (not (:client-needs-dom @c1-)))
         (is (:client-needs-dom @c2))
         (is (check (:client-ready-dom @manager)
-                   {c2 2}))
+                   {c2 3}))
         (process-acknowledgements manager {"alt-client-id" 2
-                                           "alt-client-id_Ibar" 3})
-        (is (not (:client-needs-dom @c1)))
+                                           "alt-client-id_Ifoo_Ibar" 3})
+        (is (not (:client-needs-dom @c1-)))
         (is (not (:client-needs-dom @c2)))
         (is (check (:client-ready-dom @manager)
                    {}))
+        (is (= (type @c1-) cosheet2.server.dom_manager.ComponentData))
         (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
-        (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
         (request-client-refresh manager)
         (is (= (:client-ready-dom @manager)
-               {c1 1  c2 2}))
+               {c1- 1  c2 3}))
         (is (check (keys (:attendees @(:data ms)))
-                   (as-set [c1 c2])))
+                   (as-set [c1- c1 c2])))
         (remove-all-doms manager)
         (is (empty? (keys (:attendees @(:data ms)))))
-        (is (nil? (:dom-specification @c1)))
-        (is (nil? (:dom-specification @c2)))))))
+        (is (nil? (:dom-specification @c1-)))
+        (is (nil? (:dom-specification @c1)))))))
 

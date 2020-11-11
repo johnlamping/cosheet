@@ -94,7 +94,7 @@
 ;;;                it has not started computing.
 ;;;                Indicated by :reporters not being present.
 ;;;      awaiting  We are currently missing the component's dom.
-;;;                Indicated by :client-needs-dom being present,
+;;;                Indicated by :reporters being present,
 ;;;                and :dom not being present.
 ;;;      complete  We have all information for the component, including
 ;;;                its DOM.
@@ -166,7 +166,7 @@
      :depth (if containing-component-atom
               (+ 1 (:depth @containing-component-atom))
               1)
-     :client-needs-dom true
+     :client-needs-dom (not elided)
      :dom-version (+ 1 (:highest-version @dom-manager))})))
 
 (defn subcomponent-specifications
@@ -307,7 +307,7 @@
     ;; If we are elided, we have to bump the version of our non-elided
     ;; container, as that is the version sent to the client.
     (when (not= non-elided component-atom)
-      (swap! non-elided #(update :dom-version inc)))
+      (swap! non-elided #(update % :dom-version inc)))
     (swap! dom-manager
            (fn [manager-data]
              (update manager-data :client-ready-dom
@@ -346,7 +346,7 @@
           (-> component-data
               (assoc :dom dom
                      :id->subcomponent id->subcomponent
-                     :client-needs-dom true)
+                     :client-needs-dom (not (:elided component-data)))
               (update :dom-version inc)
               (update-new-further-action
                note-dom-ready-for-client
@@ -382,7 +382,8 @@
   (let [[depth dom id->subcomponent]
         (swap-control-return!
          component-atom
-         (fn [component-data] [(assoc component-data :client-needs-dom true)
+         (fn [component-data] [(assoc component-data :client-needs-dom
+                                      (not (:elided component-data)))
                                [(:depth component-data)
                                 (:dom component-data)
                                 (:id->subcomponent component-data)]]))]
@@ -556,9 +557,11 @@
   (let [{:keys [dom dom-version id->subcomponent]} @component-atom]
     (when dom
       (if (= (first dom) :component)
-        (let [[dom _] (find-non-elided-dom (first (vals id->subcomponent)))]
+        (let [class-attribute (select-keys (dom-attributes dom) [:class])
+              [contained-dom _] (find-non-elided-dom
+                                 (first (vals id->subcomponent))) ]
           (assert (= (count id->subcomponent) 1))
-          [dom dom-version])
+          [(add-attributes contained-dom class-attribute) dom-version])
         [dom dom-version]))))
 
 (defn prepare-dom-for-client

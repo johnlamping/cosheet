@@ -424,7 +424,7 @@
          [:div {}
           [:component {:priority 2
                        :width 0.75
-                       :class "table-cell has-border"
+                       :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
                        :query '(nil ("single" :label)
@@ -436,7 +436,7 @@
                        :get-rendering-data (cell-RD)}]
           [:component {:priority 2,
                        :width 0.75
-                       :class "table-cell has-border"
+                       :class "table-cell"
                        :relative-id c2-id
                                               :row-id joe-id
                        :query '(nil ("name" :label)
@@ -448,7 +448,7 @@
                        :get-rendering-data (cell-RD)}]
           [:component {:priority 2
                        :width 0.75
-                       :class "table-cell has-border"
+                       :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
                        :query '(nil ("name" :label)
@@ -498,18 +498,15 @@
            :template '("" ("single" :label))
            :render-dom (virt-DOM)
            :get-rendering-data virt-RD
-           :get-action-data [(virt-AD) :template '("" ("single" :label))]
-           :class "table-cell has-border"}]))
+           :get-action-data [(virt-AD) :template '("" ("single" :label))]}]))
     (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 3))
           get-table-cell-rendering-data store)
          [:div
-          ;; TODO: The table cell should go at the top div,
-          ;; not on each subsidiaty.
           {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element label virtual-wrapper"
-                             " narrow table-cell has-border")}
+                             " narrow")}
            [:component {:width 0.75
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]
@@ -591,10 +588,9 @@
          (run-renderer
           render-table-DOM {:relative-id table-id}
           get-item-rendering-data store)
-         [:div {}
-          [:component {:relative-id header-id
-                       :render-dom render-ready-table-DOM
-                       :get-rendering-data get-ready-table-rendering-data}]]))))
+         [:component {:relative-id header-id
+                      :render-dom render-ready-table-DOM
+                      :get-rendering-data get-ready-table-rendering-data}]))))
 
 
 

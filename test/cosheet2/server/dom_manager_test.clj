@@ -259,9 +259,10 @@
 (deftest client-id->preliminary-action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
   (let [[s1 id1] (add-entity (new-element-store) nil "foo")
-        [s id2] (add-entity s1 id1 "bar")
+        [s2 id2] (add-entity s1 id1 "bar")
+        [s id3] (add-entity s2 id2 "end")
         client1 "alt-client-id"
-        client2 (str client1 "_" (:id id2))
+        client3 (str client1 "_" (:id id3))
         ms (new-mutable-store s)
         cd (new-calculator-data (new-priority-task-queue 0))
         manager (new-dom-manager ms cd)]
@@ -270,10 +271,15 @@
      :alt-client-id
      {:relative-id id1
       :render-dom (fn [spec store]
-                    ;; This component has an elided sub-component
+                    ;; This component has an elided subcomponent.
                     [:component
                      {:relative-id id2
-                      :render-dom (fn [spec store] [:div 2])}])
+                      :render-dom (fn [spec store]
+                                    ;; Here, a non-elided subcomponent.
+                                    [:div [:component
+                                           {:relative-id id3
+                                            :render-dom (fn [spec store]
+                                                          [:div 3])}]])}])
       :get-action-data [(fn [s c a i extra]
                           (is (= extra "test"))
                           {:target-ids [id1 id1]})
@@ -284,22 +290,24 @@
       (is (check d1p {:component c1
                      :target-ids [id1 id1]}))
       (compute cd)
-      (let [c2 (client-id->component @manager client2)
+      (let [c2 (first (vals (:id->subcomponent @c1)))
+            c3 (client-id->component @manager client3)
             d1 (client-id->action-data
                @manager client1 nil (reporter-value ms))
-            d2p (client-id->preliminary-action-data
-                 @manager client2 nil (reporter-value ms))
-            d2 (client-id->action-data
-                 @manager client2 nil (reporter-value ms))]
-        (is (= c2 ((:id->subcomponent @c1) id2)))
-        (is (check d2p {:component c2
-                        :target-ids [id2 id2]}))
-        (is (check d2 d2p))
-        ;; The containing component should refer its actions to its container.
-        (is (check d1 d2p))
+            d3p (client-id->preliminary-action-data
+                 @manager client3 nil (reporter-value ms))
+            d3 (client-id->action-data
+                @manager client3 nil (reporter-value ms))]
+        ;; The containing component should refer its actions to its contained.
+        (is (check d1 {:component c2
+                       :target-ids [id2 id2]}))
+        (is (= c3 ((:id->subcomponent @c2) id3)))
+        (is (check d3p {:component c3
+                        :target-ids [id3 id3]}))
+        (is (check d3 d3p))
         ;; The elided dom should not need to go to the manager.
         (is (check (:client-ready-dom @manager)
-                   {c1 1}))))))
+                   {c1 1 c3 3}))))))
 
 (deftest get-response-doms-and-process-acknowledgements-test
   ;; Also tests add-root-dom, request-client-refresh,
@@ -318,9 +326,9 @@
                    [(as-set [[:div {:id "alt-client-id" :version 3}
                               2
                               [:component {:id "alt-client-id_Ibar"}]]
-                             [:div {:id "alt-client-id_Ifoo_Ibar" :version 3}
+                             [:div {:id "alt-client-id_Ibar" :version 3}
                               3]])
-                    "alt-client-id_Ifoo_Ibar"]))
+                    "alt-client-id_Ibar"]))
         (is (:highest-version @manager) 3)
         (is (check (get-response-doms manager [id2] 1)
                    [[[:div {:id "alt-client-id" :version 3}
@@ -339,13 +347,13 @@
         (is (check (:client-ready-dom @manager)
                    {c1- 1  c2 3}))
         (process-acknowledgements manager {"alt-client-id" 3
-                                           "alt-client-id_Ifoo_Ibar" 2})
+                                           "alt-client-id_Ibar" 2})
         (is (not (:client-needs-dom @c1-)))
         (is (:client-needs-dom @c2))
         (is (check (:client-ready-dom @manager)
                    {c2 3}))
         (process-acknowledgements manager {"alt-client-id" 2
-                                           "alt-client-id_Ifoo_Ibar" 3})
+                                           "alt-client-id_Ibar" 3})
         (is (not (:client-needs-dom @c1-)))
         (is (not (:client-needs-dom @c2)))
         (is (check (:client-ready-dom @manager)

@@ -317,7 +317,7 @@
         spec (-> specification
                  (assoc :template (query-to-template query))
                  (dissoc :relative-id :render-dom :get-rendering-data
-                         :row-id :query :disqualifications))]
+                         :row-id :query :disqualifications :class))]
     (if (empty? entities)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
@@ -337,7 +337,7 @@
   column description.  We need to put each table cell in a component,
   so its column-id can be included in its client id. Otherwise, if
   several columns show the same item, we could have the same client id
-  for both. "
+  for both."
   [row-id
    {:keys [column-id query disqualifications width] :as column-description}
    specification]
@@ -349,6 +349,7 @@
                 :relative-id column-id
                 :row-id row-id
                 :query query
+                :class "table-cell"
                 :render-dom render-table-cell-DOM
                 :get-rendering-data get-table-cell-rendering-data
                 :width width))))
@@ -537,17 +538,15 @@
   ;;              nil. The exception is the special content :other,
   ;;              which means to show everything not shown in any
   ;;              other column. (:other not yet implemented.)
-  ;; TODO: Add the "other" column if a table requests it.
+  ;; TODO: Add an "other" column if a table requests it.
   [{:keys [relative-id] :as specification} store]
   (let [table-item (description->entity relative-id store)]
     (println "Generating DOM for table" (simplify-for-print table-item))
     (assert (satisfies? StoredEntity table-item))
     ;; Don't do anything if we don't yet have the table information filled in.
-    (into
-     [:div {}]
-     (when-let [row-condition-item (first (label->elements
-                                           table-item :row-condition))]
-       [(make-component {:relative-id (:item-id row-condition-item)
-                         :render-dom render-ready-table-DOM
-                         :get-rendering-data get-ready-table-rendering-data})]
-       ))))
+    (if-let [row-condition-item (first (label->elements
+                                        table-item :row-condition))]
+      (make-component {:relative-id (:item-id row-condition-item)
+                       :render-dom render-ready-table-DOM
+                       :get-rendering-data get-ready-table-rendering-data})
+      [:div {}])))

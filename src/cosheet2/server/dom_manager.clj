@@ -289,21 +289,32 @@
   [component-data]
   (nil? (:dom-specification component-data)))
 
-(defn find-non-elided-component
+(defn find-non-elided-containing-component
   "If the component is elided, go up the containment hierarchy to the
   first non-elided one."
   [component-atom]
   (let [component-data @component-atom]
     (if (:elided component-data)
-      (find-non-elided-component (:containing-component component-data))
+      (find-non-elided-containing-component
+       (:containing-component component-data))
       component-atom)))
+
+(defn find-non-elided-id->subcomponent
+  "If the component has only an elided subcomponent, go down the
+  containment hierarchy to the first non-elided ones. Note that we
+  take component-data, not the atom."
+  [component-data]
+  (let [{:keys [dom id->subcomponent]} component-data]
+    (if (= (first dom) :component)
+      (find-non-elided-id->subcomponent @(first (vals id->subcomponent)))
+      id->subcomponent)))
 
 (defn note-dom-ready-for-client
   "Mark that the client needs to hear about our dom. (If we are
   elided, that means our containing component is the one that client
   needs to hear about.)"
   [dom-manager component-atom]
-  (let [non-elided (find-non-elided-component component-atom)]
+  (let [non-elided (find-non-elided-containing-component component-atom)]
     ;; If we are elided, we have to bump the version of our non-elided
     ;; container, as that is the version sent to the client.
     (when (not= non-elided component-atom)
@@ -485,8 +496,12 @@
   (let [data @component-atom]
     (if-let [client-id (:client-id data)]
       [client-id]
-      (conj (component->id-sequence (:containing-component data))
-            (:relative-id (:dom-specification data))))))
+      (let [containing-sequence (component->id-sequence
+                                 (:containing-component data))]
+        (if (:elided data)
+          containing-sequence
+          (conj containing-sequence
+                (:relative-id (:dom-specification data))))))))
 
 (defn component->client-id
   [component-atom]
@@ -499,7 +514,7 @@
         root ((:root-components manager-data) (first id-sequence))]
     (reduce (fn [component id]
               (when component
-                ((:id->subcomponent @component) id)))
+                ((find-non-elided-id->subcomponent @component) id)))
             root
             (rest id-sequence))))
 
@@ -509,12 +524,25 @@
   [manager-data client-id action immutable-store]
   (let [id-sequence (client-id->relative-ids client-id)
         root ((:root-components manager-data) (first id-sequence))]
-    (reduce (fn [data id]
-              (when data
-                (when-let
-                    [component ((:id->subcomponent @(:component data)) id)]
-                  (update-action-data-for-component
-                   component data action immutable-store))))
+    (reduce (fn [action-data id]
+              ;; This loop runs through elided sub-components.
+              (loop [action-data action-data]
+                (when action-data
+                  (let [component-data @(:component action-data)
+                        {:keys [dom id->subcomponent]} component-data]
+                    (if (= (first dom) :component)
+                        ;; Our subcomponent was elided out of what the
+                        ;; client got, so it is not reflected in the
+                        ;; client's id. But we still need to add its
+                        ;; effect to the action data.
+                        (recur (update-action-data-for-component
+                                (first (vals id->subcomponent))
+                                action-data action immutable-store))
+                        (when-let
+                            [subcomponent (id->subcomponent id)]
+                          (update-action-data-for-component
+                                subcomponent
+                                action-data action immutable-store)))))))
             (update-action-data-for-component root {} action immutable-store)
             (rest id-sequence))))
 
@@ -525,11 +553,12 @@
   [manager-data client-id action immutable-store]
   (loop [data (client-id->preliminary-action-data
                manager-data client-id action immutable-store)]
-    (let [{:keys [dom id->subcomponent]} @(:component data)]
-      (if (= (first dom) :component)
-        (recur (update-action-data-for-component
-                (first (vals id->subcomponent)) data action immutable-store))
-        data))))
+    (when data
+      (let [{:keys [dom id->subcomponent]} @(:component data)]
+        (if (= (first dom) :component)
+          (recur (update-action-data-for-component
+                  (first (vals id->subcomponent)) data action immutable-store))
+          data)))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,

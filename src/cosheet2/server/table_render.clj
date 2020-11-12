@@ -316,8 +316,8 @@
                    matches)
         spec (-> specification
                  (assoc :template (query-to-template query))
-                 (dissoc :relative-id :render-dom :get-rendering-data
-                         :row-id :query :disqualifications :class))]
+                 (dissoc :relative-id :row-id :query :disqualifications :class
+                         :render-dom :get-rendering-data :get-action-data))]
     (if (empty? entities)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
@@ -352,6 +352,7 @@
                       :class "table-cell"
                       :render-dom render-table-cell-DOM
                       :get-rendering-data get-table-cell-rendering-data
+                      :get-action-data get-pass-through-action-data
                       :width width)
          disqualifications
          (assoc :disqualifications disqualifications)))))
@@ -400,7 +401,7 @@
   [specification row-template row-ids]
   ;; We pass on column-descriptions-R from our spec
   (let [row-spec (-> specification
-                     (dissoc :row-template-R :row-ids-R)
+                     (dissoc :row-template-R :row-ids-R :get-action-data)
                      (update :priority (partial + 2)))]
     (into [:div {:class "table-rows"}]
           (map #(table-row-component % row-template row-spec)
@@ -515,7 +516,11 @@
                    :priority 1
                    :render-dom render-table-rows-DOM
                    :get-rendering-data get-table-rows-rendering-data
-                   :get-action-data get-pass-through-action-data})]
+                   ;; We throw out our targets. That way, each row
+                   ;; will be able to get its id as its target, even though
+                   ;; its has no subject.
+                   :get-action-data [get-item-or-exemplar-action-data-for-ids
+                                     nil]})]
     [:div {:class "table"}
      condition-dom
      [:div {:class "query-result-wrapper"}

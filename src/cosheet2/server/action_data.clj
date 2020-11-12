@@ -218,10 +218,7 @@
   (.write w "col-AD"))
 
 (defn get-row-action-data
-  "Add the action data for a command that acts on a row.
-  The header-id is the id that holds all the columns. The column-ids
-  are the ids of all columns under this component. (One header can
-  span multiple columns.)"
+  "Add the action data for a command that acts on a row."
   [specification containing-action-data action immutable-store
    row-id row-template]
   (assoc containing-action-data :row

@@ -433,7 +433,8 @@
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)}]
+                       :get-rendering-data (cell-RD)
+                       :get-action-data (pass-AD)}]
           [:component {:priority 2,
                        :width 0.75
                        :class "table-cell"
@@ -452,7 +453,8 @@
                                                    :cosheet2.query/sub-query))
                                                  (nil :order)))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)}]
+                       :get-rendering-data (cell-RD)
+                       :get-action-data (pass-AD)}]
           [:component {:priority 2
                        :width 0.75
                        :class "table-cell"
@@ -465,7 +467,8 @@
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
                        :render-dom (cell-DOM)
-                       :get-rendering-data (cell-RD)}]
+                       :get-rendering-data (cell-RD)
+                       :get-action-data (pass-AD)}]
           (any) (any) (any) (any)
           [:component {:priority 2
                        :width 0.75
@@ -585,7 +588,7 @@
                :priority 1
                :render-dom render-table-rows-DOM
                :get-rendering-data get-table-rows-rendering-data
-               :get-action-data (pass-AD)}]]]]))
+               :get-action-data [(ids-AD) nil]}]]]]))
     (is (check
          (run-renderer
           render-table-DOM {:relative-id joe-id}

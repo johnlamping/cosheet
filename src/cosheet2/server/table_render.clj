@@ -345,14 +345,16 @@
       (table-virtual-column-cell-DOM-component
        (:header-id column-description) (assoc specification :width width))
       (make-component
-         (assoc specification
-                :relative-id column-id
-                :row-id row-id
-                :query query
-                :class "table-cell"
-                :render-dom render-table-cell-DOM
-                :get-rendering-data get-table-cell-rendering-data
-                :width width))))
+       (cond-> (assoc specification
+                      :relative-id column-id
+                      :row-id row-id
+                      :query query
+                      :class "table-cell"
+                      :render-dom render-table-cell-DOM
+                      :get-rendering-data get-table-cell-rendering-data
+                      :width width)
+         disqualifications
+         (assoc :disqualifications disqualifications)))))
 
 (defn get-table-row-rendering-data
   [{:keys [relative-id column-descriptions-R]} mutable-store]

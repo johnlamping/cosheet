@@ -444,6 +444,13 @@
                                      (:not :cosheet2.query/type)
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
+                       :disqualifications '((nil ("name" :label)
+                                                 ("other" :label)
+                                                 (:cosheet2.query/special-form
+                                                  (:not :cosheet2.query/type)
+                                                  (:label
+                                                   :cosheet2.query/sub-query))
+                                                 (nil :order)))
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)}]
           [:component {:priority 2

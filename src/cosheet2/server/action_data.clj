@@ -237,17 +237,18 @@
    header-id]
   (let [header (description->entity header-id immutable-store)
         columns (label->elements header :column)
-        last-column-id (last (ordered-entities columns))
+        last-column-id (:item-id (last (ordered-entities columns)))
         {:keys [store target-ids]}
         (get-virtual-action-data
-         {:template (concat table-header-template ['??? :label])}
-         {:target-ids [last-column-id]
-          :sibling true}
-         action immutable-store)
+         {}
+         {:target-ids [last-column-id]}
+         action immutable-store
+         :sibling true
+         :template (concat table-header-template ['(??? :label)]))
         new-column-id (first target-ids)
         template (semantic-to-list (description->entity new-column-id store))]
     (get-virtual-action-data
-     {:template template} containing-action-data action immutable-store)))
+     {} containing-action-data action store :template template)))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_column_cell_action_data

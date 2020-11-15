@@ -13,6 +13,7 @@
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
             (cosheet2.server [action-data :refer :all]
+                             [order-utils :refer [add-order-elements]]
                              [model-utils :refer [semantic-to-list]])
             ; :reload
             ))
@@ -177,6 +178,21 @@
              (:right (get-order (:item-id joe-age) original-store))))
       (is (check (semantic-to-list (description->entity id store))
                  "")))))
+
+(deftest get-virtual-column-cell-action-data-test
+  (let [[s1 header-id] (add-entity (new-element-store) nil
+                                   (add-order-elements
+                                    '(:x (anything ("c1" :label) :column)
+                                         (anything ("c2" :label) :column))))
+        [store row-id] (add-entity s1 nil (add-order-elements
+                                           '(anything (1 ("c1" :label))
+                                                      (2 ("c2" :label)))))
+        data (get-virtual-column-cell-action-data
+              {} {:target-ids [row-id]} nil store header-id)
+        new-store (:store data)
+        new-id (first (:target-ids data))]
+    (is (= (semantic-to-list (description->entity new-id new-store))
+           '("" (" A" :label))))))
 
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data

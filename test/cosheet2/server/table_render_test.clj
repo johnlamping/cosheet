@@ -214,7 +214,7 @@
                           :excluded-element-ids [(any)]
                           :relative-id rc1-id}]]
             ;; A virtual element for more condition.
-            [:div {:class "vertical-labels-element label"}
+            [:div {:class "wrapped-element label"}
              [:component {:relative-id :virtual-label
                           :get-action-data [composed-get-action-data
                                             [get-virtual-action-data
@@ -225,13 +225,14 @@
                           :class "label"
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data}]
-             [:component {:template 'anything
-                          :width 0.75
-                          :relative-id :virtual
-                          :render-dom render-virtual-DOM
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :get-action-data [get-virtual-action-data
-                                            :template 'anything]}]]]]]))
+             [:div  {:class "indent-wrapper"}
+              [:component {:template 'anything
+                           :width 0.75
+                           :relative-id :virtual
+                           :render-dom render-virtual-DOM
+                           :get-rendering-data get-virtual-DOM-rendering-data
+                           :get-action-data [get-virtual-action-data
+                                             :template 'anything]}]]]]]]))
     (is (check
          (run-renderer
           render-table-header-DOM {:header-id header-id
@@ -356,7 +357,7 @@
                          :template :singular
                          :relative-id c7-id}]]]
           ;; The virtual column.
-          [:div {:class "horizontal-labels-element label"}
+          [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
                         :get-action-data
                         [(comp-AD) [(ids-AD) [c7-id]]
@@ -367,16 +368,17 @@
                         :class "label"
                         :render-dom (virt-DOM)
                         :get-rendering-data virt-RD}]
-           [:component {:relative-id :virtual-column
-                        :template '(anything :column)
-                        :width 0.75
-                        :class "column-header virtual-column"
-                        :get-action-data
-                        [(comp-AD) [(ids-AD) [c7-id]]
-                         [(virt-AD) :template '(anything :column)
-                          :sibling true]]
-                        :render-dom (virt-DOM)
-                        :get-rendering-data virt-RD}]]]))
+           [:div {:class "indent-wrapper"}
+            [:component {:relative-id :virtual-column
+                         :template '(anything :column)
+                         :width 0.75
+                         :class "column-header virtual-column"
+                         :get-action-data
+                         [(comp-AD) [(ids-AD) [c7-id]]
+                          [(virt-AD) :template '(anything :column)
+                           :sibling true]]
+                         :render-dom (virt-DOM)
+                         :get-rendering-data virt-RD}]]]]))
     (is (check
          column-descriptions
          [{:column-id c1-id

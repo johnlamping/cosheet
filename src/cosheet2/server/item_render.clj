@@ -200,7 +200,9 @@
                      :class "label"}
                     {:template label-template
                      :position :before})]
-    (add-labels-DOM labels-dom dom orientation)))
+    (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
+      (:class specification)
+      (add-attributes {:class (:class specification)}))))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."
@@ -521,7 +523,9 @@
     (assert (entity/atom? content))
     (let [anything (= 'anything content)]
       [:div (cond-> (-> (select-keys attributes [:class])
-                        (into-attributes {:class "content-text editable"} ))
+                        (into-attributes
+                         {:class (cond-> "content-text editable"
+                                   anything (str " placeholder"))}))
               (has-keyword? item :label)
               (into-attributes (:class "label"))
               anything
@@ -569,7 +573,8 @@
   [entity labels non-labels {:keys [must-show-label] :as specification}]
   (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
         (item-content-DOM entity specification)
-        (let [inner-spec (update specification :template
+        (let [inner-spec (update specification
+                                 :template
                                  #(add-elements-to-entity-list
                                    % (map semantic-to-list
                                           (semantic-label-elements entity))))
@@ -594,8 +599,10 @@
                                    excluded-element-ids))
                          (semantic-elements entity))
         [labels non-labels] (separate-by label? elements)]
-    (item-content-labels-and-non-label-elements-DOM
-     entity labels non-labels specification)))
+    (cond-> (item-content-labels-and-non-label-elements-DOM
+             entity labels non-labels (dissoc specification :class))
+      (:class specification)
+      (add-attributes {:class (:class specification)}))))
 
 (defmethod print-method
   cosheet2.server.item_render$render_item_DOM

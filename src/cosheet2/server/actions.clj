@@ -39,22 +39,20 @@
 (defn update-selected
   "Make the client id stored under the temporary id be the given id."
   [store temporary-id client-id]
-  ;; We store the client id as a keyword, rather than a string, so it
-  ;; is not semantic.
-  (let [client-id-keyword (keyword client-id)
-        element-id (first (id-label->element-ids
-                           store temporary-id :current-selection))]
-    (if element-id
-      (update-content store element-id client-id-keyword)
-      (first (add-entity store temporary-id
-                             (list client-id-keyword :current-selection))))))
+  (when-let [element-id (first (id-label->element-ids
+                                store temporary-id :current-selection))]
+    ;; We store the client id as a keyword, rather than a string, so it
+    ;; is not semantic.
+    (update-content store element-id (keyword client-id))))
 
 (defn get-selected
-  "Return the path stored in the above format in the given item."
+  "Return the client stored by update-selected."
   [store temporary-id]
   (when-let [element-id (first (id-label->element-ids
                                 store temporary-id :current-selection))]
-    (name (id->content store element-id))))
+    (let [content (id->content store element-id)]
+      (when (keyword? content)
+        (name content)))))
 
 (defn update-set-content-if-matching
   "Set the content of the id in the store provided the current content

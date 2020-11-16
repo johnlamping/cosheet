@@ -226,14 +226,11 @@
         node-dom (horizontal-label-hierarchy-node-DOM
                   node spec)
         is-leaf (empty? child-doms)
-        elements-template '(anything :label)
-        is-label (is-label-template? elements-template)
         class (cond-> "column-header"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
       (add-attributes node-dom {:class class})
-      [:div {:class (cond-> class
-                      is-label (str " label"))}
+      [:div {:class (str class " label")}
        (add-attributes node-dom {:class "with-children"})
        (into [:div {:class "column-header-sequence"}]
              child-doms)])))
@@ -255,13 +252,13 @@
               :class "column-header virtual-column"}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM
-       spec :horizontal {})
+       spec :vertical-wrapped {})
       (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
             last-column-id (:item-id (:item last-column))]
         (virtual-entity-and-label-DOM
          (assoc spec :get-action-data [get-item-or-exemplar-action-data-for-ids
                                        [last-column-id]])
-         :horizontal
+         :vertical-wrapped
          {:sibling true})))))
 
 (defn get-table-header-rendering-data

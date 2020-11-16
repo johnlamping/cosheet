@@ -386,7 +386,7 @@ body {
     background-color: transparent;
 }
 
-.item:not(.label), .vertical-stack:not(.label) {
+.item:not(.label), .content-text:not(.label), .vertical-stack:not(.label) {
     background-color: white;
 }
 

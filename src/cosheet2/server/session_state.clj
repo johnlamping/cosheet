@@ -161,7 +161,11 @@
   [immutable-store]
   (add-entity immutable-store nil
               '(:root-temporary
-                (anything :batch-selector :selector))))
+                (anything :batch-selector :selector)
+                ;; Normally, the selection is stored as a keyword. By
+                ;; putting in a symbol, we are saying there is no
+                ;; current selection.
+                (nothing :current-selection))))
 
 (defn add-session-temporary-element!
   "Add a session temporary element to the store, and return its id."

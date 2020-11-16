@@ -61,8 +61,8 @@
 (def t2 (add-entity (first t1) nil jane-list))
 (def jane-id (second t2))
 (def t3 (update-add-session-temporary-element (first t2)))
-(def temporary-id (first t3))
 (def store (first t3))
+(def temporary-id (second t3))
 (def joe (description->entity joe-id store))
 (def joe-age (first (matching-elements 45 joe)))
 (def joe-bogus-age (first (matching-elements 39 joe)))
@@ -80,11 +80,11 @@
 (deftest selected-test
   (let [client-id1 "root_1"
         client-id2 "root_2"
-        store1 (update-selected store joe-id client-id1)
-        recovered-id1 (get-selected store1 joe-id)
+        store1 (update-selected store temporary-id client-id1)
+        recovered-id1 (get-selected store1 temporary-id)
         ;; Now, try overwriting an existing id.
-        store2 (update-selected store1 joe-id client-id2)
-        recovered-id2 (get-selected store2 joe-id)] 
+        store2 (update-selected store1 temporary-id client-id2)
+        recovered-id2 (get-selected store2 temporary-id)] 
     (is (= client-id1 recovered-id1))
     (is (= client-id2 recovered-id2))))
 

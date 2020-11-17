@@ -193,10 +193,12 @@
 (defn add-triple
   "Add a triple to the store, and do all necessary indexing."
   [store item-id subject content]
-  (assert (not (nil? content)))
-  (assert (not= item-id subject) [item-id subject])
-  (when (and (number? (:id item-id)) (number? (:id subject)))
-    (assert (< (:id subject) (:id item-id))))
+  (assert (not (nil? content)) [item-id subject content])
+  (assert (not= item-id subject) [item-id subject content])
+  (when (number? (:id item-id))
+    (assert (< (:id item-id) (:next-id store)) [item-id subject content])
+    (when (number? (:id subject))
+      (assert (< (:id subject) (:id item-id)) [item-id subject content])))
   (-> (if (nil? subject)
         store
         (assoc-in store [:id->subject item-id] subject))

@@ -238,7 +238,7 @@
           render-table-header-DOM {:header-id header-id
                                    :hierarchy-R hierarchy}
           get-table-header-rendering-data store)
-         [:div {:class "column-header-sequence"}
+         [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-column-action-data
                        [(col-AD) header-id [c1-id]]
@@ -565,32 +565,30 @@
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
                         :get-action-data (pass-AD)}]
-           [:div {:class "query-result-wrapper"}
-            [:div {:class "query-result-indent label"}]
-            [:div {:class "table-main"}
-             [:component
-              {:relative-id :header
-               :header-id header-id
-               :hierarchy-R
-               [{:cosheet2.server.hierarchy/hierarchy-node true
-                 :leaves (any)
-                 :properties {["single" {:label 1}] 1}
-                 :cumulative-properties {["single" {:label 1}] 1}}
-                (any) (any) (any) (any)]
-               :priority 1
-               :render-dom render-table-header-DOM
-               :get-rendering-data get-table-header-rendering-data
-               :get-action-data (pass-AD)}]
-             [:component
-              {:relative-id :body
-               :header-id header-id
-               :column-descriptions-R (any)
-               :row-template-R '(anything (anything ("age" :label)) :top-level)
-               :row-ids-R [(any) (any)]
-               :priority 1
-               :render-dom render-table-rows-DOM
-               :get-rendering-data get-table-rows-rendering-data
-               :get-action-data [(ids-AD) nil]}]]]]))
+           [:div {:class "table-main"}
+            [:component
+             {:relative-id :header
+              :header-id header-id
+              :hierarchy-R
+              [{:cosheet2.server.hierarchy/hierarchy-node true
+                :leaves (any)
+                :properties {["single" {:label 1}] 1}
+                :cumulative-properties {["single" {:label 1}] 1}}
+               (any) (any) (any) (any)]
+              :priority 1
+              :render-dom render-table-header-DOM
+              :get-rendering-data get-table-header-rendering-data
+              :get-action-data (pass-AD)}]
+            [:component
+             {:relative-id :body
+              :header-id header-id
+              :column-descriptions-R (any)
+              :row-template-R '(anything (anything ("age" :label)) :top-level)
+              :row-ids-R [(any) (any)]
+              :priority 1
+              :render-dom render-table-rows-DOM
+              :get-rendering-data get-table-rows-rendering-data
+              :get-action-data [(ids-AD) nil]}]]]))
     (is (check
          (run-renderer
           render-table-DOM {:relative-id joe-id}

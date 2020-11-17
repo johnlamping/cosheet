@@ -636,10 +636,23 @@ body {
     min-width: 50px;
 }
 
-.query-condition .content-text.item,
-.column-header-sequence .content-text.item {
-    box-shadow: inset -5px 5px 10px 0px hsla(0, 0%, 100%, 0.5),
+/* Make the following ::before elements positionable */
+.table-header, .query-holder {
+    position: relative;
+}
+
+.table-header::before, .query-holder:before {
+    background-color: rgba(0, 0, 0, 0); /* transparent */
+    box-shadow: inset -5px 5px 5px 5px hsla(0, 0%, 100%, 0.6),
                 inset 5px -5px 10px 0px hsla(0, 0%, 0%, 0.2);
+    display: inline-block;
+    content:" ";
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    position: absolute;
+    z-index: 1;
     border-radius: 5px;
 }
 

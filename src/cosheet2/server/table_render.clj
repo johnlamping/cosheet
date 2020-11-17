@@ -274,7 +274,7 @@
         doms (map #(table-header-top-level-subtree-DOM header-id %)
                      hierarchy)
         virtual-header (table-virtual-column-header-DOM hierarchy)]
-    (into [:div {:class "column-header-sequence"}]
+    (into [:div {:class "column-header-sequence table-header"}]
           (concat doms [virtual-header]))))
 
 (defn table-virtual-column-cell-DOM-component
@@ -520,11 +520,9 @@
                                      nil]})]
     [:div {:class "table"}
      condition-dom
-     [:div {:class "query-result-wrapper"}
-      [:div {:class "query-result-indent label"}]
-      [:div {:class "table-main"}
-       header-dom
-       body-dom]]]))
+     [:div {:class "table-main"}
+      header-dom
+      body-dom]]))
 
 (defn render-table-DOM
   "Return a hiccup representation of DOM, with the given internal key,

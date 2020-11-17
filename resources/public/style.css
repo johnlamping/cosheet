@@ -654,6 +654,7 @@ body {
     position: absolute;
     z-index: 1;
     border-radius: 5px;
+    pointer-events: none;
 }
 
 /* Merge the border of the wrapped element with the query-holder border. */

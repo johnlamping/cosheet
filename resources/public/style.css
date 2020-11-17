@@ -392,9 +392,8 @@ body {
     background-color: white;
 }
 
-.editable.label.label.label.label:not(.content-text):not(.merge-with-parent),
-.label.label.label.label > .editable:not(.content-text):not(.merge-with-parent),
-.label.label.label.virtual-wrapper:not(.merge-with-parent){
+.label.virtual.virtual.virtual.virtual:not(.merge-with-parent),
+.label.virtual:not(.merge-with-parent)+.indent-wrapper {
     background-color: hsl(194, 50%, 88%);
 }
 

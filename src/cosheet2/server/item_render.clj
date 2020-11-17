@@ -122,7 +122,7 @@
 
 (defn render-virtual-DOM [spec]
   [:div (into-attributes (select-keys spec [:class])
-                         {:class "editable"})])
+                         {:class "editable virtual"})])
 
 (defmethod print-method
   cosheet2.server.item_render$render_virtual_DOM

@@ -30,6 +30,16 @@
                            [subject]))
                  (conj affected id)))))))
 
+(defn categories-in-one-store-affected-by-ids
+  "Return a set of categories that might be affected by a change to a
+  set of modified ids in the given store.  A category is any id whose
+  elements or content could be affected by one of the changed ids."
+  [modified-ids store]
+  (when (seq modified-ids)
+    (reduce (fn [accum id] (add-id-to-affected-ids accum store id))
+            #{} 
+            modified-ids)))
+
 (defn categories-affected-by-ids
   "Return a set of categories that might be affected by a change to a
   set of modified ids.  A category is any id whose elements or content
@@ -38,11 +48,9 @@
   of the two stores."
   [modified-ids old-store new-store]
   (when (seq modified-ids)
-    (reduce (fn [accum id] (-> accum
-                               (add-id-to-affected-ids old-store id)
-                               (add-id-to-affected-ids new-store id)))
-            #{} 
-            modified-ids)))
+    (clojure.set/union
+     (categories-in-one-store-affected-by-ids modified-ids old-store)
+     (categories-in-one-store-affected-by-ids modified-ids new-store))))
 
 (defmacro cache-and-categorize
   "Return the result of the operation on the store, caching, and using
@@ -60,7 +68,7 @@
             remainder))))
 
 (defn change-description
-  "Given an old state the new state, and a list of modified ids, return a
+  "Given an old state, the new state, and a list of modified ids, return a
    triple suitable for change-data!"
   [old-state new-state modified-ids]
   [new-state

@@ -157,12 +157,14 @@ body {
     border-width: 0px 0px 0px 1px;
 }
 
-.horizontal-stack > .vertical-labels-element {
+.horizontal-stack > .vertical-labels-element,
+.horizontal-stack > .wrapped-element {
     display: flex;
     flex-direction: column;
 }
 
-.horizontal-stack > .vertical-labels-element > :first-child {
+.horizontal-stack > .vertical-labels-element > :first-child,
+.horizontal-stack > .wrapped-element > :first-child {
     flex: 1;
 }
 
@@ -459,8 +461,7 @@ body {
     flex-grow: 0;
 }
 
-.wrapped-element > .indent-wrapper > .item,
-.wrapped-element > .indent-wrapper > .vertical-stack {
+.indent-wrapper > * {
     border-width: 2px;
     margin-bottom: -2px;
     margin-right: -2px;
@@ -610,7 +611,7 @@ body {
     display: flex;
 }
 
-/* --- queries --- */
+/* --- tables --- */
 
 .query-holder {
     flex: none;

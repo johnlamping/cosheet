@@ -332,9 +332,7 @@
                       (add-attributes {:class "narrow"}))
                     descendants-dom)
                   (add-labels-DOM properties-dom descendants-dom
-                                  (case orientation
-                                    :vertical :vertical-wrapped
-                                    :horizontal :vertical)))
+                                  :vertical-wrapped))
           only-item
           (add-attributes (select-keys specification [:class])))))))
 

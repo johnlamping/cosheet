@@ -166,7 +166,7 @@
          (labels-and-elements-DOM
           [joe jane] nil false false :horizontal
           {:template 'anything :width 0.8})
-         [:div {:class "vertical-labels-element label"}
+         [:div {:class "wrapped-element label"}
           [:component {:width 0.8
                        :template '("" :label)
                        :get-action-data
@@ -177,27 +177,29 @@
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id}]
-          [:div {:class "horizontal-stack"}
-           [:div {:class "vertical-labels-element label"}
-            [:component {:width 0.8
-                         :template '("" :label)
-                         :get-action-data
-                         [composed-get-action-data
-                        [get-item-or-exemplar-action-data-for-ids
-                         [joe-id]]
-                          get-item-or-exemplar-action-data]
-                         :class "label"
-                         :excluded-element-ids [joe-foo-label-id]
-                         :relative-id joe-foo-id}]
-            [:component {:template '(anything ("foo" :label) ("test" :label))
+          [:div {:class "indent-wrapper"}
+           [:div {:class "horizontal-stack"}
+            [:div {:class "wrapped-element label"}
+             [:component {:width 0.8
+                          :template '("" :label)
+                          :get-action-data
+                          [composed-get-action-data
+                           [get-item-or-exemplar-action-data-for-ids
+                            [joe-id]]
+                           get-item-or-exemplar-action-data]
+                          :class "label"
+                          :excluded-element-ids [joe-foo-label-id]
+                          :relative-id joe-foo-id}]
+             [:div {:class "indent-wrapper"}
+              [:component {:template '(anything ("foo" :label) ("test" :label))
+                           :width 0.8
+                           :excluded-element-ids (as-set [joe-test-id
+                                                          joe-foo-id])
+                           :relative-id joe-id}]]]
+            [:component {:template '(anything ("test" :label))
                          :width 0.8
-                         :excluded-element-ids (as-set [joe-test-id
-                                                        joe-foo-id])
-                         :relative-id joe-id}]]
-           [:component {:template '(anything ("test" :label))
-                        :width 0.8
-                        :excluded-element-ids [jane-test-id]
-                        :relative-id jane-id}]]]))
+                         :excluded-element-ids [jane-test-id]
+                         :relative-id jane-id}]]]]))
     ;; Test two labels.
     (is (check
          (labels-and-elements-DOM

@@ -199,7 +199,7 @@
                                           :position :after]}]
            ;; The condition element.
            [:div {:class "horizontal-stack"}
-            [:div {:class "vertical-labels-element label"}
+            [:div {:class "wrapped-element label"}
              [:component {:template '("" :label)
                           :width 0.75
                           :get-action-data
@@ -209,12 +209,13 @@
                           :class "label"
                           :excluded-element-ids [(any)]
                           :relative-id (any)}]
-             [:component {:template '(anything ("age" :label))
-                          :width 0.75
-                          :excluded-element-ids [(any)]
-                          :relative-id rc1-id}]]
+             [:div {:class "indent-wrapper"}
+              [:component {:template '(anything ("age" :label))
+                           :width 0.75
+                           :excluded-element-ids [(any)]
+                           :relative-id rc1-id}]]]
             ;; A virtual element for more condition.
-            [:div {:class "wrapped-element label"}
+            [:div {:class "wrapped-element label virtual-column"}
              [:component {:relative-id :virtual-label
                           :get-action-data [composed-get-action-data
                                             [get-virtual-action-data
@@ -372,7 +373,6 @@
             [:component {:relative-id :virtual-column
                          :template '(anything :column)
                          :width 0.75
-                         :class "column-header virtual-column"
                          :get-action-data
                          [(comp-AD) [(ids-AD) [c7-id]]
                           [(virt-AD) :template '(anything :column)

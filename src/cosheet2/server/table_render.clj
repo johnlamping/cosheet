@@ -181,10 +181,12 @@
         spec-down {:template 'anything
                    :width 0.75}
         virtual-dom
-        (virtual-entity-and-label-DOM
-         (assoc spec-down :relative-id :virtual)
-         :vertical
-         {})
+        (add-attributes
+         (virtual-entity-and-label-DOM
+          (assoc spec-down :relative-id :virtual)
+          :vertical
+          {})
+         {:class "virtual-column"})
         dom (labels-and-elements-DOM
              condition-elements virtual-dom
              true true :horizontal spec-down)]
@@ -248,18 +250,19 @@
   [hierarchy]
   (let [spec {:relative-id :virtual-column
               :template table-header-template
-              :width 0.75
-              :class "column-header virtual-column"}]
+              :width 0.75}]
     (if (empty? hierarchy)
       (virtual-entity-and-label-DOM
        spec :vertical-wrapped {})
       (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
             last-column-id (:item-id (:item last-column))]
-        (virtual-entity-and-label-DOM
-         (assoc spec :get-action-data [get-item-or-exemplar-action-data-for-ids
-                                       [last-column-id]])
-         :vertical-wrapped
-         {:sibling true})))))
+        (add-attributes
+         (virtual-entity-and-label-DOM
+          (assoc spec :get-action-data [get-item-or-exemplar-action-data-for-ids
+                                        [last-column-id]])
+          :vertical-wrapped
+          {:sibling true})
+         {:class  "column-header virtual-column"})))))
 
 (defn get-table-header-rendering-data
   [{:keys [hierarchy-R] :as spec} mutable-store]

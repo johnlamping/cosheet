@@ -83,6 +83,7 @@ body {
 .editable {
     min-height: 15px; /* Make no-content cells have minimum height */
     min-width: 7px;
+    font-size: small;
 }
 
 /* Override other min-width values. */
@@ -90,7 +91,6 @@ body {
     min-height: 28px;
     min-width: 50px;
     overflow-wrap: break-word;
-    font-size: small;
     font-family: sans-serif;
 }
 
@@ -620,6 +620,7 @@ body {
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
     min-width: 300px;
+    margin-bottom: 3px;
 }
 
 .query-indent {
@@ -634,6 +635,12 @@ body {
 
 .query-condition.horizontal-labels-element > *:first-child {
     min-width: 50px;
+    box-shadow: 7px 7px 5px 0px grey;
+    font-size: 115%
+}
+
+.query-condition.horizontal-labels-element > .horizontal-stack {
+    margin-left: 10px;
 }
 
 /* Make the following ::before elements positionable */

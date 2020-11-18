@@ -185,7 +185,7 @@
          (virtual-entity-and-label-DOM
           (assoc spec-down :relative-id :virtual)
           :vertical
-          {})
+          {:position :before})
          {:class "virtual-column"})
         dom (labels-and-elements-DOM
              condition-elements virtual-dom

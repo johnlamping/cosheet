@@ -219,7 +219,8 @@
              [:component {:relative-id :virtual-label
                           :get-action-data [composed-get-action-data
                                             [get-virtual-action-data
-                                             :template 'anything]
+                                             :template 'anything
+                                             :position :before]
                                             [get-virtual-action-data
                                              :template '("" :label)
                                              :position :before]]
@@ -233,7 +234,8 @@
                            :render-dom render-virtual-DOM
                            :get-rendering-data get-virtual-DOM-rendering-data
                            :get-action-data [get-virtual-action-data
-                                             :template 'anything]}]]]]]]))
+                                             :template 'anything
+                                             :position :before]}]]]]]]))
     (is (check
          (run-renderer
           render-table-header-DOM {:header-id header-id

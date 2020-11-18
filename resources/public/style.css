@@ -639,7 +639,7 @@ body {
     font-size: 115%
 }
 
-.query-condition.horizontal-labels-element > .horizontal-stack {
+.query-condition.horizontal-labels-element > *:nth-child(2) {
     margin-left: 10px;
 }
 

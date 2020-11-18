@@ -596,13 +596,7 @@
                        :get-action-data [(virt-AD)
                                          :template '("" ("single" :label))]
                        :width 0.75}]
-          (any) (any) (any) (any) (any) (any)
-          [:component {:relative-id :virtualColumn
-                       :class "table-cell"
-                       :render-dom (virt-DOM)
-                       :get-rendering-data (virt-RD)
-                       :get-action-data [(virt-AD) :template ""]
-                       :width 0.75}]]))
+          (any) (any) (any) (any) (any) (any)]))
 
     ;; Check rendering the overall table, given the header id.
     (is (check

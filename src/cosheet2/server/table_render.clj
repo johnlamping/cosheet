@@ -371,7 +371,9 @@
 (defn render-table-virtual-row-DOM
   "Generate dom for a table's virtual row."
   [{:keys [template]} column-descriptions]
-  (let [cells (map table-virtual-row-cell-DOM-component column-descriptions)]
+  (let [cells (map table-virtual-row-cell-DOM-component
+                   ;; Don't make a cell for the virtual column.
+                   (butlast column-descriptions))]
     (into [:div {:class "table-row"}] cells)))
 
 (defmethod print-method

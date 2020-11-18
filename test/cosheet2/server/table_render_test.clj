@@ -45,10 +45,17 @@
 (def o7 (nth orderables 6))
 (def o8 (nth orderables 7))
 
+;;; We make functions that abbreviate the common functions that can be
+;;; embedded in components.
+;;; (We use functions, rather than constants, so this file doesn't have
+;;; to be reloaded if any of the files that defines the underlying
+;;; functions is reloaded.)
+
 (defn virt-DOM [] render-virtual-DOM)
 (defn cell-DOM [] render-table-cell-DOM)
 
 (defn cell-RD [] get-table-cell-rendering-data)
+(defn virt-RD [] get-virtual-DOM-rendering-data)
 
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
@@ -57,8 +64,6 @@
 (defn virt-AD [] get-virtual-action-data)
 (defn col-AD [] get-column-action-data)
 (defn row-AD [] get-row-action-data)
-
-(def virt-RD get-virtual-DOM-rendering-data)
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -180,6 +185,8 @@
         joe-row (run-renderer
                  render-table-row-DOM (second joe-row-component)
                  get-table-row-rendering-data store)]
+
+    ;; Check the top level condition
     (is (check
          (run-renderer
           render-table-condition-DOM {:header-id header-id}
@@ -236,6 +243,8 @@
                            :get-action-data [get-virtual-action-data
                                              :template 'anything
                                              :position :before]}]]]]]]))
+
+    ;; Check the header
     (is (check
          (run-renderer
           render-table-header-DOM {:header-id header-id
@@ -275,7 +284,7 @@
                           :relative-id [c2-id :nested]
                           :class "label merge-with-parent"
                           :render-dom (virt-DOM)
-                          :get-rendering-data virt-RD}]
+                          :get-rendering-data (virt-RD)}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
                            [(col-AD) header-id [c2-id]]
@@ -304,7 +313,7 @@
                           :relative-id [c4-id :nested]
                           :class "label merge-with-parent"
                           :render-dom (virt-DOM)
-                          :get-rendering-data virt-RD}]
+                          :get-rendering-data (virt-RD)}]
              [:div {:class "indent-wrapper label"}
               [:component {:get-column-action-data
                            [(col-AD) header-id [c4-id]]
@@ -332,7 +341,7 @@
                         :class "label"
                         :relative-id [c6-id :nested]
                         :render-dom (virt-DOM)
-                        :get-rendering-data virt-RD}]
+                        :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-column-action-data
                          [(col-AD) header-id [c6-id]]
@@ -352,7 +361,7 @@
                         :class "label"
                         :relative-id [c7-id :nested]
                         :render-dom (virt-DOM)
-                        :get-rendering-data virt-RD}]
+                        :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
             [:component {:get-column-action-data
                          [(col-AD) header-id [c7-id]]
@@ -370,7 +379,7 @@
                           :position :before]]
                         :class "label"
                         :render-dom (virt-DOM)
-                        :get-rendering-data virt-RD}]
+                        :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper"}
             [:component {:relative-id :virtual-column
                          :template '(anything :column)
@@ -380,7 +389,9 @@
                           [(virt-AD) :template '(anything :column)
                            :sibling true]]
                          :render-dom (virt-DOM)
-                         :get-rendering-data virt-RD}]]]]))
+                         :get-rendering-data (virt-RD)}]]]]))
+
+    ;; Check the column descriptions
     (is (check
          column-descriptions
          [{:column-id c1-id
@@ -412,6 +423,8 @@
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
           (any) (any) (any) (any) (any)]))
+
+   ;; Check making one row component
     (is (check
          joe-row-component
          [:component {:relative-id joe-id
@@ -423,6 +436,36 @@
                       :get-row-action-data
                       [get-row-action-data
                        joe-id '("" :top-level ("age" :label))]}]))
+
+    ;; Check rendering the list of rows.
+    (is (check
+         (run-renderer render-table-rows-DOM
+                       {:relative-id :body
+                        :header-id header-id
+                        :priority 1
+                        :column-descriptions-R column-descriptions
+                        :row-template-R 'foo
+                        :row-ids-R [joe-id]}
+                       get-table-rows-rendering-data store)
+         [:div {:class "table-rows"}
+          [:component {:relative-id joe-id
+                       :class "table-row"
+                       :header-id header-id
+                       :priority 3
+                       :column-descriptions-R column-descriptions
+                       :render-dom render-table-row-DOM
+                       :get-rendering-data get-table-row-rendering-data
+                       :get-row-action-data [(row-AD) joe-id 'foo]}]
+          [:component {:relative-id :virtual-row
+                       :class "table-row"
+                       :column-descriptions-R (any)
+                       :render-dom render-table-virtual-row-DOM
+                       :get-rendering-data get-table-virtual-row-rendering-data
+                       :item-id joe-id :sibling true
+                       :get-action-data [(comp-AD) (item-AD)
+                                         [(virt-AD) :template 'foo]]}]]))
+
+    ;; Check rendering a row
     (is (check
          joe-row
          [:div {}
@@ -479,28 +522,12 @@
                        :relative-id :virtual
                        :template ""
                        :render-dom (virt-DOM)
-                       :get-rendering-data virt-RD
+                       :get-rendering-data (virt-RD)
                        :get-action-data
                        [get-virtual-column-cell-action-data header-id]
                        :class "table-cell has-border virtual-column"}]]))
-    (is (check
-         (run-renderer render-table-rows-DOM
-                       {:relative-id :body
-                        :header-id header-id
-                        :priority 1
-                        :column-descriptions-R column-descriptions
-                        :row-template-R 'foo
-                        :row-ids-R [joe-id]}
-                       get-table-rows-rendering-data store)
-         [:div {:class "table-rows"}
-          [:component {:relative-id joe-id
-                       :class "table-row"
-                       :header-id header-id
-                       :priority 3
-                       :column-descriptions-R column-descriptions
-                       :render-dom render-table-row-DOM
-                       :get-rendering-data get-table-row-rendering-data
-                       :get-row-action-data [(row-AD) joe-id 'foo]}]]))
+
+    ;; Check a rendering cells in a row
     (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 2))
@@ -511,7 +538,7 @@
            :relative-id :virtual
            :template '("" ("single" :label))
            :render-dom (virt-DOM)
-           :get-rendering-data virt-RD
+           :get-rendering-data (virt-RD)
            :get-action-data [(virt-AD) :template '("" ("single" :label))]}]))
     (is (check
          (run-renderer
@@ -527,7 +554,7 @@
                         :get-action-data [(comp-AD) [(ids-AD) [joe-joe-id]]
                                           [(virt-AD) :template '("" :label)]]
                         :render-dom (virt-DOM)
-                        :get-rendering-data virt-RD
+                        :get-rendering-data (virt-RD)
                         :class "label"}]
            [:component {:priority 2
                         :relative-id joe-joe-id
@@ -556,6 +583,28 @@
                                               "name" joe-joseph)))
                             (:item-id (first (matching-elements
                                               "id" joe-joseph)))])}]]]]))
+
+    ;; Check rendering the virtual row
+    (is (check
+         (render-table-virtual-row-DOM {:template'(:row :top-level)}
+                                       column-descriptions)
+         [:div {:class "table-row"}
+          [:component {:relative-id c1-id
+                       :class "table-cell"
+                       :render-dom (virt-DOM)
+                       :get-rendering-data (virt-RD)
+                       :get-action-data [(virt-AD)
+                                         :template '("" ("single" :label))]
+                       :width 0.75}]
+          (any) (any) (any) (any) (any) (any)
+          [:component {:relative-id :virtualColumn
+                       :class "table-cell"
+                       :render-dom (virt-DOM)
+                       :get-rendering-data (virt-RD)
+                       :get-action-data [(virt-AD) :template ""]
+                       :width 0.75}]]))
+
+    ;; Check rendering the overall table, given the header id.
     (is (check
           (run-renderer
            render-ready-table-DOM {:relative-id header-id}
@@ -591,6 +640,8 @@
               :render-dom render-table-rows-DOM
               :get-rendering-data get-table-rows-rendering-data
               :get-action-data [(ids-AD) nil]}]]]))
+
+    ;; Check getting the header id.
     (is (check
          (run-renderer
           render-table-DOM {:relative-id joe-id}

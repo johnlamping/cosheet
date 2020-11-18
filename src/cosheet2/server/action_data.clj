@@ -173,6 +173,8 @@
   [v ^java.io.Writer w]
   (.write w "pass-AD"))
 
+;;; TODO: Make this take a map as a final argument rather than keyword
+;;; arguments.
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,

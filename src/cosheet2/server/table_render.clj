@@ -41,11 +41,14 @@
                                   labels-and-elements-DOM
                                   non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
-             [action-data :refer [get-item-or-exemplar-action-data-for-ids
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
                                   get-pass-through-action-data
                                   get-column-action-data
                                   get-row-action-data
-                                  get-virtual-column-cell-action-data]])))
+                                  get-virtual-action-data
+                                  get-virtual-column-cell-action-data
+                                  composed-get-action-data]])))
 
 (comment
 
@@ -292,44 +295,6 @@
   [v ^java.io.Writer w]
   (.write w "cell-DOM"))
 
-(defn table-virtual-row-cell-DOM-component
-  [{:keys [column-id query width] :as column-description}]
-  (make-component
-   {:relative-id column-id
-    :template (query-to-template query)
-    :class "table-cell"
-    :render-dom render-virtual-DOM
-    :get-rendering-data get-virtual-DOM-rendering-data
-    :get-action-data get-pass-through-action-data
-    :width width}))
-
-(defn render-table-virtual-row-DOM
-  "Generate dom for a table's virtual row."
-  [{:keys [template column-descriptions]}]
-  (let [cells (map table-virtual-row-cell-DOM-component column-descriptions)]
-    (into [:div {:class "table-row"}] cells)))
-
-(defmethod print-method
-  cosheet2.server.table_render$render_table_virtual_row_DOM
-  [v ^java.io.Writer w]
-  (.write w "virt-row-DOM"))
-
-;;; TODO: Define and move to action-data.
-(def get-virtual-row-action-data)
-
-(defn table-virtual-row-DOM-component
-  "Generate  component for a table's virtual row."
-    [new-row-template last-row-id column-descriptions]
-    (make-component
-     {:relative-id :virtual-row
-      :template new-row-template
-      :class "table-row"
-      :last-row-id last-row-id
-      :column-descriptions column-descriptions
-      :render-dom render-table-virtual-row-DOM
-      :get-rendering-data get-virtual-DOM-rendering-data
-      :get-action-data get-virtual-row-action-data} ))
-
 (defn table-cell-DOM-component
   "Return a component for one cell of a table, given its row item and
   column description.  We need to put each table cell in a component,
@@ -388,24 +353,67 @@
           :get-rendering-data get-table-row-rendering-data
           :get-row-action-data [get-row-action-data row-id row-template])))
 
+(defn table-virtual-row-cell-DOM-component
+  [{:keys [column-id query width] :as column-description}]
+  (make-component
+   {:relative-id column-id 
+    :class "table-cell"
+    :render-dom render-virtual-DOM
+    :get-rendering-data get-virtual-DOM-rendering-data
+    :get-action-data [get-virtual-action-data
+                      :template (query-to-template query)]
+    :width width}))
+
+(defn get-table-virtual-row-rendering-data
+  [{:keys [column-descriptions-R]} mutable-store]
+  [[column-descriptions-R [universal-category]]])
+
+(defn render-table-virtual-row-DOM
+  "Generate dom for a table's virtual row."
+  [{:keys [template]} column-descriptions]
+  (let [cells (map table-virtual-row-cell-DOM-component column-descriptions)]
+    (into [:div {:class "table-row"}] cells)))
+
+(defmethod print-method
+  cosheet2.server.table_render$render_table_virtual_row_DOM
+  [v ^java.io.Writer w]
+  (.write w "virt-row-DOM"))
+
+(defn table-virtual-row-DOM-component
+  "Generate the component for a table's virtual row."
+  [row-template adjacent-id column-descriptions-R]
+    (make-component
+     {:relative-id :virtual-row
+      :class "table-row"
+      :column-descriptions-R column-descriptions-R
+      :render-dom render-table-virtual-row-DOM
+      :get-rendering-data get-table-virtual-row-rendering-data
+      :item-id adjacent-id
+      :sibling true
+      :get-action-data [composed-get-action-data
+                        get-item-or-exemplar-action-data
+                        [get-virtual-action-data
+                         :template row-template]]}))
+
 (defn get-table-rows-rendering-data
   [{:keys [row-template-R row-ids-R]} mutable-store]
   [[row-template-R [universal-category]]
    [row-ids-R [universal-category]]])
 
 (defn render-table-rows-DOM
-  "The specification must have column-descriptions-R row-template-R
-  and row-ids-R."
+  "The specification must have header-id, column-descriptions-R
+  row-template-R and row-ids-R."
   [specification row-template row-ids]
   ;; We pass on column-descriptions-R from our spec
   (let [row-spec (-> specification
                      (dissoc :row-template-R :row-ids-R :get-action-data)
                      (update :priority (partial + 2)))]
     (into [:div {:class "table-rows"}]
-          (map #(table-row-component % row-template row-spec)
-               row-ids)
-          ;; TODO: Concat in a virtual row
-          )))
+          (concat (map #(table-row-component % row-template row-spec)
+                       row-ids)
+                  [(table-virtual-row-DOM-component
+                    row-template (or (last row-ids) (:header-id specification))
+                    (:column-descriptions-R specification))]))))
 
 (defn table-header-entity-R
   [header-id mutable-store]

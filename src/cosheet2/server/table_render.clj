@@ -120,44 +120,6 @@
               {:batch-edit-ids (map #(:item-id (:item %))
                                     (hierarchy-node-descendants node))}])))))
 
-  (defn table-virtual-row-cell-DOM
-    "Return the dom for one cell of a virtual row of a table."
-    [adjacent-referent
-     {:keys [column-id template]} ;; A column header description
-     inherited]
-    (let [select (conj (vec (butlast (:key-prefix inherited)))
-                       [:pattern :subject] ;; The new row's id
-                       column-id
-                       [:pattern])
-          inherited (assoc inherited
-                           :key-prefix (conj (:key-prefix inherited) column-id)
-                           :template template
-                           :select-pattern select)]
-      (add-attributes
-       (virtual-element-DOM adjacent-referent :after inherited)
-       {:class "table-cell has-border"})))
-
-  (defn table-virtual-row-DOM
-    "Generate dom for a table's virtual row."
-    [row-key new-row-template adjacent-referent column-descriptions inherited]
-    (let [inherited (-> inherited
-                        (assoc :key-prefix row-key)
-                        (update :subject-referent
-                                #(virtual-referent
-                                  new-row-template % adjacent-referent)))
-          cells (map #(table-virtual-row-cell-DOM
-                       adjacent-referent % inherited) column-descriptions)]
-      (into [:div {}] cells)))
-
-  (defn table-virtual-row-DOM-component
-    "Generate a component for a table row."
-    [new-row-template adjacent-referent column-descriptions inherited]
-    (let [row-key (conj (:key-prefix inherited) :virtualRow)]
-      (make-component
-       {:key row-key :class "table-row"}
-       [table-virtual-row-DOM
-        row-key new-row-template adjacent-referent column-descriptions
-        inherited])))
 )
 
 ;;; The condition elements of a table are its semantic elements
@@ -292,8 +254,6 @@
            :get-action-data [get-virtual-column-cell-action-data header-id]))
    {:class "table-cell virtual-column has-border"}))
 
-;;; TODO: Make all the renderers end in -DOM.
-
 (defn get-table-cell-rendering-data
   [specification mutable-store]
   [[mutable-store [(:row-id specification)]]])
@@ -332,6 +292,44 @@
   [v ^java.io.Writer w]
   (.write w "cell-DOM"))
 
+(defn table-virtual-row-cell-DOM-component
+  [{:keys [column-id query width] :as column-description}]
+  (make-component
+   {:relative-id column-id
+    :template (query-to-template query)
+    :class "table-cell"
+    :render-dom render-virtual-DOM
+    :get-rendering-data get-virtual-DOM-rendering-data
+    :get-action-data get-pass-through-action-data
+    :width width}))
+
+(defn render-table-virtual-row-DOM
+  "Generate dom for a table's virtual row."
+  [{:keys [template column-descriptions]}]
+  (let [cells (map table-virtual-row-cell-DOM-component column-descriptions)]
+    (into [:div {:class "table-row"}] cells)))
+
+(defmethod print-method
+  cosheet2.server.table_render$render_table_virtual_row_DOM
+  [v ^java.io.Writer w]
+  (.write w "virt-row-DOM"))
+
+;;; TODO: Define and move to action-data.
+(def get-virtual-row-action-data)
+
+(defn table-virtual-row-DOM-component
+  "Generate  component for a table's virtual row."
+    [new-row-template last-row-id column-descriptions]
+    (make-component
+     {:relative-id :virtual-row
+      :template new-row-template
+      :class "table-row"
+      :last-row-id last-row-id
+      :column-descriptions column-descriptions
+      :render-dom render-table-virtual-row-DOM
+      :get-rendering-data get-virtual-DOM-rendering-data
+      :get-action-data get-virtual-row-action-data} ))
+
 (defn table-cell-DOM-component
   "Return a component for one cell of a table, given its row item and
   column description.  We need to put each table cell in a component,
@@ -341,21 +339,21 @@
   [row-id
    {:keys [column-id query disqualifications width] :as column-description}
    specification]
-    (if (= column-id :virtualColumn)
-      (table-virtual-column-cell-DOM-component
-       (:header-id column-description) (assoc specification :width width))
-      (make-component
-       (cond-> (assoc specification
-                      :relative-id column-id
-                      :row-id row-id
-                      :query query
-                      :class "table-cell"
-                      :render-dom render-table-cell-DOM
-                      :get-rendering-data get-table-cell-rendering-data
-                      :get-action-data get-pass-through-action-data
-                      :width width)
-         disqualifications
-         (assoc :disqualifications disqualifications)))))
+  (if (= column-id :virtualColumn)
+    (table-virtual-column-cell-DOM-component
+     (:header-id column-description) (assoc specification :width width))
+    (make-component
+     (cond-> (assoc specification
+                    :relative-id column-id
+                    :row-id row-id
+                    :query query
+                    :class "table-cell"
+                    :render-dom render-table-cell-DOM
+                    :get-rendering-data get-table-cell-rendering-data
+                    :get-action-data get-pass-through-action-data
+                    :width width)
+       disqualifications
+       (assoc :disqualifications disqualifications)))))
 
 (defn get-table-row-rendering-data
   [{:keys [relative-id column-descriptions-R]} mutable-store]

@@ -341,10 +341,9 @@
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
     (when (not= answer {})
-      (let [stripped (update
-                      answer :doms
-                      #(map (fn [dom] (:id (dom-attributes dom)))
-                            %))]
+      (let [stripped (update answer :doms
+                             #(map (fn [dom] (:id (dom-attributes dom)))
+                                   %))]
         (println (now-string) "response" stripped)))
     (response answer)))
 

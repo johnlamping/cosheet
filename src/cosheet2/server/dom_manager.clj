@@ -579,57 +579,60 @@
                 dom)))
     dom))
 
-(defn find-non-elided-dom
-  "Find the non-elided dom corresponding to the given dom. Return the
-  non-elided dom and the version of the containing dom."
-  [component-atom]
-  (let [{:keys [dom dom-version id->subcomponent]} @component-atom]
+(defn longer-string
+  [s1 s2]
+  (if (>= (count s1) (count s2)) s1 s2))
+
+(defn component-is-monitored?
+  "Return true if the component targets one of the monitored ids, or
+  shows the content of one of them. This function doesn't go through
+  elided components."
+  [component-atom monitored-ids]
+  (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
+    (when-let [target (or item-id relative-id)]
+      (if (= target :content)
+        (component-is-monitored?
+         (:containing-component @component-atom) monitored-ids)
+        (some #{target} monitored-ids)))))
+
+(defn find-displayed-dom
+  "Find the displayed dom corresponding to the given dom. (The first
+  non-component after chasing elided doms downward.) Return:
+     the displayed dom, with all classes along the path added,
+     the version of the containing dom,
+     whether some dom in the path displays a monitored id."
+  [component-atom monitored-ids]
+  (let [{:keys [dom dom-version id->subcomponent]} @component-atom
+        monitored (component-is-monitored? component-atom monitored-ids)]
     (when dom
       (if (= (first dom) :component)
         (let [class-attribute (select-keys (dom-attributes dom) [:class])
-              [contained-dom _] (find-non-elided-dom
-                                 (first (vals id->subcomponent))) ]
+              [inner-dom _ inner-monitored] (find-displayed-dom
+                                             (first (vals id->subcomponent))
+                                             monitored-ids)]
           (assert (= (count id->subcomponent) 1))
-          [(add-attributes contained-dom class-attribute) dom-version])
-        [dom dom-version]))))
+          [(add-attributes inner-dom class-attribute)
+           dom-version
+           (or monitored inner-monitored)])
+        [dom dom-version monitored]))))
 
 (defn prepare-dom-for-client
-  "Given a component-atom, prepare its dom to send to the client."
-  [component-atom]
-  (let [[dom dom-version] (find-non-elided-dom component-atom)]
+  "Given a component-atom, prepare its dom to send to the client. Also
+  return whether it presents one of the monitored ids."
+  [component-atom monitored-ids]
+  (let [[dom dom-version monitored] (find-displayed-dom
+                                     component-atom monitored-ids)]
     (when dom
       (let [client-id (component->client-id component-atom)
             class (:class (second dom))
             added (add-attributes dom (cond-> {:id client-id
                                                :version dom-version}
                                         class (assoc :class class)))]
-        (into [(first added)
-               (second added)]
-              (map (partial adjust-subdom-for-client client-id)
-                   (rest (rest added))))))))
-
-(defn component-is-monitored?
-  "Return true if the component targets one of the monitored ids."
-  [component-atom monitored-ids]
-  (let [{:keys [item-id relative-id]} (:dom-specification @component-atom)]
-    (when-let [target (or item-id relative-id)]
-      (some #{target} monitored-ids))))
-
-(defn get-monitored-client-id
-  "If the component's target is one of the monitored ids, or the
-  content of one of them, return the client id of the component."
-  [component-atom monitored-ids]
-  (when monitored-ids
-    (let [{:keys [ relative-id]} (:dom-specification @component-atom)]
-      (when (if (= relative-id :content)
-              (component-is-monitored?
-               (:containing-component @component-atom) monitored-ids)
-              (component-is-monitored? component-atom monitored-ids))
-        (component->client-id component-atom)))))
-
-(defn longer-string
-  [s1 s2]
-  (if (>= (count s1) (count s2)) s1 s2))
+        [(into [(first added)
+                 (second added)]
+                (map (partial adjust-subdom-for-client client-id)
+                     (rest (rest added))))
+         monitored]))))
 
 (defn get-response-doms
   "Return a seq of doms for the client containing up to num components.
@@ -649,11 +652,11 @@
           [response
            monitored-client-id]]
          (let [[component & remaining-components] components
-               dom (prepare-dom-for-client component)]
+               [dom monitored] (prepare-dom-for-client component monitored-ids)]
            (recur (if dom (conj response dom) response)
                   (longer-string
                    monitored-client-id
-                   (get-monitored-client-id component monitored-ids))
+                   (when monitored (component->client-id component)))
                   (max highest-version
                        (if dom (:version (dom-attributes dom)) 0))
                   remaining-components)))))))

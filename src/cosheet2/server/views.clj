@@ -330,18 +330,26 @@
   ;; Note: We must get the doms after doing the actions, so we can
   ;; immediately show the response to the actions. Likewise, we
   ;; want to have done some computation, so if we need to send back
-  ;; a select request, the dom we want to select will be going to
-  ;; the client.
+  ;; a select request, the dom we want to select will be more likely to be
+  ;; going to the client.
   (let [in-sync (map-state-get-current client-state :in-sync)
-        {:keys [select select-store-ids if-selected]} client-info
-        [doms select-id] (when in-sync
-                           (get-response-doms dom-manager select-store-ids 100))
+        {:keys [select if-selected]} client-info
+        select-store-ids (map-state-get-current
+                          client-state :select-store-ids)
+        [doms store-select] (when in-sync
+                              (get-response-doms
+                               dom-manager select-store-ids 100))
+        if-selected (if select
+                      if-selected
+                      (map-state-get-current client-state :if-selected))
+        select (or select store-select)
         answer (cond-> (select-keys client-info [:open :set-url])
                  (seq doms) (assoc :doms doms)
-                 select-id (assoc :select [select-id if-selected])
                  select (assoc :select [select if-selected])
                  (not in-sync) (assoc :reset-versions true)
                  actions (assoc :acknowledge (vec (keys actions))))]
+    (when select (map-state-reset! client-state {:select-store-ids nil
+                                                 :if-selected nil}))
     (when (not= answer {})
       (let [stripped (update answer :doms
                              #(map (fn [dom] (:id (dom-attributes dom)))
@@ -389,7 +397,12 @@
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
-            
+            (when (:select-store-ids client-info)
+              (map-state-reset!
+               client-state
+               (into {:if-selected nil}
+                     (select-keys client-info
+                                  [:select-store-ids :if-selected]))))
             (compute calculator-data 1000)
             ;; If we have no doms ready for the client yet, try computing
             ;; some more.

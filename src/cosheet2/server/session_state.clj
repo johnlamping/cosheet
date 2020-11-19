@@ -302,6 +302,13 @@
 ;;;            :batch-editing  If true, we are batch editing, and showing
 ;;;                            the batch edit window, rather than whatever
 ;;;                            :root-id says we should show.
+;;;         :select-store-ids  A seq of store ids, such that we would
+;;;                            like to send a select request to the
+;;;                            client as soon as we have sent it a dom
+;;;                            that shows one of them.
+;;;              :if-selected  A seq of client ids, one of which must
+;;;                            currently be selected by the client for
+;;;                            select-store-ids to have an effect.
 ;;;                :last-time  The last time we accessed this session.
 ;;;                  :in-sync  True if the client is ready to accept doms.
 ;;;              :last-action  The action id of the last action we did.
@@ -346,8 +353,8 @@
 
 (defn get-session-state [session-id]
   (when-let [state ((:sessions @session-info) session-id)]
-    (map-state-reset! (:client-state state) :last-time
-                      (System/currentTimeMillis))
+    (map-state-reset! (:client-state state)
+                      {:last-time (System/currentTimeMillis)})
     state))
 
 (defn prune-old-sessions [delay-millis]

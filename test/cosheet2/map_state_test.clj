@@ -10,7 +10,7 @@
                                          reporter-value set-value!
                                          reporter-data
                                          set-attendee!]]
-                      [test-utils :refer [check any]])
+                      [test-utils :refer [check any as-set]])
             ; :reload
             ))
 
@@ -60,20 +60,18 @@
                 [:ra 2]
                 [:rb invalid]
                 [:rb 11]]))
-    (map-state-reset! ms :c 5)
+    (map-state-reset! ms {:a 3 :c 5})
     (is (= (map-state-get-current ms :c) 5))
     (compute cd)
-    (is (check @history
-               [(any) (any) (any) (any) (any) (any)
-                (any) (any) (any)
-                [:rc invalid]
-                [:rc 5]]))
+    (is (check (nthrest @history 9)
+               (as-set [[:ra invalid]
+                        [:rc invalid]
+                        [:ra 3]
+                        [:rc 5]])))
     (is (= (map-state-change-value-control-return!
             ms :c (fn [x] [[x "hi"] "there"]))
            "there"))
     (compute cd)
-    (is (check @history
-               [(any) (any) (any) (any) (any) (any)
-                (any) (any) (any) (any) (any) 
-                [:rc invalid]
+    (is (check (nthrest @history 13)
+               [[:rc invalid]
                 [:rc [5 "hi"]]]))))

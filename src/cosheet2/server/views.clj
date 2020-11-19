@@ -250,8 +250,10 @@
              (let [new-store (data-to-store (current-store store) content)]
                (store-reset! store new-store))
              (compute calculator-data 100000))
-    :opened (map-state-reset! (:client-state session-state) :last-action 0)
-    :initialize (map-state-reset! (:client-state session-state) :last-action 0)
+    :opened (map-state-reset! (:client-state session-state)
+                              {:last-action 0})
+    :initialize (map-state-reset! (:client-state session-state)
+                                  {:last-action 0})
     :request (replay-request session-state content)
     :error nil)
   (Thread/sleep 100))
@@ -376,8 +378,8 @@
         (when clean
           (println "Client is clean.")
           (request-client-refresh dom-manager)
-          (map-state-reset! client-state :in-sync true)
-          (map-state-reset! client-state :last-action nil))
+          (map-state-reset! client-state {:in-sync true
+                                          :last-action nil}))
         (when replay
           (do-replay session-state replay))
         (process-acknowledgements dom-manager acknowledge)
@@ -387,6 +389,7 @@
                               clean (assoc :set-url
                                            (remove-url-file-extension clean)))]
             (update-store-file file-path)
+            
             (compute calculator-data 1000)
             ;; If we have no doms ready for the client yet, try computing
             ;; some more.

@@ -1,7 +1,8 @@
 (ns cosheet2.map-state
   (:require (cosheet2
              [reporter :refer [new-reporter reporter-value
-                               change-data! change-data-control-return!]]
+                               change-data! change-data-control-return!
+                               change-value!]]
              [expression :refer [expr category-change]]
              [category-change-calculator :refer [category-change-calculator]])))
 
@@ -34,6 +35,10 @@
                  [key]
                  [key] result]))))
 
-(defn map-state-reset! [map-state key value]
-  (map-state-change-value! map-state key (constantly value)))
+(defn map-state-reset! [map-state map]
+  (change-value! map-state
+                 (fn [data]
+                   [(into data map)
+                    (vec (keys map))
+                    (vec (keys map))])))
 

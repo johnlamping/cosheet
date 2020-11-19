@@ -75,7 +75,8 @@
 (def jane-age-tag (first (matching-elements "age" jane-age)))
 
 (def session-state {:session-temporary-id temporary-id
-                    :store (new-mutable-store store)})
+                    :store (new-mutable-store store)
+                    :client-state (new-map-state {})})
 
 (deftest selected-test
   (let [client-id1 "root_1"

@@ -218,7 +218,7 @@
 (defn change-value!
   "Call the function with the current value of the reporter.  It must
   return a new value, a description of the change since the last valid
-  valud, and the categories of the change. Set the value of the
+  value, and the categories of the change. Set the value of the
   reporter to the new value, and inform any attendees that care about
   any of the categories of the change."
   [r f]

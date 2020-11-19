@@ -318,7 +318,7 @@
   (defn do-quit-batch-edit
     [mutable-store session-state]
     (let [client-state (:client-state session-state)]
-      (map-state-reset! client-state :batch-editing false)))
+      (map-state-reset! client-state {:batch-editing false})))
   )
 
 (defn adjust-handler-response
@@ -401,8 +401,8 @@
                      (adjust-handler-response
                       response store))))]
             (when (contains? result :batch-editing)
-              (map-state-reset! (:client-state session-state) :batch-editing
-                                (:batch-editing result)))
+              (map-state-reset! (:client-state session-state)
+                                {:batch-editing (:batch-editing result)}))
             (dissoc result :batch-editing)))))
 
 (defn request-selection-from-store
@@ -434,6 +434,8 @@
   [mutable-store session-state client-id & _]
   (let [client-state (:client-state session-state)
         temporary-id (:session-temporary-id session-state)]
+    (map-state-reset! client-state {:select-store-ids nil
+                                    :if-selected nil})
     (store-update!
      mutable-store
      (fn [store]
@@ -446,7 +448,7 @@
   ;; handler for tabs.
   (comment
     (let [root-id (first target-ids)]
-      (do (map-state-reset! client-state :root-id root-id )
+      (do (map-state-reset! client-state {:root-id root-id})
           {:store store
            :set-url (str (:url-path session-state)
                          "?root=" (id->string root-id))}))))

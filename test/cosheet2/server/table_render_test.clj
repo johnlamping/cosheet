@@ -224,10 +224,12 @@
             ;; A virtual element for more condition.
             [:div {:class "wrapped-element label virtual-column"}
              [:component {:relative-id :virtual-label
+                          :item-id rc1-id
                           :get-action-data [composed-get-action-data
+                                            (item-AD)
                                             [get-virtual-action-data
                                              :template 'anything
-                                             :position :before]
+                                             :sibling true]
                                             [get-virtual-action-data
                                              :template '("" :label)
                                              :position :before]]
@@ -238,11 +240,14 @@
               [:component {:template 'anything
                            :width 0.75
                            :relative-id :virtual
+                           :item-id rc1-id
                            :render-dom render-virtual-DOM
                            :get-rendering-data get-virtual-DOM-rendering-data
-                           :get-action-data [get-virtual-action-data
+                           :get-action-data [composed-get-action-data
+                                            (item-AD)
+                                            [get-virtual-action-data
                                              :template 'anything
-                                             :position :before]}]]]]]]))
+                                             :sibling true]]}]]]]]]))
 
     ;; Check the header
     (is (check

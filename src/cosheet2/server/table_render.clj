@@ -4,7 +4,7 @@
                       [reporter :refer [universal-category]]
                       [entity :refer [subject content label->elements
                                       description->entity StoredEntity
-                                      updating-immutable]]
+                                      updating-immutable label?]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -145,12 +145,21 @@
         condition-elements (table-condition-elements header-entity)
         spec-down {:template 'anything
                    :width 0.75}
+        last-item (last (ordered-entities (remove label? condition-elements)))
         virtual-dom
         (add-attributes
          (virtual-entity-and-label-DOM
-          (assoc spec-down :relative-id :virtual)
+          (cond-> (assoc spec-down
+                         :relative-id :virtual)
+            ;; If we have any headers already, put the new one after
+            ;; the last of them.
+            last-item
+            (assoc :item-id (:item-id last-item)
+                   :get-action-data get-item-or-exemplar-action-data))
           :vertical
-          {:position :before})
+          (if last-item
+            {:sibling true}
+            {}))
          {:class "virtual-column"})
         dom (labels-and-elements-DOM
              condition-elements virtual-dom

@@ -190,14 +190,17 @@
    The arguments are the same as for virtual-DOM-component."
   [specification orientation action-data-arguments]
   (let [dom (virtual-DOM-component specification action-data-arguments)
+        item-id (:item-id (dom-attributes dom))
         label-template (ensure-label
                         (:template
                          (transform-specification-for-elements specification))) 
         labels-dom (virtual-DOM-component
-                    {:relative-id :virtual-label
-                     :get-action-data
-                     (:get-action-data (dom-attributes dom))
-                     :class "label"}
+                    (cond-> {:relative-id :virtual-label
+                             :get-action-data
+                             (:get-action-data (dom-attributes dom))
+                             :class "label"}
+                      item-id
+                      (assoc :item-id item-id))
                     {:template label-template
                      :position :before})]
     (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
@@ -490,7 +493,7 @@
                 (when non-labels
                   (non-label-entities-DOM
                    non-labels nil elements-must-show-labels
-                   orientation  specification))]
+                   orientation specification))]
             (nest-if-multiple-DOM
              (remove nil? [elements-dom virtual-dom]) orientation)))]
     (cond

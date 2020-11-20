@@ -765,6 +765,10 @@ body {
     min-height: 25px;
 }
 
+.column-header.wrapped-element:not(.merge-with-parent) {
+    border-bottom-left-radius: 0px;
+}
+
 .column-header.merge-with-parent {
     padding: 2px; /* positions inside stuff as if there were a border */
     margin: 0px -2px -2px 0px;

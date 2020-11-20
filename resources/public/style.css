@@ -612,31 +612,25 @@ body {
 
 /* --- tables --- */
 
-.query-holder {
+.query-condition {
     flex: none;
     display: flex;
     border-width: 2px;
-    border-bottom-width: 0px;
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
+    border-radius: 7px;
     min-width: 300px;
-    margin-bottom: 3px;
-}
-
-.query-indent {
-    width: 3px; /* Doesn't include either border */
-    background-color: transparent;
-}
-
-.query-condition {
-    border-bottom-width: 2px;
     flex: 1 0 auto;
+    position: relative;
+    box-shadow: 3px 5px 5px 0px grey;
+    margin-right: 3px;
+    margin-bottom: 3px;
+    z-index: 1;
 }
 
-.query-condition.horizontal-labels-element > *:first-child {
+.query-condition > *:first-child {
     min-width: 50px;
-    box-shadow: 7px 7px 5px 0px grey;
-    font-size: 115%
+    font-size: 115%;
+    padding-right: 10px;
+    padding-left: 6px;
 }
 
 .query-condition.horizontal-labels-element > *:nth-child(2) {
@@ -648,8 +642,7 @@ body {
     position: relative;
 }
 
-.table-header::before, .query-holder:before {
-    background-color: rgba(0, 0, 0, 0); /* transparent */
+.table-header::before, .query-condition:before {
     box-shadow: inset -5px 5px 5px 5px hsla(0, 0%, 100%, 0.6),
                 inset 5px -5px 10px 0px hsla(0, 0%, 0%, 0.2);
     display: inline-block;
@@ -692,8 +685,6 @@ body {
     background-color: hsl(0, 0%, 80%);
 }
 
-/* --- tables --- */
-
 .table {
     display: flex;
     flex-direction: column;
@@ -712,6 +703,7 @@ body {
     align-items: flex-start;
     overflow-x: auto;
     overflow-y: hidden;
+    margin-left: 3px;
 }
 
 .table-rows {

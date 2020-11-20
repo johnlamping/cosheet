@@ -191,9 +191,7 @@
          (run-renderer
           render-table-condition-DOM {:header-id header-id}
           get-table-condition-rendering-data store)
-         [:div {:class "query-holder label"}
-          [:div {:class "query-indent label"}]
-          [:div {:class "horizontal-labels-element label query-condition"}
+         [:div {:class "horizontal-labels-element label query-condition"}
            ;; A virtual label for the condition
            [:component {:template '(anything :label)
                         :relative-id :virtual-label
@@ -247,7 +245,7 @@
                                             (item-AD)
                                             [get-virtual-action-data
                                              :template 'anything
-                                             :sibling true]]}]]]]]]))
+                                             :sibling true]]}]]]]]))
 
     ;; Check the header
     (is (check

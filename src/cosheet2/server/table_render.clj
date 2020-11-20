@@ -164,9 +164,7 @@
         dom (labels-and-elements-DOM
              condition-elements virtual-dom
              true true :horizontal spec-down)]
-    [:div {:class "query-holder label"}
-     [:div {:class "query-indent label"}]
-     (add-attributes dom {:class "query-condition"})]))
+    (add-attributes dom {:class "query-condition"})))
 
 (defn is-label-template?
   "Return true if the template describes a label."

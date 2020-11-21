@@ -368,7 +368,7 @@
     :render-dom render-virtual-DOM
     :get-rendering-data get-virtual-DOM-rendering-data
     :get-action-data [get-virtual-action-data
-                      :template (query-to-template query)]
+                      {:template (query-to-template query)}]
     :width width}))
 
 (defn get-table-virtual-row-rendering-data
@@ -402,7 +402,7 @@
       :get-action-data [composed-get-action-data
                         get-item-or-exemplar-action-data
                         [get-virtual-action-data
-                         :template row-template]]}))
+                         {:template row-template}]]}))
 
 (defn get-table-rows-rendering-data
   [{:keys [row-template-R row-ids-R]} mutable-store]

@@ -138,7 +138,7 @@
 (deftest get-virtual-action-data-test
   (let [data (get-virtual-action-data
               {} {:target-ids [joe-id]} nil store
-              :template 'anything)]
+              {:template 'anything})]
     (is (check data {:target-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
@@ -151,7 +151,7 @@
              ""))))
   (let [data (get-virtual-action-data
               {} {:target-ids [jane-id joe-id]} nil store
-              :template 'anything)]
+              {:template 'anything})]
     (is (check data {:target-ids [(any) (any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
@@ -165,7 +165,9 @@
                  'anything ))))
   (let [data (get-virtual-action-data
               {} {:target-ids [(:item-id joe-age)]} nil store
-               :template 'anything :sibling true :position :before)]
+              {:template 'anything
+               :sibling true
+               :position :before})]
     (is (check data {:target-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store

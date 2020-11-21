@@ -25,10 +25,12 @@
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
-;;;      :column      A map of {:target-ids
+;;;          :column  A map of {:target-ids
 ;;;                             :header-id}
-;;;         :row      A map of {:row-id
+;;;             :row  A map of {:row-id
 ;;;                             :row-template}
+;;;          :tab-id  The id of the tab that this component belonds to.
+;;;                   For a virtual tab, the value is :virtual.
 ;;;           :store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they imply.
@@ -52,7 +54,7 @@
   "Update the action data for one component"
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        {:keys [get-action-data
+        {:keys [get-action-data get-tab-action-data
                 get-column-action-data get-row-action-data]} spec 
         data (reduce (fn [data getter]
                        (if getter
@@ -173,8 +175,6 @@
   [v ^java.io.Writer w]
   (.write w "pass-AD"))
 
-;;; TODO: Make this take a map as a final argument rather than keyword
-;;; arguments.
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The containing data's target-ids are the subject of the new items,
@@ -184,7 +184,7 @@
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
   [specification containing-action-data action immutable-store
-   & {:keys [template sibling position use-bigger]}]
+   {:keys [template sibling position use-bigger]}]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
         subjects (if sibling
@@ -245,12 +245,12 @@
          {}
          {:target-ids [last-column-id]}
          action immutable-store
-         :sibling true
-         :template (concat table-header-template ['(??? :label)]))
+         {:sibling true
+          :template (concat table-header-template ['(??? :label)])})
         new-column-id (first target-ids)
         template (semantic-to-list (description->entity new-column-id store))]
     (get-virtual-action-data
-     {} containing-action-data action store :template template)))
+     {} containing-action-data action store {:template template})))
 
 (defmethod print-method
   cosheet2.server.action_data$get_virtual_column_cell_action_data

@@ -199,9 +199,9 @@
                         :class "label"
                         :render-dom render-virtual-DOM
                         :get-rendering-data get-virtual-DOM-rendering-data
-                        :get-action-data [get-virtual-action-data
-                                          :template '(anything :label)
-                                          :position :after]}]
+                        :get-action-data [(virt-AD)
+                                          {:template '(anything :label)
+                                           :position :after}]}]
            ;; The condition element.
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
@@ -225,12 +225,12 @@
                           :item-id rc1-id
                           :get-action-data [composed-get-action-data
                                             (item-AD)
-                                            [get-virtual-action-data
-                                             :template 'anything
-                                             :sibling true]
-                                            [get-virtual-action-data
-                                             :template '("" :label)
-                                             :position :before]]
+                                            [(virt-AD)
+                                             {:template 'anything
+                                              :sibling true}]
+                                            [(virt-AD)
+                                             {:template '("" :label)
+                                              :position :before}]]
                           :class "label"
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data}]
@@ -243,9 +243,9 @@
                            :get-rendering-data get-virtual-DOM-rendering-data
                            :get-action-data [composed-get-action-data
                                             (item-AD)
-                                            [get-virtual-action-data
-                                             :template 'anything
-                                             :sibling true]]}]]]]]))
+                                             [(virt-AD)
+                                              {:template 'anything
+                                               :sibling true}]]}]]]]]))
 
     ;; Check the header
     (is (check
@@ -283,7 +283,7 @@
                           :template '(anything :label)
                           :get-action-data
                           [(comp-AD) [(ids-AD) [c2-id]]
-                           [(virt-AD) :template '(anything :label)]]
+                           [(virt-AD) {:template '(anything :label)}]]
                           :relative-id [c2-id :nested]
                           :class "label merge-with-parent"
                           :render-dom (virt-DOM)
@@ -312,7 +312,7 @@
                           :template '(anything :label)
                           :get-action-data
                           [(comp-AD) [(ids-AD) [c4-id]]
-                           [(virt-AD) :template '(anything :label)]]
+                           [(virt-AD) {:template '(anything :label)}]]
                           :relative-id [c4-id :nested]
                           :class "label merge-with-parent"
                           :render-dom (virt-DOM)
@@ -340,7 +340,7 @@
                         :template '(anything :label)
                         :get-action-data
                         [(comp-AD) [(ids-AD) [c6-id]]
-                         [(virt-AD) :template '(anything :label)]]
+                         [(virt-AD) {:template '(anything :label)}]]
                         :class "label"
                         :relative-id [c6-id :nested]
                         :render-dom (virt-DOM)
@@ -360,7 +360,7 @@
                         :template '(anything :label)
                         :get-action-data
                         [(comp-AD) [(ids-AD) [c7-id]]
-                         [(virt-AD) :template '(anything :label)]]
+                         [(virt-AD) {:template '(anything :label)}]]
                         :class "label"
                         :relative-id [c7-id :nested]
                         :render-dom (virt-DOM)
@@ -376,10 +376,10 @@
            [:component {:relative-id :virtual-label
                         :get-action-data
                         [(comp-AD) [(ids-AD) [c7-id]]
-                         [(virt-AD) :template '(anything :column)
-                          :sibling true]
-                         [(virt-AD) :template '("" :label)
-                          :position :before]]
+                         [(virt-AD) {:template '(anything :column)
+                                     :sibling true}]
+                         [(virt-AD) {:template '("" :label)
+                                     :position :before}]]
                         :class "label"
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)}]
@@ -389,8 +389,8 @@
                          :width 0.75
                          :get-action-data
                          [(comp-AD) [(ids-AD) [c7-id]]
-                          [(virt-AD) :template '(anything :column)
-                           :sibling true]]
+                          [(virt-AD) {:template '(anything :column)
+                                      :sibling true}]]
                          :render-dom (virt-DOM)
                          :get-rendering-data (virt-RD)}]]]]))
 
@@ -466,7 +466,7 @@
                        :get-rendering-data get-table-virtual-row-rendering-data
                        :item-id joe-id :sibling true
                        :get-action-data [(comp-AD) (item-AD)
-                                         [(virt-AD) :template 'foo]]}]]))
+                                         [(virt-AD) {:template 'foo}]]}]]))
 
     ;; Check rendering a row
     (is (check
@@ -542,7 +542,7 @@
            :template '("" ("single" :label))
            :render-dom (virt-DOM)
            :get-rendering-data (virt-RD)
-           :get-action-data [(virt-AD) :template '("" ("single" :label))]}]))
+           :get-action-data [(virt-AD) {:template '("" ("single" :label))}]}]))
     (is (check
          (run-renderer
           render-table-cell-DOM (second (nth joe-row 3))
@@ -555,7 +555,7 @@
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]
                         :get-action-data [(comp-AD) [(ids-AD) [joe-joe-id]]
-                                          [(virt-AD) :template '("" :label)]]
+                                          [(virt-AD) {:template '("" :label)}]]
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)
                         :class "label"}]
@@ -597,7 +597,7 @@
                        :render-dom (virt-DOM)
                        :get-rendering-data (virt-RD)
                        :get-action-data [(virt-AD)
-                                         :template '("" ("single" :label))]
+                                         {:template '("" ("single" :label))}]
                        :width 0.75}]
           (any) (any) (any) (any) (any) (any)]))
 

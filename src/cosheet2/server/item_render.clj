@@ -169,8 +169,7 @@
          (update :get-action-data
                  #(compose-action-data-getter
                    %
-                   (into [get-virtual-action-data]
-                         (apply concat action-data-arguments))))))))
+                   [get-virtual-action-data action-data-arguments]))))))
 
 (defn virtual-label-DOM-component
   "Return a dom for a virtual label. The label must occur be inside an

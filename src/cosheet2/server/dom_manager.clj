@@ -518,47 +518,42 @@
             root
             (rest id-sequence))))
 
-(defn client-id->preliminary-action-data
-  "Returns the action data map for the component for the given client
-  id. Adds the component to the action data map."
-  [manager-data client-id action immutable-store]
-  (let [id-sequence (client-id->relative-ids client-id)
-        root ((:root-components manager-data) (first id-sequence))]
-    (reduce (fn [action-data id]
-              ;; This loop runs through elided sub-components.
-              (loop [action-data action-data]
+(defn update-action-data-for-component-past-elided
+  "Update the action data to reflect the given component, plus all
+  components below it that got elided out from what the client got. If
+  a subcomponent was elided out of what the client got, we still need
+  to add its effect to the action data. But it is not reflected in the
+  client's id, so we need to go past it to get to the next component
+  that is reflected in the client's id."
+  [component containing-action-data action immutable-store]
+  (loop [action-data (update-action-data-for-component
+                      component containing-action-data action immutable-store)]
+    (when action-data
+      (let [{:keys [dom id->subcomponent]} @(:component action-data)]
+        (if (= (first dom) :component)
+          (recur (update-action-data-for-component
+                  (first (vals id->subcomponent))
+                  action-data action immutable-store))
+          action-data)))))
+
+(defn client-id->action-data
+    "Returns the action data map for the component that generated the
+  final dom for the given client id. Adds the component to the action
+  data map."
+    [manager-data client-id action immutable-store]
+    (let [id-sequence (client-id->relative-ids client-id)
+          root ((:root-components manager-data) (first id-sequence))]
+      (reduce (fn [action-data id]
                 (when action-data
                   (let [component-data @(:component action-data)
                         {:keys [dom id->subcomponent]} component-data]
-                    (if (= (first dom) :component)
-                        ;; Our subcomponent was elided out of what the
-                        ;; client got, so it is not reflected in the
-                        ;; client's id. But we still need to add its
-                        ;; effect to the action data.
-                        (recur (update-action-data-for-component
-                                (first (vals id->subcomponent))
-                                action-data action immutable-store))
-                        (when-let
-                            [subcomponent (id->subcomponent id)]
-                          (update-action-data-for-component
-                                subcomponent
-                                action-data action immutable-store)))))))
-            (update-action-data-for-component root {} action immutable-store)
-            (rest id-sequence))))
-
-(defn client-id->action-data
-  "Returns the action data map for the component that generated the
-  final dom forfor the given client id. Adds the component to the
-  action data map."
-  [manager-data client-id action immutable-store]
-  (loop [data (client-id->preliminary-action-data
-               manager-data client-id action immutable-store)]
-    (when data
-      (let [{:keys [dom id->subcomponent]} @(:component data)]
-        (if (= (first dom) :component)
-          (recur (update-action-data-for-component
-                  (first (vals id->subcomponent)) data action immutable-store))
-          data)))))
+                    (when-let
+                        [subcomponent (id->subcomponent id)]
+                      (update-action-data-for-component-past-elided
+                       subcomponent action-data action immutable-store)))))
+              (update-action-data-for-component-past-elided
+               root {} action immutable-store)
+              (rest id-sequence))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,

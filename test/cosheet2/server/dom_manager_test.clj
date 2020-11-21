@@ -256,7 +256,7 @@
           (= (component->client-id c2)
              "foo_Ibar")))))
 
-(deftest client-id->preliminary-action-data-test
+(deftest client-id->action-data-test
   ;; Also tests client-id->component and note-dom-ready-for-client
   (let [[s1 id1] (add-entity (new-element-store) nil "foo")
         [s2 id2] (add-entity s1 id1 "bar")
@@ -285,26 +285,23 @@
                           {:target-ids [id1 id1]})
                         "test"]})
     (let [c1 (client-id->component @manager client1)
-          d1p (client-id->preliminary-action-data
+          ad1 (client-id->action-data
                @manager client1 nil (reporter-value ms))]
-      (is (check d1p {:component c1
+      (is (check ad1 {:component c1
                      :target-ids [id1 id1]}))
       (compute cd)
       (let [c2 (first (vals (:id->subcomponent @c1)))
             c3 (client-id->component @manager client3)
-            d1 (client-id->action-data
+            ad1 (client-id->action-data
                @manager client1 nil (reporter-value ms))
-            d3p (client-id->preliminary-action-data
-                 @manager client3 nil (reporter-value ms))
-            d3 (client-id->action-data
+            ad3 (client-id->action-data
                 @manager client3 nil (reporter-value ms))]
         ;; The containing component should refer its actions to its contained.
-        (is (check d1 {:component c2
+        (is (check ad1 {:component c2
                        :target-ids [id2 id2]}))
         (is (= c3 ((:id->subcomponent @c2) id3)))
-        (is (check d3p {:component c3
+        (is (check ad3 {:component c3
                         :target-ids [id3 id3]}))
-        (is (check d3 d3p))
         ;; The elided dom should not need to go to the manager.
         (is (check (:client-ready-dom @manager)
                    {c1 1 c3 3}))))))

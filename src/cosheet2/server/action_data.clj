@@ -25,10 +25,10 @@
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
-;;;      :column-ids  A seq of the ids that should be acted up for a column
-;;;                   action
-;;;         :row-ids  A seq of the ids that should be acted up for a row
-;;;                   action
+;;;      :column      A map of {:target-ids
+;;;                             :header-id}
+;;;         :row      A map of {:row-id
+;;;                             :row-template}
 ;;;           :store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they imply.

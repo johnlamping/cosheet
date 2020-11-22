@@ -338,8 +338,7 @@
   [{:keys [relative-id] :as specification} store column-descriptions]
   (let [spec (-> specification
                  (dissoc :column-descriptions-R :get-row-action-data)
-                 (assoc :class "table-cell has-border")
-                 (update :priority inc))]
+                 (assoc :class "table-cell has-border"))]
     (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
       (into [:div {}] cells))))
@@ -415,8 +414,7 @@
   [specification row-template row-ids]
   ;; We pass on column-descriptions-R from our spec
   (let [row-spec (-> specification
-                     (dissoc :row-template-R :row-ids-R :get-action-data)
-                     (update :priority (partial + 2)))]
+                     (dissoc :row-template-R :row-ids-R :get-action-data))]
     (into [:div {:class "table-rows"}]
           (concat (map #(table-row-component % row-template row-spec)
                        row-ids)
@@ -510,7 +508,6 @@
         condition-dom (make-component
                        {:relative-id :condition
                         :header-id header-id
-                        :priority 1
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
                         :get-action-data get-pass-through-action-data})
@@ -518,7 +515,6 @@
                     {:relative-id :header
                      :header-id header-id
                      :hierarchy-R hierarchy-R
-                     :priority 1
                      :render-dom render-table-header-DOM
                      :get-rendering-data get-table-header-rendering-data
                      :get-action-data get-pass-through-action-data})
@@ -528,7 +524,6 @@
                    :column-descriptions-R column-descriptions-R
                    :row-template-R row-template-R
                    :row-ids-R row-ids-R
-                   :priority 1
                    :render-dom render-table-rows-DOM
                    :get-rendering-data get-table-rows-rendering-data
                    ;; We throw out our targets. That way, each row

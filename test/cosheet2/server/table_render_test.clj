@@ -180,8 +180,7 @@
                                :header-id header-id}])
         joe-row-component (table-row-component
                            joe-id '("" :top-level ("age" :label))
-                           {:priority 1
-                            :column-descriptions-R column-descriptions})
+                           {:column-descriptions-R column-descriptions})
         joe-row (run-renderer
                  render-table-row-DOM (second joe-row-component)
                  get-table-row-rendering-data store)]
@@ -434,7 +433,6 @@
                       :class "table-row"
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
-                      :priority 1
                       :get-rendering-data get-table-row-rendering-data
                       :get-row-action-data
                       [get-row-action-data
@@ -445,7 +443,6 @@
          (run-renderer render-table-rows-DOM
                        {:relative-id :body
                         :header-id header-id
-                        :priority 1
                         :column-descriptions-R column-descriptions
                         :row-template-R 'foo
                         :row-ids-R [joe-id]}
@@ -454,7 +451,6 @@
           [:component {:relative-id joe-id
                        :class "table-row"
                        :header-id header-id
-                       :priority 3
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
@@ -472,8 +468,7 @@
     (is (check
          joe-row
          [:div {}
-          [:component {:priority 2
-                       :width 0.75
+          [:component {:width 0.75
                        :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
@@ -485,8 +480,7 @@
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)}]
-          [:component {:priority 2,
-                       :width 0.75
+          [:component {:width 0.75
                        :class "table-cell"
                        :relative-id c2-id
                                               :row-id joe-id
@@ -505,8 +499,7 @@
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)}]
-          [:component {:priority 2
-                       :width 0.75
+          [:component {:width 0.75
                        :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
@@ -520,8 +513,7 @@
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)}]
           (any) (any) (any) (any)
-          [:component {:priority 2
-                       :width 0.75
+          [:component {:width 0.75
                        :relative-id :virtual
                        :template ""
                        :render-dom (virt-DOM)
@@ -536,8 +528,7 @@
           render-table-cell-DOM (second (nth joe-row 2))
           get-table-cell-rendering-data store)
          [:component
-          {:priority 2
-           :width 0.75
+          {:width 0.75
            :relative-id :virtual
            :template '("" ("single" :label))
            :render-dom (virt-DOM)
@@ -559,8 +550,7 @@
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)
                         :class "label"}]
-           [:component {:priority 2
-                        :relative-id joe-joe-id
+           [:component {:relative-id joe-joe-id
                         :template '("" ("name" :label))
                         :width 0.75
                         :excluded-element-ids
@@ -576,8 +566,7 @@
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]
             [:div {:class "indent-wrapper"}
-             [:component {:priority 2
-                          :relative-id joe-joseph-id
+             [:component {:relative-id joe-joseph-id
                           :template '("" ("name" :label) ("id" :label))
                           :width 0.75
                           :excluded-element-ids
@@ -609,7 +598,6 @@
           [:div {:class "table"}
            [:component {:relative-id :condition
                         :header-id header-id
-                        :priority 1
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
                         :get-action-data (pass-AD)}]
@@ -623,7 +611,6 @@
                 :properties {["single" {:label 1}] 1}
                 :cumulative-properties {["single" {:label 1}] 1}}
                (any) (any) (any) (any)]
-              :priority 1
               :render-dom render-table-header-DOM
               :get-rendering-data get-table-header-rendering-data
               :get-action-data (pass-AD)}]
@@ -633,7 +620,6 @@
               :column-descriptions-R (any)
               :row-template-R '(anything (anything ("age" :label)) :top-level)
               :row-ids-R [(any) (any)]
-              :priority 1
               :render-dom render-table-rows-DOM
               :get-rendering-data get-table-rows-rendering-data
               :get-action-data [(ids-AD) nil]}]]]))

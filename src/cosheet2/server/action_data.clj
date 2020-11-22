@@ -203,6 +203,16 @@
   [v ^java.io.Writer w]
   (.write w "virt-AD"))
 
+(defn get-tab-action-data
+  "Add the action data for a tab."
+  [specification containing-action-data action immutable-store tab-id]
+  (assoc containing-action-data :tab-id tab-id))
+
+(defmethod print-method
+  cosheet2.server.action_data$get_tab_action_data
+  [v ^java.io.Writer w]
+  (.write w "tab-AD"))
+
 (defn get-column-action-data
   "Add the action data for a command that acts on a column.
   The header-id is the id that holds all the columns. The column-ids

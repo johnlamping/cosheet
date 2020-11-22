@@ -284,7 +284,7 @@
   '(anything :column))
 
 (defn table-tab-non-semantic-elements
-  "Return the non-semantic elements for a new tab for a table
+  "Return the non-semantic elements for a new tab that shows a table
   with the given row condition and header condition."
   [row-condition-elements header-condition-elements]
   `(:tab

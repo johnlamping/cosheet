@@ -7,6 +7,7 @@
              render-utils-test
              item-render-test
              table-render-test
+             tabs-render-test
              dom-manager-test
              session-state-test
              action-data-test

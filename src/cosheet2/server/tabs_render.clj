@@ -17,7 +17,7 @@
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
                                   new-tab-elements]]
-             [render-utils :refer [hierarchy-node-DOM]]
+             [render-utils :refer [hierarchy-node-DOM make-component]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
@@ -67,18 +67,19 @@
                                  (hierarchy-node-example-elements node))
         relative-id (cond-> (first tab-ids)
                       (> nesting-depth 0) (vector (str nesting-depth)))]
-    [:component (cond->
-                    {:relative-id relative-id
-                     :template template
-                     :render-dom render-tab-elements-DOM
-                     :get-rendering-data get-tab-elements-rendering-data
-                     :example-element-ids example-element-ids}
-                  (= (count tab-ids) 1)
-                  (assoc :get-tab-action-data
-                         [get-tab-action-data (first tab-ids)])
-                  (not= [relative-id] tab-ids)
-                  (assoc :get-action-data [get-item-or-exemplar-action-data-for-ids
-                                       tab-ids]))]))
+    (make-component
+     (cond->
+         {:relative-id relative-id
+          :template template
+          :render-dom render-tab-elements-DOM
+          :get-rendering-data get-tab-elements-rendering-data
+          :example-element-ids example-element-ids}
+       (= (count tab-ids) 1)
+       (assoc :get-tab-action-data
+              [get-tab-action-data (first tab-ids)])
+       (not= [relative-id] tab-ids)
+       (assoc :get-action-data [get-item-or-exemplar-action-data-for-ids
+                                tab-ids])))))
 
 (defn tabs-child-info
   "Adjust the specification for child tabs."
@@ -112,6 +113,16 @@
       (:is-chosen-tab specification)
       (add-attributes {:class "chosen"}))))
 
+(defn virtual-tab-DOM
+  [{:keys [template first-tab-id]}]
+  (virtual-DOM-component
+   {:relative-id :virtual-tab
+    :class "tab virtualTab"}
+   {:template template
+    :sibling first-tab-id
+    :position :before
+    :use-bigger true}))
+
 (defn get-tabs-rendering-data
   [specification mutable-store]
   (let [client-state (:client-state specification)]
@@ -130,15 +141,17 @@
         tabs (ordered-entities (label->elements tabs-entity :tab))
         hierarchy (hierarchy-by-all-elements tabs)
         hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-        doms (map (fn [node]
-                    (hierarchy-node-DOM
-                     node tabs-node-DOM tabs-child-info
-                     (let [chosen-one
-                           (seq (filter #(= (:item %) chosen-tab-id)
-                                        (hierarchy-node-descendants node)))]
-                       (cond-> tabs-spec
-                         chosen-one (assoc :is-chosen-tab true)))))
-                  hierarchy)]
+        tab-doms (map (fn [node]
+                        (hierarchy-node-DOM
+                         node tabs-node-DOM tabs-child-info
+                         (let [chosen-one
+                               (seq (filter #(= (:item %) chosen-tab-id)
+                                            (hierarchy-node-descendants node)))]
+                           (cond-> tabs-spec
+                             chosen-one (assoc :is-chosen-tab true)))))
+                      hierarchy)
+        virtual-tab-dom (virtual-tab-DOM (assoc tabs-spec :first-tab-id
+                                                (:item-id (first tabs))))]
       [:div {:class "tabs-wrapper"}
        [:div#batch-edit.tool
         [:img {:src "../icons/edit.gif"}]
@@ -153,18 +166,4 @@
              ;; virtual tab won't be referred to the virtual tab, which
              ;; would otherwise be the closest element.
              ;; TODO: Put virtual tab here
-             (concat [[:div] "VIRT"] (reverse doms)))]))
-
-(comment
-  (defn virtual-tab-DOM
-    [subject-referent hierarchy inherited]
-    (let [v-ref (virtual-referent
-                 (cons "" new-tab-elements)
-                 subject-referent)
-          inherited (assoc inherited :subject-referent v-ref)
-          virtual-inherited (assoc inherited :template "")]
-      (add-attributes
-       (virtual-element-DOM nil :after virtual-inherited)
-       {:class "tab virtualTab"
-        :selected {:special :new-tab}}))))
-
+             (concat [[:div] virtual-tab-dom] (reverse tab-doms)))]))

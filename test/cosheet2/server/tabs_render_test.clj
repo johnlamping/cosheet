@@ -12,19 +12,24 @@
              entity-impl
              [test-utils :refer [check any as-set]])
             (cosheet2.server
-             [item-render :refer []]
+             [item-render :refer [render-virtual-DOM
+                                  get-virtual-DOM-rendering-data]]
              [model-utils :refer [new-tab-elements semantic-to-list]]
              [action-data :refer [get-item-or-exemplar-action-data-for-ids
-                                  get-tab-action-data]]
+                                  get-tab-action-data get-virtual-action-data]]
              [tabs-render :refer :all])
              ; :reload
             ))
 
-(defn tab-RD [] get-tab-elements-rendering-data)
+(defn virt-DOM [] render-virtual-DOM)
 (defn tab-DOM [] render-tab-elements-DOM)
+
+(defn virt-RD [] get-virtual-DOM-rendering-data)
+(defn tab-RD [] get-tab-elements-rendering-data)
 
 (defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
 (defn tab-AD [] get-tab-action-data)
+(defn virt-AD [] get-virtual-action-data)
 
 
 
@@ -91,7 +96,21 @@
           [:div.toolgap]
           [:div {:class "tabs-holder"}
            [:div]
-           "VIRT"
+           [:component
+            {:relative-id :virtual-tab
+             :class "tab virtualTab"
+             :render-dom (virt-DOM)
+             :get-rendering-data (virt-RD)
+             :get-action-data
+             [(virt-AD)
+              {:template '("" "" :tab
+                           (:blank :tab-topic :table
+                                   (anything (??? :label)
+                                             (anything :column (??? :label))
+                                             :row-condition :selector)))
+               :sibling (:item-id t1)
+               :position :before
+               :use-bigger true}]}]
            [:component
             {:relative-id (:item-id t3)
              :template '("" "" :tab

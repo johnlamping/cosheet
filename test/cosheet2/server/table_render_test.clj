@@ -637,6 +637,3 @@
          [:component {:relative-id header-id
                       :render-dom render-ready-table-DOM
                       :get-rendering-data get-ready-table-rendering-data}]))))
-
-
-

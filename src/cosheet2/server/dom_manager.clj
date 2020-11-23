@@ -89,6 +89,13 @@
   ;; Avoid huge print-outs.
   (.write w (str "<ComponentData>" (:dom-specification s))))
 
+(defn component-data? [c]
+  (= (type c) ComponentData))
+
+(defn component-atom? [c]
+  (and (= (type c) clojure.lang.Atom)
+       (component-data? @c)))
+
 ;;; The component can be in several states:
 ;;;      prepared  The component's data has been filled in, but
 ;;;                it has not started computing.
@@ -241,6 +248,8 @@
   "Remove the registrations from the component data's reporters"
   [component-data component-atom]
   (let [reporters (:reporters component-data)]
+    ;; TODO: Get rid of this?
+    (assert (every? reporter? reporters) component-data)
     (if reporters
       (-> component-data
           ;; We assoc with nil, rather than dissoc, so we don't turn

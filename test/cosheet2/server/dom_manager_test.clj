@@ -81,8 +81,8 @@
     (is (= (:containing-component @c2) c1))
     (is (:elided @c2))
     (is (= (:depth @c2) 2))
-    (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
-    (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
+    (is (component-atom? c1))
+    (is (component-atom? c2))))
 
 (deftest activate-disable-component-test
   (let [ms (new-mutable-store (new-element-store))
@@ -128,7 +128,7 @@
              :client-id :foo
              :elided false
              :depth 1})))
-    (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))))
+    (is (component-atom? c2))))
 
 (deftest update-dom-test
   (let [ms (new-mutable-store (new-element-store))
@@ -136,7 +136,7 @@
         manager (new-dom-manager ms cd)]
     (let [c1 (reuse-or-make-component-atom s1 manager nil false :foo nil)
           updated (update-dom @c1 c1 [:div 2 [:component s2]])]
-      (is (= (type updated) cosheet2.server.dom_manager.ComponentData))
+      (is (component-data? updated))
       (is (check updated
                  {:reporters nil
                   :further-actions [[note-dom-ready-for-client manager c1]
@@ -154,7 +154,7 @@
     (let [c2- (reuse-or-make-component-atom s2- manager nil false :foo nil)
           updated- (update-dom @c2- c2- [:component s2])
           c2 (first (vals (:id->subcomponent updated-)))]
-      (is (= (type updated-) cosheet2.server.dom_manager.ComponentData))
+      (is (component-data? updated-))
       (is (check @c2
                  {:reporters nil
                   :further-actions nil
@@ -218,8 +218,8 @@
       ;; Check that nothing happens if we have a newer dom than asked for.
       (compute-dom-unless-newer c1 1)
       (is (= (:dom-version @c1) 2))
-      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
-      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData)))))
+      (is (component-atom? c1))
+      (is (component-atom? c2)))))
 
 (deftest mark-component-tree-as-needed-test
   (let [ms (new-mutable-store (new-element-store))
@@ -237,8 +237,8 @@
       (is (= ready [[c1 1] [c2 2]]))
       (is (check (:tasks @(:queue cd))
                  {}))
-      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
-      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData)))))
+      (is (component-atom? c1))
+      (is (component-atom? c2)))))
 
 (deftest component->client-id-test
   (let [ms (new-mutable-store (new-element-store))
@@ -249,8 +249,8 @@
     (compute cd)
     (let [c2 ((:id->subcomponent @c1) id2)
           ready (mark-component-tree-as-needed c1)]
-      (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
-      (is (= (type @c2) cosheet2.server.dom_manager.ComponentData))
+      (is (component-atom? c1))
+      (is (component-atom? c2))
       (is (= (component->client-id c1)
              "foo")
           (= (component->client-id c2)
@@ -355,8 +355,8 @@
         (is (not (:client-needs-dom @c2)))
         (is (check (:client-ready-dom @manager)
                    {}))
-        (is (= (type @c1-) cosheet2.server.dom_manager.ComponentData))
-        (is (= (type @c1) cosheet2.server.dom_manager.ComponentData))
+        (is (component-atom? c1))
+        (is (component-atom? c1-))
         (request-client-refresh manager)
         (is (= (:client-ready-dom @manager)
                {c1- 1  c2 3}))

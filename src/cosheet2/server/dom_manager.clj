@@ -235,7 +235,7 @@
                            (not= r mutable-store)
                            (conj [propagate-calculator-data!
                                   r (:calculator-data @dom-manager)]))))
-                  pairs)))))))
+                     pairs)))))))
 
 (defn update-unregister-for-reporters
   "Remove the registrations from the component data's reporters"

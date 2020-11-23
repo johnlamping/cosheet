@@ -19,6 +19,7 @@
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM]]
+             [tabs-render :refer [get-tabs-rendering-data render-tabs-DOM]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
              )))
@@ -318,28 +319,38 @@
   (expr-let [id (map-state-get client-state :root-id)]
     (or id (expr first (ordered-tabs-ids-R store)))))
 
+;;; TODO: This shouldn't need to be a reporter.
+;;;       It's render-data can look up the id for it.
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
-  "Return a reporter whose value is the DOM for the top level component."
-  [store id-R]
+  "Return a reporter whose value is the DOM for tabs and the top level
+  component."
+  [store client-state id-R]
   (expr-let [id id-R]
     (println "top level DOM id:" id)
     (when id
       (expr-let [immutable-store (category-change [id] store)]
         (let [immutable-item (description->entity id immutable-store)
-              tab-topic (first (label->elements immutable-item :tab-topic))]
-          (let [target-item (or tab-topic immutable-item)
-                target-id (:item-id target-item)]
-            [:div {}
-             (if (matching-elements :table target-item)
-               (make-component (assoc basic-dom-specification        
-                                      :relative-id target-id
-                                      :render-dom render-table-DOM))
-               ;; Show just the item.
-               (make-component (assoc basic-dom-specification        
-                                      :relative-id target-id
-                                      :must-show-label true
-                                      :width 0.75)))]))))))
+              is-tab (seq (matching-elements :tab immutable-item))]
+          [:div {}
+           (if is-tab
+             ;; Show the tabs, plus the topic of the selected tab
+             (let [topic (first (label->elements immutable-item :tab-topic))
+                   subject (subject immutable-item)]
+               (println "!!!" (semantic-to-list subject))
+               [:div {:class "tabbed"}
+                (make-component {:relative-id (:item-id subject)
+                                 :client-state client-state
+                                 :get-rendering-data get-tabs-rendering-data
+                                 :render-dom render-tabs-DOM})
+                (make-component (assoc basic-dom-specification        
+                                       :relative-id (:item-id topic)
+                                       :render-dom render-table-DOM))])
+             ;; No tab is selected. Show just the item.
+             (make-component (assoc basic-dom-specification        
+                                    :relative-id (:item-id immutable-item)
+                                    :must-show-label true
+                                    :width 0.75)))])))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"
@@ -377,7 +388,7 @@
   [store session-temporary-id client-state]
   (let [id-R (top-level-id-R store client-state)]
     (assoc basic-dom-specification
-           :reporter (top-level-DOM-R store id-R)
+           :reporter (top-level-DOM-R store client-state id-R)
            :id-R id-R ; used by top-level-get-action-data
            :get-action-data top-level-get-action-data
            :get-rendering-data reporter-specification-get-rendering-data

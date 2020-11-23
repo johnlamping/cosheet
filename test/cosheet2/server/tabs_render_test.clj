@@ -72,20 +72,11 @@
         client-state {:root-id (:item-id t1)}
         spec {:relative-id tabs-id
               :client-state client-state}
-        dom (render-tabs-DOM spec store client-state)]
-    (println "!!!" dom)
-    
-    (comment [:div {:class "editable tab virtualTab"
-                    :key [:foo :virtual]
-                    :target {:referent (virtual-referent
-                                        "" (virtual-tab-referent
-                                            new-tab-elements nil))
-                             :select-pattern [:foo [:pattern]]}
-                    :selected {:special :new-tab}}])
-    ;; TODO: Need to
-    ;;   add relative-id to the components.
-    ;;   test rendering the components
-    ;;   add virtual tab
+        dom (render-tabs-DOM spec store client-state)
+        tabs-dom (nth dom 4)
+        virt-tab-dom (nth tabs-dom 3)
+        tab1-dom (nth tabs-dom 4)
+        tab23-dom (nth tabs-dom 5)]  
                   
     (is (check
          dom
@@ -113,6 +104,7 @@
                :use-bigger true}]}]
            [:component
             {:relative-id (:item-id t3)
+             :width 0.75
              :template '("" "" :tab
                          (:blank :tab-topic :table
                                  (anything (??? :label)
@@ -127,6 +119,7 @@
            [:div {:class "tab-tree"}
             [:component
              {:relative-id (:item-id t1)
+              :width 1.5
               :template '("" "" :tab
                           (:blank :tab-topic :table
                                   (anything (??? :label)
@@ -141,6 +134,7 @@
             [:div {:class "tab-sequence"}
              [:component
               {:relative-id [(:item-id t2) "1"]
+               :width 0.75
                :template '("" "" :tab
                            (:blank :tab-topic :table
                                    (anything (??? :label)
@@ -156,10 +150,21 @@
                :class "tab"}]
              [:component
               {:relative-id [(:item-id t1) "1"]
+               :width 0.75
                :template (any)
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)
                :example-element-ids []
                :get-action-data [(ids-AD) [(:item-id t1)]]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
-               :class "tab"}]]]]]))))
+               :class "tab"}]]]]]))
+    (is (check
+         (render-tab-elements-DOM (second tab1-dom) store)
+         [:div {:class "vertical-stack"}
+          [:component {:relative-id (:item-id t3-baz)
+                       :width 0.75}]
+          [:component {:relative-id (:item-id t3-bletch)
+                       :width 0.75}]]))
+    (is (check
+         (render-virtual-DOM (second virt-tab-dom))
+         [:div {:class "tab virtualTab editable virtual"}]))))

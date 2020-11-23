@@ -27,7 +27,7 @@
 
 (defn get-tab-elements-rendering-data
   [specification mutable-store]
-  [mutable-store [(:example-element-ids specification)]])
+  [[mutable-store [(:example-element-ids specification)]]])
 
 (defmethod print-method
   cosheet2.server.tabs_render$get_tab_elements_rendering_data
@@ -45,13 +45,14 @@
                               example-element-ids)]
     (if (seq example-element-ids)
       (let [dom (labels-and-elements-DOM
-                 example-elements nil false false :vertical {})
+                 example-elements nil false false :vertical
+                 (select-keys specification [:width]))
             elements-elements (map semantic-elements example-elements)]
         (cond-> dom
           (not (empty? (apply concat elements-elements)))
           (add-attributes {:class "complex"})))        
       (add-attributes
-       (virtual-DOM-component {:tamplate 'any})
+       (virtual-DOM-component specification {})
        {:class "empty-child"}))))
 
 (defmethod print-method
@@ -71,6 +72,7 @@
      (cond->
          {:relative-id relative-id
           :template template
+          :width (* 0.75 (count tab-ids))
           :render-dom render-tab-elements-DOM
           :get-rendering-data get-tab-elements-rendering-data
           :example-element-ids example-element-ids}
@@ -127,7 +129,7 @@
   [specification mutable-store]
   (let [client-state (:client-state specification)]
     [[mutable-store [(:relative-id specification)]]
-     [client-state [(:root-id client-state)]]]))
+     [client-state [:root-id]]]))
 
 (defn render-tabs-DOM
   "Return a reporter giving the DOM for the elements of the given

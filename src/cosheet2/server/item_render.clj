@@ -158,7 +158,7 @@
   ;; If the arguments don't specify a template, take it from the spec.
   (let [action-data-arguments (into (select-keys specification [:template])
                                     action-data-arguments)]
-    (assert (:template action-data-arguments))
+    (assert (:template action-data-arguments) action-data-arguments)
     (assert (every? #{:template :sibling :position :use-bigger}
                     (keys action-data-arguments))
             action-data-arguments)

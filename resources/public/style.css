@@ -173,6 +173,7 @@ body {
 .tabbed {
     display: flex;
     flex-direction: column;
+    min-height: 10px;  /* So it will shrink to the screen height */
 }
 
 .tabs-wrapper {

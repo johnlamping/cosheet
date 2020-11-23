@@ -40,7 +40,7 @@
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
-  (println "GETTING ACTION DATA" getter)
+  (println "getting ACTION DATA" getter)
   (println "  from spec" (dissoc specification :reporter :id-R))
   (println "  containing AD" (dissoc containing-action-data :component))
   (let [store (or (:store containing-action-data) immutable-store)
@@ -65,7 +65,8 @@
                      containing-action-data
                      [(or get-action-data get-item-or-exemplar-action-data)
                       get-column-action-data
-                      get-row-action-data])]
+                      get-row-action-data
+                      get-tab-action-data])]
     (assoc data :component component)))
 
 (defn best-match

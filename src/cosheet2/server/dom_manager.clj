@@ -63,9 +63,10 @@
      dom-specification     ; The dom spec for this component.
 
      ;; These fields can change
-     reporters             ; The reporters that we are attending to for
-                           ; this component. They are the ones returned by
-                           ; :rendering-data   
+     reporters             ; The reporters that provide the values needed to
+                           ; compute the dom. They are the ones returned by
+                           ; :rendering-data. Some might be constants,
+                           ; rather than reporters.     
      id->subcomponent      ; A map from :relative-id to the component data
                            ; of each sub-component. This is filled in once
                            ; the dom is computed, and can change if the dom
@@ -248,8 +249,6 @@
   "Remove the registrations from the component data's reporters"
   [component-data component-atom]
   (let [reporters (:reporters component-data)]
-    ;; TODO: Get rid of this?
-    (assert (every? reporter? reporters) component-data)
     (if reporters
       (-> component-data
           ;; We assoc with nil, rather than dissoc, so we don't turn
@@ -257,7 +256,7 @@
           (assoc :reporters nil)
           (update-new-further-actions
            (map (fn [r] [remove-attendee! r component-atom])
-                reporters)))
+                (filter reporter? reporters))))
       component-data)))
 
 (defn activate-component

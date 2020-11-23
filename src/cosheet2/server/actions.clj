@@ -150,7 +150,7 @@
             store target-ids)))
 
 (defn do-selected
-  [immutable-store {:keys [session-state client-id]}]
+  [immutable-store {:keys [session-state client-id select]}]
   (let [{:keys [store client-state session-temporary-id]} session-state]
     (map-state-reset! client-state {:select-store-ids nil
                                     :if-selected nil})
@@ -161,16 +161,13 @@
          (-> store
              (update-selected session-temporary-id client-id)
              (update-equivalent-undo-point true))
-         store))))
-  ;; TODO: This code may be relevant to the special do-selected
-  ;; handler for tabs.
-  (comment
-    (let [root-id (first target-ids)]
-      (do (map-state-reset! client-state {:root-id root-id})
-          {:store store
+         store)))
+    (when select
+      (when-let [tab-id (:tab-id select)]
+        (do (map-state-reset! client-state {:root-id tab-id})
+          {:store immutable-store
            :set-url (str (:url-path session-state)
-                         "?root=" (id->string root-id))})))
-  nil)
+                         "?root=" (id->string tab-id))})))))
 
 (comment
   (defn pop-content-from-key
@@ -468,7 +465,7 @@
                          select-store-ids to have an effect."
   [mutable-store session-state action]
   (let [[action-type & additional-args] action]
-    (println "doing action " action-type)
+    (println "DOING ACTION " action-type)
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo

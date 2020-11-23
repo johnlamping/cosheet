@@ -149,6 +149,29 @@
                 (abandon-problem-changes store modified subject-id)))
             store target-ids)))
 
+(defn do-selected
+  [immutable-store {:keys [session-state client-id]}]
+  (let [{:keys [store client-state session-temporary-id]} session-state]
+    (map-state-reset! client-state {:select-store-ids nil
+                                    :if-selected nil})
+    (store-update!
+     store
+     (fn [store]
+       (if (not= client-id (get-selected store session-temporary-id))
+         (-> store
+             (update-selected session-temporary-id client-id)
+             (update-equivalent-undo-point true))
+         store))))
+  ;; TODO: This code may be relevant to the special do-selected
+  ;; handler for tabs.
+  (comment
+    (let [root-id (first target-ids)]
+      (do (map-state-reset! client-state {:root-id root-id})
+          {:store store
+           :set-url (str (:url-path session-state)
+                         "?root=" (id->string root-id))})))
+  nil)
+
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -342,7 +365,7 @@
   store, or a map with a :store value and any additional information
   it wants to convey."
   [action]
-  ({
+  ({:selected do-selected
     :add-element do-add-element
     :add-label do-add-label
     :add-twin do-add-twin
@@ -429,30 +452,6 @@
     (when (not= old-store (current-store mutable-store))
       (request-selection-from-store mutable-store old-store session-state))))
 
-
-(defn do-selected
-  [mutable-store session-state client-id & _]
-  (let [client-state (:client-state session-state)
-        temporary-id (:session-temporary-id session-state)]
-    (map-state-reset! client-state {:select-store-ids nil
-                                    :if-selected nil})
-    (store-update!
-     mutable-store
-     (fn [store]
-       (if (not= client-id (get-selected store temporary-id))
-         (-> store
-             (update-selected temporary-id client-id)
-             (update-equivalent-undo-point true))
-         store))))
-  ;; TODO: This code may be relevant to the special do-selected
-  ;; handler for tabs.
-  (comment
-    (let [root-id (first target-ids)]
-      (do (map-state-reset! client-state {:root-id root-id})
-          {:store store
-           :set-url (str (:url-path session-state)
-                         "?root=" (id->string root-id))}))))
-
 ;;; TODO: Check for :handle-action, and do what it says. In
 ;;; particular, there should be a version that takes keyword arguments
 ;;; of special handlers for specific actions.
@@ -473,7 +472,6 @@
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo
-                       :selected do-selected
                        ; :quit-batch-edit do-quit-batch-edit
                        nil)]
       (do (println "command: " (map simplify-for-print action))

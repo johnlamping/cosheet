@@ -25,11 +25,12 @@
 
 ;;; The action data is a map that may contain any of these fields:
 ;;;      :target-ids  A seq of the ids that should be acted upon
-;;;          :column  A map of {:target-ids
-;;;                             :header-id}
-;;;             :row  A map of {:row-id
-;;;                             :row-template}
-;;;          :tab-id  The id of the tab that this component belonds to.
+;;;          :column  {:target-ids
+;;;                    :header-id}
+;;;             :row  {:row-id
+;;;                    :row-template}
+;;;          :select  {:tab-id  ; The tab this component belongs to.
+;;;                   }
 ;;;                   For a virtual tab, the value is :virtual.
 ;;;           :store  A store that should replace the current immutable store
 ;;;                   This is filled in by virtual DOM components, after
@@ -206,7 +207,7 @@
 (defn get-tab-action-data
   "Add the action data for a tab."
   [specification containing-action-data action immutable-store tab-id]
-  (assoc containing-action-data :tab-id tab-id))
+  (assoc containing-action-data :select {:tab-id tab-id}))
 
 (defmethod print-method
   cosheet2.server.action_data$get_tab_action_data

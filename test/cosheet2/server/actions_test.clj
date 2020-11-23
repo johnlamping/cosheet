@@ -239,8 +239,10 @@
     (is (id-valid? new-store (:item-id name-header)))))
 
 (deftest do-selected-test
-  (let [ms (new-mutable-store store)
-        for-client (do-selected ms session-state "Larry")]
+  (let [ms (new-mutable-store store)  ; We use a new mutable store,
+                                      ; so we don't mess up the starting one.
+        ss (assoc session-state :store ms)
+        for-client (do-selected store {:session-state ss :client-id "Larry"})]
     (is (= (get-selected (current-store ms) temporary-id)
            "Larry"))
     (is (nil? for-client))))

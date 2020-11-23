@@ -20,6 +20,9 @@
              [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM]]
              [tabs-render :refer [get-tabs-rendering-data render-tabs-DOM]]
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
+                                  compose-action-data-getter]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
              )))
@@ -342,6 +345,10 @@
                 (make-component {:relative-id (:item-id subject)
                                  :client-state client-state
                                  :get-rendering-data get-tabs-rendering-data
+                                 :get-action-data
+                                 (compose-action-data-getter
+                                  [get-item-or-exemplar-action-data-for-ids []]
+                                  get-item-or-exemplar-action-data)
                                  :render-dom render-tabs-DOM})
                 (make-component (assoc basic-dom-specification        
                                        :relative-id (:item-id topic)

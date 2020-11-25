@@ -73,16 +73,19 @@
 ;; cosheet initial page
 ;;
 (defn get-initial-page
-  [request path referent]
-  (if-not (authenticated? request)
-    (throw-unauthorized)
-    ;; TODO: Rather than make up an unknown user, show an error.
-    (let [user-id (get-in request [:session :identity] "unknown")
-          servlet-path (get-in request [:servlet-context-path])]
-      (initial-page (url-path-to-file-path path user-id)
-                    servlet-path referent)
-    )
-  ))
+  ;; Our route fills in subpath as everything between the /cosheet/
+  ;; and the query.
+  [{:keys [params query-params] :as request}]
+  (let [root (query-params "root")
+        path (str "/cosheet/" (:subpath params))]
+    (if-not (authenticated? request)
+      (throw-unauthorized)
+      ;; TODO: Rather than make up an unknown user, show an error.
+      (let [user-id (get-in request [:session :identity] "unknown")
+            file-path (url-path-to-file-path path user-id)
+            servlet-path (get-in request [:servlet-context-path])]
+        (initial-page file-path servlet-path root)    )
+      )))
 
 ;; Login page controller
 ;; It returns a login page on get requests.
@@ -177,8 +180,7 @@
 (defroutes main-routes    ;;main-routes
   (GET "/" [] list-files)
   (POST "/" [] create-file)
-  (GET "/cosheet/:path{.*}" [path referent :as request]
-       (get-initial-page request (str "/cosheet/" path) referent))
+  (GET "/cosheet/:subpath{.*}" [] get-initial-page)
   ;;(GET ".+//:path{.*}" [path referent]
   ;;     (initial-page (str "//" path) referent))
   ;;(GET "/~/:path{.*}" [path referent]

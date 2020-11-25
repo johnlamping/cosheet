@@ -165,10 +165,10 @@
       ))
   )
 
-(defn initial-page [file-path servlet-path referent-string]
+(defn initial-page [file-path servlet-path root-id-string]
   (println (now-string) "initial page"
-           file-path referent-string)
-  (if-let [session-id (create-session nil file-path referent-string
+           file-path root-id-string)
+  (if-let [session-id (create-session nil file-path root-id-string
                                       common-queue calculator-data)]
     (do (println (now-string) "Got session")
         (html5
@@ -362,16 +362,18 @@
   (let [{:keys [id clean]} params]
     (or (get-session-state id)
         (when-let [url clean]
-          (let [referent-string (second (re-find #"\?.*referent=([^&]*)" url))
+          ;; The client has requested a new url or a refresh.
+          ;; Since the requested url is coming as a parameter, it doesn't
+          ;; get parsed by ring, so we have to parse it by hand.
+          (let [root-id-string (second (re-find #"\?.*root=([^&]*)" url))
                 url-path (str "/" (second (re-find #"//[^/]*/([^?]*)" url)))
                 file-path (url-path-to-file-path url-path user-id)]
             (ensure-session
-             id file-path referent-string common-queue calculator-data))))))
+             id file-path root-id-string common-queue calculator-data))))))
 
 (defn handle-ajax [request]
   (let [params (:params request)
-        {:keys [actions replay unload clean acknowledge]}
-        params
+        {:keys [actions replay unload clean acknowledge]} params
         user-id (get-in request [:session :identity] "unknown")
         session-state (ensure-session-state user-id params)]
     (if session-state

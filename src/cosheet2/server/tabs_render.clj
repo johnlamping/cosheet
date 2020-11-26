@@ -147,7 +147,8 @@
                         (hierarchy-node-DOM
                          node tabs-node-DOM tabs-child-info
                          (let [chosen-one
-                               (seq (filter #(= (:item %) chosen-tab-id)
+                               (seq (filter #(= (:item-id (:item %))
+                                                chosen-tab-id)
                                             (hierarchy-node-descendants node)))]
                            (cond-> tabs-spec
                              chosen-one (assoc :is-chosen-tab true)))))

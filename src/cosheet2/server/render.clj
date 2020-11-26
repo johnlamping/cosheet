@@ -340,7 +340,6 @@
              ;; Show the tabs, plus the topic of the selected tab
              (let [topic (first (label->elements immutable-item :tab-topic))
                    subject (subject immutable-item)]
-               (println "!!!" (semantic-to-list subject))
                [:div {:class "tabbed"}
                 (make-component {:relative-id (:item-id subject)
                                  :client-state client-state

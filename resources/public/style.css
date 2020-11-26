@@ -277,13 +277,13 @@ body {
 }
 
 .tab.chosen {
-    box-shadow: inset 0px 2px hsl(0, 0%, 80%),
+    box-shadow: inset 0px 2px 2px hsl(0, 0%, 80%),
                 0px 2px hsl(0, 0%, 100%);
     border-bottom: 0px;
 }
 
 .tab.chosen.selected.selected.selected.selected {
-    box-shadow: inset 0px 2px hsl(0, 0%, 80%),
+    box-shadow: inset 0px 2px 2px hsl(0, 0%, 80%),
     0px 2px hsl(0, 0%, 100%),
     inset 0 0 5px 3px hsla(220, 100%, 55%, 1);
 }
@@ -296,13 +296,13 @@ body {
 
 .tab.chosen::before {
     box-shadow: 2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset 2px 2px hsl(0, 0%, 80%);
+                inset 2px 2px 2px hsl(0, 0%, 80%);
     border-bottom: 0px;
 }
 
 .tab.chosen::after {
     box-shadow: -2px 4px 0px -2px hsl(0, 0%, 100%),
-                inset -2px 2px hsl(0, 0%, 80%);
+                inset -2px 2px 2px hsl(0, 0%, 80%);
     border-bottom: 0px;
 }
 

@@ -41,13 +41,19 @@
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
   (println "getting ACTION DATA" getter)
-  (println "  from spec" (dissoc specification :reporter :id-R))
-  (println "  containing AD" (dissoc containing-action-data :component))
+  (println "  from spec" (dissoc specification
+                                 :reporter :id-R :client-state
+                                 :get-rendering-data :hierarchy-R
+                                 :column-descriptions-R :row-template-R
+                                 :row-ids-R))
   (let [store (or (:store containing-action-data) immutable-store)
         [fun extra-args] (if (vector? getter)
                            [(first getter) (rest getter)]
-                           [getter nil])]
-    (apply fun specification containing-action-data action store extra-args)))
+                           [getter nil])
+        result (apply fun specification containing-action-data
+                      action store extra-args)]
+    (println "  returning AD" (dissoc result :component))
+    result))
 
 (def get-item-or-exemplar-action-data)
 

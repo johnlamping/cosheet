@@ -39,11 +39,12 @@
 (defn update-selected
   "Make the client id stored under the temporary id be the given id."
   [store temporary-id client-id]
-  (when-let [element-id (first (id-label->element-ids
+  (if-let [element-id (first (id-label->element-ids
                                 store temporary-id :current-selection))]
     ;; We store the client id as a keyword, rather than a string, so it
     ;; is not semantic.
-    (update-content store element-id (keyword client-id))))
+    (update-content store element-id (keyword client-id))
+    store))
 
 (defn get-selected
   "Return the client stored by update-selected."

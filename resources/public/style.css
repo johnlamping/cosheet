@@ -88,7 +88,7 @@ body {
 
 /* Override other min-width values. */
 .content-text.content-text.content-text.content-text {
-    min-height: 28px;
+    min-height: 25px;
     min-width: 50px;
     overflow-wrap: break-word;
     font-family: sans-serif;
@@ -280,6 +280,13 @@ body {
     box-shadow: inset 0px 2px 2px hsl(0, 0%, 80%),
                 0px 2px hsl(0, 0%, 100%);
     border-bottom: 0px;
+}
+
+/* Keep the content of a tab from hiding the inset box-shadow if it 
+   gets chosen */
+.tab.with-elements > :first-child.content-text {
+    padding-top: 0px;
+    margin-top: 3px;
 }
 
 .tab.chosen.selected.selected.selected.selected {

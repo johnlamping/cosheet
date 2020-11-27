@@ -319,8 +319,10 @@
 (defn top-level-id-R
   "Return a reporter whose value is the id to be displayed at the top level."
   [store client-state]
-  (expr-let [id (map-state-get client-state :root-id)]
-    (or id (expr first (ordered-tabs-ids-R store)))))
+  (expr-let [id (map-state-get client-state :root-id)
+             id-valid (id-valid? store id)]
+    (or (when id-valid id)
+        (expr first (ordered-tabs-ids-R store)))))
 
 ;;; TODO: This shouldn't need to be a reporter.
 ;;;       It's render-data can look up the id for it.

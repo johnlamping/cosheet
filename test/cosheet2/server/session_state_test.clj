@@ -124,7 +124,7 @@
       (is (= (vals (:sessions @session-info)) [state]))
       ;; Two attendees for the overall DOM, and three for each of the
       ;; two elements: the element, its content, and its label.
-      (is (= (count (:attendees (reporter-data ms))) 8))
+      (is (= (count (:attendees (reporter-data ms))) 9))
       (let [root-component (client-id->component @dom-manager "root")]
         (is (check (:dom @root-component)
                    [:div {}

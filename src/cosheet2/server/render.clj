@@ -19,7 +19,7 @@
              [render-utils :refer [make-component]]
              [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM]]
-             [tabs-render :refer [get-tabs-rendering-data render-tabs-DOM]]
+             [tabs-render :refer [render-tabs-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
                                   compose-action-data-getter]]
@@ -345,12 +345,12 @@
                [:div {:class "tabbed"}
                 (make-component {:relative-id (:item-id subject)
                                  :client-state client-state
-                                 :get-rendering-data get-tabs-rendering-data
+                                 :chosen-tab-id id
+                                 :render-dom render-tabs-DOM
                                  :get-action-data
                                  (compose-action-data-getter
                                   [get-item-or-exemplar-action-data-for-ids []]
-                                  get-item-or-exemplar-action-data)
-                                 :render-dom render-tabs-DOM})
+                                  get-item-or-exemplar-action-data)})
                 (make-component (assoc basic-dom-specification        
                                        :relative-id (:item-id topic)
                                        :render-dom render-table-DOM))])

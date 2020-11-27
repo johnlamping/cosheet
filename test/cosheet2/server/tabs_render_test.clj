@@ -71,10 +71,9 @@
         t2-bar (first (matching-elements "bar" t2))
         t3-baz (first (matching-elements "baz" t3))
         t3-bletch (first (matching-elements "bletch" t3))
-        client-state {:root-id (:item-id t1)}
         spec {:relative-id tabs-id
-              :client-state client-state}
-        dom (render-tabs-DOM spec store client-state)
+              :chosen-tab-id (:item-id t1)}
+        dom (render-tabs-DOM spec store)
         tabs-dom (nth dom 4)
         virt-tab-dom (nth tabs-dom 3)
         tab3-dom (nth tabs-dom 4)

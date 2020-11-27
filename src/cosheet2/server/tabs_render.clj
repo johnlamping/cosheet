@@ -135,19 +135,12 @@
    ;; Add an element to it.
    {:template 'anything}))
 
-(defn get-tabs-rendering-data
-  [specification mutable-store]
-  (let [client-state (:client-state specification)]
-    [[mutable-store [(:relative-id specification)]]
-     [client-state [:root-id]]]))
-
 (defn render-tabs-DOM
   "Return a reporter giving the DOM for the elements of the given
   item as tabs."
-  [specification immutable-store immutable-client-state]
-  (let [{:keys [relative-id]} specification
+  [specification immutable-store]
+  (let [{:keys [relative-id chosen-tab-id]} specification
         tabs-entity (description->entity relative-id immutable-store)
-        chosen-tab-id (:root-id immutable-client-state)
         tabs-spec {:template (cons "" (cons "" new-tab-elements))
                    :nesting-depth 0}
         tabs (ordered-entities (label->elements tabs-entity :tab))

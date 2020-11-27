@@ -20,8 +20,11 @@
              [render-utils :refer [hierarchy-node-DOM make-component]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM]]
-             [action-data :refer [get-item-or-exemplar-action-data-for-ids
-                                  get-tab-action-data]])))
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
+                                  get-tab-action-data
+                                  get-virtual-action-data
+                                  compose-action-data-getter]])))
 
 (def base-tab-width 150)
 
@@ -53,8 +56,8 @@
           (add-attributes {:class "complex"})))        
       (virtual-DOM-component
        {:relative-id :virtual
-            :class "empty-child"}
-       (select-keys specification [:template])))))
+        :class "empty-child"}
+       {:template 'anything}))))
 
 (defmethod print-method
   cosheet2.server.tabs_render$render_tab_elements_DOM
@@ -118,14 +121,19 @@
       (add-attributes {:class "chosen"}))))
 
 (defn virtual-tab-DOM
-  [{:keys [template first-tab-id]}]
+  [{:keys [template last-tab-id]}]
   (virtual-DOM-component
    {:relative-id :virtual-tab
-    :class "tab virtualTab"}
-   {:template template
-    :sibling first-tab-id
-    :position :before
-    :use-bigger true}))
+    :item-id last-tab-id
+    :class "tab virtualTab"
+    ;; Make the tab.
+    :get-action-data (compose-action-data-getter
+                      get-item-or-exemplar-action-data
+                      [get-virtual-action-data {:template template
+                                                :sibling true
+                                                :use-bigger true}])}
+   ;; Add an element to it.
+   {:template 'anything}))
 
 (defn get-tabs-rendering-data
   [specification mutable-store]
@@ -155,8 +163,9 @@
                            (cond-> tabs-spec
                              chosen-one (assoc :is-chosen-tab true)))))
                       hierarchy)
-        virtual-tab-dom (virtual-tab-DOM (assoc tabs-spec :first-tab-id
-                                                (:item-id (first tabs))))]
+        virtual-tab-dom (virtual-tab-DOM
+                         (assoc tabs-spec
+                                :last-tab-id (:item-id (last tabs))))]
       [:div {:class "tabs-wrapper"}
        [:div#batch-edit.tool
         [:img {:src "../icons/edit.gif"}]

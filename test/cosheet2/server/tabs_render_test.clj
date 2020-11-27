@@ -15,8 +15,10 @@
              [item-render :refer [render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
              [model-utils :refer [new-tab-elements semantic-to-list]]
-             [action-data :refer [get-item-or-exemplar-action-data-for-ids
-                                  get-tab-action-data get-virtual-action-data]]
+             [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-or-exemplar-action-data-for-ids
+                                  get-tab-action-data get-virtual-action-data
+                                  composed-get-action-data]]
              [tabs-render :refer :all])
              ; :reload
             ))
@@ -27,11 +29,11 @@
 (defn virt-RD [] get-virtual-DOM-rendering-data)
 (defn tab-RD [] get-tab-elements-rendering-data)
 
+(defn item-AD [] get-item-or-exemplar-action-data)
 (defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
 (defn tab-AD [] get-tab-action-data)
 (defn virt-AD [] get-virtual-action-data)
-
-
+(defn comp-AD [] composed-get-action-data)
 
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
@@ -75,9 +77,10 @@
         dom (render-tabs-DOM spec store client-state)
         tabs-dom (nth dom 4)
         virt-tab-dom (nth tabs-dom 3)
-        tab1-dom (nth tabs-dom 4)
-        tab23-dom (nth tabs-dom 5)]  
-                  
+        tab3-dom (nth tabs-dom 4)
+        tab12-dom (nth tabs-dom 5)
+        tab2-dom (nth (nth tab12-dom 3) 2)
+        tab1-dom (nth (nth tab12-dom 3) 3)]  
     (is (check
          dom
          [:div {:class "tabs-wrapper"}
@@ -89,19 +92,22 @@
            [:div]
            [:component
             {:relative-id :virtual-tab
+             :item-id (:item-id t3)
              :class "tab virtualTab"
              :render-dom (virt-DOM)
              :get-rendering-data (virt-RD)
              :get-action-data
-             [(virt-AD)
-              {:template '("" "" :tab
-                           (:blank :tab-topic :table
-                                   (anything (??? :label)
-                                             (anything :column (??? :label))
-                                             :row-condition :selector)))
-               :sibling (:item-id t1)
-               :position :before
-               :use-bigger true}]}]
+             [(comp-AD)
+              (item-AD)
+              [(virt-AD)
+               {:template '("" "" :tab
+                            (:blank :tab-topic :table
+                                    (anything (??? :label)
+                                              (anything :column (??? :label))
+                                              :row-condition :selector)))
+                :sibling true
+                :use-bigger true}]
+              [(virt-AD) {:template 'anything}]]}]
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
@@ -116,7 +122,7 @@
              :example-element-ids [(:item-id t3-baz) (:item-id t3-bletch)]
              :get-tab-action-data [(tab-AD) (:item-id t3)]
              :class "tab"}]
-           [:div {:class "tab-tree"}
+           [:div {:class "tab-tree chosen"}
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
@@ -133,7 +139,7 @@
               :class "multi-tab"}]
             [:div {:class "tab-sequence"}
              [:component
-              {:relative-id [(:item-id t2) "1"]
+              {:relative-id [(:item-id t2) :D1]
                :width 0.75
                :template '("" "" :tab
                            (:blank :tab-topic :table
@@ -147,9 +153,10 @@
                :example-element-ids [(:item-id t2-bar)]
                :get-action-data [(ids-AD) [(:item-id t2)]]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
-               :class "tab"}]
+               ;; TODO: This tab shouldn't be chosen.
+               :class "tab chosen"}]
              [:component
-              {:relative-id [(:item-id t1) "1"]
+              {:relative-id [(:item-id t1) :D1]
                :width 0.75
                :template (any)
                :render-dom (tab-DOM)
@@ -157,9 +164,9 @@
                :example-element-ids []
                :get-action-data [(ids-AD) [(:item-id t1)]]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
-               :class "tab"}]]]]]))
+               :class "tab chosen"}]]]]]))
     (is (check
-         (render-tab-elements-DOM (second tab1-dom) store)
+         (render-tab-elements-DOM (second tab3-dom) store)
          [:div {:class "vertical-stack"}
           [:component {:relative-id (:item-id t3-baz)
                        :width 0.75}]
@@ -167,4 +174,11 @@
                        :width 0.75}]]))
     (is (check
          (render-virtual-DOM (second virt-tab-dom))
-         [:div {:class "tab virtualTab editable virtual"}]))))
+         [:div {:class "tab virtualTab editable virtual"}]))
+    (is (check
+         (render-tab-elements-DOM (second tab1-dom) store)
+         [:component {:relative-id :virtual
+                      :class "empty-child"
+                      :render-dom (virt-DOM)
+                      :get-rendering-data (virt-RD)
+                      :get-action-data [(virt-AD) {:template 'anything}]}]))))

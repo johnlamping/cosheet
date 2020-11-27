@@ -241,11 +241,17 @@
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,
                                       ; so we don't mess up the starting one.
-        ss (assoc session-state :store ms)
-        for-client (do-selected store {:session-state ss :client-id "Larry"})]
-    (is (= (get-selected (current-store ms) temporary-id)
-           "Larry"))
-    (is (nil? for-client))))
+        queue (new-priority-task-queue 0)
+        cd (new-calculator-data queue)
+        manager (new-dom-manager ms cd)
+        ss (assoc session-state :store ms :dom-manager manager)]
+    (add-root-dom manager :Larry {:get-rendering-data (fn [& _] {})
+                                  :render-dom (fn [& _] [:div])
+                                  :get-action-data (fn [& _] {})})
+    (let [for-client (do-selected ms ss "Larry")]
+      (is (= (get-selected (current-store ms) temporary-id)
+             "Larry"))
+      (is (nil? for-client)))))
 
 (comment
 

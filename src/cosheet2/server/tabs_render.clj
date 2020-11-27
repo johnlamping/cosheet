@@ -37,7 +37,7 @@
 (defn render-tab-elements-DOM
   [specification immutable-store]
   "Generate the dom for a node of the tabs hierarchy, but not any of
-  its children. The specification must already have get-action-data
+  its children. The component must already have get-action-data
   that targets each of the tab items, and get-tab-action-data if there
   is only one tab item."
   (let [{:keys [example-element-ids]} specification
@@ -51,9 +51,10 @@
         (cond-> dom
           (not (empty? (apply concat elements-elements)))
           (add-attributes {:class "complex"})))        
-      (add-attributes
-       (virtual-DOM-component specification {})
-       {:class "empty-child"}))))
+      (virtual-DOM-component
+       {:relative-id :virtual
+            :class "empty-child"}
+       (select-keys specification [:template])))))
 
 (defmethod print-method
   cosheet2.server.tabs_render$render_tab_elements_DOM
@@ -67,7 +68,8 @@
         example-element-ids (map :item-id
                                  (hierarchy-node-example-elements node))
         relative-id (cond-> (first tab-ids)
-                      (> nesting-depth 0) (vector (str nesting-depth)))]
+                      (> nesting-depth 0)
+                      (vector (keyword (str "D" nesting-depth))))]
     (make-component
      (cond->
          {:relative-id relative-id

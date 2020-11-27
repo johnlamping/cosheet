@@ -150,26 +150,6 @@
                 (abandon-problem-changes store modified subject-id)))
             store target-ids)))
 
-(defn do-selected
-  [immutable-store {:keys [session-state client-id select]}]
-  (let [{:keys [store client-state session-temporary-id]} session-state]
-    (map-state-reset! client-state {:select-store-ids nil
-                                    :if-selected nil})
-    (store-update!
-     store
-     (fn [store]
-       (if (not= client-id (get-selected store session-temporary-id))
-         (-> store
-             (update-selected session-temporary-id client-id)
-             (update-equivalent-undo-point true))
-         store)))
-    (when select
-      (when-let [tab-id (:tab-id select)]
-        (do (map-state-reset! client-state {:root-id tab-id})
-          {:store immutable-store
-           :set-url (str (:url-path session-state)
-                         "?root=" (id->string tab-id))})))))
-
 (comment
   (defn pop-content-from-key
     "If the last item of the key is :content, remove it."
@@ -363,8 +343,7 @@
   store, or a map with a :store value and any additional information
   it wants to convey."
   [action]
-  ({:selected do-selected
-    :add-element do-add-element
+  ({:add-element do-add-element
     :add-label do-add-label
     :add-twin do-add-twin
     ; :add-row do-add-row
@@ -436,6 +415,34 @@
        :if-selected (when-let [former (get-selected old-store temporary-id)]
                       [former])}))
 
+;;; While do-selected takes a client id, like a contextual action does,
+;;; it doesn't rely on what that client id references. In particular, it
+;;; does create more items is a virtual id is selected. So it can not be
+;;; handled like other contextual handlers.
+(defn do-selected
+  [mutable-store session-state client-id & _]
+  (let [{:keys [client-state session-temporary-id dom-manager]} session-state
+        action-data (client-id->action-data
+                     @dom-manager client-id :select
+                     (current-store mutable-store))
+        {:keys [select]} action-data]
+    (map-state-reset! client-state {:select-store-ids nil
+                                    :if-selected nil})
+    (store-update!
+     mutable-store
+     (fn [store]
+       (if (not= client-id (get-selected store session-temporary-id))
+         (-> store
+             (update-selected session-temporary-id client-id)
+             (update-equivalent-undo-point true))
+         store)))
+    (when select
+      (when-let [tab-id (:tab-id select)]
+        (do
+          (map-state-reset! client-state {:root-id tab-id})
+          {:set-url (str (:url-path session-state)
+                         "?root=" (id->string tab-id))})))))
+
 (defn do-undo
   [mutable-store session-state & _]
   (let [old-store (current-store mutable-store)]
@@ -465,15 +472,18 @@
                          be selected by the client for select or 
                          select-store-ids to have an effect."
   [mutable-store session-state action]
-  (let [[action-type & additional-args] action]
+  (let [[action-type & extra-args] action]
+    (println)
+    (println)
     (println "DOING ACTION " action-type)
     (if-let [handler (case action-type
                        :undo do-undo
                        :redo do-redo
+                       :selected do-selected
                        ; :quit-batch-edit do-quit-batch-edit
                        nil)]
       (do (println "command: " (map simplify-for-print action))
-          (apply handler mutable-store session-state additional-args))
+          (apply handler mutable-store session-state extra-args))
       (if (= (mod (count action) 2) 0)
         (do-contextual-action mutable-store session-state action)
         (println "Error: odd number of keyword/argument pairs:" action)))))

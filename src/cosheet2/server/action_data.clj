@@ -40,6 +40,7 @@
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
   [getter specification containing-action-data action immutable-store]
+  (println)
   (println "getting ACTION DATA" getter)
   (println "  from spec" (dissoc specification
                                  :reporter :id-R :client-state

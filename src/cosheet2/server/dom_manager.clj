@@ -148,7 +148,20 @@
   ;; Avoid huge print-outs.
   (.write w "<DOMManagerData>"))
 
-(def valid-relative-id?)
+(defn valid-id-subpart?
+  [id]
+  (if (keyword? id)
+    (and
+     ;; Only characters allowed in all HTML versions, and
+     ;; not one of our separators between parts.
+     (re-matches #"^[a-zA-Z0-9\-]*$" (name id))
+     ;; Not a character that an item id's representation
+     ;; could start with.
+     (not (re-matches #"^[0-9I].*" (name id))))
+    (satisfies? StoredItemDescription id)))
+
+(defn valid-relative-id? [id]
+  (every? valid-id-subpart? (if (sequential? id) id [id])))
 
 (defn make-component-atom
   "Given a component specification, create a component data atom. The
@@ -163,7 +176,7 @@
   (assert (or client-id
               (and (:relative-id specification) containing-component-atom)))
   (when-let [relative-id (:relative-id specification)]
-    (assert (valid-relative-id? relative-id)))
+    (assert (valid-relative-id? relative-id) relative-id))
   (atom
    (map->ComponentData
     {:dom-manager dom-manager
@@ -446,17 +459,6 @@
 (defn split-client-id-subparts [client-id-part]
   (clojure.string/split client-id-part #"\."))
 
-(defn valid-id-subpart? [id]
-  (when (keyword? id))
-  (or (and (keyword? id)
-           ;; Only characters allowed in all HTML versions, and
-           ;; not one of our separators between parts.
-           (re-matches #"^[a-zA-Z0-9\-]*$" (name id))
-           ;; Not a character that an item id's representation
-           ;; could start with.
-           (not (re-matches #"^[0-9I].*" (name id))))
-      (satisfies? StoredItemDescription id)))
-
 (defn  id-subpart->client-id-subpart
   "Turn a subpart of a :relative-id to its client form."
   [id]
@@ -471,9 +473,6 @@
            (re-matches #"[I0-9]" (subs client-id-subpart 0 1)))
     (string->id client-id-subpart)
     (keyword client-id-subpart)))
-
-(defn valid-relative-id? [id]
-  (every? valid-id-subpart? (if (sequential? id) id [id])))
 
 (defn relative-id->client-id-part
   "Turn a :relative-id to its client form."

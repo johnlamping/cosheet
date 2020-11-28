@@ -121,7 +121,7 @@
              :example-element-ids [(:item-id t3-baz) (:item-id t3-bletch)]
              :get-tab-action-data [(tab-AD) (:item-id t3)]
              :class "tab"}]
-           [:div {:class "tab-tree chosen"}
+           [:div {:class "tab-tree"}
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
@@ -152,8 +152,7 @@
                :example-element-ids [(:item-id t2-bar)]
                :get-action-data [(ids-AD) [(:item-id t2)]]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
-               ;; TODO: This tab shouldn't be chosen.
-               :class "tab chosen"}]
+               :class "tab"}]
              [:component
               {:relative-id [(:item-id t1) :D1]
                :width 0.75
@@ -163,7 +162,7 @@
                :example-element-ids []
                :get-action-data [(ids-AD) [(:item-id t1)]]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
-               :class "tab chosen"}]]]]]))
+               :class "chosen tab"}]]]]]))
     (is (check
          (render-tab-elements-DOM (second tab3-dom) store)
          [:div {:class "vertical-stack"}

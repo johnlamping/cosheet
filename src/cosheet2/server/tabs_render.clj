@@ -66,13 +66,14 @@
 
 (defn tab-elements-DOM-component
   [node specification]
-  (let [{:keys [template nesting-depth]} specification 
+  (let [{:keys [template nesting-depth chosen-tab-id]} specification 
         tab-ids (map #(:item-id (:item %)) (hierarchy-node-descendants node))
         example-element-ids (map :item-id
                                  (hierarchy-node-example-elements node))
         relative-id (cond-> (first tab-ids)
                       (> nesting-depth 0)
                       (vector (keyword (str "D" nesting-depth))))]
+    (println "!!!" relative-id)
     (make-component
      (cond->
          {:relative-id relative-id
@@ -84,6 +85,8 @@
        (= (count tab-ids) 1)
        (assoc :get-tab-action-data
               [get-tab-action-data (first tab-ids)])
+       (and (= (count tab-ids) 1) (= chosen-tab-id (first tab-ids)))
+       (into-attributes {:class "chosen"})
        (not= [relative-id] tab-ids)
        (assoc :get-action-data [get-item-or-exemplar-action-data-for-ids
                                 tab-ids])))))
@@ -101,9 +104,6 @@
       (update :nesting-depth inc)))
 
 (defn tabs-node-DOM
-  "In addition to :template, the specification must have :is-chosen-tab,
-   which is true if the tab is the currently chosen tab, or is a
-   parent of that tab."
   [node child-doms specification]
   (let [elements-dom (tab-elements-DOM-component node specification)
         dom (if (empty? child-doms)
@@ -116,9 +116,7 @@
                      ;; the stacking order.  Then in the style, we
                      ;; say to lay them out in reverse row order.
                      (reverse child-doms))])]
-    (cond-> dom
-      (:is-chosen-tab specification)
-      (add-attributes {:class "chosen"}))))
+    dom))
 
 (defn virtual-tab-DOM
   [{:keys [template last-tab-id]}]
@@ -142,19 +140,14 @@
   (let [{:keys [relative-id chosen-tab-id]} specification
         tabs-entity (description->entity relative-id immutable-store)
         tabs-spec {:template (cons "" (cons "" new-tab-elements))
-                   :nesting-depth 0}
+                   :nesting-depth 0
+                   :chosen-tab-id chosen-tab-id}
         tabs (ordered-entities (label->elements tabs-entity :tab))
         hierarchy (hierarchy-by-all-elements tabs)
         hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
         tab-doms (map (fn [node]
                         (hierarchy-node-DOM
-                         node tabs-node-DOM tabs-child-info
-                         (let [chosen-one
-                               (seq (filter #(= (:item-id (:item %))
-                                                chosen-tab-id)
-                                            (hierarchy-node-descendants node)))]
-                           (cond-> tabs-spec
-                             chosen-one (assoc :is-chosen-tab true)))))
+                         node tabs-node-DOM tabs-child-info tabs-spec))
                       hierarchy)
         virtual-tab-dom (virtual-tab-DOM
                          (assoc tabs-spec

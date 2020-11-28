@@ -421,27 +421,28 @@
 ;;; handled like other contextual handlers.
 (defn do-selected
   [mutable-store session-state client-id & _]
-  (let [{:keys [client-state session-temporary-id dom-manager]} session-state
-        action-data (client-id->action-data
-                     @dom-manager client-id :select
-                     (current-store mutable-store))
-        {:keys [select]} action-data]
-    (map-state-reset! client-state {:select-store-ids nil
-                                    :if-selected nil})
-    (store-update!
-     mutable-store
-     (fn [store]
-       (if (not= client-id (get-selected store session-temporary-id))
-         (-> store
-             (update-selected session-temporary-id client-id)
-             (update-equivalent-undo-point true))
-         store)))
-    (when select
-      (when-let [tab-id (:tab-id select)]
-        (do
-          (map-state-reset! client-state {:root-id tab-id})
-          {:set-url (str (:url-path session-state)
-                         "?root=" (id->string tab-id))})))))
+  (when client-id
+    (let [{:keys [client-state session-temporary-id dom-manager]} session-state
+          action-data (client-id->action-data
+                       @dom-manager client-id :select
+                       (current-store mutable-store))
+          {:keys [select]} action-data]
+      (map-state-reset! client-state {:select-store-ids nil
+                                      :if-selected nil})
+      (store-update!
+       mutable-store
+       (fn [store]
+         (if (not= client-id (get-selected store session-temporary-id))
+           (-> store
+               (update-selected session-temporary-id client-id)
+               (update-equivalent-undo-point true))
+           store)))
+      (when select
+        (when-let [tab-id (:tab-id select)]
+          (do
+            (map-state-reset! client-state {:root-id tab-id})
+            {:set-url (str (:url-path session-state)
+                           "?root=" (id->string tab-id))}))))))
 
 (defn do-undo
   [mutable-store session-state & _]

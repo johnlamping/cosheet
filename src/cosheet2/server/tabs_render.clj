@@ -119,7 +119,7 @@
     dom))
 
 (defn virtual-tab-DOM
-  [{:keys [template last-tab-id]}]
+  [{:keys [last-tab-id]}]
   (virtual-DOM-component
    {:relative-id :virtual-tab
     :item-id last-tab-id
@@ -127,10 +127,13 @@
     ;; Make the tab.
     :get-action-data (compose-action-data-getter
                       get-item-or-exemplar-action-data
-                      [get-virtual-action-data {:template template
-                                                :sibling true
-                                                :use-bigger true}])}
-   ;; Add an element to it.
+                      [get-virtual-action-data
+                       ;; This template starts with no name on the tab.
+                       {:template (cons "" new-tab-elements)
+                        :sibling true
+                        :use-bigger true}])}
+   ;; This template adds the label to the name to it, which will get
+   ;; filled in by what the user types.
    {:template 'anything}))
 
 (defn render-tabs-DOM
@@ -139,6 +142,7 @@
   [specification immutable-store]
   (let [{:keys [relative-id chosen-tab-id]} specification
         tabs-entity (description->entity relative-id immutable-store)
+        ;; The template starts out with an empty name
         tabs-spec {:template (cons "" (cons "" new-tab-elements))
                    :nesting-depth 0
                    :chosen-tab-id chosen-tab-id}

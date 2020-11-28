@@ -99,7 +99,7 @@
              [(comp-AD)
               (item-AD)
               [(virt-AD)
-               {:template '("" "" :tab
+               {:template '("" :tab
                             (:blank :tab-topic :table
                                     (anything (??? :label)
                                               (anything :column (??? :label))

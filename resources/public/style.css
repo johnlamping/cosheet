@@ -184,7 +184,7 @@ body {
     vertical-align: bottom;
     flex: none;
     display: inline-flex;
-    align-items: stretch;
+    align-items: flex-end;
     z-index: 1;  /* Make the ::before and ::after borders go in front */
     position:relative;  /* Make the z-index effective */
     /* The tabs are give in reverse order, so the logically first tab will

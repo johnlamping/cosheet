@@ -36,6 +36,9 @@
 ;;;                   This is filled in by virtual DOM components, after
 ;;;                   adding the elements they imply.
 
+;;; This file contains the basic action data getters, plus utilities for them.
+;;; Files with unique needs for action data getters define their own.
+
 (defn run-action-data-getter
   "Handle pulling the store out of the inherited action data, and handle
   a getter that has extra arguments."
@@ -221,60 +224,6 @@
   cosheet2.server.action_data$get_tab_action_data
   [v ^java.io.Writer w]
   (.write w "tab-AD"))
-
-(defn get-column-action-data
-  "Add the action data for a command that acts on a column.
-  The header-id is the id that holds all the columns. The column-ids
-  are the ids of all columns under this component. (One header can
-  span multiple columns.)"
-  [specification containing-action-data action immutable-store
-   header-id column-ids]
-  (assoc containing-action-data :column
-         {:header-id header-id
-          :column-ids column-ids}))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_column_action_data
-  [v ^java.io.Writer w]
-  (.write w "col-AD"))
-
-(defn get-row-action-data
-  "Add the action data for a command that acts on a row."
-  [specification containing-action-data action immutable-store
-   row-id row-template]
-  (assoc containing-action-data :row
-         {:row-id row-id
-          :row-template row-template}))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_row_action_data
-  [v ^java.io.Writer w]
-  (.write w "row-AD"))
-
-(defn get-virtual-column-cell-action-data
-  "Create a new column header and an element under that column in the row.
-   The containing data's target-ids are the id of the row."
-  [specification containing-action-data action immutable-store
-   header-id]
-  (let [header (description->entity header-id immutable-store)
-        columns (label->elements header :column)
-        last-column-id (:item-id (last (ordered-entities columns)))
-        {:keys [store target-ids]}
-        (get-virtual-action-data
-         {}
-         {:target-ids [last-column-id]}
-         action immutable-store
-         {:sibling true
-          :template (concat table-header-template ['(??? :label)])})
-        new-column-id (first target-ids)
-        template (semantic-to-list (description->entity new-column-id store))]
-    (get-virtual-action-data
-     {} containing-action-data action store {:template template})))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_virtual_column_cell_action_data
-  [v ^java.io.Writer w]
-  (.write w "virt-col-cell-AD"))
 
 (defn composed-get-action-data
   "Run each argument getter in turn, feeding the output of each into

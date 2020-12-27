@@ -21,12 +21,10 @@
                                   get-pass-through-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-or-exemplar-action-data-for-ids
-                                  get-column-action-data
-                                  get-row-action-data
-                                  get-virtual-action-data
-                                  get-virtual-column-cell-action-data]]
+                                  get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels] :as hierarchy]
-             [order-utils :refer [ordered-entities]]
+             [order-utils :refer [ordered-entities add-order-elements]]
+             [model-utils :refer [semantic-to-list]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -70,6 +68,21 @@
   that they work together correctly."
   [renderer spec data-getter store]
   (apply renderer spec (map first (data-getter spec store))))
+
+(deftest get-virtual-column-cell-action-data-test
+  (let [[s1 header-id] (add-entity (new-element-store) nil
+                                   (add-order-elements
+                                    '(:x (anything ("c1" :label) :column)
+                                         (anything ("c2" :label) :column))))
+        [store row-id] (add-entity s1 nil (add-order-elements
+                                           '(anything (1 ("c1" :label))
+                                                      (2 ("c2" :label)))))
+        data (get-virtual-column-cell-action-data
+              {} {:target-ids [row-id]} nil store header-id)
+        new-store (:store data)
+        new-id (first (:target-ids data))]
+    (is (= (semantic-to-list (description->entity new-id new-store))
+           '("" (" A" :label))))))
 
 (deftest table-DOM-test
   (let [specification {:width 3.0

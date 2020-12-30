@@ -27,9 +27,9 @@
 ;;;    be the highest number.
 
 (defn conj-disjoint-combinations
-  "Given a sequence of collections of elements, and a sequence of elements,
-   choose all combinations of a collection and an element not in the collection,
-  returning a sequence of such combinations."
+  "Given a sequence of tuples of elements, and a sequence of elements,
+   choose all combinations of a tuple and an element not in the tuple,
+   returning a sequence of such combinations as tuples."
   [combinations elements]
   (mapcat (fn [combination]
             (keep (fn [element] (when (not (some (partial = element)

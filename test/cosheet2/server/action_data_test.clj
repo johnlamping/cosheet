@@ -91,6 +91,12 @@
 (def dup-female-1 (first dup-females))
 (def dup-female-2 (second dup-females))
 
+(deftest item-complexity-test
+  (is (= (item-complexity "a") 1.0))
+  (is (= (item-complexity nil) 0.1))
+  (is (= (item-complexity '(1 2 3 nil)) 2.05))
+  (is (= (item-complexity '(1 (2 "a"))) 1.75)))
+
 (deftest best-match-test
   (is (nil? (best-match 1 [])))
   (is (= (best-match 1 [1]) 1))

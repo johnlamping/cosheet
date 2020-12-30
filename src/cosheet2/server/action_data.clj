@@ -79,6 +79,14 @@
                       get-tab-action-data])]
     (assoc data :component component)))
 
+(defn item-complexity
+  "Return the complexity of the item, which is the total number of
+   elements, sub-elements, etc, with sub-elements counting less."
+  [item]
+  (+ (if (or (nil? (content item)) (= 'anything (content item)))
+       0.1 1.0)
+     (* 0.5 (apply + (map item-complexity (elements item))))))
+
 (defn best-match
   "Given an immutable template, and a seq of items
    that match it, return the best matching item."
@@ -112,11 +120,10 @@
                                           canonical-match nil)
                                          canonical))
                                    matches)))]
-      ;; TODO: Add a function that computes the "complexity" of an item,
-      ;;       which is the total number of elements, sub-elements, etc,
-      ;;       with sub-elements counting less. Then choose the lowest
-      ;;       complexity match.
-      (first (or (seq perfect-matches) (seq good-matches) matches)))))
+      ;; In case of ties, go with the lowest complexity match.
+      (first (or (seq perfect-matches)
+                 (seq (sort-by #(- (item-complexity %)) good-matches))
+                 (seq (sort-by #(- (item-complexity %)) matches)))))))
 
 (defn best-matching-id
   "Return the id, if any, of the element of the subject whose item

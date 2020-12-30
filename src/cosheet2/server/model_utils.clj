@@ -178,7 +178,7 @@
 (defn pattern-to-query
   "Given a pattern, alter it to work as a query. Specifically:
     * Replace 'anything by nil.
-    * If an element is not a label, then require it not to have a :label element.
+    * If an element is not a label, require it not to have a :label element.
     * If an entity has nil content, add a '(nil :order) element to make
       it only match user editable elements."
   [pattern]

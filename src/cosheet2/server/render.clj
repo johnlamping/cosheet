@@ -185,7 +185,7 @@
 ;;; :relative-id, checking that it is an item id. For :render-dom, the
 ;;; default renders the item corresponding to the :relative-id, minus
 ;;; any elements in :excluded-element-ids. For :get-action-data, the
-;;; default returns the set of items that are each represented by the
+;;; default returns the set of ids that are all represented by the
 ;;; displayed item.
 
 ;;; Each component is uniquely identified with a client id, which is

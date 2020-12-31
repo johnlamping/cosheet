@@ -83,8 +83,8 @@
   "Return the complexity of the item, which is the total number of
    elements, sub-elements, etc, with sub-elements counting less."
   [item]
-  (+ (if (or (nil? (content item)) (= 'anything (content item)))
-       0.1 1.0)
+  (+ (get {nil 0.1   'anything 0.1   "" 0.2}
+          (content item) 1.0)
      (* 0.5 (apply + (map item-complexity (elements item))))))
 
 (defn best-match
@@ -122,8 +122,8 @@
                                    matches)))]
       ;; In case of ties, go with the lowest complexity match.
       (first (or (seq perfect-matches)
-                 (seq (sort-by #(- (item-complexity %)) good-matches))
-                 (seq (sort-by #(- (item-complexity %)) matches)))))))
+                 (seq (sort-by item-complexity good-matches))
+                 (seq (sort-by item-complexity matches)))))))
 
 (defn best-matching-id
   "Return the id, if any, of the element of the subject whose item

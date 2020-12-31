@@ -172,7 +172,7 @@
                    [get-virtual-action-data action-data-arguments]))))))
 
 (defn virtual-label-DOM-component
-  "Return a dom for a virtual label. The label must occur be inside an
+  "Return a dom for a virtual label. The label must occur inside an
   overall component for its element. The specification should be for
   elements of the item."
   [specification]

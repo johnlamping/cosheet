@@ -26,20 +26,22 @@
              [action-data :refer [item-complexity best-matching-id]])))
 
 (defn match-count-R
-  "Return a reporter whose value is the number ox1f matches to the row selector."
-  [query-entity query-qualifier mutable-store]
-  (let [query (pattern-to-query (semantic-to-list query-entity))
-        qualified-query (add-elements-to-entity-list query query-qualifier)]
-    (expr-let
-        [matches (matching-item-ids-R qualified-query mutable-store)]
-      (count matches))))
+  "Return a reporter whose value is the number of matches to the query
+   given by the reporter, with the qualifier added."
+  [query-R query-qualifier mutable-store]
+  (expr-let [query query-R]
+    (let [qualified-query (add-elements-to-entity-list query query-qualifier)]
+      (expr-let [matches (matching-item-ids-R qualified-query mutable-store)]
+        (count matches)))))
 
 (defn get-batch-count-rendering-data
-  [{:keys [query-id stack-selector-id]} mutable-store]
-  [[(match-count-R query-id :top-level mutable-store)
-    [universal-category]]
-   [(match-count-R query-id :row-condition mutable-store)
-    [universal-category]]])
+  [{:keys [query-id]} mutable-store]
+  (let [mutable-query-entity (description->entity query-id mutable-store)
+        query-R (updating-immutable mutable-query-entity)] 
+    [[(match-count-R query-R :top-level mutable-store)
+      [universal-category]]
+     [(match-count-R query-R :row-condition mutable-store)
+      [universal-category]]]))
 
 (defn render-batch-count-DOM
   [row-match-count header-match-count]
@@ -48,32 +50,32 @@
         header-match-count " table header matches.")])
 
 (defn batch-count-component
-  [query-id stack-selector-id]
+  [query-id]
   (make-component {:query-id query-id
-                   :stack-selector-id stack-selector-id
                    :render-dom render-batch-count-DOM
                    :get-rendering-data get-batch-count-rendering-data}))
 
 (defn get-matches
-  "Return the maches for the item, for each query, ordered from least complex."
-  [item queries]
-  (map (fn [query]
-         (let [matches (matching-elements query item)]
-           (sort-by item-complexity matches)))
+  "Return the maches for the entity, for each query, each set of
+   matches ordered from least complex."
+  [entity queries]
+  (map (fn [query] (let [matches (matching-elements query entity)]
+                     (sort-by item-complexity matches)))
        queries))
 
 (defn get-consistent-exemplar
-  "Given a seq matches for each of several positions, find a
-   consistent (non-overlapping) combination, and return the match at
-   the given position."
+  "Given a seq of matches for each of several positions, choose a
+  match for each position such that there are no overlaps, and
+  preferring earlier matches. Return the match at the given position."
   [matches position]
   (let [combinations (disjoint-combinations matches)]
     (nth (first combinations) position)))
 
 (defn select-elements-from-entities
   "Given a seq of items, a seq of element queries, and a position in
-   that seq, find a consistent match for all the queries for each item,
-   and return the match at the position."
+  that seq: for each item, find a consistent match for all the
+  queries, if possible. For each successful item, return the match at
+  the position."
   [items queries position]
   (keep (fn [item]
           (let [matches (get-matches item queries)]
@@ -138,6 +140,36 @@
                               (best-matching-id
                                id (:item-id stack-selector-entity) store))]))]
       (assoc containing-action-data :target-ids ids))))
+
+(defn batch-query-virtual-DOM
+  "Return the DOM for a virtual element in the row selector part of the display,
+   that is an element of the query item."
+  []
+  (let [dom (virtual-DOM-component
+             {:relative-id :virtual}
+             {:template '(anything (anything :label))})
+        label-dom (virtual-label-DOM-component {:template '(anything :label)})]
+    (add-labels-DOM label-dom dom :vertical)))
+
+(defn batch-query-DOM
+  "Return the dom for row selector."
+  [query-entity stack-selector-entity]
+  (let [query (pattern-to-query (semantic-to-list query-entity))
+        virtual-dom (batch-query-virtual-DOM)
+        ;; We need to take the current versions of the query elements,
+        ;; as :match-multiple only works with immutable items.
+        current-query-elements (semantic-elements query)
+        batch-dom
+        ;; TODO: Add-twin is a problem here with not knowing what
+        ;; template to use, because it is different for different
+        ;; items. Add-twin needs to know about :column, and copy it if
+        ;; and only if a twin's entity has it.
+        (labels-and-elements-DOM
+         current-query-elements virtual-dom
+         true true :horizontal
+         {:get-action-data [get-batch-edit-query-element-action-data
+                            query-entity stack-selector-entity]})]
+    batch-dom))
 
 (defn get-batch-edit-stack-element-action-data
   [{:keys [hierarchy-node]} containing-action-data action store
@@ -207,36 +239,6 @@
                   hierarchy)]
     (into [:div {:class "horizontal-label-sequence"}] doms)))
 
-(defn batch-query-virtual-DOM
-  "Return the DOM for a virtual element in the row selector part of the display,
-   that is an element of the query item."
-  []
-  (let [dom (virtual-DOM-component
-             {:relative-id :virtual}
-             {:template '(anything (anything :label))})
-        label-dom (virtual-label-DOM-component {:template '(anything :label)})]
-    (add-labels-DOM label-dom dom :vertical)))
-
-(defn batch-query-DOM
-  "Return the dom for row selector."
-  [query-entity stack-selector-entity]
-  (let [query (pattern-to-query (semantic-to-list query-entity))
-        virtual-dom (batch-query-virtual-DOM)
-        ;; We need to take the current versions of the query elements,
-        ;; as :match-multiple only works with immutable items.
-        current-query-elements (semantic-elements query)
-        batch-dom
-        ;; TODO: Add-twin is a problem here with not knowing what
-        ;; template to use, because it is different for different
-        ;; items. Add-twin needs to know about :column, and copy it if
-        ;; and only if a twin's entity has it.
-        (labels-and-elements-DOM
-         current-query-elements virtual-dom
-         true true :horizontal
-         {:get-action-data [get-batch-edit-query-element-action-data
-                            query-entity stack-selector-entity]})]
-    batch-dom))
-
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-selector-id]} mutable-store]
   [[mutable-store (remove nil? [query-id stack-selector-id])]])
@@ -249,7 +251,7 @@
   (let [query-entity (description->entity query-id store)
         stack-selector-entity (when stack-selector-id
                                 (description->entity stack-selector-id store))
-        count-dom (batch-count-component query-id stack-selector-id)
+        count-dom (batch-count-component query-id)
         query-dom (batch-query-DOM query-entity stack-selector-entity)
         inner-dom (if stack-selector-id
                     ;; For elements of our items, we want to match all

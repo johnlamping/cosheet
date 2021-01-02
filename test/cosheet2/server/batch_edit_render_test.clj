@@ -56,8 +56,16 @@
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
   that they work together correctly."
-  [renderer spec data-getter store]
-  (apply renderer spec (map first (data-getter spec store))))
+  ([spec store]
+   (run-renderer (:render-dom spec) spec (:get-rendering-data spec) store))
+  ([renderer spec data-getter store]
+   (let [ms (new-mutable-store store)
+         data (data-getter spec ms)
+         cd (new-calculator-data (new-priority-task-queue 0))]
+     (doseq [[rep dep] data]
+       (request rep cd))
+       (compute cd)
+       (apply renderer spec (map #(reporter-value (first %)) data)))))
 
 (def t0 (add-entity (new-element-store) nil
                     (add-order-elements
@@ -78,7 +86,10 @@
                                       (3 ("c2" :label))
                                       :top-level))))
 (def r2 (second t2))
-(def s (first t2))
+(def t3 (add-entity (first t2) nil (add-order-elements
+                                    '(anything '(anything ("c1" :label))))))
+(def q1 (second t3))
+(def s (first t3))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -94,4 +105,10 @@
     (store-reset! mutable-store (new-element-store))
     (compute cd)
     (is (= (reporter-value count-R) 0))))
+
+(deftest render-batch-count-DOM-test
+  (let [dom (run-renderer (second (batch-count-component q1)) s)]
+    (is (check dom
+               [:div {:class "batch-query-match-counts"}
+                "2 row matches.  1 table header matches."]))))
 

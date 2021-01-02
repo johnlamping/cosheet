@@ -31,9 +31,12 @@
   "Return a reporter whose value is the number of matches to the query
   given by the reporter, with the qualifier added."
   [query-R query-qualifier mutable-store]
-  (expr-let [query query-R]
-    (let [qualified-query (add-elements-to-entity-list query [query-qualifier])]
-      (expr-let [matches (matching-item-ids-R qualified-query mutable-store)]
+  (expr-let [query-entity query-R]
+    (let [query (-> query-entity
+                    semantic-to-list
+                    pattern-to-query
+                    (add-elements-to-entity-list [query-qualifier]))]
+      (expr-let [matches (matching-item-ids-R query mutable-store)]
         (count matches)))))
 
 (defn get-batch-count-rendering-data
@@ -46,14 +49,15 @@
       [universal-category]]]))
 
 (defn render-batch-count-DOM
-  [row-match-count header-match-count]
+  [spec row-match-count header-match-count]
   [:div {:class "batch-query-match-counts"}
    (str row-match-count " row matches.  "
         header-match-count " table header matches.")])
 
 (defn batch-count-component
   [query-id]
-  (make-component {:query-id query-id
+  (make-component {:relative-id :batch-count
+                   :query-id query-id
                    :render-dom render-batch-count-DOM
                    :get-rendering-data get-batch-count-rendering-data
                    :get-action-data get-pass-through-action-data}))

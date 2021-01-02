@@ -73,7 +73,6 @@
         relative-id (cond-> (first tab-ids)
                       (> nesting-depth 0)
                       (vector (keyword (str "D" nesting-depth))))]
-    (println "!!!" relative-id)
     (make-component
      (cond->
          {:relative-id relative-id

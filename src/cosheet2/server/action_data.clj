@@ -125,7 +125,7 @@
                  (seq (sort-by item-complexity good-matches))
                  (seq (sort-by item-complexity matches)))))))
 
-(defn best-matching-id
+(defn best-matching-element-id
   "Return the id, if any, of the element of the subject whose item
   best matches the exemplar id's item."
   [exemplar-id subject-id immutable-store]
@@ -153,7 +153,7 @@
   (if (<= (count subject-ids) 1)
     [id]
     (->> subject-ids
-         (map #(best-matching-id id % immutable-store))
+         (map #(best-matching-element-id id % immutable-store))
          (filter identity))))
 
 (defn get-item-or-exemplar-action-data

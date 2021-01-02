@@ -544,23 +544,23 @@
           action-data)))))
 
 (defn client-id->action-data
-    "Returns the action data map for the component that generated the
+  "Returns the action data map for the component that generated the
   final dom for the given client id. Adds the component to the action
   data map."
-    [manager-data client-id action immutable-store]
-    (let [id-sequence (client-id->relative-ids client-id)
-          root ((:root-components manager-data) (first id-sequence))]
-      (reduce (fn [action-data id]
-                (when action-data
-                  (let [component-data @(:component action-data)
-                        {:keys [dom id->subcomponent]} component-data]
-                    (when-let
-                        [subcomponent (id->subcomponent id)]
+  [manager-data client-id action immutable-store]
+  (let [id-sequence (client-id->relative-ids client-id)
+        root ((:root-components manager-data) (first id-sequence))]
+    (reduce (fn [action-data id]
+              (when action-data
+                (let [component-data @(:component action-data)
+                      {:keys [dom id->subcomponent]} component-data]
+                  (when-let
+                      [subcomponent (id->subcomponent id)]
                       (update-action-data-for-component-past-elided
                        subcomponent action-data action immutable-store)))))
-              (update-action-data-for-component-past-elided
-               root {} action immutable-store)
-              (rest id-sequence))))
+            (update-action-data-for-component-past-elided
+             root {} action immutable-store)
+            (rest id-sequence))))
 
 (defn adjust-subdom-for-client
   "Given a piece of dom and the client id for its container,

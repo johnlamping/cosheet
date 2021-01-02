@@ -1,7 +1,7 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [description->entity updating-immutable
-                                      elements]]
+                                      elements to-list]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -127,13 +127,13 @@
         ordered-query-elements(reverse (sort-by item-complexity query-elements))
         element-queries (map #(pattern-to-query (semantic-to-list %))
                              ordered-query-elements)
-        item-index (.indexOf item ordered-query-elements)
+        item-index (.indexOf ordered-query-elements item)
         _ (assert (not= item-index -1))
         top-level-entities (matching-items
-                            (add-elements-to-entity-list query :top-level)
+                            (add-elements-to-entity-list query [:top-level])
                             store)
         header-entities (matching-items
-                         (add-elements-to-entity-list query :row-condition)
+                         (add-elements-to-entity-list query [:row-condition])
                          store)
         stack-selector-item (when stack-selector-entity
                                (let [item-query (pattern-to-query
@@ -187,9 +187,11 @@
                    (concat
                     [query-entity stack-selector-entity]
                     (matching-items
-                     (add-elements-to-entity-list query :top-level) store)
+                     (add-elements-to-entity-list query [:top-level])
+                     store)
                     (matching-items
-                     (add-elements-to-entity-list query :row-condition) store)))
+                     (add-elements-to-entity-list query [:row-condition])
+                     store)))
         matches (mapcat (fn [entity]
                           (clojure.set/difference
                            (set (mapcat #(matching-elements % entity)

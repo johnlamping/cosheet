@@ -21,11 +21,11 @@
 ;;;         :application The application describing the computation that
 ;;;                      gives the value of this reporter 
 ;;;  :subordinate-values A map from reporters this reporter needs
-;;;                      for run its application to a pair of the last
+;;;                      to run its application to a pair of the last
 ;;;                      valid value it saw for them and their dependent-depth.
 ;;;                      The pair is kept even if the value later goes
-;;;                      invalid. The map is not present if
-;;;                      nothing is attending to the reporter.
+;;;                      invalid. The map is not present if nothing
+;;;                      is attending to the reporter.
 ;;;       :needed-values A set of reporters whose values this reporter needs
 ;;;                      to run its application and that it doesn't have a
 ;;;                      valid value for. Not present if nothing is

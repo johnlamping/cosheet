@@ -6,10 +6,13 @@
              [reporter :refer [new-reporter set-value! reporter-value]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
-             [store :refer [new-element-store new-mutable-store store-reset!]]
+             [entity :refer [elements]]
+             [store :refer [new-element-store new-mutable-store store-reset!
+                            id->element-ids id->subject]]
              store-impl
              [store-utils :refer [add-entity]]
-             [query :refer [matching-items matching-elements not-query]]
+             [query :refer [matching-items matching-elements not-query
+                            extended-by?]]
              [entity :as entity  :refer [description->entity
                                          label->elements elements to-list]]
              [expression :refer [expr-let]]
@@ -82,14 +85,17 @@
 (def r1 (second t1))
 (def t2 (add-entity (first t1) nil (add-order-elements
                                     '(""
-                                      (1 ("c1" :label))
+                                      (2 ("c1" :label))
                                       (3 ("c2" :label))
                                       :top-level))))
 (def r2 (second t2))
 (def t3 (add-entity (first t2) nil (add-order-elements
-                                    '(anything '(anything ("c1" :label))))))
+                                    '(anything (anything ("c1" :label))))))
 (def q1 (second t3))
-(def s (first t3))
+(def t4 (add-entity (first t3) nil (add-order-elements
+                                    '(anything (anything ("c1" :label))))))
+(def stk1 (second t4))
+(def s (first t4))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -112,3 +118,17 @@
                [:div {:class "batch-query-match-counts"}
                 "2 row matches.  1 table header matches."]))))
 
+
+(deftest get-batch-edit-query-element-action-data-test
+  (let [q1-entity (description->entity q1 s)
+        q1-element (first (matching-elements '(nil "c1") q1-entity))
+        action-data (get-batch-edit-query-element-action-data
+                     {:relative-id (:item-id q1-element)}
+                     {} nil s
+                     (description->entity q1 s) (description->entity stk1 s))
+        target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 5))
+    (is (= (set (map #(id->subject s %) target-ids))
+           #{h1 r1 r2 q1 stk1}))
+    (doseq [id target-ids]
+      (is (extended-by? '(nil ("c1" :label)) (description->entity id s))))))

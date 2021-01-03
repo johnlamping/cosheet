@@ -169,10 +169,12 @@
   "Return the dom for the query selector."
   [query-entity stack-selector-entity]
   (labels-and-elements-DOM
-   (elements (semantic-to-list query-entity))
+   (semantic-elements query-entity)
    (batch-query-virtual-DOM)
    true true :horizontal
-   {:get-action-data [get-batch-edit-query-element-action-data
+   {:relative-id :batch-query
+    :template 'anything
+    :get-action-data [get-batch-edit-query-element-action-data
                       query-entity stack-selector-entity]}))
 
 (defn get-batch-edit-stack-element-action-data

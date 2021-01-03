@@ -24,7 +24,10 @@
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [get-pass-through-action-data
-                                  get-virtual-action-data]]
+                                  get-virtual-action-data
+                                  composed-get-action-data
+                                  get-item-or-exemplar-action-data-for-ids
+                                  get-item-or-exemplar-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list]]
              [batch-edit-render :refer :all])
@@ -55,6 +58,13 @@
 (defn virt-RD [] get-virtual-DOM-rendering-data)
 
 (defn pass-AD [] get-pass-through-action-data)
+(defn comp-AD [] composed-get-action-data)
+(defn virt-AD [] get-virtual-action-data)
+(defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
+(defn item-AD [] get-item-or-exemplar-action-data)
+(defn batch-query-AD [] get-batch-edit-query-element-action-data)
+
+
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -79,7 +89,7 @@
 (def h1 (second t0))
 (def t1 (add-entity (first t0) nil (add-order-elements
                                     '(""
-                                      (1 ("c1" :label))
+                                      (2 ("c1" :label))
                                       (2 ("c2" :label))
                                       :top-level))))
 (def r1 (second t1))
@@ -93,9 +103,12 @@
                                     '(anything (anything ("c1" :label))))))
 (def q1 (second t3))
 (def t4 (add-entity (first t3) nil (add-order-elements
+                                    '(anything 2 (anything ("c1" :label))))))
+(def q2 (second t4))
+(def t5 (add-entity (first t4) nil (add-order-elements
                                     '(anything (anything ("c1" :label))))))
-(def stk1 (second t4))
-(def s (first t4))
+(def stk1 (second t5))
+(def s (first t5))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -127,8 +140,103 @@
                      {} nil s
                      (description->entity q1 s) (description->entity stk1 s))
         target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 5))
     (is (= (set (map #(id->subject s %) target-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id target-ids]
+      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+  ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
+  ;; It's '(nil "c1") matches in the first row, query 2, itself, and
+  ;; the stack selector (because the match in the stack selector does
+  ;; not require the entire query matching..
+  (let [q2-entity (description->entity q2 s)
+        q2-element (first (matching-elements '(nil "c1") q2-entity))
+        action-data (get-batch-edit-query-element-action-data
+                     {:relative-id (:item-id q2-element)}
+                     {} nil s
+                     (description->entity q2 s) (description->entity stk1 s))
+        target-ids (:target-ids action-data)]
+    (is (= (set (map #(id->subject s %) target-ids))
+           #{r1 q2 stk1}))
+    (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s))))))
+
+(deftest batch-query-DOM-test
+  (let [q2-entity (description->entity q2 s)
+        stk1-entity (description->entity stk1 s)
+        q2-2 (:item-id (first (matching-elements 2 q2-entity)))
+        q2-c1-entity (first (matching-elements '(nil "c1") q2-entity))
+        q2-c1 (:item-id q2-c1-entity)
+        q2-c1-l (:item-id (first (matching-elements "c1" q2-c1-entity)))
+        dom (batch-query-DOM q2-entity stk1-entity)]
+    (is (check
+         dom
+         ;; TODO: !!! The action data for the virtuals is all wrong. There needs
+         ;;       to be an overall component, which sets the target
+         ;;       ids to everything the query matches. Then the virtuals
+         ;;       will get the right action data.
+         [:div {:class "horizontal-labels-element label"}
+          ;; A virtual label, because we are required to show some label.
+          [:component
+           {:relative-id :virtual-label
+            :template '(anything :label)
+            :get-action-data [(comp-AD) [(batch-query-AD)
+                                         q2-entity stk1-entity]
+                              [(virt-AD) {:template '(anything :label)
+                                          :position :after}]]
+            :class "label"
+            :render-dom (virt-DOM)
+            :get-rendering-data (virt-RD)}]
+          [:div {:class "horizontal-stack"}
+           [:div {:class "horizontal-stack"}
+            [:div {:class "vertical-labels-element label virtual-wrapper"}
+             [:component {:template '("" :label)
+                          :relative-id [q2-2 :virtual-label]
+                          :get-action-data [(comp-AD)
+                                            ;; TODO: !!! This sub
+                                            ;; action data is wrong.
+                                            ;; It should be
+                                            ;; batch-query-AD.
+                                            [(ids-AD) (list q2-2)]
+                                            [(virt-AD) {:template '("" :label)}]]
+                          :render-dom (virt-DOM)
+                          :get-rendering-data (virt-RD)
+                          :class "label"}]
+             [:component {:relative-id q2-2
+                          :template 'anything
+                          :get-action-data [(batch-query-AD)
+                                            q2-entity stk1-entity]}]]
+            [:div {:class "wrapped-element label"}
+             [:component {:template '("" :label)
+                          :get-action-data [(comp-AD)
+                                            ;; TODO: !!! This sub
+                                            ;; action data is wrong.
+                                            ;; It should be
+                                            ;; batch-query-AD
+                                            [(ids-AD) (list q2-c1)]
+                                            (item-AD)]
+                          :class "label"
+                          :excluded-element-ids [(any)]
+                          :relative-id q2-c1-l}]
+             [:div {:class "indent-wrapper"}
+              [:component {:relative-id q2-c1
+                           :template '(anything ("c1" :label))
+                           :get-action-data [(batch-query-AD)
+                                             q2-entity stk1-entity]
+                           :excluded-element-ids [q2-c1-l]}]]]]
+           ;; A virtual element that is not a label.
+           [:div {:class "vertical-labels-element label"}
+            [:component {:template '(anything :label)
+                         :relative-id :virtual-label
+                         :class "label"
+                         :render-dom (virt-DOM)
+                         :get-rendering-data (virt-RD)
+                         :get-action-data [(virt-AD) {:template '(anything
+                                                                  :label)
+                                                      :position :after}]}]
+            [:component {:relative-id :virtual
+                         :render-dom (virt-DOM)
+                         :get-rendering-data (virt-RD)
+                         :get-action-data [(virt-AD)
+                                           {:template
+                                            '(anything
+                                              (anything :label))}]}]]]]))))

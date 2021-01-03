@@ -8,6 +8,7 @@
              item-render-test
              table-render-test
              tabs-render-test
+             batch-edit-render-test
              dom-manager-test
              session-state-test
              action-data-test

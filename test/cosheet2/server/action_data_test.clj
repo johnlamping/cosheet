@@ -122,22 +122,6 @@
           {:target-ids [joe-id jane-id dup-id]} nil store)
          {:target-ids [(:item-id jane-female) (:item-id dup-female-2)]})))
 
-(deftest get-item-or-exemplar-action-data-for-ids-test
-  (is (= (get-item-or-exemplar-action-data-for-ids
-          {} {} nil store [joe-id])
-         {:target-ids [joe-id]}))
-  (is (= (get-item-or-exemplar-action-data-for-ids
-          {} {:target-ids [joe-id]} nil store [(:item-id joe-age)])
-         {:target-ids [(:item-id joe-age)]}))
-  (is (check (get-item-or-exemplar-action-data-for-ids
-              {} {:target-ids [joe-id jane-id]} nil store [(:item-id jane-age)])
-             {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
-  (is (check (get-item-or-exemplar-action-data-for-ids
-              {} {:target-ids [joe-id jane-id]} nil store
-              [(:item-id jane-age) (:item-id joe-male)])
-             {:target-ids [(:item-id joe-age) (:item-id jane-age)
-                           (:item-id joe-male)]})))
-
 (defn get-order [id store]
   (let [elements (id-label->element-ids store id :order)]
     (id->content store (first elements))))

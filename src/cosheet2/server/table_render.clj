@@ -42,10 +42,10 @@
                                   non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  composed-get-action-data]])))
+                                  composed-get-action-data
+                                  multiple-items-get-action-data]])))
 
 (comment
 
@@ -281,8 +281,9 @@
             last-column-id (:item-id (:item last-column))]
         (add-attributes
          (virtual-entity-and-label-DOM
-          (assoc spec :get-action-data [get-item-or-exemplar-action-data-for-ids
-                                        [last-column-id]])
+          (assoc spec :get-action-data [multiple-items-get-action-data
+                                        [last-column-id]
+                                        get-item-or-exemplar-action-data])
           :vertical-wrapped
           {:sibling true})
          {:class  "column-header virtual-column"})))))
@@ -580,7 +581,8 @@
                    ;; We throw out our targets. That way, each row
                    ;; will be able to get its id as its target, even though
                    ;; its has no subject.
-                   :get-action-data [get-item-or-exemplar-action-data-for-ids
+                   :get-action-data [multiple-items-get-action-data
+                                     nil
                                      nil]})]
     [:div {:class "table"}
      condition-dom

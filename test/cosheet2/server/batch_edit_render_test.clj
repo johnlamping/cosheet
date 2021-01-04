@@ -26,7 +26,7 @@
              [action-data :refer [get-pass-through-action-data
                                   get-virtual-action-data
                                   composed-get-action-data
-                                  get-item-or-exemplar-action-data-for-ids
+                                  multiple-items-get-action-data
                                   get-item-or-exemplar-action-data]]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list]]
@@ -58,12 +58,11 @@
 (defn virt-RD [] get-virtual-DOM-rendering-data)
 
 (defn pass-AD [] get-pass-through-action-data)
-(defn comp-AD [] composed-get-action-data)
 (defn virt-AD [] get-virtual-action-data)
-(defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
 (defn item-AD [] get-item-or-exemplar-action-data)
+(defn comp-AD [] composed-get-action-data)
+(defn mult-items-AD [] multiple-items-get-action-data)
 (defn batch-query-AD [] get-batch-edit-query-element-action-data)
-
 
 
 (defn run-renderer
@@ -196,7 +195,8 @@
                                             ;; action data is wrong.
                                             ;; It should be
                                             ;; batch-query-AD.
-                                            [(ids-AD) (list q2-2)]
+                                            [(mult-items-AD)
+                                             (list q2-2) (item-AD)]
                                             [(virt-AD) {:template '("" :label)}]]
                           :render-dom (virt-DOM)
                           :get-rendering-data (virt-RD)
@@ -212,7 +212,8 @@
                                             ;; action data is wrong.
                                             ;; It should be
                                             ;; batch-query-AD
-                                            [(ids-AD) (list q2-c1)]
+                                            [(mult-items-AD)
+                                             (list q2-c1) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [(any)]

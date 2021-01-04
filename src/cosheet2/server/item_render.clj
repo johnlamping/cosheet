@@ -30,11 +30,12 @@
                                    condition-satisfiers
                                    hierarchy-node-DOM
                                    transform-specification-for-elements]]
-             [action-data :refer [get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids
+             [action-data :refer [default-get-action-data
+                                  get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  compose-action-data-getter]])))
+                                  compose-action-data-getter
+                                  multiple-items-get-action-data]])))
 (comment
   (declare item-without-labels-DOM-R)
 
@@ -256,8 +257,10 @@
                      (assoc :relative-id [example-descendant-id
                                           :virtual-label]
                             :get-action-data
-                            [get-item-or-exemplar-action-data-for-ids
-                             descendant-ids])
+                            [multiple-items-get-action-data
+                             descendant-ids
+                             (or (:get-action-data elements-spec)
+                                 default-get-action-data)])
                      (update :template ensure-label))
                  {})
                 (label-stack-DOM
@@ -265,8 +268,10 @@
                  (assoc elements-spec
                         :get-action-data
                         (compose-action-data-getter
-                         [get-item-or-exemplar-action-data-for-ids
-                          descendant-ids]
+                         [multiple-items-get-action-data
+                          descendant-ids
+                          (or (:get-action-data elements-spec)
+                              default-get-action-data)]
                          get-item-or-exemplar-action-data))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
@@ -631,9 +636,11 @@
                               (assoc :excluded-element-ids ancestor-ids)))))
         items-spec (assoc specification
                           :get-action-data
-                          [get-item-or-exemplar-action-data-for-ids
+                          [multiple-items-get-action-data
                            (map #(-> % :item :item-id)
-                                (hierarchy-node-descendants node))])]
+                                (hierarchy-node-descendants node))
+                           (or (:get-action-data specification)
+                               default-get-action-data)])]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.

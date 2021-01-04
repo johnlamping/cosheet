@@ -21,10 +21,10 @@
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM]]
              [action-data :refer [get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids
                                   get-tab-action-data
                                   get-virtual-action-data
-                                  compose-action-data-getter]])))
+                                  compose-action-data-getter
+                                  multiple-items-get-action-data]])))
 
 (def base-tab-width 150)
 
@@ -87,8 +87,9 @@
        (and (= (count tab-ids) 1) (= chosen-tab-id (first tab-ids)))
        (into-attributes {:class "chosen"})
        (not= [relative-id] tab-ids)
-       (assoc :get-action-data [get-item-or-exemplar-action-data-for-ids
-                                tab-ids])))))
+       (assoc :get-action-data [multiple-items-get-action-data
+                                tab-ids
+                                get-item-or-exemplar-action-data])))))
 
 (defn tabs-child-info
   "Adjust the specification for child tabs."

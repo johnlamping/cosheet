@@ -18,9 +18,9 @@
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [composed-get-action-data
+                                  multiple-items-get-action-data
                                   get-pass-through-action-data
                                   get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels] :as hierarchy]
              [order-utils :refer [ordered-entities add-order-elements]]
@@ -57,7 +57,7 @@
 
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
-(defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
+(defn mult-items-AD [] multiple-items-get-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn col-AD [] get-column-action-data)
@@ -221,7 +221,7 @@
                           :width 0.75
                           :get-action-data
                           [composed-get-action-data
-                           [get-item-or-exemplar-action-data-for-ids [rc1-id]]
+                           [(mult-items-AD) [rc1-id] (item-AD)]
                            get-item-or-exemplar-action-data]
                           :class "label"
                           :excluded-element-ids [(any)]
@@ -281,7 +281,9 @@
                         :width 2.25
                         :template '(anything :label)
                         :get-action-data
-                        [(comp-AD) [(ids-AD) [c2-id c3-id c4-id]] (item-AD)]
+                        [(comp-AD) [(mult-items-AD)
+                                    [c2-id c3-id c4-id] (item-AD)]
+                         (item-AD)]
                         :relative-id c2-name-id
                         :class "label with-children"
                         :excluded-element-ids [(any)]}]
@@ -294,7 +296,7 @@
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [(comp-AD) [(ids-AD) [c2-id]]
+                          [(comp-AD) [(mult-items-AD) [c2-id] (item-AD)]
                            [(virt-AD) {:template '(anything :label)}]]
                           :relative-id [c2-id :nested]
                           :class "label merge-with-parent"
@@ -323,7 +325,7 @@
                           :width 0.75
                           :template '(anything :label)
                           :get-action-data
-                          [(comp-AD) [(ids-AD) [c4-id]]
+                          [(comp-AD) [(mult-items-AD) [c4-id] (item-AD)]
                            [(virt-AD) {:template '(anything :label)}]]
                           :relative-id [c4-id :nested]
                           :class "label merge-with-parent"
@@ -351,7 +353,7 @@
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
-                        [(comp-AD) [(ids-AD) [c6-id]]
+                        [(comp-AD) [(mult-items-AD) [c6-id] (item-AD)]
                          [(virt-AD) {:template '(anything :label)}]]
                         :class "label"
                         :relative-id [c6-id :nested]
@@ -371,7 +373,7 @@
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
-                        [(comp-AD) [(ids-AD) [c7-id]]
+                        [(comp-AD) [(mult-items-AD) [c7-id] (item-AD)]
                          [(virt-AD) {:template '(anything :label)}]]
                         :class "label"
                         :relative-id [c7-id :nested]
@@ -387,7 +389,7 @@
           [:div {:class "wrapped-element label column-header virtual-column"}
            [:component {:relative-id :virtual-label
                         :get-action-data
-                        [(comp-AD) [(ids-AD) [c7-id]]
+                        [(comp-AD) [(mult-items-AD) [c7-id] (item-AD)]
                          [(virt-AD) {:template '(anything :column)
                                      :sibling true}]
                          [(virt-AD) {:template '("" :label)
@@ -400,7 +402,7 @@
                          :template '(anything :column)
                          :width 0.75
                          :get-action-data
-                         [(comp-AD) [(ids-AD) [c7-id]]
+                         [(comp-AD) [(mult-items-AD) [c7-id] (item-AD)]
                           [(virt-AD) {:template '(anything :column)
                                       :sibling true}]]
                          :render-dom (virt-DOM)
@@ -558,7 +560,8 @@
            [:component {:width 0.75
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]
-                        :get-action-data [(comp-AD) [(ids-AD) [joe-joe-id]]
+                        :get-action-data [(comp-AD) [(mult-items-AD)
+                                                     [joe-joe-id] (item-AD)]
                                           [(virt-AD) {:template '("" :label)}]]
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)
@@ -573,7 +576,8 @@
            [:component {:width 0.75
                         :template '("" :label)
                         :get-action-data [(comp-AD)
-                                          [(ids-AD) [joe-joseph-id]]
+                                          [(mult-items-AD)
+                                           [joe-joseph-id] (item-AD)]
                                           (item-AD)]
                         :class "label"
                         :excluded-element-ids [(any)]
@@ -635,7 +639,7 @@
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM
               :get-rendering-data get-table-rows-rendering-data
-              :get-action-data [(ids-AD) nil]}]]]))
+              :get-action-data [(mult-items-AD) nil nil]}]]]))
 
     ;; Check getting the header id.
     (is (check

@@ -59,7 +59,7 @@
     (println "  returning AD" (dissoc result :component))
     result))
 
-(def get-item-or-exemplar-action-data)
+(def default-get-action-data)
 
 (defn update-action-data-for-component
   "Update the action data for one component"
@@ -73,7 +73,7 @@
                           getter spec data action immutable-store)
                          data))
                      containing-action-data
-                     [(or get-action-data get-item-or-exemplar-action-data)
+                     [(or get-action-data default-get-action-data)
                       get-column-action-data
                       get-row-action-data
                       get-tab-action-data])]
@@ -170,20 +170,6 @@
   cosheet2.server.action_data$get_item_or_exemplar_action_data
   [v ^java.io.Writer w]
   (.write w "item-AD"))
-
-(defn get-item-or-exemplar-action-data-for-ids
-  "Target all the given ids."
-  [specification containing-action-data action immutable-store ids]
-  (let [subject-ids (:target-ids containing-action-data)]
-    (let [targets (mapcat #(get-item-or-exemplars-for-id
-                            subject-ids immutable-store %)
-                         ids)]
-      (assoc containing-action-data :target-ids targets))))
-
-(defmethod print-method
-  cosheet2.server.action_data$get_item_or_exemplar_action_data_for_ids
-  [v ^java.io.Writer w]
-  (.write w "ids-AD"))
 
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.

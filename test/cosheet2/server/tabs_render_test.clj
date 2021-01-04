@@ -16,9 +16,9 @@
                                   get-virtual-DOM-rendering-data]]
              [model-utils :refer [new-tab-elements semantic-to-list]]
              [action-data :refer [get-item-or-exemplar-action-data
-                                  get-item-or-exemplar-action-data-for-ids
                                   get-tab-action-data get-virtual-action-data
-                                  composed-get-action-data]]
+                                  composed-get-action-data
+                                  multiple-items-get-action-data]]
              [tabs-render :refer :all])
              ; :reload
             ))
@@ -30,7 +30,7 @@
 (defn tab-RD [] get-tab-elements-rendering-data)
 
 (defn item-AD [] get-item-or-exemplar-action-data)
-(defn ids-AD [] get-item-or-exemplar-action-data-for-ids)
+(defn mult-items-AD [] multiple-items-get-action-data)
 (defn tab-AD [] get-tab-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn comp-AD [] composed-get-action-data)
@@ -134,7 +134,8 @@
               :render-dom (tab-DOM)
               :get-rendering-data (tab-RD)
               :example-element-ids [(:item-id t1-foo)]
-              :get-action-data [(ids-AD) [(:item-id t1) (:item-id t2)]]
+              :get-action-data [(mult-items-AD)
+                                [(:item-id t1) (:item-id t2)] (item-AD)]
               :class "multi-tab"}]
             [:div {:class "tab-sequence"}
              [:component
@@ -150,7 +151,7 @@
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)
                :example-element-ids [(:item-id t2-bar)]
-               :get-action-data [(ids-AD) [(:item-id t2)]]
+               :get-action-data [(mult-items-AD) [(:item-id t2)] (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
                :class "tab"}]
              [:component
@@ -160,7 +161,7 @@
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)
                :example-element-ids []
-               :get-action-data [(ids-AD) [(:item-id t1)]]
+               :get-action-data [(mult-items-AD) [(:item-id t1)] (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
                :class "chosen tab"}]]]]]))
     (is (check

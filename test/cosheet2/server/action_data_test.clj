@@ -205,3 +205,22 @@
             {:value 4}))
          {:value 4})))
 
+(deftest multiple-items-get-action-data-test
+  (is (= (multiple-items-get-action-data
+          {} {} nil store [joe-id] get-item-or-exemplar-action-data)
+         {:target-ids [joe-id]}))
+  (is (= (multiple-items-get-action-data
+          {} {:target-ids [joe-id]} nil store [(:item-id joe-age)]
+          get-item-or-exemplar-action-data)
+         {:target-ids [(:item-id joe-age)]}))
+  (is (check (multiple-items-get-action-data
+              {} {:target-ids [joe-id jane-id]} nil store [(:item-id jane-age)]
+              get-item-or-exemplar-action-data) 
+             {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
+  (is (check (multiple-items-get-action-data
+              {} {:target-ids [joe-id jane-id]} nil store
+              [(:item-id jane-age) (:item-id joe-male)]
+              get-item-or-exemplar-action-data)
+             {:target-ids [(:item-id joe-age) (:item-id jane-age)
+                           (:item-id joe-male)]})))
+

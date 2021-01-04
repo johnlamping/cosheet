@@ -111,9 +111,9 @@
   "Return the item itself, plus one exemplar element for each affected
    table condition, table header, row. Make sure that the chosen item
    is compatible with a match of the entire query."
-  [specification containing-action-data action store
+  [{:keys [item-id relative-id]} containing-action-data action store
    query-entity stack-selector-entity]
-  (let [id (or (:item-id specification) (:relative-id specification))
+  (let [id (or item-id relative-id)
         item (description->entity id store)
         query (pattern-to-query (semantic-to-list query-entity))
         ;; To make sure that the item we pick is compatible with a

@@ -247,9 +247,7 @@
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
         example-descendant-id (first descendant-ids)
-        elements-spec (-> specification
-                       transform-specification-for-elements
-                       )]
+        elements-spec (transform-specification-for-elements specification)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-DOM-component
                  ;; TODO: Track hierarchy depth in the spec, and use
@@ -315,28 +313,27 @@
     (let [leaf-dom (when (seq leaves)
                      (hierarchy-leaf-items-DOM
                       node (dissoc specification :must-show-labels)))
+          descendants-dom (nest-if-multiple-DOM (if leaf-dom
+                                                  (cons leaf-dom child-doms)
+                                                  child-doms)
+                                                orientation)
           properties-dom (when (or (seq (:properties node))
                                    must-show-labels)
                            (labeled-items-properties-DOM
                             node specification))]
-      (let [descendants-dom (nest-if-multiple-DOM
-                             (if leaf-dom
-                               (cons leaf-dom child-doms)
-                               child-doms)
-                             orientation)]
-        (cond-> (if (empty? (:properties node))
-                  (if must-show-labels
-                    (cond-> (add-labels-DOM properties-dom descendants-dom
-                                            (opposite-orientation orientation))
-                      true
-                      (add-attributes {:class "virtual-wrapper"})
-                      (= orientation :vertical)
-                      (add-attributes {:class "narrow"}))
-                    descendants-dom)
-                  (add-labels-DOM properties-dom descendants-dom
-                                  :vertical-wrapped))
-          only-item
-          (add-attributes (select-keys specification [:class])))))))
+      (cond-> (if (empty? (:properties node))
+                (if must-show-labels
+                  (cond-> (add-labels-DOM properties-dom descendants-dom
+                                          (opposite-orientation orientation))
+                    true
+                    (add-attributes {:class "virtual-wrapper"})
+                    (= orientation :vertical)
+                    (add-attributes {:class "narrow"}))
+                  descendants-dom)
+                (add-labels-DOM properties-dom descendants-dom
+                                :vertical-wrapped))
+        only-item
+        (add-attributes (select-keys specification [:class]))))))
 
 (defn labeled-items-for-horizontal-DOMs
   [hierarchy specification]

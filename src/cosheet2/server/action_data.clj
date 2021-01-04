@@ -154,7 +154,7 @@
     [id]
     (->> subject-ids
          (map #(best-matching-element-id id % immutable-store))
-         (filter identity))))
+         (remove nil?))))
 
 (defn get-item-or-exemplar-action-data
   "This is the default for :get-action-data."
@@ -163,6 +163,8 @@
         subject-ids (:target-ids containing-action-data)]
     (assoc containing-action-data :target-ids
            (get-item-or-exemplars-for-id subject-ids immutable-store id))))
+
+(def default-get-action-data get-item-or-exemplar-action-data)
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_or_exemplar_action_data
@@ -257,4 +259,24 @@
     (conj current to-add)
     true
     [composed-get-action-data current to-add]))
+
+(defn multiple-items-get-action-data
+  "For each item id, run the data getter on the specification modified
+  to have that item id. Update the target-id of containing-action-data
+  to be the union of the target-id of each of the results."
+  [specification containing-action-data action immutable-store ids getter]
+  (assoc
+   containing-action-data :target-ids
+   (distinct
+    (mapcat (fn [id] (:target-ids
+                      (run-action-data-getter
+                       getter
+                       (assoc specification :item-id id)
+                       containing-action-data action immutable-store)))
+            ids))))
+
+(defmethod print-method
+  cosheet2.server.action_data$multiple_items_get_action_data
+  [v ^java.io.Writer w]
+  (.write w "mult-items-AD"))
 

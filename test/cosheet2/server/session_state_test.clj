@@ -20,7 +20,8 @@
              [model-utils :refer [semantic-to-list
                                   starting-store add-table]]
              [dom-manager :refer [relative-ids->client-id
-                                  client-id->component]])
+                                  client-id->component]]
+             [action-data :refer [get-id-action-data]])
             ; :reload
             ))
 
@@ -129,9 +130,11 @@
         (is (check (:dom @root-component)
                    [:div {}
                     [:component {:width 0.75,
-                                      :template ""
-                                      :relative-id (:item-id row1)
-                                      :must-show-label true}]])))      
+                                 :template ""
+                                 :relative-id (:item-id row1)
+                                 :must-show-label true
+                                 :get-action-data [get-id-action-data
+                                                   (:item-id row1)]}]])))      
       (forget-session (first (keys (:sessions @session-info))))
       (is (= (:sessions @session-info) {}))
       (compute cd)

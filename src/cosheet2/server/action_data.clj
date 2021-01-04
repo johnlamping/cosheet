@@ -59,25 +59,17 @@
     (println "  returning AD" (dissoc result :component))
     result))
 
-(def default-get-action-data)
+(defn get-id-action-data
+  "Return the single item id as the target ids. This is only suitable
+  for doms in a simple context where they can't possibly refer to
+  several ites."
+  [specification containing-action-data action immutable-store id]
+  (assoc containing-action-data :target-ids [id]))
 
-(defn update-action-data-for-component
-  "Update the action data for one component"
-  [component containing-action-data action immutable-store]
-  (let [spec (:dom-specification @component)
-        {:keys [get-action-data get-tab-action-data
-                get-column-action-data get-row-action-data]} spec 
-        data (reduce (fn [data getter]
-                       (if getter
-                         (run-action-data-getter
-                          getter spec data action immutable-store)
-                         data))
-                     containing-action-data
-                     [(or get-action-data default-get-action-data)
-                      get-column-action-data
-                      get-row-action-data
-                      get-tab-action-data])]
-    (assoc data :component component)))
+(defmethod print-method
+  cosheet2.server.action_data$get_id_action_data
+  [v ^java.io.Writer w]
+  (.write w "id-AD"))
 
 (defn item-complexity
   "Return the complexity of the item, which is the total number of
@@ -157,7 +149,8 @@
          (remove nil?))))
 
 (defn get-item-or-exemplar-action-data
-  "This is the default for :get-action-data."
+  "This is the default for :get-action-data. It is intended for doms
+  that might be in a context that makes them refer to several items."
   [specification containing-action-data action immutable-store]
   (let [id (or (:item-id specification) (:relative-id specification))
         subject-ids (:target-ids containing-action-data)]
@@ -266,3 +259,22 @@
   [v ^java.io.Writer w]
   (.write w "mult-items-AD"))
 
+(defn update-action-data-for-component
+  "Update the action data for one component, running all the different
+  possible getters the component might have, and adding the component
+  to the data."
+  [component containing-action-data action immutable-store]
+  (let [spec (:dom-specification @component)
+        {:keys [get-action-data get-tab-action-data
+                get-column-action-data get-row-action-data]} spec 
+        data (reduce (fn [data getter]
+                       (if getter
+                         (run-action-data-getter
+                          getter spec data action immutable-store)
+                         data))
+                     containing-action-data
+                     [(or get-action-data default-get-action-data)
+                      get-column-action-data
+                      get-row-action-data
+                      get-tab-action-data])]
+    (assoc data :component component)))

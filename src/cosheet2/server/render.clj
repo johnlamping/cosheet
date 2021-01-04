@@ -20,9 +20,7 @@
              [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM]]
              [tabs-render :refer [render-tabs-DOM]]
-             [action-data :refer [get-item-or-exemplar-action-data
-                                  compose-action-data-getter
-                                  multiple-items-get-action-data]]
+             [action-data :refer [get-id-action-data]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
              )))
@@ -347,10 +345,8 @@
                                  :client-state client-state
                                  :chosen-tab-id id
                                  :render-dom render-tabs-DOM
-                                 :get-action-data
-                                 (compose-action-data-getter
-                                  [multiple-items-get-action-data nil nil]
-                                  get-item-or-exemplar-action-data)})
+                                 :get-action-data [get-id-action-data
+                                                   (:item-id subject)]})
                 (make-component (assoc basic-dom-specification        
                                        :relative-id (:item-id topic)
                                        :render-dom render-table-DOM))])
@@ -358,7 +354,9 @@
              (make-component (assoc basic-dom-specification        
                                     :relative-id (:item-id immutable-item)
                                     :must-show-label true
-                                    :width 0.75)))])))))
+                                    :width 0.75
+                                    :get-action-data [get-id-action-data
+                                                      (:item-id immutable-item)])))])))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"

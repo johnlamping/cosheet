@@ -20,6 +20,7 @@
              [action-data :refer [composed-get-action-data
                                   multiple-items-get-action-data
                                   get-pass-through-action-data
+                                  get-id-action-data
                                   get-item-or-exemplar-action-data
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels] :as hierarchy]
@@ -58,6 +59,7 @@
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
 (defn mult-items-AD [] multiple-items-get-action-data)
+(defn id-AD [] get-id-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn col-AD [] get-column-action-data)
@@ -449,6 +451,7 @@
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :get-rendering-data get-table-row-rendering-data
+                      :get-action-data [(id-AD) joe-id]
                       :get-row-action-data
                       [get-row-action-data
                        joe-id '("" :top-level ("age" :label))]}]))
@@ -469,6 +472,7 @@
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
+                       :get-action-data [(id-AD) joe-id]
                        :get-row-action-data [(row-AD) joe-id 'foo]}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
@@ -639,7 +643,7 @@
               :row-ids-R [(any) (any)]
               :render-dom render-table-rows-DOM
               :get-rendering-data get-table-rows-rendering-data
-              :get-action-data [(mult-items-AD) nil nil]}]]]))
+              :get-action-data (pass-AD)}]]]))
 
     ;; Check getting the header id.
     (is (check

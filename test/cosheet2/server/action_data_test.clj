@@ -105,10 +105,17 @@
   (is (= (best-match '(nil 1) ['(1 1 2) '(1 1) '(1 1 1)])  '(1 1)))
   (is (= (best-match 1 ['(1 1 2) '(1 1) '(1 1 1)])  '(1 1))))
 
+(deftest get-id-action-data-test
+  (is (= (get-id-action-data
+          {:relative-id joe-id} {:foo :bar} nil store :test-id)
+         {:foo :bar
+          :target-ids [:test-id]})))
+
 (deftest get-item-or-exemplar-action-data-test
   (is (= (get-item-or-exemplar-action-data
-          {:relative-id joe-id} {} nil store)
-         {:target-ids [joe-id]}))
+          {:relative-id joe-id} {:foo :bar} nil store)
+         {:foo :bar
+          :target-ids [joe-id]}))
   (is (= (get-item-or-exemplar-action-data
           {:relative-id (:item-id joe-age)}
           {:target-ids [joe-id]} nil store)

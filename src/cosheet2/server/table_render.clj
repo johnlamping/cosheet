@@ -41,7 +41,8 @@
                                   labels-and-elements-DOM
                                   non-label-entities-DOM
                                   horizontal-label-hierarchy-node-DOM]]
-             [action-data :refer [get-item-or-exemplar-action-data
+             [action-data :refer [get-id-action-data
+                                  get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
                                   composed-get-action-data
@@ -408,6 +409,7 @@
           :relative-id row-id
           :class "table-row"
           :render-dom render-table-row-DOM
+          :get-action-data [get-id-action-data row-id]
           :get-rendering-data get-table-row-rendering-data
           :get-row-action-data [get-row-action-data row-id row-template])))
 
@@ -578,12 +580,7 @@
                    :row-ids-R row-ids-R
                    :render-dom render-table-rows-DOM
                    :get-rendering-data get-table-rows-rendering-data
-                   ;; We throw out our targets. That way, each row
-                   ;; will be able to get its id as its target, even though
-                   ;; its has no subject.
-                   :get-action-data [multiple-items-get-action-data
-                                     nil
-                                     nil]})]
+                   :get-action-data get-pass-through-action-data})]
     [:div {:class "table"}
      condition-dom
      [:div {:class "table-main"}

@@ -45,6 +45,16 @@
          :template (or (:elements-template specification)
                        "")))
 
+(defn transform-specification-for-labels
+  [specification]
+  ;; We have to keep the information used by the batch edit action
+  ;; data functions, because the label can include them as part of its
+  ;; :get-action-data function
+  (assoc (select-keys specification [:width :query-id :stack-selector-id
+                                     :excluding-ids])
+         :template (or (:elements-template specification)
+                       "")))
+
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,
   with 'anything changed to nil."

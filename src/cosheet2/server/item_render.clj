@@ -29,7 +29,8 @@
                                    item-stack-DOM nest-if-multiple-DOM
                                    condition-satisfiers
                                    hierarchy-node-DOM
-                                   transform-specification-for-elements]]
+                                   transform-specification-for-elements
+                                   transform-specification-for-labels]]
              [action-data :refer [default-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
@@ -193,7 +194,7 @@
         item-id (:item-id (dom-attributes dom))
         label-template (ensure-label
                         (:template
-                         (transform-specification-for-elements specification))) 
+                         (transform-specification-for-labels specification))) 
         labels-dom (virtual-DOM-component
                     (cond-> {:relative-id :virtual-label
                              :get-action-data
@@ -232,12 +233,12 @@
   [dom label-elements specification]
   (if (and (empty? label-elements) (not (:must-show-label specification)))
     dom
-    (let [elements-spec (transform-specification-for-elements specification)]
+    (let [labels-spec (transform-specification-for-labels specification)]
       (if (not (empty? label-elements))
         (non-empty-labels-wrapper-DOM
-         dom label-elements :vertical elements-spec)
+         dom label-elements :vertical labels-spec)
         [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
-         (virtual-label-DOM-component elements-spec)
+         (virtual-label-DOM-component labels-spec)
          dom]))))
 
 (defn labeled-items-properties-DOM
@@ -248,12 +249,12 @@
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
         example-descendant-id (first descendant-ids)
-        elements-spec (transform-specification-for-elements specification)]
+        labels-spec (transform-specification-for-labels specification)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-DOM-component
                  ;; TODO: Track hierarchy depth in the spec, and use
                  ;; it to uniquify virtual labels.
-                 (-> elements-spec
+                 (-> labels-spec
                      (assoc :relative-id [example-descendant-id
                                           :virtual-label]
                             :get-action-data
@@ -265,7 +266,7 @@
                  {})
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 (assoc elements-spec
+                 (assoc labels-spec
                         :get-action-data
                         (compose-action-data-getter
                          [multiple-items-get-action-data
@@ -394,7 +395,7 @@
   (one-column-of-two-column-DOMs
    hierarchy labeled-items-properties-DOM horizontal-label-wrapper
    (-> specification
-       transform-specification-for-elements
+       transform-specification-for-labels
        (update :template ensure-label)
        (update :width #(* % 0.25)))))
 

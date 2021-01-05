@@ -111,10 +111,11 @@
   "Return the item itself, plus one exemplar element for each affected
    table condition, table header, row. Make sure that the chosen item
    is compatible with a match of the entire query."
-  [{:keys [item-id relative-id]} containing-action-data action store
-   query-entity stack-selector-entity]
+  [{:keys [item-id relative-id query-id stack-selector-id]}
+   containing-action-data action store]
   (let [id (or item-id relative-id)
         item (description->entity id store)
+        query-entity (description->entity query-id store)
         query (pattern-to-query (semantic-to-list query-entity))
         ;; To make sure that the item we pick is compatible with a
         ;; match for the entire query, we have to consistently pick
@@ -135,10 +136,12 @@
         header-entities (matching-items
                          (add-elements-to-entity-list query [:row-condition])
                          store)
-        stack-selector-item (when stack-selector-entity
+        stack-selector-item (when stack-selector-id
                                (let [item-query (pattern-to-query
-                                                 (semantic-to-list item))
-                                     elems (elements stack-selector-entity)]
+                                                 (semantic-to-list item)) 
+                                     elems (-> stack-selector-id
+                                               (description->entity store)
+                                               elements)]
                                  (when-let [best (best-match item-query elems)]
                                    [best])))
         items (concat
@@ -150,7 +153,7 @@
                ;; items in the UI: the query, and the column specs. We
                ;; treat each as if they were separate items
                (select-elements-from-split-entities
-                header-entities  element-queries '(nil :column) item-index))]
+                header-entities element-queries '(nil :column) item-index))]
     (assoc containing-action-data :target-ids (map :item-id items))))
 
 (defn batch-query-virtual-DOM
@@ -167,24 +170,31 @@
 
 (defn batch-query-DOM
   "Return the dom for the query selector."
-  [query-entity stack-selector-entity]
+  [{:keys [query-id] :as specification} store]
   (labels-and-elements-DOM
-   (semantic-elements query-entity)
+   (semantic-elements (description->entity query-id store))
    (batch-query-virtual-DOM)
    true true :horizontal
-   {:relative-id :batch-query
-    :template 'anything
-    :get-action-data [get-batch-edit-query-element-action-data
-                      query-entity stack-selector-entity]}))
+   (assoc specification
+          :relative-id :batch-query
+          :template 'anything
+          :get-action-data get-batch-edit-query-element-action-data)))
 
 (defn get-batch-edit-stack-element-action-data
-  [{:keys [selector-items excluding-items]} containing-action-data action store
-   query-entity stack-selector-entity]
-  (let [query (pattern-to-query (semantic-to-list query-entity))
-        selecting-queries (map #(pattern-to-query (semantic-to-list %))
-                               selector-items)
-        excluding-queries (map #(pattern-to-query (semantic-to-list %))
-                               excluding-items)
+  [{:keys [item-id excluding-ids query-id stack-selector-id]}
+   containing-action-data action store]
+  (let [query-entity (description->entity query-id store)
+        stack-selector-entity  (description->entity stack-selector-id store)
+        query (pattern-to-query (semantic-to-list query-entity))
+        selecting-query (-> item-id
+                            (description->entity store)
+                            semantic-to-list
+                            pattern-to-query)
+        excluding-queries (map #(-> %
+                                    (description->entity store)
+                                    semantic-to-list
+                                    pattern-to-query)
+                               excluding-ids)
         to-search (distinct
                    (concat
                     [query-entity stack-selector-entity]
@@ -195,9 +205,11 @@
                      (add-elements-to-entity-list query [:row-condition])
                      store)))
         matches (mapcat (fn [entity]
+                          ;; TODO: This is inefficient. Instead, use
+                          ;; extended-by? to filter the matching
+                          ;; elements.
                           (clojure.set/difference
-                           (set (mapcat #(matching-elements % entity)
-                                        selecting-queries))
+                           (set (matching-elements selecting-query entity))
                            (set (mapcat #(matching-elements % entity)
                                         excluding-queries))))
                         to-search)]
@@ -210,10 +222,8 @@
   (let [is-leaf (empty? child-doms)
         node-dom (horizontal-label-hierarchy-node-DOM
                   node
-                  ;; Put in the information for
-                  ;; get-batch-edit-stack-element-action-data.
-                  (assoc specification :selector-items
-                         (map :item (hierarchy-node-descendants node))))
+                  (assoc specification :get-action-data
+                         get-batch-edit-stack-element-action-data))
         class (cond-> "column-header tag"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
@@ -225,9 +235,10 @@
 
 (defn stack-selector-child-info
   [node specification]
-  (assoc specification
-         :top-level false
-         :excluding-items (hierarchy-node-non-immediate-descendant-cover node)))
+  (let [competition (hierarchy-node-non-immediate-descendant-cover node)]
+    (assoc specification
+           :top-level false
+           :excluding-ids (map :item-id competition))))
 
 (defn stack-selector-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.
@@ -235,8 +246,7 @@
   [node specification]
   (hierarchy-node-DOM
    node stack-selector-subtree-DOM stack-selector-child-info
-   {:top-level true}
-   specification))
+   (assoc specification :top-level true)))
 
 (defn stack-selector-DOM
   "Generate DOM for a horizontal layout of the stack selector,
@@ -251,9 +261,8 @@
   (let [elements (ordered-entities (semantic-elements stack-selector-entity))
         hierarchy (-> (hierarchy-by-labels elements)
                       replace-hierarchy-leaves-by-nodes)
-        specification {:get-action-data
-                       [get-batch-edit-stack-element-action-data
-                        query-entity stack-selector-entity]}
+        specification {:query-id (:item-id query-entity)
+                       :stack-selector-id (:item-id stack-selector-entity)}
         doms (map #(stack-selector-top-level-subtree-DOM % specification)
                   hierarchy)]
     (into [:div {:class "horizontal-label-sequence"}] doms)))
@@ -266,15 +275,11 @@
   "Return the DOM for batch editing, given the item specifying the query,
   and the item, if any, giving the sub-part of the query to operate on
   in batch mode."
-  [{:keys [query-id stack-selector-id]} store]
-  (let [query-entity (description->entity query-id store)
-        stack-selector-entity (when stack-selector-id
-                                (description->entity stack-selector-id store))
-        count-dom (batch-count-component query-id)
-        query-dom (batch-query-DOM query-entity stack-selector-entity)
-        stack-dom (when stack-selector-entity
-                    (stack-selector-DOM
-                                        query-entity stack-selector-entity))
+  [{:keys [query-id stack-selector-id] :as specification} store]
+  (let [count-dom (batch-count-component query-id)
+        query-dom (batch-query-DOM specification store)
+        stack-dom (when stack-selector-id
+                    (stack-selector-DOM specification store))
         inner-dom [:div {:class "batch-stack-wrapper"}
                    count-dom
                    (if stack-selector-id

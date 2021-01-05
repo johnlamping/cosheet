@@ -174,7 +174,9 @@
          ;;       ids to everything the query matches. Then the virtuals
          ;;       will get the right action data.
          [:div {:class "horizontal-labels-element label"}
-          ;; A virtual label, because we are required to show some label.
+          ;; A virtual label, because we are required to show some
+          ;; label.  TODO: !!! This AD needs to be in the context of a
+          ;; selector of all the stuff.
           [:component
            {:relative-id :virtual-label
             :template '(anything :label)
@@ -188,36 +190,32 @@
           [:div {:class "horizontal-stack"}
            [:div {:class "horizontal-stack"}
             [:div {:class "vertical-labels-element label virtual-wrapper"}
-             [:component {:template '("" :label)
-                          :relative-id [q2-2 :virtual-label]
-                          :get-action-data [(comp-AD)
-                                            ;; TODO: !!! This sub
-                                            ;; action data is wrong.
-                                            ;; It should be
-                                            ;; batch-query-AD.
-                                            [(mult-items-AD)
-                                             (list q2-2) (item-AD)]
-                                            [(virt-AD) {:template '("" :label)}]]
-                          :render-dom (virt-DOM)
-                          :get-rendering-data (virt-RD)
+             [:component
+              {:template '("" :label)
+               :relative-id [q2-2 :virtual-label]
+               :get-action-data [(comp-AD)
+                                 [(mult-items-AD)
+                                  (list q2-2)
+                                  [(batch-query-AD) q2-entity stk1-entity]]
+                                 [(virt-AD) {:template '("" :label)}]]
+               :render-dom (virt-DOM)
+               :get-rendering-data (virt-RD)
                           :class "label"}]
              [:component {:relative-id q2-2
                           :template 'anything
                           :get-action-data [(batch-query-AD)
                                             q2-entity stk1-entity]}]]
             [:div {:class "wrapped-element label"}
-             [:component {:template '("" :label)
-                          :get-action-data [(comp-AD)
-                                            ;; TODO: !!! This sub
-                                            ;; action data is wrong.
-                                            ;; It should be
-                                            ;; batch-query-AD
-                                            [(mult-items-AD)
-                                             (list q2-c1) (item-AD)]
-                                            (item-AD)]
-                          :class "label"
-                          :excluded-element-ids [(any)]
-                          :relative-id q2-c1-l}]
+             [:component
+              {:template '("" :label)
+               :get-action-data [(comp-AD)
+                                 [(mult-items-AD)
+                                  (list q2-c1)
+                                  [(batch-query-AD) q2-entity stk1-entity]]
+                                 (item-AD)]
+               :class "label"
+               :excluded-element-ids [(any)]
+               :relative-id q2-c1-l}]
              [:div {:class "indent-wrapper"}
               [:component {:relative-id q2-c1
                            :template '(anything ("c1" :label))

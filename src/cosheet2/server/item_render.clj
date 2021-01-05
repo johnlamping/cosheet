@@ -259,7 +259,7 @@
                             :get-action-data
                             [multiple-items-get-action-data
                              descendant-ids
-                             (or (:get-action-data elements-spec)
+                             (or (:get-action-data specification)
                                  default-get-action-data)])
                      (update :template ensure-label))
                  {})
@@ -270,9 +270,9 @@
                         (compose-action-data-getter
                          [multiple-items-get-action-data
                           descendant-ids
-                          (or (:get-action-data elements-spec)
+                          (or (:get-action-data specification)
                               default-get-action-data)]
-                         get-item-or-exemplar-action-data))))]
+                         default-get-action-data))))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 

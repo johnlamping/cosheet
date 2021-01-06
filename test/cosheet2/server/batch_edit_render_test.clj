@@ -6,7 +6,7 @@
              [reporter :refer [new-reporter set-value! reporter-value]]
              [task-queue :refer [new-priority-task-queue]]
              [calculator :refer [new-calculator-data request compute]]
-             [entity :refer [elements]]
+             [entity :refer [elements subject]]
              [store :refer [new-element-store new-mutable-store store-reset!
                             id->element-ids id->subject]]
              store-impl
@@ -105,9 +105,12 @@
                                     '(anything 2 (anything ("c1" :label))))))
 (def q2 (second t4))
 (def t5 (add-entity (first t4) nil (add-order-elements
+                                    '(anything (anything (anything :label))))))
+(def q3 (second t5))
+(def t6 (add-entity (first t5) nil (add-order-elements
                                     '(anything (anything ("c1" :label))))))
-(def stk1 (second t5))
-(def s (first t5))
+(def stk1 (second t6))
+(def s (first t6))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -140,6 +143,7 @@
                       :stack-selector-id stk1}
                      {} nil s)
         target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 5))
     (is (= (set (map #(id->subject s %) target-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id target-ids]
@@ -147,7 +151,7 @@
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
   ;; It's '(nil "c1") matches in the first row, query 2, itself, and
   ;; the stack selector (because the match in the stack selector does
-  ;; not require the entire query matching..
+  ;; not require the entire query matching.
   (let [q2-entity (description->entity q2 s)
         q2-element (first (matching-elements '(nil "c1") q2-entity))
         action-data (get-batch-edit-query-element-action-data
@@ -156,11 +160,26 @@
                       :stack-selector-id stk1}
                      {} nil s)
         target-ids (:target-ids action-data)]
-    (= (count target-ids) 5)
+    (is (= (count target-ids) 3))
     (is (= (set (map #(id->subject s %) target-ids))
            #{r1 q2 stk1}))
     (doseq [id target-ids]
-      (is (extended-by? '(nil ("c1" :label)) (description->entity id s))))))
+      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+  ;; Query 3 matches multiple elements in some rows. Make sure it
+  ;; picks just one each.
+  (let [q3-entity (description->entity q3 s)
+        q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
+        action-data (get-batch-edit-query-element-action-data
+                     {:relative-id (:item-id q3-element)
+                      :query-id q3
+                      :stack-selector-id stk1}
+                     {} nil s)
+        target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 5))
+    (is (= (set (map #(id->subject s %) target-ids))
+           #{h1 r1 r2 q3 stk1}))
+    (doseq [id target-ids]
+      (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
 
 (deftest batch-query-DOM-test
   (let [q2-entity (description->entity q2 s)
@@ -177,8 +196,7 @@
          ;;       will get the right action data.
          [:div {:class "horizontal-labels-element label"}
           ;; A virtual label, because we are required to show some
-          ;; label.  TODO: !!! This AD needs to be in the context of a
-          ;; selector of all the stuff.
+          ;; label.
           [:component
            {:relative-id :virtual-label
             :query-id q2
@@ -260,15 +278,15 @@
                       :stack-selector-id stk1}
                      {} nil s)
         target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 5))
     (is (= (set (map #(id->subject s %) target-ids))
            #{h1 r1 r2 q1 stk1}))
     (doseq [id target-ids]
-      (println "!!!" (semantic-to-list (description->entity id s)))
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
   ;; It's '(nil "c1") matches in the first row, query 2, itself, and
   ;; the stack selector (because the match in the stack selector does
-  ;; not require the entire query matching..
+  ;; not require the entire query matching.
   (let [q2-entity (description->entity q2 s)
         q2-element (first (matching-elements '(nil "c1") q2-entity))
         action-data (get-batch-edit-query-element-action-data
@@ -278,7 +296,11 @@
                       :stack-selector-id stk1}
                      {} nil s)
         target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 3))
     (is (= (set (map #(id->subject s %) target-ids))
            #{r1 q2 stk1}))
     (doseq [id target-ids]
-      (is (extended-by? '(nil ("c1" :label)) (description->entity id s))))))
+      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+  ;; TODO: !!! Add a test that matches multiple elements in one row.
+  ;;           Add a test that uses excluding-ids
+  )

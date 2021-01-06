@@ -286,7 +286,7 @@
    the term in the environment."
   [term env target]
   (let [labels (labels-for-element term env)]
-    (if (or (nil? labels) (seq? labels))
+    (if (or (nil? labels) (seq? labels) (nil? (content labels)))
       (let [candidates (candidate-elements labels target)
             match-envs (map #(matching-extensions term env %) candidates)]
         (reduce (fn [result [candidate matching-envs]]

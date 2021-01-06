@@ -139,9 +139,10 @@
         stack-selector-item (when stack-selector-id
                                (let [item-query (pattern-to-query
                                                  (semantic-to-list item)) 
-                                     elems (-> stack-selector-id
-                                               (description->entity store)
-                                               elements)]
+                                     elems (matching-elements
+                                            item-query
+                                            (description->entity
+                                             stack-selector-id store))]
                                  (when-let [best (best-match item-query elems)]
                                    [best])))
         items (concat
@@ -181,12 +182,12 @@
           :get-action-data get-batch-edit-query-element-action-data)))
 
 (defn get-batch-edit-stack-element-action-data
-  [{:keys [item-id excluding-ids query-id stack-selector-id]}
+  [{:keys [item-id relative-id excluding-ids query-id stack-selector-id]}
    containing-action-data action store]
   (let [query-entity (description->entity query-id store)
         stack-selector-entity  (description->entity stack-selector-id store)
         query (pattern-to-query (semantic-to-list query-entity))
-        selecting-query (-> item-id
+        selecting-query (-> (or item-id relative-id)
                             (description->entity store)
                             semantic-to-list
                             pattern-to-query)

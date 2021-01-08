@@ -284,23 +284,51 @@
     (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
   ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
-  ;; It's '(nil "c1") matches in the first row, query 2, itself, and
-  ;; the stack selector (because the match in the stack selector does
-  ;; not require the entire query matching.
+  ;; But as a stack selector, we only require the '(nil "c1") to match.
   (let [q2-entity (description->entity q2 s)
         q2-element (first (matching-elements '(nil "c1") q2-entity))
-        action-data (get-batch-edit-query-element-action-data
+        action-data (get-batch-edit-stack-element-action-data
                      {:relative-id (:item-id q2-element)
                       :excluding-ids nil
-                      :query-id q2
+                      :query-id q1
+                      :stack-selector-id stk1}
+                     {} nil s)
+        target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 5))
+    (is (= (set (map #(id->subject s %) target-ids))
+           #{h1 r1 r2 q1 stk1}))
+    (doseq [id target-ids]
+      (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
+  ;; Test excluding ids. Neither of the rows should match, as their
+  ;; (nil ("c1" :label)) elements are all have content 2
+  (let [q2-entity (description->entity q2 s)
+        q2-element (first (matching-elements '(nil "c1") q2-entity))
+        q2-2 (first (matching-elements 2 q2-entity))
+        action-data (get-batch-edit-stack-element-action-data
+                     {:relative-id (:item-id q2-element)
+                      :excluding-ids [(:item-id q2-2)]
+                      :query-id q1
                       :stack-selector-id stk1}
                      {} nil s)
         target-ids (:target-ids action-data)]
     (is (= (count target-ids) 3))
     (is (= (set (map #(id->subject s %) target-ids))
-           #{r1 q2 stk1}))
+           #{h1 q1 stk1}))
     (doseq [id target-ids]
       (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
-  ;; TODO: !!! Add a test that matches multiple elements in one row.
-  ;;           Add a test that uses excluding-ids
+  ;; Test a query that matches multiple elements in some rows.
+  (let [q3-entity (description->entity q3 s)
+        q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
+        action-data (get-batch-edit-stack-element-action-data
+                     {:relative-id (:item-id q3-element)
+                      :excluding-ids nil
+                      :query-id q3
+                      :stack-selector-id stk1}
+                     {} nil s)
+        target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 8))
+    (is (= (set (map #(id->subject s %) target-ids))
+           #{h1 r1 r2 q3 stk1}))
+    (doseq [id target-ids]
+      (is (extended-by? '(nil (nil :label)) (description->entity id s)))))
   )

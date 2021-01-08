@@ -62,6 +62,23 @@
                    :get-rendering-data get-batch-count-rendering-data
                    :get-action-data get-pass-through-action-data}))
 
+
+(defn get-batch-edit-query-matches-action-data
+  "Find everything that matches the query, and put it in :target-ids."
+  [{:keys [query-id]} containing-action-data action store]
+  (let [query-entity (description->entity query-id store)
+        query (pattern-to-query (semantic-to-list query-entity))
+        top-level-entities (matching-items
+                            (add-elements-to-entity-list query [:top-level])
+                            store)
+        header-entities (matching-items
+                         (add-elements-to-entity-list query [:row-condition])
+                         store)]
+    (assoc containing-action-data :target-ids
+           (concat [query-id]
+                   (map :item-id
+                        (concat top-level-entities header-entities))))))
+
 (defn get-matches
   "Return the maches for the entity, for each query, each set of
   matches ordered from least complex."

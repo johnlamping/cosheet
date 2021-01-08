@@ -133,6 +133,13 @@
                [:div {:class "batch-query-match-counts"}
                 "2 row matches.  1 table header matches."]))))
 
+(deftest get-batch-edit-query-matches-action-data-test
+  (let [action-data (get-batch-edit-query-matches-action-data
+                     {:query-id q1}
+                     {} nil s)
+        target-ids (:target-ids action-data)]
+    (is (= (count target-ids) 4))
+    (is (= (set target-ids) #{h1 r1 r2 q1}))))
 
 (deftest get-batch-edit-query-element-action-data-test
   (let [q1-entity (description->entity q1 s)

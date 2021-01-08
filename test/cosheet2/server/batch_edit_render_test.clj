@@ -64,21 +64,6 @@
 (defn mult-items-AD [] multiple-items-get-action-data)
 (defn batch-query-AD [] get-batch-edit-query-element-action-data)
 
-
-(defn run-renderer
-  "run the renderer on the output of the data getter, thus testing
-  that they work together correctly."
-  ([spec store]
-   (run-renderer (:render-dom spec) spec (:get-rendering-data spec) store))
-  ([renderer spec data-getter store]
-   (let [ms (new-mutable-store store)
-         data (data-getter spec ms)
-         cd (new-calculator-data (new-priority-task-queue 0))]
-     (doseq [[rep dep] data]
-       (request rep cd))
-       (compute cd)
-       (apply renderer spec (map #(reporter-value (first %)) data)))))
-
 (def t0 (add-entity (new-element-store) nil
                     (add-order-elements
                      '(:x ("s1" :label)
@@ -111,6 +96,21 @@
                                     '(anything (anything ("c1" :label))))))
 (def stk1 (second t6))
 (def s (first t6))
+
+
+(defn run-renderer
+  "run the renderer on the output of the data getter, thus testing
+  that they work together correctly."
+  ([spec store]
+   (run-renderer (:render-dom spec) spec (:get-rendering-data spec) store))
+  ([renderer spec data-getter store]
+   (let [ms (new-mutable-store store)
+         data (data-getter spec ms)
+         cd (new-calculator-data (new-priority-task-queue 0))]
+     (doseq [[rep dep] data]
+       (request rep cd))
+       (compute cd)
+       (apply renderer spec (map #(reporter-value (first %)) data)))))
 
 (deftest match-count-R-test
   (let [mutable-store (new-mutable-store s)
@@ -330,5 +330,17 @@
     (is (= (set (map #(id->subject s %) target-ids))
            #{h1 r1 r2 q3 stk1}))
     (doseq [id target-ids]
-      (is (extended-by? '(nil (nil :label)) (description->entity id s)))))
-  )
+      (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
+
+(deftest stack-selector-DOM-test
+  (let [stk1-entity (description->entity stk1 s)
+        stk1-element (first (matching-elements '(nil "c1") stk1-entity))
+        dom (stack-selector-DOM {:query-id q1 :stack-selector-id stk1} s)]
+    (is (check
+         dom
+         [:div {:class "batch-stack"}
+          [:component {:query-id q1
+                       :stack-selector-id stk1
+                       :get-action-data get-batch-edit-stack-element-action-data
+                       :relative-id (:item-id stk1-element)
+                       :class "column-header tag leaf"}]]))))

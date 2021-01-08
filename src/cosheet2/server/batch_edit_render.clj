@@ -253,20 +253,22 @@
   "Generate DOM for a horizontal layout of the stack selector,
    with their labels shown in a hierarchy above them. For these, we
   want to match all elements."
-  [query-entity stack-selector-entity]
+  [{:keys [query-id stack-selector-id]} store]
   ;; TODO: Add-twin is a problem here with not knowing what template
   ;; to use, because it is different for different items. Add-twin
   ;; needs to know about :column, the same way it knows about
   ;; selectors. If a template has :column, but the subject is not
-  ;; suitable, then the :column should be removes.
-  (let [elements (ordered-entities (semantic-elements stack-selector-entity))
+  ;; suitable, then the :column should be removed.
+  (let [query-entity (description->entity query-id store)
+        stack-selector-entity  (description->entity stack-selector-id store)
+        elements (ordered-entities (semantic-elements stack-selector-entity))
         hierarchy (-> (hierarchy-by-labels elements)
                       replace-hierarchy-leaves-by-nodes)
         specification {:query-id (:item-id query-entity)
                        :stack-selector-id (:item-id stack-selector-entity)}
         doms (map #(stack-selector-top-level-subtree-DOM % specification)
                   hierarchy)]
-    (into [:div {:class "horizontal-label-sequence"}] doms)))
+    (into [:div {:class "batch-stack"}] doms)))
 
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-selector-id]} mutable-store]

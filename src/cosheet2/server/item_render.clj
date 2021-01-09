@@ -154,12 +154,12 @@
 
 (defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
-  isn't. Any extra arguments must be keyword arguments, and are passed
-  to get-virtual-action-data."
-  [specification action-data-arguments]
+  isn't. Any extra arguments must be a map, which is passed to
+  get-virtual-action-data."
+  [specification virtual-action-data-arguments]
   ;; If the arguments don't specify a template, take it from the spec.
   (let [action-data-arguments (into (select-keys specification [:template])
-                                    action-data-arguments)]
+                                    virtual-action-data-arguments)]
     (assert (:template action-data-arguments) action-data-arguments)
     (assert (every? #{:template :sibling :position :use-bigger}
                     (keys action-data-arguments))

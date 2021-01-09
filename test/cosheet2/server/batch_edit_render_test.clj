@@ -188,7 +188,7 @@
     (doseq [id target-ids]
       (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
 
-(deftest batch-query-DOM-test
+(deftest render-batch-query-DOM-test
   (let [q2-entity (description->entity q2 s)
         q2-2 (:item-id (first (matching-elements 2 q2-entity)))
         q2-c1-entity (first (matching-elements '(nil "c1") q2-entity))
@@ -197,10 +197,6 @@
         dom (batch-query-DOM {:query-id q2 :stack-selector-id stk1} s)]
     (is (check
          dom
-         ;; TODO: !!! The action data for the virtuals is all wrong. There needs
-         ;;       to be an overall component, which sets the target
-         ;;       ids to everything the query matches. Then the virtuals
-         ;;       will get the right action data.
          [:div {:class "horizontal-labels-element label"}
           ;; A virtual label, because we are required to show some
           ;; label.
@@ -259,21 +255,27 @@
                            :excluded-element-ids [q2-c1-l]}]]]]
            ;; A virtual element that is not a label.
            [:div {:class "vertical-labels-element label"}
-            [:component {:template '(anything :label)
-                         :relative-id :virtual-label
-                         :class "label"
-                         :render-dom (virt-DOM)
-                         :get-rendering-data (virt-RD)
-                         :get-action-data [(virt-AD) {:template '(anything
-                                                                  :label)
-                                                      :position :after}]}]
-            [:component {:relative-id :virtual
-                         :render-dom (virt-DOM)
-                         :get-rendering-data (virt-RD)
-                         :get-action-data [(virt-AD)
-                                           {:template
-                                            '(anything
-                                              (anything :label))}]}]]]]))))
+            [:component
+             {:template '(anything :label)
+              :relative-id :virtual-label
+              :query-id q2
+              :stack-selector-id stk1
+              :class "label"
+              :render-dom (virt-DOM)
+              :get-rendering-data (virt-RD)
+              :get-action-data [(virt-AD) {:template '(anything :label)
+                                           :position :after}]}]
+            [:component
+             {:relative-id :virtual
+              :query-id q2
+              :stack-selector-id stk1
+              :render-dom (virt-DOM)
+              :get-rendering-data (virt-RD)
+              :template '(anything (anything :label))
+              :get-action-data [(virt-AD)
+                                ;; TODO: !!! Shouldn't need this.
+                                {:template '(anything
+                                             (anything :label))}]}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test
   (let [q1-entity (description->entity q1 s)

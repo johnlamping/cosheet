@@ -177,26 +177,39 @@
 (defn batch-query-virtual-DOM
   "Return the DOM for a virtual element in the row selector part of the display,
    that is an element of the query item."
-  []
-  ;; TODO: !!! This needs a preliminary get-action-data that returns all the
-  ;;       entities and headers.
+  [specification]
   (let [dom (virtual-DOM-component
-             {:relative-id :virtual}
-             {:template '(anything (anything :label))})
-        label-dom (virtual-label-DOM-component {:template '(anything :label)})]
+             (assoc specification
+                    :relative-id :virtual
+                    :template '(anything (anything :label)))
+             {})
+        label-dom (virtual-label-DOM-component
+                   (assoc specification :template '(anything :label)))]
     (add-labels-DOM label-dom dom :vertical)))
 
-(defn batch-query-DOM
+(defn render-batch-query-DOM
   "Return the dom for the query selector."
   [{:keys [query-id] :as specification} store]
   (labels-and-elements-DOM
    (semantic-elements (description->entity query-id store))
-   (batch-query-virtual-DOM)
+   (batch-query-virtual-DOM specification)
    true true :horizontal
    (assoc specification
           :relative-id :batch-query
           :template 'anything
           :get-action-data get-batch-edit-query-element-action-data)))
+
+(defn batch-query-component
+  [query-id]
+  (make-component
+   {:query-id query-id
+    :item-id query-id
+    ;; This component, itself, can't be interacted with. But we have
+    ;; to set the action data to everything selected, so that virtual
+    ;; items under here will have the right incoming action-data.
+    ;; TODO: Make sure that it is, in fact, not possible to interact
+    ;;       with this component.
+    :get-action-data get-batch-edit-query-matches-action-data}))
 
 (defn get-batch-edit-stack-element-action-data
   [{:keys [item-id relative-id excluding-ids query-id stack-selector-id]}

@@ -43,12 +43,11 @@
   (is (check (virtual-DOM-component {:template "foo"  :relative-id :bar}
                                     {:position :before})
              [:component {:template "foo"
+                          :position :before
                           :relative-id :bar
                           :render-dom render-virtual-DOM
                           :get-rendering-data get-virtual-DOM-rendering-data
-                          :get-action-data [get-virtual-action-data
-                                            {:template "foo"
-                                             :position :before}]}])))
+                          :get-action-data get-virtual-action-data}])))
 
 
 (deftest horizontal-label-hierarchy-node-DOM-test
@@ -99,8 +98,7 @@
                        [composed-get-action-data
                         [multiple-items-get-action-data
                          [jane-id] get-item-or-exemplar-action-data]
-                        [get-virtual-action-data {:template '(anything
-                                                              :label)}]]
+                        get-virtual-action-data]
                        :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
                        :render-dom render-virtual-DOM
@@ -246,9 +244,8 @@
                        :class "label"
                        :render-dom render-virtual-DOM
                        :get-rendering-data get-virtual-DOM-rendering-data
-                       :get-action-data [get-virtual-action-data
-                                         {:template '(anything :label)
-                                          :position :after}]}]
+                       :position :after
+                       :get-action-data get-virtual-action-data}]
           [:div {:class "indent-wrapper"}
            [:div {:class
                   "horizontal-labels-element label virtual-wrapper narrow"}
@@ -259,7 +256,7 @@
                          [composed-get-action-data
                           [multiple-items-get-action-data
                            [sally-id] get-item-or-exemplar-action-data]
-                          [get-virtual-action-data {:template '("" :label)}]]
+                          get-virtual-action-data]
                          :render-dom render-virtual-DOM
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :class "label"}]
@@ -278,30 +275,25 @@
           [:div "virtual"]]))))
 
 (deftest virtual-entry-and-label-DOM-test
-  (is (check  (virtual-entity-and-label-DOM
-               {:template "foo" :relative-id :bar}
-               :horizontal
-               {:position :before})
-              [:div {:class "horizontal-labels-element label"}
-               [:component
-                {:relative-id :virtual-label
-                 :get-action-data [composed-get-action-data
-                                   [get-virtual-action-data
-                                    {:template "foo"
-                                     :position :before}]
-                                   [get-virtual-action-data
-                                    {:template '("" :label)
-                                     :position :before}]]
-                 :class "label"
-                 :render-dom render-virtual-DOM
-                 :get-rendering-data get-virtual-DOM-rendering-data}]
-               [:component {:template "foo"
-                            :relative-id :bar
-                            :render-dom render-virtual-DOM
-                            :get-rendering-data get-virtual-DOM-rendering-data
-                            :get-action-data [get-virtual-action-data
-                                              {:template "foo"
-                                               :position :before}]}]])))
+  (is (check (virtual-entity-and-label-DOM
+              {:template "foo" :relative-id :bar}
+              :horizontal
+              {:position :before})
+             [:div {:class "horizontal-labels-element label"}
+              [:component
+               {:relative-id :virtual-label
+                :template ["foo" '(anything :label)]
+                :position :before
+                :get-action-data get-virtual-action-data
+                :class "label"
+                :render-dom render-virtual-DOM
+                :get-rendering-data get-virtual-DOM-rendering-data}]
+              [:component {:template "foo"
+                           :relative-id :bar
+                           :position :before
+                           :render-dom render-virtual-DOM
+                           :get-rendering-data get-virtual-DOM-rendering-data
+                           :get-action-data get-virtual-action-data}]])))
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
@@ -351,13 +343,13 @@
             [:div
              {:class "horizontal-labels-element label virtual-wrapper narrow item"}
              [:component {:template '("" :label)
+                          
+                                             :position :after
                           :relative-id :virtual-label
                           :class "label"
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
-                          :get-action-data [get-virtual-action-data
-                                            {:template '("" :label)
-                                             :position :after}]
+                          :get-action-data get-virtual-action-data
                           :width 1.5}]
              [:component {:template ""
                           :relative-id :content
@@ -400,7 +392,7 @@
                     [composed-get-action-data
                      [multiple-items-get-action-data
                       [id1] get-item-or-exemplar-action-data]
-                     [get-virtual-action-data {:template '("" :label)}]]
+                     get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -417,7 +409,7 @@
                     [composed-get-action-data
                      [multiple-items-get-action-data
                       [id2] get-item-or-exemplar-action-data]
-                     [get-virtual-action-data {:template '("" :label)}]]
+                     get-virtual-action-data]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -610,8 +602,7 @@
                               [composed-get-action-data
                                [multiple-items-get-action-data
                                 [id3] get-item-or-exemplar-action-data]
-                               [get-virtual-action-data {:template
-                                                         '("" :label)}]]
+                               get-virtual-action-data]
                               :relative-id [id3 :virtual-label]
                               :get-rendering-data get-virtual-DOM-rendering-data
                               :render-dom render-virtual-DOM
@@ -658,7 +649,7 @@
                           [composed-get-action-data
                            [multiple-items-get-action-data
                             [id1] get-item-or-exemplar-action-data]
-                           [get-virtual-action-data {:template '("" :label)}]]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -674,7 +665,7 @@
                           [composed-get-action-data
                            [multiple-items-get-action-data
                             [id2] get-item-or-exemplar-action-data]
-                           [get-virtual-action-data {:template '("" :label)}]]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]
@@ -829,13 +820,11 @@
             [:component {:width 1.03125
                          :template '("" ("both" :label))
                          :relative-id :virtual
+                         :position :after
+                         :sibling true
                          :get-rendering-data get-virtual-DOM-rendering-data
                          :render-dom render-virtual-DOM
-                         :get-action-data (as-set
-                                           [get-virtual-action-data
-                                            {:template '("" ("both" :label))
-                                             :position :after
-                                             :sibling true}])}]]
+                         :get-action-data get-virtual-action-data}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
@@ -881,7 +870,7 @@
                           [composed-get-action-data
                            [multiple-items-get-action-data
                             [id3] get-item-or-exemplar-action-data]
-                           [get-virtual-action-data {:template '("" :label)}]]
+                           get-virtual-action-data]
                           :get-rendering-data get-virtual-DOM-rendering-data
                           :render-dom render-virtual-DOM
                           :class "label"}]]

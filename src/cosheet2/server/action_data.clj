@@ -136,7 +136,8 @@
   (assert (satisfies? StoredItemDescription id) id)
   (assert (or (empty? subject-ids)
               (let [subject-id (id->subject immutable-store id)]
-                (some #{subject-id} subject-ids)))
+                (or (nil? subject-id)
+                    (some #{subject-id} subject-ids))))
           [id
            (id->subject immutable-store id)
            (id->content immutable-store id)
@@ -175,28 +176,37 @@
   [v ^java.io.Writer w]
   (.write w "pass-AD"))
 
-;;; TODO: !!! Put the extra argument information into the spec.
 (defn get-virtual-action-data
   "Create the specified virtual items.
+   The new items are instances of the template. The template may be a
+   vectdor, in which case the first element of the vector is created
+   first, then the second item as an element of that, the third as an
+   element of that, etc. With the id of the final item being the final
+   target.
    The containing data's target-ids are the subject of the new items,
    unless sibling is true in which case they are the siblings.
    The new items are ordered after the containing target, unless position
    is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [specification containing-action-data action immutable-store
-   {:keys [template sibling position use-bigger]}]
+  [{:keys [template sibling position use-bigger]}
+   containing-action-data action immutable-store]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
         subjects (if sibling
                   (map #(id->subject immutable-store %) incoming-ids)
                   incoming-ids)
-        adjacents (if sibling incoming-ids subjects)
-        [ids store] (create-possible-selector-elements
-                     template subjects adjacents
-                     (or position :after)
-                     use-bigger
-                     immutable-store)]
+        adjacents (when sibling incoming-ids)
+        [ids _ store] (reduce (fn [[subjects adjacents store] template]
+                                (let [[ids store]
+                                      (create-possible-selector-elements
+                                       template subjects (or adjacents subjects)
+                                       (or position :after)
+                                       use-bigger
+                                       store)]
+                                  [ids nil store]))
+                              [subjects adjacents immutable-store]
+                              (if (vector? template) template [template]))]
     (assoc containing-action-data :target-ids ids :store store)))
 
 (defmethod print-method

@@ -162,15 +162,13 @@
         last-column-id (:item-id (last (ordered-entities columns)))
         {:keys [store target-ids]}
         (get-virtual-action-data
-         {}
-         {:target-ids [last-column-id]}
-         action immutable-store
          {:sibling true
-          :template (concat table-header-template ['(??? :label)])})
+          :template (concat table-header-template ['(??? :label)])}
+         {:target-ids [last-column-id]} action immutable-store)
         new-column-id (first target-ids)
         template (semantic-to-list (description->entity new-column-id store))]
     (get-virtual-action-data
-     {} containing-action-data action store {:template template})))
+     {:template template} containing-action-data action store)))
 
 (defmethod print-method
   cosheet2.server.table_render$get_virtual_column_cell_action_data
@@ -284,9 +282,10 @@
          (virtual-entity-and-label-DOM
           (assoc spec :get-action-data [multiple-items-get-action-data
                                         [last-column-id]
-                                        get-item-or-exemplar-action-data])
+                                        get-item-or-exemplar-action-data]
+                 :sibling true)
           :vertical-wrapped
-          {:sibling true})
+          {})
          {:class  "column-header virtual-column"})))))
 
 (defn get-table-header-rendering-data
@@ -420,8 +419,8 @@
     :class "table-cell"
     :render-dom render-virtual-DOM
     :get-rendering-data get-virtual-DOM-rendering-data
-    :get-action-data [get-virtual-action-data
-                      {:template (query-to-template query)}]
+    :template (query-to-template query)
+    :get-action-data get-virtual-action-data
     :width width}))
 
 (defn get-table-virtual-row-rendering-data
@@ -452,10 +451,10 @@
       :get-rendering-data get-table-virtual-row-rendering-data
       :item-id adjacent-id
       :sibling true
+      :template row-template
       :get-action-data [composed-get-action-data
                         get-item-or-exemplar-action-data
-                        [get-virtual-action-data
-                         {:template row-template}]]}))
+                        get-virtual-action-data]}))
 
 (defn get-table-rows-rendering-data
   [{:keys [row-template-R row-ids-R]} mutable-store]

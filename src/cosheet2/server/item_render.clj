@@ -152,10 +152,13 @@
   (add-labels-DOM labels-dom inner-dom
                   (if (= orientation :vertical) :vertical-wrapped orientation)))
 
+;;; TODO: !!! get rid of the extra argument here. The callers should put them
+;;;       into the specification.
 (defn virtual-DOM-component
   "Make a component for a place where there could be an entity, but
-  isn't. Any extra arguments must be a map, which is passed to
-  get-virtual-action-data."
+  isn't. The specification may have a :get-action-data, in which case
+  it will be run before get-virtual-action-data. Any extra arguments
+  must be a map, which is passed to get-virtual-action-data."
   [specification virtual-action-data-arguments]
   ;; If the arguments don't specify a template, take it from the spec.
   (let [action-data-arguments (into (select-keys specification [:template])
@@ -165,13 +168,11 @@
                     (keys action-data-arguments))
             action-data-arguments)
     (make-component
-     (-> specification
+     (-> (into specification virtual-action-data-arguments)
          (assoc :render-dom render-virtual-DOM
                 :get-rendering-data get-virtual-DOM-rendering-data)
          (update :get-action-data
-                 #(compose-action-data-getter
-                   %
-                   [get-virtual-action-data action-data-arguments]))))))
+                 #(compose-action-data-getter % get-virtual-action-data))))))
 
 (defn virtual-label-DOM-component
   "Return a dom for a virtual label. The label must occur inside an
@@ -191,19 +192,13 @@
    The arguments are the same as for virtual-DOM-component."
   [specification orientation action-data-arguments]
   (let [dom (virtual-DOM-component specification action-data-arguments)
-        item-id (:item-id (dom-attributes dom))
-        label-template (ensure-label
-                        (:template
-                         (transform-specification-for-labels specification))) 
+        template (:template specification)
         labels-dom (virtual-DOM-component
-                    (cond-> {:relative-id :virtual-label
-                             :get-action-data
-                             (:get-action-data (dom-attributes dom))
-                             :class "label"}
-                      item-id
-                      (assoc :item-id item-id))
-                    {:template label-template
-                     :position :before})]
+                    (assoc specification
+                           :relative-id :virtual-label
+                           :class "label"
+                           :template [template '(anything :label)])
+                    action-data-arguments)]
     (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
       (:class specification)
       (add-attributes {:class (:class specification)}))))

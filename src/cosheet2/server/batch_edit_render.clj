@@ -310,7 +310,7 @@
   in batch mode."
   [{:keys [query-id stack-selector-id] :as specification} store]
   (let [count-dom (batch-count-component query-id)
-        query-dom (batch-query-DOM specification store)
+        query-dom (batch-query-component query-id)
         stack-dom (when stack-selector-id
                     (stack-selector-DOM specification store))
         inner-dom [:div {:class "batch-stack-wrapper"}

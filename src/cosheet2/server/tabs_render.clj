@@ -124,17 +124,11 @@
    {:relative-id :virtual-tab
     :item-id last-tab-id
     :class "tab virtualTab"
-    ;; Make the tab.
-    :get-action-data (compose-action-data-getter
-                      get-item-or-exemplar-action-data
-                      [get-virtual-action-data
-                       ;; This template starts with no name on the tab.
-                       {:template (cons "" new-tab-elements)
-                        :sibling true
-                        :use-bigger true}])}
-   ;; This template adds the label to the name to it, which will get
-   ;; filled in by what the user types.
-   {:template 'anything}))
+    :template [(cons "" new-tab-elements)  'anything]  
+    :sibling true
+    :get-action-data get-item-or-exemplar-action-data
+    :use-bigger true}
+   {}))
 
 (defn render-tabs-DOM
   "Return a reporter giving the DOM for the elements of the given

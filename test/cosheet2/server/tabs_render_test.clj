@@ -93,20 +93,20 @@
             {:relative-id :virtual-tab
              :item-id (:item-id t3)
              :class "tab virtualTab"
+             :template ['("" :tab
+                          (:blank :tab-topic :table
+                                  (anything (??? :label)
+                                            (anything :column (??? :label))
+                                            :row-condition :selector)))
+                        'anything]
+             :sibling true
+             :use-bigger true
              :render-dom (virt-DOM)
              :get-rendering-data (virt-RD)
              :get-action-data
              [(comp-AD)
               (item-AD)
-              [(virt-AD)
-               {:template '("" :tab
-                            (:blank :tab-topic :table
-                                    (anything (??? :label)
-                                              (anything :column (??? :label))
-                                              :row-condition :selector)))
-                :sibling true
-                :use-bigger true}]
-              [(virt-AD) {:template 'anything}]]}]
+              (virt-AD)]}]
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
@@ -180,4 +180,5 @@
                       :class "empty-child"
                       :render-dom (virt-DOM)
                       :get-rendering-data (virt-RD)
-                      :get-action-data [(virt-AD) {:template 'anything}]}]))))
+                      :template 'anything
+                      :get-action-data (virt-AD)}]))))

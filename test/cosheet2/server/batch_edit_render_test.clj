@@ -194,7 +194,7 @@
         q2-c1-entity (first (matching-elements '(nil "c1") q2-entity))
         q2-c1 (:item-id q2-c1-entity)
         q2-c1-l (:item-id (first (matching-elements "c1" q2-c1-entity)))
-        dom (batch-query-DOM {:query-id q2 :stack-selector-id stk1} s)]
+        dom (render-batch-query-DOM {:query-id q2 :stack-selector-id stk1} s)]
     (is (check
          dom
          [:div {:class "horizontal-labels-element label"}
@@ -205,10 +205,8 @@
             :query-id q2
             :stack-selector-id stk1
             :template '(anything :label)
-            :get-action-data [(comp-AD)
-                              (batch-query-AD)
-                              [(virt-AD) {:template '(anything :label)
-                                          :position :after}]]
+            :position :after
+            :get-action-data [(comp-AD) (batch-query-AD) (virt-AD)]
             :class "label"
             :render-dom (virt-DOM)
             :get-rendering-data (virt-RD)}]
@@ -224,7 +222,7 @@
                                  [(mult-items-AD)
                                   (list q2-2)
                                   (batch-query-AD)]
-                                 [(virt-AD) {:template '("" :label)}]]
+                                 (virt-AD)]
                :render-dom (virt-DOM)
                :get-rendering-data (virt-RD)
                           :class "label"}]
@@ -257,14 +255,14 @@
            [:div {:class "vertical-labels-element label"}
             [:component
              {:template '(anything :label)
+              :position :after
               :relative-id :virtual-label
               :query-id q2
               :stack-selector-id stk1
               :class "label"
               :render-dom (virt-DOM)
               :get-rendering-data (virt-RD)
-              :get-action-data [(virt-AD) {:template '(anything :label)
-                                           :position :after}]}]
+              :get-action-data (virt-AD)}]
             [:component
              {:relative-id :virtual
               :query-id q2
@@ -272,10 +270,7 @@
               :render-dom (virt-DOM)
               :get-rendering-data (virt-RD)
               :template '(anything (anything :label))
-              :get-action-data [(virt-AD)
-                                ;; TODO: !!! Shouldn't need this.
-                                {:template '(anything
-                                             (anything :label))}]}]]]]))))
+              :get-action-data (virt-AD)}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test
   (let [q1-entity (description->entity q1 s)

@@ -135,8 +135,7 @@
 
 (deftest get-virtual-action-data-test
   (let [data (get-virtual-action-data
-              {} {:target-ids [joe-id]} nil store
-              {:template 'anything})]
+              {:template 'anything} {:target-ids [joe-id]} nil store)]
     (is (check data {:target-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
@@ -147,25 +146,34 @@
              (:right (get-order joe-id original-store))))
       (is (= (semantic-to-list (description->entity id store))
              ""))))
+  ;; Try several initial targets, one a selector and one not, and a
+  ;; vector as the template.
   (let [data (get-virtual-action-data
-              {} {:target-ids [jane-id joe-id]} nil store
-              {:template 'anything})]
+              {:template ['anything '(2 ("name" :label))]}
+              {:target-ids [jane-id joe-id]} nil store)]
     (is (check data {:target-ids [(any) (any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store
           {:keys [target-ids store]} data
           [new-jane-id new-joe-id] target-ids]
-      (is (= (id->subject store new-joe-id) joe-id))
+      (is (=  (id->subject store (id->subject store new-joe-id)) joe-id))
       (is (check (semantic-to-list (description->entity new-joe-id store))
-                 "" ))
-      (is (= (id->subject store new-jane-id) jane-id))
+                 '(2 ("name" :label))))
+      (is (check (semantic-to-list (description->entity
+                                    (id->subject store new-joe-id) store))
+                 '("" (2 ("name" :label)))))
+      (is (= (id->subject store (id->subject store new-jane-id)) jane-id))
       (is (check (semantic-to-list (description->entity new-jane-id store))
-                 'anything ))))
+                 '(2 ("name" :label))))
+      (is (check (semantic-to-list (description->entity
+                                    (id->subject store new-jane-id) store))
+                 '(anything (2 ("name" :label)))))))
+  ;; Try :sibling true
   (let [data (get-virtual-action-data
-              {} {:target-ids [(:item-id joe-age)]} nil store
               {:template 'anything
                :sibling true
-               :position :before})]
+               :position :before}
+              {:target-ids [(:item-id joe-age)]} nil store)]
     (is (check data {:target-ids [(any)]
                      :store (any #(satisfies? ImmutableStore %))}))
     (let [original-store store

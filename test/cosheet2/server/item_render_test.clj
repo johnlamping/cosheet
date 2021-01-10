@@ -40,8 +40,9 @@
 (def unused-orderable (nth orderables 6))
 
 (deftest virtual-DOM-test
-  (is (check (virtual-DOM-component {:template "foo"  :relative-id :bar}
-                                    {:position :before})
+  (is (check (virtual-DOM-component {:template "foo"
+                                     :relative-id :bar
+                                     :position :before})
              [:component {:template "foo"
                           :position :before
                           :relative-id :bar
@@ -276,9 +277,10 @@
 
 (deftest virtual-entry-and-label-DOM-test
   (is (check (virtual-entity-and-label-DOM
-              {:template "foo" :relative-id :bar}
-              :horizontal
-              {:position :before})
+              {:template "foo"
+               :relative-id :bar
+               :position :before}
+              :horizontal)
              [:div {:class "horizontal-labels-element label"}
               [:component
                {:relative-id :virtual-label

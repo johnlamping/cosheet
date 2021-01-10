@@ -181,8 +181,7 @@
   (let [dom (virtual-DOM-component
              (assoc specification
                     :relative-id :virtual
-                    :template '(anything (anything :label)))
-             {})
+                    :template '(anything (anything :label))))
         label-dom (virtual-label-DOM-component
                    (assoc specification :template '(anything :label)))]
     (add-labels-DOM label-dom dom :vertical)))

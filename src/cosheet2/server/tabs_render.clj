@@ -56,8 +56,8 @@
           (add-attributes {:class "complex"})))        
       (virtual-DOM-component
        {:relative-id :virtual
-        :class "empty-child"}
-       {:template 'anything}))))
+        :template 'anything
+        :class "empty-child"}))))
 
 (defmethod print-method
   cosheet2.server.tabs_render$render_tab_elements_DOM
@@ -127,8 +127,7 @@
     :template [(cons "" new-tab-elements)  'anything]  
     :sibling true
     :get-action-data get-item-or-exemplar-action-data
-    :use-bigger true}
-   {}))
+    :use-bigger true}))
 
 (defn render-tabs-DOM
   "Return a reporter giving the DOM for the elements of the given

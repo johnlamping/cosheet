@@ -205,11 +205,9 @@
             ;; the last of them.
             last-item
             (assoc :item-id (:item-id last-item)
-                   :get-action-data get-item-or-exemplar-action-data))
-          :vertical
-          (if last-item
-            {:sibling true}
-            {}))
+                   :get-action-data get-item-or-exemplar-action-data
+                   :sibling true))
+          :vertical)
          {:class "virtual-column"})
         dom (labels-and-elements-DOM
              condition-elements virtual-dom
@@ -274,8 +272,7 @@
               :template table-header-template
               :width 0.75}]
     (if (empty? hierarchy)
-      (virtual-entity-and-label-DOM
-       spec :vertical-wrapped {})
+      (virtual-entity-and-label-DOM spec :vertical-wrapped)
       (let [last-column (last (hierarchy-node-descendants (last hierarchy)))
             last-column-id (:item-id (:item last-column))]
         (add-attributes
@@ -284,8 +281,7 @@
                                         [last-column-id]
                                         get-item-or-exemplar-action-data]
                  :sibling true)
-          :vertical-wrapped
-          {})
+          :vertical-wrapped)
          {:class  "column-header virtual-column"})))))
 
 (defn get-table-header-rendering-data
@@ -343,8 +339,7 @@
     (if (empty? entities)
               ;; TODO: Get our left neighbor as an arg, and pass it
               ;; in the sibling for the virtual dom.
-              (virtual-DOM-component (assoc spec :relative-id :virtual)
-                                     {})
+              (virtual-DOM-component (assoc spec :relative-id :virtual))
               (non-label-entities-DOM
                entities
                (:template spec) false :vertical spec))))

@@ -1,6 +1,7 @@
 (ns cosheet2.server.table-render
   (:require (cosheet2 [utils :refer [replace-in-seqs multiset separate-by
                                      add-elements-to-entity-list remove-first]]
+                      [store :refer [id->subject]]
                       [reporter :refer [universal-category]]
                       [entity :refer [subject content label->elements
                                       description->entity StoredEntity
@@ -28,9 +29,10 @@
              [model-utils :refer [semantic-to-list
                                   semantic-elements semantic-non-label-elements
                                   pattern-to-query query-to-template
-                                  table-header-template]]
+                                  table-header-template exemplar-to-query]]
              [render-utils :refer [make-component
-                                   hierarchy-node-DOM]]
+                                   hierarchy-node-DOM
+                                   transform-specification-for-elements]]
              [item-render :refer [virtual-DOM-component
                                   render-virtual-DOM
                                   get-virtual-DOM-rendering-data
@@ -124,15 +126,13 @@
   )
 
 (defn get-column-action-data
-  "Add the action data for a command that acts on a column.
-  The header-id is the id that holds all the columns. The column-ids
-  are the ids of all columns under this component. (One header can
-  span multiple columns.)"
-  [specification containing-action-data action immutable-store
-   header-id column-ids]
+  "Add the action data for a command that acts on a header. (One
+  header can span multiple columns.)"
+  [{:keys [header-id descendant-ids]}
+   containing-action-data action immutable-store]
   (assoc containing-action-data :column
          {:header-id header-id
-          :column-ids column-ids}))
+          :column-ids descendant-ids}))
 
 (defmethod print-method
   cosheet2.server.table_render$get_column_action_data
@@ -141,10 +141,10 @@
 
 (defn get-row-action-data
   "Add the action data for a command that acts on a row."
-  [specification containing-action-data action immutable-store
-   row-id row-template]
+  [{:keys [relative-id row-template]}
+   containing-action-data action immutable-store]
   (assoc containing-action-data :row
-         {:row-id row-id
+         {:row-id relative-id
           :row-template row-template}))
 
 (defmethod print-method
@@ -182,6 +182,47 @@
       [semantic-elements (semantic-elements header-entity)
        column-elements (label->elements header-entity :column)]
     (remove (set column-elements) semantic-elements)))
+
+(defn get-table-condition-do-batch-edit-action-data
+  [{:keys [item-id relative-id]} containing-action-data action immutable-store]
+  (let [id (or item-id relative-id)
+        header-id (id->subject immutable-store id)
+        header-entity (description->entity header-id immutable-store)
+        condition-elements (table-condition-elements header-entity)
+        query-ids (map :item-id condition-elements)]
+    (assoc containing-action-data
+           :batch-edit-ids query-ids
+           :stack-selector-index (count query-ids))))
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_condition_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "table-cond-do-batch-AD"))
+
+(defn get-table-header-do-batch-edit-action-data
+  [{:keys [item-id relative-id header-id descendant-ids disqualifications]}
+   containing-action-data action immutable-store]
+  (let [id (or item-id relative-id)
+        header-entity (description->entity header-id immutable-store)
+        condition-elements (table-condition-elements header-entity)
+        query-ids (map :item-id condition-elements)
+        column-elements (label->elements header-entity :column)
+        stack-selector-ids (concat (when (= (count descendant-ids) 1)
+                                     disqualifications)
+                                   descendant-ids)
+        ids (concat query-ids stack-selector-ids)]
+    (assoc containing-action-data
+           :batch-edit-ids ids
+           :stack-selector-index (count query-ids)
+           :selected-index (let [index (.indexOf ids id)]
+                             (when (>= index 0) index)))))
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_header_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "table-head-do-batch-AD"))
+
+;;; TODO: !!! Add get-table-cell-do-batch-edit-action-data.
 
 (defn get-table-condition-rendering-data
   [{:keys [header-id]} mutable-store]
@@ -231,20 +272,28 @@
 
 (defn table-header-node-specification
   "Return the specification to use for a DOM that is part of a table header."
-  [header-id node]
+  [header-id node parent-cover]
   (let [descendant-ids (map #(:item-id (:item %))
                             (hierarchy-node-descendants node))]
-    {:get-column-action-data [get-column-action-data header-id descendant-ids]
-     :width (* 0.75 (count descendant-ids))
-     ;; Tell add-twin and delete that they must not add or remove a column.
-     :template :singular}))
+    (cond->
+        {:header-id header-id
+         :descendant-ids descendant-ids
+         :get-column-action-data get-column-action-data
+         :get-do-batch-edit-action-data
+         get-table-header-do-batch-edit-action-data
+         :width (* 0.75 (count descendant-ids))
+         ;; Tell add-twin and delete that they must not add or remove a column.
+         :template :singular}
+      (and (seq parent-cover) (empty? (:properties node)))
+      (assoc :competing-ids parent-cover))))
 
 (defn table-header-subtree-DOM
   "Generate the dom for a subtree of a table header hierarchy, given
   the doms for all the children."
   [header-id node child-doms specification]
-  (let [spec (into specification
-                   (table-header-node-specification header-id node))
+  (let [spec (into (dissoc specification :parent-cover-ids :competing-ids)
+                   (table-header-node-specification
+                    header-id node (:parent-cover-ids specification)))
         node-dom (horizontal-label-hierarchy-node-DOM
                   node spec)
         is-leaf (empty? child-doms)
@@ -261,10 +310,15 @@
   "Generate the dom for a top level subtree of a table header hierarchy.
   Inherited describes the column requests."
   [header-id node]
-  (hierarchy-node-DOM node
-                      (partial table-header-subtree-DOM header-id)
-                      (fn [sub-node spec] (dissoc spec :top-level))
-                      {:top-level true}))
+  (hierarchy-node-DOM
+   node
+   (partial table-header-subtree-DOM header-id)
+   (fn [node spec]
+     (let [cover (hierarchy-node-non-immediate-descendant-cover node)]
+       (-> spec
+           (dissoc :top-level)
+           (assoc :parent-cover-ids (map #(:item-id (:item %)) cover)))))
+   {:top-level true}))
 
 (defn table-virtual-column-header-DOM
   [hierarchy]
@@ -293,9 +347,8 @@
   The column will contain those elements of the rows that match the templates
   in the hierarchy."
   [{:keys [header-id]} hierarchy]
-  (let [hierarchy (replace-hierarchy-leaves-by-nodes hierarchy)
-        doms (map #(table-header-top-level-subtree-DOM header-id %)
-                     hierarchy)
+  (let [doms (map #(table-header-top-level-subtree-DOM header-id %)
+                  hierarchy)
         virtual-header (table-virtual-column-header-DOM hierarchy)]
     (into [:div {:class "column-header-sequence table-header"}]
           (concat doms [virtual-header]))))
@@ -322,27 +375,24 @@
   (.write w "cell-RD"))
 
 (defn render-table-cell-DOM
-  [{:keys [:row-id :query :disqualifications] :as specification} store]
+  [{:keys [row-id query disqualifications] :as specification} store]
   (let [row-entity (description->entity row-id store)
         matches (matching-elements query row-entity)
-        entities (if disqualifications
+        entities (if (seq disqualifications)
                    (let [do-not-show (map #(matching-elements % row-entity)
                                           disqualifications)]
                      (seq (clojure.set/difference
-                           (set matches)
-                           (set (apply concat do-not-show)))))
+                           (set matches) (set (apply concat do-not-show)))))
                    matches)
         spec (-> specification
-                 (assoc :template (query-to-template query))
-                 (dissoc :relative-id :row-id :query :disqualifications :class
-                         :render-dom :get-rendering-data :get-action-data))]
+                 transform-specification-for-elements
+                 (assoc :template (query-to-template query)))]
     (if (empty? entities)
-              ;; TODO: Get our left neighbor as an arg, and pass it
-              ;; in the sibling for the virtual dom.
-              (virtual-DOM-component (assoc spec :relative-id :virtual))
-              (non-label-entities-DOM
-               entities
-               (:template spec) false :vertical spec))))
+      ;; TODO: Get our left neighbor as an arg, and pass it
+      ;; in the sibling for the virtual dom.
+      (virtual-DOM-component (assoc spec :relative-id :virtual))
+      (non-label-entities-DOM
+       entities (:template spec) false :vertical spec))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_cell_DOM
@@ -356,23 +406,23 @@
   several columns show the same item, we could have the same client id
   for both."
   [row-id
-   {:keys [column-id query disqualifications width] :as column-description}
+   {:keys [column-id query width] :as column-description}
    specification]
   (if (= column-id :virtualColumn)
     (table-virtual-column-cell-DOM-component
      (:header-id column-description) (assoc specification :width width))
     (make-component
-     (cond-> (assoc specification
-                    :relative-id column-id
-                    :row-id row-id
-                    :query query
-                    :class "table-cell"
-                    :render-dom render-table-cell-DOM
-                    :get-rendering-data get-table-cell-rendering-data
-                    :get-action-data get-pass-through-action-data
-                    :width width)
-       disqualifications
-       (assoc :disqualifications disqualifications)))))
+     (into (assoc specification
+                  :relative-id column-id
+                  :row-id row-id
+                  :query query
+                  :class "table-cell"
+                  :render-dom render-table-cell-DOM
+                  :get-rendering-data get-table-cell-rendering-data
+                  :get-action-data get-pass-through-action-data
+                  :width width)
+           (select-keys column-description
+                        [:competing-ids :disqualifications])))))
 
 (defn get-table-row-rendering-data
   [{:keys [relative-id column-descriptions-R]} mutable-store]
@@ -384,7 +434,8 @@
   have column-descriptions-R and :get-row-action-data"
   [{:keys [relative-id] :as specification} store column-descriptions]
   (let [spec (-> specification
-                 (dissoc :column-descriptions-R :get-row-action-data)
+                 (dissoc
+                  :column-descriptions-R :get-row-action-data :row-template)
                  (assoc :class "table-cell has-border"))]
     (let [cells (map #(table-cell-DOM-component relative-id % spec)
                      column-descriptions)]
@@ -401,11 +452,12 @@
   (make-component
    (assoc specification
           :relative-id row-id
+          :row-template row-template
           :class "table-row"
           :render-dom render-table-row-DOM
           :get-action-data [get-id-action-data row-id]
           :get-rendering-data get-table-row-rendering-data
-          :get-row-action-data [get-row-action-data row-id row-template])))
+          :get-row-action-data get-row-action-data)))
 
 (defn table-virtual-row-cell-DOM-component
   [{:keys [column-id query width] :as column-description}]
@@ -482,7 +534,7 @@
   (expr-let [current-header header-entity-R]
     (let [columns (ordered-entities
                    (label->elements current-header :column))]
-      (hierarchy-by-labels columns))))
+      (replace-hierarchy-leaves-by-nodes (hierarchy-by-labels columns)))))
 
 (defn table-row-template-R
   "Return a reporter whose value is the row condition"
@@ -501,31 +553,39 @@
       (ordered-ids-R matching-ids-R mutable-store))))
 
 (defn table-hierarchy-leaf-column-description
-  [parent-node leaf]
-  (let [query (-> (:item leaf)
-                  semantic-to-list
-                  pattern-to-query)
-        disqualifications (table-hierarchy-node-disqualifications parent-node)]
-    [(cond-> {:column-id (:item-id (:item leaf))
-              :query query
-              :width 0.75}
-       (seq disqualifications)
-       (assoc :disqualifications disqualifications))]))
+  [parent-node node]
+  (let [leaf (first (:leaves node))
+        query (exemplar-to-query (:item leaf))
+        competitors (when (and  parent-node (empty? (:properties node)))
+                      (hierarchy-node-non-immediate-descendant-cover
+                       parent-node))]
+    (cond-> {:column-id (:item-id (:item leaf))
+             :query query
+             :width 0.75}
+      (seq competitors) 
+      (assoc :competing-ids (map #(:item-id (:item %)) competitors) 
+             :disqualifications (map #(exemplar-to-query (:item %))
+                                     competitors)))))
 
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
-              :column-id Id that identifies the column.
+             :column-id  Id that identifies the column.
                          Typically the id of the column item.
-                  :query Query that each element of the column must satisfy.
+                 :query  Query that each element of the column must satisfy.
                          For a virtual column, this will not be present.
-      :disqualifications Seq of conditions that elements must not satisfy."
-  [node]
-  (mapcat (fn [node-or-element]
-            (if (hierarchy-node? node-or-element)
-              (table-hierarchy-node-column-descriptions node-or-element)
-              (table-hierarchy-leaf-column-description node node-or-element)))
-          (hierarchy-node-next-level node)))
+         :competing-ids  Seq of ids whose matches must not appear in the cell.
+     :disqualifications  Seq of conditions that elements must not satisfy.
+                         This is determined by :competing ids, but we put in
+                         both, so that table cells can have the
+                         disqualifications put in their specification,
+                         causing them to be recomputed if the contents of
+                         the competing ids change, without their having to
+                         register a dependency on it."
+  [parent-node node]
+  (if-let [children (:child-nodes node)]
+    (mapcat #(table-hierarchy-node-column-descriptions node %) children)
+    [(table-hierarchy-leaf-column-description parent-node node)]))
 
 (defn get-ready-table-rendering-data
   [_ mutable-store]
@@ -550,7 +610,8 @@
         column-descriptions-R (expr-let [hierarchy hierarchy-R]
                                 (concat
                                  (mapcat
-                                  table-hierarchy-node-column-descriptions
+                                  #(table-hierarchy-node-column-descriptions
+                                    nil %)
                                   hierarchy)
                                  [virtual-column-description]))
         condition-dom (make-component
@@ -558,7 +619,9 @@
                         :header-id header-id
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
-                        :get-action-data get-pass-through-action-data})
+                        :get-action-data get-pass-through-action-data
+                        :get-do-batch-edit-action-data
+                        get-table-condition-do-batch-edit-action-data })
         header-dom (make-component
                     {:relative-id :header
                      :header-id header-id

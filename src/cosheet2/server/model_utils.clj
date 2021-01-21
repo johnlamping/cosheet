@@ -186,6 +186,11 @@
                                   :require-not-labels true
                                   :require-orders true))
 
+(defn exemplar-to-query
+  "Given an exemplar entity, turn it into a query"
+  [entity]
+  (pattern-to-query (semantic-to-list entity)))
+
 (defn query-to-template
   "Given a query, turn it into a template by removing any (nil :order),
    removing any negations, and replacing any nil by the specified replacement,

@@ -48,8 +48,8 @@
 (defn transform-specification-for-labels
   [specification]
   ;; We have to keep the information used by the batch edit action
-  ;; data functions, because the label can include them as part of its
-  ;; :get-action-data function
+  ;; data functions, because the label can use them as part of its
+  ;; :get-action-data function.
   (assoc (select-keys specification [:width :query-id :stack-selector-id
                                      :excluding-ids])
          :template (or (:elements-template specification)
@@ -103,7 +103,7 @@
 (defn make-component
   "Make a component dom with the given specification"
   [{:as specification}]
-  (assert (:relative-id specification))
+  (assert (:relative-id specification) specification)
   [:component specification])
 
 (defn item-component

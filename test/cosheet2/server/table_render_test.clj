@@ -23,7 +23,8 @@
                                   get-id-action-data
                                   get-item-or-exemplar-action-data
                                   get-virtual-action-data]]
-             [hierarchy :refer [hierarchy-by-labels] :as hierarchy]
+             [hierarchy :refer [hierarchy-by-labels
+                                replace-hierarchy-leaves-by-nodes] :as hierarchy]
              [order-utils :refer [ordered-entities add-order-elements]]
              [model-utils :refer [semantic-to-list]]
              [table-render :refer :all])
@@ -64,6 +65,7 @@
 (defn virt-AD [] get-virtual-action-data)
 (defn col-AD [] get-column-action-data)
 (defn row-AD [] get-row-action-data)
+(defn table-head-do-batch-AD [] get-table-header-do-batch-edit-action-data)
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -186,9 +188,11 @@
         c7-id (:item-id c7)
         columns (ordered-entities
                  (label->elements header :column))
-        hierarchy (hierarchy-by-labels columns)
+        hierarchy (replace-hierarchy-leaves-by-nodes
+                   (hierarchy-by-labels columns))
         column-descriptions (concat
-                             (mapcat table-hierarchy-node-column-descriptions
+                             (mapcat #(table-hierarchy-node-column-descriptions
+                                       nil %)
                                      hierarchy)
                              [{:column-id :virtualColumn
                                :width 0.75
@@ -265,8 +269,10 @@
           get-table-header-rendering-data store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
-          [:component {:get-column-action-data
-                       [(col-AD) header-id [c1-id]]
+          [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                       :get-column-action-data (col-AD)  
+                       :header-id header-id
+                       :descendant-ids [c1-id]
                        :width 0.75
                        :template :singular
                        :relative-id c1-id
@@ -274,8 +280,10 @@
           ;; Three columns.
           [:div {:class "column-header label"}
            ;; The label for the three columns
-           [:component {:get-column-action-data
-                        [(col-AD) header-id [c2-id c3-id c4-id]]
+           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                        :get-column-action-data (col-AD) 
+                        :header-id header-id
+                        :descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
                         :get-action-data
@@ -289,56 +297,77 @@
             ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
-             [:component {:get-column-action-data
-                          [(col-AD) header-id [c2-id]]
-                          :width 0.75
-                          :template '(anything :label)
-                          :get-action-data
-                          [(comp-AD) [(mult-items-AD) [c2-id] (item-AD)]
-                                     (virt-AD)]
-                          :relative-id [c2-id :nested]
-                          :class "label merge-with-parent"
-                          :render-dom (virt-DOM)
-                          :get-rendering-data (virt-RD)}]
+             [:component
+              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+               :get-column-action-data (col-AD) 
+               :header-id header-id
+               :descendant-ids [c2-id]
+               :competing-ids [c3-id]
+               :width 0.75
+               :template '(anything :label)
+               :get-action-data
+               [(comp-AD) [(mult-items-AD) [c2-id] (item-AD)]
+                (virt-AD)]
+               :relative-id [c2-id :nested]
+               :class "label merge-with-parent"
+               :render-dom (virt-DOM)
+               :get-rendering-data (virt-RD)}]
              [:div {:class "indent-wrapper label"}
-              [:component {:get-column-action-data
-                           [(col-AD) header-id [c2-id]]
-                           :width 0.75
-                           :template :singular
-                           :relative-id c2-id
-                           :excluded-element-ids [c2-name-id]}]]]
+              [:component
+               {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                :get-column-action-data (col-AD)
+                :header-id header-id
+                :descendant-ids [c2-id]
+                :competing-ids [c3-id]
+                :width 0.75
+                :template :singular
+                :relative-id c2-id
+                :excluded-element-ids [c2-name-id]}]]]
             ;; A column with an additional label
-            [:component {:get-column-action-data
-                         [(col-AD) header-id [c3-id]]
-                         :width 0.75
-                         :template :singular
-                         :relative-id c3-id
-                         :excluded-element-ids [c3-name-id]
-                         :class "column-header leaf"}]
+            [:component
+             {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+              :get-column-action-data (col-AD) 
+              :header-id header-id
+              :descendant-ids [c3-id]
+              :width 0.75
+              :template :singular
+              :relative-id c3-id
+              :excluded-element-ids [c3-name-id]
+              :class "column-header leaf"}]
             ;; A column with only a virtual label
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
-             [:component {:get-column-action-data
-                          [(col-AD) header-id [c4-id]]
-                          :width 0.75
-                          :template '(anything :label)
-                          :get-action-data
-                          [(comp-AD) [(mult-items-AD) [c4-id] (item-AD)]
-                           (virt-AD)]
-                          :relative-id [c4-id :nested]
-                          :class "label merge-with-parent"
-                          :render-dom (virt-DOM)
-                          :get-rendering-data (virt-RD)}]
+             [:component
+              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+               :get-column-action-data (col-AD) 
+               :header-id header-id
+               :descendant-ids [c4-id]
+               :competing-ids [c3-id]
+               :width 0.75
+               :template '(anything :label)
+               :get-action-data
+               [(comp-AD) [(mult-items-AD) [c4-id] (item-AD)]
+                (virt-AD)]
+               :relative-id [c4-id :nested]
+               :class "label merge-with-parent"
+               :render-dom (virt-DOM)
+               :get-rendering-data (virt-RD)}]
              [:div {:class "indent-wrapper label"}
-              [:component {:get-column-action-data
-                           [(col-AD) header-id [c4-id]]
-                           :width 0.75
-                           :template :singular
-                           :relative-id c4-id
-                           :excluded-element-ids [(any)]}]]]]]
+              [:component
+               {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                :get-column-action-data (col-AD)
+                :header-id header-id
+                :descendant-ids [c4-id]
+                :competing-ids [c3-id]
+                :width 0.75
+                :template :singular
+                :relative-id c4-id
+                :excluded-element-ids [(any)]}]]]]]
           ;; One column with two labels
-          [:component {:get-column-action-data
-                       [(col-AD) header-id [c5-id]]
+          [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                       :get-column-action-data (col-AD)
+                       :header-id header-id
+                       :descendant-ids [c5-id]
                        :width 0.75
                        :template :singular
                        :relative-id c5-id
@@ -346,8 +375,10 @@
           ;; One column with no labels
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:get-column-action-data
-                        [(col-AD) header-id [c6-id]]
+           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                        :get-column-action-data (col-AD)
+                        :header-id header-id
+                        :descendant-ids [c6-id]
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
@@ -358,16 +389,20 @@
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
-            [:component {:get-column-action-data
-                         [(col-AD) header-id [c6-id]]
+            [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                         :get-column-action-data (col-AD)
+                         :header-id header-id
+                         :descendant-ids [c6-id]
                          :width 0.75
                          :template :singular
                          :relative-id c6-id}]]]
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:get-column-action-data
-                        [(col-AD) header-id [c7-id]]
+           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                        :get-column-action-data (col-AD)
+                        :header-id header-id
+                        :descendant-ids [c7-id]
                         :width 0.75
                         :template '(anything :label)
                         :get-action-data
@@ -378,8 +413,10 @@
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)}]
            [:div {:class "indent-wrapper label"}
-            [:component {:get-column-action-data
-                         [(col-AD) header-id [c7-id]]
+            [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+                         :get-column-action-data (col-AD)
+                         :header-id header-id
+                         :descendant-ids [c7-id]
                          :width 0.75
                          :template :singular
                          :relative-id c7-id}]]]
@@ -417,18 +454,19 @@
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
           {:column-id c2-id
-           :width 0.75
-           :query '(nil ("name" :label)
-                        (:cosheet2.query/special-form
-                         (:not :cosheet2.query/type)
-                         (:label :cosheet2.query/sub-query))
-                        (nil :order))
+           :competing-ids [c3-id]
            :disqualifications '((nil ("name" :label)
                                      ("other" :label)
                                      (:cosheet2.query/special-form
                                       (:not :cosheet2.query/type)
                                       (:label :cosheet2.query/sub-query))
-                                     (nil :order)))}
+                                     (nil :order)))
+           :width 0.75
+           :query '(nil ("name" :label)
+                        (:cosheet2.query/special-form
+                         (:not :cosheet2.query/type)
+                         (:label :cosheet2.query/sub-query))
+                        (nil :order))}
           {:column-id c3-id
            :width 0.75
            :query '(nil ("name" :label)
@@ -448,9 +486,8 @@
                       :render-dom render-table-row-DOM
                       :get-rendering-data get-table-row-rendering-data
                       :get-action-data [(id-AD) joe-id]
-                      :get-row-action-data
-                      [get-row-action-data
-                       joe-id '("" :top-level ("age" :label))]}]))
+                      :row-template '("" :top-level ("age" :label))
+                      :get-row-action-data (row-AD)}]))
 
     ;; Check rendering the list of rows.
     (is (check
@@ -469,7 +506,8 @@
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
                        :get-action-data [(id-AD) joe-id]
-                       :get-row-action-data [(row-AD) joe-id 'foo]}]
+                       :row-template 'foo
+                       :get-row-action-data (row-AD)}]
           [:component {:relative-id :virtual-row
                        :class "table-row"
                        :column-descriptions-R (any)
@@ -505,6 +543,7 @@
                                      (:not :cosheet2.query/type)
                                      (:label :cosheet2.query/sub-query))
                                     (nil :order))
+                       :competing-ids [c3-id]
                        :disqualifications '((nil ("name" :label)
                                                  ("other" :label)
                                                  (:cosheet2.query/special-form
@@ -618,7 +657,9 @@
                         :header-id header-id
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
-                        :get-action-data (pass-AD)}]
+                        :get-action-data (pass-AD)
+                        :get-do-batch-edit-action-data
+                        get-table-condition-do-batch-edit-action-data}]
            [:div {:class "table-main"}
             [:component
              {:relative-id :header

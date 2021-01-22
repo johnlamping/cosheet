@@ -47,8 +47,7 @@
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  composed-get-action-data
-                                  multiple-items-get-action-data]])))
+                                  composed-get-action-data]])))
 
 (defn get-column-action-data
   "Add the action data for a command that acts on a header. (One
@@ -286,9 +285,9 @@
             last-column-id (:item-id (:item last-column))]
         (add-attributes
          (virtual-entity-and-label-DOM
-          (assoc spec :get-action-data [multiple-items-get-action-data
-                                        [last-column-id]
-                                        get-item-or-exemplar-action-data]
+          (assoc spec
+                 :get-action-data get-item-or-exemplar-action-data
+                 :item-id last-column-id
                  :sibling true)
           :vertical-wrapped)
          {:class  "column-header virtual-column"})))))

@@ -206,19 +206,21 @@
 
 (deftest multiple-items-get-action-data-test
   (is (= (multiple-items-get-action-data
-          {} {} nil store [joe-id] get-item-or-exemplar-action-data)
+          {:item-ids [joe-id]} {} nil store get-item-or-exemplar-action-data)
          {:target-ids [joe-id]}))
   (is (= (multiple-items-get-action-data
-          {} {:target-ids [joe-id]} nil store [(:item-id joe-age)]
+          {:item-ids [(:item-id joe-age)]}
+          {:target-ids [joe-id]} nil store 
           get-item-or-exemplar-action-data)
          {:target-ids [(:item-id joe-age)]}))
   (is (check (multiple-items-get-action-data
-              {} {:target-ids [joe-id jane-id]} nil store [(:item-id jane-age)]
+              {:item-ids  [(:item-id jane-age)]}
+              {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data) 
              {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
   (is (check (multiple-items-get-action-data
-              {} {:target-ids [joe-id jane-id]} nil store
-              [(:item-id jane-age) (:item-id joe-male)]
+              {:item-ids [(:item-id jane-age) (:item-id joe-male)]}
+              {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data)
              {:target-ids [(:item-id joe-age) (:item-id jane-age)
                            (:item-id joe-male)]})))

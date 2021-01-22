@@ -218,10 +218,9 @@
                :relative-id [q2-2 :virtual-label]
                :query-id q2
                :stack-selector-id stk1
+               :item-ids (list q2-2)
                :get-action-data [(comp-AD)
-                                 [(mult-items-AD)
-                                  (list q2-2)
-                                  (batch-query-AD)]
+                                 [(mult-items-AD) (batch-query-AD)]
                                  (virt-AD)]
                :render-dom (virt-DOM)
                :get-rendering-data (virt-RD)
@@ -236,10 +235,9 @@
               {:template '("" :label)
                :query-id q2
                :stack-selector-id stk1
+               :item-ids (list q2-c1)
                :get-action-data [(comp-AD)
-                                 [(mult-items-AD)
-                                  (list q2-c1)
-                                  (batch-query-AD)]
+                                 [(mult-items-AD) (batch-query-AD)]
                                  (item-AD)]
                :class "label"
                :excluded-element-ids [(any)]

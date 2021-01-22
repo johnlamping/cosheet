@@ -39,6 +39,22 @@
 (def o6 (nth orderables 5))
 (def unused-orderable (nth orderables 6))
 
+;;; We make functions that abbreviate the common functions that can be
+;;; embedded in components.
+;;; (We use functions, rather than constants, so this file doesn't have
+;;; to be reloaded if any of the files that defines the underlying
+;;; functions is reloaded.)
+
+(defn virt-DOM [] render-virtual-DOM)
+
+(defn virt-RD [] get-virtual-DOM-rendering-data)
+
+(defn comp-AD [] composed-get-action-data)
+(defn item-AD [] get-item-or-exemplar-action-data)
+(defn pass-AD [] get-pass-through-action-data)
+(defn mult-items-AD [] multiple-items-get-action-data)
+(defn virt-AD [] get-virtual-action-data)
+
 (deftest virtual-DOM-test
   (is (check (virtual-DOM-component {:template "foo"
                                      :relative-id :bar
@@ -46,9 +62,9 @@
              [:component {:template "foo"
                           :position :before
                           :relative-id :bar
-                          :render-dom render-virtual-DOM
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :get-action-data get-virtual-action-data}])))
+                          :render-dom (virt-DOM)
+                          :get-rendering-data (virt-RD)
+                          :get-action-data (virt-AD)}])))
 
 
 (deftest horizontal-label-hierarchy-node-DOM-test
@@ -73,10 +89,10 @@
          [:component
           {:template '(anything :label)
            :width 0.75
-           :get-action-data [composed-get-action-data
-                             [multiple-items-get-action-data
-                              [joe-id jane-id] get-item-or-exemplar-action-data]
-                             get-item-or-exemplar-action-data]
+           :item-ids [joe-id jane-id]
+           :get-action-data [(comp-AD)
+                             [(mult-items-AD) (item-AD)]
+                             (item-AD)]
            :relative-id joe-test-id
            :class "label"
            :excluded-element-ids [joe-test-label-id]}]))
@@ -95,15 +111,14 @@
                 "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template '(anything :label)
                        :width 0.75
-                       :get-action-data
-                       [composed-get-action-data
-                        [multiple-items-get-action-data
-                         [jane-id] get-item-or-exemplar-action-data]
-                        get-virtual-action-data]
+                       :item-ids [jane-id]
+                       :get-action-data [(comp-AD)
+                                         [(mult-items-AD) (item-AD)]
+                                         (virt-AD)]
                        :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
-                       :render-dom render-virtual-DOM
-                       :get-rendering-data get-virtual-DOM-rendering-data}]
+                       :render-dom (virt-DOM)
+                       :get-rendering-data (virt-RD)}]
           [:div {:class "indent-wrapper label"}
            [:component {:relative-id jane-id
                         :width 0.75
@@ -132,11 +147,10 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8, :template '("" :label)
-                       :get-action-data
-                       [composed-get-action-data
-                        [multiple-items-get-action-data
-                         [joe-id jane-id] get-item-or-exemplar-action-data]
-                        get-item-or-exemplar-action-data]
+                       :item-ids [joe-id jane-id]
+                       :get-action-data [(comp-AD)
+                                         [(mult-items-AD) (item-AD)]
+                                         (item-AD)]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id}]
@@ -144,11 +158,10 @@
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8, :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [joe-id] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [joe-id]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
                           :relative-id joe-foo-id}]
@@ -171,11 +184,10 @@
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8
                        :template '("" :label)
-                       :get-action-data
-                       [composed-get-action-data
-                        [multiple-items-get-action-data
-                         [joe-id jane-id] get-item-or-exemplar-action-data]
-                        get-item-or-exemplar-action-data]
+                       :item-ids [joe-id jane-id]
+                       :get-action-data [(comp-AD)
+                                         [(mult-items-AD) (item-AD)]
+                                         (item-AD)]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
                        :relative-id joe-test-id}]
@@ -184,11 +196,10 @@
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8
                           :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [joe-id] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [joe-id]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
                           :relative-id joe-foo-id}]
@@ -243,23 +254,22 @@
                        :width 0.8
                        :relative-id :virtual-label
                        :class "label"
-                       :render-dom render-virtual-DOM
-                       :get-rendering-data get-virtual-DOM-rendering-data
+                       :render-dom (virt-DOM)
+                       :get-rendering-data (virt-RD)
                        :position :after
-                       :get-action-data get-virtual-action-data}]
+                       :get-action-data (virt-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class
                   "horizontal-labels-element label virtual-wrapper narrow"}
             [:component {:width 0.8
                          :template '("" :label)
                          :relative-id [sally-id :virtual-label]
-                         :get-action-data
-                         [composed-get-action-data
-                          [multiple-items-get-action-data
-                           [sally-id] get-item-or-exemplar-action-data]
-                          get-virtual-action-data]
-                         :render-dom render-virtual-DOM
-                         :get-rendering-data get-virtual-DOM-rendering-data
+                         :item-ids [sally-id]
+                         :get-action-data [(comp-AD)
+                                           [(mult-items-AD) (item-AD)]
+                                           (virt-AD)]
+                         :render-dom (virt-DOM)
+                         :get-rendering-data (virt-RD)
                          :class "label"}]
             [:component {:template 'anything
                          :width 0.8
@@ -286,16 +296,16 @@
                {:relative-id :virtual-label
                 :template ["foo" '(anything :label)]
                 :position :before
-                :get-action-data get-virtual-action-data
+                :get-action-data (virt-AD)
                 :class "label"
-                :render-dom render-virtual-DOM
-                :get-rendering-data get-virtual-DOM-rendering-data}]
+                :render-dom (virt-DOM)
+                :get-rendering-data (virt-RD)}]
               [:component {:template "foo"
                            :relative-id :bar
                            :position :before
-                           :render-dom render-virtual-DOM
-                           :get-rendering-data get-virtual-DOM-rendering-data
-                           :get-action-data get-virtual-action-data}]])))
+                           :render-dom (virt-DOM)
+                           :get-rendering-data (virt-RD)
+                           :get-action-data (virt-AD)}]])))
 
 (deftest render-item-DOM-test-simple
      ;; Test a simple cell
@@ -331,7 +341,7 @@
                                  :relative-id :content
                                  :item-id fred-id
                                  :render-dom render-content-only-DOM
-                                 :get-action-data get-pass-through-action-data
+                                 :get-action-data (pass-AD)
                                  :width 1.5}]]])))
      ;; Test must-show-label.
      (let [[store fred-id] (add-entity (new-element-store) nil
@@ -349,18 +359,18 @@
                                              :position :after
                           :relative-id :virtual-label
                           :class "label"
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :render-dom render-virtual-DOM
-                          :get-action-data get-virtual-action-data
+                          :get-rendering-data (virt-RD)
+                          :render-dom (virt-DOM)
+                          :get-action-data (virt-AD)
                           :width 1.5}]
              [:component {:template ""
                           :relative-id :content
                           :item-id fred-id
                           :render-dom render-content-only-DOM
-                          :get-action-data get-pass-through-action-data
+                          :get-action-data (pass-AD)
                           :width 1.5}]]))))
 
-(deftest item-DOM-R-test-one-column
+(deftest item-DOM-test-one-column
   ;; Try a couple of elements with no labels
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
@@ -380,7 +390,7 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-pass-through-action-data}]
+                             :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class (str "horizontal-labels-element label"
                                     " virtual-wrapper narrow")}
@@ -388,13 +398,12 @@
                    {:width 0.9
                     :template '("" :label)
                     :relative-id [id1 :virtual-label]
-                    :get-rendering-data get-virtual-DOM-rendering-data
-                    :render-dom render-virtual-DOM
-                    :get-action-data
-                    [composed-get-action-data
-                     [multiple-items-get-action-data
-                      [id1] get-item-or-exemplar-action-data]
-                     get-virtual-action-data]
+                    :get-rendering-data (virt-RD)
+                    :render-dom (virt-DOM)
+                    :item-ids [id1]
+                    :get-action-data [(comp-AD)
+                                      [(mult-items-AD) (item-AD)]
+                                      (virt-AD)]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -405,13 +414,12 @@
                    {:width 0.9
                     :template '("" :label)
                     :relative-id [id2 :virtual-label]
-                    :get-rendering-data get-virtual-DOM-rendering-data
-                    :render-dom render-virtual-DOM
-                    :get-action-data
-                    [composed-get-action-data
-                     [multiple-items-get-action-data
-                      [id2] get-item-or-exemplar-action-data]
-                     get-virtual-action-data]
+                    :get-rendering-data (virt-RD)
+                    :render-dom (virt-DOM)
+                    :item-ids [id2]
+                    :get-action-data [(comp-AD)
+                                      [(mult-items-AD) (item-AD)]
+                                      (virt-AD)]
                     :class "label"}]
                   [:component {:width 0.9
                                :template ""
@@ -445,16 +453,15 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-pass-through-action-data}]
+                             :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '("" :label)
-                               :get-action-data
-                               [composed-get-action-data
-                                [multiple-items-get-action-data
-                                 [id1] get-item-or-exemplar-action-data]
-                                get-item-or-exemplar-action-data]
+                               :item-ids [id1]
+                               :get-action-data [(comp-AD)
+                                                 [(mult-items-AD) (item-AD)]
+                                                 (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag1]
                                :relative-id id-label1}]
@@ -466,11 +473,10 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '("" :label)
-                               :get-action-data
-                               [composed-get-action-data
-                                [multiple-items-get-action-data
-                                 [id2] get-item-or-exemplar-action-data]
-                                get-item-or-exemplar-action-data]
+                               :item-ids [id2]
+                               :get-action-data  [(comp-AD)
+                                                  [(mult-items-AD) (item-AD)]
+                                                  (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag2]
                                :relative-id id-label2}]
@@ -529,16 +535,15 @@
                              :relative-id :content
                              :item-id fred-id
                              :render-dom render-content-only-DOM
-                             :get-action-data get-pass-through-action-data}]
+                             :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '("" :label)
-                               :get-action-data
-                               [composed-get-action-data
-                                [multiple-items-get-action-data
-                                 [id0] get-item-or-exemplar-action-data]
-                                get-item-or-exemplar-action-data]
+                               :item-ids [id0]
+                               :get-action-data [(comp-AD)
+                                                 [(mult-items-AD) (item-AD)]
+                                                 (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag0]
                                :relative-id id-label0}]
@@ -550,11 +555,10 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '("" :label)
-                               :get-action-data
-                               [composed-get-action-data
-                                [multiple-items-get-action-data
-                                 [id1 id2] get-item-or-exemplar-action-data]
-                                get-item-or-exemplar-action-data]
+                               :item-ids [id1 id2]
+                               :get-action-data [(comp-AD)
+                                                 [(mult-items-AD) (item-AD)]
+                                                 (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag1both]
                                :relative-id id-label1both}]
@@ -563,11 +567,10 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template '("" :label)
-                                  :get-action-data
-                                  [composed-get-action-data
-                                   [multiple-items-get-action-data
-                                    [id1] get-item-or-exemplar-action-data]
-                                   get-item-or-exemplar-action-data]
+                                  :item-ids[id1]
+                                  :get-action-data [(comp-AD)
+                                                    [(mult-items-AD) (item-AD)]
+                                                    (item-AD)]
                                   :class "label"
                                   :excluded-element-ids [id-tag1one]
                                   :relative-id id-label1one}]
@@ -581,11 +584,10 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template '("" :label)
-                                  :get-action-data
-                                  [composed-get-action-data
-                                   [multiple-items-get-action-data
-                                    [id2] get-item-or-exemplar-action-data]
-                                   get-item-or-exemplar-action-data]
+                                  :item-ids [id2]
+                                  :get-action-data [(comp-AD)
+                                                    [(mult-items-AD) (item-AD)]
+                                                    (item-AD)]
                                   :class "label"
                                   :excluded-element-ids [id-tag2two]
                                   :relative-id id-label2two}]
@@ -600,21 +602,20 @@
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :template '("" :label)
-                              :get-action-data
-                              [composed-get-action-data
-                               [multiple-items-get-action-data
-                                [id3] get-item-or-exemplar-action-data]
-                               get-virtual-action-data]
+                              :item-ids [id3]
+                              :get-action-data [(comp-AD)
+                                                [(mult-items-AD) (item-AD)]
+                                                (virt-AD)]
                               :relative-id [id3 :virtual-label]
-                              :get-rendering-data get-virtual-DOM-rendering-data
-                              :render-dom render-virtual-DOM
+                              :get-rendering-data (virt-RD)
+                              :render-dom (virt-DOM)
                               :class "label"}]
                  [:component {:width 0.9
                               :template ""
                               :relative-id id3}]]]])))
   )
 
-(deftest item-DOM-R-test-two-column
+(deftest item-DOM-test-two-column
   ;; Try three elements with no labels, but one of them marked as excluded.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"
@@ -640,20 +641,19 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-pass-through-action-data}]
+                       :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template '("" :label)
                           :relative-id [id1 :virtual-label]
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id1] get-item-or-exemplar-action-data]
-                           get-virtual-action-data]
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :render-dom render-virtual-DOM
+                          :item-ids [id1]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (virt-AD)]
+                          :get-rendering-data (virt-RD)
+                          :render-dom (virt-DOM)
                           :class "label"}]]
             [:component {:width 1.03125
                          :template ""
@@ -663,13 +663,12 @@
              [:component {:width 0.375
                           :template '("" :label)
                           :relative-id [id2 :virtual-label]
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id2] get-item-or-exemplar-action-data]
-                           get-virtual-action-data]
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :render-dom render-virtual-DOM
+                          :item-ids [id2]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (virt-AD)]
+                          :get-rendering-data (virt-RD)
+                          :render-dom (virt-DOM)
                           :class "label"}]]
             [:component {:width 1.03125
                          :template ""
@@ -704,17 +703,16 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-pass-through-action-data}]
+                       :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id1] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [id1]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag1]
                           :relative-id id-label1}]]
@@ -726,11 +724,10 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id2] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [id2]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag2]
                           :relative-id id-label2}]]
@@ -789,17 +786,16 @@
                        :relative-id :content
                        :item-id fred-id
                        :render-dom render-content-only-DOM
-                       :get-action-data get-pass-through-action-data}]
+                       :get-action-data (pass-AD)}]
           [:div {:class "vertical-stack"}
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id0] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [id0]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag0]
                           :relative-id id-label0}]]
@@ -811,11 +807,10 @@
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
                           :template '("" :label)
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id1 id2] get-item-or-exemplar-action-data]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [id1 id2]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag1both]
                           :relative-id id-label1both}]]
@@ -824,19 +819,18 @@
                          :relative-id :virtual
                          :position :after
                          :sibling true
-                         :get-rendering-data get-virtual-DOM-rendering-data
-                         :render-dom render-virtual-DOM
-                         :get-action-data get-virtual-action-data}]]
+                         :get-rendering-data (virt-RD)
+                         :render-dom (virt-DOM)
+                         :get-action-data (virt-AD)}]]
            [:div {:class "horizontal-labels-element label wide"}
             [:div {:class "label horizontal-header indent"}
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template '("" :label)
-                           :get-action-data
-                           [composed-get-action-data
-                            [multiple-items-get-action-data
-                             [id1] get-item-or-exemplar-action-data]
-                            get-item-or-exemplar-action-data]
+                           :item-ids [id1]
+                           :get-action-data [(comp-AD)
+                                             [(mult-items-AD) (item-AD)]
+                                             (item-AD)]
                            :class "label"
                            :excluded-element-ids [id-tag1one]
                            :relative-id id-label1one}]]]
@@ -849,11 +843,10 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template '("" :label)
-                           :get-action-data
-                           [composed-get-action-data
-                            [multiple-items-get-action-data
-                             [id2] get-item-or-exemplar-action-data]
-                            get-item-or-exemplar-action-data]
+                           :item-ids [id2]
+                           :get-action-data [(comp-AD)
+                                             [(mult-items-AD) (item-AD)]
+                                             (item-AD)]
                            :class "label"
                            :excluded-element-ids [id-tag2two]
                            :relative-id id-label2two}]]]
@@ -868,293 +861,22 @@
                           :template '("" :label)
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
-                          :get-action-data
-                          [composed-get-action-data
-                           [multiple-items-get-action-data
-                            [id3] get-item-or-exemplar-action-data]
-                           get-virtual-action-data]
-                          :get-rendering-data get-virtual-DOM-rendering-data
-                          :render-dom render-virtual-DOM
+                          :item-ids [id3]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            (virt-AD)]
+                          :get-rendering-data (virt-RD)
+                          :render-dom (virt-DOM)
                           :class "label"}]]
             [:component {:width 1.03125
                          :template ""
                          :relative-id id3}]]]]))))
 
-(deftest render-virtual-DOM-test
+(deftest render-virtual-DOM)-test
   (is (check (render-virtual-DOM {:class "foo"})
              [:div {:class "foo editable virtual"}])))
 
-
 (comment
-  (deftest item-DOM-R-test-one-column
-    ;; Test a one-column element hierarchy
-    (let [age-as-list `(39 (:root :non-semantic)
-                           (~o3 :order :non-semantic)
-                           ("one" ; One tag.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            (~o1 :order :non-semantic))
-                           ("another" ; Second with same tag.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            (~o2 :order :non-semantic))
-                           ("two" ; Two tags, one matching.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            ("probability"
-                             :tag (~o2 :order :non-semantic))
-                            (~o3 :order :non-semantic))
-                           ("none" ; No tag.
-                            (~o4 :order :non-semantic)))
-          [dom age] (let-mutated [age age-as-list]
-                      (expr-let [ae (matching-elements "another" age)
-                                 ne (matching-elements "none" age)
-                                 another (first ae)
-                                 none (first ne)
-                                 inherited
-                                 (into base-inherited
-                                       {:width 0.5
-                                        :template "foo"
-                                        :attributes
-                                        [[#{:content} {:added-by-test {1 2}}]
-                                         [(:item-id another) {:class "added1"}]
-                                         [(:item-id none) {:class "added2"}]]})]
-                        (expr-let [dom (item-DOM-R age [] inherited)]
-                          [dom age])))
-          one (first (current-value (matching-elements "one" age)))
-          confidence1 (first (current-value
-                              (matching-elements "confidence" one)))
-          confidence1-tag (first (current-value
-                                  (matching-elements :tag confidence1)))
-          another (first (current-value (matching-elements "another" age)))
-          two (first (current-value (matching-elements "two" age)))
-          confidence2 (first (current-value
-                              (matching-elements "confidence" two)))
-          probability (first (current-value
-                              (matching-elements "probability" two)))
-          probability-tag (first (current-value
-                                  (matching-elements :tag probability)))
-          none (first (current-value (matching-elements "none" age)))
-          age-key [:root (:item-id age)]
-          none-key (conj age-key (:item-id none))
-          one-another-two-items [(item-referent one)
-                                 (item-referent another)
-                                 (item-referent two)]
-          one-another-two-referent (union-referent one-another-two-items)]
-      (is (check
-           dom
-           [:div {:class "item with-elements"}
-            [:div {:class "content-text editable"
-                   :key (conj age-key :content)
-                   :target {:referent (item-referent age)
-                            :template "foo"}
-                   :added-by-test {1 2}}
-             "39"]
-            [:div {:class "vertical-stack"}
-             ;; Everything with "confidence"
-             [:div {:class "wrapped-element tag"}
-              [:div {:key (conj age-key (:item-id confidence1) :content)
-                     :class "content-text editable item tag"
-                     :target {:template '(anything :tag)
-                              :referent [:exemplar
-                                         (item-referent confidence1)
-                                         one-another-two-referent]}
-                     :add-sibling
-                     {:referent (virtual-referent
-                                 '(anything) (item-referent age)
-                                 one-another-two-items) 
-                      :select-pattern (conj age-key [:pattern])}}
-               "confidence"]
-              [:div {:class "indent-wrapper"}
-               [:div {:class "vertical-stack"}
-                ;; One Another
-                [:div {:class "vertical-stack"}
-                 [:div (any) "one"]
-                 [:div (any) "another"]]
-                ;; Two (must be nested)
-                [:div {:class "wrapped-element tag"}
-                 [:div
-                  {:key (conj age-key (:item-id probability) :content)
-                   :class "content-text editable item tag"
-                   :target {:template '(anything :tag)
-                            :referent (item-referent probability)}
-                   :add-sibling
-                   {:referent (virtual-referent
-                               '(anything ("confidence" :tag))
-                               (item-referent age)
-                               (item-referent two)) 
-                    :select-pattern (conj age-key [:pattern])}}
-                  "probability"]         
-                 [:div {:class "indent-wrapper"}
-                  [:div (any) "two"]]]]]]
-             ;; None
-             [:div {:class "horizontal-tags-element tag virtual-wrapper narrow added2"}
-              [:div {:class "editable tag"
-                     :key (conj (conj age-key (:item-id none)) :virtual)
-                     :target {:referent (virtual-referent
-                                         '(anything :tag)
-                                         (item-referent none) nil)
-                              :select-pattern (conj age-key [:pattern])}
-                     :add-sibling {:referent (virtual-referent
-                                              '(anything)
-                                              (item-referent age)
-                                              (item-referent none)) 
-                                   :select-pattern (conj age-key [:pattern])}}]
-              [:div (any) "none"]]]]))))
-
-  (deftest item-DOM-R-test-two-column  
-    ;; Test two column element hierarchy.
-    (let [age-as-list `(39 (:root :non-semantic)
-                           (~o3 :order :non-semantic)
-                           ("pair" ; Two tags.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            ("likelihood"
-                             :tag (~o2 :order :non-semantic))
-                            (~o1 :order :non-semantic))
-                           ("double" ; Second with same tags.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            ("likelihood"
-                             :tag (~o2 :order :non-semantic))
-                            (~o2 :order :non-semantic))
-                           ("two" ; Two tags, only one matching.
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            ("probability"
-                             :tag (~o2 :order :non-semantic))
-                            (~o3 :order :non-semantic))
-                           ("one"
-                            ("confidence"
-                             :tag (~o1 :order :non-semantic))
-                            (~o4 :order :non-semantic))
-                           ("unique"
-                            ("certainty"
-                             :tag (~o1 :order :non-semantic))
-                            (~o5 :order :non-semantic)))
-          [dom age] (let-mutated [age age-as-list]
-                      (expr-let [de (matching-elements "double" age)
-                                 ue (matching-elements "unique" age)
-                                 double (first de)
-                                 unique (first ue)
-                                 inherited
-                                 (assoc base-inherited
-                                        :width 1.0
-                                        :attributes
-                                        [[(:item-id double) {:class "added1"}]
-                                         [(:item-id unique) {:class "added2"}]])]
-                        (expr-let [dom (item-DOM-R age [] inherited)]
-                          [dom age])))
-          pair (first (current-value (matching-elements "pair" age)))
-          confidence1 (first (current-value
-                              (matching-elements "confidence" pair)))
-          confidence1-tag (first (current-value
-                                  (matching-elements :tag confidence1)))
-          likelihood (first (current-value
-                             (matching-elements "likelihood" pair)))
-          likelihood-tag (first (current-value
-                                 (matching-elements :tag likelihood)))
-          double (first (current-value (matching-elements "double" age)))
-          two (first (current-value (matching-elements "two" age)))
-          confidence2 (first (current-value
-                              (matching-elements "confidence" two)))
-          probability (first (current-value
-                              (matching-elements "probability" two)))
-          
-          probability-tag (first (current-value
-                                  (matching-elements :tag probability)))
-          one (first (current-value (matching-elements "one" age)))
-          confidence3 (first (current-value
-                              (matching-elements "confidence" one)))
-          age-key [:root (:item-id age)]
-          one-key (conj age-key (:item-id one))
-          unique (first (current-value (matching-elements "unique" age)))
-          certainty (first (current-value (matching-elements "certainty" unique)))
-          likelihoods [(item-referent pair)
-                       (item-referent double)]
-          likelihoods-referent (union-referent likelihoods)
-          all-elements [(item-referent pair)
-                        (item-referent double)
-                        (item-referent two)
-                        (item-referent one)]
-          all-elements-referent (union-referent all-elements)]
-      (is (check
-           dom
-           [:div {:class "item with-elements"}
-            [:div (any map?) "39"]
-            [:div {:class "vertical-stack"}
-             [:div {:class "horizontal-tags-element tag wide"}
-              ;; Group with empty item.
-              [:div {:class "tag horizontal-header top-border"}
-               [:div {:key (conj age-key (:item-id confidence1) :content)
-                      :class "content-text editable item tag"
-                      :target {:template '(anything :tag)
-                               :referent [:exemplar
-                                          (:item-id confidence1)
-                                          all-elements-referent]}
-                      :add-sibling {:referent (virtual-referent
-                                               '(anything) (item-referent age)
-                                               all-elements) 
-                                    :select-pattern (conj age-key [:pattern])}}
-                "confidence"]]
-              [:div {:class "editable"
-                     :key (conj age-key
-                                :example-element (:item-id confidence1) :virtual)
-                     :target {:referent (virtual-referent
-                                         '(anything ("confidence" :tag))
-                                         (item-referent age)
-                                         (item-referent pair)
-                                         :position :before)
-                              :select-pattern (conj age-key [:pattern])}
-                     :add-sibling {:referent (virtual-referent
-                                              '(anything) (item-referent age)
-                                              all-elements) 
-                                   :select-pattern (conj age-key [:pattern])}}]]
-             ;; Group for confidence and likelihood.
-             [:div {:class "horizontal-tags-element tag wide"}
-              [:div {:class "tag horizontal-header indent"}
-               [:div {:class "tag horizontal-header top-border bottom-border"}
-                [:div (any) "likelihood"]]]
-              [:div {:class "vertical-stack"}
-               [:div (any) "pair"]
-               [:div (any) "double"]]]
-             ;; Group for confidence and probability
-             [:div {:class "horizontal-tags-element tag wide"}
-              [:div {:class "tag horizontal-header indent"}
-               [:div {:class "tag horizontal-header top-border bottom-border"}
-                [:div (any) "probability"]]]
-              [:div (any) "two"]]
-             ;; Group for confidence
-             [:div {:class "horizontal-tags-element tag wide"}
-              [:div {:class "tag horizontal-header indent bottom-border"}
-               (any)]
-              [:div {:class "horizontal-value-last"}
-               [:div (any) "one"]]]
-             ;; Group for unique
-             [:div {:class "horizontal-tags-element tag wide added2"}
-              [:div {:class "tag horizontal-header top-border bottom-border"}
-               [:div
-                {:key (conj age-key (item-referent certainty) :content)
-                 :class "content-text editable item tag"
-                 :target {:template '(anything :tag)
-                          :referent (item-referent certainty)}
-                 :add-sibling {:referent (virtual-referent
-                                          '(anything)
-                                          (item-referent age)
-                                          (item-referent unique)) 
-                               :select-pattern (conj age-key [:pattern])}}
-                "certainty"]]
-              [:div
-               {:key (conj age-key (item-referent unique) :content)
-                :class "content-text editable item"
-                :target {:template '(anything ("certainty" :tag))
-                         :referent (item-referent unique)}
-                :add-sibling {:referent (virtual-referent
-                                         '(anything)
-                                         (item-referent age)
-                                         (item-referent unique)) 
-                              :select-pattern (conj age-key [:pattern])}}
-               "unique"]]]]))))
 
 ;;; Test an item that needs to be wrapped in labels.
   (deftest item-DOM-R-test-labels

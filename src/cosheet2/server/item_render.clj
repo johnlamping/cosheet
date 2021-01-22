@@ -244,19 +244,19 @@
                  (-> labels-spec
                      (assoc :relative-id [example-descendant-id
                                           :virtual-label]
+                            :item-ids descendant-ids
                             :get-action-data
                             [multiple-items-get-action-data
-                             descendant-ids
                              (or (:get-action-data specification)
                                  default-get-action-data)])
                      (update :template ensure-label)))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
                  (assoc labels-spec
+                        :item-ids descendant-ids
                         :get-action-data
                         (compose-action-data-getter
                          [multiple-items-get-action-data
-                          descendant-ids
                           (or (:get-action-data specification)
                               default-get-action-data)]
                          default-get-action-data))))]
@@ -623,10 +623,10 @@
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
         items-spec (assoc specification
+                          :item-ids (map #(-> % :item :item-id)
+                                         (hierarchy-node-descendants node))
                           :get-action-data
                           [multiple-items-get-action-data
-                           (map #(-> % :item :item-id)
-                                (hierarchy-node-descendants node))
                            (or (:get-action-data specification)
                                default-get-action-data)])]
     (if (empty? (:properties node))

@@ -227,10 +227,10 @@
             [:div {:class "wrapped-element label"}
              [:component {:template '("" :label)
                           :width 0.75
-                          :get-action-data
-                          [composed-get-action-data
-                           [(mult-items-AD) [rc1-id] (item-AD)]
-                           get-item-or-exemplar-action-data]
+                          :item-ids [rc1-id]
+                          :get-action-data [(comp-AD)
+                                            [(mult-items-AD) (item-AD)]
+                                            get-item-or-exemplar-action-data]
                           :class "label"
                           :excluded-element-ids [(any)]
                           :relative-id (any)}]
@@ -289,10 +289,10 @@
                         :descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
-                        :get-action-data
-                        [(comp-AD) [(mult-items-AD)
-                                    [c2-id c3-id c4-id] (item-AD)]
-                         (item-AD)]
+                        :item-ids [c2-id c3-id c4-id]
+                        :get-action-data [(comp-AD)
+                                          [(mult-items-AD) (item-AD)]
+                                          (item-AD)]
                         :relative-id c2-name-id
                         :class "label with-children"
                         :excluded-element-ids [(any)]}]
@@ -308,9 +308,10 @@
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
-               :get-action-data
-               [(comp-AD) [(mult-items-AD) [c2-id] (item-AD)]
-                (virt-AD)]
+               :item-ids [c2-id]
+               :get-action-data [(comp-AD)
+                                 [(mult-items-AD) (item-AD)]
+                                 (virt-AD)]
                :relative-id [c2-id :nested]
                :class "label merge-with-parent"
                :render-dom (virt-DOM)
@@ -348,9 +349,10 @@
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
-               :get-action-data
-               [(comp-AD) [(mult-items-AD) [c4-id] (item-AD)]
-                (virt-AD)]
+               :item-ids [c4-id]
+               :get-action-data [(comp-AD)
+                                 [(mult-items-AD) (item-AD)]
+                                 (virt-AD)]
                :relative-id [c4-id :nested]
                :class "label merge-with-parent"
                :render-dom (virt-DOM)
@@ -384,9 +386,10 @@
                         :descendant-ids [c6-id]
                         :width 0.75
                         :template '(anything :label)
-                        :get-action-data
-                        [(comp-AD) [(mult-items-AD) [c6-id] (item-AD)]
-                         (virt-AD)]
+                        :item-ids [c6-id]
+                        :get-action-data [(comp-AD)
+                                          [(mult-items-AD) (item-AD)]
+                                          (virt-AD)]
                         :class "label"
                         :relative-id [c6-id :nested]
                         :render-dom (virt-DOM)
@@ -408,9 +411,10 @@
                         :descendant-ids [c7-id]
                         :width 0.75
                         :template '(anything :label)
-                        :get-action-data
-                        [(comp-AD) [(mult-items-AD) [c7-id] (item-AD)]
-                         (virt-AD)]
+                        :item-ids [c7-id]
+                        :get-action-data [(comp-AD)
+                                          [(mult-items-AD) (item-AD)]
+                                          (virt-AD)]
                         :class "label"
                         :relative-id [c7-id :nested]
                         :render-dom (virt-DOM)
@@ -429,9 +433,8 @@
                         :template ['(anything :column) '(anything :label)]
                         :sibling true
                         :width 0.75
-                        :get-action-data [(comp-AD)
-                                          [(mult-items-AD) [c7-id] (item-AD)]
-                                          (virt-AD)]
+                        :item-id c7-id
+                        :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                         :class "label"
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)}]
@@ -440,9 +443,8 @@
                          :template '(anything :column)
                          :width 0.75
                          :sibling true
-                         :get-action-data
-                         [(comp-AD) [(mult-items-AD) [c7-id] (item-AD)]
-                          (virt-AD)]
+                         :item-id c7-id
+                         :get-action-data [(comp-AD) (item-AD) (virt-AD)]
                          :render-dom (virt-DOM)
                          :get-rendering-data (virt-RD)}]]]]))
 
@@ -612,8 +614,9 @@
            [:component {:width 0.75
                         :template '("" :label)
                         :relative-id [(any) :virtual-label]
-                        :get-action-data [(comp-AD) [(mult-items-AD)
-                                                     [joe-joe-id] (item-AD)]
+                        :item-ids [joe-joe-id]
+                        :get-action-data [(comp-AD)
+                                          [(mult-items-AD) (item-AD)]
                                           (virt-AD)]
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)
@@ -630,9 +633,9 @@
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
                         :template '("" :label)
+                        :item-ids [joe-joseph-id]
                         :get-action-data [(comp-AD)
-                                          [(mult-items-AD)
-                                           [joe-joseph-id] (item-AD)]
+                                          [(mult-items-AD) (item-AD)]
                                           (item-AD)]
                         :class "label"
                         :excluded-element-ids [(any)]

@@ -87,8 +87,8 @@
        (and (= (count tab-ids) 1) (= chosen-tab-id (first tab-ids)))
        (into-attributes {:class "chosen"})
        (not= [relative-id] tab-ids)
-       (assoc :get-action-data [multiple-items-get-action-data
-                                tab-ids
+       (assoc :item-ids tab-ids
+              :get-action-data [multiple-items-get-action-data
                                 get-item-or-exemplar-action-data])))))
 
 (defn tabs-child-info

@@ -165,6 +165,73 @@
   [v ^java.io.Writer w]
   (.write w "item-AD"))
 
+;;; do-batch-edit action data generators are called only when the
+;;; requested action is to start a batch-edit. (This is different from
+;;; the action data generators called while a batch edit is open.)
+;;; These generators' job is to record the information needed to
+;;; create the batch edit's query and stack selector.
+
+;;; The primary information they produce is a list of ids whose list
+;;; forms contain everything the query and stack selectors will
+;;; contain, and in the right order. The batch-edit action will take
+;;; this information and create the query and stack-selector items.
+
+;;; By breaking down the work this way, the action-data code can work
+;;; in terms of ids, and can describe sub-regions to select, while the
+;;; action code does the translation into lists that are used to
+;;; create the items.
+
+;;; The data is stored in the following keywords: 
+;;;          batch-edit-ids  The seq of ids that will contribute to the
+;;;                          list form the batch query and stack selector,
+;;;                          with the ids for the batch query first.
+;;;    stack-selector-index  The index into batch-edit-ids where the first
+;;;                          contribution to the stack selector starts.
+;;;                          if there is no stack selector, this points
+;;;                          past the end of the batch edit ids.
+;;;          selected-index  If present, the index into batch-edit-ids
+;;;                          that includes what should be selected.
+;;;      selection-sequence  A sequence of successively contained elements
+;;;                          of the selected id that terminates in the item
+;;;                          that should be selected.
+
+(defn batch-selected-id
+  "Return the id, if any, that the do-batch-edit action data says
+  should be selected. (Technically, the id that will give rise to a
+  list whose content should be selected.)"
+  [{:keys [batch-edit-ids selected-index selection-sequence]}]
+  (cond (seq (selection-sequence))
+        (last selection-sequence)
+        selected-index
+        (nth batch-edit-ids selected-index)))
+
+(defn get-item-do-batch-edit-action-data
+  "This the default for :get-do-batch-edit-action-data. It finds the
+  dom's id id or extends the selection sequence with it."
+  [{:keys [item-id relative-id]} containing-action-data action immutable-store]
+  (let [id (or item-id relative-id)
+        selected-id (batch-selected-id containing-action-data)]
+    (if id
+      (let [subject (id->subject immutable-store id)]
+        (if selected-id
+          (cond (= id selected-id)
+                ;; We could be the content of an item, so no change needed.
+                containing-action-data
+                (= subject selected-id)
+                (update containing-action-data :selection-sequence
+                        #(concat % [id]))
+                true (assert false [id subject selected-id]))
+          (let [ids (:batch-edit-ids containing-action-data)
+                index (.indexOf ids id)]
+            (if (index >= 0)
+              (assoc containing-action-data :selected-index index)
+              (let [index (.indexOf ids subject)]
+                (assert (>= index 0) [id subject selected-id])
+                (assoc containing-action-data
+                       :selected-index index
+                       :selection-sequence [id]))))))
+      containing-action-data)))
+
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.
   Our targets are our container's targets."
@@ -251,19 +318,22 @@
     [composed-get-action-data current to-add]))
 
 (defn multiple-items-get-action-data
-  "For each item id, run the data getter on the specification modified
+  "For each of item-ids, run the data getter on the specification modified
   to have that item id. Update the target-id of containing-action-data
   to be the union of the target-id of each of the results."
-  [specification containing-action-data action immutable-store ids getter]
+  [{:keys [item-ids] :as specification}
+   containing-action-data action immutable-store getter]
   (assoc
    containing-action-data :target-ids
    (distinct
     (mapcat (fn [id] (:target-ids
                       (run-action-data-getter
                        getter
-                       (assoc specification :item-id id)
+                       (-> specification
+                           (assoc :item-id id)
+                           (dissoc :item-ids))
                        containing-action-data action immutable-store)))
-            ids))))
+            item-ids))))
 
 (defmethod print-method
   cosheet2.server.action_data$multiple_items_get_action_data

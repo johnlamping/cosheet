@@ -66,6 +66,9 @@
 (defn col-AD [] get-column-action-data)
 (defn row-AD [] get-row-action-data)
 (defn table-head-do-batch-AD [] get-table-header-do-batch-edit-action-data)
+(defn table-cell-do-batch-AD [] get-table-cell-do-batch-edit-action-data)
+(defn table-cell-item-do-batch-AD []
+  get-table-cell-item-do-batch-edit-action-data)
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -192,7 +195,7 @@
                    (hierarchy-by-labels columns))
         column-descriptions (concat
                              (mapcat #(table-hierarchy-node-column-descriptions
-                                       nil %)
+                                       header-id nil %)
                                      hierarchy)
                              [{:column-id :virtualColumn
                                :width 0.75
@@ -446,14 +449,16 @@
     ;; Check the column descriptions
     (is (check
          column-descriptions
-         [{:column-id c1-id
+         [{:header-id header-id
+           :column-id c1-id
            :width 0.75
            :query '(nil ("single" :label)
                         (:cosheet2.query/special-form
                          (:not :cosheet2.query/type)
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
-          {:column-id c2-id
+          {:header-id header-id
+           :column-id c2-id
            :competing-ids [c3-id]
            :disqualifications '((nil ("name" :label)
                                      ("other" :label)
@@ -467,7 +472,8 @@
                          (:not :cosheet2.query/type)
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
-          {:column-id c3-id
+          {:header-id header-id
+           :column-id c3-id
            :width 0.75
            :query '(nil ("name" :label)
                         ("other" :label)
@@ -522,7 +528,8 @@
     (is (check
          joe-row
          [:div {}
-          [:component {:width 0.75
+          [:component {:header-id header-id
+                       :width 0.75
                        :class "table-cell"
                        :relative-id c1-id
                        :row-id joe-id
@@ -533,11 +540,13 @@
                                     (nil :order))
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)
-                       :get-action-data (pass-AD)}]
-          [:component {:width 0.75
+                       :get-action-data (pass-AD)
+                       :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
+          [:component {:header-id header-id
+                       :width 0.75
                        :class "table-cell"
                        :relative-id c2-id
-                                              :row-id joe-id
+                       :row-id joe-id
                        :query '(nil ("name" :label)
                                     (:cosheet2.query/special-form
                                      (:not :cosheet2.query/type)
@@ -553,8 +562,10 @@
                                                  (nil :order)))
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)
-                       :get-action-data (pass-AD)}]
-          [:component {:width 0.75
+                       :get-action-data (pass-AD)
+                       :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
+          [:component {:header-id header-id
+                       :width 0.75
                        :class "table-cell"
                        :relative-id c3-id
                        :row-id joe-id
@@ -566,7 +577,8 @@
                                     (nil :order))
                        :render-dom (cell-DOM)
                        :get-rendering-data (cell-RD)
-                       :get-action-data (pass-AD)}]
+                       :get-action-data (pass-AD)
+                       :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
           (any) (any) (any) (any)
           [:component {:width 0.75
                        :relative-id :virtual
@@ -606,12 +618,15 @@
                         :render-dom (virt-DOM)
                         :get-rendering-data (virt-RD)
                         :class "label"}]
-           [:component {:relative-id joe-joe-id
-                        :template '("" ("name" :label))
-                        :width 0.75
-                        :excluded-element-ids
-                        [(:item-id (first (matching-elements
-                                           "name" joe-joe)))]}]]
+           [:component
+            {:relative-id joe-joe-id
+             :template '("" ("name" :label))
+             :width 0.75
+             :excluded-element-ids
+             [(:item-id (first (matching-elements
+                                "name" joe-joe)))]
+             :get-do-batch-edit-action-data
+             (table-cell-item-do-batch-AD)}]]
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
                         :template '("" :label)
@@ -623,15 +638,18 @@
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]
             [:div {:class "indent-wrapper"}
-             [:component {:relative-id joe-joseph-id
-                          :template '("" ("name" :label) ("id" :label))
-                          :width 0.75
-                          :excluded-element-ids
-                          (as-set
-                           [(:item-id (first (matching-elements
-                                              "name" joe-joseph)))
-                            (:item-id (first (matching-elements
-                                              "id" joe-joseph)))])}]]]]))
+             [:component
+              {:relative-id joe-joseph-id
+               :template '("" ("name" :label) ("id" :label))
+               :width 0.75
+               :excluded-element-ids
+               (as-set
+                [(:item-id (first (matching-elements
+                                   "name" joe-joseph)))
+                 (:item-id (first (matching-elements
+                                   "id" joe-joseph)))])
+               :get-do-batch-edit-action-data
+               (table-cell-item-do-batch-AD)}]]]]))
 
     ;; Check rendering the virtual row
     (is (check

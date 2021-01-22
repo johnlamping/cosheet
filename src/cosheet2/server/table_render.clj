@@ -50,81 +50,6 @@
                                   composed-get-action-data
                                   multiple-items-get-action-data]])))
 
-(comment
-
-;;; The next two functions are here, rather than in actions, because they
-;;; know about the structure of tables.
-  (defn batch-edit-containment-path
-    "Given an item, return the sequence of items that contain it, up to
-  the highest level that is reflected in the batch edit selectors,
-  starting from the outermost container. Also return whether the
-  outermost item should appear in the batch elements (as opposed to
-  in the row condition.
-  Return nil if the item doesn't determine a batch edit."
-    [immutable-item]
-    (when immutable-item
-      (loop [item immutable-item
-             ;; The sequence of containing items up to and including
-             ;; the current item.
-             containing-items (list immutable-item)]
-        (when-let [parent-item (subject item)]
-          (cond
-            (seq (matching-elements :top-level parent-item))
-            [containing-items true] 
-            (seq (matching-elements :row-condition parent-item))
-            [containing-items (when (seq (matching-elements :column item)) true)]
-            true
-            (recur parent-item (cons parent-item containing-items)))))))
-
-  (defn batch-edit-selectors
-    "Given the row condition item, and a (possibly empty) list of
-  element items, return a list containing the list form of a batch row
-  selector, tagged with :batch-row-selector, and, if there are any
-  element items, by a list tagged :batch-elements, where each element is
-  the list form of each of the element items, and given :order
-  elements."
-    [immutable-row-condition-item immutable-element-items]
-    ;; We walk up containing items, until we find an item that is either
-    ;; column condition, an element of a row, or the entire row condition.
-    ;; Then we return the appropriate thing for that situation.
-    (let [row-condition
-          (concat '(anything)
-                  (map immutable-semantic-to-list
-                       (table-condition-elements-R immutable-row-condition-item))
-                  [:batch-row-selector])
-          selectors (if (seq immutable-element-items)
-                      [row-condition
-                       (concat
-                        '(anything)
-                        (map immutable-semantic-to-list immutable-element-items)
-                        [:batch-elements])]
-                      [row-condition])]
-      (map (fn [selector] (-> selector
-                              add-order-elements
-                              (replace-in-seqs 'anything-immutable 'anything)
-                              (concat [:batch-selector :selector])
-                              (#(apply list %))))
-           selectors)))
-
-  (defn set-batch-edit-ids
-    "Set the batch edit ids in inherited to be the ones appropriate for
-   items that span this node or that don't have any properties of their own."
-    [node inherited]
-    (let [cleaned (remove-inherited-attribute inherited :batch-edit-ids)]
-      (if (and (empty? (:properties node))
-               (not= (seq (:attributes cleaned)) (seq (:attributes inherited))))
-        ;; We have no hierarchy properties of our own, so we refer to whatever
-        ;; our sibling column's don't, and we need to keep the
-        ;; batch-edit-ids that our parent set, if there was one.
-        inherited
-        (-> cleaned
-            (add-inherited-attribute
-             [#{:label :element :recursive :optional} #{:content}
-              {:batch-edit-ids (map #(:item-id (:item %))
-                                    (hierarchy-node-descendants node))}])))))
-
-  )
-
 (defn get-column-action-data
   "Add the action data for a command that acts on a header. (One
   header can span multiple columns.)"
@@ -222,7 +147,37 @@
   [v ^java.io.Writer w]
   (.write w "table-head-do-batch-AD"))
 
-;;; TODO: !!! Add get-table-cell-do-batch-edit-action-data.
+(defn get-table-cell-do-batch-edit-action-data
+  [{:keys [competing-ids header-id]}
+   containing-action-data action immutable-store]
+  (let [header-entity (description->entity header-id immutable-store)
+        condition-elements (table-condition-elements header-entity)
+        query-ids (map :item-id condition-elements)]
+    (assoc containing-action-data :batch-edit-ids
+           (concat query-ids competing-ids))))
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_cell_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "table-cell-do-batch-AD"))
+
+(defn get-table-cell-item-do-batch-edit-action-data
+  [{:keys [item-id relative-id] :as specification}
+   {:keys [batch-edit-ids stack-selector-index] :as containing-action-data}
+    action immutable-store]
+  (let [id (or item-id relative-id)
+        num-ids (count batch-edit-ids)]
+    (assert id specification)
+    (assert batch-edit-ids containing-action-data)
+    (assert (= stack-selector-index num-ids) containing-action-data)
+    (assoc containing-action-data
+           :batch-edit-ids (concat batch-edit-ids [id])
+           :selected-index num-ids)))
+
+(defmethod print-method
+  cosheet2.server.table_render$get_table_cell_item_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "table-cell-item-do-batch-AD"))
 
 (defn get-table-condition-rendering-data
   [{:keys [header-id]} mutable-store]
@@ -374,6 +329,8 @@
   [v ^java.io.Writer w]
   (.write w "cell-RD"))
 
+;;; TODO: This isn't generating the right batch edit action data for
+;;; labels of its items.
 (defn render-table-cell-DOM
   [{:keys [row-id query disqualifications] :as specification} store]
   (let [row-entity (description->entity row-id store)
@@ -386,13 +343,15 @@
                    matches)
         spec (-> specification
                  transform-specification-for-elements
-                 (assoc :template (query-to-template query)))]
+                 (assoc :template (query-to-template query)))
+        non-virtual-spec (assoc spec :get-do-batch-edit-action-data
+                                get-table-cell-item-do-batch-edit-action-data)]
     (if (empty? entities)
       ;; TODO: Get our left neighbor as an arg, and pass it
       ;; in the sibling for the virtual dom.
       (virtual-DOM-component (assoc spec :relative-id :virtual))
       (non-label-entities-DOM
-       entities (:template spec) false :vertical spec))))
+       entities (:template spec) false :vertical non-virtual-spec))))
 
 (defmethod print-method
   cosheet2.server.table_render$render_table_cell_DOM
@@ -406,7 +365,7 @@
   several columns show the same item, we could have the same client id
   for both."
   [row-id
-   {:keys [column-id query width] :as column-description}
+   {:keys [column-id width] :as column-description}
    specification]
   (if (= column-id :virtualColumn)
     (table-virtual-column-cell-DOM-component
@@ -415,14 +374,15 @@
      (into (assoc specification
                   :relative-id column-id
                   :row-id row-id
-                  :query query
                   :class "table-cell"
                   :render-dom render-table-cell-DOM
                   :get-rendering-data get-table-cell-rendering-data
                   :get-action-data get-pass-through-action-data
-                  :width width)
+                  :get-do-batch-edit-action-data
+                  get-table-cell-do-batch-edit-action-data)
            (select-keys column-description
-                        [:competing-ids :disqualifications])))))
+                        [:query :header-id :competing-ids :disqualifications
+                         :width])))))
 
 (defn get-table-row-rendering-data
   [{:keys [relative-id column-descriptions-R]} mutable-store]
@@ -553,13 +513,14 @@
       (ordered-ids-R matching-ids-R mutable-store))))
 
 (defn table-hierarchy-leaf-column-description
-  [parent-node node]
+  [header-id parent-node node]
   (let [leaf (first (:leaves node))
         query (exemplar-to-query (:item leaf))
         competitors (when (and  parent-node (empty? (:properties node)))
                       (hierarchy-node-non-immediate-descendant-cover
                        parent-node))]
-    (cond-> {:column-id (:item-id (:item leaf))
+    (cond-> {:header-id header-id
+             :column-id (:item-id (:item leaf))
              :query query
              :width 0.75}
       (seq competitors) 
@@ -570,7 +531,8 @@
 (defn table-hierarchy-node-column-descriptions
   "Given a hierarchy node, for each column under the node,
   return a map:
-             :column-id  Id that identifies the column.
+             :header-id  The id that defines the entire table header.
+             :column-id  The id that identifies the column.
                          Typically the id of the column item.
                  :query  Query that each element of the column must satisfy.
                          For a virtual column, this will not be present.
@@ -582,10 +544,11 @@
                          causing them to be recomputed if the contents of
                          the competing ids change, without their having to
                          register a dependency on it."
-  [parent-node node]
+  [header-id parent-node node]
   (if-let [children (:child-nodes node)]
-    (mapcat #(table-hierarchy-node-column-descriptions node %) children)
-    [(table-hierarchy-leaf-column-description parent-node node)]))
+    (mapcat #(table-hierarchy-node-column-descriptions header-id node %)
+            children)
+    [(table-hierarchy-leaf-column-description header-id parent-node node)]))
 
 (defn get-ready-table-rendering-data
   [_ mutable-store]
@@ -611,7 +574,7 @@
                                 (concat
                                  (mapcat
                                   #(table-hierarchy-node-column-descriptions
-                                    nil %)
+                                    header-id nil %)
                                   hierarchy)
                                  [virtual-column-description]))
         condition-dom (make-component

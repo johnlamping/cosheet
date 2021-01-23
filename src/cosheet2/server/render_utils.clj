@@ -47,11 +47,12 @@
 
 (defn transform-specification-for-labels
   [specification]
-  ;; We have to keep the information used by the batch edit action
-  ;; data functions, because the label can use them as part of its
-  ;; :get-action-data function.
+  ;; We have to keep the action data functions and information they
+  ;; use, because the label can use them as part of its action data
+  ;; function.
   (assoc (select-keys specification [:width :query-id :stack-selector-id
-                                     :excluding-ids])
+                                     :excluding-ids :get-action-data
+                                     :get-do-batch-edit-action-data])
          :template (or (:elements-template specification)
                        "")))
 

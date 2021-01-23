@@ -301,8 +301,7 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
-              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-               :get-column-action-data (col-AD) 
+              {:get-column-action-data (col-AD) 
                :header-id header-id
                :descendant-ids [c2-id]
                :competing-ids [c3-id]
@@ -342,8 +341,7 @@
             [:div {:class (str "label wrapped-element virtual-wrapper"
                                " merge-with-parent column-header leaf")}
              [:component
-              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-               :get-column-action-data (col-AD) 
+              {:get-column-action-data (col-AD) 
                :header-id header-id
                :descendant-ids [c4-id]
                :competing-ids [c3-id]
@@ -380,8 +378,7 @@
           ;; One column with no labels
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                        :get-column-action-data (col-AD)
+           [:component {:get-column-action-data (col-AD)
                         :header-id header-id
                         :descendant-ids [c6-id]
                         :width 0.75
@@ -405,8 +402,7 @@
           ;; One column with no labels and non-empty content.
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
-           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
-                        :get-column-action-data (col-AD)
+           [:component {:get-column-action-data (col-AD)
                         :header-id header-id
                         :descendant-ids [c7-id]
                         :width 0.75
@@ -611,16 +607,17 @@
           {:class "vertical-stack"}
           [:div {:class (str "horizontal-labels-element label virtual-wrapper"
                              " narrow")}
-           [:component {:width 0.75
-                        :template '("" :label)
-                        :relative-id [(any) :virtual-label]
-                        :item-ids [joe-joe-id]
-                        :get-action-data [(comp-AD)
-                                          [(mult-items-AD) (item-AD)]
-                                          (virt-AD)]
-                        :render-dom (virt-DOM)
-                        :get-rendering-data (virt-RD)
-                        :class "label"}]
+           [:component
+            {:width 0.75
+             :template '("" :label)
+             :relative-id [(any) :virtual-label]
+             :item-ids [joe-joe-id]
+             :get-action-data [(comp-AD)
+                               [(mult-items-AD) (item-AD)]
+                               (virt-AD)]
+             :render-dom (virt-DOM)
+             :get-rendering-data (virt-RD)
+             :class "label"}]
            [:component
             {:relative-id joe-joe-id
              :template '("" ("name" :label))
@@ -637,6 +634,8 @@
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]
                                           (item-AD)]
+                        :get-do-batch-edit-action-data
+                        (table-cell-item-do-batch-AD)
                         :class "label"
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]

@@ -164,6 +164,7 @@
    (-> specification 
        (assoc :render-dom render-virtual-DOM
               :get-rendering-data get-virtual-DOM-rendering-data)
+       (dissoc :get-do-batch-edit-action-data)
        (update :get-action-data
                #(compose-action-data-getter % get-virtual-action-data)))))
 
@@ -178,6 +179,7 @@
        (assoc :relative-id :virtual-label
               :position :after)       
        (update :template ensure-label)
+       (dissoc :get-do-batch-edit-action-data)
        (into-attributes {:class "label"}))))
 
 (defn virtual-entity-and-label-DOM
@@ -194,6 +196,32 @@
     (cond-> (wrap-with-labels-DOM labels-dom dom orientation)
       (:class specification)
       (add-attributes {:class (:class specification)}))))
+
+;;; TODO: !!! Put in support for batch edit in the next two functions.
+
+(defn add-multiple-item-ids
+  "Add :item-ids and the appropriate action-data getters for a DOM
+  that refers to several items."
+  [specification item-ids]
+  (assoc specification
+         :item-ids item-ids
+         :get-action-data
+         [multiple-items-get-action-data
+          (or (:get-action-data specification)
+              default-get-action-data)] ))
+
+(defn add-multiple-item-ids-for-label
+  "Add :item-ids and the appropriate action-data getters for a label that
+  covers a  DOM that refers to several items."
+  [specification item-ids]
+  (assoc specification
+         :item-ids item-ids
+         :get-action-data
+         (compose-action-data-getter
+          [multiple-items-get-action-data
+           (or (:get-action-data specification)
+               default-get-action-data)]
+          default-get-action-data) ))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."
@@ -243,23 +271,12 @@
                  ;; it to uniquify virtual labels.
                  (-> labels-spec
                      (assoc :relative-id [example-descendant-id
-                                          :virtual-label]
-                            :item-ids descendant-ids
-                            :get-action-data
-                            [multiple-items-get-action-data
-                             (or (:get-action-data specification)
-                                 default-get-action-data)])
+                                          :virtual-label])
+                     (add-multiple-item-ids descendant-ids)
                      (update :template ensure-label)))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 (assoc labels-spec
-                        :item-ids descendant-ids
-                        :get-action-data
-                        (compose-action-data-getter
-                         [multiple-items-get-action-data
-                          (or (:get-action-data specification)
-                              default-get-action-data)]
-                         default-get-action-data))))]
+                 (add-multiple-item-ids-for-label labels-spec descendant-ids)))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 
@@ -622,13 +639,9 @@
                                            :relative-id (:item-id leaf))
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
-        items-spec (assoc specification
-                          :item-ids (map #(-> % :item :item-id)
-                                         (hierarchy-node-descendants node))
-                          :get-action-data
-                          [multiple-items-get-action-data
-                           (or (:get-action-data specification)
-                               default-get-action-data)])]
+        items-spec (add-multiple-item-ids specification
+                                          (map #(-> % :item :item-id)
+                                            (hierarchy-node-descendants node)))]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.

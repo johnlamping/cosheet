@@ -177,9 +177,9 @@
 ;;; this information and create the query and stack-selector items.
 
 ;;; By breaking down the work this way, the action-data code can work
-;;; in terms of ids, and can describe sub-regions to select, while the
-;;; action code does the translation into lists that are used to
-;;; create the items.
+;;; in terms of ids, and can also describe sub-regions to select,
+;;; while the action code does the translation into lists that are
+;;; used to create the items.
 
 ;;; The data is stored in the following keywords: 
 ;;;          batch-edit-ids  The seq of ids that will contribute to the
@@ -207,7 +207,7 @@
 
 (defn get-item-do-batch-edit-action-data
   "This the default for :get-do-batch-edit-action-data. It finds the
-  dom's id id or extends the selection sequence with it."
+  dom's id or extends the selection sequence with it."
   [{:keys [item-id relative-id]} containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
         selected-id (batch-selected-id containing-action-data)]
@@ -215,7 +215,7 @@
       (let [subject (id->subject immutable-store id)]
         (if selected-id
           (cond (= id selected-id)
-                ;; We could be the content of an item, so no change needed.
+                ;; We are the content of an item, so no change needed.
                 containing-action-data
                 (= subject selected-id)
                 (update containing-action-data :selection-sequence
@@ -231,6 +231,29 @@
                        :selected-index index
                        :selection-sequence [id]))))))
       containing-action-data)))
+
+(def default-do-batch-edit-action-data get-item-do-batch-edit-action-data)
+
+(defmethod print-method
+  cosheet2.server.action_data$get_item_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "item-do-batch-AD"))
+
+(defn multiple-items-get-do-batch-edit-action-data
+  "For the first of the item-ids, run the data getter on the
+  specification modified to have that item id."
+  ;; Note: This assumes that when an exemplar is chosen, it will be an
+  ;; element of the first of the item-ids.
+  [{:keys [item-ids] :as specification}
+   containing-action-data action immutable-store getter]
+  (getter (-> specification
+              (assoc :item-id (first item-ids))
+              (dissoc :item-ids))))
+
+(defmethod print-method
+  cosheet2.server.action_data$multiple_items_get_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "mult-items-do-batch-AD"))
 
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.

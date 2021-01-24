@@ -32,11 +32,13 @@
                                    transform-specification-for-elements
                                    transform-specification-for-labels]]
              [action-data :refer [default-get-action-data
+                                  default-do-batch-edit-action-data
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  compose-action-data-getter
-                                  multiple-items-get-action-data]])))
+                                  multiple-items-get-action-data
+                                  multiple-items-get-do-batch-edit-action-data
+                                  compose-action-data-getter]])))
 (comment
   (declare item-without-labels-DOM-R)
 
@@ -197,31 +199,39 @@
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
-;;; TODO: !!! Put in support for batch edit in the next two functions.
-
 (defn add-multiple-item-ids
   "Add :item-ids and the appropriate action-data getters for a DOM
   that refers to several items."
   [specification item-ids]
-  (assoc specification
-         :item-ids item-ids
-         :get-action-data
-         [multiple-items-get-action-data
-          (or (:get-action-data specification)
-              default-get-action-data)] ))
+  (cond-> (assoc specification
+                 :item-ids item-ids
+                 :get-action-data
+                 [multiple-items-get-action-data
+                  (or (:get-action-data specification)
+                      default-get-action-data)])
+    (:get-do-batch-edit-action-data specification)
+    (update :get-do-batch-edit-action-data
+            (fn [getter]
+              [multiple-items-get-do-batch-edit-action-data getter]))))
 
 (defn add-multiple-item-ids-for-label
   "Add :item-ids and the appropriate action-data getters for a label that
   covers a  DOM that refers to several items."
   [specification item-ids]
-  (assoc specification
-         :item-ids item-ids
-         :get-action-data
-         (compose-action-data-getter
-          [multiple-items-get-action-data
-           (or (:get-action-data specification)
-               default-get-action-data)]
-          default-get-action-data) ))
+  (cond->
+      (assoc specification
+             :item-ids item-ids
+             :get-action-data
+             (compose-action-data-getter
+              [multiple-items-get-action-data
+               (or (:get-action-data specification)
+                   default-get-action-data)]
+              default-get-action-data) )
+    (:get-do-batch-edit-action-data specification)
+    (update :get-do-batch-edit-action-data
+            (fn [getter] (compose-action-data-getter
+                          [multiple-items-get-do-batch-edit-action-data getter]
+                          default-do-batch-edit-action-data)))))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."
@@ -263,6 +273,8 @@
     [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
+        ;; Note: multiple-items-get-do-batch-edit-action-data assumes that
+        ;;       we take the first of the descendants.
         example-descendant-id (first descendant-ids)
         labels-spec (transform-specification-for-labels specification)]
     (let [dom (if (empty? (:properties hierarchy-node))

@@ -22,6 +22,8 @@
                                   get-pass-through-action-data
                                   get-id-action-data
                                   get-item-or-exemplar-action-data
+                                  get-item-do-batch-edit-action-data
+                                  multiple-items-get-do-batch-edit-action-data
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels
                                 replace-hierarchy-leaves-by-nodes] :as hierarchy]
@@ -69,6 +71,10 @@
 (defn table-cell-do-batch-AD [] get-table-cell-do-batch-edit-action-data)
 (defn table-cell-item-do-batch-AD []
   get-table-cell-item-do-batch-edit-action-data)
+(defn item-do-batch-AD []
+  get-item-do-batch-edit-action-data)
+(defn mult-items-do-batch-AD []
+  multiple-items-get-do-batch-edit-action-data)
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -283,7 +289,9 @@
           ;; Three columns.
           [:div {:class "column-header label"}
            ;; The label for the three columns
-           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
+           [:component {:get-do-batch-edit-action-data
+                        [(mult-items-getdo-batch-AD)
+                         (table-head-do-batch-AD)]
                         :get-column-action-data (col-AD) 
                         :header-id header-id
                         :descendant-ids [c2-id c3-id c4-id]
@@ -635,7 +643,10 @@
                                           [(mult-items-AD) (item-AD)]
                                           (item-AD)]
                         :get-do-batch-edit-action-data
-                        (table-cell-item-do-batch-AD)
+                        [(comp-AD)
+                         [(mult-items-getdo-batch-AD)
+                          (table-cell-item-do-batch-AD)]
+                         (item-do-batch-AD)]
                         :class "label"
                         :excluded-element-ids [(any)]
                         :relative-id (any)}]

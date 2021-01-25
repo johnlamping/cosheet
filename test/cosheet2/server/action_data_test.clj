@@ -198,6 +198,12 @@
              {:batch-edit-ids [jane-id joe-id]
               :selected-index 1}))
   (is (check (get-item-do-batch-edit-action-data
+              {:item-id joe-id}
+              {:batch-edit-ids [jane-id joe-id]
+               :selected-index 1} nil store)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1}))
+  (is (check (get-item-do-batch-edit-action-data
               {:item-id (:item-id joe-age)}
               {:batch-edit-ids [jane-id joe-id]} nil store)
              {:batch-edit-ids [jane-id joe-id]
@@ -209,7 +215,16 @@
                :selected-index 1} nil store)
              {:batch-edit-ids [jane-id joe-id]
               :selected-index 1
-              :selection-sequence [(:item-id joe-age)]})))
+              :selection-sequence [(:item-id joe-age)]}))
+  (is (check (get-item-do-batch-edit-action-data
+              {:relative-id (:item-id joe-age-tag)}
+              {:batch-edit-ids [jane-id joe-id]
+               :selected-index 1
+               :selection-sequence [(:item-id joe-age)]} nil store)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1
+              :selection-sequence [(:item-id joe-age)
+                                   (:item-id joe-age-tag)]})))
 
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data
@@ -248,4 +263,17 @@
               get-item-or-exemplar-action-data)
              {:target-ids [(:item-id joe-age) (:item-id jane-age)
                            (:item-id joe-male)]})))
+
+(deftest multiple-items-get-do-batch-edit-action-data-test
+  (is (check (multiple-items-get-do-batch-edit-action-data
+              {:item-id (:item-id joe-age)
+               :item-ids [(:item-id joe-age-tag)]}
+              {:batch-edit-ids [jane-id joe-id]
+               :selected-index 1
+               :selection-sequence [(:item-id joe-age)]}
+              nil store get-item-do-batch-edit-action-data)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1
+              :selection-sequence [(:item-id joe-age)
+                                   (:item-id joe-age-tag)]})))
 

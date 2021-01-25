@@ -356,7 +356,8 @@
    containing-action-data action immutable-store getter]
   (getter (-> specification
               (assoc :item-id (first item-ids))
-              (dissoc :item-ids))))
+              (dissoc :item-ids))
+          containing-action-data action immutable-store))
 
 (defmethod print-method
   cosheet2.server.action_data$multiple_items_get_do_batch_edit_action_data

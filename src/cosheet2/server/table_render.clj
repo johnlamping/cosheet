@@ -124,15 +124,14 @@
   (.write w "table-cond-do-batch-AD"))
 
 (defn get-table-header-do-batch-edit-action-data
-  [{:keys [item-id relative-id header-id descendant-ids disqualifications]}
+  [{:keys [item-id relative-id header-id descendant-ids competing-ids]}
    containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
         header-entity (description->entity header-id immutable-store)
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)
-        column-elements (label->elements header-entity :column)
         stack-selector-ids (concat (when (= (count descendant-ids) 1)
-                                     disqualifications)
+                                     competing-ids)
                                    descendant-ids)
         ids (concat query-ids stack-selector-ids)]
     (assoc containing-action-data
@@ -147,13 +146,16 @@
   (.write w "table-head-do-batch-AD"))
 
 (defn get-table-cell-do-batch-edit-action-data
+  "Generate the batch edit information for a cell that is independent
+  of its items."
   [{:keys [competing-ids header-id]}
    containing-action-data action immutable-store]
   (let [header-entity (description->entity header-id immutable-store)
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]
-    (assoc containing-action-data :batch-edit-ids
-           (concat query-ids competing-ids))))
+    (assoc containing-action-data
+           :batch-edit-ids (concat query-ids competing-ids)
+           :stack-selector-index (count query-ids))))
 
 (defmethod print-method
   cosheet2.server.table_render$get_table_cell_do_batch_edit_action_data
@@ -168,7 +170,6 @@
         num-ids (count batch-edit-ids)]
     (assert id specification)
     (assert batch-edit-ids containing-action-data)
-    (assert (= stack-selector-index num-ids) containing-action-data)
     (assoc containing-action-data
            :batch-edit-ids (concat batch-edit-ids [id])
            :selected-index num-ids)))

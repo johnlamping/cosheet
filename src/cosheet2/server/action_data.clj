@@ -200,7 +200,7 @@
   should be selected. (Technically, the id that will give rise to a
   list whose content should be selected.)"
   [{:keys [batch-edit-ids selected-index selection-sequence]}]
-  (cond (seq (selection-sequence))
+  (cond (seq selection-sequence)
         (last selection-sequence)
         selected-index
         (nth batch-edit-ids selected-index)))
@@ -223,7 +223,7 @@
                 true (assert false [id subject selected-id]))
           (let [ids (:batch-edit-ids containing-action-data)
                 index (.indexOf ids id)]
-            (if (index >= 0)
+            (if (>= index 0)
               (assoc containing-action-data :selected-index index)
               (let [index (.indexOf ids subject)]
                 (assert (>= index 0) [id subject selected-id])
@@ -232,28 +232,12 @@
                        :selection-sequence [id]))))))
       containing-action-data)))
 
-(def default-do-batch-edit-action-data get-item-do-batch-edit-action-data)
+(def default-get-do-batch-edit-action-data get-item-do-batch-edit-action-data)
 
 (defmethod print-method
   cosheet2.server.action_data$get_item_do_batch_edit_action_data
   [v ^java.io.Writer w]
   (.write w "item-do-batch-AD"))
-
-(defn multiple-items-get-do-batch-edit-action-data
-  "For the first of the item-ids, run the data getter on the
-  specification modified to have that item id."
-  ;; Note: This assumes that when an exemplar is chosen, it will be an
-  ;; element of the first of the item-ids.
-  [{:keys [item-ids] :as specification}
-   containing-action-data action immutable-store getter]
-  (getter (-> specification
-              (assoc :item-id (first item-ids))
-              (dissoc :item-ids))))
-
-(defmethod print-method
-  cosheet2.server.action_data$multiple_items_get_do_batch_edit_action_data
-  [v ^java.io.Writer w]
-  (.write w "mult-items-do-batch-AD"))
 
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.
@@ -363,22 +347,45 @@
   [v ^java.io.Writer w]
   (.write w "mult-items-AD"))
 
+(defn multiple-items-get-do-batch-edit-action-data
+  "For the first of the item-ids, run the data getter on the
+  specification modified to have that item id."
+  ;; Note: This assumes that when an exemplar is chosen, it will be an
+  ;; element of the first of the item-ids.
+  [{:keys [item-ids] :as specification}
+   containing-action-data action immutable-store getter]
+  (getter (-> specification
+              (assoc :item-id (first item-ids))
+              (dissoc :item-ids))))
+
+(defmethod print-method
+  cosheet2.server.action_data$multiple_items_get_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "mult-items-do-batch-AD"))
+
 (defn update-action-data-for-component
   "Update the action data for one component, running all the different
   possible getters the component might have, and adding the component
   to the data."
   [component containing-action-data action immutable-store]
   (let [spec (:dom-specification @component)
-        {:keys [get-action-data get-tab-action-data
-                get-column-action-data get-row-action-data]} spec 
+        {:keys [get-action-data
+                get-tab-action-data
+                get-column-action-data
+                get-row-action-data
+                get-do-batch-edit-action-data]} spec 
         data (reduce (fn [data getter]
                        (if getter
                          (run-action-data-getter
                           getter spec data action immutable-store)
                          data))
                      containing-action-data
-                     [(or get-action-data default-get-action-data)
-                      get-column-action-data
-                      get-row-action-data
-                      get-tab-action-data])]
+                     (if (= action :do-batch-edit)
+                       [(or get-do-batch-edit-action-data
+                            default-get-do-batch-edit-action-data)]
+                       ;; TODO: Make this list shorter, depending on the action.
+                       [(or get-action-data default-get-action-data)
+                        get-column-action-data
+                        get-row-action-data
+                        get-tab-action-data]))]
     (assoc data :component component)))

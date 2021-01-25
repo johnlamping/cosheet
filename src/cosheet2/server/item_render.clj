@@ -32,7 +32,7 @@
                                    transform-specification-for-elements
                                    transform-specification-for-labels]]
              [action-data :refer [default-get-action-data
-                                  default-do-batch-edit-action-data
+                                  default-get-do-batch-edit-action-data
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
@@ -231,7 +231,7 @@
     (update :get-do-batch-edit-action-data
             (fn [getter] (compose-action-data-getter
                           [multiple-items-get-do-batch-edit-action-data getter]
-                          default-do-batch-edit-action-data)))))
+                          default-get-do-batch-edit-action-data)))))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."

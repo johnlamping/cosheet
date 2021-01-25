@@ -187,6 +187,30 @@
       (is (check (semantic-to-list (description->entity id store))
                  "")))))
 
+(deftest get-item-do-batch-edit-action-data-test
+  (is (check (get-item-do-batch-edit-action-data
+              {:item-id (:item-id joe-id)}
+              {:batch-edit-ids [jane-id]} nil store)
+             {:batch-edit-ids [jane-id]}))
+  (is (check (get-item-do-batch-edit-action-data
+              {:item-id joe-id}
+              {:batch-edit-ids [jane-id joe-id]} nil store)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1}))
+  (is (check (get-item-do-batch-edit-action-data
+              {:item-id (:item-id joe-age)}
+              {:batch-edit-ids [jane-id joe-id]} nil store)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1
+              :selection-sequence [(:item-id joe-age)]}))
+  (is (check (get-item-do-batch-edit-action-data
+              {:item-id (:item-id joe-age)}
+              {:batch-edit-ids [jane-id joe-id]
+               :selected-index 1} nil store)
+             {:batch-edit-ids [jane-id joe-id]
+              :selected-index 1
+              :selection-sequence [(:item-id joe-age)]})))
+
 (deftest composed-get-action-data-test
   (is (= (composed-get-action-data
           {:spec "spec"} {:value 2} :action :store

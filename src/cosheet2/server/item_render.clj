@@ -583,9 +583,9 @@
                             elements nil
                             (or (:must-show-labels specification) true)
                             :vertical elements-spec)]
-          [:div (cond-> {:class "with-elements"}
-                  (has-keyword? item :label)
-                  (str " label"))
+          [:div {:class (cond-> "with-elements"
+                          (has-keyword? item :label)
+                          (str " label"))}
            content-dom elements-dom]))))
 
 (defn item-content-labels-and-non-label-elements-DOM

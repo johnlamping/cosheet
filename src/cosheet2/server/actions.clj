@@ -2,7 +2,7 @@
   (:require
    (cosheet2
     [debug :refer [simplify-for-print]]
-    [utils :refer [parse-string-as-number thread-map
+    [utils :refer [parse-string-as-number thread-map add-elements-to-entity-list
                    swap-control-return! equivalent-atoms?]]
     [map-state :refer [map-state-get-current map-state-reset!
                        map-state-change-value-control-return!]]
@@ -22,13 +22,15 @@
                     content elements label->elements label->content subject]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
-    query-impl)
+    query-impl
+    [orderable :refer [initial split]])
    (cosheet2.server
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data component->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          semantic-to-list entity->canonical-semantic
-                         create-possible-selector-elements]]
+                         create-possible-selector-elements
+                         exemplar-to-query]]
     [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -321,6 +323,63 @@
     (let [client-state (:client-state session-state)]
       (map-state-reset! client-state {:batch-editing false})))
   )
+
+(defn matching-element-id
+  "Given an id and an id that is a template for one of its elements,
+  return the id of an element that matches it"
+  [id template-id store]
+  (when id
+    (let [query (exemplar-to-query (description->entity template-id store))]
+      (:item-id
+       (first (matching-elements query (description->entity id store)))))))
+
+(defn update-store-for-batch-edit
+  "Update the store to have the entities to describe a batch
+  edit. Return the updated store and the id of the item to be
+  selected."
+  [store
+   ;; action-data
+   {:keys [batch-edit-ids stack-selector-index
+           selected-index selection-sequence]}
+   session-state]
+  (let [temporary-id (:session-temporary-id session-state)
+        temporary-item (description->entity temporary-id store)
+        new-lists (map #(semantic-to-list (description->entity % store))
+                       batch-edit-ids)
+        old-ids (map
+                 :item-id
+                 (concat
+                  (label->elements temporary-item :batch-query-id)
+                  (label->elements temporary-item :batch-stack-selector-id)))
+        store (reduce remove-entity-by-id store old-ids)
+        [store query-id] (add-entity
+                          store temporary-id '(:batch :batch-query-id))
+        [store stack-selector-id] (if (< stack-selector-index
+                                         (count batch-edit-ids))
+                                    (add-entity
+                                     store temporary-id
+                                     '(:batch :batch-stack-selector-id))
+                                    [store nil])
+        [new-ids [store _]] (thread-map
+                             (fn [n [store order]]
+                               (let [[order remainder] (split order :after)
+                                     [store id]
+                                     (add-entity store
+                                                 (if (< n stack-selector-index)
+                                                   query-id
+                                                   stack-selector-id)
+                                                 (add-elements-to-entity-list
+                                                  (nth new-lists n)
+                                                  [`(~order :order)]))]
+                                 [id [store remainder]]))
+                             (range (count batch-edit-ids)) [store initial])
+        selected-id (when selected-index
+                      (reduce (fn [id template-id]
+                                (matching-element-id id template-id store))
+                              (nth new-ids selected-index)
+                              selection-sequence))]
+    {:store (update-equivalent-undo-point store true)
+     :select selected-id}))
 
 (defn adjust-handler-response
   "Adjust the handler's response to be a pair of an updated store and

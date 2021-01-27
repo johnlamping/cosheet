@@ -161,7 +161,6 @@
   [immutable-store]
   (add-entity immutable-store nil
               '(:root-temporary
-                (anything :batch-selector :selector)
                 ;; Normally, the selection is stored as a keyword. By
                 ;; putting in a symbol, we are saying there is no
                 ;; current selection.

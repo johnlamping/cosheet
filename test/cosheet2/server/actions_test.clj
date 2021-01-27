@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2
              [utils :refer [dissoc-in]]
-             [orderable :as orderable]
+             [orderable :refer [initial earlier?]]
              [map-state :refer [new-map-state map-state-get-current
                                 map-state-reset!]]
              [entity :as entity :refer [description->entity to-list
@@ -22,7 +22,7 @@
              [task-queue :refer [new-priority-task-queue]]
              mutable-store-impl
              [canonical :refer [canonicalize-list]]
-             [test-utils :refer [check any]])
+             [test-utils :refer [check any as-set]])
             (cosheet2.server
              [dom-manager :refer [new-dom-manager add-root-dom]]
              [actions :refer :all]
@@ -35,7 +35,7 @@
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
                                        (orderable/split (peek os) :after))))
-                        [orderable/initial]
+                        [initial]
                         (range 4)))
 (def o1 (nth orderables 0))
 (def o2 (nth orderables 1))
@@ -237,6 +237,68 @@
                                            (:item-id name-header)]})]
     (is (not (id-valid? new-store joe-id)))
     (is (id-valid? new-store (:item-id name-header)))))
+
+(deftest update-store-for-batch-edit-test
+  (let [updated (update-store-for-batch-edit
+                 store
+                 {:batch-edit-ids [joe-id jane-id]
+                  :stack-selector-index 1
+                  :selected-index 1
+                  :selection-sequence [(:item-id jane-age)]}
+                 {:session-temporary-id temporary-id})
+        session-temporary (description->entity temporary-id (:store updated))
+        query-item (first (label->elements session-temporary :batch-query-id))
+        stack-selector-item (first (label->elements session-temporary
+                                                    :batch-stack-selector-id))]
+    (is (check (canonicalize-list (semantic-to-list query-item))
+               (canonicalize-list '(:batch ("Joe"
+                                            "male"
+                                            "married"
+                                            (39 ("age" :label)
+                                                ("doubtful" "confidence"))
+                                            (45 ("age" :label)))))))
+    (is (check (canonicalize-list (semantic-to-list stack-selector-item))
+               (canonicalize-list '(:batch ("Jane"
+                                            (45 ("age" :label))
+                                            "female")))))
+    (is (= (:select updated)
+           (:item-id (first 
+                      (matching-elements
+                       45 (first (matching-elements
+                                  "Jane" stack-selector-item)))))))
+    ;; Now try an update to the new store, with no stack selector.
+    (let  [reupdated (update-store-for-batch-edit
+                      (:store updated)
+                      {:batch-edit-ids [jane-id joe-id]
+                       :stack-selector-index 2
+                       :selected-index 1}
+                      {:session-temporary-id temporary-id})
+           session-temporary (description->entity temporary-id
+                                                  (:store reupdated))
+           query-item (first (label->elements session-temporary
+                                              :batch-query-id))
+           stack-selector-item (first (label->elements
+                                       session-temporary
+                                       :batch-stack-selector-id))]
+      (is (nil? stack-selector-item))
+      (is (check (canonicalize-list (semantic-to-list query-item))
+               (canonicalize-list '(:batch ("Joe"
+                                            "male"
+                                            "married"
+                                            (39 ("age" :label)
+                                                ("doubtful" "confidence"))
+                                            (45 ("age" :label)))
+                                           ("Jane"
+                                            (45 ("age" :label))
+                                            "female")))))
+      (is (earlier? (label->content
+                      (first (matching-elements "Jane" query-item)) :order)
+                    (label->content
+                      (first (matching-elements "Joe" query-item)) :order)))
+      (is (= (:select reupdated)
+             (:item-id (first (matching-elements
+                               "Joe" query-item))))))
+))
 
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,

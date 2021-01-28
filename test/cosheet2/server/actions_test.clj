@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]]
             (cosheet2
              [utils :refer [dissoc-in]]
-             [orderable :refer [initial earlier?]]
+             [orderable :refer [initial split earlier?]]
              [map-state :refer [new-map-state map-state-get-current
                                 map-state-reset!]]
              [entity :as entity :refer [description->entity to-list
@@ -34,7 +34,7 @@
 
 (def orderables (reduce (fn [os _]
                           (vec (concat (pop os)
-                                       (orderable/split (peek os) :after))))
+                                       (split (peek os) :after))))
                         [initial]
                         (range 4)))
 (def o1 (nth orderables 0))
@@ -238,14 +238,14 @@
     (is (not (id-valid? new-store joe-id)))
     (is (id-valid? new-store (:item-id name-header)))))
 
-(deftest update-store-for-batch-edit-test
-  (let [updated (update-store-for-batch-edit
+(deftest do-batch-edit-test
+  (let [updated (do-batch-edit
                  store
                  {:batch-edit-ids [joe-id jane-id]
                   :stack-selector-index 1
                   :selected-index 1
-                  :selection-sequence [(:item-id jane-age)]}
-                 {:session-temporary-id temporary-id})
+                  :selection-sequence [(:item-id jane-age)]
+                  :session-state session-state})
         session-temporary (description->entity temporary-id (:store updated))
         query-item (first (label->elements session-temporary :batch-query-id))
         stack-selector-item (first (label->elements session-temporary
@@ -267,19 +267,19 @@
                        45 (first (matching-elements
                                   "Jane" stack-selector-item)))))))
     ;; Now try an update to the new store, with no stack selector.
-    (let  [reupdated (update-store-for-batch-edit
-                      (:store updated)
-                      {:batch-edit-ids [jane-id joe-id]
-                       :stack-selector-index 2
-                       :selected-index 1}
-                      {:session-temporary-id temporary-id})
-           session-temporary (description->entity temporary-id
-                                                  (:store reupdated))
-           query-item (first (label->elements session-temporary
-                                              :batch-query-id))
-           stack-selector-item (first (label->elements
-                                       session-temporary
-                                       :batch-stack-selector-id))]
+    (let [reupdated (do-batch-edit
+                     (:store updated)
+                     {:batch-edit-ids [jane-id joe-id]
+                      :stack-selector-index 2
+                      :selected-index 1
+                      :session-state session-state})
+          session-temporary (description->entity temporary-id
+                                                 (:store reupdated))
+          query-item (first (label->elements session-temporary
+                                             :batch-query-id))
+          stack-selector-item (first (label->elements
+                                      session-temporary
+                                      :batch-stack-selector-id))]
       (is (nil? stack-selector-item))
       (is (check (canonicalize-list (semantic-to-list query-item))
                (canonicalize-list '(:batch ("Joe"
@@ -297,8 +297,16 @@
                       (first (matching-elements "Joe" query-item)) :order)))
       (is (= (:select reupdated)
              (:item-id (first (matching-elements
-                               "Joe" query-item))))))
-))
+                               "Joe" query-item)))))
+      ;; Now try with no batch edit information in the target
+      (let [rereupdated (do-batch-edit
+                        (:store reupdated)
+                        {:session-state session-state})
+            new-session-temporary (description->entity temporary-id
+                                                   (:store reupdated))
+            new-query-item (first (label->elements session-temporary
+                                                   :batch-query-id))]
+        (is (= new-query-item query-item))))))
 
 (deftest do-selected-test
   (let [ms (new-mutable-store store)  ; We use a new mutable store,
@@ -316,7 +324,6 @@
       (is (nil? for-client)))))
 
 (comment
-
   (deftest do-add-twin-test
     (let [result (do-add-twin
                   store

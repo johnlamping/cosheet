@@ -872,7 +872,7 @@
                          :template ""
                          :relative-id id3}]]]]))))
 
-(deftest render-virtual-DOM)-test
+(deftest render-virtual-DOM-test
   (is (check (render-virtual-DOM {:class "foo"})
              [:div {:class "foo editable virtual"}])))
 

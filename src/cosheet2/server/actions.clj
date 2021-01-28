@@ -240,84 +240,6 @@
            :open (cond-> (str (:url-path session-state)
                               "?referent=" (referent->string referent)))}))))
 
-  (defn batch-edit-select-key
-    "Return the key for the item in the new batch edit that corresponds
-   to the path, given the containment sequence to the currently selected item,
-   and the new selectors that might match it."
-    [containment-items batch-edit-selectors]
-    (some
-     (fn [selector]
-       (when (= (item->canonical-semantic (first containment-items))
-                (item->canonical-semantic selector))
-         (when-let
-             [key (first
-                   (reduce
-                    ;; Selector should be something on the batch edit side
-                    ;; that has an element matching element-item. Find that
-                    ;; matching element, add it to the key, and repeat one
-                    ;; level lower.
-                    (fn [[key selector] element-item]
-                      (when-let [match (first (best-matching-element
-                                               (immutable-semantic-to-list
-                                                element-item)
-                                               selector))]
-                        [(concat (if (seq (matching-elements :tag match))
-                                   ;; A label's parent does not go in the key.
-                                   (butlast key)
-                                   key)
-                                 [(:item-id match)])
-                         match]))
-                    [[(:item-id selector)] selector]
-                    (rest containment-items)))]
-           (concat [:batch] key))))
-     batch-edit-selectors))
-
-  (defn do-batch-edit
-    [store {:keys [referent target-key batch-edit-ids session-state]}]
-    (when referent
-      (let [target (first (instantiate-referent referent store))
-            batch-edit-items (map #(description->entity % store) batch-edit-ids)
-            client-state (:client-state session-state)
-            top-item (first
-                      (instantiate-referent
-                       (map-state-get-current client-state :referent)
-                       store))
-            topic (first (label->elements top-item :tab-topic))
-            row-condition (when topic
-                            (first (label->elements topic :row-condition)))
-            [containing-items element-item?] (batch-edit-containment-path target)
-            batch-elements (or (seq batch-edit-items)
-                               (when element-item? [(first containing-items)]))
-            new-batch-selectors (when (and row-condition
-                                           (or target batch-edit-items))
-                                  (batch-edit-selectors
-                                   row-condition batch-elements))]
-        (when (not (empty? new-batch-selectors))
-          (let [temporary-id (:session-temporary-id session-state)
-                temporary-item (description->entity temporary-id store)
-                store
-                (as-> store store
-                  (reduce (fn [s selector]
-                            (remove-entity-by-id s (:item-id selector)))
-                          store
-                          (label->elements temporary-item :batch-selector))
-                  (reduce (fn [s selector]
-                            (first (add-entity s temporary-id selector)))
-                          store new-batch-selectors)
-                  (update-equivalent-undo-point store true))]
-            (if-let [select (batch-edit-select-key
-                             containing-items
-                             (elements
-                              (first (label->elements
-                                      (description->entity temporary-id store)
-                                      (if element-item?
-                                        :batch-elements
-                                        :batch-row-selector)))))]
-              {:store store
-               :select [select [target-key]]
-               :batch-editing true}
-              store))))))
-
   (defn do-quit-batch-edit
     [mutable-store session-state]
     (let [client-state (:client-state session-state)]
@@ -333,53 +255,53 @@
       (:item-id
        (first (matching-elements query (description->entity id store)))))))
 
-(defn update-store-for-batch-edit
-  "Update the store to have the entities to describe a batch
-  edit. Return the updated store and the id of the item to be
-  selected."
+(defn do-batch-edit
   [store
-   ;; action-data
-   {:keys [batch-edit-ids stack-selector-index
-           selected-index selection-sequence]}
-   session-state]
+   {:keys [batch-edit-ids stack-selector-index selected-index selection-sequence
+           session-state]}]
   (let [temporary-id (:session-temporary-id session-state)
         temporary-item (description->entity temporary-id store)
-        new-lists (map #(semantic-to-list (description->entity % store))
-                       batch-edit-ids)
         old-ids (map
                  :item-id
                  (concat
                   (label->elements temporary-item :batch-query-id)
-                  (label->elements temporary-item :batch-stack-selector-id)))
-        store (reduce remove-entity-by-id store old-ids)
-        [store query-id] (add-entity
-                          store temporary-id '(:batch :batch-query-id))
-        [store stack-selector-id] (if (< stack-selector-index
-                                         (count batch-edit-ids))
-                                    (add-entity
-                                     store temporary-id
-                                     '(:batch :batch-stack-selector-id))
-                                    [store nil])
-        [new-ids [store _]] (thread-map
-                             (fn [n [store order]]
-                               (let [[order remainder] (split order :after)
-                                     [store id]
-                                     (add-entity store
-                                                 (if (< n stack-selector-index)
-                                                   query-id
-                                                   stack-selector-id)
-                                                 (add-elements-to-entity-list
-                                                  (nth new-lists n)
-                                                  [`(~order :order)]))]
-                                 [id [store remainder]]))
-                             (range (count batch-edit-ids)) [store initial])
-        selected-id (when selected-index
-                      (reduce (fn [id template-id]
-                                (matching-element-id id template-id store))
-                              (nth new-ids selected-index)
-                              selection-sequence))]
-    {:store (update-equivalent-undo-point store true)
-     :select selected-id}))
+                  (label->elements temporary-item :batch-stack-selector-id)))]
+    (if batch-edit-ids
+      (let [new-lists (map #(semantic-to-list (description->entity % store))
+                           batch-edit-ids)
+            store (reduce remove-entity-by-id store old-ids)
+            [store query-id] (add-entity
+                              store temporary-id '(:batch :batch-query-id))
+            [store stack-selector-id] (if (< stack-selector-index
+                                             (count batch-edit-ids))
+                                        (add-entity
+                                         store temporary-id
+                                         '(:batch :batch-stack-selector-id))
+                                        [store nil])
+            [new-ids [store _]]
+            (thread-map
+             (fn [n [store order]]
+               (let [[order remainder] (split order :after)
+                     [store id]
+                     (add-entity store
+                                 (if (< n stack-selector-index)
+                                   query-id
+                                   stack-selector-id)
+                                 (add-elements-to-entity-list
+                                  (nth new-lists n) [`(~order :order)]))]
+                 [id [store remainder]]))
+             (range (count batch-edit-ids)) [store initial])
+            selected-id (when selected-index
+                          (reduce (fn [id template-id]
+                                    (matching-element-id id template-id store))
+                                  (nth new-ids selected-index)
+                                  selection-sequence))]
+        {:store (update-equivalent-undo-point store true)
+         :select selected-id
+         :batch-editing true})
+      (when (seq old-ids)
+        {:store store
+         :batch-editing true}))))
 
 (defn adjust-handler-response
   "Adjust the handler's response to be a pair of an updated store and

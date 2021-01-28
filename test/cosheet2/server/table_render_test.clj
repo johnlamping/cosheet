@@ -334,7 +334,7 @@
           [:div {:class "column-header label"}
            ;; The label for the three columns
            [:component {:get-do-batch-edit-action-data
-                        [(mult-items-getdo-batch-AD)
+                        [(mult-items-do-batch-AD)
                          (table-head-do-batch-AD)]
                         :get-column-action-data (col-AD) 
                         :header-id header-id
@@ -688,7 +688,7 @@
                                           (item-AD)]
                         :get-do-batch-edit-action-data
                         [(comp-AD)
-                         [(mult-items-getdo-batch-AD)
+                         [(mult-items-do-batch-AD)
                           (table-cell-item-do-batch-AD)]
                          (item-do-batch-AD)]
                         :class "label"

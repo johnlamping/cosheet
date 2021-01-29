@@ -78,7 +78,11 @@
                          [39 {["age" {:label 1}] 1
                               ["doubtful" {"confidence" 1}] 1}] 1
                          [45 {["age" {:label 1}] 1}] 1}]]
-    (is (= (entity->canonical-semantic joe-list) expected))))
+    (is (= (entity->canonical-semantic joe-list) expected)))
+  (let [removed (remove-semantic-elements store joe-id)
+        removed-joe (description->entity joe-id removed)]
+    (is (check (to-list removed-joe)
+               `("Joe" (~(any) :order))))))
 
 (deftest labels-test
   (let [a `("a" (~o1 :order))

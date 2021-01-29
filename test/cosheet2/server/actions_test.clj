@@ -8,7 +8,7 @@
              [map-state :refer [new-map-state map-state-get-current
                                 map-state-reset!]]
              [entity :as entity :refer [description->entity to-list
-                                        content elements
+                                        content elements label->element
                                         label->elements label->content]]
              [calculator :refer [new-calculator-data compute]]
              [debug :refer [profile-and-print-reporters
@@ -247,18 +247,18 @@
                   :selection-sequence [(:item-id jane-age)]
                   :session-state session-state})
         session-temporary (description->entity temporary-id (:store updated))
-        query-item (first (label->elements session-temporary :batch-query-id))
+        query-item (first (label->elements session-temporary :batch-query))
         stack-selector-item (first (label->elements session-temporary
-                                                    :batch-stack-selector-id))]
+                                                    :batch-stack-selector))]
     (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(:batch ("Joe"
+               (canonicalize-list '(nothing ("Joe"
                                             "male"
                                             "married"
                                             (39 ("age" :label)
                                                 ("doubtful" "confidence"))
                                             (45 ("age" :label)))))))
     (is (check (canonicalize-list (semantic-to-list stack-selector-item))
-               (canonicalize-list '(:batch ("Jane"
+               (canonicalize-list '(nothing ("Jane"
                                             (45 ("age" :label))
                                             "female")))))
     (is (= (:select updated)
@@ -275,14 +275,13 @@
                       :session-state session-state})
           session-temporary (description->entity temporary-id
                                                  (:store reupdated))
-          query-item (first (label->elements session-temporary
-                                             :batch-query-id))
-          stack-selector-item (first (label->elements
-                                      session-temporary
-                                      :batch-stack-selector-id))]
-      (is (nil? stack-selector-item))
+          query-item (label->element session-temporary :batch-query)
+          stack-selector-item (label->element
+                               session-temporary :batch-stack-selector)]
+      (is (check (semantic-to-list stack-selector-item)
+                 'nothing))
       (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(:batch ("Joe"
+               (canonicalize-list '(nothing ("Joe"
                                             "male"
                                             "married"
                                             (39 ("age" :label)
@@ -305,7 +304,7 @@
             new-session-temporary (description->entity temporary-id
                                                    (:store reupdated))
             new-query-item (first (label->elements session-temporary
-                                                   :batch-query-id))]
+                                                   :batch-query))]
         (is (= new-query-item query-item))))))
 
 (deftest do-selected-test

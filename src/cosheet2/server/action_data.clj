@@ -211,7 +211,7 @@
   [{:keys [item-id relative-id]} containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
         selected-id (batch-selected-id containing-action-data)]
-    (if id
+    (if (and id (:batch-edit-ids containing-action-data))
       (let [subject (id->subject immutable-store id)]
         (if selected-id
           (cond (= id selected-id)
@@ -381,7 +381,7 @@
                           getter spec data action immutable-store)
                          data))
                      containing-action-data
-                     (if (= action :do-batch-edit)
+                     (if (= action :batch-edit)
                        [(or get-do-batch-edit-action-data
                             default-get-do-batch-edit-action-data)]
                        ;; TODO: Make this list shorter, depending on the action.

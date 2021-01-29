@@ -3,9 +3,8 @@
                       [debug :refer [simplify-for-print]]
                       [store :refer [id-valid? StoredItemDescription]]
                       [entity :refer [subject content label->elements
-                                      description->entity updating-immutable
-                                      ;; TODO: remove.
-                                      to-list]]
+                                      label->element
+                                      description->entity updating-immutable]]
                       [reporter :refer [reporter-value universal-category]]
                       [expression :refer [expr expr-let expr-seq cache
                                           category-change]]
@@ -20,6 +19,8 @@
              [item-render :refer [render-item-DOM]]
              [table-render :refer [render-table-DOM]]
              [tabs-render :refer [render-tabs-DOM]]
+             [batch-edit-render :refer [render-batch-edit-DOM
+                                        get-batch-edit-rendering-data]]
              [action-data :refer [get-id-action-data]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
@@ -331,41 +332,58 @@
     (or (when id-valid id)
         (expr first (ordered-tabs-ids-R store)))))
 
-;;; TODO: This shouldn't need to be a reporter.
-;;;       It's render-data can look up the id for it.
+(defn batch-editing-component
+  [store temporary-id]
+  ;; The batch edit ids never change, so we can pick them out of the
+  ;; current store.
+  (let [immutable-store (current-value store)
+        temporary-item (description->entity temporary-id immutable-store)
+        query-item (label->element temporary-item :batch-query)
+        stack-selector-item (label->element temporary-item
+                                            :batch-stack-selector)]
+    (make-component {:relative-id :batch-edit
+                     :query-id (:item-id query-item)
+                     :stack-selector-id (:item-id stack-selector-item)
+                     :render-dom render-batch-edit-DOM
+                     :get-rendering-data get-batch-edit-rendering-data})))
+
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R
   "Return a reporter whose value is the DOM for tabs and the top level
   component."
-  [store client-state id-R]
-  (expr-let [id id-R]
-    (println "top level DOM id:" id)
-    (when id
-      (expr-let [immutable-store (category-change [id] store)]
-        (let [immutable-item (description->entity id immutable-store)
-              is-tab (seq (matching-elements :tab immutable-item))]
-          [:div {}
-           (if is-tab
-             ;; Show the tabs, plus the topic of the selected tab
-             (let [topic (first (label->elements immutable-item :tab-topic))
-                   subject (subject immutable-item)]
-               [:div {:class "tabbed"}
-                (make-component {:relative-id (:item-id subject)
-                                 :client-state client-state
-                                 :chosen-tab-id id
-                                 :render-dom render-tabs-DOM
-                                 :get-action-data [get-id-action-data
-                                                   (:item-id subject)]})
-                (make-component (assoc basic-dom-specification        
-                                       :relative-id (:item-id topic)
-                                       :render-dom render-table-DOM))])
-             ;; No tab is selected. Show just the item.
-             (make-component (assoc basic-dom-specification        
-                                    :relative-id (:item-id immutable-item)
-                                    :must-show-label true
-                                    :width 0.75
-                                    :get-action-data [get-id-action-data
-                                                      (:item-id immutable-item)])))])))))
+  [store temporary-id client-state id-R]
+  (expr-let [id id-R
+             batch-editing (map-state-get client-state :batch-editing)]
+    (println "top level DOM id:" id "  Batch editing:" batch-editing)
+    (if batch-editing
+      (batch-editing-component store temporary-id)
+      (when id
+        (expr-let [immutable-store (category-change [id] store)]
+          (let [immutable-item (description->entity id immutable-store)
+                is-tab (seq (matching-elements :tab immutable-item))]
+            [:div {}
+             (if is-tab
+               ;; Show the tabs, plus the topic of the selected tab
+               (let [topic (first (label->elements immutable-item :tab-topic))
+                     subject (subject immutable-item)]
+                 [:div {:class "tabbed"}
+                  (make-component {:relative-id (:item-id subject)
+                                   :client-state client-state
+                                   :chosen-tab-id id
+                                   :render-dom render-tabs-DOM
+                                   :get-action-data [get-id-action-data
+                                                     (:item-id subject)]})
+                  (make-component (assoc basic-dom-specification        
+                                         :relative-id (:item-id topic)
+                                         :render-dom render-table-DOM))])
+               ;; No tab is selected. Show just the item.
+               (make-component
+                (assoc basic-dom-specification        
+                       :relative-id (:item-id immutable-item)
+                       :must-show-label true
+                       :width 0.75
+                       :get-action-data [get-id-action-data
+                                         (:item-id immutable-item)])))]))))))
 
 (defn top-level-get-action-data
   "Return a function giving the action data for the top level component"
@@ -403,7 +421,8 @@
   [store session-temporary-id client-state]
   (let [id-R (top-level-id-R store client-state)]
     (assoc basic-dom-specification
-           :reporter (top-level-DOM-R store client-state id-R)
+           :reporter (top-level-DOM-R
+                      store session-temporary-id client-state id-R)
            :id-R id-R ; used by top-level-get-action-data
            :get-action-data top-level-get-action-data
            :get-rendering-data reporter-specification-get-rendering-data

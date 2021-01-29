@@ -9,7 +9,7 @@
                       [entity :refer [atom? label? description->entity elements
                                       content subject label->elements
                                       in-different-store]]
-                      [store-utils :refer [add-entity]]
+                      [store-utils :refer [add-entity remove-entity-by-id]]
                       [query :refer [matching-items matching-elements
                                      not-query special-form?]]
                       [query-calculator :refer [matching-item-ids-R]])
@@ -92,6 +92,14 @@
   "Return the elements of an entity that are semantic."
   [immutable-entity]
   (filter semantic-entity? (elements immutable-entity)))
+
+(defn remove-semantic-elements
+  "Return the store with all semantic elements of the given id removed."
+  [immutable-store id]
+  (let [item (description->entity id immutable-store) ]
+    (reduce remove-entity-by-id
+            immutable-store
+            (map :item-id (semantic-elements item)))))
 
 (defn semantic-to-list
   "Given an immutable entity, make a list representation of the

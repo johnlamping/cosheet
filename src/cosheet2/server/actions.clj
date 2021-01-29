@@ -18,7 +18,7 @@
     [store-impl :refer [id->string string->id]]
     [store-utils :refer [add-entity remove-entity-by-id]]
     mutable-store-impl
-    [entity :refer [StoredEntity description->entity to-list
+    [entity :refer [StoredEntity description->entity to-list label->element
                     content elements label->elements label->content subject]]
     [hiccup-utils :refer [dom-attributes map-combiner]]
     [query :refer [matching-elements matching-extensions]]
@@ -30,7 +30,7 @@
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
                          semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
-                         exemplar-to-query]]
+                         exemplar-to-query remove-semantic-elements]]
     [order-utils :refer [furthest-item]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
@@ -240,10 +240,7 @@
            :open (cond-> (str (:url-path session-state)
                               "?referent=" (referent->string referent)))}))))
 
-  (defn do-quit-batch-edit
-    [mutable-store session-state]
-    (let [client-state (:client-state session-state)]
-      (map-state-reset! client-state {:batch-editing false})))
+  
   )
 
 (defn matching-element-id
@@ -261,34 +258,25 @@
            session-state]}]
   (let [temporary-id (:session-temporary-id session-state)
         temporary-item (description->entity temporary-id store)
-        old-ids (map
-                 :item-id
-                 (concat
-                  (label->elements temporary-item :batch-query-id)
-                  (label->elements temporary-item :batch-stack-selector-id)))]
+        query-item (label->element temporary-item :batch-query)
+        stack-selector-item (label->element temporary-item
+                                            :batch-stack-selector)]
     (if batch-edit-ids
       (let [new-lists (map #(semantic-to-list (description->entity % store))
                            batch-edit-ids)
-            store (reduce remove-entity-by-id store old-ids)
-            [store query-id] (add-entity
-                              store temporary-id '(:batch :batch-query-id))
-            [store stack-selector-id] (if (< stack-selector-index
-                                             (count batch-edit-ids))
-                                        (add-entity
-                                         store temporary-id
-                                         '(:batch :batch-stack-selector-id))
-                                        [store nil])
+            store (-> store
+                      (remove-semantic-elements (:item-id query-item))
+                      (remove-semantic-elements (:item-id stack-selector-item)))
             [new-ids [store _]]
             (thread-map
              (fn [n [store order]]
                (let [[order remainder] (split order :after)
-                     [store id]
-                     (add-entity store
-                                 (if (< n stack-selector-index)
-                                   query-id
-                                   stack-selector-id)
-                                 (add-elements-to-entity-list
-                                  (nth new-lists n) [`(~order :order)]))]
+                     subject-id (:item-id (if (< n stack-selector-index)
+                                            query-item
+                                            stack-selector-item))
+                     new-element (add-elements-to-entity-list
+                                  (nth new-lists n) [`(~order :order)])
+                     [store id] (add-entity store subject-id new-element)]
                  [id [store remainder]]))
              (range (count batch-edit-ids)) [store initial])
             selected-id (when selected-index
@@ -299,9 +287,16 @@
         {:store (update-equivalent-undo-point store true)
          :select selected-id
          :batch-editing true})
-      (when (seq old-ids)
+      (when (or (seq (semantic-elements query-item))
+                (seq (semantic-elements stack-selector-item)))
+        ;; Reuse the last batch edit specification.
         {:store store
          :batch-editing true}))))
+
+(defn do-quit-batch-edit
+  [store _]
+  {:store store
+   :batch-editing false})
 
 (defn adjust-handler-response
   "Adjust the handler's response to be a pair of an updated store and
@@ -334,8 +329,8 @@
     ; :delete-column do-delete-column
     :set-content do-set-content
     ; :expand do-expand
-    ; :batch-edit do-batch-edit
-      }
+    :batch-edit do-batch-edit
+    :quit-batch-edit do-quit-batch-edit}
    action))
 
 (defn do-contextual-action
@@ -345,7 +340,7 @@
   plus :template and :elements-template from the spec,
   plus :client-id, :session-state, and any other arguments the client
   provided. In addition to information for the client, the handler can
-  also specify a :batch-editing target."
+  also specify whether we are :batch-editing."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [handler (get-contextual-handler action-type) 
         manager (:dom-manager session-state)]
@@ -396,10 +391,10 @@
        :if-selected (when-let [former (get-selected old-store temporary-id)]
                       [former])}))
 
-;;; While do-selected takes a client id, like a contextual action does,
-;;; it doesn't rely on what that client id references. In particular, it
-;;; does create more items is a virtual id is selected. So it can not be
-;;; handled like other contextual handlers.
+;;; While do-selected takes a client id, like a contextual action
+;;; does, it doesn't rely on what that client id references. In
+;;; particular, it does want create more items if a virtual id is
+;;; selected. So it can not be handled like other contextual handlers.
 (defn do-selected
   [mutable-store session-state client-id & _]
   (when client-id

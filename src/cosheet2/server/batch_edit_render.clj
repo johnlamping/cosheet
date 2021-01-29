@@ -201,7 +201,8 @@
 (defn batch-query-component
   [query-id]
   (make-component
-   {:query-id query-id
+   {:relative-id :batch-query
+    :query-id query-id
     :item-id query-id
     ;; This component, itself, can't be interacted with. But we have
     ;; to set the action data to everything selected, so that virtual

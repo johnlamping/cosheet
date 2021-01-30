@@ -209,7 +209,8 @@
             :get-action-data [(comp-AD) (batch-query-AD) (virt-AD)]
             :class "label"
             :render-dom (virt-DOM)
-            :get-rendering-data (virt-RD)}]
+            :get-rendering-data (virt-RD)
+            :width 0.75}]
           [:div {:class "horizontal-stack"}
            [:div {:class "horizontal-stack"}
             [:div {:class "vertical-labels-element label virtual-wrapper"}
@@ -224,12 +225,14 @@
                                  (virt-AD)]
                :render-dom (virt-DOM)
                :get-rendering-data (virt-RD)
-                          :class "label"}]
+               :class "label"
+               :width 0.75}]
              [:component {:relative-id q2-2
                           :template 'anything
                           :query-id q2
                           :stack-selector-id stk1
-                          :get-action-data (batch-query-AD)}]]
+                          :get-action-data (batch-query-AD)
+                          :width 0.75}]]
             [:div {:class "wrapped-element label"}
              [:component
               {:template '("" :label)
@@ -241,14 +244,16 @@
                                  (item-AD)]
                :class "label"
                :excluded-element-ids [(any)]
-               :relative-id q2-c1-l}]
+               :relative-id q2-c1-l
+               :width 0.75}]
              [:div {:class "indent-wrapper"}
               [:component {:relative-id q2-c1
                            :template '(anything ("c1" :label))
                            :query-id q2
                            :stack-selector-id stk1
                            :get-action-data (batch-query-AD)
-                           :excluded-element-ids [q2-c1-l]}]]]]
+                           :excluded-element-ids [q2-c1-l]
+                           :width 0.75}]]]]
            ;; A virtual element that is not a label.
            [:div {:class "vertical-labels-element label"}
             [:component
@@ -345,4 +350,5 @@
                        :stack-selector-id stk1
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
-                       :class "column-header tag leaf"}]]))))
+                       :class "column-header leaf"
+                       :width 0.75}]]))))

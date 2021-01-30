@@ -193,17 +193,22 @@
    (semantic-elements (description->entity query-id store))
    (batch-query-virtual-DOM specification)
    true true :horizontal
-   (assoc specification
-          :relative-id :batch-query
-          :template 'anything
-          :get-action-data get-batch-edit-query-element-action-data)))
+   (-> (select-keys specification [:query-id :stack-selector-id])
+       (assoc :template 'anything
+              :width 0.75
+              :get-action-data get-batch-edit-query-element-action-data))))
 
 (defn batch-query-component
-  [query-id]
+  ;; We need the stack-selector id as well as the query-id, as our
+  ;; action data has to be able to find elements in it that match a
+  ;; query element.
+  [query-id stack-selector-id]
   (make-component
    {:relative-id :batch-query
     :query-id query-id
+    :stack-selector-id stack-selector-id
     :item-id query-id
+    :render-dom render-batch-query-DOM
     ;; This component, itself, can't be interacted with. But we have
     ;; to set the action data to everything selected, so that virtual
     ;; items under here will have the right incoming action-data.
@@ -255,7 +260,8 @@
                   node
                   (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))
-        class (cond-> "column-header tag"
+        ;; TODO: !!! Is column-header class needed here?
+        class (cond-> "column-header"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
       (add-attributes node-dom {:class class})
@@ -310,7 +316,7 @@
   in batch mode."
   [{:keys [query-id stack-selector-id] :as specification} store]
   (let [count-dom (batch-count-component query-id)
-        query-dom (batch-query-component query-id)
+        query-dom (batch-query-component query-id stack-selector-id)
         stack-dom (when stack-selector-id
                     (stack-selector-DOM specification store))
         inner-dom [:div {:class "batch-stack-wrapper"}

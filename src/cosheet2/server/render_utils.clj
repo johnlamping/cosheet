@@ -116,10 +116,10 @@
 
 (defn item-minus-excluded-component
   "Make a component dom to display the given item, minus the excluded
-  elements.  The item's id becomes the relative-id, and the combination of
-  that and the excluded elements' ids becomes the relative-identity."
+  elements."
   [item excluded-elements specification]
-  (assert (empty? (:excluded-element-ids specification)))
+  (assert (empty? (:excluded-element-ids specification))
+          [excluded-elements specification])
   (if (empty? excluded-elements)
     (item-component item specification)
     (item-component

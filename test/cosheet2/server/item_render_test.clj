@@ -88,7 +88,7 @@
          (horizontal-label-hierarchy-node-DOM node {:width 0.75})
          [:component
           {:template '(anything :label)
-           :width 0.75
+           :width 1.5
            :item-ids [joe-id jane-id]
            :get-action-data [(comp-AD)
                              [(mult-items-AD) (item-AD)]

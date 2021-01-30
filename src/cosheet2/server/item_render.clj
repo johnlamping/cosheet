@@ -300,6 +300,7 @@
   specification. The specification should be the one for the overall
   hierarchy."
   [hierarchy-node specification]
+  (assert (empty? (:excluded-element-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves hierarchy-node)
         property-list (canonical-set-to-list
                        (:cumulative-properties hierarchy-node))
@@ -329,6 +330,7 @@
   The specification must give :orientation."
   [node child-doms {:keys [must-show-labels orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
+  (assert (empty? (:excluded-element-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves node)
         only-item (when (and (empty? child-doms) (= (count leaves) 1))
                     (:item (first leaves)))]
@@ -648,7 +650,8 @@
                                ancestor-ids (map :item-id ancestor-props)]
                            (make-component
                             (cond-> (assoc specification
-                                           :relative-id (:item-id leaf))
+                                           :relative-id (:item-id leaf)
+                                           :width 0.75)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
         items-spec (add-multiple-item-ids specification
@@ -679,7 +682,8 @@
           (label-stack-DOM
            example-elements
            (-> items-spec
-               (assoc :template '(anything :label))
+               (assoc :template '(anything :label)
+                      :width (* 0.75 (count (hierarchy-node-descendants node))))
                ;; Tell the item to use any getter we were handed, followed by
                ;; its usual getter. 
                (update :get-action-data

@@ -62,7 +62,7 @@
 (defn get-id-action-data
   "Return the single item id as the target ids. This is only suitable
   for doms in a simple context where they can't possibly refer to
-  several ites."
+  several ids."
   [specification containing-action-data action immutable-store id]
   (assoc containing-action-data :target-ids [id]))
 
@@ -249,6 +249,16 @@
   cosheet2.server.action_data$get_pass_through_action_data
   [v ^java.io.Writer w]
   (.write w "pass-AD"))
+
+(defn get-empty-action-data
+  "Return a blank action data."
+  [specification containing-action-data action immutable-store]
+  {})
+
+(defmethod print-method
+  cosheet2.server.action_data$get_empty_action_data
+  [v ^java.io.Writer w]
+  (.write w "empty-AD"))
 
 (defn get-virtual-action-data
   "Create the specified virtual items.

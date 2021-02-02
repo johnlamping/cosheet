@@ -42,19 +42,24 @@
 (defn transform-specification-for-elements
   [specification]
   (assoc (select-keys specification [:width])
-         :template (or (:elements-template specification)
-                       "")))
+         :template 'anything))
 
 (defn transform-specification-for-labels
   [specification]
-  ;; We have to keep the action data functions and information they
-  ;; use, because the label can use them as part of its action data
+  (assoc (select-keys specification [:width])
+         :template '(anything :label)))
+
+(defn transform-specification-for-non-contained-labels
+  [specification]
+  ;; The label is not contained in a component for the items it
+  ;; applies to. We have to keep the action data functions for the
+  ;; items the labels pertain to, and the information they use,
+  ;; because the label needs to use them as part of its action data
   ;; function.
   (assoc (select-keys specification [:width :query-id :stack-selector-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
-         :template (or (:elements-template specification)
-                       "")))
+         :template '(anything :label)))
 
 (defn entity->canonical-term
   "Return the canonical list version of the semantic parts of an entity,

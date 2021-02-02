@@ -25,12 +25,14 @@
                                 item-maps-by-elements
                                 hierarchy-node-example-elements]]
              [order-utils :refer [ordered-entities semantic-entity?]]
-             [render-utils :refer [make-component
-                                   item-stack-DOM nest-if-multiple-DOM
-                                   condition-satisfiers
-                                   hierarchy-node-DOM
-                                   transform-specification-for-elements
-                                   transform-specification-for-labels]]
+             [render-utils
+              :refer [make-component
+                      item-stack-DOM nest-if-multiple-DOM
+                      condition-satisfiers
+                      hierarchy-node-DOM
+                      transform-specification-for-elements
+                      transform-specification-for-labels
+                      transform-specification-for-non-contained-labels]]
              [action-data :refer [default-get-action-data
                                   default-get-do-batch-edit-action-data
                                   get-item-or-exemplar-action-data
@@ -39,55 +41,6 @@
                                   multiple-items-get-action-data
                                   multiple-items-get-do-batch-edit-action-data
                                   compose-action-data-getter]])))
-(comment
-  (declare item-without-labels-DOM-R)
-
-  (defn hierarchy-adjacent-virtual-target
-    "Given a hierarchy node, generate attributes for the target of
-  a command to add an item that would be adjacent to the hierarchy node."
-    [hierarchy-node inherited]
-    (let [ancestor-props (first (multiset-diff
-                                 (:cumulative-properties hierarchy-node)
-                                 (:properties hierarchy-node)))
-          conditions (concat (canonical-set-to-list ancestor-props)
-                             (rest (add-elements-to-entity-list
-                                    (:template inherited) nil)))]
-      {:referent (virtual-referent
-                  (list* (:elements-template inherited) conditions)
-                  (subject-referent-given-inherited inherited)
-                  (hierarchy-node-items-referents
-                   hierarchy-node inherited))
-       :select-pattern (conj (:key-prefix inherited) [:pattern])}))
-
-  (defn add-adjacent-sibling-command
-    "Given inherited, and a node from a hierarchy over elements, update
-  inherited to have a command to add an adjacent sibling element."
-    [inherited hierarchy-node]
-    (-> inherited
-        (remove-inherited-attribute :add-sibling)
-        (add-inherited-attribute
-         [#{:label :optional} #{:content}
-          {:add-sibling (hierarchy-adjacent-virtual-target
-                         hierarchy-node inherited)}])))
-
-  (defn element-hierarchy-child-info
-    "Generate the function-info and inherited for children of
-   a hierarchy node of an element hierarchy.
-  The function-info is a map with at least
-     :top-level  Whether this is a top level node.
-  Inherited describes the items."
-    [node function-info inherited]
-    (let [children (:child-nodes node)]
-      [(assoc function-info
-              :top-level false)
-       (-> inherited
-           (update :key-prefix #(conj % :nested))
-           ;; Set :template to the minimum to be a child node.
-           ;; This is used by the virtual column of a table header.
-           (update :template
-                   #(add-elements-to-entity-list
-                     % (canonical-set-to-list (:properties node)))))]))
-  )
 
 (defn opposite-orientation
     [orientation]
@@ -276,7 +229,8 @@
         ;; Note: multiple-items-get-do-batch-edit-action-data assumes that
         ;;       we take the first of the descendants.
         example-descendant-id (first descendant-ids)
-        labels-spec (transform-specification-for-labels specification)]
+        labels-spec (transform-specification-for-non-contained-labels
+                     specification)]
     (let [dom (if (empty? (:properties hierarchy-node))
                 (virtual-DOM-component
                  ;; TODO: Track hierarchy depth in the spec, and use
@@ -413,7 +367,7 @@
   (one-column-of-two-column-DOMs
    hierarchy labeled-items-properties-DOM horizontal-label-wrapper
    (-> specification
-       transform-specification-for-labels
+       transform-specification-for-non-contained-labels
        (update :template ensure-label)
        (update :width #(* % 0.25)))))
 

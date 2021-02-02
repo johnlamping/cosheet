@@ -220,7 +220,7 @@
   [{:keys [item-id relative-id excluding-ids query-id stack-selector-id]}
    containing-action-data action store]
   (let [query-entity (description->entity query-id store)
-        stack-selector-entity  (description->entity stack-selector-id store)
+        stack-selector-entity (description->entity stack-selector-id store)
         query (pattern-to-query (semantic-to-list query-entity))
         selecting-query (-> (or item-id relative-id)
                             (description->entity store)
@@ -252,7 +252,7 @@
     (assoc containing-action-data :target-ids (map :item-id matches))))
 
 (defn stack-selector-subtree-DOM
-  "Generate the dom for a subtree of a table header hierarchy, given
+  "Generate the dom for a subtree of a stack selector hierarchy, given
   the doms for all the children."
   [node child-doms specification]
   (let [is-leaf (empty? child-doms)

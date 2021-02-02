@@ -275,7 +275,7 @@
            ;; The condition element.
            [:div {:class "horizontal-stack"}
             [:div {:class "wrapped-element label"}
-             [:component {:template '("" :label)
+             [:component {:template '(anything :label)
                           :width 0.75
                           :item-ids [rc1-id]
                           :get-action-data [(comp-AD)
@@ -661,7 +661,7 @@
                              " narrow")}
            [:component
             {:width 0.75
-             :template '("" :label)
+             :template '(anything :label)
              :relative-id [(any) :virtual-label]
              :item-ids [joe-joe-id]
              :get-action-data [(comp-AD)
@@ -681,7 +681,7 @@
              (table-cell-item-do-batch-AD)}]]
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
-                        :template '("" :label)
+                        :template '(anything :label)
                         :item-ids [joe-joseph-id]
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]

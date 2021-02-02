@@ -175,15 +175,14 @@
         result (do-add-element store
                                {:target-ids [(:item-id joe-age)
                                              (:item-id jane-age)]
-                                :session-state session-state
-                                :elements-template '(anything 5)})
+                                :session-state session-state})
         new-store (:store result)
         new-jane-age (description->entity (:item-id jane-age) new-store)
         new-joe-age (description->entity (:item-id joe-age) new-store)]
     (is (check (entity->canonical-semantic new-joe-age)
-               (canonicalize-list '(45 ("age" :label) ("" 5)))))
+               (canonicalize-list '(45 ("age" :label) ""))))
     (is (check (entity->canonical-semantic new-jane-age)
-               (canonicalize-list '(45 ("age" :label) (anything 5)))))
+               (canonicalize-list '(45 ("age" :label) anything))))
     (let [new-joe-element (first (matching-elements "" new-joe-age))
           new-jane-element (first (matching-elements 'anything new-jane-age))]
       (is (check (dissoc result :store)
@@ -251,16 +250,16 @@
         stack-selector-item (first (label->elements session-temporary
                                                     :batch-stack-selector))]
     (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(nothing ("Joe"
-                                            "male"
-                                            "married"
-                                            (39 ("age" :label)
-                                                ("doubtful" "confidence"))
-                                            (45 ("age" :label)))))))
+               (canonicalize-list '(anything ("Joe"
+                                              "male"
+                                              "married"
+                                              (39 ("age" :label)
+                                                  ("doubtful" "confidence"))
+                                              (45 ("age" :label)))))))
     (is (check (canonicalize-list (semantic-to-list stack-selector-item))
-               (canonicalize-list '(nothing ("Jane"
-                                            (45 ("age" :label))
-                                            "female")))))
+               (canonicalize-list '(anything ("Jane"
+                                              (45 ("age" :label))
+                                              "female")))))
     (is (= (:select updated)
            (:item-id (first 
                       (matching-elements
@@ -279,17 +278,17 @@
           stack-selector-item (label->element
                                session-temporary :batch-stack-selector)]
       (is (check (semantic-to-list stack-selector-item)
-                 'nothing))
+                 'anything))
       (is (check (canonicalize-list (semantic-to-list query-item))
-               (canonicalize-list '(nothing ("Joe"
-                                            "male"
-                                            "married"
-                                            (39 ("age" :label)
-                                                ("doubtful" "confidence"))
-                                            (45 ("age" :label)))
-                                           ("Jane"
-                                            (45 ("age" :label))
-                                            "female")))))
+               (canonicalize-list '(anything ("Joe"
+                                              "male"
+                                              "married"
+                                              (39 ("age" :label)
+                                                  ("doubtful" "confidence"))
+                                              (45 ("age" :label)))
+                                             ("Jane"
+                                              (45 ("age" :label))
+                                              "female")))))
       (is (earlier? (label->content
                       (first (matching-elements "Jane" query-item)) :order)
                     (label->content

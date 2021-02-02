@@ -215,7 +215,7 @@
            [:div {:class "horizontal-stack"}
             [:div {:class "vertical-labels-element label virtual-wrapper"}
              [:component
-              {:template '("" :label)
+              {:template '(anything :label)
                :relative-id [q2-2 :virtual-label]
                :query-id q2
                :stack-selector-id stk1
@@ -235,7 +235,7 @@
                           :width 0.75}]]
             [:div {:class "wrapped-element label"}
              [:component
-              {:template '("" :label)
+              {:template '(anything :label)
                :query-id q2
                :stack-selector-id stk1
                :item-ids (list q2-c1)

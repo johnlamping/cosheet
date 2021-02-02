@@ -128,9 +128,9 @@
      (add-select-store-ids-request store ids session-state))))
 
 (defn do-add-element
-  [store {:keys [target-ids elements-template session-state]}]
+  [store {:keys [target-ids session-state]}]
   (let [[ids store] (create-possible-selector-elements
-                     (or elements-template 'anything) target-ids target-ids
+                     'anything target-ids target-ids
                      :before false store)]
     (add-select-store-ids-request store ids session-state)))
 
@@ -294,9 +294,10 @@
          :batch-editing true}))))
 
 (defn do-quit-batch-edit
-  [store _]
-  {:store store
-   :batch-editing false})
+  [mutable-store session-state]
+  (map-state-reset! (:client-state session-state)
+                    {:batch-editing false})
+  {})
 
 (defn adjust-handler-response
   "Adjust the handler's response to be a pair of an updated store and
@@ -329,18 +330,17 @@
     ; :delete-column do-delete-column
     :set-content do-set-content
     ; :expand do-expand
-    :batch-edit do-batch-edit
-    :quit-batch-edit do-quit-batch-edit}
+    :batch-edit do-batch-edit}
    action))
 
 (defn do-contextual-action
   "Do an action that applies to a DOM component, and whose
   interpretation depends on that component. We will call a contextual
   action handler with a map of the action data for the component,
-  plus :template and :elements-template from the spec,
-  plus :client-id, :session-state, and any other arguments the client
-  provided. In addition to information for the client, the handler can
-  also specify whether we are :batch-editing."
+  plus :template from the spec, plus :client-id, :session-state, and
+  any other arguments the client provided. In addition to information
+  for the client, the handler can also specify whether we
+  are :batch-editing."
   [mutable-store session-state [action-type client-id & {:as client-args}]]
   (let [handler (get-contextual-handler action-type) 
         manager (:dom-manager session-state)]
@@ -361,7 +361,7 @@
                                       @manager client-id action-type store)
                          spec (:dom-specification @(:component action-data))
                          spec-info (select-keys
-                                    spec [:template :elements-template])
+                                    spec [:template])
                          arguments (-> action-data
                                        (into spec-info)
                                        (into client-args)
@@ -374,8 +374,7 @@
                          response (handler
                                    (update-equivalent-undo-point store false)
                                    arguments)]
-                     (adjust-handler-response
-                      response store))))]
+                     (adjust-handler-response response store))))]
             (when (contains? result :batch-editing)
               (map-state-reset! (:client-state session-state)
                                 {:batch-editing (:batch-editing result)}))
@@ -457,7 +456,7 @@
                        :undo do-undo
                        :redo do-redo
                        :selected do-selected
-                       ; :quit-batch-edit do-quit-batch-edit
+                       :quit-batch-edit do-quit-batch-edit
                        nil)]
       (do (println "command: " (map simplify-for-print action))
           (apply handler mutable-store session-state extra-args))

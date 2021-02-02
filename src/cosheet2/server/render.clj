@@ -21,7 +21,8 @@
              [tabs-render :refer [render-tabs-DOM]]
              [batch-edit-render :refer [render-batch-edit-DOM
                                         get-batch-edit-rendering-data]]
-             [action-data :refer [get-id-action-data]]
+             [action-data :refer [get-id-action-data
+                                  get-empty-action-data]]
              ; [tabs-render :refer [tabs-DOM-R]]
              ; [Batch-edit-render :refer [batch-edit-DOM-R]]
              )))
@@ -254,8 +255,6 @@
 ;;;                         If the value of :template is :singular, then
 ;;;                         twins may not be created, and the item may
 ;;;                         not be deleted.
-;;;     :elements-template  Optional. Elements should use this as their
-;;;                         template.
 ;;;           :adjacent-id  For a virtual item, the id of the item to be
 ;;;                         adjacent to.
 ;;;        :adjacent-order  Whether a new virtual item should come :before
@@ -345,7 +344,8 @@
                      :query-id (:item-id query-item)
                      :stack-selector-id (:item-id stack-selector-item)
                      :render-dom render-batch-edit-DOM
-                     :get-rendering-data get-batch-edit-rendering-data})))
+                     :get-rendering-data get-batch-edit-rendering-data
+                     :get-action-data get-empty-action-data})))
 
 ;;; TODO: Add a unit test for this.
 (defn top-level-DOM-R

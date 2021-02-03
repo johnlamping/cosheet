@@ -215,7 +215,7 @@
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
-                {:item-id rc1-id} {} nil store)
+                {:header-id rc1-id} {} nil store)
                {:batch-edit-ids [rc1-id]
                 :stack-selector-index 1}))
 
@@ -280,7 +280,7 @@
                           :item-ids [rc1-id]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
-                                            get-item-or-exemplar-action-data]
+                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [(any)]
                           :relative-id (any)}]

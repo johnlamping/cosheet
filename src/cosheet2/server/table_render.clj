@@ -5,7 +5,9 @@
                       [reporter :refer [universal-category]]
                       [entity :refer [subject content label->elements
                                       description->entity StoredEntity
-                                      updating-immutable label?]]
+                                      updating-immutable label?
+                                      ;; TODO: Remove this.
+                                      to-list]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -108,9 +110,9 @@
     (remove (set column-elements) semantic-elements)))
 
 (defn get-table-condition-do-batch-edit-action-data
-  [{:keys [item-id relative-id]} containing-action-data action immutable-store]
-  (let [id (or item-id relative-id)
-        header-id (id->subject immutable-store id)
+  [{:keys [item-id relative-id header-id]}
+   containing-action-data action immutable-store]
+  (let [header-id (id->subject immutable-store header-id)
         header-entity (description->entity header-id immutable-store)
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]

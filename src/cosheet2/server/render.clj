@@ -215,17 +215,17 @@
 ;;;                         This is normally the id the dom is about, or an
 ;;;                         exemplar element of one of the ids the containing
 ;;;                         component is about.
-;;;                         However, this may overridden by :item-id or
-;;;                         :item-ids. If overridden, it may be a keyword,
+;;;                         However, this may overridden by :item-id.
+;;;                         If overridden, it may be a keyword,
 ;;;                         an ItemId, or a vec of those.
 ;;;               :item-id  The id of the item the dom is about, if
 ;;;                         :relative-id is not an id or needs to be
 ;;;                         overridden.
-;;;              :item-ids  If the dom pertains to more ids than its parent,
+;;;          :parallel-ids  If the dom pertains to more ids than its parent,
 ;;;                         this will list them. In some cases, both this
 ;;;                         and :item-id may be present, in which case
 ;;;                         :item-id will be an exemplar element of one of
-;;;                         the :item-ids, and the dom will pertain to
+;;;                         the :parallel-ids, and the dom will pertain to
 ;;;                         a matching element of each
 ;;;                 :class  Optional subset of classes the DOM will have.
 ;;;            :render-dom  Optional function that takes this specification

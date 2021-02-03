@@ -20,7 +20,7 @@
              [render-utils :refer [hierarchy-node-DOM make-component]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
-                                  add-multiple-item-ids]]
+                                  add-parallel-item-ids]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-tab-action-data
                                   get-virtual-action-data
@@ -88,7 +88,7 @@
        (and (= (count tab-ids) 1) (= chosen-tab-id (first tab-ids)))
        (into-attributes {:class "chosen"})
        (not= [relative-id] tab-ids)
-       (add-multiple-item-ids tab-ids)))))
+       (add-parallel-item-ids tab-ids)))))
 
 (defn tabs-child-info
   "Adjust the specification for child tabs."

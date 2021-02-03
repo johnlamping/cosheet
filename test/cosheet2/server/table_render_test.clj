@@ -277,7 +277,7 @@
             [:div {:class "wrapped-element label"}
              [:component {:template '(anything :label)
                           :width 0.75
-                          :item-ids [rc1-id]
+                          :parallel-ids [rc1-id]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -341,7 +341,7 @@
                         :descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
-                        :item-ids [c2-id c3-id c4-id]
+                        :parallel-ids [c2-id c3-id c4-id]
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]
                                           (item-AD)]
@@ -359,7 +359,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
-               :item-ids [c2-id]
+               :parallel-ids [c2-id]
                :get-action-data [(comp-AD)
                                  [(mult-items-AD) (item-AD)]
                                  (virt-AD)]
@@ -399,7 +399,7 @@
                :competing-ids [c3-id]
                :width 0.75
                :template '(anything :label)
-               :item-ids [c4-id]
+               :parallel-ids [c4-id]
                :get-action-data [(comp-AD)
                                  [(mult-items-AD) (item-AD)]
                                  (virt-AD)]
@@ -435,7 +435,7 @@
                         :descendant-ids [c6-id]
                         :width 0.75
                         :template '(anything :label)
-                        :item-ids [c6-id]
+                        :parallel-ids [c6-id]
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]
                                           (virt-AD)]
@@ -459,7 +459,7 @@
                         :descendant-ids [c7-id]
                         :width 0.75
                         :template '(anything :label)
-                        :item-ids [c7-id]
+                        :parallel-ids [c7-id]
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]
                                           (virt-AD)]
@@ -663,7 +663,7 @@
             {:width 0.75
              :template '(anything :label)
              :relative-id [(any) :virtual-label]
-             :item-ids [joe-joe-id]
+             :parallel-ids [joe-joe-id]
              :get-action-data [(comp-AD)
                                [(mult-items-AD) (item-AD)]
                                (virt-AD)]
@@ -682,7 +682,7 @@
           [:div {:class "wrapped-element label"}
            [:component {:width 0.75
                         :template '(anything :label)
-                        :item-ids [joe-joseph-id]
+                        :parallel-ids [joe-joseph-id]
                         :get-action-data [(comp-AD)
                                           [(mult-items-AD) (item-AD)]
                                           (item-AD)]

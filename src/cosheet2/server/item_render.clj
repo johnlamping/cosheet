@@ -152,12 +152,12 @@
       (:class specification)
       (add-attributes {:class (:class specification)}))))
 
-(defn add-multiple-item-ids
-  "Add :item-ids and the appropriate action-data getters for a DOM
+(defn add-parallel-item-ids
+  "Add :parallel-ids and the appropriate action-data getters for a DOM
   that refers to several items."
   [specification item-ids]
   (cond-> (assoc specification
-                 :item-ids item-ids
+                 :parallel-ids item-ids
                  :get-action-data
                  [multiple-items-get-action-data
                   (or (:get-action-data specification)
@@ -167,13 +167,13 @@
             (fn [getter]
               [multiple-items-get-do-batch-edit-action-data getter]))))
 
-(defn add-multiple-item-ids-for-label
-  "Add :item-ids and the appropriate action-data getters for a label that
-  covers a  DOM that refers to several items."
+(defn add-parallel-item-ids-for-label
+  "Add :parallel-ids and the appropriate action-data getters for a
+  label that covers a DOM that refers to several items."
   [specification item-ids]
   (cond->
       (assoc specification
-             :item-ids item-ids
+             :parallel-ids item-ids
              :get-action-data
              (compose-action-data-getter
               [multiple-items-get-action-data
@@ -238,11 +238,11 @@
                  (-> labels-spec
                      (assoc :relative-id [example-descendant-id
                                           :virtual-label])
-                     (add-multiple-item-ids descendant-ids)
+                     (add-parallel-item-ids descendant-ids)
                      (update :template ensure-label)))
                 (label-stack-DOM
                  (hierarchy-node-example-elements hierarchy-node)
-                 (add-multiple-item-ids-for-label labels-spec descendant-ids)))]
+                 (add-parallel-item-ids-for-label labels-spec descendant-ids)))]
       ;; Even if stacked, we need to mark the stack as "label" too.
       (add-attributes dom {:class "label"}))))
 
@@ -608,7 +608,7 @@
                                            :width 0.75)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
-        items-spec (add-multiple-item-ids specification
+        items-spec (add-parallel-item-ids specification
                                           (map #(-> % :item :item-id)
                                             (hierarchy-node-descendants node)))]
     (if (empty? (:properties node))

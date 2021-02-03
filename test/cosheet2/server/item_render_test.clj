@@ -89,7 +89,7 @@
          [:component
           {:template '(anything :label)
            :width 1.5
-           :item-ids [joe-id jane-id]
+           :parallel-ids [joe-id jane-id]
            :get-action-data [(comp-AD)
                              [(mult-items-AD) (item-AD)]
                              (item-AD)]
@@ -111,7 +111,7 @@
                 "label wrapped-element virtual-wrapper merge-with-parent"}
           [:component {:template '(anything :label)
                        :width 0.75
-                       :item-ids [jane-id]
+                       :parallel-ids [jane-id]
                        :get-action-data [(comp-AD)
                                          [(mult-items-AD) (item-AD)]
                                          (virt-AD)]
@@ -147,7 +147,7 @@
           {:template 'anything :width 0.8})
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8, :template '(anything :label)
-                       :item-ids [joe-id jane-id]
+                       :parallel-ids [joe-id jane-id]
                        :get-action-data [(comp-AD)
                                          [(mult-items-AD) (item-AD)]
                                          (item-AD)]
@@ -158,7 +158,7 @@
            [:div {:class "vertical-stack"}
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8, :template '(anything :label)
-                          :item-ids [joe-id]
+                          :parallel-ids [joe-id]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -184,7 +184,7 @@
          [:div {:class "wrapped-element label"}
           [:component {:width 0.8
                        :template '(anything :label)
-                       :item-ids [joe-id jane-id]
+                       :parallel-ids [joe-id jane-id]
                        :get-action-data [(comp-AD)
                                          [(mult-items-AD) (item-AD)]
                                          (item-AD)]
@@ -196,7 +196,7 @@
             [:div {:class "wrapped-element label"}
              [:component {:width 0.8
                           :template '(anything :label)
-                          :item-ids [joe-id]
+                          :parallel-ids [joe-id]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -264,7 +264,7 @@
             [:component {:width 0.8
                          :template '(anything :label)
                          :relative-id [sally-id :virtual-label]
-                         :item-ids [sally-id]
+                         :parallel-ids [sally-id]
                          :get-action-data [(comp-AD)
                                            [(mult-items-AD) (item-AD)]
                                            (virt-AD)]
@@ -401,7 +401,7 @@
                     :relative-id [id1 :virtual-label]
                     :get-rendering-data (virt-RD)
                     :render-dom (virt-DOM)
-                    :item-ids [id1]
+                    :parallel-ids [id1]
                     :get-action-data [(comp-AD)
                                       [(mult-items-AD) (item-AD)]
                                       (virt-AD)]
@@ -417,7 +417,7 @@
                     :relative-id [id2 :virtual-label]
                     :get-rendering-data (virt-RD)
                     :render-dom (virt-DOM)
-                    :item-ids [id2]
+                    :parallel-ids [id2]
                     :get-action-data [(comp-AD)
                                       [(mult-items-AD) (item-AD)]
                                       (virt-AD)]
@@ -459,7 +459,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '(anything :label)
-                               :item-ids [id1]
+                               :parallel-ids [id1]
                                :get-action-data [(comp-AD)
                                                  [(mult-items-AD) (item-AD)]
                                                  (item-AD)]
@@ -474,7 +474,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '(anything :label)
-                               :item-ids [id2]
+                               :parallel-ids [id2]
                                :get-action-data  [(comp-AD)
                                                   [(mult-items-AD) (item-AD)]
                                                   (item-AD)]
@@ -541,7 +541,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '(anything :label)
-                               :item-ids [id0]
+                               :parallel-ids [id0]
                                :get-action-data [(comp-AD)
                                                  [(mult-items-AD) (item-AD)]
                                                  (item-AD)]
@@ -556,7 +556,7 @@
                  [:div {:class "wrapped-element label"}
                   [:component {:width 0.9
                                :template '(anything :label)
-                               :item-ids [id1 id2]
+                               :parallel-ids [id1 id2]
                                :get-action-data [(comp-AD)
                                                  [(mult-items-AD) (item-AD)]
                                                  (item-AD)]
@@ -568,7 +568,7 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template '(anything :label)
-                                  :item-ids[id1]
+                                  :parallel-ids[id1]
                                   :get-action-data [(comp-AD)
                                                     [(mult-items-AD) (item-AD)]
                                                     (item-AD)]
@@ -585,7 +585,7 @@
                     [:div {:class "wrapped-element label"}
                      [:component {:width 0.9
                                   :template '(anything :label)
-                                  :item-ids [id2]
+                                  :parallel-ids [id2]
                                   :get-action-data [(comp-AD)
                                                     [(mult-items-AD) (item-AD)]
                                                     (item-AD)]
@@ -603,7 +603,7 @@
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :template '(anything :label)
-                              :item-ids [id3]
+                              :parallel-ids [id3]
                               :get-action-data [(comp-AD)
                                                 [(mult-items-AD) (item-AD)]
                                                 (virt-AD)]
@@ -648,7 +648,7 @@
              [:component {:width 0.375
                           :template '(anything :label)
                           :relative-id [id1 :virtual-label]
-                          :item-ids [id1]
+                          :parallel-ids [id1]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (virt-AD)]
@@ -663,7 +663,7 @@
              [:component {:width 0.375
                           :template '(anything :label)
                           :relative-id [id2 :virtual-label]
-                          :item-ids [id2]
+                          :parallel-ids [id2]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (virt-AD)]
@@ -709,7 +709,7 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template '(anything :label)
-                          :item-ids [id1]
+                          :parallel-ids [id1]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -724,7 +724,7 @@
             [:div {:class (str "label horizontal-header"
                                " top-border bottom-border")}
              [:component {:width 0.375, :template '(anything :label)
-                          :item-ids [id2]
+                          :parallel-ids [id2]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -792,7 +792,7 @@
             [:div {:class "label horizontal-header top-border bottom-border"}
              [:component {:width 0.375
                           :template '(anything :label)
-                          :item-ids [id0]
+                          :parallel-ids [id0]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -807,7 +807,7 @@
             [:div {:class "label horizontal-header top-border"}
              [:component {:width 0.375
                           :template '(anything :label)
-                          :item-ids [id1 id2]
+                          :parallel-ids [id1 id2]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (item-AD)]
@@ -827,7 +827,7 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template '(anything :label)
-                           :item-ids [id1]
+                           :parallel-ids [id1]
                            :get-action-data [(comp-AD)
                                              [(mult-items-AD) (item-AD)]
                                              (item-AD)]
@@ -843,7 +843,7 @@
              [:div {:class "label horizontal-header top-border bottom-border"}
               [:component {:width 0.375
                            :template '(anything :label)
-                           :item-ids [id2]
+                           :parallel-ids [id2]
                            :get-action-data [(comp-AD)
                                              [(mult-items-AD) (item-AD)]
                                              (item-AD)]
@@ -861,7 +861,7 @@
                           :template '(anything :label)
                           ;; TODO: This breaks the relative id convention.
                           :relative-id [id3 :virtual-label]
-                          :item-ids [id3]
+                          :parallel-ids [id3]
                           :get-action-data [(comp-AD)
                                             [(mult-items-AD) (item-AD)]
                                             (virt-AD)]

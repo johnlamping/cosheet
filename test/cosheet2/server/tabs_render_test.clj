@@ -134,7 +134,7 @@
               :render-dom (tab-DOM)
               :get-rendering-data (tab-RD)
               :example-element-ids [(:item-id t1-foo)]
-              :item-ids [(:item-id t1) (:item-id t2)]
+              :parallel-ids [(:item-id t1) (:item-id t2)]
               :get-action-data [(mult-items-AD) (item-AD)]
               :class "multi-tab"}]
             [:div {:class "tab-sequence"}
@@ -151,7 +151,7 @@
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)
                :example-element-ids [(:item-id t2-bar)]
-               :item-ids [(:item-id t2)]
+               :parallel-ids [(:item-id t2)]
                :get-action-data [(mult-items-AD) (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
                :class "tab"}]
@@ -162,7 +162,7 @@
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)
                :example-element-ids []
-               :item-ids [(:item-id t1)]
+               :parallel-ids [(:item-id t1)]
                :get-action-data [(mult-items-AD) (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
                :class "chosen tab"}]]]]]))

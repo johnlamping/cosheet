@@ -245,20 +245,21 @@
 
 (deftest multiple-items-get-action-data-test
   (is (= (multiple-items-get-action-data
-          {:item-ids [joe-id]} {} nil store get-item-or-exemplar-action-data)
+          {:parallel-ids [joe-id]}
+          {} nil store get-item-or-exemplar-action-data)
          {:target-ids [joe-id]}))
   (is (= (multiple-items-get-action-data
-          {:item-ids [(:item-id joe-age)]}
+          {:parallel-ids [(:item-id joe-age)]}
           {:target-ids [joe-id]} nil store 
           get-item-or-exemplar-action-data)
          {:target-ids [(:item-id joe-age)]}))
   (is (check (multiple-items-get-action-data
-              {:item-ids  [(:item-id jane-age)]}
+              {:parallel-ids  [(:item-id jane-age)]}
               {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data) 
              {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
   (is (check (multiple-items-get-action-data
-              {:item-ids [(:item-id jane-age) (:item-id joe-male)]}
+              {:parallel-ids [(:item-id jane-age) (:item-id joe-male)]}
               {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data)
              {:target-ids [(:item-id joe-age) (:item-id jane-age)
@@ -267,7 +268,7 @@
 (deftest multiple-items-get-do-batch-edit-action-data-test
   (is (check (multiple-items-get-do-batch-edit-action-data
               {:item-id (:item-id joe-age)
-               :item-ids [(:item-id joe-age-tag)]}
+               :parallel-ids [(:item-id joe-age-tag)]}
               {:batch-edit-ids [jane-id joe-id]
                :selected-index 1
                :selection-sequence [(:item-id joe-age)]}

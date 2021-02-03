@@ -219,7 +219,7 @@
                :relative-id [q2-2 :virtual-label]
                :query-id q2
                :stack-selector-id stk1
-               :item-ids (list q2-2)
+               :parallel-ids [q2-2]
                :get-action-data [(comp-AD)
                                  [(mult-items-AD) (batch-query-AD)]
                                  (virt-AD)]
@@ -238,7 +238,7 @@
               {:template '(anything :label)
                :query-id q2
                :stack-selector-id stk1
-               :item-ids (list q2-c1)
+               :parallel-ids [q2-c1]
                :get-action-data [(comp-AD)
                                  [(mult-items-AD) (batch-query-AD)]
                                  (item-AD)]

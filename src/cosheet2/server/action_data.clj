@@ -335,10 +335,10 @@
     [composed-get-action-data current to-add]))
 
 (defn multiple-items-get-action-data
-  "For each of item-ids, run the data getter on the specification modified
+  "For each of parallel-ids, run the data getter on the specification modified
   to have that item id. Update the target-id of containing-action-data
   to be the union of the target-id of each of the results."
-  [{:keys [item-ids] :as specification}
+  [{:keys [parallel-ids] :as specification}
    containing-action-data action immutable-store getter]
   (assoc
    containing-action-data :target-ids
@@ -348,9 +348,9 @@
                        getter
                        (-> specification
                            (assoc :item-id id)
-                           (dissoc :item-ids))
+                           (dissoc :parallel-ids))
                        containing-action-data action immutable-store)))
-            item-ids))))
+            parallel-ids))))
 
 (defmethod print-method
   cosheet2.server.action_data$multiple_items_get_action_data
@@ -358,15 +358,15 @@
   (.write w "mult-items-AD"))
 
 (defn multiple-items-get-do-batch-edit-action-data
-  "For the first of the item-ids, run the data getter on the
+  "For the first of the parallel-ids, run the data getter on the
   specification modified to have that item id."
   ;; Note: This assumes that when an exemplar is chosen, it will be an
-  ;; element of the first of the item-ids.
-  [{:keys [item-ids] :as specification}
+  ;; element of the first of the parallel-ids.
+  [{:keys [parallel-ids] :as specification}
    containing-action-data action immutable-store getter]
   (getter (-> specification
-              (assoc :item-id (first item-ids))
-              (dissoc :item-ids))
+              (assoc :item-id (first parallel-ids))
+              (dissoc :parallel-ids))
           containing-action-data action immutable-store))
 
 (defmethod print-method

@@ -18,12 +18,12 @@
                                   get-virtual-DOM-rendering-data
                                   get-item-rendering-data]]
              [action-data :refer [composed-get-action-data
-                                  multiple-items-get-action-data
+                                  parallel-items-get-action-data
                                   get-pass-through-action-data
                                   get-id-action-data
                                   get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
-                                  multiple-items-get-do-batch-edit-action-data
+                                  parallel-items-get-do-batch-edit-action-data
                                   get-virtual-action-data]]
              [hierarchy :refer [hierarchy-by-labels
                                 replace-hierarchy-leaves-by-nodes] :as hierarchy]
@@ -61,7 +61,7 @@
 
 (defn comp-AD [] composed-get-action-data)
 (defn pass-AD [] get-pass-through-action-data)
-(defn mult-items-AD [] multiple-items-get-action-data)
+(defn parallel-AD [] parallel-items-get-action-data)
 (defn id-AD [] get-id-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn virt-AD [] get-virtual-action-data)
@@ -73,8 +73,8 @@
   get-table-cell-item-do-batch-edit-action-data)
 (defn item-do-batch-AD []
   get-item-do-batch-edit-action-data)
-(defn mult-items-do-batch-AD []
-  multiple-items-get-do-batch-edit-action-data)
+(defn parallel-do-batch-AD []
+  parallel-items-get-do-batch-edit-action-data)
 
 (defn run-renderer
   "run the renderer on the output of the data getter, thus testing
@@ -279,7 +279,7 @@
                           :width 0.75
                           :parallel-ids [rc1-id]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [(any)]
@@ -334,7 +334,7 @@
           [:div {:class "column-header label"}
            ;; The label for the three columns
            [:component {:get-do-batch-edit-action-data
-                        [(mult-items-do-batch-AD)
+                        [(parallel-do-batch-AD)
                          (table-head-do-batch-AD)]
                         :get-column-action-data (col-AD) 
                         :header-id header-id
@@ -343,7 +343,7 @@
                         :template '(anything :label)
                         :parallel-ids [c2-id c3-id c4-id]
                         :get-action-data [(comp-AD)
-                                          [(mult-items-AD) (item-AD)]
+                                          [(parallel-AD) (item-AD)]
                                           (item-AD)]
                         :relative-id c2-name-id
                         :class "label with-children"
@@ -361,7 +361,7 @@
                :template '(anything :label)
                :parallel-ids [c2-id]
                :get-action-data [(comp-AD)
-                                 [(mult-items-AD) (item-AD)]
+                                 [(parallel-AD) (item-AD)]
                                  (virt-AD)]
                :relative-id [c2-id :nested]
                :class "label merge-with-parent"
@@ -401,7 +401,7 @@
                :template '(anything :label)
                :parallel-ids [c4-id]
                :get-action-data [(comp-AD)
-                                 [(mult-items-AD) (item-AD)]
+                                 [(parallel-AD) (item-AD)]
                                  (virt-AD)]
                :relative-id [c4-id :nested]
                :class "label merge-with-parent"
@@ -437,7 +437,7 @@
                         :template '(anything :label)
                         :parallel-ids [c6-id]
                         :get-action-data [(comp-AD)
-                                          [(mult-items-AD) (item-AD)]
+                                          [(parallel-AD) (item-AD)]
                                           (virt-AD)]
                         :class "label"
                         :relative-id [c6-id :nested]
@@ -461,7 +461,7 @@
                         :template '(anything :label)
                         :parallel-ids [c7-id]
                         :get-action-data [(comp-AD)
-                                          [(mult-items-AD) (item-AD)]
+                                          [(parallel-AD) (item-AD)]
                                           (virt-AD)]
                         :class "label"
                         :relative-id [c7-id :nested]
@@ -665,7 +665,7 @@
              :relative-id [(any) :virtual-label]
              :parallel-ids [joe-joe-id]
              :get-action-data [(comp-AD)
-                               [(mult-items-AD) (item-AD)]
+                               [(parallel-AD) (item-AD)]
                                (virt-AD)]
              :render-dom (virt-DOM)
              :get-rendering-data (virt-RD)
@@ -684,11 +684,11 @@
                         :template '(anything :label)
                         :parallel-ids [joe-joseph-id]
                         :get-action-data [(comp-AD)
-                                          [(mult-items-AD) (item-AD)]
+                                          [(parallel-AD) (item-AD)]
                                           (item-AD)]
                         :get-do-batch-edit-action-data
                         [(comp-AD)
-                         [(mult-items-do-batch-AD)
+                         [(parallel-do-batch-AD)
                           (table-cell-item-do-batch-AD)]
                          (item-do-batch-AD)]
                         :class "label"

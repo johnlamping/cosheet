@@ -38,8 +38,8 @@
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
-                                  multiple-items-get-action-data
-                                  multiple-items-get-do-batch-edit-action-data
+                                  parallel-items-get-action-data
+                                  parallel-items-get-do-batch-edit-action-data
                                   compose-action-data-getter]])))
 
 (defn opposite-orientation
@@ -159,13 +159,13 @@
   (cond-> (assoc specification
                  :parallel-ids item-ids
                  :get-action-data
-                 [multiple-items-get-action-data
+                 [parallel-items-get-action-data
                   (or (:get-action-data specification)
                       default-get-action-data)])
     (:get-do-batch-edit-action-data specification)
     (update :get-do-batch-edit-action-data
             (fn [getter]
-              [multiple-items-get-do-batch-edit-action-data getter]))))
+              [parallel-items-get-do-batch-edit-action-data getter]))))
 
 (defn add-parallel-item-ids-for-label
   "Add :parallel-ids and the appropriate action-data getters for a
@@ -176,14 +176,14 @@
              :parallel-ids item-ids
              :get-action-data
              (compose-action-data-getter
-              [multiple-items-get-action-data
+              [parallel-items-get-action-data
                (or (:get-action-data specification)
                    default-get-action-data)]
               default-get-action-data) )
     (:get-do-batch-edit-action-data specification)
     (update :get-do-batch-edit-action-data
             (fn [getter] (compose-action-data-getter
-                          [multiple-items-get-do-batch-edit-action-data getter]
+                          [parallel-items-get-do-batch-edit-action-data getter]
                           default-get-do-batch-edit-action-data)))))
 
 (defn label-stack-DOM
@@ -226,7 +226,7 @@
     [hierarchy-node specification]
   (let [descendant-items (map :item (hierarchy-node-descendants hierarchy-node))
         descendant-ids (map :item-id descendant-items)
-        ;; Note: multiple-items-get-do-batch-edit-action-data assumes that
+        ;; Note: parallel-items-get-do-batch-edit-action-data assumes that
         ;;       we take the first of the descendants.
         example-descendant-id (first descendant-ids)
         labels-spec (transform-specification-for-non-contained-labels

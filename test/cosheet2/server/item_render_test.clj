@@ -18,7 +18,7 @@
                                 hierarchy-by-canonical-info]]
              [render :refer [basic-dom-specification]]
              [action-data :refer [composed-get-action-data
-                                  multiple-items-get-action-data
+                                  parallel-items-get-action-data
                                   get-item-or-exemplar-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data]]
@@ -52,7 +52,7 @@
 (defn comp-AD [] composed-get-action-data)
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn pass-AD [] get-pass-through-action-data)
-(defn mult-items-AD [] multiple-items-get-action-data)
+(defn parallel-AD [] parallel-items-get-action-data)
 (defn virt-AD [] get-virtual-action-data)
 
 (deftest virtual-DOM-test
@@ -91,7 +91,7 @@
            :width 1.5
            :parallel-ids [joe-id jane-id]
            :get-action-data [(comp-AD)
-                             [(mult-items-AD) (item-AD)]
+                             [(parallel-AD) (item-AD)]
                              (item-AD)]
            :relative-id joe-test-id
            :class "label"
@@ -113,7 +113,7 @@
                        :width 0.75
                        :parallel-ids [jane-id]
                        :get-action-data [(comp-AD)
-                                         [(mult-items-AD) (item-AD)]
+                                         [(parallel-AD) (item-AD)]
                                          (virt-AD)]
                        :relative-id [jane-id :nested]
                        :class "label merge-with-parent"
@@ -149,7 +149,7 @@
           [:component {:width 0.8, :template '(anything :label)
                        :parallel-ids [joe-id jane-id]
                        :get-action-data [(comp-AD)
-                                         [(mult-items-AD) (item-AD)]
+                                         [(parallel-AD) (item-AD)]
                                          (item-AD)]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
@@ -160,7 +160,7 @@
              [:component {:width 0.8, :template '(anything :label)
                           :parallel-ids [joe-id]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
@@ -186,7 +186,7 @@
                        :template '(anything :label)
                        :parallel-ids [joe-id jane-id]
                        :get-action-data [(comp-AD)
-                                         [(mult-items-AD) (item-AD)]
+                                         [(parallel-AD) (item-AD)]
                                          (item-AD)]
                        :class "label"
                        :excluded-element-ids [joe-test-label-id]
@@ -198,7 +198,7 @@
                           :template '(anything :label)
                           :parallel-ids [joe-id]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [joe-foo-label-id]
@@ -266,7 +266,7 @@
                          :relative-id [sally-id :virtual-label]
                          :parallel-ids [sally-id]
                          :get-action-data [(comp-AD)
-                                           [(mult-items-AD) (item-AD)]
+                                           [(parallel-AD) (item-AD)]
                                            (virt-AD)]
                          :render-dom (virt-DOM)
                          :get-rendering-data (virt-RD)
@@ -403,7 +403,7 @@
                     :render-dom (virt-DOM)
                     :parallel-ids [id1]
                     :get-action-data [(comp-AD)
-                                      [(mult-items-AD) (item-AD)]
+                                      [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "label"}]
                   [:component {:width 0.9
@@ -419,7 +419,7 @@
                     :render-dom (virt-DOM)
                     :parallel-ids [id2]
                     :get-action-data [(comp-AD)
-                                      [(mult-items-AD) (item-AD)]
+                                      [(parallel-AD) (item-AD)]
                                       (virt-AD)]
                     :class "label"}]
                   [:component {:width 0.9
@@ -461,7 +461,7 @@
                                :template '(anything :label)
                                :parallel-ids [id1]
                                :get-action-data [(comp-AD)
-                                                 [(mult-items-AD) (item-AD)]
+                                                 [(parallel-AD) (item-AD)]
                                                  (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag1]
@@ -476,7 +476,7 @@
                                :template '(anything :label)
                                :parallel-ids [id2]
                                :get-action-data  [(comp-AD)
-                                                  [(mult-items-AD) (item-AD)]
+                                                  [(parallel-AD) (item-AD)]
                                                   (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag2]
@@ -543,7 +543,7 @@
                                :template '(anything :label)
                                :parallel-ids [id0]
                                :get-action-data [(comp-AD)
-                                                 [(mult-items-AD) (item-AD)]
+                                                 [(parallel-AD) (item-AD)]
                                                  (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag0]
@@ -558,7 +558,7 @@
                                :template '(anything :label)
                                :parallel-ids [id1 id2]
                                :get-action-data [(comp-AD)
-                                                 [(mult-items-AD) (item-AD)]
+                                                 [(parallel-AD) (item-AD)]
                                                  (item-AD)]
                                :class "label"
                                :excluded-element-ids [id-tag1both]
@@ -570,7 +570,7 @@
                                   :template '(anything :label)
                                   :parallel-ids[id1]
                                   :get-action-data [(comp-AD)
-                                                    [(mult-items-AD) (item-AD)]
+                                                    [(parallel-AD) (item-AD)]
                                                     (item-AD)]
                                   :class "label"
                                   :excluded-element-ids [id-tag1one]
@@ -587,7 +587,7 @@
                                   :template '(anything :label)
                                   :parallel-ids [id2]
                                   :get-action-data [(comp-AD)
-                                                    [(mult-items-AD) (item-AD)]
+                                                    [(parallel-AD) (item-AD)]
                                                     (item-AD)]
                                   :class "label"
                                   :excluded-element-ids [id-tag2two]
@@ -605,7 +605,7 @@
                               :template '(anything :label)
                               :parallel-ids [id3]
                               :get-action-data [(comp-AD)
-                                                [(mult-items-AD) (item-AD)]
+                                                [(parallel-AD) (item-AD)]
                                                 (virt-AD)]
                               :relative-id [id3 :virtual-label]
                               :get-rendering-data (virt-RD)
@@ -650,7 +650,7 @@
                           :relative-id [id1 :virtual-label]
                           :parallel-ids [id1]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (virt-AD)]
                           :get-rendering-data (virt-RD)
                           :render-dom (virt-DOM)
@@ -665,7 +665,7 @@
                           :relative-id [id2 :virtual-label]
                           :parallel-ids [id2]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (virt-AD)]
                           :get-rendering-data (virt-RD)
                           :render-dom (virt-DOM)
@@ -711,7 +711,7 @@
              [:component {:width 0.375, :template '(anything :label)
                           :parallel-ids [id1]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag1]
@@ -726,7 +726,7 @@
              [:component {:width 0.375, :template '(anything :label)
                           :parallel-ids [id2]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag2]
@@ -794,7 +794,7 @@
                           :template '(anything :label)
                           :parallel-ids [id0]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag0]
@@ -809,7 +809,7 @@
                           :template '(anything :label)
                           :parallel-ids [id1 id2]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (item-AD)]
                           :class "label"
                           :excluded-element-ids [id-tag1both]
@@ -829,7 +829,7 @@
                            :template '(anything :label)
                            :parallel-ids [id1]
                            :get-action-data [(comp-AD)
-                                             [(mult-items-AD) (item-AD)]
+                                             [(parallel-AD) (item-AD)]
                                              (item-AD)]
                            :class "label"
                            :excluded-element-ids [id-tag1one]
@@ -845,7 +845,7 @@
                            :template '(anything :label)
                            :parallel-ids [id2]
                            :get-action-data [(comp-AD)
-                                             [(mult-items-AD) (item-AD)]
+                                             [(parallel-AD) (item-AD)]
                                              (item-AD)]
                            :class "label"
                            :excluded-element-ids [id-tag2two]
@@ -863,7 +863,7 @@
                           :relative-id [id3 :virtual-label]
                           :parallel-ids [id3]
                           :get-action-data [(comp-AD)
-                                            [(mult-items-AD) (item-AD)]
+                                            [(parallel-AD) (item-AD)]
                                             (virt-AD)]
                           :get-rendering-data (virt-RD)
                           :render-dom (virt-DOM)

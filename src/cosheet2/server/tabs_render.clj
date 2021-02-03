@@ -24,8 +24,7 @@
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-tab-action-data
                                   get-virtual-action-data
-                                  compose-action-data-getter
-                                  multiple-items-get-action-data]])))
+                                  compose-action-data-getter]])))
 
 (def base-tab-width 150)
 

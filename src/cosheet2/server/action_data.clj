@@ -334,7 +334,7 @@
     true
     [composed-get-action-data current to-add]))
 
-(defn multiple-items-get-action-data
+(defn parallel-items-get-action-data
   "For each of parallel-ids, run the data getter on the specification modified
   to have that item id. Update the target-id of containing-action-data
   to be the union of the target-id of each of the results."
@@ -353,11 +353,11 @@
             parallel-ids))))
 
 (defmethod print-method
-  cosheet2.server.action_data$multiple_items_get_action_data
+  cosheet2.server.action_data$parallel_items_get_action_data
   [v ^java.io.Writer w]
-  (.write w "mult-items-AD"))
+  (.write w "parallel-AD"))
 
-(defn multiple-items-get-do-batch-edit-action-data
+(defn parallel-items-get-do-batch-edit-action-data
   "For the first of the parallel-ids, run the data getter on the
   specification modified to have that item id."
   ;; Note: This assumes that when an exemplar is chosen, it will be an
@@ -370,9 +370,9 @@
           containing-action-data action immutable-store))
 
 (defmethod print-method
-  cosheet2.server.action_data$multiple_items_get_do_batch_edit_action_data
+  cosheet2.server.action_data$parallel_items_get_do_batch_edit_action_data
   [v ^java.io.Writer w]
-  (.write w "mult-items-do-batch-AD"))
+  (.write w "parallel-do-batch-AD"))
 
 (defn update-action-data-for-component
   "Update the action data for one component, running all the different

@@ -18,7 +18,7 @@
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-tab-action-data get-virtual-action-data
                                   composed-get-action-data
-                                  multiple-items-get-action-data]]
+                                  parallel-items-get-action-data]]
              [tabs-render :refer :all])
              ; :reload
             ))
@@ -30,7 +30,7 @@
 (defn tab-RD [] get-tab-elements-rendering-data)
 
 (defn item-AD [] get-item-or-exemplar-action-data)
-(defn mult-items-AD [] multiple-items-get-action-data)
+(defn parallel-AD [] parallel-items-get-action-data)
 (defn tab-AD [] get-tab-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn comp-AD [] composed-get-action-data)
@@ -135,7 +135,7 @@
               :get-rendering-data (tab-RD)
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
-              :get-action-data [(mult-items-AD) (item-AD)]
+              :get-action-data [(parallel-AD) (item-AD)]
               :class "multi-tab"}]
             [:div {:class "tab-sequence"}
              [:component
@@ -152,7 +152,7 @@
                :get-rendering-data (tab-RD)
                :example-element-ids [(:item-id t2-bar)]
                :parallel-ids [(:item-id t2)]
-               :get-action-data [(mult-items-AD) (item-AD)]
+               :get-action-data [(parallel-AD) (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
                :class "tab"}]
              [:component
@@ -163,7 +163,7 @@
                :get-rendering-data (tab-RD)
                :example-element-ids []
                :parallel-ids [(:item-id t1)]
-               :get-action-data [(mult-items-AD) (item-AD)]
+               :get-action-data [(parallel-AD) (item-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
                :class "chosen tab"}]]]]]))
     (is (check

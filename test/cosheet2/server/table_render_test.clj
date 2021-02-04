@@ -278,9 +278,6 @@
              [:component {:template '(anything :label)
                           :width 0.75
                           :parallel-ids [rc1-id]
-                          :get-action-data [(comp-AD)
-                                            [(parallel-AD) (item-AD)]
-                                            (item-AD)]
                           :class "label"
                           :excluded-element-ids [(any)]
                           :relative-id (any)}]
@@ -333,18 +330,17 @@
           ;; Three columns.
           [:div {:class "column-header label"}
            ;; The label for the three columns
-           [:component {:get-do-batch-edit-action-data
-                        [(parallel-do-batch-AD)
-                         (table-head-do-batch-AD)]
-                        :get-column-action-data (col-AD) 
+           [:component {:get-column-action-data (col-AD) 
                         :header-id header-id
                         :descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
                         :parallel-ids [c2-id c3-id c4-id]
-                        :get-action-data [(comp-AD)
-                                          [(parallel-AD) (item-AD)]
-                                          (item-AD)]
+                        :get-do-batch-edit-action-data
+                        [(comp-AD)
+                         [(parallel-do-batch-AD)
+                          (table-head-do-batch-AD)]
+                         (item-do-batch-AD)]
                         :relative-id c2-name-id
                         :class "label with-children"
                         :excluded-element-ids [(any)]}]
@@ -683,9 +679,6 @@
            [:component {:width 0.75
                         :template '(anything :label)
                         :parallel-ids [joe-joseph-id]
-                        :get-action-data [(comp-AD)
-                                          [(parallel-AD) (item-AD)]
-                                          (item-AD)]
                         :get-do-batch-edit-action-data
                         [(comp-AD)
                          [(parallel-do-batch-AD)

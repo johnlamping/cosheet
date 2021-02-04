@@ -36,6 +36,7 @@
              [action-data :refer [default-get-action-data
                                   default-get-do-batch-edit-action-data
                                   get-item-or-exemplar-action-data
+                                  get-item-do-batch-edit-action-data
                                   get-pass-through-action-data
                                   get-virtual-action-data
                                   parallel-items-get-action-data
@@ -156,35 +157,35 @@
   "Add :parallel-ids and the appropriate action-data getters for a DOM
   that refers to several items."
   [specification item-ids]
-  (cond-> (assoc specification
-                 :parallel-ids item-ids
-                 :get-action-data
-                 [parallel-items-get-action-data
-                  (or (:get-action-data specification)
-                      default-get-action-data)])
-    (:get-do-batch-edit-action-data specification)
-    (update :get-do-batch-edit-action-data
-            (fn [getter]
-              [parallel-items-get-do-batch-edit-action-data getter]))))
+  (-> (assoc specification :parallel-ids item-ids)
+      (update :get-action-data
+              (fn [getter]
+                [parallel-items-get-action-data
+                 (or getter get-item-or-exemplar-action-data)]))
+      (update :get-do-batch-edit-action-data
+              (fn [getter]
+                [parallel-items-get-do-batch-edit-action-data
+                 (or getter get-item-do-batch-edit-action-data)]))))
 
 (defn add-parallel-item-ids-for-label
   "Add :parallel-ids and the appropriate action-data getters for a
-  label that covers a DOM that refers to several items."
+  label that covers a DOM that refers to several items. The
+  specification should be what is expected for the items the label is
+  about."
   [specification item-ids]
-  (cond->
-      (assoc specification
-             :parallel-ids item-ids
-             :get-action-data
-             (compose-action-data-getter
-              [parallel-items-get-action-data
-               (or (:get-action-data specification)
-                   default-get-action-data)]
-              default-get-action-data) )
+  (cond-> (assoc specification :parallel-ids item-ids)
+    ;; The default action getters are right, unless the current getter was
+    ;; not already the default.
+    (:get-action-data specification)
+    (update :get-action-data
+            (fn [getter] (compose-action-data-getter
+                          [parallel-items-get-action-data getter]
+                          get-item-or-exemplar-action-data)))
     (:get-do-batch-edit-action-data specification)
     (update :get-do-batch-edit-action-data
             (fn [getter] (compose-action-data-getter
                           [parallel-items-get-do-batch-edit-action-data getter]
-                          default-get-do-batch-edit-action-data)))))
+                          get-item-do-batch-edit-action-data)))))
 
 (defn label-stack-DOM
   "Given a non-empty list of label elements, return a stack of their doms."
@@ -608,14 +609,14 @@
                                            :width 0.75)
                               (seq ancestor-ids)
                               (assoc :excluded-element-ids ancestor-ids)))))
-        items-spec (add-parallel-item-ids specification
-                                          (map #(-> % :item :item-id)
-                                            (hierarchy-node-descendants node)))]
+        descendant-ids (map #(-> % :item :item-id)
+                            (hierarchy-node-descendants node)) ]
     (if (empty? (:properties node))
       ;; We must be a leaf of a node that has children. We put a virtual
       ;; cell where our labels would go.
       (let [label-dom (cond-> (virtual-DOM-component
-                               (assoc items-spec
+                               (assoc (add-parallel-item-ids specification
+                                                             descendant-ids)
                                       :class "label"
                                       :template '(anything :label)
                                       :relative-id [(:item-id leaf) :nested]))
@@ -635,11 +636,7 @@
           (assert (not leaf) node)
           (label-stack-DOM
            example-elements
-           (-> items-spec
+           (-> (add-parallel-item-ids-for-label specification descendant-ids)
                (assoc :template '(anything :label)
-                      :width (* 0.75 (count (hierarchy-node-descendants node))))
-               ;; Tell the item to use any getter we were handed, followed by
-               ;; its usual getter. 
-               (update :get-action-data
-                       #(compose-action-data-getter
-                         % get-item-or-exemplar-action-data)))))))))
+                      :width (* 0.75 (count (hierarchy-node-descendants
+                                             node)))))))))))

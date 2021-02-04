@@ -158,12 +158,54 @@
     (assoc containing-action-data :target-ids
            (get-item-or-exemplars-for-id subject-ids immutable-store id))))
 
-(def default-get-action-data get-item-or-exemplar-action-data)
-
 (defmethod print-method
   cosheet2.server.action_data$get_item_or_exemplar_action_data
   [v ^java.io.Writer w]
   (.write w "item-AD"))
+
+(defn parallel-items-get-action-data
+  "For each of parallel-ids, run the data getter on the specification modified
+  to have that item id. Update the target-id of containing-action-data
+  to be the union of the target-id of each of the results."
+  [{:keys [parallel-ids] :as specification}
+   containing-action-data action immutable-store getter]
+  (assoc
+   containing-action-data :target-ids
+   (distinct
+    (mapcat (fn [id] (:target-ids
+                      (run-action-data-getter
+                       getter
+                       (-> specification
+                           (assoc :item-id id)
+                           (dissoc :parallel-ids))
+                       containing-action-data action immutable-store)))
+            parallel-ids))))
+
+(defmethod print-method
+  cosheet2.server.action_data$parallel_items_get_action_data
+  [v ^java.io.Writer w]
+  (.write w "parallel-AD"))
+
+(defn default-get-action-data
+  "There must be a relative-id or an item-id. If there are no
+  parallel-ids, just do get-item-or-exemplar-action-data. If there are
+  parallel-ids, first do parallel-items-get-action-data on them,
+  followed by get-item-or-exemplar-action-data."
+  [{:keys [parallel-ids] :as specification}
+   containing-action-data action immutable-store]
+  (get-item-or-exemplar-action-data
+   specification
+   (if (seq parallel-ids)
+     (parallel-items-get-action-data
+      specification containing-action-data action immutable-store
+      get-item-or-exemplar-action-data)
+     containing-action-data)
+   action immutable-store))
+
+(defmethod print-method
+  cosheet2.server.action_data$default_get_action_data
+  [v ^java.io.Writer w]
+  (.write w "default-AD"))
 
 ;;; do-batch-edit action data generators are called only when the
 ;;; requested action is to start a batch-edit. (This is different from
@@ -206,8 +248,7 @@
         (nth batch-edit-ids selected-index)))
 
 (defn get-item-do-batch-edit-action-data
-  "This the default for :get-do-batch-edit-action-data. It finds the
-  dom's id or extends the selection sequence with it."
+  "Find the dom's id or extend the selection sequence with it."
   [{:keys [item-id relative-id]} containing-action-data action immutable-store]
   (let [id (or item-id relative-id)
         selected-id (batch-selected-id containing-action-data)]
@@ -232,12 +273,49 @@
                        :selection-sequence [id]))))))
       containing-action-data)))
 
-(def default-get-do-batch-edit-action-data get-item-do-batch-edit-action-data)
-
 (defmethod print-method
   cosheet2.server.action_data$get_item_do_batch_edit_action_data
   [v ^java.io.Writer w]
   (.write w "item-do-batch-AD"))
+
+(defn parallel-items-get-do-batch-edit-action-data
+  "For the first of the parallel-ids, run the data getter on the
+  specification modified to have that item id."
+  ;; Note: This assumes that when an exemplar is chosen, it will be an
+  ;; element of the first of the parallel-ids.
+  [{:keys [parallel-ids] :as specification}
+   containing-action-data action immutable-store getter]
+  (getter (-> specification
+              (assoc :item-id (first parallel-ids))
+              (dissoc :parallel-ids))
+          containing-action-data action immutable-store))
+
+(defmethod print-method
+  cosheet2.server.action_data$parallel_items_get_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "parallel-do-batch-AD"))
+
+(defn default-get-do-batch-edit-action-data
+  "There must be a relative-id or an item-id. If there are no
+  parallel-ids, just do get-item-do-batch-edit-action-data. If there
+  are parallel-ids, first do
+  parallel-items-get-do-batch-edit-action-data on them, followed by
+  get-item-do-batch-edit-action-data."
+  [{:keys [parallel-ids] :as specification}
+   containing-action-data action immutable-store]
+  (get-item-do-batch-edit-action-data
+   specification
+   (if (seq parallel-ids)
+     (parallel-items-get-do-batch-edit-action-data
+      specification containing-action-data action immutable-store
+      get-item-do-batch-edit-action-data)
+     containing-action-data)
+   action immutable-store))
+
+(defmethod print-method
+  cosheet2.server.action_data$default_get_do_batch_edit_action_data
+  [v ^java.io.Writer w]
+  (.write w "default-do-batch-AD"))
 
 (defn get-pass-through-action-data
   "This is a content-only node under a node for the data.
@@ -333,46 +411,6 @@
     (conj current to-add)
     true
     [composed-get-action-data current to-add]))
-
-(defn parallel-items-get-action-data
-  "For each of parallel-ids, run the data getter on the specification modified
-  to have that item id. Update the target-id of containing-action-data
-  to be the union of the target-id of each of the results."
-  [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store getter]
-  (assoc
-   containing-action-data :target-ids
-   (distinct
-    (mapcat (fn [id] (:target-ids
-                      (run-action-data-getter
-                       getter
-                       (-> specification
-                           (assoc :item-id id)
-                           (dissoc :parallel-ids))
-                       containing-action-data action immutable-store)))
-            parallel-ids))))
-
-(defmethod print-method
-  cosheet2.server.action_data$parallel_items_get_action_data
-  [v ^java.io.Writer w]
-  (.write w "parallel-AD"))
-
-(defn parallel-items-get-do-batch-edit-action-data
-  "For the first of the parallel-ids, run the data getter on the
-  specification modified to have that item id."
-  ;; Note: This assumes that when an exemplar is chosen, it will be an
-  ;; element of the first of the parallel-ids.
-  [{:keys [parallel-ids] :as specification}
-   containing-action-data action immutable-store getter]
-  (getter (-> specification
-              (assoc :item-id (first parallel-ids))
-              (dissoc :parallel-ids))
-          containing-action-data action immutable-store))
-
-(defmethod print-method
-  cosheet2.server.action_data$parallel_items_get_do_batch_edit_action_data
-  [v ^java.io.Writer w]
-  (.write w "parallel-do-batch-AD"))
 
 (defn update-action-data-for-component
   "Update the action data for one component, running all the different

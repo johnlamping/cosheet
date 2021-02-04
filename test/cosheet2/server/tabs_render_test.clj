@@ -16,9 +16,11 @@
                                   get-virtual-DOM-rendering-data]]
              [model-utils :refer [new-tab-elements semantic-to-list]]
              [action-data :refer [get-item-or-exemplar-action-data
+                                  get-item-do-batch-edit-action-data
                                   get-tab-action-data get-virtual-action-data
                                   composed-get-action-data
-                                  parallel-items-get-action-data]]
+                                  parallel-items-get-action-data
+                                  parallel-items-get-do-batch-edit-action-data]]
              [tabs-render :refer :all])
              ; :reload
             ))
@@ -31,6 +33,8 @@
 
 (defn item-AD [] get-item-or-exemplar-action-data)
 (defn parallel-AD [] parallel-items-get-action-data)
+(defn item-do-batch-AD [] get-item-do-batch-edit-action-data)
+(defn parallel-do-batch-AD [] parallel-items-get-do-batch-edit-action-data)
 (defn tab-AD [] get-tab-action-data)
 (defn virt-AD [] get-virtual-action-data)
 (defn comp-AD [] composed-get-action-data)
@@ -136,6 +140,8 @@
               :example-element-ids [(:item-id t1-foo)]
               :parallel-ids [(:item-id t1) (:item-id t2)]
               :get-action-data [(parallel-AD) (item-AD)]
+              :get-do-batch-edit-action-data [(parallel-do-batch-AD)
+                                              (item-do-batch-AD)]
               :class "multi-tab"}]
             [:div {:class "tab-sequence"}
              [:component
@@ -153,6 +159,8 @@
                :example-element-ids [(:item-id t2-bar)]
                :parallel-ids [(:item-id t2)]
                :get-action-data [(parallel-AD) (item-AD)]
+               :get-do-batch-edit-action-data [(parallel-do-batch-AD)
+                                               (item-do-batch-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t2)]
                :class "tab"}]
              [:component
@@ -164,6 +172,8 @@
                :example-element-ids []
                :parallel-ids [(:item-id t1)]
                :get-action-data [(parallel-AD) (item-AD)]
+               :get-do-batch-edit-action-data [(parallel-do-batch-AD)
+                                               (item-do-batch-AD)]
                :get-tab-action-data [(tab-AD) (:item-id t1)]
                :class "chosen tab"}]]]]]))
     (is (check

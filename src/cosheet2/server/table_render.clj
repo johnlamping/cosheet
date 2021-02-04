@@ -110,10 +110,9 @@
     (remove (set column-elements) semantic-elements)))
 
 (defn get-table-condition-do-batch-edit-action-data
-  [{:keys [item-id relative-id header-id]}
+  [{:keys [header-id]}
    containing-action-data action immutable-store]
-  (let [header-id (id->subject immutable-store header-id)
-        header-entity (description->entity header-id immutable-store)
+  (let [header-entity (description->entity header-id immutable-store)
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
@@ -125,6 +124,8 @@
   [v ^java.io.Writer w]
   (.write w "table-cond-do-batch-AD"))
 
+;;; TODO: Why is this setting selected-index. The item in the header
+;;; should do that.
 (defn get-table-header-do-batch-edit-action-data
   [{:keys [item-id relative-id header-id descendant-ids competing-ids]}
    containing-action-data action immutable-store]

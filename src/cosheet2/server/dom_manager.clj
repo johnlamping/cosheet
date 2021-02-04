@@ -206,7 +206,7 @@
   (let [specs (subcomponent-specifications dom)
         answer (zipmap (map :relative-id specs) specs)]
     (assert (= (count answer) (count specs))
-            "Error: duplicate subcomponent ids")
+            (vec (subcomponent-specifications dom)))
     answer))
 
 (defn reuse-or-make-component-atom

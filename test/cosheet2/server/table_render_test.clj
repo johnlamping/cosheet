@@ -215,7 +215,7 @@
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
-                {:header-id rc1-id} {} nil store)
+                {:header-id header-id} {} nil store)
                {:batch-edit-ids [rc1-id]
                 :stack-selector-index 1}))
 

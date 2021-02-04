@@ -483,8 +483,8 @@
       elements-dom
       elements-dom
       true
-      (virtual-label-DOM-component (add-attributes specification
-                                         {:class "elements-wrapper"})))))
+      (virtual-label-DOM-component
+       (add-attributes specification {:class "elements-wrapper"})))))
 
 ;;; The next functions handle the parts of the dom for an entity.
 

@@ -98,7 +98,7 @@
        [:div {:class "indent-wrapper"} inner-dom]]
       [:div {:class (case orientation
                       :vertical "vertical-labels-element label"
-                      :horizontal "horizontal-labels-element label")}
+                      :horizontal "horizontal-labels-element")}
        labels-dom inner-dom]))
 
 (defn wrap-with-labels-DOM
@@ -216,7 +216,7 @@
       (if (not (empty? label-elements))
         (non-empty-labels-wrapper-DOM
          dom label-elements :vertical labels-spec)
-        [:div {:class "horizontal-labels-element label virtual-wrapper narrow"}
+        [:div {:class "horizontal-labels-element virtual-wrapper narrow"}
          (virtual-label-DOM-component labels-spec)
          dom]))))
 

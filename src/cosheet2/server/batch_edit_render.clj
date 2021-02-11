@@ -189,18 +189,20 @@
 (defn render-batch-query-DOM
   "Return the dom for the query selector."
   [{:keys [query-id] :as specification} store]
-  (labels-and-elements-DOM
-   (semantic-elements (description->entity query-id store))
-   (batch-query-virtual-DOM specification)
-   ;; TODO: !!! We tell labels-and-elements-DOM to make a virtual
-   ;; label if there isn't already a label. It gets a relative-id of
-   ;; :virtual-label, which conflicts with the virtual id of the
-   ;; virtual dom we create in the previous line.
-   true true :horizontal
-   (-> (select-keys specification [:query-id :stack-selector-id])
-       (assoc :template 'anything
-              :width 0.75
-              :get-action-data get-batch-edit-query-element-action-data))))
+  (->
+   (labels-and-elements-DOM
+    (semantic-elements (description->entity query-id store))
+    (batch-query-virtual-DOM specification)
+    ;; TODO: !!! We tell labels-and-elements-DOM to make a virtual
+    ;; label if there isn't already a label. It gets a relative-id of
+    ;; :virtual-label, which conflicts with the virtual id of the
+    ;; virtual dom we create in the previous line.
+    true true :horizontal
+    (-> (select-keys specification [:query-id :stack-selector-id])
+        (assoc :template 'anything
+               :width 0.75
+               :get-action-data get-batch-edit-query-element-action-data)))
+   (add-attributes {:class "query-condition"})))
 
 (defn batch-query-component
   ;; We need the stack-selector id as well as the query-id, as our
@@ -264,8 +266,8 @@
                   node
                   (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))
-        ;; TODO: !!! Is column-header class needed here?
-        class (cond-> "column-header"
+        ;; column-header sets the width.
+        class (cond-> "column-header batch-stack label"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
       (add-attributes node-dom {:class class})
@@ -308,7 +310,7 @@
                        :stack-selector-id (:item-id stack-selector-entity)}
         doms (map #(stack-selector-top-level-subtree-DOM % specification)
                   hierarchy)]
-    (into [:div {:class "batch-stack"}] doms)))
+    (into [:div] doms)))
 
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-selector-id]} mutable-store]
@@ -328,7 +330,7 @@
                    (if stack-selector-id
                      [:div {:class "horizontal-tags-element batch-stack"}
                       query-dom
-                      [:div {:class "batch-stack"} stack-dom]]
+                      stack-dom]
                      (add-attributes query-dom {:class "batch-stack"}))]]
     [:div
      [:div#quit-batch-edit.tool

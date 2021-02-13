@@ -262,7 +262,7 @@
          (run-renderer
           render-table-condition-DOM {:header-id header-id}
           get-table-condition-rendering-data store)
-         [:div {:class "horizontal-labels-element label query-condition"}
+         [:div {:class "horizontal-labels-element query-condition"}
            ;; A virtual label for the condition
           [:component {:template '(anything :label)
                        :position :after
@@ -653,7 +653,7 @@
           get-table-cell-rendering-data store)
          [:div
           {:class "vertical-stack"}
-          [:div {:class (str "horizontal-labels-element label virtual-wrapper"
+          [:div {:class (str "horizontal-labels-element virtual-wrapper"
                              " narrow")}
            [:component
             {:width 0.75

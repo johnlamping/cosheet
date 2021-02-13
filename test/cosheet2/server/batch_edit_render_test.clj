@@ -197,7 +197,7 @@
         dom (render-batch-query-DOM {:query-id q2 :stack-selector-id stk1} s)]
     (is (check
          dom
-         [:div {:class "horizontal-labels-element label"}
+         [:div {:class "horizontal-labels-element query-condition"}
           ;; A virtual label, because we are required to show some
           ;; label.
           [:component
@@ -345,10 +345,10 @@
         dom (stack-selector-DOM {:query-id q1 :stack-selector-id stk1} s)]
     (is (check
          dom
-         [:div {:class "batch-stack"}
+         [:div
           [:component {:query-id q1
                        :stack-selector-id stk1
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
-                       :class "column-header leaf"
+                       :class "column-header batch-stack label leaf"
                        :width 0.75}]]))))

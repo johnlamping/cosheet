@@ -251,7 +251,7 @@
                        :get-action-data (virt-AD)}]
           [:div {:class "indent-wrapper"}
            [:div {:class
-                  "horizontal-labels-element label virtual-wrapper narrow"}
+                  "horizontal-labels-element virtual-wrapper narrow"}
             [:component {:width 0.8
                          :template '(anything :label)
                          :relative-id [sally-id :virtual-label]
@@ -282,7 +282,7 @@
                :relative-id :bar
                :position :before}
               :horizontal)
-             [:div {:class "horizontal-labels-element label"}
+             [:div {:class "horizontal-labels-element"}
               [:component
                {:relative-id :virtual-label
                 :template ["foo" '(anything :label)]
@@ -345,7 +345,7 @@
             dom
             [:div
              {:class
-              "horizontal-labels-element label virtual-wrapper narrow item"}
+              "horizontal-labels-element virtual-wrapper narrow item"}
              [:component {:template '(anything :label)
                           
                                              :position :after
@@ -384,8 +384,8 @@
                              :render-dom render-content-only-DOM
                              :get-action-data (pass-AD)}]
                 [:div {:class "vertical-stack"}
-                 [:div {:class (str "horizontal-labels-element label"
-                                    " virtual-wrapper narrow")}
+                 [:div {:class
+                        "horizontal-labels-element virtual-wrapper narrow"}
                   [:component
                    {:width 0.9
                     :template '(anything :label)
@@ -400,8 +400,8 @@
                   [:component {:width 0.9
                                :template 'anything
                                :relative-id id1}]]
-                 [:div {:class (str "horizontal-labels-element label"
-                                    " virtual-wrapper narrow")}
+                 [:div {:class
+                        "horizontal-labels-element virtual-wrapper narrow"}
                   [:component
                    {:width 0.9
                     :template '(anything :label)
@@ -572,7 +572,7 @@
                                    :excluded-element-ids [id-label2both
                                                           id-label2two]
                                    :relative-id id2}]]]]]]
-                [:div {:class (str "horizontal-labels-element label"
+                [:div {:class (str "horizontal-labels-element"
                                    " virtual-wrapper narrow")}
                  [:component {:width 0.9
                               :template '(anything :label)

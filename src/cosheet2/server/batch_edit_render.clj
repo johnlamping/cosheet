@@ -325,15 +325,17 @@
         query-dom (batch-query-component query-id stack-selector-id)
         stack-dom (when stack-selector-id
                     (stack-selector-DOM specification store))
-        inner-dom [:div {:class "batch-stack-wrapper"}
-                   count-dom
-                   (if stack-selector-id
-                     [:div {:class "horizontal-tags-element batch-stack"}
-                      query-dom
-                      stack-dom]
-                     (add-attributes query-dom {:class "batch-stack"}))]]
+        batch-dom [:div {:class "batch-edit"}
+                   query-dom
+                   [:div {:class "batch-main"}
+                    count-dom
+                    (if stack-selector-id
+                      [:div {:class "horizontal-tags-element batch-stack"}
+                       stack-dom]
+                      [:div])]]]
     [:div
-     [:div#quit-batch-edit.tool
-      [:img {:src "../icons/table_view.gif"}]
-      [:div.tooltip "table view (C-Q)"]]
-     [:div {:class "query-result-wrapper"} inner-dom]]))
+     [:div {:class "exit-batch"} "➔"
+      [:div#quit-batch-edit.tool
+       [:img {:src "../icons/table_view.gif"}]
+       [:div.tooltip "back to table view (C-Q)"]]]
+     batch-dom]))

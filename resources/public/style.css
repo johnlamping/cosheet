@@ -315,18 +315,27 @@ body {
 
 /* batch editing */
 
-.quit-batch-edit.tool {
-    font-size: 20px;
-    width: auto;
-    height: auto;
-    text-align: center;
+.batch-main {
+    min-width: 300px;
+    /* So we can find the position of elements relative to this node 
+    for horizontal scrolling */
+    position: relative;
+    flex: 0 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 3px;
     background-color: hsl(0, 0%, 95%);
-    border-width: 1px;
-    border-radius: 2px;
+    border-width: 2px;
+    border-radius: 7px;
     border-color: hsl(0, 0%, 75%);
-    padding: 0px 2px 0px 2px;
-    margin: 0px 7px 2px 7px;
-    display: inline-block;
+}
+
+.exit-batch {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2px;
 }
 
 /* Three copies, so our definition of margin wins out. */
@@ -339,19 +348,10 @@ body {
 }
 
 .batch-query-match-counts {
-    margin-top: 4px;
     margin: 4px 8px 4px 6px;
     text-align: center;
     color: hsl(220, 100%, 45%);
     font-weight: bold;
-}
-
-.batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper.batch-stack-wrapper {
-    background-color: hsl(0, 0%, 95%);
-    margin-top: 2px;
-    border-width: 2px;
-    border-radius: 7px;
-    border-color: hsl(0, 0%, 80%);
 }
 
 .horizontal-labels-element.narrow.narrow.narrow.batch-stack > * {
@@ -671,29 +671,7 @@ body {
     margin-top: -2px;
 }
 
-.query-result-wrapper {
-    flex: 0 1 auto;
-    display: flex;
-    min-height: 10px; /* So it will shrink to the screen height */
-}
-
-.query-result-indent {
-    width: 7px;
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-bottom-width: 2px;
-    border-bottom-left-radius: 7px;
-    margin-bottom: 0px;
-}
-
-.query-result-wrapper > :last-child {
-    padding-top: 1px;
-    padding-left: 1px;
-    padding-right: 2px;
-    background-color: hsl(0, 0%, 80%);
-}
-
-.table {
+.table, .batch-edit {
     display: flex;
     flex-direction: column;
     width: fit-content;

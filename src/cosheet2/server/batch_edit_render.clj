@@ -1,7 +1,7 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [description->entity updating-immutable
-                                      elements to-list]]
+                                      elements to-list label?]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -16,10 +16,11 @@
                                 hierarchy-node-non-immediate-descendant-cover
                                 hierarchy-by-labels]]
              [render-utils :refer [hierarchy-node-DOM make-component]]
-             [model-utils :refer [semantic-elements semantic-to-list
+             [model-utils :refer [semantic-elements semantic-non-label-elements
+                                  semantic-to-list entity->canonical-semantic
                                   pattern-to-query]]
              [order-utils :refer [ordered-entities]]
-             [item-render :refer [add-labels-DOM
+             [item-render :refer [add-labels-DOM label-stack-DOM
                                   labels-and-elements-DOM
                                   horizontal-label-hierarchy-node-DOM
                                   virtual-DOM-component
@@ -61,7 +62,6 @@
                    :render-dom render-batch-count-DOM
                    :get-rendering-data get-batch-count-rendering-data
                    :get-action-data get-pass-through-action-data}))
-
 
 (defn get-batch-edit-query-matches-action-data
   "Find everything that matches the query, and put it in :target-ids."
@@ -169,7 +169,7 @@
                 top-level-entities element-queries item-index)
                ;; A single table specification item looks like two
                ;; items in the UI: the query, and the column specs. We
-               ;; treat each as if they were separate items
+               ;; treat each as if they were separate items.
                (select-elements-from-split-entities
                 header-entities element-queries '(nil :column) item-index))]
     (assoc containing-action-data :target-ids (map :item-id items))))
@@ -263,8 +263,7 @@
                   node
                   (assoc specification :get-action-data
                          get-batch-edit-stack-element-action-data))
-        ;; column-header sets the width.
-        class (cond-> "column-header batch-stack label"
+        class (cond-> "batch-stack label"
                 is-leaf (str " leaf"))]
     (if (empty? child-doms)
       (add-attributes node-dom {:class class})
@@ -297,17 +296,40 @@
   ;; to use, because it is different for different items. Add-twin
   ;; needs to know about :column, the same way it knows about
   ;; selectors. If a template has :column, but the subject is not
-  ;; suitable, then the :column should be removed.
-  (let [query-entity (description->entity query-id store)
-        stack-selector-entity  (description->entity stack-selector-id store)
-        elements (ordered-entities (semantic-elements stack-selector-entity))
-        hierarchy (-> (hierarchy-by-labels elements)
-                      replace-hierarchy-leaves-by-nodes)
-        specification {:query-id (:item-id query-entity)
-                       :stack-selector-id (:item-id stack-selector-entity)}
-        doms (map #(stack-selector-top-level-subtree-DOM % specification)
-                  hierarchy)]
-    (into [:div] doms)))
+  ;; suitable, then the :column should be removed from the template
+  ;; for that item.
+  (let [specification {:query-id query-id
+                       :stack-selector-id stack-selector-id}
+        query-entity (description->entity query-id store)
+        query-elements (ordered-entities (semantic-elements query-entity))
+        [query-labels query-non-labels] (separate-by label? query-elements)
+        ;; TODO: If there are no labels, add a virtual one.
+        labels-dom (label-stack-DOM
+                    query-labels
+                    (assoc specification
+                           :width 0.75
+                           :get-action-data
+                           get-batch-edit-stack-element-action-data))
+        
+        stack-elements (when stack-selector-id
+                         (->> (description->entity stack-selector-id store)
+                              semantic-elements
+                              (remove label?)
+                              ordered-entities))
+        stack-canonical (set (map entity->canonical-semantic stack-elements))
+        query-non-labels-to-show (remove #(stack-canonical
+                                          (entity->canonical-semantic %))
+                                         query-non-labels)
+        query-hierarchy (-> (hierarchy-by-labels query-non-labels-to-show)
+                            replace-hierarchy-leaves-by-nodes)
+        query-doms (map #(stack-selector-top-level-subtree-DOM % specification)
+                        query-hierarchy)
+        stack-hierarchy (-> (hierarchy-by-labels stack-elements)
+                            replace-hierarchy-leaves-by-nodes)
+        stack-doms (map #(stack-selector-top-level-subtree-DOM % specification)
+                        stack-hierarchy)]
+    (into [:div {:class "horizontal-labeled-element-list"} labels-dom]
+          (concat query-doms stack-doms))))
 
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-selector-id]} mutable-store]
@@ -326,10 +348,7 @@
                    query-dom
                    [:div {:class "batch-main"}
                     count-dom
-                    (if stack-selector-id
-                      [:div {:class "horizontal-tags-element batch-stack"}
-                       stack-dom]
-                      [:div])]]]
+                    stack-dom]]]
     [:div
      [:div {:class "exit-batch"} "➔"
       [:div#quit-batch-edit.tool

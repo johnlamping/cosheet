@@ -209,15 +209,17 @@
   make a dom that includes any necessary labels wrapping the item.
   specification should be the one for the item." 
   [dom label-elements specification]
-  (if (and (empty? label-elements) (not (:must-show-label specification)))
-    dom
-    (let [labels-spec (transform-specification-for-labels specification)]
-      (if (not (empty? label-elements))
-        (non-empty-labels-wrapper-DOM
-         dom label-elements :vertical labels-spec)
-        [:div {:class "horizontal-labels-element virtual-wrapper narrow"}
-         (virtual-label-DOM-component labels-spec)
-         dom]))))
+  (add-attributes
+   (if (and (empty? label-elements) (not (:must-show-label specification)))
+     dom
+     (let [labels-spec (transform-specification-for-labels specification)]
+       (if (not (empty? label-elements))
+         (non-empty-labels-wrapper-DOM
+          dom label-elements :vertical labels-spec)
+         [:div {:class "horizontal-labels-element virtual-wrapper narrow"}
+          (virtual-label-DOM-component labels-spec)
+          dom])))
+    (select-keys specification [:class])))
 
 (defn labeled-items-properties-DOM
   "Given a hierarchy node for labels, Return DOM for example elements
@@ -549,11 +551,12 @@
   [entity labels non-labels {:keys [must-show-label] :as specification}]
   (-> (if (and (empty? labels) (empty? non-labels) (not must-show-label))
         (item-content-DOM entity specification)
-        (let [inner-spec (update specification
-                                 :template
-                                 #(add-elements-to-entity-list
-                                   % (map semantic-to-list
-                                          (semantic-label-elements entity))))
+        (let [inner-spec (-> specification
+                             (dissoc :class)
+                             (update :template
+                              #(add-elements-to-entity-list
+                                % (map semantic-to-list
+                                       (semantic-label-elements entity)))))
               inner-dom (item-content-and-non-label-elements-DOM
                          entity non-labels inner-spec)]
           (labels-wrapper-DOM
@@ -562,7 +565,7 @@
 
 (defn render-item-DOM
   "Render a dom spec for an item (which may be an exemplar of a
-  group of items)."
+  group of items). This is the default renderer."
   [{:keys [relative-id item-id must-show-label excluded-element-ids]
     :as specification}
    store]

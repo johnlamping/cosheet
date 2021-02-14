@@ -618,6 +618,20 @@ body {
     display: flex;
 }
 
+/* --- Horizontal lists of elements, with labels on the left. --- */
+
+.horizontal-labeled-element-list {
+    flex: none;
+    display: flex;
+    flex: 1 0 auto;
+    align-items: center;
+    position: relative;
+}
+
+.horizontal-labeled-element-list > :first-child.label {
+    align-self:stretch;
+}
+
 /* --- tables --- */
 
 .query-condition {
@@ -807,47 +821,11 @@ body {
     background-color: transparent;
 }
 
-.column-header.horizontal-labels-element {
-    display: flex;
-    flex-direction: row;
-    background-color: transparent;
-}
-
-.column-header.horizontal-labels-element > * {
-    margin-top: -2px;
-}
-
-.column-header > .horizontal-labels-element {
-    margin-top: -2px;
-    margin-left: -2px;
-}
-
 .column-header > .wrapped-element:first-child {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-}
-
-.column-header > .horizontal-labels-element:first-child {
-    flex-grow: 1;
-}
-
-.column-header > .horizontal-labels-element > * {
-    display: flex;
-    align-items: flex-end;
-}
-
-.column-header > .horizontal-labels-element > :last-child {
-    justify-content: center;
-}
-
-.column-header.horizontal-labels-element > :first-child {
-    margin-left: -2px;
-}
-
-.column-header.horizontal-labels-element > :last-child {
-    border-top-right-radius: 7px;
 }
 
 .query-result-indent.label {

@@ -339,16 +339,18 @@
     (doseq [id target-ids]
       (is (extended-by? '(nil (nil :label)) (description->entity id s))))))
 
+;;; TODO: Test a query element that doesn't match the stack element.
 (deftest stack-selector-DOM-test
   (let [stk1-entity (description->entity stk1 s)
         stk1-element (first (matching-elements '(nil "c1") stk1-entity))
         dom (stack-selector-DOM {:query-id q1 :stack-selector-id stk1} s)]
     (is (check
          dom
-         [:div
+         [:div {:class "horizontal-labeled-element-list"}
+          [:div {}]
           [:component {:query-id q1
                        :stack-selector-id stk1
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
-                       :class "column-header batch-stack label leaf"
+                       :class "batch-stack label leaf"
                        :width 0.75}]]))))

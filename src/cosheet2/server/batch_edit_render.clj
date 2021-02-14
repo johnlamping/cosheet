@@ -180,10 +180,11 @@
   [specification]
   (let [dom (virtual-DOM-component
              (assoc specification
-                    :relative-id :virtual
+                    :relative-id :query-virtual
                     :template '(anything (anything :label))))
         label-dom (virtual-label-DOM-component
-                   (assoc specification :template '(anything :label)))]
+                   (assoc specification :template '(anything :label)
+                          :relative-id :query-virtual-label))]
     (add-labels-DOM label-dom dom :vertical)))
 
 (defn render-batch-query-DOM
@@ -193,10 +194,6 @@
    (labels-and-elements-DOM
     (semantic-elements (description->entity query-id store))
     (batch-query-virtual-DOM specification)
-    ;; TODO: !!! We tell labels-and-elements-DOM to make a virtual
-    ;; label if there isn't already a label. It gets a relative-id of
-    ;; :virtual-label, which conflicts with the virtual id of the
-    ;; virtual dom we create in the previous line.
     true true :horizontal
     (-> (select-keys specification [:query-id :stack-selector-id])
         (assoc :template 'anything

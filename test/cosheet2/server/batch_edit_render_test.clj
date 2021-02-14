@@ -259,7 +259,7 @@
             [:component
              {:template '(anything :label)
               :position :after
-              :relative-id :virtual-label
+              :relative-id :query-virtual-label
               :query-id q2
               :stack-selector-id stk1
               :class "label"
@@ -267,7 +267,7 @@
               :get-rendering-data (virt-RD)
               :get-action-data (virt-AD)}]
             [:component
-             {:relative-id :virtual
+             {:relative-id :query-virtual
               :query-id q2
               :stack-selector-id stk1
               :render-dom (virt-DOM)

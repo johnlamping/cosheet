@@ -132,10 +132,9 @@
   (assert (:template specification))
   (virtual-DOM-component
    (-> specification
-       (assoc :relative-id :virtual-label
+       (assoc :relative-id (or (:relative-id specification) :virtual-label)
               :position :after)       
        (update :template ensure-label)
-       (dissoc :get-do-batch-edit-action-data)
        (into-attributes {:class "label"}))))
 
 (defn virtual-entity-and-label-DOM
@@ -461,6 +460,7 @@
   The specifications should be appropriate for each of the elements."
   [elements virtual-dom must-show-label elements-must-show-labels
    orientation specification]
+  (assert (nil? (:relative-id specification)))
   (let [[labels non-labels] (separate-by label? elements)
         elements-dom
         (when (or non-labels virtual-dom)

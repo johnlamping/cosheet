@@ -328,7 +328,8 @@
                             replace-hierarchy-leaves-by-nodes)
         stack-doms (map #(stack-selector-top-level-subtree-DOM % specification)
                         stack-hierarchy)]
-    (into [:div {:class "horizontal-labeled-element-list"} labels-dom]
+    (into [:div {:class "horizontal-labeled-element-list batch-stack"}
+           labels-dom]
           (concat query-doms stack-doms))))
 
 (defn get-batch-edit-rendering-data

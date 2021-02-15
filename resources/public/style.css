@@ -436,7 +436,8 @@ body {
     border-top-right-radius: 7px;
     border-bottom-left-radius: 7px;
     border-width: 2px;
-    margin: 0px -2px -2px 0px;
+    margin-right: -2px;
+    margin-bottom: -2px;
     background-image:
     linear-gradient(to left,
                     hsla(0, 0%, 100%, .7),
@@ -655,8 +656,12 @@ body {
     padding-left: 6px;
 }
 
-.query-condition.horizontal-labels-element > *:nth-child(2) {
-    margin-left: 10px;
+.query-condition.horizontal-labels-element > *:not(:first-child) {
+    margin-left: 5px;
+}
+
+.query-condition.horizontal-labels-element > .horizontal-stack > *:not(:first-child) {
+    margin-left: 5px;
 }
 
 /* Make the following ::before elements positionable */
@@ -761,7 +766,8 @@ body {
     border-width: 2px;
     border-top-left-radius: 7px;
     border-top-right-radius: 7px;
-    margin: 0px -2px -2px 0px;
+    margin-right: -2px;
+    margin-bottom: -2px;
     min-height: 25px;
 }
 

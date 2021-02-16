@@ -239,12 +239,17 @@
 ;;;                         interpret actions, a user action, and the current
 ;;;                         store, and returns a store with the appropriate
 ;;;                         changes.
+;;;             :immutable  If true, the user cannot change anything about
+;;;                         this item, and can't even select it. This
+;;;                         property is inherited to child elements.
 ;;;       :get-action-data  Optional function that takes a dom specification,
 ;;;                         the action data for the containing dom, a user
 ;;;                         action, and the current store, and returns a map
 ;;;                         consisting of the action data for the given dom.
 ;;;       :must-show-label  If true, a virtual label should be shown
-;;;                         if there are no labels.
+;;;                         if there are no labels. If, additionally, it is
+;;;                         :wide, show it with substantial space, if there
+;;;                         is significant space available.
 ;;;                 :width  A float, giving the width of this dom element
 ;;;                         compared to the minimum width for two column
 ;;;                         format.

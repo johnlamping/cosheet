@@ -197,83 +197,32 @@
         dom (render-batch-query-DOM {:query-id q2 :stack-selector-id stk1} s)]
     (is (check
          dom
-         [:div {:class "horizontal-labels-element query-condition"}
-          ;; A virtual label, because we are required to show some
-          ;; label.
-          [:component
-           {:relative-id :virtual-label
-            :query-id q2
-            :stack-selector-id stk1
-            :template '(anything :label)
-            :position :after
-            :get-action-data [(comp-AD) (batch-query-AD) (virt-AD)]
-            :class "label"
-            :render-dom (virt-DOM)
-            :get-rendering-data (virt-RD)
-            :width 0.75}]
-          [:div {:class "horizontal-stack"}
-           [:div {:class "horizontal-stack"}
-            [:div {:class "vertical-labels-element label virtual-wrapper"}
-             [:component
-              {:template '(anything :label)
-               :relative-id [q2-2 :virtual-label]
-               :query-id q2
-               :stack-selector-id stk1
-               :parallel-ids [q2-2]
-               :get-action-data [(comp-AD)
-                                 [(parallel-AD) (batch-query-AD)]
-                                 (virt-AD)]
-               :render-dom (virt-DOM)
-               :get-rendering-data (virt-RD)
-               :class "label"
-               :width 0.75}]
-             [:component {:relative-id q2-2
-                          :template 'anything
-                          :query-id q2
-                          :stack-selector-id stk1
-                          :get-action-data (batch-query-AD)
-                          :width 0.75}]]
-            [:div {:class "wrapped-element label"}
-             [:component
-              {:template '(anything :label)
-               :query-id q2
-               :stack-selector-id stk1
-               :parallel-ids [q2-c1]
-               :get-action-data [(comp-AD)
-                                 [(parallel-AD) (batch-query-AD)]
-                                 (item-AD)]
-               :class "label"
-               :excluded-element-ids [(any)]
-               :relative-id q2-c1-l
-               :width 0.75}]
-             [:div {:class "indent-wrapper"}
-              [:component {:relative-id q2-c1
-                           :template '(anything ("c1" :label))
-                           :query-id q2
-                           :stack-selector-id stk1
-                           :get-action-data (batch-query-AD)
-                           :excluded-element-ids [q2-c1-l]
-                           :width 0.75}]]]]
-           ;; A virtual element that is not a label.
-           [:div {:class "vertical-labels-element label"}
-            [:component
-             {:template '(anything :label)
-              :position :after
-              :relative-id :query-virtual-label
-              :query-id q2
-              :stack-selector-id stk1
-              :class "label"
-              :render-dom (virt-DOM)
-              :get-rendering-data (virt-RD)
-              :get-action-data (virt-AD)}]
-            [:component
-             {:relative-id :query-virtual
-              :query-id q2
-              :stack-selector-id stk1
-              :render-dom (virt-DOM)
-              :get-rendering-data (virt-RD)
-              :template '(anything (anything :label))
-              :get-action-data (virt-AD)}]]]]))))
+         [:div {:class "horizontal-stack query-condition"}
+          [:component {:relative-id q2-2
+                       :template 'anything
+                       :query-id q2
+                       :immutable true
+                       :stack-selector-id stk1
+                       :width 0.75}]
+          [:div {:class "wrapped-element label"}
+           [:component
+            {:template '(anything :label)
+             :query-id q2
+             :stack-selector-id stk1
+             :parallel-ids [q2-c1]
+             :class "label"
+             :excluded-element-ids [(any)]
+             :relative-id q2-c1-l
+             :immutable true
+             :width 0.75}]
+           [:div {:class "indent-wrapper"}
+            [:component {:relative-id q2-c1
+                         :template '(anything ("c1" :label))
+                         :query-id q2
+                         :stack-selector-id stk1
+                         :immutable true
+                         :excluded-element-ids [q2-c1-l]
+                         :width 0.75}]]]]))))
 
 (deftest get-batch-edit-stack-element-action-data-test
   (let [q1-entity (description->entity q1 s)
@@ -346,7 +295,7 @@
         dom (stack-selector-DOM {:query-id q1 :stack-selector-id stk1} s)]
     (is (check
          dom
-         [:div {:class "horizontal-labeled-element-list"}
+         [:div {:class "horizontal-labeled-element-list batch-stack"}
           [:div {}]
           [:component {:query-id q1
                        :stack-selector-id stk1

@@ -284,7 +284,7 @@
   "Return the dom for everything at and under a labeled items hierarchy node.
   orientation gives which way to lay out the contained items.
   The specification must give :orientation."
-  [node child-doms {:keys [must-show-labels orientation] :as specification}]
+  [node child-doms {:keys [must-show-label orientation] :as specification}]
   (assert (#{:horizontal :vertical} orientation) orientation)
   (assert (empty? (:excluded-element-ids specification)) specification)
   (let [leaves (hierarchy-node-leaves node)
@@ -292,17 +292,17 @@
                     (:item (first leaves)))]
     (let [leaf-dom (when (seq leaves)
                      (hierarchy-leaf-items-DOM
-                      node (dissoc specification :must-show-labels)))
+                      node (dissoc specification :must-show-label)))
           descendants-dom (nest-if-multiple-DOM (if leaf-dom
                                                   (cons leaf-dom child-doms)
                                                   child-doms)
                                                 orientation)
           properties-dom (when (or (seq (:properties node))
-                                   must-show-labels)
+                                   must-show-label)
                            (labeled-items-properties-DOM
                             node specification))]
       (cond-> (if (empty? (:properties node))
-                (if must-show-labels
+                (if must-show-label
                   (cond-> (add-labels-DOM properties-dom descendants-dom
                                           (opposite-orientation orientation))
                     true
@@ -319,9 +319,9 @@
   [hierarchy specification]
   (map #(hierarchy-node-DOM
          % labeled-items-whole-hierarchy-node-DOM
-         (fn [node specification] (assoc specification :must-show-labels false))
+         (fn [node specification] (assoc specification :must-show-label false))
          (assoc specification
-                :must-show-labels true
+                :must-show-label (not (:immutable specification))
                 :orientation :horizontal))
        hierarchy))
 
@@ -405,10 +405,10 @@
   "The specification should apply to each item the hierarchy is over."
   [hierarchy specification]
   (let [top-level-spec (assoc specification
-                              :must-show-labels true
+                              :must-show-label (not (:immutable specification))
                               :orientation :vertical)
         child-specification-f (fn [_ specification]
-                                (dissoc specification :must-show-labels))]
+                                (dissoc specification :must-show-label))]
     (map #(hierarchy-node-DOM %
                               labeled-items-whole-hierarchy-node-DOM
                               child-specification-f
@@ -420,10 +420,10 @@
 (defn non-label-entities-DOM
   "Make a dom for a sequence of items, all of which must not be labels.
    If implied-template is non-nil, don't show elements implied by it.
-   If must-show-labels is true, show a space for labels, even if
+   If must-show-label is true, show a space for labels, even if
    there are none. If, additionally, it is :wide, show them with substantial
    space, if there is significant space available."
-  [entities implied-template must-show-labels orientation specification]
+  [entities implied-template must-show-label orientation specification]
   (let [ordered-entities (ordered-entities entities)
         all-labels (map semantic-label-elements ordered-entities)
         excludeds (map (if implied-template
@@ -434,7 +434,7 @@
                         (clojure.set/difference (set all) (set exclusions)))
                       all-labels excludeds)
           no-labels (every? empty? labels)]
-      (if (and no-labels (not must-show-labels))
+      (if (and no-labels (not must-show-label))
         (item-stack-DOM ordered-entities excludeds
                         orientation specification)
         (let [item-maps (item-maps-by-elements ordered-entities labels)
@@ -445,7 +445,7 @@
               doms (case orientation
                      :vertical
                      ((if (or (< (:width specification) 1.0)
-                              (and no-labels (not (= must-show-labels :wide))))
+                              (and no-labels (not (= must-show-label :wide))))
                         labeled-items-for-one-column-DOMs
                         labeled-items-for-two-column-DOMs)
                       hierarchy specification)
@@ -492,17 +492,19 @@
 
 (defn item-content-DOM
   "Make dom for the content part of an item."
-  [item attributes]
+  [item specification]
   ;; We don't currently handle content that itself non-trivial
   ;; entities. That would need more interaction and UI design work to
   ;; deal with the distinction between elements of an item and
   ;; elements on its content.
   (let [content (entity/content item)]
     (assert (entity/atom? content))
-    (let [anything (= 'anything content)]
-      [:div (cond-> (-> (select-keys attributes [:class])
+    (let [anything (= 'anything content)
+          editable (not (:immutable specification))]
+      [:div (cond-> (-> (select-keys specification [:class])
                         (into-attributes
-                         {:class (cond-> "content-text editable"
+                         {:class (cond-> "content-text"
+                                   editable (str " editable")
                                    anything (str " placeholder"))}))
               (has-keyword? item :label)
               (into-attributes (:class "label"))
@@ -540,7 +542,7 @@
         (let [elements-spec (transform-specification-for-elements specification)
               elements-dom (non-label-entities-DOM
                             elements nil
-                            (or (:must-show-labels specification) true)
+                            (or (:must-show-label specification) true)
                             :vertical elements-spec)]
           [:div {:class (cond-> "with-elements"
                           (has-keyword? item :label)

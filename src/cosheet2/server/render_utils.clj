@@ -41,12 +41,12 @@
 
 (defn transform-specification-for-elements
   [specification]
-  (assoc (select-keys specification [:width])
+  (assoc (select-keys specification [:width :immutable])
          :template 'anything))
 
 (defn transform-specification-for-labels
   [specification]
-  (assoc (select-keys specification [:width])
+  (assoc (select-keys specification [:width :immutable])
          :template '(anything :label)))
 
 (defn transform-specification-for-non-contained-labels
@@ -56,7 +56,8 @@
   ;; items the labels pertain to, and the information they use,
   ;; because the label needs to use them as part of its action data
   ;; function.
-  (assoc (select-keys specification [:width :query-id :stack-selector-id
+  (assoc (select-keys specification [:width :immutable
+                                     :query-id :stack-selector-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
          :template '(anything :label)))

@@ -124,68 +124,70 @@
                     [(map first separates) (map second separates)])))
    items))
 
-(defn get-batch-edit-query-element-action-data
-  "Return the item itself, plus one exemplar element for each affected
+(comment
+
+  (defn get-batch-edit-query-element-action-data
+    "Return the item itself, plus one exemplar element for each affected
    table condition, table header, row. Make sure that the chosen item
    is compatible with a match of the entire query."
-  [{:keys [item-id relative-id query-id stack-selector-id]}
-   containing-action-data action store]
-  (let [id (or item-id relative-id)
-        item (description->entity id store)
-        query-entity (description->entity query-id store)
-        query (pattern-to-query (semantic-to-list query-entity))
-        ;; To make sure that the item we pick is compatible with a
-        ;; match for the entire query, we have to consistently pick
-        ;; items for each element of the query, not just our dom's
-        ;; element. Then, we use the pick corresponding to our
-        ;; element. We pick items for the more complex query elements
-        ;; first, both for efficiency, and to make it more likely to
-        ;; choose more prosaic tuples of matches.
-        query-elements (semantic-elements query-entity)
-        ordered-query-elements(reverse (sort-by item-complexity query-elements))
-        element-queries (map #(pattern-to-query (semantic-to-list %))
-                             ordered-query-elements)
-        item-index (.indexOf ordered-query-elements item)
-        _ (assert (not= item-index -1))
-        top-level-entities (matching-items
-                            (add-elements-to-entity-list query [:top-level])
-                            store)
-        header-entities (matching-items
-                         (add-elements-to-entity-list query [:row-condition])
-                         store)
-        stack-selector-item (when stack-selector-id
-                               (let [item-query (pattern-to-query
-                                                 (semantic-to-list item)) 
-                                     elems (matching-elements
-                                            item-query
-                                            (description->entity
-                                             stack-selector-id store))]
-                                 (when-let [best (best-match item-query elems)]
-                                   [best])))
-        items (concat
-               [item]
-               stack-selector-item 
-               (select-elements-from-entities
-                top-level-entities element-queries item-index)
-               ;; A single table specification item looks like two
-               ;; items in the UI: the query, and the column specs. We
-               ;; treat each as if they were separate items.
-               (select-elements-from-split-entities
-                header-entities element-queries '(nil :column) item-index))]
-    (assoc containing-action-data :target-ids (map :item-id items))))
+    [{:keys [item-id relative-id query-id stack-selector-id]}
+     containing-action-data action store]
+    (let [id (or item-id relative-id)
+          item (description->entity id store)
+          query-entity (description->entity query-id store)
+          query (pattern-to-query (semantic-to-list query-entity))
+          ;; To make sure that the item we pick is compatible with a
+          ;; match for the entire query, we have to consistently pick
+          ;; items for each element of the query, not just our dom's
+          ;; element. Then, we use the pick corresponding to our
+          ;; element. We pick items for the more complex query elements
+          ;; first, both for efficiency, and to make it more likely to
+          ;; choose more prosaic tuples of matches.
+          query-elements (semantic-elements query-entity)
+          ordered-query-elements(reverse (sort-by item-complexity query-elements))
+          element-queries (map #(pattern-to-query (semantic-to-list %))
+                               ordered-query-elements)
+          item-index (.indexOf ordered-query-elements item)
+          _ (assert (not= item-index -1))
+          top-level-entities (matching-items
+                              (add-elements-to-entity-list query [:top-level])
+                              store)
+          header-entities (matching-items
+                           (add-elements-to-entity-list query [:row-condition])
+                           store)
+          stack-selector-item (when stack-selector-id
+                                (let [item-query (pattern-to-query
+                                                  (semantic-to-list item)) 
+                                      elems (matching-elements
+                                             item-query
+                                             (description->entity
+                                              stack-selector-id store))]
+                                  (when-let [best (best-match item-query elems)]
+                                    [best])))
+          items (concat
+                 [item]
+                 stack-selector-item 
+                 (select-elements-from-entities
+                  top-level-entities element-queries item-index)
+                 ;; A single table specification item looks like two
+                 ;; items in the UI: the query, and the column specs. We
+                 ;; treat each as if they were separate items.
+                 (select-elements-from-split-entities
+                  header-entities element-queries '(nil :column) item-index))]
+      (assoc containing-action-data :target-ids (map :item-id items))))
 
-(defn batch-query-virtual-DOM
-  "Return the DOM for a virtual element in the row selector part of the display,
+  (defn batch-query-virtual-DOM
+    "Return the DOM for a virtual element in the row selector part of the display,
    that is an element of the query item."
-  [specification]
-  (let [dom (virtual-DOM-component
-             (assoc specification
-                    :relative-id :query-virtual
-                    :template '(anything (anything :label))))
-        label-dom (virtual-label-DOM-component
-                   (assoc specification :template '(anything :label)
-                          :relative-id :query-virtual-label))]
-    (add-labels-DOM label-dom dom :vertical)))
+    [specification]
+    (let [dom (virtual-DOM-component
+               (assoc specification
+                      :relative-id :query-virtual
+                      :template '(anything (anything :label))))
+          label-dom (virtual-label-DOM-component
+                     (assoc specification :template '(anything :label)
+                            :relative-id :query-virtual-label))]
+      (add-labels-DOM label-dom dom :vertical))))
 
 (defn render-batch-query-DOM
   "Return the dom for the query selector."
@@ -193,12 +195,11 @@
   (->
    (labels-and-elements-DOM
     (semantic-elements (description->entity query-id store))
-    (batch-query-virtual-DOM specification)
-    true true :horizontal
+    nil false false :horizontal
     (-> (select-keys specification [:query-id :stack-selector-id])
         (assoc :template 'anything
                :width 0.75
-               :get-action-data get-batch-edit-query-element-action-data)))
+               :immutable true)))
    (add-attributes {:class "query-condition"})))
 
 (defn batch-query-component

@@ -235,7 +235,7 @@
            [:component {:template 'anything
                           :width 0.8
                           :relative-id sally-id}]]]))
-    ;; Test a non-label with must-show-labels and elements-must-show-labels
+    ;; Test a non-label with must-show-label and elements-must-show-labels
     (is (check
          (labels-and-elements-DOM
           [sally] nil true true :vertical
@@ -602,50 +602,61 @@
         dom (render-item-DOM (assoc basic-dom-specification
                                     :relative-id fred-id
                                     :width 1.5
-                                    :must-show-labels :wide
+                                    :must-show-label :wide
                                     :excluded-element-ids [id3])
                              store)]
     ;; Test an item with two elements, neither with a label.
     (is (check
          dom
-         [:div {:class "with-elements item"}
-          [:component {:template ""
-                       :width 1.5
-                       :relative-id :content
-                       :item-id fred-id
-                       :render-dom render-content-only-DOM
-                       :get-action-data (pass-AD)}]
-          [:div {:class "vertical-stack"}
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header top-border bottom-border"}
-             [:component {:width 0.375
-                          :template '(anything :label)
-                          :relative-id [id1 :virtual-label]
-                          :parallel-ids [id1]
-                          :get-action-data [(comp-AD)
-                                            [(parallel-AD) (item-AD)]
-                                            (virt-AD)]
-                          :get-rendering-data (virt-RD)
-                          :render-dom (virt-DOM)
-                          :class "label"}]]
-            [:component {:width 1.03125
-                         :template 'anything
-                         :relative-id id1}]]
-           [:div {:class "horizontal-labels-element label wide"}
-            [:div {:class "label horizontal-header top-border bottom-border"}
-             [:component {:width 0.375
-                          :template '(anything :label)
-                          :relative-id [id2 :virtual-label]
-                          :parallel-ids [id2]
-                          :get-action-data [(comp-AD)
-                                            [(parallel-AD) (item-AD)]
-                                            (virt-AD)]
-                          :get-rendering-data (virt-RD)
-                          :render-dom (virt-DOM)
-                          :class "label"}]]
-            [:component {:width 1.03125
-                         :template 'anything
-                         :relative-id id2}]]]])))
+         [:div
+          {:class "horizontal-labels-element virtual-wrapper narrow item"}
+          [:component
+           {:width 1.5
+            :template '(anything :label)
+            :relative-id :virtual-label
+            :position :after
+            :class "label"
+            :render-dom (virt-DOM)
+            :get-rendering-data (virt-RD)
+            :get-action-data (virt-AD)}]
+          [:div {:class "with-elements"}
+           [:component {:template ""
+                        :width 1.5
+                        :relative-id :content
+                        :item-id fred-id
+                        :render-dom render-content-only-DOM
+                        :get-action-data (pass-AD)}]
+           [:div {:class "vertical-stack"}
+            [:div {:class "horizontal-labels-element label wide"}
+             [:div {:class "label horizontal-header top-border bottom-border"}
+              [:component {:width 0.375
+                           :template '(anything :label)
+                           :relative-id [id1 :virtual-label]
+                           :parallel-ids [id1]
+                           :get-action-data [(comp-AD)
+                                             [(parallel-AD) (item-AD)]
+                                             (virt-AD)]
+                           :get-rendering-data (virt-RD)
+                           :render-dom (virt-DOM)
+                           :class "label"}]]
+             [:component {:width 1.03125
+                          :template 'anything
+                          :relative-id id1}]]
+            [:div {:class "horizontal-labels-element label wide"}
+             [:div {:class "label horizontal-header top-border bottom-border"}
+              [:component {:width 0.375
+                           :template '(anything :label)
+                           :relative-id [id2 :virtual-label]
+                           :parallel-ids [id2]
+                           :get-action-data [(comp-AD)
+                                             [(parallel-AD) (item-AD)]
+                                             (virt-AD)]
+                           :get-rendering-data (virt-RD)
+                           :render-dom (virt-DOM)
+                           :class "label"}]]
+             [:component {:width 1.03125
+                          :template 'anything
+                          :relative-id id2}]]]]])))
   ;; Test an item with two elements, each with one distinct label.
   (let [[store fred-id] (add-entity (new-element-store) nil
                                     `("Fred"

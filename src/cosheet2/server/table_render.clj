@@ -116,15 +116,16 @@
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
-           :batch-edit-ids query-ids
-           :stack-selector-index (count query-ids))))
+           :batch-edit-ids (concat query-ids query-ids)
+           :stack-selector-index (count query-ids)
+           :must-show-label true)))
 
 (defmethod print-method
   cosheet2.server.table_render$get_table_condition_do_batch_edit_action_data
   [v ^java.io.Writer w]
   (.write w "table-cond-do-batch-AD"))
 
-;;; TODO: Why is this setting selected-index. The item in the header
+;;; TODO: Why is this setting selected-index? The item in the header
 ;;; should do that.
 (defn get-table-header-do-batch-edit-action-data
   [{:keys [item-id relative-id header-id descendant-ids competing-ids]}

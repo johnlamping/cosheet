@@ -304,34 +304,24 @@
         query-entity (description->entity query-id store)
         query-elements (ordered-entities (semantic-elements query-entity))
         [query-labels query-non-labels] (separate-by label? query-elements)
-        ;; TODO: If there are no labels, add a virtual one.
+        stack-entity (description->entity stack-selector-id store)
+        stack-elements (ordered-entities (semantic-elements stack-entity))
+        [stack-labels stack-non-labels] (separate-by label? stack-elements)
+        ;; TODO: If there are no labels, add a virtual one,
+        ;; if the stack entity says to.
         labels-dom (label-stack-DOM
-                    query-labels
+                    stack-labels
                     (assoc specification
                            :width 0.75
                            :get-action-data
                            get-batch-edit-stack-element-action-data))
-        
-        stack-elements (when stack-selector-id
-                         (->> (description->entity stack-selector-id store)
-                              semantic-elements
-                              (remove label?)
-                              ordered-entities))
-        stack-canonical (set (map entity->canonical-semantic stack-elements))
-        query-non-labels-to-show (remove #(stack-canonical
-                                          (entity->canonical-semantic %))
-                                         query-non-labels)
-        query-hierarchy (-> (hierarchy-by-labels query-non-labels-to-show)
-                            replace-hierarchy-leaves-by-nodes)
-        query-doms (map #(stack-selector-top-level-subtree-DOM % specification)
-                        query-hierarchy)
-        stack-hierarchy (-> (hierarchy-by-labels stack-elements)
+        stack-hierarchy (-> (hierarchy-by-labels stack-non-labels)
                             replace-hierarchy-leaves-by-nodes)
         stack-doms (map #(stack-selector-top-level-subtree-DOM % specification)
                         stack-hierarchy)]
     (into [:div {:class "horizontal-labeled-element-list batch-stack"}
            labels-dom]
-          (concat query-doms stack-doms))))
+          stack-doms)))
 
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-selector-id]} mutable-store]

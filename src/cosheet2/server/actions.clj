@@ -253,32 +253,40 @@
        (first (matching-elements query (description->entity id store)))))))
 
 (defn do-batch-edit
-  [store
-   {:keys [batch-edit-ids stack-selector-index selected-index selection-sequence
-           session-state]}]
+  [store {:keys [query-ids stack-ids
+                 selected-index selection-sequence must-show-label
+                 session-state]}]
   (let [temporary-id (:session-temporary-id session-state)
-        temporary-item (description->entity temporary-id store)
-        query-item (label->element temporary-item :batch-query)
-        stack-selector-item (label->element temporary-item
-                                            :batch-stack-selector)]
-    (if batch-edit-ids
-      (let [new-lists (map #(semantic-to-list (description->entity % store))
-                           batch-edit-ids)
-            store (-> store
-                      (remove-semantic-elements (:item-id query-item))
-                      (remove-semantic-elements (:item-id stack-selector-item)))
-            [new-ids [store _]]
-            (thread-map
-             (fn [n [store order]]
-               (let [[order remainder] (split order :after)
-                     subject-id (:item-id (if (< n stack-selector-index)
-                                            query-item
-                                            stack-selector-item))
-                     new-element (add-elements-to-entity-list
-                                  (nth new-lists n) [`(~order :order)])
-                     [store id] (add-entity store subject-id new-element)]
-                 [id [store remainder]]))
-             (range (count batch-edit-ids)) [store initial])
+        temporary-item (description->entity temporary-id store)]
+    (if query-ids
+      (let [[new-ids [store _]]
+            ;; For each of query-id and stack-id, replace the
+            ;; temporary item's elements with the new elements.
+            (reduce
+             ;; This function returns a list of new ids, plus a new
+             ;; [store order] pair.
+             (fn [[_ [store order]] [item-label ids]]
+               (let [item (label->element temporary-item item-label)
+                     new-lists (map #(semantic-to-list
+                                      (description->entity % store))
+                                    ids)
+                     store (remove-semantic-elements store (:item-id item))]
+                 (thread-map
+                  (fn [new-list [store order]]
+                    (let [[order remainder] (split order :after)
+                          subject-id (:item-id item)
+                          new-element (add-elements-to-entity-list
+                                       new-list [`(~order :order)])
+                          [store id] (add-entity store subject-id new-element)]
+                      [id [store remainder]]))
+                  new-lists
+                  [store order])))
+             [nil [store initial]]
+             [[:batch-query query-ids]
+              ;; By passing the stack ids last, the new ids
+              ;; corresponding to them will be what the reduce
+              ;; returns.
+              [:batch-stack stack-ids]])
             selected-id (when selected-index
                           (reduce (fn [id template-id]
                                     (matching-element-id id template-id store))
@@ -287,8 +295,11 @@
         {:store (update-equivalent-undo-point store true)
          :select selected-id
          :batch-editing true})
-      (when (or (seq (semantic-elements query-item))
-                (seq (semantic-elements stack-selector-item)))
+      ;; TODO: This can be confusing when the user has something selected that
+      ;; doesn't have batch editing information. Check for no selection before
+      ;; doing this.
+      (when (seq (semantic-elements
+                  (label->element temporary-item :batch-query)))
         ;; Reuse the last batch edit specification.
         {:store store
          :batch-editing true}))))

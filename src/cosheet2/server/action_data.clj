@@ -29,12 +29,23 @@
 ;;;                    :header-id}
 ;;;             :row  {:row-id
 ;;;                    :row-template}
-;;;          :select  {:tab-id  ; The tab this component belongs to.
-;;;                   }
+;;;          :select  {:tab-id  ; The tab this component belongs to.}
 ;;;                   For a virtual tab, the value is :virtual.
+;;; If the action is do-batch-edit, the previous items are not present.
+;;; The first two following ones will be present, and the later ones may be.
+;;;          :query-ids  ids whose list forms make up the query
+;;;          :stack-ids  ids whose list forms makes up the stack section of
+;;;                      changeable things.
+;;;    :must-show-label  If true, the stack ids must show a place for a label,
+;;;                      if they don't have one.
+;;;     :selected-index  If present, the index into stack-ids that includes
+;;;                      what should be selected.
+;;; :selection-sequence  A sequence of successively contained elements of
+;;;                      the selected id that terminates in the item
+;;;                      that should be selected.
+;;; The following is filled in by virtual DOM components, which need to add
+;;; elements to the store.
 ;;;           :store  A store that should replace the current immutable store
-;;;                   This is filled in by virtual DOM components, after
-;;;                   adding the elements they imply.
 
 ;;; This file contains the basic action data getters, plus utilities for them.
 ;;; Files with unique needs for action data getters define their own.
@@ -223,37 +234,24 @@
 ;;; while the action code does the translation into lists that are
 ;;; used to create the items.
 
-;;; The data is stored in the following keywords: 
-;;;          batch-edit-ids  The seq of ids that will contribute to the
-;;;                          list form the batch query and stack selector,
-;;;                          with the ids for the batch query first.
-;;;    stack-selector-index  The index into batch-edit-ids where the first
-;;;                          contribution to the stack selector starts.
-;;;                          if there is no stack selector, this points
-;;;                          past the end of the batch edit ids.
-;;;          selected-index  If present, the index into batch-edit-ids
-;;;                          that includes what should be selected.
-;;;      selection-sequence  A sequence of successively contained elements
-;;;                          of the selected id that terminates in the item
-;;;                          that should be selected.
-
 (defn batch-selected-id
   "Return the id, if any, that the do-batch-edit action data says
   should be selected. (Technically, the id that will give rise to a
   list whose content should be selected.)"
-  [{:keys [batch-edit-ids selected-index selection-sequence]}]
+  [{:keys [stack-ids selected-index selection-sequence]}]
   (cond (seq selection-sequence)
         (last selection-sequence)
         selected-index
-        (nth batch-edit-ids selected-index)))
+        (nth stack-ids selected-index)))
 
 (defn get-item-do-batch-edit-action-data
   "Find the dom's id or extend the selection sequence with it."
-  [{:keys [item-id relative-id]} containing-action-data action immutable-store]
-  (let [id (or item-id relative-id)
-        selected-id (batch-selected-id containing-action-data)]
-    (if (and id (:batch-edit-ids containing-action-data))
-      (let [subject (id->subject immutable-store id)]
+  [{:keys [item-id relative-id]}
+   containing-action-data action immutable-store]
+  (let [id (or item-id relative-id)]
+    (if (and id (:stack-ids containing-action-data))
+      (let [subject (id->subject immutable-store id)
+            selected-id (batch-selected-id containing-action-data)]
         (if selected-id
           (cond (= id selected-id)
                 ;; We are the content of an item, so no change needed.
@@ -261,16 +259,17 @@
                 (= subject selected-id)
                 (update containing-action-data :selection-sequence
                         #(concat % [id]))
-                true (assert false [id subject selected-id]))
-          (let [ids (:batch-edit-ids containing-action-data)
+                true
+                (assert false [id subject selected-id]))
+          (let [ids (:stack-ids containing-action-data)
                 index (.indexOf ids id)]
             (if (>= index 0)
               (assoc containing-action-data :selected-index index)
               (let [index (.indexOf ids subject)]
                 (assert (>= index 0) [id subject selected-id])
                 (assoc containing-action-data
-                       :selected-index index
-                       :selection-sequence [id]))))))
+                        :selected-index index
+                        :selection-sequence [id]))))))
       containing-action-data)))
 
 (defmethod print-method

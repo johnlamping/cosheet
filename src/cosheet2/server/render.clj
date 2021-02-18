@@ -343,8 +343,7 @@
   (let [immutable-store (current-value store)
         temporary-item (description->entity temporary-id immutable-store)
         query-item (label->element temporary-item :batch-query)
-        stack-selector-item (label->element temporary-item
-                                            :batch-stack-selector)]
+        stack-selector-item (label->element temporary-item :batch-stack)]
     (make-component {:relative-id :batch-edit
                      :query-id (:item-id query-item)
                      :stack-selector-id (:item-id stack-selector-item)

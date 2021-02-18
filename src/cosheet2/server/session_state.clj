@@ -161,9 +161,9 @@
   [immutable-store]
   (add-entity immutable-store nil
               '(:root-temporary
-                ;; These hold the queries that control batch edit mode.
+                ;; These hold the data that control batch edit mode.
                 (anything :batch-query)
-                (anything :batch-stack-selector)
+                (anything :batch-stack)
                 ;; Normally, the selection is stored as a keyword. By
                 ;; putting in a symbol, we are saying there is no
                 ;; current selection.

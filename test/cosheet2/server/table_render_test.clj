@@ -216,8 +216,8 @@
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
                 {:header-id header-id} {} nil store)
-               {:batch-edit-ids [rc1-id rc1-id]
-                :stack-selector-index 1
+               {:query-ids [rc1-id]
+                :stack-ids [rc1-id]
                 :must-show-label true}))
 
     ;; Check get-table-header-do-batch-edit-action-data
@@ -227,36 +227,36 @@
                  :descendant-ids [c1-id c2-id c3-id]
                  :competing-ids [c4-id]}
                 {} nil store)
-              {:batch-edit-ids [rc1-id c1-id c2-id c3-id]
-               :stack-selector-index 1
-               :selected-index 2}))
+               {:query-ids [rc1-id]
+                :stack-ids [c1-id c2-id c3-id]
+                :selected-index 1}))
     (is (check (get-table-header-do-batch-edit-action-data
                 {:header-id header-id
                  :item-id c2-id
                  :descendant-ids [c2-id]
                  :competing-ids [c4-id]}
                 {} nil store)
-              {:batch-edit-ids [rc1-id c4-id c2-id]
-               :stack-selector-index 1
-               :selected-index 2}))
+               {:query-ids [rc1-id]
+                :stack-ids [c4-id c2-id]
+                :selected-index 1}))
 
     ;; Check get-table-cell-do-batch-edit-action-data
     (is (check (get-table-cell-do-batch-edit-action-data
                     {:header-id header-id
                      :competing-ids [c4-id]}
                     {} nil store)
-               {:batch-edit-ids [rc1-id c4-id]
-                :stack-selector-index 1}))
+               {:query-ids [rc1-id]
+                :stack-ids [c4-id]}))
 
     ;; Check get-table-cell-item-do-batch-edit-action-data
     (is (check (get-table-cell-item-do-batch-edit-action-data
                 {:item-id joe-joe-id}
-                {:batch-edit-ids [rc1-id c4-id]
-                 :stack-selector-index 1}
+                {:query-ids [rc1-id]
+                 :stack-ids [c4-id]}
                 nil store)
-               {:batch-edit-ids [rc1-id c4-id joe-joe-id]
-                :stack-selector-index 1
-                :selected-index 2}))
+               {:query-ids [rc1-id]
+                :stack-ids [c4-id joe-joe-id]
+                :selected-index 1}))
 
     ;; Check the top level condition
     (is (check

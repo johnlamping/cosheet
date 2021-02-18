@@ -116,8 +116,8 @@
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
-           :batch-edit-ids (concat query-ids query-ids)
-           :stack-selector-index (count query-ids)
+           :query-ids query-ids
+           :stack-ids query-ids
            :must-show-label true)))
 
 (defmethod print-method
@@ -134,14 +134,13 @@
         header-entity (description->entity header-id immutable-store)
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)
-        stack-selector-ids (concat (when (= (count descendant-ids) 1)
+        stack-ids (concat (when (= (count descendant-ids) 1)
                                      competing-ids)
-                                   descendant-ids)
-        ids (concat query-ids stack-selector-ids)]
+                                   descendant-ids)]
     (assoc containing-action-data
-           :batch-edit-ids ids
-           :stack-selector-index (count query-ids)
-           :selected-index (let [index (.indexOf ids id)]
+           :query-ids query-ids
+           :stack-ids stack-ids
+           :selected-index (let [index (.indexOf stack-ids id)]
                              (when (>= index 0) index)))))
 
 (defmethod print-method
@@ -158,8 +157,8 @@
         condition-elements (table-condition-elements header-entity)
         query-ids (map :item-id condition-elements)]
     (assoc containing-action-data
-           :batch-edit-ids (concat query-ids competing-ids)
-           :stack-selector-index (count query-ids))))
+           :query-ids query-ids
+           :stack-ids competing-ids)))
 
 (defmethod print-method
   cosheet2.server.table_render$get_table_cell_do_batch_edit_action_data
@@ -168,15 +167,15 @@
 
 (defn get-table-cell-item-do-batch-edit-action-data
   [{:keys [item-id relative-id] :as specification}
-   {:keys [batch-edit-ids stack-selector-index] :as containing-action-data}
+   {:keys [stack-ids] :as containing-action-data}
     action immutable-store]
-  (let [id (or item-id relative-id)
-        num-ids (count batch-edit-ids)]
+  (let [id (or item-id relative-id)]
     (assert id specification)
-    (assert batch-edit-ids containing-action-data)
+    (assert (contains? containing-action-data :stack-ids)
+            containing-action-data)
     (assoc containing-action-data
-           :batch-edit-ids (concat batch-edit-ids [id])
-           :selected-index num-ids)))
+           :stack-ids (concat stack-ids [id])
+           :selected-index (count stack-ids))))
 
 (defmethod print-method
   cosheet2.server.table_render$get_table_cell_item_do_batch_edit_action_data

@@ -227,7 +227,7 @@
 ;;; The primary information they produce is a list of ids whose list
 ;;; forms contain everything the query and stack selectors will
 ;;; contain, and in the right order. The batch-edit action will take
-;;; this information and create the query and stack-selector items.
+;;; this information and create the query and stack items.
 
 ;;; By breaking down the work this way, the action-data code can work
 ;;; in terms of ids, and can also describe sub-regions to select,

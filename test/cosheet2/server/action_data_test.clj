@@ -190,38 +190,55 @@
 (deftest get-item-do-batch-edit-action-data-test
   (is (check (get-item-do-batch-edit-action-data
               {:item-id (:item-id joe-id)}
-              {:batch-edit-ids [jane-id]} nil store)
-             {:batch-edit-ids [jane-id]}))
+              {:query-ids []
+               :stack-ids [jane-id]}
+              nil store)
+             {:query-ids []
+              :stack-ids [jane-id]}))
   (is (check (get-item-do-batch-edit-action-data
               {:item-id joe-id}
-              {:batch-edit-ids [jane-id joe-id]} nil store)
-             {:batch-edit-ids [jane-id joe-id]
-              :selected-index 1}))
+              {:query-ids [jane-id]
+               :stack-ids [joe-id]}
+              nil store)
+             {:query-ids [jane-id]
+              :stack-ids [joe-id]
+              :selected-index 0}))
   (is (check (get-item-do-batch-edit-action-data
               {:item-id joe-id}
-              {:batch-edit-ids [jane-id joe-id]
-               :selected-index 1} nil store)
-             {:batch-edit-ids [jane-id joe-id]
+              {:query-ids []
+               :stack-ids [jane-id joe-id]}
+              nil store)
+             {:query-ids []
+              :stack-ids [jane-id joe-id]
               :selected-index 1}))
   (is (check (get-item-do-batch-edit-action-data
               {:item-id (:item-id joe-age)}
-              {:batch-edit-ids [jane-id joe-id]} nil store)
-             {:batch-edit-ids [jane-id joe-id]
+              {:query-ids []
+               :stack-ids [jane-id joe-id]}
+              nil store)
+             {:query-ids []
+              :stack-ids [jane-id joe-id]
               :selected-index 1
               :selection-sequence [(:item-id joe-age)]}))
   (is (check (get-item-do-batch-edit-action-data
               {:item-id (:item-id joe-age)}
-              {:batch-edit-ids [jane-id joe-id]
-               :selected-index 1} nil store)
-             {:batch-edit-ids [jane-id joe-id]
+              {:query-ids []
+               :stack-ids [jane-id joe-id]
+               :selected-index 1}
+              nil store)
+             {:query-ids []
+              :stack-ids [jane-id joe-id]
               :selected-index 1
               :selection-sequence [(:item-id joe-age)]}))
   (is (check (get-item-do-batch-edit-action-data
               {:relative-id (:item-id joe-age-tag)}
-              {:batch-edit-ids [jane-id joe-id]
+              {:query-ids []
+               :stack-ids [jane-id joe-id]
                :selected-index 1
-               :selection-sequence [(:item-id joe-age)]} nil store)
-             {:batch-edit-ids [jane-id joe-id]
+               :selection-sequence [(:item-id joe-age)]}
+              nil store)
+             {:query-ids []
+              :stack-ids [jane-id joe-id]
               :selected-index 1
               :selection-sequence [(:item-id joe-age)
                                    (:item-id joe-age-tag)]})))
@@ -243,38 +260,40 @@
             {:value 4}))
          {:value 4})))
 
-(deftest multiple-items-get-action-data-test
-  (is (= (multiple-items-get-action-data
+(deftest parallel-items-get-action-data-test
+  (is (= (parallel-items-get-action-data
           {:parallel-ids [joe-id]}
           {} nil store get-item-or-exemplar-action-data)
          {:target-ids [joe-id]}))
-  (is (= (multiple-items-get-action-data
+  (is (= (parallel-items-get-action-data
           {:parallel-ids [(:item-id joe-age)]}
           {:target-ids [joe-id]} nil store 
           get-item-or-exemplar-action-data)
          {:target-ids [(:item-id joe-age)]}))
-  (is (check (multiple-items-get-action-data
+  (is (check (parallel-items-get-action-data
               {:parallel-ids  [(:item-id jane-age)]}
               {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data) 
              {:target-ids [(:item-id joe-age) (:item-id jane-age)]}))
-  (is (check (multiple-items-get-action-data
+  (is (check (parallel-items-get-action-data
               {:parallel-ids [(:item-id jane-age) (:item-id joe-male)]}
               {:target-ids [joe-id jane-id]} nil store
               get-item-or-exemplar-action-data)
              {:target-ids [(:item-id joe-age) (:item-id jane-age)
                            (:item-id joe-male)]})))
 
-(deftest multiple-items-get-do-batch-edit-action-data-test
-  (is (check (multiple-items-get-do-batch-edit-action-data
+(deftest parallel-items-get-do-batch-edit-action-data-test
+  (is (check (parallel-items-get-do-batch-edit-action-data
               {:item-id (:item-id joe-age)
                :parallel-ids [(:item-id joe-age-tag)]}
-              {:batch-edit-ids [jane-id joe-id]
-               :selected-index 1
+              {:query-ids [jane-id]
+               :stack-ids [joe-id]
+               :selected-index 0
                :selection-sequence [(:item-id joe-age)]}
               nil store get-item-do-batch-edit-action-data)
-             {:batch-edit-ids [jane-id joe-id]
-              :selected-index 1
+             {:query-ids [jane-id]
+              :stack-ids [joe-id]
+              :selected-index 0
               :selection-sequence [(:item-id joe-age)
                                    (:item-id joe-age-tag)]})))
 

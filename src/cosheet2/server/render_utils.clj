@@ -57,7 +57,7 @@
   ;; because the label needs to use them as part of its action data
   ;; function.
   (assoc (select-keys specification [:width :immutable
-                                     :query-id :stack-selector-id
+                                     :query-id :stack-id
                                      :excluding-ids :get-action-data
                                      :get-do-batch-edit-action-data])
          :template '(anything :label)))

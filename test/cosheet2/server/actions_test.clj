@@ -240,15 +240,14 @@
 (deftest do-batch-edit-test
   (let [updated (do-batch-edit
                  store
-                 {:batch-edit-ids [joe-id jane-id]
-                  :stack-selector-index 1
-                  :selected-index 1
+                 {:query-ids [joe-id]
+                  :stack-ids [jane-id]
+                  :selected-index 0
                   :selection-sequence [(:item-id jane-age)]
                   :session-state session-state})
         session-temporary (description->entity temporary-id (:store updated))
         query-item (first (label->elements session-temporary :batch-query))
-        stack-selector-item (first (label->elements session-temporary
-                                                    :batch-stack-selector))]
+        stack-item (first (label->elements session-temporary :batch-stack))]
     (is (check (canonicalize-list (semantic-to-list query-item))
                (canonicalize-list '(anything ("Joe"
                                               "male"
@@ -256,7 +255,7 @@
                                               (39 ("age" :label)
                                                   ("doubtful" "confidence"))
                                               (45 ("age" :label)))))))
-    (is (check (canonicalize-list (semantic-to-list stack-selector-item))
+    (is (check (canonicalize-list (semantic-to-list stack-item))
                (canonicalize-list '(anything ("Jane"
                                               (45 ("age" :label))
                                               "female")))))
@@ -264,20 +263,18 @@
            (:item-id (first 
                       (matching-elements
                        45 (first (matching-elements
-                                  "Jane" stack-selector-item)))))))
+                                  "Jane" stack-item)))))))
     ;; Now try an update to the new store, with no stack selector.
     (let [reupdated (do-batch-edit
                      (:store updated)
-                     {:batch-edit-ids [jane-id joe-id]
-                      :stack-selector-index 2
-                      :selected-index 1
+                     {:query-ids [jane-id joe-id]
+                      :stack-ids []
                       :session-state session-state})
           session-temporary (description->entity temporary-id
                                                  (:store reupdated))
           query-item (label->element session-temporary :batch-query)
-          stack-selector-item (label->element
-                               session-temporary :batch-stack-selector)]
-      (is (check (semantic-to-list stack-selector-item)
+          stack-item (label->element session-temporary :batch-stack)]
+      (is (check (semantic-to-list stack-item)
                  'anything))
       (is (check (canonicalize-list (semantic-to-list query-item))
                (canonicalize-list '(anything ("Joe"
@@ -293,9 +290,6 @@
                       (first (matching-elements "Jane" query-item)) :order)
                     (label->content
                       (first (matching-elements "Joe" query-item)) :order)))
-      (is (= (:select reupdated)
-             (:item-id (first (matching-elements
-                               "Joe" query-item)))))
       ;; Now try with no batch edit information in the target
       (let [rereupdated (do-batch-edit
                         (:store reupdated)

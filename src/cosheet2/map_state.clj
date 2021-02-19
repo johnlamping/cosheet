@@ -33,7 +33,8 @@
    (fn [data] (let [[new-val result] (fun (key (:value data)))]
                 [(assoc-in data [:value key] new-val)
                  [key]
-                 [key] result]))))
+                 [key]
+                 result]))))
 
 (defn map-state-reset! [map-state map]
   (change-value! map-state

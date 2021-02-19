@@ -5,6 +5,7 @@
     [utils :refer [parse-string-as-number thread-map add-elements-to-entity-list
                    swap-control-return! equivalent-atoms?]]
     [map-state :refer [map-state-get-current map-state-reset!
+                       map-state-change-value!
                        map-state-change-value-control-return!]]
     [store :refer [update-content
                    equivalent-undo-point? update-equivalent-undo-point
@@ -480,21 +481,37 @@
   to the client."
   [mutable-store session-state action-sequence]
   (try
-    (reduce (fn [client-info action]
-              (let [for-client
-                    (do-action mutable-store session-state action)]
-                (println "Equivalent undo:"
-                         (equivalent-undo-point? (current-store mutable-store)))
-                (println "for client " (simplify-for-print for-client))
-                (into (cond-> client-info
-                        (or (:select for-client)
-                            (:select-store-ids for-client))
-                        ;; Get rid of obsolete selection information.
-                        (dissoc :select :select-store-ids :if-selected))
-                      (select-keys for-client
-                                   [:select :select-store-ids :if-selected
-                                    :open :set-url]))))
-            {} action-sequence)
+    (let [client-info
+          (reduce (fn [client-info action]
+                    (let [for-client
+                          (do-action mutable-store session-state action)]
+                      (println "Equivalent undo:"
+                               (equivalent-undo-point?
+                                (current-store mutable-store)))
+                      (println "for client " (simplify-for-print for-client))
+                      (into (cond-> client-info
+                              (or (:select for-client)
+                                  (:select-store-ids for-client))
+                              ;; Get rid of obsolete selection information.
+                              (dissoc :select :select-store-ids :if-selected))
+                            (select-keys for-client
+                                         [:select :select-store-ids :if-selected
+                                          :open :set-url]))))
+                  {} action-sequence)]
+      (let [{:keys [client-state]} session-state
+            root-id (map-state-get-current client-state :root-id)]
+        ;; If the root id has become invalid, set our copy to nil, and
+        ;; tell the client to set its url back to no root
+        ;; id. Otherwise, if creating a new tab is undone, the client
+        ;; url will still have its old id, and when some new item gets
+        ;; that id, we will try to focus on it.
+        (if (and root-id
+                 (not (:set-url client-info))
+                 (not (id-valid? (current-store mutable-store) root-id)))
+          (do
+            (map-state-change-value! client-state :root-id (constantly nil))
+            (assoc client-info :set-url (str (:url-path session-state) "?")))
+          client-info)))
     (catch Exception e
       (queue-to-log [:error (str e)] (:url-path session-state))
       (println "Error" (str e))

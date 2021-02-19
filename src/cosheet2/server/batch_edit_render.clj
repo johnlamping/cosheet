@@ -278,7 +278,7 @@
   (let [competition (hierarchy-node-non-immediate-descendant-cover node)]
     (assoc specification
            :top-level false
-           :excluding-ids (map :item-id competition))))
+           :excluding-ids (map #(:item-id (:item %)) competition))))
 
 (defn stack-top-level-subtree-DOM
   "Generate the dom for a top level subtree of a table header hierarchy.

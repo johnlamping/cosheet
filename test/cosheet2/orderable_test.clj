@@ -27,6 +27,11 @@
   (is (= (earlier? (->Orderable [1 2 4] 6) (->Orderable [1 2 1] 3)) false))
   (is (= (earlier? (->Orderable [1 3 0] 0) (->Orderable [1 2 1] 3)) false)))
 
+(deftest orderable-compare-test
+  (is (= (orderable-compare (->Orderable 1 3) (->Orderable 4 6)) -1))
+  (is (= (orderable-compare (->Orderable 4 6) (->Orderable 1 3)) 1))
+  (is (= (orderable-compare (->Orderable 1 3) (->Orderable 1 3)) 0)))
+
 (deftest split-test
   (is (= (split (->Orderable 1 10)) [(->Orderable 1 5) (->Orderable 6 10)]))
   (is (= (split (->Orderable 1 11)) [(->Orderable 1 6) (->Orderable 7 11)]))

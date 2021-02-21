@@ -54,6 +54,13 @@
         (< a-left (first b-left))
         (< a-left b-left)))))
 
+(defn orderable-compare
+  "Compare two orderables consistently with java.util.Comparator"
+  [a b]
+  (cond (earlier? a b) -1
+        (earlier? b a) 1
+        true 0))
+
 (declare split)
 
 (defn- get-midpoint

@@ -378,7 +378,7 @@
    position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger]
+  [{:keys [template sibling position use-bigger] ; adjacent-query also used.
     :as specification}
    containing-action-data action immutable-store]
   (assert template template)

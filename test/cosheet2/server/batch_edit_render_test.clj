@@ -63,6 +63,9 @@
 (defn comp-AD [] composed-get-action-data)
 (defn parallel-AD [] parallel-items-get-action-data)
 
+(defn batch-virtual-element-AD []
+  get-batch-edit-stack-virtual-element-subject-action-data)
+
 (def t0 (add-entity (new-element-store) nil
                     (add-order-elements
                      '(:x ("s1" :label)
@@ -302,4 +305,26 @@
                        :get-action-data get-batch-edit-stack-element-action-data
                        :relative-id (:item-id stk1-element)
                        :class "batch-stack label leaf"
-                       :width 0.75}]]))))
+                       :width 0.75}]
+          [:div {:class "vertical-labels-element label"}
+           [:component {:relative-id :stack-virtual-label
+                        :query-id q1
+                        :stack-id stk1 :class "label"
+                        :get-rendering-data (virt-RD)
+                        :render-dom (virt-DOM)
+                        :get-action-data [(comp-AD)
+                                          (batch-virtual-element-AD) 
+                                          (virt-AD)]
+                        :template ['anything '(anything :label)]
+                        :position :after
+                        :do-not-match-query true}]
+           [:component {:relative-id :stack-virtual
+                        :query-id q1
+                        :stack-id stk1
+                        :get-rendering-data (virt-RD)
+                        :render-dom (virt-DOM)
+                        :get-action-data [(comp-AD)
+                                          (batch-virtual-element-AD) 
+                                          (virt-AD)]
+                        :template '(anything (anything :label))
+                        :do-not-match-query true}]]]))))

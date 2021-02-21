@@ -63,23 +63,9 @@
                    :get-rendering-data get-batch-count-rendering-data
                    :get-action-data get-pass-through-action-data}))
 
-(defn get-batch-edit-query-matches-action-data
-  "Find everything that matches the query, and put it in :target-ids."
-  [{:keys [query-id]} containing-action-data action store]
-  (let [query-entity (description->entity query-id store)
-        query (pattern-to-query (semantic-to-list query-entity))
-        top-level-entities (matching-items
-                            (add-elements-to-entity-list query [:top-level])
-                            store)
-        header-entities (matching-items
-                         (add-elements-to-entity-list query [:row-condition])
-                         store)]
-    (assoc containing-action-data :target-ids
-           (concat [query-id]
-                   (map :item-id
-                        (concat top-level-entities header-entities))))))
+(comment
 
-(defn get-matches
+  (defn get-matches
   "Return the maches for the entity, for each query, each set of
   matches ordered from least complex."
   [entity queries]
@@ -87,7 +73,7 @@
                      (sort-by item-complexity matches)))
        queries))
 
-(defn get-consistent-exemplar
+  (defn get-consistent-exemplar
   "Given a seq of matches for each of several positions, choose a
   match for each position such that there are no overlaps, and
   preferring earlier matches. Return the match at the given position."
@@ -95,7 +81,7 @@
   (let [combinations (disjoint-combinations matches)]
     (nth (first combinations) position)))
 
-(defn select-elements-from-entities
+  (defn select-elements-from-entities
   "Take a seq of items, a seq of element queries, and a position in
   that seq. For each item, find a consistent match, if possible, for all the
   queries. For each successful item, return the match for
@@ -105,8 +91,8 @@
           (let [matches (get-matches item queries)]
             (get-consistent-exemplar matches position)))
         items))
-
-(defn select-elements-from-split-entities
+  
+  (defn select-elements-from-split-entities
   "Take a seq of items, a seq of element queries, and a position in
   that seq. For each item, find a consistent match, if possible, for
   all the queries, conjoined with the split condition. For each
@@ -124,7 +110,21 @@
                     [(map first separates) (map second separates)])))
    items))
 
-(comment
+  (defn get-batch-edit-query-matches-action-data
+  "Find everything that matches the query, and put it in :target-ids."
+  [{:keys [query-id]} containing-action-data action store]
+  (let [query-entity (description->entity query-id store)
+        query (pattern-to-query (semantic-to-list query-entity))
+        top-level-entities (matching-items
+                            (add-elements-to-entity-list query [:top-level])
+                            store)
+        header-entities (matching-items
+                         (add-elements-to-entity-list query [:row-condition])
+                         store)]
+    (assoc containing-action-data :target-ids
+           (concat [query-id]
+                   (map :item-id
+                        (concat top-level-entities header-entities))))))
 
   (defn get-batch-edit-query-element-action-data
     "Return the item itself, plus one exemplar element for each affected
@@ -212,20 +212,29 @@
     :query-id query-id
     :stack-id stack-id
     :item-id query-id
-    :render-dom render-batch-query-DOM
-    ;; This component, itself, can't be interacted with. But we have
-    ;; to set the action data to everything selected, so that virtual
-    ;; items under here will have the right incoming action-data.
-    ;; TODO: Make sure that it is, in fact, not possible to interact
-    ;;       with this component.
-    :get-action-data get-batch-edit-query-matches-action-data}))
+    :render-dom render-batch-query-DOM}))
 
-(defn get-batch-edit-stack-element-action-data
-  [{:keys [item-id relative-id excluding-ids query-id stack-id]}
-   containing-action-data action store]
+;;; TODO: This has to not return any queries, both for the batch edit,
+;;; and for tables.
+(defn batch-edit-matching-rows
+  [{:keys [query-id stack-id do-not-match-query]} store]
   (let [query-entity (description->entity query-id store)
         stack-entity (description->entity stack-id store)
-        query (pattern-to-query (semantic-to-list query-entity))
+        query (pattern-to-query (semantic-to-list query-entity)) ]
+    (distinct
+     (concat
+      (when (not do-not-match-query) [query-entity])
+      [stack-entity] 
+      (matching-items (add-elements-to-entity-list query [:top-level])
+                      store)
+      (matching-items (add-elements-to-entity-list query [:row-condition])
+                      store)))))
+
+(defn get-batch-edit-stack-element-action-data
+  [{:keys [item-id relative-id excluding-ids stack-id]
+    :as specification} ; Also uses query-id, do-not-match-query.
+   containing-action-data action store]
+  (let [stack-entity (description->entity stack-id store)
         selecting-query (-> (or item-id relative-id)
                             (description->entity store)
                             semantic-to-list
@@ -235,15 +244,7 @@
                                     semantic-to-list
                                     pattern-to-query)
                                excluding-ids)
-        to-search (distinct
-                   (concat
-                    [query-entity stack-entity]
-                    (matching-items
-                     (add-elements-to-entity-list query [:top-level])
-                     store)
-                    (matching-items
-                     (add-elements-to-entity-list query [:row-condition])
-                     store)))
+        to-search (batch-edit-matching-rows specification store)
         matches (mapcat (fn [entity]
                           ;; TODO: This is inefficient. Instead, use
                           ;; extended-by? to filter the matching
@@ -253,6 +254,11 @@
                            (set (mapcat #(matching-elements % entity)
                                         excluding-queries))))
                         to-search)]
+    (assoc containing-action-data :target-ids (map :item-id matches))))
+
+(defn get-batch-edit-stack-virtual-element-subject-action-data
+  [specification containing-action-data action store]
+  (let [matches (batch-edit-matching-rows specification store)]
     (assoc containing-action-data :target-ids (map :item-id matches))))
 
 (defn stack-subtree-DOM
@@ -288,6 +294,28 @@
    node stack-subtree-DOM stack-child-info
    (assoc specification :top-level true)))
 
+;;; TODO: This should use the template of the last non-virtual stack
+;;; entry as the adjacent-template for the virtuals.
+(defn stack-virtual-DOM
+    "Return the DOM for a virtual element in the stack section."
+    [specification]
+    (let [dom (virtual-DOM-component
+               (assoc specification
+                      :relative-id :stack-virtual
+                      :template '(anything (anything :label))
+                      :get-action-data
+                      get-batch-edit-stack-virtual-element-subject-action-data
+                      :do-not-match-query true))
+          label-dom (virtual-label-DOM-component
+                     (assoc
+                      specification
+                      :template ['anything '(anything :label)]
+                      :relative-id :stack-virtual-label
+                      :get-action-data
+                      get-batch-edit-stack-virtual-element-subject-action-data
+                      :do-not-match-query true))]
+      (add-labels-DOM label-dom dom :vertical)))
+
 (defn stack-DOM
   "Generate DOM for a horizontal layout of the stack selector,
    with their labels shown in a hierarchy above them. For these, we
@@ -321,7 +349,7 @@
                         stack-hierarchy)]
     (into [:div {:class "horizontal-labeled-element-list batch-stack"}
            labels-dom]
-          stack-doms)))
+          (concat stack-doms [(stack-virtual-DOM specification)]))))
 
 (defn get-batch-edit-rendering-data
   [{:keys [query-id stack-id]} mutable-store]

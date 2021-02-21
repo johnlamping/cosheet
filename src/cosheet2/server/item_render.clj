@@ -50,12 +50,16 @@
       :vertical :horizontal))
 
 (defn ensure-label
-  "Give the list form of an entity :label keyword if it doesn't
+  "Give the list form of an entity, add a :label keyword if it doesn't
    already have one."
-  [entity]
-  (if (has-keyword? entity :label)
-    entity
-    (add-elements-to-entity-list entity [:label])))
+  [template]
+  (cond
+    ;; The template for a virtual entity can be a vector. The last
+    ;; element is the one that must be a label.
+    (vector? template) (vec (concat (butlast template)
+                                    [(ensure-label (last template))]))
+    (has-keyword? template :label) template
+    true (add-elements-to-entity-list template [:label])))
 
 (defn get-item-rendering-data
   "Return the rendering data for a dom that presents an item.

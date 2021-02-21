@@ -9,6 +9,7 @@
                               description->entity in-different-store]]
                       [canonical :refer [canonicalize-list
                                          update-canonical-content]]
+                      [orderable :refer [initial orderable-compare]]
                       [store-utils :refer [add-entity]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]
@@ -337,37 +338,67 @@
   [v ^java.io.Writer w]
   (.write w "empty-AD"))
 
+(defn find-virtual-adjacents
+  "Return the ids of items the virtual item should be created next
+  to. We assume that that adjacent items were not explicitly
+  specified."
+  [subjects {:keys [adjacent-query position]} immutable-store]
+  (if (not adjacent-query)
+    subjects
+    (map
+     (fn [subject]
+       (let [subject-entity (description->entity subject immutable-store)
+             adjacent-elements (matching-elements
+                                adjacent-query subject-entity)
+             sorted (sort-by
+                     (fn [element]
+                       (let [order (first (label->elements element :order))]
+                         (if order (content order) initial)))
+                     orderable-compare
+                     adjacent-elements)
+             picked ((if (= position :before) first last)
+                     sorted)]
+         (if picked (:item-id picked) subject)))
+     subjects)))
+
 (defn get-virtual-action-data
   "Create the specified virtual items.
    The new items are instances of the template. The template may be a
-   vectdor, in which case the first element of the vector is created
+   vector, in which case the first element of the vector is created
    first, then the second item as an element of that, the third as an
    element of that, etc. With the id of the final item being the final
    target.
    The containing data's target-ids are the subject of the new items,
    unless sibling is true in which case they are the siblings.
-   The new items are ordered after the containing target, unless position
-   is :before, in which case they are ordered before.
+   If sibling is true, the new items will be adjacent to the
+   siblings. If not, they will be adjacent to elements of the target
+   that match adjacent-query, if there are any, otherwise, they will
+   get their order from the subject.
+   The new items are ordered after what they are adjacent to, unless
+   position is :before, in which case they are ordered before.
    the new items use the smaller part of the order split, unless use-bigger
    is true, in which case they use the larger."
-  [{:keys [template sibling position use-bigger]}
+  [{:keys [template sibling position use-bigger]
+    :as specification}
    containing-action-data action immutable-store]
   (assert template template)
   (let [incoming-ids (:target-ids containing-action-data)
         subjects (if sibling
                   (map #(id->subject immutable-store %) incoming-ids)
                   incoming-ids)
-        adjacents (when sibling incoming-ids)
-        [ids _ store] (reduce (fn [[subjects adjacents store] template]
-                                (let [[ids store]
-                                      (create-possible-selector-elements
-                                       template subjects (or adjacents subjects)
-                                       (or position :after)
-                                       use-bigger
-                                       store)]
-                                  [ids nil store]))
-                              [subjects adjacents immutable-store]
-                              (if (vector? template) template [template]))]
+        adjacents (if sibling
+                    incoming-ids
+                    (find-virtual-adjacents
+                     subjects specification immutable-store))
+        [ids _ store] (reduce
+                       (fn [[subjects adjacents store] template]
+                         (let [[ids store]
+                               (create-possible-selector-elements
+                                template subjects adjacents
+                                (or position :after) use-bigger store)]
+                           [ids ids store]))
+                       [subjects adjacents immutable-store]
+                       (if (vector? template) template [template]))]
     (assoc containing-action-data :target-ids ids :store store)))
 
 (defmethod print-method

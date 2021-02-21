@@ -3,7 +3,8 @@
             [clojure.data :refer [diff]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [orderable :as orderable]
-                      [entity :as entity  :refer [description->entity to-list]]
+                      [entity :as entity  :refer [description->entity
+                                                  elements to-list]]
                       [store :refer [new-element-store ImmutableStore
                                      id->subject id->content
                                      id-label->element-ids]] 
@@ -13,8 +14,10 @@
                       [debug :refer [simplify-for-print]]
                       [test-utils :refer [check any as-set]])
             (cosheet2.server [action-data :refer :all]
-                             [order-utils :refer [add-order-elements]]
-                             [model-utils :refer [semantic-to-list]])
+                             [order-utils :refer [add-order-elements
+                                                  ordered-entities]]
+                             [model-utils :refer [semantic-to-list
+                                                  semantic-elements]])
             ; :reload
             ))
 
@@ -185,7 +188,33 @@
       (is (< (:right (get-order id store))
              (:right (get-order (:item-id joe-age) original-store))))
       (is (check (semantic-to-list (description->entity id store))
-                 "")))))
+                 ""))))
+  ;; Try an adjacent query.
+  (let [data (get-virtual-action-data
+              {:template '(anything 2)
+               :adjacent-query '(nil "age")
+               :position :before}
+              {:target-ids [jane-id joe-id]} nil store)]
+    (is (check data {:target-ids [(any) (any)]
+                     :store (any #(satisfies? ImmutableStore %))}))
+    (let [original-store store
+          {:keys [target-ids store]} data
+          [new-jane-id new-joe-id] target-ids]
+      (is (= (id->subject store new-joe-id) joe-id))
+      (is (check (semantic-to-list (description->entity new-joe-id store))
+                 '("" 2)))
+      (is (check (map semantic-to-list
+                      (ordered-entities
+                       (semantic-elements
+                        (description->entity joe-id store))))
+                 '("male" "married"
+                   ("" 2) (39 "age" ("doubtful" "confidence")) (45 "age"))))
+      (is (= (id->subject store new-jane-id) jane-id))
+      (is (check (map semantic-to-list
+                      (ordered-entities
+                       (semantic-elements
+                        (description->entity jane-id store))))
+                 '("female" (anything 2) (45 "age")))))))
 
 (deftest get-item-do-batch-edit-action-data-test
   (is (check (get-item-do-batch-edit-action-data

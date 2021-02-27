@@ -260,11 +260,11 @@
                (canonicalize-list '(anything ("Jane"
                                               (45 ("age" :label))
                                               "female")))))
-    (is (= (:select updated)
-           (:item-id (first 
-                      (matching-elements
-                       45 (first (matching-elements
-                                  "Jane" stack-item)))))))
+    (is (= (:select-store-ids updated)
+           [(:item-id (first 
+                        (matching-elements
+                         45 (first (matching-elements
+                                    "Jane" stack-item)))))]))
     ;; Now try an update to the new store, with no stack selector.
     (let [reupdated (do-batch-edit
                      (:store updated)

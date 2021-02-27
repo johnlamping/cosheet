@@ -294,7 +294,7 @@
                                   (nth new-ids selected-index)
                                   selection-sequence))]
         {:store (update-equivalent-undo-point store true)
-         :select selected-id
+         :select-store-ids [selected-id]
          :batch-editing true})
       ;; TODO: This can be confusing when the user has something selected that
       ;; doesn't have batch editing information. Check for no selection before

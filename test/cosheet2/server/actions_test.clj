@@ -126,14 +126,14 @@
     (is (= (id->content (:store result) (:item-id jane-age))
            'anything)))
   ;; Test that setting a column to 'anything does nothing.
-  (let [[store column1-id] (add-entity
+  (let [[store columns-id] (add-entity
                             store nil
-                            `(~'anything
-                              ("name" :label (~o1 :order :non-semantic))
-                              (~o1 :order :non-semantic)
-                              (:column :non-semantic)
-                              (:selector :non-semantic)))
-        column1 (description->entity column1-id store)
+                            `(~'anything :column-headers :selector
+                              (~'anything
+                               ("name" :label (~o1 :order :non-semantic))
+                               (~o1 :order :non-semantic))))
+        columns (description->entity columns-id store)
+        column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         result (do-set-content store
                                   {:target-ids [(:item-id name-header)]
@@ -223,13 +223,14 @@
     (is (check (entity->canonical-semantic new-jane)
                (canonicalize-list '("Jane" "female")))))
   ;; Test that deleting the only element of a column does nothing.
-  (let [[store column1-id] (add-entity
+  (let [[store columns-id] (add-entity
                             store nil
-                            `(~'anything
-                              ("name" :label (~o1 :order :non-semantic))
-                              (~o1 :order :non-semantic)
-                              (:column :non-semantic)))
-        column1 (description->entity column1-id store)
+                            `(~'anything :column-headers :selector
+                              (~'anything
+                               ("name" :label (~o1 :order :non-semantic))
+                               (~o1 :order :non-semantic))))
+        columns (description->entity columns-id store)
+        column1 (first (matching-elements '(anything "name") columns))
         name-header (first (matching-elements "name" column1))
         new-store (do-delete store
                              {:target-ids [joe-id

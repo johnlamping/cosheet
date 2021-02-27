@@ -16,7 +16,7 @@
                                 replace-hierarchy-leaves-by-nodes]]
              [order-utils :refer [ordered-entities]]
              [model-utils :refer [semantic-elements
-                                  new-tab-elements]]
+                                  new-tab-table-element]]
              [render-utils :refer [hierarchy-node-DOM make-component]]
              [item-render :refer [virtual-DOM-component
                                   labels-and-elements-DOM
@@ -122,7 +122,7 @@
    {:relative-id :virtual-tab
     :item-id last-tab-id
     :class "tab virtualTab"
-    :template [(cons "" new-tab-elements)  'anything]  
+    :template [`("" :tab ~new-tab-table-element) 'anything]  
     :sibling true
     :get-action-data get-item-or-exemplar-action-data
     :use-bigger true}))
@@ -134,7 +134,7 @@
   (let [{:keys [relative-id chosen-tab-id]} specification
         tabs-entity (description->entity relative-id immutable-store)
         ;; The template starts out with an empty name
-        tabs-spec {:template (cons "" (cons "" new-tab-elements))
+        tabs-spec {:template `("" :tab "" ~new-tab-table-element)
                    :nesting-depth 0
                    :chosen-tab-id chosen-tab-id}
         tabs (ordered-entities (label->elements tabs-entity :tab))

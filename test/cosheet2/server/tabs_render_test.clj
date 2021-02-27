@@ -14,7 +14,7 @@
             (cosheet2.server
              [item-render :refer [render-virtual-DOM
                                   get-virtual-DOM-rendering-data]]
-             [model-utils :refer [new-tab-elements semantic-to-list]]
+             [model-utils :refer [semantic-to-list]]
              [action-data :refer [get-item-or-exemplar-action-data
                                   get-item-do-batch-edit-action-data
                                   get-tab-action-data get-virtual-action-data
@@ -97,11 +97,15 @@
             {:relative-id :virtual-tab
              :item-id (:item-id t3)
              :class "tab virtualTab"
-             :template ['("" :tab
+             :template ['(""
+                          :tab
                           (:blank :tab-topic :table
-                                  (anything (??? :label)
-                                            (anything :column (??? :label))
-                                            :row-condition :selector)))
+                                  (anything
+                                   :row-condition :selector :non-semantic
+                                   (??? :label))
+                                  (anything
+                                   :column-headers :selector :non-semantic
+                                   (anything (??? :label)))))
                         'anything]
              :sibling true
              :use-bigger true
@@ -114,12 +118,14 @@
            [:component
             {:relative-id (:item-id t3)
              :width 0.75
-             :template '("" "" :tab
+             :template '("" :tab ""
                          (:blank :tab-topic :table
-                                 (anything (??? :label)
-                                           (anything :column
-                                                     (??? :label))
-                                           :row-condition :selector)))
+                                 (anything
+                                  :row-condition :selector :non-semantic
+                                  (??? :label))
+                                 (anything
+                                  :column-headers :selector :non-semantic
+                                  (anything (??? :label)))))
              :render-dom (tab-DOM)
              :get-rendering-data (tab-RD)
              :example-element-ids [(:item-id t3-baz) (:item-id t3-bletch)]
@@ -129,12 +135,14 @@
             [:component
              {:relative-id (:item-id t1)
               :width 1.5
-              :template '("" "" :tab
+              :template '("" :tab ""
                           (:blank :tab-topic :table
-                                  (anything (??? :label)
-                                            (anything :column
-                                                      (??? :label))
-                                            :row-condition :selector)))
+                                  (anything
+                                   :row-condition :selector :non-semantic
+                                   (??? :label))
+                                  (anything
+                                   :column-headers :selector :non-semantic
+                                   (anything (??? :label)))))
               :render-dom (tab-DOM)
               :get-rendering-data (tab-RD)
               :example-element-ids [(:item-id t1-foo)]
@@ -147,12 +155,14 @@
              [:component
               {:relative-id [(:item-id t2) :D1]
                :width 0.75
-               :template '("" "" :tab
+               :template '("" :tab ""
                            (:blank :tab-topic :table
-                                   (anything (??? :label)
-                                             (anything :column
-                                                       (??? :label))
-                                             :row-condition :selector))
+                                   (anything
+                                    :row-condition :selector :non-semantic
+                                    (??? :label))
+                                   (anything
+                                    :column-headers :selector :non-semantic
+                                    (anything (??? :label))))
                            "foo")
                :render-dom (tab-DOM)
                :get-rendering-data (tab-RD)

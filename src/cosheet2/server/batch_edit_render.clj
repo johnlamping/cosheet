@@ -1,7 +1,8 @@
 (ns cosheet2.server.batch-edit-render
   (:require (cosheet2 [reporter :refer [universal-category]]
                       [entity :refer [description->entity updating-immutable
-                                      elements to-list label?]]
+                                      elements to-list label? label->elements
+                                      subject]]
                       [query :refer [matching-elements matching-items
                                      extended-by?]]
                       [query-calculator :refer [matching-item-ids-R]]
@@ -53,7 +54,7 @@
   [spec row-match-count header-match-count]
   [:div {:class "batch-query-match-counts"}
    (str row-match-count " row matches.  "
-        header-match-count " table header matches.")])
+        header-match-count " table matches.")])
 
 (defn batch-count-component
   [query-id]
@@ -62,132 +63,6 @@
                    :render-dom render-batch-count-DOM
                    :get-rendering-data get-batch-count-rendering-data
                    :get-action-data get-pass-through-action-data}))
-
-(comment
-
-  (defn get-matches
-  "Return the maches for the entity, for each query, each set of
-  matches ordered from least complex."
-  [entity queries]
-  (map (fn [query] (let [matches (matching-elements query entity)]
-                     (sort-by item-complexity matches)))
-       queries))
-
-  (defn get-consistent-exemplar
-  "Given a seq of matches for each of several positions, choose a
-  match for each position such that there are no overlaps, and
-  preferring earlier matches. Return the match at the given position."
-  [matches position]
-  (let [combinations (disjoint-combinations matches)]
-    (nth (first combinations) position)))
-
-  (defn select-elements-from-entities
-  "Take a seq of items, a seq of element queries, and a position in
-  that seq. For each item, find a consistent match, if possible, for all the
-  queries. For each successful item, return the match for
-  the query at the position."
-  [items queries position]
-  (keep (fn [item]
-          (let [matches (get-matches item queries)]
-            (get-consistent-exemplar matches position)))
-        items))
-  
-  (defn select-elements-from-split-entities
-  "Take a seq of items, a seq of element queries, and a position in
-  that seq. For each item, find a consistent match, if possible, for
-  all the queries, conjoined with the split condition. For each
-  successful item, return the match at the position. Then do the same
-  for the queries conjoined with the negation of the split condition."
-  [items queries split-condition position]
-  (mapcat
-   (fn [item]
-     (let [matches (get-matches item queries)
-           separates (map (fn [query-matches]
-                            (separate-by #(extended-by? split-condition %)
-                                         query-matches))
-                          matches)]
-              (keep (fn [matches] (get-consistent-exemplar matches position))
-                    [(map first separates) (map second separates)])))
-   items))
-
-  (defn get-batch-edit-query-matches-action-data
-  "Find everything that matches the query, and put it in :target-ids."
-  [{:keys [query-id]} containing-action-data action store]
-  (let [query-entity (description->entity query-id store)
-        query (pattern-to-query (semantic-to-list query-entity))
-        top-level-entities (matching-items
-                            (add-elements-to-entity-list query [:top-level])
-                            store)
-        header-entities (matching-items
-                         (add-elements-to-entity-list query [:row-condition])
-                         store)]
-    (assoc containing-action-data :target-ids
-           (concat [query-id]
-                   (map :item-id
-                        (concat top-level-entities header-entities))))))
-
-  (defn get-batch-edit-query-element-action-data
-    "Return the item itself, plus one exemplar element for each affected
-   table condition, table header, row. Make sure that the chosen item
-   is compatible with a match of the entire query."
-    [{:keys [item-id relative-id query-id stack-id]}
-     containing-action-data action store]
-    (let [id (or item-id relative-id)
-          item (description->entity id store)
-          query-entity (description->entity query-id store)
-          query (pattern-to-query (semantic-to-list query-entity))
-          ;; To make sure that the item we pick is compatible with a
-          ;; match for the entire query, we have to consistently pick
-          ;; items for each element of the query, not just our dom's
-          ;; element. Then, we use the pick corresponding to our
-          ;; element. We pick items for the more complex query elements
-          ;; first, both for efficiency, and to make it more likely to
-          ;; choose more prosaic tuples of matches.
-          query-elements (semantic-elements query-entity)
-          ordered-query-elements (-> (sort-by item-complexity query-elements)
-                                     reverse)
-          element-queries (map #(pattern-to-query (semantic-to-list %))
-                               ordered-query-elements)
-          item-index (.indexOf ordered-query-elements item)
-          _ (assert (not= item-index -1))
-          top-level-entities (matching-items
-                              (add-elements-to-entity-list query [:top-level])
-                              store)
-          header-entities (matching-items
-                           (add-elements-to-entity-list query [:row-condition])
-                           store)
-          stack-entity (let [item-query (pattern-to-query
-                                         (semantic-to-list item)) 
-                             elems (matching-elements
-                                    item-query
-                                    (description->entity
-                                     stack-id store))]
-                         (when-let [best (best-match item-query elems)]
-                           [best]))
-          items (concat
-                 [item]
-                 stack-entity 
-                 (select-elements-from-entities
-                  top-level-entities element-queries item-index)
-                 ;; A single table specification item looks like two
-                 ;; items in the UI: the query, and the column specs. We
-                 ;; treat each as if they were separate items.
-                 (select-elements-from-split-entities
-                  header-entities element-queries '(nil :column) item-index))]
-      (assoc containing-action-data :target-ids (map :item-id items))))
-
-  (defn batch-query-virtual-DOM
-    "Return the DOM for a virtual element in the row selector part of the display,
-   that is an element of the query item."
-    [specification]
-    (let [dom (virtual-DOM-component
-               (assoc specification
-                      :relative-id :query-virtual
-                      :template '(anything (anything :label))))
-          label-dom (virtual-label-DOM-component
-                     (assoc specification :template '(anything :label)
-                            :relative-id :query-virtual-label))]
-      (add-labels-DOM label-dom dom :vertical))))
 
 (defn render-batch-query-DOM
   "Return the dom for the query selector."
@@ -220,15 +95,18 @@
   [{:keys [query-id stack-id do-not-match-query]} store]
   (let [query-entity (description->entity query-id store)
         stack-entity (description->entity stack-id store)
-        query (pattern-to-query (semantic-to-list query-entity)) ]
+        query (pattern-to-query (semantic-to-list query-entity))
+        row-query (add-elements-to-entity-list query [:row-condition])
+        matching-table-conditions (matching-items row-query store)]
     (distinct
      (concat
       (when (not do-not-match-query) [query-entity])
       [stack-entity] 
       (matching-items (add-elements-to-entity-list query [:top-level])
                       store)
-      (matching-items (add-elements-to-entity-list query [:row-condition])
-                      store)))))
+      matching-table-conditions
+      (map #(first (label->elements (subject %) :column-headers))
+           matching-table-conditions)))))
 
 (defn get-batch-edit-stack-element-action-data
   [{:keys [item-id relative-id excluding-ids stack-id]

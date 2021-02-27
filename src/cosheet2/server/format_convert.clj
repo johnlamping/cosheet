@@ -104,17 +104,50 @@
                 (update-content s (:item-id tag) :label))
               store tags))))
 
+(defn convert-from-6-to-7
+  "Convert a store from format 6 to 7.
+  The only difference is that tables are described by two elements,
+  one, tagged with :row-condition that gives the template for rows,
+  and one, tagged with :column-headers, that gives the column header
+  templates."
+  [store]
+  (let [tables (matching-items '(nil :table) store)
+        format (first (matching-items '(nil :format) store))
+        store (update-content store (:item-id format) 7)]
+    (reduce
+     (fn [store table]
+       (let [condition (first (label->elements table :row-condition))
+             columns (label->elements condition :column)]
+         (let [;; The row-condition should also have :non-semantic.
+               [store _] (add-entity
+                          store (:item-id condition) :non-semantic)
+               ;; Add the column header element.
+               [store column-headers-id]
+               (add-entity
+                store (:item-id table)
+                '(anything :column-headers :selector :non-semantic))]
+           ;; Move the columns from the row-condition to the column-headers.
+           (reduce
+            (fn [store column]
+              (first (add-entity (remove-entity-by-id store (:item-id column))
+                                 column-headers-id
+                                 (remove #{:column} (to-list column)))))
+            store columns))))
+     store
+     tables)))
+
 (defn convert-to-current
   "Convert a store to the latest format."
   [store]
   (let [format (first (matching-items '(nil :format) store))
         format (if format (content format) 0)
         format (if (vector? format) (first format) format)]
-    (assert (and (>= format 0) (<= format 6))
+    (assert (and (>= format 0) (<= format 7))
             (str "Store in unknown format " format))
     (cond-> store
       (<= format 0) convert-from-0-to-1
       (<= format 2) convert-from-1-or-2-to-3
       (<= format 3) convert-from-3-to-4
       (<= format 4) convert-from-4-to-5
-      (<= format 5) convert-from-5-to-6)))
+      (<= format 5) convert-from-5-to-6
+      (<= format 6) convert-from-6-to-7)))

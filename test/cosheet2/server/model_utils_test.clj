@@ -97,7 +97,7 @@
 
 (deftest is-selector-test
   (let [[s1 selector-root-id] (add-entity
-                               (starting-store "tab") nil
+                               (starting-store "starting-tab") nil
                                '(thing :selector
                                        (child (1 :order)
                                               grandchild)))
@@ -138,15 +138,9 @@
         tab (first tabs)
         rows (matching-items
               '(nil :top-level) s1)
-        table (first (matching-elements
-                              '(nil :table)
-                              tab))
-        row-condition (first (matching-elements
-                              '(nil :row-condition)
-                              table))
-        headers (matching-elements
-                 '(nil :column)
-                 row-condition)]
+        table (first (matching-elements '(nil :table) tab))
+        row-condition (first (matching-elements '(nil :row-condition) table))
+        column-headers (first (matching-elements '(nil :column-headers) table))]
     (is (= (count tabs) 1))
     (is (check (to-list tab)
                (as-set
@@ -155,12 +149,14 @@
                   ~(as-set
                     `(:blank :tab-topic
                              ~(as-set
-                               `(~'anything
+                               '(anything
                                  ("there" :label)
-                                 ~(as-set `(~'anything ("a" :label) :column))
-                                 ~(as-set `(~'anything ("b" :label) :column))
-                                 :row-condition
-                                 :selector))
+                                 :row-condition :selector :non-semantic))
+                             ~(as-set
+                               '(anything
+                                 (anything ("a" :label))
+                                 (anything ("b" :label))
+                                 :column-headers :selector :non-semantic))
                              :table))
                   ("there" (~(any) :order))
                   (~(any) :order)))))
@@ -173,16 +169,16 @@
                 (as-set '("" ("there" :label) (3 ("a" :label))))]))
     (is (check (semantic-to-list row-condition)
                (as-set
-                '(anything ("there" :label)
-                           (anything ("a" :label))
-                           (anything ("b" :label))))))
-    (is (check (map semantic-to-list (ordered-entities headers))
+                '(anything ("there" :label)))))
+    (is (check (map semantic-to-list (ordered-entities
+                                      (semantic-elements column-headers)))
                (as-set ['(anything ("a" :label))
                         '(anything ("b" :label))])))))
 
 (deftest avoid-problems-test
   (let [store (starting-store "test")
-        column (first (matching-items '(nil :column) store))
+        columns (first (matching-items '(nil :column-headers) store))
+        column (first (semantic-elements columns))
         label (first (semantic-elements column))
         bad-store (remove-entity-by-id store (:item-id label))
         good-store (update-content bad-store (:item-id column) "something")]

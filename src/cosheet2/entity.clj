@@ -166,3 +166,8 @@
         content
         (ultimate-content content)))))
 
+(defn description->updating-entity-R
+  [id store]
+  (let [entity (description->entity id store)]
+    (updating-immutable entity)))
+

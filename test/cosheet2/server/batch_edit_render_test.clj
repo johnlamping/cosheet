@@ -133,63 +133,7 @@
   (let [dom (run-renderer (second (batch-count-component q1)) s)]
     (is (check dom
                [:div {:class "batch-query-match-counts"}
-                "2 row matches.  1 table header matches."]))))
-
-(deftest get-batch-edit-query-matches-action-data-test
-  (let [action-data (get-batch-edit-query-matches-action-data
-                     {:query-id q1}
-                     {} nil s)
-        target-ids (:target-ids action-data)]
-    (is (= (count target-ids) 4))
-    (is (= (set target-ids) #{h1 r1 r2 q1}))))
-
-(comment
-  (deftest get-batch-edit-query-element-action-data-test
-    (let [q1-entity (description->entity q1 s)
-          q1-element (first (matching-elements '(nil "c1") q1-entity))
-          action-data (get-batch-edit-query-element-action-data
-                       {:relative-id (:item-id q1-element)
-                        :query-id q1
-                        :stack-id stk1}
-                       {} nil s)
-          target-ids (:target-ids action-data)]
-      (is (= (count target-ids) 5))
-      (is (= (set (map #(id->subject s %) target-ids))
-             #{h1 r1 r2 q1 stk1}))
-      (doseq [id target-ids]
-        (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
-    ;; Query 2 requires two elements: 2 and one with (nil ("c1" :label))
-    ;; It's '(nil "c1") matches in the first row, query 2, itself, and
-    ;; the stack selector (because the match in the stack selector does
-    ;; not require the entire query matching.
-    (let [q2-entity (description->entity q2 s)
-          q2-element (first (matching-elements '(nil "c1") q2-entity))
-          action-data (get-batch-edit-query-element-action-data
-                       {:relative-id (:item-id q2-element)
-                        :query-id q2
-                        :stack-id stk1}
-                       {} nil s)
-          target-ids (:target-ids action-data)]
-      (is (= (count target-ids) 3))
-      (is (= (set (map #(id->subject s %) target-ids))
-             #{r1 q2 stk1}))
-      (doseq [id target-ids]
-        (is (extended-by? '(nil ("c1" :label)) (description->entity id s)))))
-    ;; Query 3 matches multiple elements in some rows. Make sure it
-    ;; picks just one each.
-    (let [q3-entity (description->entity q3 s)
-          q3-element (first (matching-elements '(nil (nil :label)) q3-entity))
-          action-data (get-batch-edit-query-element-action-data
-                       {:relative-id (:item-id q3-element)
-                        :query-id q3
-                        :stack-id stk1}
-                       {} nil s)
-          target-ids (:target-ids action-data)]
-      (is (= (count target-ids) 5))
-      (is (= (set (map #(id->subject s %) target-ids))
-             #{h1 r1 r2 q3 stk1}))
-      (doseq [id target-ids]
-        (is (extended-by? '(nil (nil :label)) (description->entity id s)))))))
+                "2 row matches.  1 table matches."]))))
 
 (deftest render-batch-query-DOM-test
   (let [q2-entity (description->entity q2 s)

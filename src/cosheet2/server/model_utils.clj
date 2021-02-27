@@ -275,7 +275,6 @@
      store)))
 
 ;;; Creating new tabs and tables.
-;;; TODO: The heading for a table should be :category, not :label
 
 (defn tabs-holder-id-R
   "Return the entity that holds all the tabs."
@@ -296,27 +295,20 @@
   ;; headers out when we need the pure row condition.
   '(anything :column))
 
-(defn table-tab-non-semantic-elements
-  "Return the non-semantic elements for a new tab that shows a table
-  with the given row condition and header condition."
-  [row-condition-elements header-condition-elements]
-  `(:tab
-    (:blank
-     :tab-topic
-     :table
-     ~(apply list (concat
-                   ['anything]
-                   row-condition-elements
-                   (map (fn [header-condition-element]
-                          (apply list (concat
-                                       table-header-template
-                                       [header-condition-element])))
-                        header-condition-elements)
-                   [:row-condition
-                    :selector])))))
+(defn tab-table-element
+  "Return the element that gives the information for a table in a new tab
+  with the given row condition and header elements."
+  [row-condition-elements header-elements]
+  `(:blank
+    :tab-topic
+    :table
+    ~(concat '(anything :row-condition :selector :non-semantic)
+              row-condition-elements)
+    ~(concat '(anything :column-headers :selector  :non-semantic)
+             header-elements)))
 
-(def new-tab-elements
-  (table-tab-non-semantic-elements ['(??? :label)] ['(??? :label)]))
+(def new-tab-table-element
+  (tab-table-element ['(??? :label)] ['(anything (??? :label))]))
 
 (defn starting-store
   "Return an initial immutable store. If a tab name is provided, the store
@@ -330,11 +322,12 @@
                                            '("tabs" :tabs))]
     (if tab-name
       (let [[tab store] (specialize-generic
-                             (cons "" (cons tab-name
-                                            (table-tab-non-semantic-elements
-                                             [`(~tab-name :label)]
-                                             ['(??? :label)])))
-                             store)]
+                         `(""
+                           ~tab-name
+                           :tab
+                           ~(tab-table-element
+                             [`(~tab-name :label)] ['(anything (??? :label))]))
+                         store)]
         (first (update-add-entity-adjacent-to
                 store tabs-holder-id tab                   
                 (description->entity orderable-id store) :after false)))
@@ -347,14 +340,18 @@
    with a problem."
   [entity]
   ;; A header is a problem if it has the vacuous condition.
-  (and (#{'anything} (content entity))
-       (some #(= (content %) :column) (elements entity))
-       (let [semantic (semantic-elements entity)]
-         (or (empty? semantic)
-             (and (empty? (rest semantic))
-                  (#{'anything} (content (first semantic)))
-                  (every? #(= (content %) :label)
-                          (semantic-elements (first semantic))))))))
+  (and
+   ;; It has universal content
+   (= 'anything (content entity))
+   ;; It is a column header.
+   (some #(= (content %) :column-headers) (elements (subject entity)))
+   ;; It has no elements, or only a :label element.
+   (let [semantic (semantic-elements entity)]
+     (or (empty? semantic)
+         (and (empty? (rest semantic))
+              (#{'anything} (content (first semantic)))
+              (every? #(= (content %) :label)
+                      (semantic-elements (first semantic))))))))
 
 (defn abandon-problem-changes
   "Given an old store, a new store, both immutable, and an id where
@@ -413,11 +410,13 @@
         last-tab (last (matching-items '(nil :tabs) store))
         [store new-tab] (update-add-entity-adjacent-to
                          store tabs-holder-id
-                         (cons "" (cons table-name
-                                        (table-tab-non-semantic-elements
-                                         [`(~table-name :label)]
-                                         (map (fn [header] `(~header :label))
-                                              headers))))
+                         `(""
+                           :tab
+                           ~table-name
+                           ~(tab-table-element
+                            [`(~table-name :label)]
+                            (map (fn [header] `(~'anything (~header :label)))
+                                 headers)))
                          last-tab :after true)]
     store))
 

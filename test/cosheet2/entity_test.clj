@@ -129,19 +129,21 @@
                  (canonicalize-list list-99))))
     ;; Now make sure updating-immutable tracks right.
     (let [record (atom [])
-          updating-immutable-result
-          (expr-let [current-item (updating-immutable item99)] 
-           (is (not (mutable-entity? current-item)))
-           (let [value (to-list current-item)]
-             (swap! record #(conj % value))
-             value))]
+          updating-immutable-result (expr-let [current-item (updating-immutable
+                                                             item99)] 
+                                      (is (not (mutable-entity? current-item)))
+                                      (let [value (to-list current-item)]
+                                        (swap! record #(conj % value))
+                                        value))
+          reporter-99 (description->updating-entity-R id99 ms)]
       (is (= @record []))
       ;; See if it gets computed when demand is added.
       (propagate-calculator-data! updating-immutable-result cd)
+      (propagate-calculator-data! reporter-99 cd)
       (run-all-pending-tasks queue)
       (is (not (valid? updating-immutable-result)))
-      (set-attendee! updating-immutable-result :a 0
-                     (fn [& _] nil))
+      (set-attendee! updating-immutable-result :a 0 (fn [& _] nil))
+      (set-attendee! reporter-99 :a 0 (fn [& _] nil))
       (is (not (valid? updating-immutable-result)))
       (run-all-pending-tasks queue)
       (let [orig-99 (to-list (in-different-store item99 (current-store ms)))]
@@ -159,6 +161,10 @@
         (run-all-pending-tasks queue)
         (is (check (canonicalize-list
                     (reporter-value updating-immutable-result))
+                   (canonicalize-list
+                    (to-list (in-different-store item99 (current-store ms))))))
+        (is (check (canonicalize-list
+                    (to-list (reporter-value reporter-99)))
                    (canonicalize-list
                     (to-list (in-different-store item99 (current-store ms))))))
         (is (check (map canonicalize-list @record)

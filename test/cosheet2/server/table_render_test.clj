@@ -28,7 +28,7 @@
              [hierarchy :refer [hierarchy-by-labels
                                 replace-hierarchy-leaves-by-nodes] :as hierarchy]
              [order-utils :refer [ordered-entities add-order-elements]]
-             [model-utils :refer [semantic-to-list]]
+             [model-utils :refer [semantic-to-list semantic-elements]]
              [table-render :refer :all])
              ; :reload
             ))
@@ -83,15 +83,18 @@
   (apply renderer spec (map first (data-getter spec store))))
 
 (deftest get-virtual-column-cell-action-data-test
-  (let [[s1 header-id] (add-entity (new-element-store) nil
-                                   (add-order-elements
-                                    '(:x (anything ("c1" :label) :column)
-                                         (anything ("c2" :label) :column))))
+  (let [[s1 column-headers-id] (add-entity (new-element-store) nil
+                                           (add-order-elements
+                                            '(:x
+                                              :column-headers
+                                              (anything ("c1" :label))
+                                              (anything ("c2" :label)))))
         [store row-id] (add-entity s1 nil (add-order-elements
                                            '(anything (1 ("c1" :label))
                                                       (2 ("c2" :label)))))
         data (get-virtual-column-cell-action-data
-              {} {:target-ids [row-id]} nil store header-id)
+              {:column-headers-id column-headers-id}
+              {:target-ids [row-id]} nil store)
         new-store (:store data)
         new-id (first (:target-ids data))]
     (is (= (semantic-to-list (description->entity new-id new-store))
@@ -130,38 +133,33 @@
                       ;; edits.
                       (~'anything (~o3 :order) ("age" :label (~o3 :order))))
         table-list `("table"
-                       (~'anything
-                        :row-condition
-                        (~'anything
-                         ("age" :label (~o1 :order))
-                         (~o8 :order))
-                        (~'anything ("single" :label (~o1 :order))
-                         (~o1 :order)
-                         :column)
-                        (~'anything
-                         ("name" :label (~o1 :order))
-                         (~o2 :order)
-                         :column)
-                        (~'anything
-                         ("name" :label (~o1 :order))
-                         ("other" :label (~o2 :order))
-                         (~o3 :order)
-                         :column)
-                        (~'anything ("name" :label (~o1 :order))
-                         (~o4 :order)
-                         :column)
-                        (~'anything
-                         ("age" :label (~o1 :order))
-                         ("other" :label (~o2 :order))
-                         (~o5 :order)
-                         :column)
-                        (~'anything ("6-2" (~o1 :order)
-                                     ("height" :label (~o2 :order)))
-                         (~o6 :order)
-                         :column)
-                        ("something" ("child" (~o1 :order))
-                         (~o7 :order)
-                         :column)))
+                     (~'anything
+                      :row-condition
+                      (~'anything
+                       ("age" :label (~o1 :order))
+                       (~o8 :order)))
+                     (~'anything
+                      :column-headers
+                      (~'anything ("single" :label (~o1 :order))
+                       (~o1 :order))
+                      (~'anything
+                       ("name" :label (~o1 :order))
+                       (~o2 :order))
+                      (~'anything
+                       ("name" :label (~o1 :order))
+                       ("other" :label (~o2 :order))
+                       (~o3 :order))
+                      (~'anything ("name" :label (~o1 :order))
+                       (~o4 :order))
+                      (~'anything
+                       ("age" :label (~o1 :order))
+                       ("other" :label (~o2 :order))
+                       (~o5 :order))
+                      (~'anything ("6-2" (~o1 :order)
+                                   ("height" :label (~o2 :order)))
+                       (~o6 :order))
+                      ("something" ("child" (~o1 :order))
+                       (~o7 :order))))
         [s1 joe-id] (add-entity (new-element-store) nil joe-list)
         [s2 jane-id] (add-entity s1 nil jane-list)
         [s3 test-id] (add-entity s2 nil test-list)
@@ -173,56 +171,59 @@
         joe-joseph (first (matching-elements "Joseph" joe))
         joe-joseph-id (:item-id joe-joseph)
         table (description->entity table-id store)
-        header (first (entity/label->elements table :row-condition))
-        header-id (:item-id header)
-        rc1 (first (matching-elements `(nil ~o8) header))
+        row-condition (first (entity/label->elements table :row-condition))
+        row-condition-id (:item-id row-condition)
+        rc1 (first (matching-elements `(nil ~o8) row-condition))
         rc1-id (:item-id rc1)
-        c1 (first (matching-elements `(nil ~o1) header))
+        column-headers (first (entity/label->elements table :column-headers))
+        column-headers-id (:item-id column-headers)
+        c1 (first (matching-elements `(nil ~o1) column-headers))
         c1-id (:item-id c1)
-        c2 (first (matching-elements `(nil ~o2) header))
+        c2 (first (matching-elements `(nil ~o2) column-headers))
         c2-id (:item-id c2)
         c2-name (first (matching-elements "name" c2))
         c2-name-id (:item-id c2-name)
-        c3 (first (matching-elements `(nil ~o3) header))
+        c3 (first (matching-elements `(nil ~o3) column-headers))
         c3-id (:item-id c3)
         c3-name (first (matching-elements "name" c3))
         c3-name-id (:item-id c3-name)
-        c4 (first (matching-elements `(nil ~o4) header))
+        c4 (first (matching-elements `(nil ~o4) column-headers))
         c4-id (:item-id c4)
-        c5 (first (matching-elements `(nil ~o5) header))
+        c5 (first (matching-elements `(nil ~o5) column-headers))
         c5-id (:item-id c5)
-        c6 (first (matching-elements `(nil ~o6) header))
+        c6 (first (matching-elements `(nil ~o6) column-headers))
         c6-id (:item-id c6)
-        c7 (first (matching-elements `(nil ~o7) header))
+        c7 (first (matching-elements `(nil ~o7) column-headers))
         c7-id (:item-id c7)
-        columns (ordered-entities
-                 (label->elements header :column))
+        columns (ordered-entities (semantic-elements column-headers))
         hierarchy (replace-hierarchy-leaves-by-nodes
                    (hierarchy-by-labels columns))
         column-descriptions (concat
                              (mapcat #(table-hierarchy-node-column-descriptions
-                                       header-id nil %)
+                                       nil %)
                                      hierarchy)
                              [{:column-id :virtualColumn
                                :width 0.75
-                               :header-id header-id}])
+                               :row-condition-id row-condition-id}])
         joe-row-component (table-row-component
                            joe-id '("" :top-level ("age" :label))
-                           {:column-descriptions-R column-descriptions})
+                           {:column-descriptions-R column-descriptions
+                            :column-headers-id column-headers-id
+                            :row-condition-id row-condition-id})
         joe-row (run-renderer
                  render-table-row-DOM (second joe-row-component)
                  get-table-row-rendering-data store)]
 
     ;; Check get-table-condition-do-batch-edit-action-data
     (is (check (get-table-condition-do-batch-edit-action-data
-                {:header-id header-id} {} nil store)
+                {:row-condition-id row-condition-id} {} nil store)
                {:query-ids [rc1-id]
                 :stack-ids [rc1-id]
                 :must-show-label true}))
 
     ;; Check get-table-header-do-batch-edit-action-data
     (is (check (get-table-header-do-batch-edit-action-data
-                {:header-id header-id
+                {:row-condition-id row-condition-id
                  :item-id c2-id
                  :descendant-ids [c1-id c2-id c3-id]
                  :competing-ids [c4-id]}
@@ -231,7 +232,7 @@
                 :stack-ids [c1-id c2-id c3-id]
                 :selected-index 1}))
     (is (check (get-table-header-do-batch-edit-action-data
-                {:header-id header-id
+                {:row-condition-id row-condition-id
                  :item-id c2-id
                  :descendant-ids [c2-id]
                  :competing-ids [c4-id]}
@@ -242,7 +243,7 @@
 
     ;; Check get-table-cell-do-batch-edit-action-data
     (is (check (get-table-cell-do-batch-edit-action-data
-                    {:header-id header-id
+                    {:row-condition-id row-condition-id
                      :competing-ids [c4-id]}
                     {} nil store)
                {:query-ids [rc1-id]
@@ -261,7 +262,7 @@
     ;; Check the top level condition
     (is (check
          (run-renderer
-          render-table-condition-DOM {:header-id header-id}
+          render-table-condition-DOM {:row-condition-id row-condition-id}
           get-table-condition-rendering-data store)
          [:div {:class "horizontal-labels-element query-condition"}
            ;; A virtual label for the condition
@@ -315,14 +316,14 @@
     ;; Check the header
     (is (check
          (run-renderer
-          render-table-header-DOM {:header-id header-id
+          render-table-header-DOM {:row-condition-id row-condition-id
                                    :hierarchy-R hierarchy}
           get-table-header-rendering-data store)
          [:div {:class "column-header-sequence table-header"}
           ;; A single column.
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                        :get-column-action-data (col-AD)  
-                       :header-id header-id
+                       :row-condition-id row-condition-id
                        :descendant-ids [c1-id]
                        :width 0.75
                        :template :singular
@@ -332,7 +333,7 @@
           [:div {:class "column-header label"}
            ;; The label for the three columns
            [:component {:get-column-action-data (col-AD) 
-                        :header-id header-id
+                        :row-condition-id row-condition-id
                         :descendant-ids [c2-id c3-id c4-id]
                         :width 2.25
                         :template '(anything :label)
@@ -351,7 +352,7 @@
                                " merge-with-parent column-header leaf")}
              [:component
               {:get-column-action-data (col-AD) 
-               :header-id header-id
+               :row-condition-id row-condition-id
                :descendant-ids [c2-id]
                :competing-ids [c3-id]
                :width 0.75
@@ -368,7 +369,7 @@
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                 :get-column-action-data (col-AD)
-                :header-id header-id
+                :row-condition-id row-condition-id
                 :descendant-ids [c2-id]
                 :competing-ids [c3-id]
                 :width 0.75
@@ -379,7 +380,7 @@
             [:component
              {:get-do-batch-edit-action-data (table-head-do-batch-AD)
               :get-column-action-data (col-AD) 
-              :header-id header-id
+              :row-condition-id row-condition-id
               :descendant-ids [c3-id]
               :width 0.75
               :template :singular
@@ -391,7 +392,7 @@
                                " merge-with-parent column-header leaf")}
              [:component
               {:get-column-action-data (col-AD) 
-               :header-id header-id
+               :row-condition-id row-condition-id
                :descendant-ids [c4-id]
                :competing-ids [c3-id]
                :width 0.75
@@ -408,7 +409,7 @@
               [:component
                {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                 :get-column-action-data (col-AD)
-                :header-id header-id
+                :row-condition-id row-condition-id
                 :descendant-ids [c4-id]
                 :competing-ids [c3-id]
                 :width 0.75
@@ -418,7 +419,7 @@
           ;; One column with two labels
           [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                        :get-column-action-data (col-AD)
-                       :header-id header-id
+                       :row-condition-id row-condition-id
                        :descendant-ids [c5-id]
                        :width 0.75
                        :template :singular
@@ -428,7 +429,7 @@
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
            [:component {:get-column-action-data (col-AD)
-                        :header-id header-id
+                        :row-condition-id row-condition-id
                         :descendant-ids [c6-id]
                         :width 0.75
                         :template '(anything :label)
@@ -443,7 +444,7 @@
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :get-column-action-data (col-AD)
-                         :header-id header-id
+                         :row-condition-id row-condition-id
                          :descendant-ids [c6-id]
                          :width 0.75
                          :template :singular
@@ -452,7 +453,7 @@
           [:div {:class (str "label wrapped-element virtual-wrapper"
                              " column-header leaf")}
            [:component {:get-column-action-data (col-AD)
-                        :header-id header-id
+                        :row-condition-id row-condition-id
                         :descendant-ids [c7-id]
                         :width 0.75
                         :template '(anything :label)
@@ -467,7 +468,7 @@
            [:div {:class "indent-wrapper label"}
             [:component {:get-do-batch-edit-action-data (table-head-do-batch-AD)
                          :get-column-action-data (col-AD)
-                         :header-id header-id
+                         :row-condition-id row-condition-id
                          :descendant-ids [c7-id]
                          :width 0.75
                          :template :singular
@@ -496,16 +497,14 @@
     ;; Check the column descriptions
     (is (check
          column-descriptions
-         [{:header-id header-id
-           :column-id c1-id
+         [{:column-id c1-id
            :width 0.75
            :query '(nil ("single" :label)
                         (:cosheet2.query/special-form
                          (:not :cosheet2.query/type)
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
-          {:header-id header-id
-           :column-id c2-id
+          {:column-id c2-id
            :competing-ids [c3-id]
            :disqualifications '((nil ("name" :label)
                                      ("other" :label)
@@ -519,8 +518,7 @@
                          (:not :cosheet2.query/type)
                          (:label :cosheet2.query/sub-query))
                         (nil :order))}
-          {:header-id header-id
-           :column-id c3-id
+          {:column-id c3-id
            :width 0.75
            :query '(nil ("name" :label)
                         ("other" :label)
@@ -535,6 +533,8 @@
          joe-row-component
          [:component {:relative-id joe-id
                       :class "table-row"
+                      :row-condition-id row-condition-id
+                      :column-headers-id column-headers-id
                       :column-descriptions-R column-descriptions
                       :render-dom render-table-row-DOM
                       :get-rendering-data get-table-row-rendering-data
@@ -546,7 +546,7 @@
     (is (check
          (run-renderer render-table-rows-DOM
                        {:relative-id :body
-                        :header-id header-id
+                        :row-condition-id row-condition-id
                         :column-descriptions-R column-descriptions
                         :row-template-R 'foo
                         :row-ids-R [joe-id]}
@@ -554,7 +554,7 @@
          [:div {:class "table-rows"}
           [:component {:relative-id joe-id
                        :class "table-row"
-                       :header-id header-id
+                       :row-condition-id row-condition-id
                        :column-descriptions-R column-descriptions
                        :render-dom render-table-row-DOM
                        :get-rendering-data get-table-row-rendering-data
@@ -575,7 +575,7 @@
     (is (check
          joe-row
          [:div {}
-          [:component {:header-id header-id
+          [:component {:row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c1-id
@@ -589,7 +589,7 @@
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
-          [:component {:header-id header-id
+          [:component {:row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c2-id
@@ -611,7 +611,7 @@
                        :get-rendering-data (cell-RD)
                        :get-action-data (pass-AD)
                        :get-do-batch-edit-action-data (table-cell-do-batch-AD)}]
-          [:component {:header-id header-id
+          [:component {:row-condition-id row-condition-id
                        :width 0.75
                        :class "table-cell"
                        :relative-id c3-id
@@ -629,11 +629,12 @@
           (any) (any) (any) (any)
           [:component {:width 0.75
                        :relative-id :virtual
+                       :column-headers-id column-headers-id
                        :template ""
                        :render-dom (virt-DOM)
                        :get-rendering-data (virt-RD)
                        :get-action-data
-                       [get-virtual-column-cell-action-data header-id]
+                       get-virtual-column-cell-action-data
                        :class "table-cell has-border virtual-column"}]]))
 
     ;; Check a rendering cells in a row
@@ -719,20 +720,21 @@
     ;; Check rendering the overall table, given the header id.
     (is (check
           (run-renderer
-           render-ready-table-DOM {:relative-id header-id}
+           render-ready-table-DOM {:relative-id table-id
+                                   :row-condition-id row-condition-id
+                                   :column-headers-id column-headers-id}
            get-ready-table-rendering-data store)
           [:div {:class "table"}
-           [:component {:relative-id :condition
-                        :header-id header-id
+           [:component {:relative-id row-condition-id
+                        :row-condition-id row-condition-id
                         :render-dom render-table-condition-DOM
                         :get-rendering-data get-table-condition-rendering-data
-                        :get-action-data (pass-AD)
                         :get-do-batch-edit-action-data
                         get-table-condition-do-batch-edit-action-data}]
            [:div {:class "table-main"}
             [:component
-             {:relative-id :header
-              :header-id header-id
+             {:relative-id column-headers-id
+              :row-condition-id row-condition-id
               :hierarchy-R
               [{:cosheet2.server.hierarchy/hierarchy-node true
                 :leaves (any)
@@ -744,7 +746,8 @@
               :get-action-data (pass-AD)}]
             [:component
              {:relative-id :body
-              :header-id header-id
+              :row-condition-id row-condition-id
+              :column-headers-id column-headers-id
               :column-descriptions-R (any)
               :row-template-R '(anything (anything ("age" :label)) :top-level)
               :row-ids-R [(any) (any)]
@@ -752,7 +755,7 @@
               :get-rendering-data get-table-rows-rendering-data
               :get-action-data (pass-AD)}]]]))
 
-    ;; Check getting the header id.
+    ;; Check getting the subsidiary ids.
     (is (check
          (run-renderer
           render-table-DOM {:relative-id joe-id}
@@ -762,6 +765,9 @@
          (run-renderer
           render-table-DOM {:relative-id table-id}
           get-item-rendering-data store)
-         [:component {:relative-id header-id
+         [:component {:relative-id table-id
+                      :row-condition-id row-condition-id
+                      :column-headers-id column-headers-id
                       :render-dom render-ready-table-DOM
-                      :get-rendering-data get-ready-table-rendering-data}]))))
+                      :get-rendering-data get-ready-table-rendering-data
+                      :get-action-data (pass-AD)}]))))

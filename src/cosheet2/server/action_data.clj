@@ -20,8 +20,7 @@
                                   pattern-to-query
                                   specialize-generic
                                   flatten-nested-content
-                                  create-possible-selector-elements
-                                  table-header-template]]
+                                  create-possible-selector-elements]]
              [order-utils :refer [ordered-entities]])))
 
 ;;; The action data is a map that may contain any of these fields:

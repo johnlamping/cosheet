@@ -219,10 +219,10 @@
   (.write w "default-AD"))
 
 ;;; do-batch-edit action data generators are called only when the
-;;; requested action is to start a batch-edit. (This is different from
-;;; the action data generators called while a batch edit is open.)
-;;; These generators' job is to record the information needed to
-;;; create the batch edit's query and stack selector.
+;;; requested action is to start a batch-edit. (These are completely
+;;; different from the action data generators called while a batch
+;;; edit is open.) These generators' job is to record the information
+;;; needed to create the batch edit's query and stack selector.
 
 ;;; The primary information they produce is a list of ids whose list
 ;;; forms contain everything the query and stack selectors will

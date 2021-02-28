@@ -29,10 +29,11 @@
     [session-state :refer [queue-to-log]]
     [dom-manager :refer [client-id->action-data component->client-id]]
     [model-utils :refer [selector? semantic-elements abandon-problem-changes
-                         semantic-to-list entity->canonical-semantic
+                         ordered-semantic-to-list entity->canonical-semantic
                          create-possible-selector-elements
                          exemplar-to-query remove-semantic-elements]]
-    [order-utils :refer [furthest-item]])))
+    [order-utils :refer [furthest-item
+                         update-add-entity-with-order-and-temporary]])))
 
 ;;; TODO: Validate the data coming in, so mistakes won't cause us to
 ;;; crash.
@@ -244,14 +245,14 @@
   
   )
 
-(defn matching-element-id
+(defn matching-element-ids
   "Given an id and an id that is a template for one of its elements,
-  return the id of an element that matches it"
+  return the ids of the elements that matches it."
   [id template-id store]
   (when id
     (let [query (exemplar-to-query (description->entity template-id store))]
-      (:item-id
-       (first (matching-elements query (description->entity id store)))))))
+      (map :item-id
+       (matching-elements query (description->entity id store))))))
 
 (defn do-batch-edit
   [store {:keys [query-ids stack-ids
@@ -268,17 +269,17 @@
              ;; [store order] pair.
              (fn [[_ [store order]] [item-label ids]]
                (let [item (label->element temporary-item item-label)
-                     new-lists (map #(semantic-to-list
+                     subject-id (:item-id item)
+                     new-lists (map #(ordered-semantic-to-list
                                       (description->entity % store))
                                     ids)
                      store (remove-semantic-elements store (:item-id item))]
                  (thread-map
                   (fn [new-list [store order]]
-                    (let [[order remainder] (split order :after)
-                          subject-id (:item-id item)
-                          new-element (add-elements-to-entity-list
-                                       new-list [`(~order :order)])
-                          [store id] (add-entity store subject-id new-element)]
+                    (let [[store id remainder]
+                          (update-add-entity-with-order-and-temporary
+                           store subject-id new-list
+                           order :before :false)]
                       [id [store remainder]]))
                   new-lists
                   [store order])))
@@ -288,13 +289,16 @@
               ;; corresponding to them will be what the reduce
               ;; returns.
               [:batch-stack stack-ids]])
-            selected-id (when selected-index
-                          (reduce (fn [id template-id]
-                                    (matching-element-id id template-id store))
-                                  (nth new-ids selected-index)
-                                  selection-sequence))]
+            selected-ids (when selected-index
+                           (reduce
+                            (fn [ids template-id]
+                              (mapcat (fn [id] (matching-element-ids
+                                                 id template-id store))
+                                      ids))
+                            [(nth new-ids selected-index)]
+                            selection-sequence))]
         {:store (update-equivalent-undo-point store true)
-         :select-store-ids [selected-id]
+         :select-store-ids selected-ids
          :batch-editing true})
       ;; TODO: This can be confusing when the user has something selected that
       ;; doesn't have batch editing information. Check for no selection before

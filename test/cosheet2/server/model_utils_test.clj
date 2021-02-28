@@ -68,17 +68,19 @@
     (is (= c2  '("x" ("\u00A0C" "y") ("\u00A0D" "22"))))))
 
 (deftest semantic-test
-  (let [semantic (semantic-to-list joe)]
-    (is (= (first semantic) "Joe")))
   (is (check (map canonicalize-list
                   (map to-list (semantic-elements joe)))
-         (as-set (map canonicalize-list (rest (rest joe-list))))))
-  (let [expected ["joe" {"male" 1
-                         "married" 1
-                         [39 {["age" {:label 1}] 1
-                              ["doubtful" {"confidence" 1}] 1}] 1
-                         [45 {["age" {:label 1}] 1}] 1}]]
-    (is (= (entity->canonical-semantic joe-list) expected)))
+             (as-set (map canonicalize-list (rest (rest joe-list))))))
+  (let [expected '("Joe"
+                   "male"
+                   "married"
+                   (39 ("age" :label)
+                       ("doubtful" "confidence"))
+                   (45 ("age" :label)))]
+    (is (= (canonicalize-list (semantic-to-list joe))
+           (canonicalize-list expected)))
+    (is (= (ordered-semantic-to-list joe)
+           expected)))
   (let [removed (remove-semantic-elements store joe-id)
         removed-joe (description->entity joe-id removed)]
     (is (check (to-list removed-joe)

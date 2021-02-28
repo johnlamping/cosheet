@@ -15,7 +15,8 @@
                       [query-calculator :refer [matching-item-ids-R]])
             (cosheet2.server
              [order-utils :refer [semantic-entity?
-                                  ordered-ids-R order-element-for-item
+                                  ordered-ids-R ordered-entities
+                                  order-element-for-item
                                   update-add-entity-adjacent-to]]
              [format-convert :refer [current-format]])))
 
@@ -111,6 +112,21 @@
           elements (semantic-elements immutable-entity)
           content-semantic (semantic-to-list content)
           element-semantics (map semantic-to-list elements)]
+      (if (empty? element-semantics)
+        content-semantic
+        (apply list (into [content-semantic] element-semantics))))))
+
+(defn ordered-semantic-to-list
+  "Given an immutable entity, make a list representation of the
+  semantic information of the entity, putting elements in the order that the
+  :order information calls for."
+  [immutable-entity]
+  (if (atom? immutable-entity)
+    (content immutable-entity)
+    (let [content (content immutable-entity)
+          elements (ordered-entities (semantic-elements immutable-entity))
+          content-semantic (semantic-to-list content)
+          element-semantics (map ordered-semantic-to-list elements)]
       (if (empty? element-semantics)
         content-semantic
         (apply list (into [content-semantic] element-semantics))))))

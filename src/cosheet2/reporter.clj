@@ -1,6 +1,5 @@
 (ns cosheet2.reporter
-  (:require (cosheet2 [utils :refer [dissoc-in 
-                                     update-in-clean-up
+  (:require (cosheet2 [utils :refer [update-in-clean-up
                                      assoc-in-if-non-empty
                                      swap-returning-both!
                                      swap-control-return!]])))
@@ -38,7 +37,7 @@
   keyword arguments for the key, the reporter, the categories of the
   changed parts of the value since the last valid value and a
   description of the change. The latter two will be nil if they were
-  not specified.
+  not specified when the change was made.
 
   The callback will not necessarily be called once per change, and it
   may not find a valid value when it is called.  But it is guaranteed
@@ -51,23 +50,27 @@
   identical key can be generated later, to refer to the callback when
   we want to remove it, while an identical closure can't.)
 
-  Typically, a reporter is created with a calculator. The calculator
-  is in charge of keeping the reporter's value up to date, as long as
-  there is demand for it. First, the calculator must be activated by
-  setting the calculator-data. Then, the calculator is informed
-  whenever there is a change in the nature of the demand for the
-  reporter's value.
+  Typically, a reporter that holds derived information has a
+  calculator function, whose job it is to understand the information
+  the reporter's value depends on, and keep that value up to date, if
+  and only if there is demand for it. In other words, the attendees
+  are called when the value changes, while the calculator is called
+  when the demand changes.
 
-  It will be called, with the calculator data and the reporter, the
-  first time there are any attendees to the reporter. It will be
-  called again whenever there is a change in:
-      Whether or not there is demand
-      The priority of the demand
+  The calculator is only activated when :calculator-data is
+  present. From then on, the calculator is informed whenever there is
+  a change in the nature of the demand for the reporter's value.
+
+  It will be called the first time there are any attendees to the
+  reporter. It will be called again whenever there is a change in:
+      Whether or not there is demand.
+      The priority of the demand.
       The categories requested.
-  These callbacks let it do things like registering for callbacks to
-  update its state, or cancelling those callbacks when there is no
-  more interest. The calculator can put additional information on the
-  reporter to support its functionality.
+  The calls give it the reporter and the calculator data, and let it
+  do things like registering for callbacks to update its state, or
+  cancelling those callbacks when there is no more interest. The
+  calculator can put additional information on the reporter to support
+  its functionality.
 
   A reporter is implemented as a record holding an atom with a map of
   relevant information. By wrapping the atom in a record, we can
@@ -90,11 +93,12 @@
                        used for attendees that haven't narrowed down
                        their interest.)
      :calculator       The calculator for this reporter. It is set
-                       when the reporter is created, and can not change.
+                       when the reporter is created, and may not be changed.
      :calculator-data  If present, the auxilliary data for the
                        reporter's calculator. This is typically global
-                       information shared across many reporters. Once
-                       set, it can not be changed."
+                       information shared across many reporters, like
+                       a shared work queue. Once set, it may not be
+                       changed."
   )
 
 (defrecord ReporterImpl
@@ -151,15 +155,15 @@
   ([r description categories]
   ;; Since the only guarantee is eventual callback, we can fetch the
   ;; attendees map outside of any lock, since anything that changed
-  ;; the attendees will also request callbacks if appropriate.
+  ;; the attendees will also request callbacks for new attendees.
   ;; This does mean that an attendee may be called after it has cancelled
   ;; its request.
    (let [data (reporter-data r) 
-         ;; Avoid calling the same reporter twice if several of its
-         ;; categories match.
          reporter-keys (if (or (nil? categories)
                                (not (valid? (data-value data))))
                          (keys (:attendees data))
+                         ;; Avoid calling the same reporter twice
+                         ;; if several of its categories match.
                          (set (mapcat (partial get (:selections data))
                                       (conj categories universal-category))))]
      (doseq [key reporter-keys]    
@@ -178,8 +182,9 @@
       (inform-attendees r))))
 
 (defn change-data-control-return!
-  "This is the most general function for updating a reporter.
-   Call the function with the current data map the reporter.  It must
+  "This is the most general function for updating a reporter. But it
+  must not change the demand information.  
+  Call the function with the current data map  of the reporter.  It must
   return a new data map, a description of its change since the last
   valid value, the categories of the change, and the return value it
   wants.  Set the data of the reporter to the new map, and inform any
@@ -198,8 +203,10 @@
     return-value))
 
 (defn change-data!
-  "This is the most general function for updating a reporter.
-   Call the function with the current data map the reporter.  It must
+  "This is the most general function for updating a reporter without
+  also controlling the return value. But it must not change the demand
+  information.
+  Call the function with the current data map the reporter.  It must
   return a new data map, a description of its change since the last
   valid value, and the categories of the change.  Set the data of the
   reporter to the new map, and inform any attendees that care about
@@ -234,7 +241,8 @@
 (defn set-calculator-data-if-needed!
   "If the calculator data is not already present, set it
    and call the calculator if there is any demand.
-   Once set, the calculator data can never be changed."
+   Calling this function activates the reporter.
+   Once set, the calculator data may never be changed."
   [reporter calculator-data]
   (assert (not (nil? calculator-data)))
   (when
@@ -254,8 +262,8 @@
 (defn set-calculator-data!
   "Set the calculator data for the reporter, and call the calculator
    if there is any demand.
-   This is also called activating the reporter.
-   Once set, the calculator data can never be changed."
+   Calling this function activates the reporter.
+   Once set, the calculator data may never be changed."
   [reporter calculator-data]
   (let [data (reporter-data reporter)]
     (assert (nil? (:calculator-data data)))
@@ -302,7 +310,7 @@
                  (apply min (map first attendees))
                  Double/MAX_VALUE))))))
 
-(defn change-and-inform-calculator!
+(defn- change-and-inform-calculator!
   "Run the change on the reporter, and inform the calculator if there
    has been a change in the nature of the demand."
   [r f]
@@ -323,19 +331,20 @@
                 (not= (:priority old) (:priority current))))
       (calculator r calculator-data))))
 
-(defn check-callback [callback]
+(defn- check-callback [callback]
   (assert (fn? callback)
           ["Callback isn't a function." callback])
   callback)
 
-(defn call-callback-for-undescribed-change [callback & args]
+(defn- call-callback-for-undescribed-change [callback & args]
   (apply callback (concat args [:description nil :categories nil])))
 
 (defn remove-attendee!
   "Remove the attendee with the given key."
   [r key]
-  (change-and-inform-calculator! r #(update-attendee
-                                     % key Double/MAX_VALUE [] nil)))
+  (when (reporter? r)
+    (change-and-inform-calculator! r #(update-attendee
+                                       % key Double/MAX_VALUE [] nil))))
 
 (defn set-attendee!
   "Add an attending callback to a reporter, under a key that must be

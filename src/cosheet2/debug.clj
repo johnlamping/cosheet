@@ -63,13 +63,13 @@
           (symbol "Store"))
         (satisfies? store/StoredItemDescription item)
         (symbol (store/stored-item-description-name item))
-        (or (instance? cosheet.entity_impl.StoredItem item)
-            (instance? cosheet.entity_impl.MutableStoredItem item))
+        (or (instance? cosheet2.entity_impl.StoredItem item)
+            (instance? cosheet2.entity_impl.MutableStoredItem item))
         (symbol
          (clojure.string/join ["Entity-" (simplify-for-print (:item-id item))]))
         (reporter? item)
         (list* "R" (simplify-for-print (reporter-computation item)))
-        (instance? cosheet.orderable.Orderable item)
+        (instance? cosheet2.orderable.Orderable item)
         "Orderable"
         (instance? clojure.lang.PersistentHashSet item)
         (set (map simplify-for-print item))

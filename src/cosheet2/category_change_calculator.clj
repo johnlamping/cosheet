@@ -6,11 +6,22 @@
                                           copy-value-callback]]
                       [utils :refer [update-new-further-action]])))
 
-;;; Manage a reporter that forwards requests to another reporter, while
-;;; changing the categories of interest.
-;;; This is to wrap a reporter when an expression uses only part of its
-;;; value. The reporter it forwards to, and its categories of interest, are
-;;; fixed when the reporter is created.
+;;; Manage a reporter that forwards requests to another reporter,
+;;; while changing the categories of interest.
+;;; This reporters data must include
+;;;    :value-source  The reporter it forwards to
+;;;      :catagories  The categories of demand it should pass down.
+;;; Those may not change once the forwarding reporter is created.
+
+;;; This is used to wrap a reporter when an application uses only part
+;;; of its value, so that the application will only be informed of
+;;; changes to that part. For example, an application reporter that
+;;; does a query over a database only cares about all changes to the
+;;; database that might affect the result. But the application
+;;; reporter code propagates demand for all changes to its arguments,
+;;; including the datavase. By interposing this calculator when
+;;; building the application reporter, only the relevant demand gets
+;;; passed down.
 
 (defn category-change-calculator
   "Calculator that changes the categories of requests."

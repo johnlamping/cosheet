@@ -5,7 +5,7 @@
              [cache-calculator :refer [cache-calculator]]
              [category-change-calculator :refer [category-change-calculator]])))
 
-;;; Code for creating expression containing reporters.
+;;; Code for creating reporters that contain expressions.
 
 ;;; Let invalid be imported from here, as well.
 (def invalid cosheet2.reporter/invalid)

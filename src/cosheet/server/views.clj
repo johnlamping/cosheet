@@ -36,8 +36,7 @@
                              remove-url-file-extension isAdmin
                              get-session-state queue-to-log update-store-file]]
       [db :refer [get-all-users add-user-to-db remove-user-from-db get-user-pwdhash]]
-      [actions :refer [confirm-actions do-actions]]))
-  (:import (org.h2.util New)))
+      [actions :refer [confirm-actions do-actions]])))
 
 (defonce common-queue (new-priority-task-queue 1))
 (defonce manager-data (new-expression-manager-data common-queue))

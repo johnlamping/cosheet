@@ -16,8 +16,47 @@
 
 ;;; Manage the (re)computation of application reporters using a priority queue.
 
-;;; The following fields are used in reporters, in addition to the
-;;; standard reporter fields.
+;;; What makes applications interesting is that an application might
+;;; return another application as a value. Here are a couple of
+;;; examples of when that is necessary:
+;;;    * A conditional evaluates its condition, and then chooses a branch,
+;;;      depending on the result of the condition.
+;;;    * A funtion does a database call to get list of items matching a
+;;;      query, and then maps over the items in the list.
+;;; In these cases, the information that a computation requires can't
+;;; be fixed ahead of time; it depends on how the computation
+;;; unfolds. So it isn't possible to set up a fixed dependency graph
+;;; for the computation. But applications amount to fixed dependency
+;;; graphs: Their arguments are supposed to be the data that the
+;;; function depends on, so they can be re-run if the arguments
+;;; change.
+;;;
+;;; Either the applications need to be given possibly unnecessary
+;;; arguments that will only needed sometimes, or we need some other
+;;; mechanism. We go with them mechanism of letting an application
+;;; reporter return a reporter for another application. In the
+;;; examples above, the arguments of the initial application are only
+;;; the data used to determine what additional computation is
+;;; needed. The initial application uses that data to construct a
+;;; follow up application to do the rest of the work, with arguments
+;;; for the data it actually needs, The initial application then
+;;; returns the reporter for the follow-up application as its answer.
+
+;;; Here is how we use two of the fields from calculator.clj:
+;;;        :value-source If our application returns a reporter, it is stored
+;;;                      here, so that its value becomes our value.
+;;; :value-source-priority-delta
+;;;                      We want recomputation of our subordinates to
+;;;                      have priority over recomputation of our
+;;;                      value-source, because the recomputation of a
+;;;                      subordinate may change what value source we
+;;;                      need, removing the need to recompute our
+;;;                      current value source. To ensure that, we set
+;;;                      :value-source-priority-delta to one more than
+;;;                      the max of the dependent depth of all our
+;;;                      subordinates.
+
+;;; Application reporters use these additional fields:
 ;;;         :application The application describing the computation that
 ;;;                      gives the value of this reporter 
 ;;;  :subordinate-values A map from reporters this reporter needs
@@ -25,64 +64,66 @@
 ;;;                      valid value it saw for them and their dependent-depth.
 ;;;                      The pair is kept even if the value later goes
 ;;;                      invalid. The map is not present if nothing
-;;;                      is attending to the reporter.
+;;;                      is attending to this reporter.
 ;;;       :needed-values A set of reporters whose values this reporter needs
 ;;;                      to run its application and that it doesn't have a
 ;;;                      valid value for. Not present if nothing is
 ;;;                      attending to the reporter.
 ;;;    :old-value-source The previous :value-source, if we know it and
 ;;;                      we haven't yet gotten a value from the
-;;;                      current value source. This serves two
-;;;                      purposes. If we don't yet have a current
-;;;                      value source, and some of our arguments have
-;;;                      just gone invalid, but not changed values,
-;;;                      then this will become the value source again,
-;;;                      if our arguments retake their last valid
-;;;                      values. Second, even if we have a new value source,
-;;;                      but don't have its value yet, we will keep
-;;;                      this reporter and keep generating demand for it,
-;;;                      causing its sub-computations to be kept active,
-;;;                      so that if they were cached, they will be available
-;;;                      for reuse by the subcomputations of the current
-;;;                      value source, even ones it hasn't generated yet.
+;;;                      current value source. We maintain demand for
+;;;                      it. This serves two purposes. First, if we
+;;;                      don't yet have a current value source, and
+;;;                      some of our arguments have gone invalid, but
+;;;                      not changed values, then this will become the
+;;;                      value source again, if our arguments retake
+;;;                      their last valid values. Second, even if we
+;;;                      get a new value source, but its value is
+;;;                      still being computed, our old value source
+;;;                      can stay cached and available for reuse by
+;;;                      upcoming computations of the current value
+;;;                      source. Sometimes, for example, our new value
+;;;                      source returns our old value source as its
+;;;                      value.
 ;;; :arguments-unchanged Present, and equal to true, if we have an
-;;;                      old-value-source and we have not
-;;;                      seen a valid value different from the ones
-;;;                      used to compute it.
+;;;                      old-value-source and all of the arguments we
+;;;                      depend on that are currently valid have the
+;;;                      same values as when we computed the
+;;;                      old-value-source.
 ;;;  :requested-priority The priority that we have used to determine
 ;;;                      our requests' priorities. If our :priority changes
 ;;;                      from that, we have to redo our requests.
 
-;;; Notes on fields from calculator.clj:
-;;;        :value-source If our application returns a reporter, it is stored
-;;;                      here so that its value becomes our value.
-;;; :value-source-priority-delta We want our subordinates run to completion
-;;;                      before our value source runs, because the
-;;;                      recomputation of a subordinate may change what
-;;;                      value source we need, removing the need to
-;;;                      recompute our current value source. To ensure that,
-;;;                      we set :value-source-priority-delta to one more than
-;;;                      the max of the dependent depth of all our
-;;;                      subordinates.
-
 ;;; The computation is multi-threaded, but can avoid using locks and
 ;;; TSM because it only provides eventual consistency; it is just copying
-;;; information. The danger is that in between a read and a copy in
-;;; one thread, the data that was read will be changed, and another
-;;; thread will complete a read and copy of the new information, only to
-;;; have the first thread overwrite it with the stale information.
-;;;
-;;; Doing the read inside an atomic update operation for copying
-;;; doesn't work. Consider the copied data starting out at A, and
-;;; source value changing from A to B, and then back to A. An atomic
-;;; swap! in the copy reads the copy's current value as A, then the function
-;;; provided to the swap! reads the intermediate source value B and
-;;; returns it. But before the swap! finishes, another thread sets the
-;;; copy's value back to the final A. Now, when the original swap!
-;;; goes to finish, it will see that the copy's value is still A, like
-;;; it initially read, so the swap! succeeds, and sets the copy to the
-;;; stale B.
-;;;
+;;; information. But there is a danger:
+;;;    * A data item is changed.
+;;;    * Thread A is started to copy it to a place that depends on it.
+;;;    * Thread A reads the data, but doesn't copy it yet.
+;;;    * The data is changed again, and Thread B is started to copy it.
+;;;    * Thread B reads and copies the data.
+;;;    * Thread A writes its (stale) copy of the data.
+;;; We now have the stale copy of the data in the places that depend
+;;; on it, and no pending activity to update it.
+
+;;; It might seem that doing the read inside an atomic update
+;;; operation for copying would fix this problem. But that still
+;;; leaves a problem when the source of copied data can
+;;; change. Suppose there are two alternative sources, S and T for the
+;;; value of an atom M. And suppose that Minitially wants the data
+;;; from sourse S. This sequence can happen:
+;;;    * The desired source changes from S to T.
+;;;    * Thread A starts a swap! on M to copy the latest value M should have.
+;;;    * The swap! notices that the current value of M comes from S.
+;;;    * It calls the function it is passed to get the value T.
+;;;    * Meanwhile, the desired source changes from T back to S.
+;;;    * Thread B starts a swap! to copy the latest value M should have.
+;;;    * That thread copies the value from S to M.
+;;;    * Thread A's swap! goes to finish, sees that the current value
+;;;      is still the value from S, so it succeeds, setting the current value
+;;;      to the stale one it's function got from T.
+
+
 ;;; Instead, we check, after doing a copy, that the information that
 ;;; was copied still matches the latest information, and redo the copy
 ;;; if it doesn't.

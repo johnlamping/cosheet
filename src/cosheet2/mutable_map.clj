@@ -4,8 +4,9 @@
 ;;; Functions that implement mutable maps.
 ;;; By hiding mutable maps behind this abstraction, we can switch the
 ;;; implementation if we want.
-;;; This implementation is a vector containing atoms of maps. A key is
-;;; stored in the map at the index corresponding to its hash.
+;;; This implementation is a vector containing atoms of maps,
+;;; with the keys sharded to a map based on the key's hash. That way,
+;;; multiple calls to change the map are less likely to collide.
 
 (defn new-mutable-map
   ([] (new-mutable-map 10))

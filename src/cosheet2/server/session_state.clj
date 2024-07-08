@@ -190,6 +190,7 @@
   "Read the store if possible; otherwise create one. Return the immutable
    store. If the store can't be made, return nil."
   [without-suffix name suffix]
+  (println "Getting store" without-suffix name suffix)
   (when (and without-suffix (has-valid-directory? without-suffix))
     (let [file-path (str without-suffix suffix)]
       (when-let

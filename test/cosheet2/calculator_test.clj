@@ -1,4 +1,4 @@
-(ns cosheet2.expression-manager-test
+(ns cosheet2.calculator-test
   (:require [clojure.test :refer [deftest is]]
             (cosheet2 [reporter :refer [new-reporter reporter-atom reporter-data
                                         reporter-value set-value!

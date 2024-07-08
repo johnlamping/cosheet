@@ -13,10 +13,21 @@
                       [application-calculator
                        :refer [application-calculator]])))
 
-;;; Calculator for a reporter that forwards to another reporter,
-;;; stored in a cache, with the same application. It creates one if
-;;; needed.  This avoids redoing shared, possibly expensive,
+;;; Calculator for a reporter that forwards to another reporter with
+;;; the same application.  This avoids redoing shared, possibly expensive,
 ;;; computations.
+
+;;; A cache keeps track of all the application reporters that are
+;;; referenced by forwarding reporters.  When a cache reporter is made,
+;;; and no reporter for that application is available, one is made and
+;;; put in the cache.
+
+;;; The cache reporter can add this field to a reporter's data
+;;;    :value-source-is-canonical
+;;;        True if our value source is as good a representation of our
+;;;        computation as we are. This is used to find the canonical
+;;;        reporter when the cache calculator determines the cache
+;;;        key.
 
 (defn canonicalize-reporter
   "If the argument is a reporter, chase :value-source if that is canonical"

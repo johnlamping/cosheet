@@ -41,30 +41,26 @@
   []
   (jdbc/query db-spec "select id, username from usercredentials"))
 
-(comment   ;; the following statement was used to create the ./cosheet-db
-           ;; refer to http://clojure-doc.org/articles/tutorials/basic_web_development.html#run-your-webapp-during-development
-           ;; "lein  repl" and then paste in the following
-
-  (require '[clojure.java.jdbc :as jdbc])
-  (require '[buddy.hashers :as hashers])
+;;; This function is meant to be called from the command line to
+;;; create a blank db. It is not called by the server code.
+(defn create-blank-db
+  []
   (jdbc/with-db-connection [conn {:dbtype "h2" :dbname "~/cosheet/cosheet-db"}]
-
     (jdbc/db-do-commands conn
       (jdbc/create-table-ddl :usercredentials
         [[:id "bigint primary key auto_increment"]
          [:username "varchar(128)"]
          [:pwdhash "varchar(1024)"]]))
-
-      (jdbc/insert! conn :usercredentials
-        {:username "testuser" :pwdhash (hashers/encrypt "testpwd")})
   )
 )
 
-(comment ;; the following statement was used to add an add-user-to-db
-
-  (require '[clojure.java.jdbc :as jdbc])
-  (require '[buddy.hashers :as hashers])
-  (jdbc/with-db-connection [conn {:dbtype "h2" :dbname "~/cosheet/cosheet-db"}]
-      (jdbc/insert! conn :usercredentials
-        {:username "testuser2" :pwdhash (hashers/encrypt "testpwd2")}))
+(comment ;; Here is how to create the initial db from the command line
+  ;; mkdir ~/cosheet/userdata/testuser
+  ;;   or
+  ;; mkdir /cosheet/userdata/testuser
+  ;; cd <the project directory>
+  ;; lein repl
+  (cosheet2.server.db/create-blank-db)
+  (cosheet2.server.db/add-user-to-db "testuser", "testpwd")
 )
+

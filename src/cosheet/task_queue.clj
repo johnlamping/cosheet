@@ -1,6 +1,7 @@
 (ns cosheet.task-queue
   (:require [clojure.data.priority-map :as priority-map]
-            [cosheet.utils :refer [swap-returning-both! swap-control-return!]]))
+            [cosheet.utils :refer [swap-returning-both! swap-control-return!]]
+            clojure.stacktrace))
 
 ;;; Methods for maintaining a priority queue of tasks
 

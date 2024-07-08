@@ -7,8 +7,8 @@
 ;;; of an entity and the list form of it, and for operating on the
 ;;; canonical description.
 
-;;; The canonical form describes atomic elements as the canonical form of
-;;; themselves, and non-atomic elements as a pair of the canonical form
+;;; The canonical form describes primitive elements as the canonical form of
+;;; themselves, and non-primitive elements as a pair of the canonical form
 ;;; of their content and a multiset of the canonical descriptions of
 ;;; their elements.
 ;;; This makes the description independent of the order of the elements

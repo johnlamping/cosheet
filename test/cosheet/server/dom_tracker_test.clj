@@ -306,12 +306,14 @@
     (is (= (key->id tracker [:foo]) "root"))
     (is (= (key->id tracker [:k]) ":k"))))
 
-(deftest dom-for-key?-test
+(comment ;; dom-for-key? appears to no longer be present
+  (deftest dom-for-key?-test
   (let [md (new-expression-manager-data (new-priority-task-queue 0))
         tracker (new-dom-tracker md)]
     (swap-and-act tracker #(assoc-in % [:key->dom [:foo]] [:div {} "root"]))
     (is (dom-for-key? tracker [:foo]))
     (is (not (dom-for-key? tracker [:k])))))
+  )
 
 (deftest key->attributes-test
   (let [md (new-expression-manager-data (new-priority-task-queue 0))

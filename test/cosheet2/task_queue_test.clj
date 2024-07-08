@@ -1,6 +1,6 @@
 (ns cosheet2.task-queue-test
   (:require [clojure.test :refer [deftest is]]
-            [cosheet2.task-queue :refer :all]
+            [cosheet2.task-queue :refer :all :as task-queue]
             :reload))
 
 (deftest tasks-test
@@ -10,17 +10,20 @@
                        (fn [& args]
                          (is (= args expected))
                          (swap! history #(conj % args))))]
+    (is (is_task_queue? queue))
+    (is (not (is_task_queue? {1 2})))
+    (is (not (is_task_queue? (atom {1 2}))))
     (add-task queue (task-factory :a1 :a2) :a1 :a2)
     (add-task-with-priority queue -1 (task-factory :a4) :a4)
     (add-task-with-priority queue 1 (task-factory :a5) :a5)
-    (is (run-pending-task queue false))
-    (is (run-pending-task queue false))
+    (is (#'task-queue/run-pending-task queue false))
+    (is (#'task-queue/run-pending-task queue false))
     (is (not (finished-all-tasks? queue)))
-    (is (run-pending-task queue false))
+    (is (#'task-queue/run-pending-task queue false))
     (is (= @history [[:a4] [:a1 :a2] [:a5]]))
     (is (finished-all-tasks? queue))
     (wait-until-finished queue)
-    (is (not (run-pending-task queue false)))
+    (is (not (#'task-queue/run-pending-task queue false)))
     (is (= @history [[:a4] [:a1 :a2] [:a5]]))
     (add-task queue (task-factory :a2) :a2)
     (add-task-with-priority queue -1 (task-factory :a4) :a4)
@@ -51,7 +54,7 @@
       (add-task-with-priority queue -1 (task-factory :a4) :a4)
       (add-task-with-priority queue 1 (task-factory :a5) :a5)
       (wait-until-finished queue)
-      (is (not (run-pending-task queue false)))
+      (is (not (#'task-queue/run-pending-task queue false)))
       (is (= (set @history)  #{[:a4] [:a1 :a2] [:a5]}))
       (add-task queue (task-factory :a3) :a3)
       (add-task-with-priority queue -1 (task-factory :a6) :a6)

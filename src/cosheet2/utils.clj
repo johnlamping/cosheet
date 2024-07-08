@@ -106,9 +106,11 @@
                  keys))))
 
 (defn multiset-to-generating-values
-  "Given a multi-set, a list of keys, and corresponding list of
-  values for those keys, return a list of values whose
-  keys add up to the multi-set."
+  "Given
+  * a multi-set,
+  * a list of keys that, as a multiset, would be a superset of the multiset,
+  * a list of values, one for item in the list of keys.
+  Return a list of values whose paired keys add up to the multi-set."
   [multiset keys values]
   (let [;; A map from key to a vector of values with that key.
         key-values-map (reduce (fn [map [value key]]
@@ -118,7 +120,7 @@
               (concat result (take count (key-values-map key))))
             [] multiset)))
 
-;;; Utilities for making maps that clean up empty values.
+;;; Utilities for making maps, while cleaning up empty values.
 
 (defn dissoc-in
   "Remove (get-in map keys), and if that creates an empty map one
@@ -160,7 +162,8 @@
 
 (defn swap-control-return!
   "Like swap!, except f should return two values:
-   a new value for the atom and the value to return from the swap."
+   * a new value for the atom to hold
+   * the value to return from the swap."
   [cell f & args]
   (loop []
     (let [old @cell
@@ -199,7 +202,7 @@
   "Atomically call the function on the atom's content.
    The function should return the new contet for the atom,
    which may also contain a temporary field, :further-actions with
-   a list of actions that should be performed."
+   a list of actions that should be performed after the swap."
   [atom f]
   (let [actions (swap-control-return!
                  atom
@@ -210,17 +213,16 @@
                                 ;; dissoc, so we won't turn a record
                                 ;; into a map.
                                 [(assoc new-data :further-actions nil)
-                                 (:further-actions new-data)]
+                                 actions]
                                 [new-data
                                  nil]))))]
     (doseq [action actions]
       (apply (first action) (rest action)))))
 
-
 (defn call-with-latest-value
   "Call the function with the current value of the thunk,
    and the other arguments, repeating until the value of the thunk after the
-   call  matches the value used in the call. This is good for registering a
+   call matches the value used in the call. This is good for registering a
    current state with some other place that needs to track it."
   [thunk f & args]
   (loop [value (thunk)]
@@ -268,7 +270,7 @@
 (defn parse-string-as-number
   "Parse user entered characters into a number if possible.
   Otherwise return the characters as a string."
-  ;; NOTE: This is not compabible with ClojureScript.
+  ;; NOTE: This is not compatible with ClojureScript.
   [str]
   (try (let [x (Float/parseFloat (clojure.string/trim str))
              int-x (int x)]
@@ -355,9 +357,12 @@
   (swap-control-return! atom-map
                         #(ensure-in-map % key fun)))
 
+;;; TODO: Convert these names to canonical-primitive-form and
+;;; equivalent-primitives? so we don't have a terminology clash
+;;; with Clojure atoms.
 (defn canonical-atom-form
-  "Convert a value to its canonical form, so that equivalent atoms will have
-  equal canonical forms. (This means trimmed lower case strings.)"
+  "Convert a value to its canonical form, so that equivalent primitives
+  will have equal canonical forms. (This means trimmed lower case strings.)"
   [value]
   (if (string? value)
     (loop [result (clojure.string/trim (clojure.string/lower-case value))]

@@ -3,7 +3,7 @@
   :url ""
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.11.3"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.priority-map "1.2.0"]
                  [org.clojure/data.generators "1.1.0"]
                  ;; Server side
@@ -27,14 +27,17 @@
                  ;; memory profiling
                  [com.clojure-goes-fast/clj-memory-meter "0.3.0"] 
                  ]
-  :jvm-opts [;; TODO: The following line avoids empty stack traces for some
+  :jvm-opts ["-XX:+UnlockCommercialFeatures"
+             "-XX:+FlightRecorder"
+             "-XX:FlightRecorderOptions=stackdepth=256"
+             ;; TODO: The following line avoids empty stack traces for some
              ;;       exceptions, but may slow down some libraries.
              ;;       remove it for production code.
              "-XX:-OmitStackTraceInFastThrow"]
   :plugins [[lein-cljsbuild "1.1.8"]
             [lein-ring "0.12.6"]
             [lein-ancient "1.0.0-RC3"]
-            [cider/cider-nrepl "0.49.0"]]
+            [cider/cider-nrepl "0.11.0"]]
   :profiles {:uberjar {:aot :all}
              :dev {:plugins [[lein-binplus "0.6.8"]]}}
   :prep-tasks ["javac" "compile"]

@@ -7,7 +7,8 @@
                                         remove-attendee!
                                         inform-attendees]]
                       [mutable-map :as mm]
-                      [task-queue :refer [run-all-pending-tasks
+                      [task-queue :refer [is_task_queue?
+                                          run-all-pending-tasks
                                           run-some-pending-tasks
                                           add-task-with-priority]]
                       [utils :refer [swap-control-return!
@@ -15,11 +16,13 @@
                                      update-new-further-action
                                      with-latest-value]])))
 
-;;; The manager data record contains all the information that the
-;;; expression calculators and cache calculators need.
+;;; This module is used by most calculators.
+
+;;; The calculator data record contains all the information that the
+;;; application calculators and cache calculators need.
 ;;; By making it a record, we can define our own print-method, to
-;;; avoid infinite loops when it is printed out. (The queue will
-;;; contain references back to the manager data record.)
+;;; avoid infinite loops when it is printed out. (The CalculatorData's
+;;; queue will contain references back to the CalculatorData.)
 (defrecord CalculatorData
     [queue      ; A task-queue of pending tasks,
                 ; used by expression calculators.
@@ -34,15 +37,14 @@
 (defn new-calculator-data
   "Create a calculator data to support both application and cache calculators."
   [queue]
-  (assert (and (instance? clojure.lang.Atom queue)
-               (:tasks @queue)))
+  (assert (is_task_queue? queue))
   (map->CalculatorData
    {:cache (mm/new-mutable-map)
     :queue queue}))
 
 (defn propagate-calculator-data!
   "If this reporter hadn't already been activated, activate it
-   and all reporters it depends on."
+   and all the reporters it depends on."
   [reporter cd]
   (when (reporter? reporter)
     (let [data (reporter-data reporter)]
@@ -55,30 +57,29 @@
 
 ;;; Many kinds of calculators can get their value from another reporter.
 ;;; The copy value code provides support for that.
-;;; It assumes the following two fields have been filled in appropriately:
-;;;
-;;;         :value-source A reporter whose value should be the
-;;;                       value of this reporter.
-;;; :value-source-is-canonical True if our value source is as good a
-;;;                            representation of our computation as we are.
-;;;                            This is used to find the canonical reporter when
-;;;                            the cache calculator determines the cache key.
-;;; :value-source-priority-delta The amount that we add to our priority
-;;;                              to get the priority we give to our value
-;;;                              source. Only needs to valid when there is
-;;;                              a value source.
+;;; It assumes the following fields have been filled in appropriately:
+;;;        :value-source A reporter whose value should be the
+;;;                      value of this reporter.
+;;;    :value-source-priority-delta
+;;;                      The amount that we add to our priority to get
+;;;                      the priority we give to our value
+;;;                      source. Only needs to valid when there is a
+;;;                      value source.
 ;;;     :dependent-depth The difference between the worst priority we bestow
 ;;;                      on any computation we depend on, and our priority.
 ;;;                      This is only valid when our value is valid.
-;;;                      The purpose of this is to allow reporters that depend
-;;;                      on several reporters know what priorities they
-;;;                      should bestow on their dependents to fully prioritize
-;;;                      one, and all its dependents, over another and all
-;;;                      its dependents.
+;;;                      A reporter that depends on several reporters
+;;;                      and wants to prioritize one of them and all
+;;;                      their descendents over the others and all
+;;;                      their descendents can look at the
+;;;                      dependent-depth of the reporter that it wants
+;;;                      to prioritize and make sure to add more than
+;;;                      that to the priorities it transmits to of all
+;;;                      the reporters it doesn't want to prioritize.
 ;;;     :further-actions A list of [function arg arg ...] calls that
 ;;;                      need to be performed. (These will never actually
 ;;;                      be stored in a reporter, but are added to the
-;;;                      map before it is stored.)
+;;;                      data map before it is stored.)
 
 (defn modify-and-act!
   "Atomically call the function on the reporter's data.
@@ -100,10 +101,10 @@
         (update-new-further-action inform-attendees reporter))))
 
 (defn copy-value
-  "Copy the value in from to be the reporter's value, and update the
-   reporter's dependent depth. Additionally, if anything changed, also
-   run data-finalizer on the reporter's data, also giving it the reporter
-   and calculator data."
+  "If from is the value-source of this reporter, copy its value to be
+  the reporter's value, and update the reporter's dependent
+  depth. Additionally, if anything changed, also run data-finalizer on
+  the updated data, the reporter and its calculator data."
   [reporter from data-finalizer]
   (with-latest-value [[value value-dependent-depth]
                       (let [data (reporter-data from)]
@@ -128,9 +129,11 @@
   (let [data (reporter-data reporter)
         cd (:calculator-data data)]
       (apply add-task-with-priority
-       ;; Propagating has to be prioritized before computing, as an early
-       ;; priority computation may depend on a lower priority value, and needs
-       ;; to be informed if that value changes.
+             ;; Propagating has to be prioritized before computing, as
+             ;; an early priority computation may depend on a lower
+             ;; priority value, and before it computes with an out of
+             ;; data value, it needs to be informed if that value is
+             ;; no longer valid.
              (:queue cd) (- (:priority data) 1e6) task)))
 
 (defn copy-value-callback

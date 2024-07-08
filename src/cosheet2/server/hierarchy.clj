@@ -195,7 +195,7 @@
 ;;;                       in the hierarchy.
 ;;; :property-canonicals  A list of canonical-semantic for each element in
 ;;;                       :property-elements, in the same order they appear
-;;;                       in :property-canonicals. These are the properties
+;;;                       in :property-elements. These are the properties
 ;;;                       of the leaf in the hierarchy.
 
 (defn hierarchy-by-canonical-info

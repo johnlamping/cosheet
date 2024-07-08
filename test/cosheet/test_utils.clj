@@ -1,18 +1,18 @@
 (ns cosheet.test-utils
-  (require [clojure.test :refer [assert-expr do-report]]
-           (cosheet [entity :refer [content elements atom?
-                                    mutable-entity? description->entity]]
-                    [entity-impl :as entity-impl]
-                    [store :refer [new-element-store new-mutable-store
-                                   current-store update-content!]]
-                    store-impl
-                    mutable-store-impl
-                    [expression-manager :as expression-manager
-                     :refer [current-value]]
-                    [debug :refer [simplify-for-print]]
-                    [reporter :refer [value reporter?]]
-                    [store-utils :refer [add-entity]]
-                    [task-queue :refer [new-priority-task-queue
+  (:require [clojure.test :refer [assert-expr do-report]]
+            (cosheet [entity :refer [content elements atom?
+                                     mutable-entity? description->entity]]
+                     [entity-impl :as entity-impl]
+                     [store :refer [new-element-store new-mutable-store
+                                    current-store update-content!]]
+                     store-impl
+                     mutable-store-impl
+                     [expression-manager :as expression-manager
+                      :refer [current-value]]
+                     [debug :refer [simplify-for-print]]
+                     [reporter :refer [value reporter?]]
+                     [store-utils :refer [add-entity]]
+                     [task-queue :refer [new-priority-task-queue
                                         run-all-pending-tasks]])))
 
 (def differences)

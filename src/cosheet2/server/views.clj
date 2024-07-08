@@ -31,7 +31,8 @@
       [db :refer [get-all-users add-user-to-db remove-user-from-db
                   get-user-pwdhash]]
       [actions :refer [confirm-actions do-actions]]))
-  (:import (org.h2.util New)))
+  ; (:import (org.h2.util New))
+  )
 
 (defonce common-queue (new-priority-task-queue 1))
 (defonce calculator-data (new-calculator-data common-queue))

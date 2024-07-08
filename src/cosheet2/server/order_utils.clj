@@ -172,7 +172,7 @@
 
 (defn update-add-entity-with-order-and-temporary
   "Add an entity, described in list form, to the store, with the given
-  subject.  Add ordering information to each part of the entity,
+  subject.  Add ordering information to the entity and each part of it,
   except for :label or :category specifiers and non-semantic elements,
   splitting the provided order for the orders, and returning an unused
   piece of it.  Put the new entity in the specified position (:before

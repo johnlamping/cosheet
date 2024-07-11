@@ -2,7 +2,7 @@
   (:require (cosheet2
              [reporter :refer [new-reporter reporter?]]
              [application-calculator :refer [application-calculator]]
-             [cache-calculator :refer [cache-calculator]]
+             [cache-calculator :refer [data-for-forwarding-reporter]]
              [category-change-calculator :refer [category-change-calculator]])))
 
 ;;; Code for creating reporters that contain expressions.
@@ -16,18 +16,24 @@
    But if it has the application calculator, and none of the parts
    are reporters, then it just evaluates the expression."
   [application & {:keys [trace calculator]
-                 :as args
+                  :as args
                   :or {calculator application-calculator value invalid}}]
   ;; Catch some errors that leave no stack trace.
   (assert ((some-fn ifn? reporter?) (first application)))
-  (if (or (not= calculator application-calculator)
-          (some reporter? application))
+  (if (and (not (some reporter? application))
+           (= calculator application-calculator))
+    ;; If none of the arguments are reporters, and we have an
+    ;; application calculator, then just run the application now. No
+    ;; need to make a reporter.  But if, for example, the calculator is
+    ;; the caching calculator, qwe don't want to run the application
+    ;; now, even if we could, because then its result wouldn't
+    ;; cached.  And that result might be an application.
+    (apply (first application) (rest application))
     (apply new-reporter
            :application application
            :trace trace
            :calculator calculator
-           (apply concat (dissoc args :trace :calculator)))
-    (apply (first application) (rest application))))
+           (apply concat (dissoc args :trace :calculator)))))
 
 (defmacro expr
   "Takes a function and a series of arguments, and produces an application
@@ -43,10 +49,12 @@
    reporter with a tracing thunk. Extra information can be added as meta
    on the function."
   [& args]
-  `(new-application ~(vec args)
-                    :trace (fn [thunk#] (thunk#))
-                    :calculator cache-calculator
-                    ~@(apply concat (seq (meta (first args))))))
+  `(let [application# ~(vec args)]
+     (apply new-application
+            application#
+            :trace (fn [thunk#] (thunk#))
+            ~@(apply concat (seq (meta (first args))))
+            (data-for-forwarding-reporter application#))))
 
 (defn category-change
   "Takes a set of categories and a reporter and returns a reporter with

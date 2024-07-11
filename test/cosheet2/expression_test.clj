@@ -23,7 +23,9 @@
            {:application [r 2 3]
             :calculator cache-calculator
             :value invalid
-            :priority Double/MAX_VALUE}))
+            :priority Double/MAX_VALUE
+            :value-source-priority-delta 1
+            :cache-key [r 2 3]}))
     (is (= (reporter-data (category-change [2 3] r))
            {:categories [2 3]
             :calculator category-change-calculator

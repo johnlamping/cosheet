@@ -157,7 +157,6 @@
       (set-attendee-and-call!
        from key priority (when priority callback)))))
 
-
 ;;; The following functions are utilities to ask for computation of
 ;;; of a reporter and get its value.
 

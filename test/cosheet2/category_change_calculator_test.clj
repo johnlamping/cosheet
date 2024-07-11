@@ -2,14 +2,14 @@
   (:require [clojure.test :refer [deftest is]]
             [clojure.pprint :refer [pprint]]
             (cosheet2 [task-queue :refer [new-priority-task-queue]]
-                      [reporter  :refer [new-reporter reporter-value
+                      [reporter  :refer [new-reporter
+                                         reporter-value reporter-data
                                          set-value! change-value! valid?]]
                       [calculator :refer [new-calculator-data
                                           compute request unrequest]]
                       [expression :refer [category-change]]
                       [utils :refer :all]
                       [category-change-calculator :refer :all]
-                      [cache-calculator :refer [canonicalize-reporter]]
                       [test-utils :refer [check any]])
             ; :reload
             ))
@@ -20,7 +20,7 @@
         r1 (category-change [1 2] r)]
     (request r1 cd)
     (compute cd)
-    (is (= (canonicalize-reporter r1) r))
+    (is (= (:value-source (reporter-data r1)) r))
     (is (= (reporter-value r1) 1))
     ;; Check that we see an unmarked change
     (set-value! r 2)

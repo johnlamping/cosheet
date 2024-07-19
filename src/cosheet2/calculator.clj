@@ -204,7 +204,12 @@
         (not (nil? value-source))
         (current-value value-source)
         application
-        ;; There is an application for the reporter, apply it directly.
+        ;; There is an application for the reporter, apply it
+        ;; directly.  If there is a thunk recorded for the
+        ;; application, call it with the result of the
+        ;; application. That will put the thunk on the stack while the
+        ;; application is running, so that a stack trace can see what
+        ;; code created the executing application.
         ((or (:trace data) (fn [thunk] (thunk)))
          #(current-value (apply (fn [f & args] (apply f args))
                                 (map current-value application))))

@@ -11,29 +11,31 @@
                                         reporter-data reporter-value
                                         valid?]]
                       [orderable]
-                      [calculator :refer [current-value]]
+                      [task-queue :refer [new-priority-task-queue]]
+                      [calculator :refer [current-value computation-value
+                                          new-calculator-data]]
                       store-utils
                       [mutable-map :as mm]
                       [task-queue :refer [current-tasks]])))
 
-(defn- function-name [f]
+(defn- function-name
+  "Return a simplified name of the function, getting rid of uniquifying
+  numbers and unnecessary package names."
+  [f]
   (let [name (str f)
         matches (re-matches #"(.+?)(?:__\d+)?@.+" name)]
     (symbol (if matches
-              (let [name (matches 1)
+              (let [name (clojure.string/replace (matches 1) #"(__\d+)" "")
                     matches (re-matches #"(clojure.*)\$(.*)" name)]
                 (if matches
                   (if (number? (parse-string-as-number (matches 2)))
                     (matches 1)
                     (matches 2))
                   (let [matches (re-matches #"cosheet\.(.*)" name)]
-                    (clojure.string/replace
-                     (clojure.string/replace
-                      (clojure.string/replace
-                       (if matches (matches 1) name)
-                       "_QMARK_" "?")
-                      "$" "/")
-                     "_" "-")))) 
+                    (-> (if matches (matches 1) name)
+                        (clojure.string/replace "_QMARK_" "?")
+                        (clojure.string/replace "_" "-")
+                        (clojure.string/replace "$" "/"))))) 
               name))))
 
 (defn reporter-computation
@@ -110,7 +112,13 @@
 
 (defn trace-current
   "Run computation on the reporter, returning a trace of the item
-   with all intermediate values filled in."
+   with all intermediate values filled in.  A trace consists of
+   a vector of
+     the value
+     the trace of each part of the expression that was initially evaluated
+     if the initial expression returned an expression, the trace of it
+     if that expression returned an expression, the trace of it
+     ..."
   [expr]
     (if (reporter? expr)
       (let [data (reporter-data expr)
@@ -122,6 +130,9 @@
                 simplified-parts (map unpack-if-trivial-nested parts)
                 values (map first parts)
                 result (or (:value-source data)
+                           ;; If there is no value-source, then the
+                           ;; initial value wasn't a reporter, so
+                           ;; we don't have to run the application.
                            (let [v (:value data)] (when (valid? v) v))
                            ((fn [[f & args]] (apply f args)) values))
                 trace (trace-current result)
@@ -142,11 +153,12 @@
   (pprint (simplify-for-print (trace-current item))))
 
 (defn generate-backtrace
-  "Print a stack of requestors of the given reporter."
+  "Print a stack of requestors of the given reporter.  (Not all
+  requestor paths, just one.)"
   [reporter]
   (when (reporter? reporter)
     (let [data (reporter-data reporter)
-          expr (or (:expression data) (:application data))
+          expr (:application data)
           attendees (:attendees data)
           requestor (when attendees
                       (first (mapcat (fn [key]
@@ -180,16 +192,17 @@
                (println ["Backtrace for first task:" rep])
                (print-backtrace rep)))))))))
 
-;;; Code to walk reporters and generate a profile.
-;;; See doc for reporters-profile for a description of the output.
-;;; Many of these functions also take a set of reporters already seen
-;;; on some other path through the dag. They will be charged only to
-;;; the first path seen to them. They also take a seq of function
-;;; names of ancestors to the given reporter.
+;;; Code to walk reporters whose values have been calculated, and
+;;; generate a profile.  See the doc string for reporters-profile for
+;;; a description of the output.  Many of these functions also take a
+;;; set of reporters already seen on some other path through the
+;;; dag. They will be charged only to the first path we have seen that
+;;; leads to them. They also take a seq of function names of ancestors
+;;; to the given reporter.
 
-(def accumulate-profile)
+(def accumulate-profiles)
 
-(defn accumulate-invocations
+(defn- accumulate-invocations
   "Count one invocation of fun-name, under each of its ancestors, plus
   just itself."
   [acc fun-name ancestors]
@@ -197,51 +210,42 @@
             (update-in acc [ancestor fun-name] (fnil inc 0)))
           acc (conj ancestors nil)))
 
-(defn accumulate-expression-reporter-profile
-  "Accumulate one expression into the profile information, given its data."
-  [acc seen data ancestors]
-  (let [expression (:expression data)
-        source (:value-source data)
-        fun (first expression)
-        fun-name (when (instance? clojure.lang.Fn fun) (function-name fun))
-        args (filter reporter? (rest expression))
-        [acc seen] (accumulate-profile acc seen args ancestors)
-        acc (cond-> acc
-              fun-name (accumulate-invocations fun-name ancestors))]
-    (if source
-      (accumulate-profile acc seen [source]
-                          (cond-> ancestors fun-name (conj fun-name)))
-      [acc seen])))
+(defn parse-reporter-application
+  "Given a reporter's data, return its application, and its function
+  name, if they are available."
+  [data]
+  (let [application (when (not (:cache-key data))
+                      ;; We don't directly handle the application of
+                      ;; forwarding reporters.  Instead, we'll do the
+                      ;; application reporter they get their value
+                      ;; from.  That way, we only profile the
+                      ;; application once.
+                      (:application data))
+        fun-name (as-> (first application) fun
+                   (if (reporter? fun) (reporter-value fun) fun)
+                   (when (instance? clojure.lang.Fn fun)
+                     (function-name fun)))]
+    [application fun-name]))
 
-(defn accumulate-mutable-reporter-profile
-  "Accumulate one mutable-manager reporter into the profile
-  information, given its data."
-  [acc seen data ancestors]
-  (let [application (:application data)
-        fun (first application)
-        fun-name (when (instance? clojure.lang.Fn fun) (function-name fun))]
-    [(cond-> acc
-       fun-name (accumulate-invocations fun-name ancestors))
-     seen]))
-
-(defn accumulate-reporter-profile
-  "Accumulate one reporter into the profile. Return the profile, 
-  set of reporters seen, and a seq of [reporter ancestors] pairs
-  that still need to be processed."
+(defn- accumulate-reporter-profile
+  "Accumulate one reporter's profile information."
   [acc seen reporter ancestors]
   (if (seen reporter)
     [acc seen]
     (let [seen (conj seen reporter)
-          data (reporter-data reporter)]
-      (cond
-        (:expression data)
-        (accumulate-expression-reporter-profile acc seen data ancestors)
-        (:application data)
-        (accumulate-mutable-reporter-profile acc seen data ancestors)
-        true
+          data (reporter-data reporter)
+          [application fun-name] (parse-reporter-application data)
+          acc (cond-> acc
+                fun-name (accumulate-invocations fun-name ancestors))
+          subsidiaries (filter reporter? application)
+          [acc seen] (accumulate-profiles acc seen subsidiaries ancestors)
+          source (:value-source data)]
+      (if source
+        (accumulate-profiles acc seen [source]
+                            (cond-> ancestors fun-name (conj fun-name)))
         [acc seen]))))
 
-(defn accumulate-profile
+(defn- accumulate-profiles
   "Accumulate profile information on reporters, returning the profile
   and the set of reporters seen."
   [acc seen reporters ancestors]
@@ -250,19 +254,27 @@
           [acc seen] reporters))
 
 (defn reporters-profile
-  "Return profile information on reporters. The profile is a map of
-  maps of counts: f -> f -> n, from name of function to name of
-  function heading expressions called by that function. The first 
-  function name can also be nil, in which case the count is just
-  the number of invocations of the second function.
+  "Calculate the values of the reporters, if not already calculated, and
+  return profile information on them.
 
-  Notice that unlike a typical profile, which notes the functions
-  called directly by a function, this notes the function calls
-  anywhere underneath a function. That is what is
-  recorded in the reporter tree. It also only records functions recorded
-  in reporters, not all intermediate functions."
+  The profile is a map of maps of counts: f -> f -> n, from name of
+  function to name of function heading expressions that the first
+  function caused to be called. The first function name can also be
+  nil, in which case the count is the total number of invocations of
+  the second function.
+
+  Notice that this is a cumulative profile, which notes the function
+  calls anywhere underneath a function.  That is what is recorded in
+  the reporter tree.  But it also only records functions recorded in
+  reporters, not all intermediate functions."
   [reporters]
-  (first (accumulate-profile {} #{} reporters #{})))
+  (let [cd (or (some #(when (reporter? %)
+                        (:calculator-data (reporter-data %)))
+                     reporters)
+               (new-calculator-data (new-priority-task-queue)))]
+    (doseq [reporter reporters]
+      (computation-value reporter cd))
+    (first (accumulate-profiles {} #{} reporters #{}))))
 
 (defn print-profile
   "Print a summary of a profile, showing only the max-fns most

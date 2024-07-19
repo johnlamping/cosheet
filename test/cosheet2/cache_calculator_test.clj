@@ -36,17 +36,20 @@
            [[:a :b] [[:a :b] [:a :b]]]))))
 
 (deftest cache-membership-test
-   (let [cd (new-calculator-data (new-priority-task-queue 0))
-         r0 (get-or-make-reporter [:a :b] "ab" cd)]
+  (let [cd (new-calculator-data (new-priority-task-queue 0))
+        data {:application [:a :b]
+              :name "ab"
+              :cache-key (#'cosheet2.cache-calculator/cache-key [:a :b])}
+        r0 (get-or-make-reporter data cd)]
      (is (= (:application (reporter-data r0)) [:a :b]))
      (is (= (:calculator-data (reporter-data r0)) cd))
-     (is (not= (get-or-make-reporter [:a :b] "ab" cd) r0))
+     (is (not= (get-or-make-reporter data cd) r0))
      (request r0 cd)
      (#'cosheet2.cache-calculator/adjust-cache-membership r0 [:a :b] cd)
-     (is (= (get-or-make-reporter [:a :b] "ab" cd) r0))
+     (is (= (get-or-make-reporter data cd) r0))
      (unrequest r0 cd)
      (#'cosheet2.cache-calculator/adjust-cache-membership r0 [:a :b] cd)
-     (is (not= (get-or-make-reporter [:a :b] "ab" cd) r0))))
+     (is (not= (get-or-make-reporter data cd) r0))))
 
 (deftest cache-calculator-test
   (let [queue (new-priority-task-queue 0)

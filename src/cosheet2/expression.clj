@@ -7,7 +7,7 @@
 
 ;;; Code for creating reporters that contain expressions.
 
-;;; Let invalid be imported from here, as well.
+;;; Make it possible to import invalid from here, as well.
 (def invalid cosheet2.reporter/invalid)
 
 (defn new-application
@@ -22,13 +22,18 @@
   (assert ((some-fn ifn? reporter?) (first application)))
   (if (and (not (some reporter? application))
            (= calculator application-calculator))
-    ;; If none of the arguments are reporters, and we have an
-    ;; application calculator, then just run the application now. No
-    ;; need to make a reporter.  But if, for example, the calculator is
-    ;; the caching calculator, qwe don't want to run the application
-    ;; now, even if we could, because then its result wouldn't
-    ;; cached.  And that result might be an application.
+    ;; In this case, none of the arguments are reporters, and we have
+    ;; an application calculator, so just run the application now.  No
+    ;; need to make a reporter for it.  (Of course, the application
+    ;; might return a reporter.)
     (apply (first application) (rest application))
+    ;; In this case, either we can't run the application yet, or it
+    ;; might have a caching calculator.  If it has a caching
+    ;; calculator, we don't want to run the application now, even if
+    ;; we could, because we want to cache its computation.  That way,
+    ;; if the computation returns an application reporter, all calls
+    ;; will return the identical reporter, from the cache, so that
+    ;; reporter's computation won't be duplicated either.
     (apply new-reporter
            :application application
            :trace trace
@@ -36,9 +41,9 @@
            (apply concat (dissoc args :trace :calculator)))))
 
 (defmacro expr
-  "Takes a function and a series of arguments, and produces an application
-   reporter with a tracing thunk. Extra information can be added as meta
-   on the function."
+  "Takes a function and a series of arguments, and produces an
+  application reporter with a tracing thunk. Extra information to be
+  recorded in the reporter can be added as meta on the function."
   [& args]
   `(new-application ~(vec args)
                     :trace (fn [thunk#] (thunk#))
@@ -46,8 +51,8 @@
 
 (defmacro cache
   "Takes a function and a series of arguments, and produces a cache
-   reporter with a tracing thunk. Extra information can be added as meta
-   on the function."
+  reporter with a tracing thunk. Extra information to be recorded in
+  the reporter can be added as meta on the function."
   [& args]
   `(let [application# ~(vec args)]
      (apply new-application
@@ -57,8 +62,10 @@
             (data-for-forwarding-reporter application#))))
 
 (defn category-change
-  "Takes a set of categories and a reporter and returns a reporter with
-   the same value, but that only reports changes of the given categories."
+  "Takes a set of categories and a reporter and returns a reporter that
+  tracks its value, but only when it has a change in any of the given
+  categories; the tracking reporter is only guaranteed to be up to
+  date as of the last such change."
   [categories reporter]
   (new-reporter
    :value-source reporter
@@ -73,11 +80,12 @@
         :else #{}))
 
 (defn- split-bindings
-  "Given a set of variables and a sequence of bindings,
-   find a (possibly empty) prefix of the bindings whose values
-   don't depend on any of the input variables or the variables bound
-   in the prefix. Return a list of the binding forms, the values,
-   and the suffix of remaining bindings."
+  "Given a set of variables and a sequence of bindings given as
+  [binding_form value binding_form value ...], find a (possibly empty)
+  prefix of the bindings whose values don't depend on any of the input
+  variables or on any of the variables bound in the prefix. Return a
+  list of the binding forms, the values, and the suffix of remaining
+  bindings."
   [vars bindings]
   (if (empty? bindings)
     [nil nil nil]
@@ -95,18 +103,25 @@
   [bindings & body]
   (assert (even? (count bindings))
           "Bindings must have an even number of forms")
+  ;; We can't necessarily evaluate all the values at once, because
+  ;; later ones might depend on earlier ones. Instead, we evaluate
+  ;; values that don't depend on earlier ones, and then use an inner
+  ;; expr-let to handle any remaining ones.
   (let [[binding-forms values suffix] (split-bindings #{} bindings)]
     `(expr
-         (fn ~(symbol (str binding-forms))
+         (fn ~(symbol (str binding-forms)) ; a name for the function.
            ~(vec binding-forms)
            ~@(if (empty? suffix) body [`(expr-let ~(vec suffix) ~@body)]))
        ~@values)))
 
-;;; TODO: These are eager. Consider adding support for lazy sequences of
-;;; reporters. That requires adding a new lazy sequence calculator type
-;;; that returns a valid value of a lazy-seq, which when requested
-;;; sets the value to invalid, and sets up the computation of the
-;;; pieces.
+;;; TODO: These are eager. Consider adding support for lazy sequences
+;;; of reporters. That requires adding a lazy cons operation, which
+;;; just takes two possible reporters, doesn't give them demand, and
+;;; can return either one. Whenevethe lazy cons is accessed, it has to
+;;; be done as one of the arguments to an expr, so the expr can deal
+;;; with giving the reporter demand, and waiting for its value. This
+;;; means that operaations over the sequences, like map or filter,
+;;; would need versions that include those expr forms.
 
 (defmacro expr-seq
   "Given an expression that may evaluate to a sequence of reporters, make
@@ -119,9 +134,9 @@
                        :trace (fn [thunk#] (thunk#))))))
 
 (defn expr-filter
-  "Given a function that might return a reporter, and a sequence,
-  return a reporter whose value is the subsequence for which the filter
-  is truthy."
+  "Given a function that might return a reporter, and a sequence that
+  may contain reporters, return a reporter whose value is the
+  subsequence of values for which the filter is truthy."
   [condition items]
   (expr-let [passed (expr-seq map #(expr-let [passes (condition %)]
                                      (if passes % ::fail))

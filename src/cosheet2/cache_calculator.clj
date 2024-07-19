@@ -34,7 +34,7 @@
 ;;; clear out their :value-source when they lose demand, and then look
 ;;; anew when their demand reappears.
 
-;;; A forwarding reporter adds this field to a reporter's data.
+;;; A forwarding reporter's data has this additional field.
 ;;;    :cache-key  The key to use to do the cache look up for the
 ;;;                reporter to forward to.  Normally, this is the
 ;;;                application.  But if the application contains
@@ -72,14 +72,15 @@
             application)))
 
 (defn get-or-make-reporter
-  "Try to find an application reporter for the given application in the cache.
-   If there isn't one, make one and propagate the calculator data to it."
-  [application original-name cd]
-  (or (mm/mm-get (:cache cd) (cache-key application))
+  "Try to find an application reporter in the cache for the given
+  forwarding reporter.  If there isn't one, make one and propagate the
+  calculator data to it."
+  [data cd]
+  (or (mm/mm-get (:cache cd) (:cache-key data))
       (let [reporter (apply new-reporter
-                            :application application
+                            :application (:application data)
                             :calculator application-calculator
-                            (when original-name
+                            (when-let [original-name (:name data)]
                               [:name ["cached" original-name]]))]
         (propagate-calculator-data! reporter cd)
         reporter)))
@@ -125,14 +126,13 @@
    cache of reporters."
   [reporter cd]
   (let [data (reporter-data reporter)
-        application (:application data)
         cache (:cache cd)]
     (modify-and-act!
      reporter
      (fn [data]
        (let [source (when (data-attended? data)
                       (or (:value-source data)
-                          (get-or-make-reporter application (:name data) cd)))]
+                          (get-or-make-reporter data cd)))]
          (cond-> (update-value-source data reporter source cd)
            (nil? source)
            (assoc :value invalid)))))))

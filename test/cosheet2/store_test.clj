@@ -4,8 +4,8 @@
             (cosheet2
              [store :refer :all]
              [store-impl :refer :all]
-             [utils :refer [pseudo-set-seq pseudo-set-contains?
-                            canonical-atom-form]]
+             [utils :refer [pseudo-set-seq pseudo-set-contains?]]
+             [canonical :refer [canonical-primitive-form]]
              ;; [entity :refer [to-list description->entity]]
              ;; entity-impl
              [orderable :as orderable]
@@ -94,7 +94,7 @@
       (let [content (get-in store [:id->content-data id])]
         (when (not (nil? content))
           (is (pseudo-set-contains?
-               (get-in store [:content->ids (canonical-atom-form content)])
+               (get-in store [:content->ids (canonical-primitive-form content)])
                id)))))
     (is (empty? (:content->ids unindexed)))))
 
@@ -253,12 +253,13 @@
   ;; Everything in :content->ids is true.
   (doseq [[content ids] (:content->ids store)]
     (doseq [id (pseudo-set-seq ids)]
-      (is (= (canonical-atom-form (id->content store id)) content))))
+      (is (= (canonical-primitive-form (id->content store id)) content))))
   ;; Everything that should be in :content->ids is.
   (doseq [[id content] (:id->content-data store)]
     (is (some #{id}
               (pseudo-set-seq
-               (get-in store [:content->ids (canonical-atom-form content)])))))
+               (get-in store [:content->ids (canonical-primitive-form
+                                             content)])))))
 
   ;; Everything in :id->keywords is true.
   (doseq [[id keywords] (:id->keywords store)]
@@ -282,7 +283,7 @@
          (is (some (fn [element]
                      (some #{label-id} (id->element-ids store element))) 
                    (id->element-ids store id)))
-         (= (canonical-atom-form (id->content store label-id)) label)
+         (= (canonical-primitive-form (id->content store label-id)) label)
          (is (or (some #(= (id->content store %) :label)
                        (id->element-ids store label-id))
                  (let [content (id->content store label-id)]
@@ -291,7 +292,7 @@
   (doseq [[id content] (:id->content-data store)]
     (when-let [label-id (cond (= content :label) (id->subject store id)
                               (= content :order) id)]
-      (let [label (canonical-atom-form (id->content store label-id))]
+      (let [label (canonical-primitive-form (id->content store label-id))]
         (when-let [two-up (id->subject store (id->subject store label-id))]
           (is (some #{label-id}
                     (pseudo-set-seq

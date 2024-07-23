@@ -3,7 +3,8 @@
    (cosheet2
     [debug :refer [simplify-for-print]]
     [utils :refer [parse-string-as-number thread-map add-elements-to-entity-list
-                   swap-control-return! equivalent-atoms?]]
+                   swap-control-return!]]
+    [canonical :refer [equivalent-primitives?]]
     [map-state :refer [map-state-get-current map-state-reset!
                        map-state-change-value!
                        map-state-change-value-control-return!]]
@@ -70,7 +71,7 @@
         content (id->content store id)]
     (println "Old content" content)
     (if (and
-         (or (equivalent-atoms? from content)
+         (or (equivalent-primitives? from content)
              ;; Wildcard text matches anything,
              ;; because it has to match instances too
              (= from "\u00A0...")

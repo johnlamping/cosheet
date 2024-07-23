@@ -17,7 +17,8 @@
                                query-matches-m
                                variable-query?
                                variable-qualifier]]
-                      [utils :refer [equivalent-atoms? prewalk-seqs]])))
+                      [canonical :refer [equivalent-primitives?]]
+                      [utils :refer [prewalk-seqs]])))
 
 ;;; TODO:
 ;;; Add a term syntax that lets variables bind to the subject.
@@ -151,8 +152,8 @@
 (defn extended-by? [fixed-term target]
   (or (nil? fixed-term)
       (if (atom? fixed-term)
-        (equivalent-atoms? (ultimate-content fixed-term)
-                           (ultimate-content target))
+        (equivalent-primitives? (ultimate-content fixed-term)
+                                (ultimate-content target))
         (let [content-extended (extended-by? (content fixed-term)
                                              (content target))]
           (when content-extended
@@ -228,7 +229,8 @@
 
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (equivalent-atoms? label (ultimate-content %))
+                   (some #(and (equivalent-primitives? label
+                                                       (ultimate-content %))
                                (label? %))
                          (map ultimate-content (elements element))))
                    (map #(bind-entity % env)

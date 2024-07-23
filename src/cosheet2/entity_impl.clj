@@ -6,7 +6,7 @@
                                      mutable-store?
                                      current-store
                                      Store]]
-                      [utils :refer [equivalent-atoms?]]
+                      [canonical :refer [equivalent-primitives?]]
                       [calculator :refer [current-value]]
                       [orderable :as orderable]
                       [entity :refer :all]
@@ -119,7 +119,8 @@
   
   (label->elements [this label]
     (seq (filter (fn [element]
-                   (some #(and (equivalent-atoms? label (ultimate-content %))
+                   (some #(and (equivalent-primitives? label
+                                                       (ultimate-content %))
                                (label? %))
                          (elements element)))
                  (elements this))))

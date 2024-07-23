@@ -357,27 +357,6 @@
   (swap-control-return! atom-map
                         #(ensure-in-map % key fun)))
 
-;;; TODO: Convert these names to canonical-primitive-form and
-;;; equivalent-primitives? so we don't have a terminology clash
-;;; with Clojure atoms.
-(defn canonical-atom-form
-  "Convert a value to its canonical form, so that equivalent primitives
-  will have equal canonical forms. (This means trimmed lower case strings.)"
-  [value]
-  (if (string? value)
-    (loop [result (clojure.string/trim (clojure.string/lower-case value))]
-      (if (and (not= result "") (= (nth result 0) \u00A0))
-        (recur (subs result 1))
-        result))
-    value))
-
-(defn equivalent-atoms?
-  "Return true if the canonical forms of the atoms are equal."
-  [a1 a2]
-  (or (= a1 a2)
-      (and (string? a1) (string? a2)
-           (= (canonical-atom-form a1) (canonical-atom-form a2)))))
-
 (defn add-elements-to-entity-list
   [entity elements]
   (if (empty? elements)

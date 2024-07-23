@@ -1,13 +1,13 @@
 (ns cosheet2.store-impl
   (:require (cosheet2 [store :refer :all]
-                      [utils :refer [canonical-atom-form
-                                     pseudo-set-set
+                      [utils :refer [pseudo-set-set
                                      pseudo-set-seq
                                      pseudo-set-set-membership
                                      pseudo-set-contains?
                                      parse-string-as-number
                                      dissoc-in
                                      update-in-clean-up]]
+                      [canonical :refer [canonical-primitive-form]]
                       [orderable :refer [->Orderable]])
             clojure.edn))
 ;;; TODO: Have candidate-matching-ids return whether its result
@@ -56,12 +56,13 @@
    a chain of containment."
   [store content]
   (let [items (pseudo-set-seq
-               (get-in store [:content->ids (canonical-atom-form content)]))]
+               (get-in store [:content->ids (canonical-primitive-form
+                                             content)]))]
     (concat items
             (mapcat #(all-ids-eventually-holding-content store %) items))))
 
 (defn all-ids-eventually-holding-id
-  "Return a seq of the ids of all items whose atomic value chain goes
+  "Return a seq of the ids of all items whose content chain goes
   through this item. That includes the item, all items whose content
   is this item, and all items eventually holding them."
   [store id]
@@ -98,10 +99,12 @@
       store
       (cond-> store
         old-content
-        (update-in-clean-up [:content->ids (canonical-atom-form old-content)]
+        (update-in-clean-up [:content->ids (canonical-primitive-form
+                                            old-content)]
                             #(pseudo-set-set-membership % id false))
         content
-        (update-in-clean-up [:content->ids (canonical-atom-form content)]
+        (update-in-clean-up [:content->ids (canonical-primitive-form
+                                            content)]
                             #(pseudo-set-set-membership % id true))))))
 
 (defn index-id->keywords
@@ -137,8 +140,8 @@
   [store old-store id]
   (let [is-label (id-is-label? store id)
         old-is-label (id-is-label? old-store id)
-        canonical (canonical-atom-form (id->content store id))
-        old-canonical (canonical-atom-form (id->content old-store id))
+        canonical (canonical-primitive-form (id->content store id))
+        old-canonical (canonical-primitive-form (id->content old-store id))
         grand-subject (or (id->subject store (id->subject store id))
                           (id->subject old-store (id->subject old-store id)))]
     (if (or (and (= is-label old-is-label)
@@ -348,7 +351,7 @@
     ;;; elements.
     id->elements
 
-    ;;; A derived index from the canonical-atom-form of content to a
+    ;;; A derived index from the canonical-primitive-form of content to a
     ;;; pseudo-set of ids with that content. Nil content is not
     ;;; indexed.
     content->ids
@@ -403,7 +406,8 @@
     (seq
      (map #(get-in this [:id->subject %])
           (pseudo-set-seq
-           (get-in this [:id->label->ids id (canonical-atom-form label)])))))
+           (get-in this [:id->label->ids id (canonical-primitive-form
+                                             label)])))))
 
   (id->has-keyword? [this id keyword]
     (pseudo-set-contains? (get-in this [:id->keywords id]) keyword))
